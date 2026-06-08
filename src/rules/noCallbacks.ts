@@ -31,7 +31,7 @@ export const noCallbacks: Rule = {
   }
 }
 
-function isCallbackStyleCandidate(node: ts.Node): node is CallbackStyleDeclaration {
+const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration => {
   return (
     ts.isFunctionDeclaration(node) ||
     ts.isFunctionExpression(node) ||
@@ -43,7 +43,7 @@ function isCallbackStyleCandidate(node: ts.Node): node is CallbackStyleDeclarati
   )
 }
 
-function isCallableValueType(node: ts.FunctionTypeNode): boolean {
+const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   let typeNode: ts.TypeNode = node
   let parent = node.parent
 
@@ -71,7 +71,7 @@ function isCallableValueType(node: ts.FunctionTypeNode): boolean {
   return false
 }
 
-function isTransparentTypeNode(node: ts.Node): node is ts.TypeNode {
+const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode => {
   return (
     ts.isParenthesizedTypeNode(node) ||
     ts.isUnionTypeNode(node) ||
@@ -79,14 +79,14 @@ function isTransparentTypeNode(node: ts.Node): node is ts.TypeNode {
   )
 }
 
-function isRuntimeFunctionLike(node: ts.Expression): boolean {
+const isRuntimeFunctionLike = (node: ts.Expression): boolean => {
   return ts.isFunctionExpression(node) || ts.isArrowFunction(node)
 }
 
-function isCallbackStyleDeclaration(
+const isCallbackStyleDeclaration = (
   context: RuleContext,
   declaration: CallbackStyleDeclaration
-): boolean {
+): boolean => {
   const signature = context.checker.getSignatureFromDeclaration(declaration)
 
   if (signature === undefined) {
@@ -99,11 +99,14 @@ function isCallbackStyleDeclaration(
   )
 }
 
-function isVoidType(type: ts.Type): boolean {
+const isVoidType = (type: ts.Type): boolean => {
   return (type.flags & ts.TypeFlags.Void) !== 0
 }
 
-function isFunctionArgument(checker: ts.TypeChecker, parameter: ts.ParameterDeclaration): boolean {
+const isFunctionArgument = (
+  checker: ts.TypeChecker,
+  parameter: ts.ParameterDeclaration
+): boolean => {
   const parameterType = checker.getTypeAtLocation(parameter)
 
   if (hasCallSignature(checker, parameterType)) {
@@ -118,11 +121,11 @@ function isFunctionArgument(checker: ts.TypeChecker, parameter: ts.ParameterDecl
   return elementType !== undefined && hasCallSignature(checker, elementType)
 }
 
-function hasCallSignature(
+const hasCallSignature = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type> = new Set()
-): boolean {
+): boolean => {
   if (seen.has(type)) {
     return false
   }
@@ -151,7 +154,10 @@ function hasCallSignature(
   return apparentType !== type && hasCallSignature(checker, apparentType, nextSeen)
 }
 
-function createMatch(context: RuleContext, declaration: CallbackStyleDeclaration): RuleMatch {
+const createMatch = (
+  context: RuleContext,
+  declaration: CallbackStyleDeclaration
+): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = declaration.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)
@@ -168,7 +174,7 @@ function createMatch(context: RuleContext, declaration: CallbackStyleDeclaration
   }
 }
 
-function toRelativeFileName(projectRoot: string, fileName: string): string {
+const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
   return relative.length === 0 ? fileName : relative
 }

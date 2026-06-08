@@ -22,11 +22,11 @@ export const noNewError: Rule = {
   }
 }
 
-function isBareErrorConstruction(newExpression: ts.NewExpression): boolean {
+const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
   return ts.isIdentifier(newExpression.expression) && newExpression.expression.text === "Error"
 }
 
-function createMatch(context: RuleContext, newExpression: ts.NewExpression): RuleMatch {
+const createMatch = (context: RuleContext, newExpression: ts.NewExpression): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = newExpression.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)
@@ -43,7 +43,7 @@ function createMatch(context: RuleContext, newExpression: ts.NewExpression): Rul
   }
 }
 
-function toRelativeFileName(projectRoot: string, fileName: string): string {
+const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
   return relative.length === 0 ? fileName : relative
 }

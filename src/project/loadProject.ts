@@ -26,7 +26,7 @@ class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>("Inv
   }
 ) {}
 
-export function loadProject(projectPath: string): Effect.Effect<LoadedProject, Error> {
+export const loadProject = (projectPath: string): Effect.Effect<LoadedProject, Error> => {
   return Effect.gen(function* () {
     const rootPath = path.resolve(projectPath)
     const configPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
@@ -67,7 +67,7 @@ export function loadProject(projectPath: string): Effect.Effect<LoadedProject, E
   })
 }
 
-function formatDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>): string {
+const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string => {
   return ts.formatDiagnosticsWithColorAndContext(diagnostics, {
     getCanonicalFileName: (fileName) => fileName,
     getCurrentDirectory: ts.sys.getCurrentDirectory,

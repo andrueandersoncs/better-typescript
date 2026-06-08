@@ -1,10 +1,10 @@
 import type { LoadedProject } from "../project/loadProject.js"
 import type { Rule, RuleMatch } from "../rules/index.js"
 
-export function runRules(
+export const runRules = (
   loadedProject: LoadedProject,
   rules: ReadonlyArray<Rule>
-): ReadonlyArray<RuleMatch> {
+): ReadonlyArray<RuleMatch> => {
   const checker = loadedProject.program.getTypeChecker()
   const matches: Array<RuleMatch> = []
 
@@ -28,6 +28,6 @@ export function runRules(
   return matches
 }
 
-function shouldSkipSourceFile(fileName: string, isDeclarationFile: boolean): boolean {
+const shouldSkipSourceFile = (fileName: string, isDeclarationFile: boolean): boolean => {
   return isDeclarationFile || fileName.replaceAll("\\", "/").includes("/node_modules/")
 }

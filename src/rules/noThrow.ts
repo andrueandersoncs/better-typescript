@@ -21,7 +21,7 @@ export const noThrow: Rule = {
   }
 }
 
-function createMatch(context: RuleContext, throwStatement: ts.ThrowStatement): RuleMatch {
+const createMatch = (context: RuleContext, throwStatement: ts.ThrowStatement): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = throwStatement.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)
@@ -38,7 +38,7 @@ function createMatch(context: RuleContext, throwStatement: ts.ThrowStatement): R
   }
 }
 
-function toRelativeFileName(projectRoot: string, fileName: string): string {
+const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
   return relative.length === 0 ? fileName : relative
 }

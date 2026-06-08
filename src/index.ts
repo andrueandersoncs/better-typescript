@@ -11,6 +11,22 @@ const project = Options.directory("project", { exists: "yes" }).pipe(
   Options.withDefault(process.cwd())
 )
 
+const analyzeProject = (projectPath: string): Effect.Effect<string, Error> => {
+  return Effect.gen(function* () {
+    const loadedProject = yield* loadProject(projectPath)
+    const matches = runRules(loadedProject, rules)
+
+    if (matches.length === 0) {
+      return `No rule matches found in ${loadedProject.rootPath}.`
+    }
+
+    yield* Effect.sync(() => {
+      process.exitCode = 1
+    })
+    return formatMatches(matches)
+  })
+}
+
 const command = Command.make("better-typescript", { project }, ({ project }) =>
   analyzeProject(project).pipe(
     Effect.flatMap((output) => Console.log(output)),
@@ -32,19 +48,3 @@ const cli = Command.run(command, {
 })
 
 cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
-
-function analyzeProject(projectPath: string): Effect.Effect<string, Error> {
-  return Effect.gen(function* () {
-    const loadedProject = yield* loadProject(projectPath)
-    const matches = runRules(loadedProject, rules)
-
-    if (matches.length === 0) {
-      return `No rule matches found in ${loadedProject.rootPath}.`
-    }
-
-    yield* Effect.sync(() => {
-      process.exitCode = 1
-    })
-    return formatMatches(matches)
-  })
-}

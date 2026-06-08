@@ -21,17 +21,17 @@ export const preferEffectSchemaGuard: Rule = {
   }
 }
 
-function conditionMatchStream(
+const conditionMatchStream = (
   context: RuleContext,
   expression: ts.Expression
-): Stream.Stream<RuleMatch> {
+): Stream.Stream<RuleMatch> => {
   return expressionStream(expression).pipe(
     Stream.filter(isStringKeyInExpression),
     Stream.map((match) => createMatch(context, match))
   )
 }
 
-function expressionStream(expression: ts.Expression): Stream.Stream<ts.Expression> {
+const expressionStream = (expression: ts.Expression): Stream.Stream<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
 
   return Stream.succeed(unwrapped).pipe(
@@ -44,7 +44,9 @@ function expressionStream(expression: ts.Expression): Stream.Stream<ts.Expressio
   )
 }
 
-function isStringKeyInExpression(expression: ts.Expression): expression is ts.BinaryExpression {
+const isStringKeyInExpression = (
+  expression: ts.Expression
+): expression is ts.BinaryExpression => {
   return (
     ts.isBinaryExpression(expression) &&
     expression.operatorToken.kind === ts.SyntaxKind.InKeyword &&
@@ -52,11 +54,11 @@ function isStringKeyInExpression(expression: ts.Expression): expression is ts.Bi
   )
 }
 
-function isStringLiteralLike(expression: ts.Expression): boolean {
+const isStringLiteralLike = (expression: ts.Expression): boolean => {
   return ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
 }
 
-function unwrapExpression(expression: ts.Expression): ts.Expression {
+const unwrapExpression = (expression: ts.Expression): ts.Expression => {
   let current = expression
 
   while (ts.isParenthesizedExpression(current)) {
@@ -66,7 +68,7 @@ function unwrapExpression(expression: ts.Expression): ts.Expression {
   return current
 }
 
-function createMatch(context: RuleContext, expression: ts.BinaryExpression): RuleMatch {
+const createMatch = (context: RuleContext, expression: ts.BinaryExpression): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = expression.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)
@@ -83,7 +85,7 @@ function createMatch(context: RuleContext, expression: ts.BinaryExpression): Rul
   }
 }
 
-function toRelativeFileName(projectRoot: string, fileName: string): string {
+const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
   return relative.length === 0 ? fileName : relative
 }

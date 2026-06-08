@@ -13,7 +13,7 @@ type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
 
 export const noFunctionKeyword: Rule = {
   id: ruleId,
-  description: "Disallow the function keyword in favor of const arrow functions.",
+  description: "Disallow non-generator function declarations in favor of const arrow functions.",
   check: (context) => {
     return Effect.runSync(
       nodeStream(context.sourceFile).pipe(
@@ -35,11 +35,19 @@ const isDisallowedFunctionKeyword = (
   context: RuleContext,
   node: FunctionKeywordNode
 ): boolean => {
+  if (isGeneratorFunction(node)) {
+    return false
+  }
+
   if (ts.isFunctionExpression(node)) {
     return true
   }
 
   return hasFunctionBody(node) && !hasOverloadSignature(context, node)
+}
+
+const isGeneratorFunction = (node: FunctionKeywordNode): boolean => {
+  return node.asteriskToken !== undefined
 }
 
 const hasFunctionBody = (
@@ -75,7 +83,8 @@ const createMatch = (context: RuleContext, node: FunctionKeywordNode): RuleMatch
     message: "Avoid using the function keyword.",
     hint:
       "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-      "declarations only when overload signatures are required."
+      "declarations only when overload signatures are required, and keep function* when " +
+      "generator semantics are required."
   }
 }
 

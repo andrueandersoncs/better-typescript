@@ -1,6 +1,6 @@
 import type { RuleMatch } from "../rules/index.js"
 
-export function formatMatches(matches: ReadonlyArray<RuleMatch>): string {
+export const formatMatches = (matches: ReadonlyArray<RuleMatch>): string => {
   return matches
     .map(
       (match) =>
