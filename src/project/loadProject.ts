@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import * as ts from "typescript"
 
 export interface LoadedProject {
@@ -8,19 +8,39 @@ export interface LoadedProject {
   readonly rootPath: string
 }
 
+class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>("MissingTsconfigError")(
+  "MissingTsconfigError",
+  {
+    rootPath: Schema.String
+  }
+) {
+  get message(): string {
+    return `Could not find tsconfig.json from ${this.rootPath}`
+  }
+}
+
+class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>("InvalidTsconfigError")(
+  "InvalidTsconfigError",
+  {
+    message: Schema.String
+  }
+) {}
+
 export function loadProject(projectPath: string): Effect.Effect<LoadedProject, Error> {
   return Effect.gen(function* () {
     const rootPath = path.resolve(projectPath)
     const configPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
 
     if (configPath === undefined) {
-      return yield* Effect.fail(new Error(`Could not find tsconfig.json from ${rootPath}`))
+      return yield* Effect.fail(new MissingTsconfigError({ rootPath }))
     }
 
     const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
 
     if (configFile.error !== undefined) {
-      return yield* Effect.fail(new Error(formatDiagnostics([configFile.error])))
+      return yield* Effect.fail(
+        new InvalidTsconfigError({ message: formatDiagnostics([configFile.error]) })
+      )
     }
 
     const parsedConfig = ts.parseJsonConfigFileContent(
@@ -30,7 +50,9 @@ export function loadProject(projectPath: string): Effect.Effect<LoadedProject, E
     )
 
     if (parsedConfig.errors.length > 0) {
-      return yield* Effect.fail(new Error(formatDiagnostics(parsedConfig.errors)))
+      return yield* Effect.fail(
+        new InvalidTsconfigError({ message: formatDiagnostics(parsedConfig.errors) })
+      )
     }
 
     return {
