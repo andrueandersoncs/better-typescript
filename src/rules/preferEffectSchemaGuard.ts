@@ -1,0 +1,89 @@
+import * as path from "node:path"
+import * as ts from "typescript"
+import type { Rule, RuleContext, RuleMatch } from "./types.js"
+
+const ruleId = "prefer-effect-schema-guard"
+
+export const preferEffectSchemaGuard: Rule = {
+  id: ruleId,
+  description: "Prefer Effect Schema guards over string-key in-operator checks.",
+  check: (context) => {
+    const matches: Array<RuleMatch> = []
+
+    visitIfStatements(context.sourceFile, (ifStatement) => {
+      visitCondition(context, ifStatement.expression, matches)
+    })
+
+    return matches
+  }
+}
+
+function visitIfStatements(node: ts.Node, onIfStatement: (node: ts.IfStatement) => void): void {
+  if (ts.isIfStatement(node)) {
+    onIfStatement(node)
+  }
+
+  ts.forEachChild(node, (child) => visitIfStatements(child, onIfStatement))
+}
+
+function visitCondition(
+  context: RuleContext,
+  expression: ts.Expression,
+  matches: Array<RuleMatch>
+): void {
+  const unwrapped = unwrapExpression(expression)
+
+  if (isStringKeyInExpression(unwrapped)) {
+    matches.push(createMatch(context, unwrapped))
+  }
+
+  ts.forEachChild(unwrapped, (child) => {
+    if (ts.isExpression(child)) {
+      visitCondition(context, child, matches)
+    }
+  })
+}
+
+function isStringKeyInExpression(expression: ts.Expression): expression is ts.BinaryExpression {
+  return (
+    ts.isBinaryExpression(expression) &&
+    expression.operatorToken.kind === ts.SyntaxKind.InKeyword &&
+    isStringLiteralLike(unwrapExpression(expression.left))
+  )
+}
+
+function isStringLiteralLike(expression: ts.Expression): boolean {
+  return ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
+}
+
+function unwrapExpression(expression: ts.Expression): ts.Expression {
+  let current = expression
+
+  while (ts.isParenthesizedExpression(current)) {
+    current = current.expression
+  }
+
+  return current
+}
+
+function createMatch(context: RuleContext, expression: ts.BinaryExpression): RuleMatch {
+  const sourceFile = context.sourceFile
+  const start = expression.getStart(sourceFile)
+  const location = sourceFile.getLineAndCharacterOfPosition(start)
+  const propertyName = unwrapExpression(expression.left).getText(sourceFile)
+  const objectText = expression.right.getText(sourceFile)
+
+  return {
+    ruleId,
+    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
+    line: location.line + 1,
+    column: location.character + 1,
+    message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
+    hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`
+  }
+}
+
+function toRelativeFileName(projectRoot: string, fileName: string): string {
+  const relative = path.relative(projectRoot, fileName)
+  return relative.length === 0 ? fileName : relative
+}
