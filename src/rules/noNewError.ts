@@ -1,5 +1,7 @@
 import * as path from "node:path"
+import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
+import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-new-error"
@@ -8,27 +10,16 @@ export const noNewError: Rule = {
   id: ruleId,
   description: "Disallow direct Error construction in favor of Effect Schema tagged errors.",
   check: (context) => {
-    const matches: Array<RuleMatch> = []
-
-    visitNewExpressions(context.sourceFile, (newExpression) => {
-      if (isBareErrorConstruction(newExpression)) {
-        matches.push(createMatch(context, newExpression))
-      }
-    })
-
-    return matches
+    return Effect.runSync(
+      nodeStream(context.sourceFile).pipe(
+        Stream.filter(ts.isNewExpression),
+        Stream.filter(isBareErrorConstruction),
+        Stream.map((newExpression) => createMatch(context, newExpression)),
+        Stream.runCollect,
+        Effect.map((matches) => Chunk.toReadonlyArray(matches))
+      )
+    )
   }
-}
-
-function visitNewExpressions(
-  node: ts.Node,
-  onNewExpression: (node: ts.NewExpression) => void
-): void {
-  if (ts.isNewExpression(node)) {
-    onNewExpression(node)
-  }
-
-  ts.forEachChild(node, (child) => visitNewExpressions(child, onNewExpression))
 }
 
 function isBareErrorConstruction(newExpression: ts.NewExpression): boolean {

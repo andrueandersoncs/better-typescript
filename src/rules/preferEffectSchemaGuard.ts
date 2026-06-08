@@ -1,5 +1,7 @@
 import * as path from "node:path"
+import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
+import { childNodeStream, nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-guard"
@@ -8,40 +10,38 @@ export const preferEffectSchemaGuard: Rule = {
   id: ruleId,
   description: "Prefer Effect Schema guards over string-key in-operator checks.",
   check: (context) => {
-    const matches: Array<RuleMatch> = []
-
-    visitIfStatements(context.sourceFile, (ifStatement) => {
-      visitCondition(context, ifStatement.expression, matches)
-    })
-
-    return matches
+    return Effect.runSync(
+      nodeStream(context.sourceFile).pipe(
+        Stream.filter(ts.isIfStatement),
+        Stream.flatMap((ifStatement) => conditionMatchStream(context, ifStatement.expression)),
+        Stream.runCollect,
+        Effect.map((matches) => Chunk.toReadonlyArray(matches))
+      )
+    )
   }
 }
 
-function visitIfStatements(node: ts.Node, onIfStatement: (node: ts.IfStatement) => void): void {
-  if (ts.isIfStatement(node)) {
-    onIfStatement(node)
-  }
-
-  ts.forEachChild(node, (child) => visitIfStatements(child, onIfStatement))
-}
-
-function visitCondition(
+function conditionMatchStream(
   context: RuleContext,
-  expression: ts.Expression,
-  matches: Array<RuleMatch>
-): void {
+  expression: ts.Expression
+): Stream.Stream<RuleMatch> {
+  return expressionStream(expression).pipe(
+    Stream.filter(isStringKeyInExpression),
+    Stream.map((match) => createMatch(context, match))
+  )
+}
+
+function expressionStream(expression: ts.Expression): Stream.Stream<ts.Expression> {
   const unwrapped = unwrapExpression(expression)
 
-  if (isStringKeyInExpression(unwrapped)) {
-    matches.push(createMatch(context, unwrapped))
-  }
-
-  ts.forEachChild(unwrapped, (child) => {
-    if (ts.isExpression(child)) {
-      visitCondition(context, child, matches)
-    }
-  })
+  return Stream.succeed(unwrapped).pipe(
+    Stream.concat(
+      childNodeStream(unwrapped).pipe(
+        Stream.filter(ts.isExpression),
+        Stream.flatMap(expressionStream)
+      )
+    )
+  )
 }
 
 function isStringKeyInExpression(expression: ts.Expression): expression is ts.BinaryExpression {

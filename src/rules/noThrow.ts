@@ -1,5 +1,7 @@
 import * as path from "node:path"
+import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
+import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-throw"
@@ -8,25 +10,15 @@ export const noThrow: Rule = {
   id: ruleId,
   description: "Disallow throw statements in favor of Effect errors.",
   check: (context) => {
-    const matches: Array<RuleMatch> = []
-
-    visitThrowStatements(context.sourceFile, (throwStatement) => {
-      matches.push(createMatch(context, throwStatement))
-    })
-
-    return matches
+    return Effect.runSync(
+      nodeStream(context.sourceFile).pipe(
+        Stream.filter(ts.isThrowStatement),
+        Stream.map((throwStatement) => createMatch(context, throwStatement)),
+        Stream.runCollect,
+        Effect.map((matches) => Chunk.toReadonlyArray(matches))
+      )
+    )
   }
-}
-
-function visitThrowStatements(
-  node: ts.Node,
-  onThrowStatement: (node: ts.ThrowStatement) => void
-): void {
-  if (ts.isThrowStatement(node)) {
-    onThrowStatement(node)
-  }
-
-  ts.forEachChild(node, (child) => visitThrowStatements(child, onThrowStatement))
 }
 
 function createMatch(context: RuleContext, throwStatement: ts.ThrowStatement): RuleMatch {
