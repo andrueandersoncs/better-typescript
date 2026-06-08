@@ -12,10 +12,7 @@ const project = Options.directory("project", { exists: "yes" }).pipe(
 )
 
 const command = Command.make("better-typescript", { project }, ({ project }) =>
-  Effect.try({
-    try: () => analyzeProject(project),
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause)))
-  }).pipe(
+  analyzeProject(project).pipe(
     Effect.flatMap((output) => Console.log(output)),
     Effect.catchAll((error) =>
       Console.error(`Error: ${error.message}`).pipe(
@@ -36,14 +33,18 @@ const cli = Command.run(command, {
 
 cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 
-function analyzeProject(projectPath: string): string {
-  const loadedProject = loadProject(projectPath)
-  const matches = runRules(loadedProject, rules)
+function analyzeProject(projectPath: string): Effect.Effect<string, Error> {
+  return Effect.gen(function* () {
+    const loadedProject = yield* loadProject(projectPath)
+    const matches = runRules(loadedProject, rules)
 
-  if (matches.length === 0) {
-    return `No rule matches found in ${loadedProject.rootPath}.`
-  }
+    if (matches.length === 0) {
+      return `No rule matches found in ${loadedProject.rootPath}.`
+    }
 
-  process.exitCode = 1
-  return formatMatches(matches)
+    yield* Effect.sync(() => {
+      process.exitCode = 1
+    })
+    return formatMatches(matches)
+  })
 }
