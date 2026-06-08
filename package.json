@@ -1,0 +1,25 @@
+{
+  "name": "better-typescript",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "better-typescript": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.75.2",
+    "@effect/platform-node": "^0.107.0",
+    "effect": "^3.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
