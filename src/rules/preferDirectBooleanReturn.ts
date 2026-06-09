@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -23,8 +23,7 @@ export const preferDirectBooleanReturn: Rule = {
     Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isIfStatement),
-        Stream.map((ifStatement) => directBooleanReturnMatch(context, ifStatement)),
-        Stream.filter(isDefined),
+        Stream.filterMap((ifStatement) => directBooleanReturnMatch(context, ifStatement)),
         Stream.map((match) => createMatch(context, match)),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
@@ -35,40 +34,40 @@ export const preferDirectBooleanReturn: Rule = {
 const directBooleanReturnMatch = (
   context: RuleContext,
   ifStatement: ts.IfStatement
-): DirectBooleanReturnMatch | undefined => {
+): Option.Option<DirectBooleanReturnMatch> => {
   const thenReturn = booleanReturnFromStatement(ifStatement.thenStatement)
 
-  if (thenReturn === undefined) {
-    return undefined
-  }
+  return Option.match(thenReturn, {
+    onNone: () => Option.none(),
+    onSome: (thenReturn) => {
+      const conditionText = ifStatement.expression.getText(context.sourceFile)
 
-  const conditionText = ifStatement.expression.getText(context.sourceFile)
-
-  return {
-    ifStatement,
-    literalValue: thenReturn.value,
-    returnExpression: thenReturn.value ? `(${conditionText})` : `!(${conditionText})`
-  }
+      return Option.some({
+        ifStatement,
+        literalValue: thenReturn.value,
+        returnExpression: thenReturn.value ? `(${conditionText})` : `!(${conditionText})`
+      })
+    }
+  })
 }
 
-const booleanReturnFromStatement = (statement: ts.Statement): BooleanReturn | undefined => {
+const booleanReturnFromStatement = (
+  statement: ts.Statement
+): Option.Option<BooleanReturn> => {
   const returnStatement = unwrapSingleStatementBlock(statement)
 
   if (!ts.isReturnStatement(returnStatement)) {
-    return undefined
+    return Option.none()
   }
 
-  if (returnStatement.expression === undefined) {
-    return undefined
-  }
-
-  const value = booleanLiteralValue(returnStatement.expression)
-
-  if (value === undefined) {
-    return undefined
-  }
-
-  return { value }
+  return Option.match(Option.fromNullable(returnStatement.expression), {
+    onNone: () => Option.none(),
+    onSome: (expression) =>
+      Option.match(booleanLiteralValue(expression), {
+        onNone: () => Option.none(),
+        onSome: (value) => Option.some({ value })
+      })
+  })
 }
 
 const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
@@ -85,16 +84,16 @@ const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
   return statement.statements[0]
 }
 
-const booleanLiteralValue = (expression: ts.Expression): boolean | undefined => {
+const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
   switch (unwrapped.kind) {
     case ts.SyntaxKind.TrueKeyword:
-      return true
+      return Option.some(true)
     case ts.SyntaxKind.FalseKeyword:
-      return false
+      return Option.some(false)
     default:
-      return undefined
+      return Option.none()
   }
 }
 
@@ -123,8 +122,6 @@ const createMatch = (
     hint: `Use the condition as the boolean value instead: return ${match.returnExpression}.`
   }
 }
-
-const isDefined = <A>(value: A | undefined): value is A => value !== undefined
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)

@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -20,10 +20,9 @@ export const noMutableVariableDeclarations: Rule = {
     Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isVariableDeclarationList),
-        Stream.map((declarationList) =>
+        Stream.filterMap((declarationList) =>
           mutableVariableDeclarationMatch(context, declarationList)
         ),
-        Stream.filter(isDefined),
         Stream.map((match) => createMatch(context, match)),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
@@ -34,33 +33,38 @@ export const noMutableVariableDeclarations: Rule = {
 const mutableVariableDeclarationMatch = (
   context: RuleContext,
   declarationList: ts.VariableDeclarationList
-): MutableVariableDeclarationMatch | undefined => {
+): Option.Option<MutableVariableDeclarationMatch> => {
   const kind = mutableVariableDeclarationKind(context.sourceFile, declarationList)
 
-  if (kind === undefined) {
-    return undefined
-  }
-
-  return {
-    declarationList,
-    kind
-  }
+  return Option.match(kind, {
+    onNone: () => Option.none(),
+    onSome: (kind) =>
+      Option.some({
+        declarationList,
+        kind
+      })
+  })
 }
 
 const mutableVariableDeclarationKind = (
   sourceFile: ts.SourceFile,
   declarationList: ts.VariableDeclarationList
-): MutableVariableDeclarationKind | undefined => {
+): Option.Option<MutableVariableDeclarationKind> => {
   const firstToken = declarationList.getFirstToken(sourceFile)
 
-  switch (firstToken?.kind) {
-    case ts.SyntaxKind.LetKeyword:
-      return "let"
-    case ts.SyntaxKind.VarKeyword:
-      return "var"
-    default:
-      return undefined
-  }
+  return Option.match(Option.fromNullable(firstToken), {
+    onNone: () => Option.none(),
+    onSome: (firstToken) => {
+      switch (firstToken.kind) {
+        case ts.SyntaxKind.LetKeyword:
+          return Option.some("let")
+        case ts.SyntaxKind.VarKeyword:
+          return Option.some("var")
+        default:
+          return Option.none()
+      }
+    }
+  })
 }
 
 const createMatch = (
@@ -82,8 +86,6 @@ const createMatch = (
       "variable, and use immutable values that are not reassigned."
   }
 }
-
-const isDefined = <A>(value: A | undefined): value is A => value !== undefined
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)

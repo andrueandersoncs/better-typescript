@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Effect, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import * as ts from "typescript"
 
 export interface LoadedProject {
@@ -29,19 +29,21 @@ class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>("Inv
 export const loadProject = (projectPath: string): Effect.Effect<LoadedProject, Error> =>
   Effect.gen(function* () {
     const rootPath = path.resolve(projectPath)
-    const configPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
-
-    if (configPath === undefined) {
-      return yield* Effect.fail(new MissingTsconfigError({ rootPath }))
-    }
+    const configPath = yield* Option.match(
+      Option.fromNullable(ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")),
+      {
+        onNone: () => Effect.fail(new MissingTsconfigError({ rootPath })),
+        onSome: (configPath) => Effect.succeed(configPath)
+      }
+    )
 
     const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
 
-    if (configFile.error !== undefined) {
-      return yield* Effect.fail(
-        new InvalidTsconfigError({ message: formatDiagnostics([configFile.error]) })
-      )
-    }
+    yield* Option.match(Option.fromNullable(configFile.error), {
+      onNone: () => Effect.succeed(void 0),
+      onSome: (error) =>
+        Effect.fail(new InvalidTsconfigError({ message: formatDiagnostics([error]) }))
+    })
 
     const parsedConfig = ts.parseJsonConfigFileContent(
       configFile.config,

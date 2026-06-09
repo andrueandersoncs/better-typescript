@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -22,33 +22,35 @@ export const noNestedIfStatements: Rule = {
 }
 
 const isNestedIfStatement = (ifStatement: ts.IfStatement): boolean =>
-  containingIfStatement(ifStatement) !== undefined
+  Option.isSome(containingIfStatement(ifStatement))
 
-const containingIfStatement = (ifStatement: ts.IfStatement): ts.IfStatement | undefined =>
-  containingIfStatementFrom(ifStatement, ifStatement.parent)
+const containingIfStatement = (
+  ifStatement: ts.IfStatement
+): Option.Option<ts.IfStatement> =>
+  containingIfStatementFrom(ifStatement, Option.fromNullable(ifStatement.parent))
 
 const containingIfStatementFrom = (
   child: ts.Node,
-  parent: ts.Node | undefined
-): ts.IfStatement | undefined => {
-  if (parent === undefined) {
-    return undefined
-  }
+  parent: Option.Option<ts.Node>
+): Option.Option<ts.IfStatement> =>
+  Option.match(parent, {
+    onNone: () => Option.none(),
+    onSome: (parent) => {
+      if (isNestedScopeBoundary(parent)) {
+        return Option.none()
+      }
 
-  if (isNestedScopeBoundary(parent)) {
-    return undefined
-  }
+      if (!ts.isIfStatement(parent)) {
+        return containingIfStatementFrom(parent, Option.fromNullable(parent.parent))
+      }
 
-  if (!ts.isIfStatement(parent)) {
-    return containingIfStatementFrom(parent, parent.parent)
-  }
+      if (!isElseIfStatement(child, parent)) {
+        return Option.some(parent)
+      }
 
-  if (!isElseIfStatement(child, parent)) {
-    return parent
-  }
-
-  return containingIfStatementFrom(parent, parent.parent)
-}
+      return containingIfStatementFrom(parent, Option.fromNullable(parent.parent))
+    }
+  })
 
 const isElseIfStatement = (child: ts.Node, parent: ts.IfStatement): boolean =>
   parent.elseStatement === child

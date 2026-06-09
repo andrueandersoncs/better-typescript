@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -47,13 +47,13 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   if (ts.isVariableDeclaration(parent)) {
     const isTypeAnnotation = parent.type === typeNode
 
-    return isTypeAnnotation && isCallableTypeAnnotation(parent.initializer)
+    return isTypeAnnotation && isCallableTypeAnnotation(Option.fromNullable(parent.initializer))
   }
 
   if (ts.isPropertyDeclaration(parent)) {
     const isTypeAnnotation = parent.type === typeNode
 
-    return isTypeAnnotation && isCallableTypeAnnotation(parent.initializer)
+    return isTypeAnnotation && isCallableTypeAnnotation(Option.fromNullable(parent.initializer))
   }
 
   const hasTypeAliasFunctionType = isTypeAliasFunctionType(parent, typeNode)
@@ -89,13 +89,11 @@ const transparentCallableType = (
     ? transparentCallableType(parent, parent.parent)
     : { typeNode, parent }
 
-const isCallableTypeAnnotation = (initializer: ts.Expression | undefined): boolean => {
-  if (initializer !== undefined) {
-    return !isRuntimeFunctionLike(initializer)
-  }
-
-  return true
-}
+const isCallableTypeAnnotation = (initializer: Option.Option<ts.Expression>): boolean =>
+  Option.match(initializer, {
+    onNone: () => true,
+    onSome: (initializer) => !isRuntimeFunctionLike(initializer)
+  })
 
 const transparentTypeNodeKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.ParenthesizedType,
@@ -113,18 +111,19 @@ const isCallbackStyleDeclaration = (
   context: RuleContext,
   declaration: CallbackStyleDeclaration
 ): boolean => {
-  const signature = context.checker.getSignatureFromDeclaration(declaration)
+  const signature = Option.fromNullable(context.checker.getSignatureFromDeclaration(declaration))
 
-  if (signature !== undefined) {
-    const returnsVoid = isVoidType(context.checker.getReturnTypeOfSignature(signature))
-    const hasFunctionArgument = declaration.parameters.some((parameter) =>
-      isFunctionArgument(context.checker, parameter)
-    )
+  return Option.match(signature, {
+    onNone: () => false,
+    onSome: (signature) => {
+      const returnsVoid = isVoidType(context.checker.getReturnTypeOfSignature(signature))
+      const hasFunctionArgument = declaration.parameters.some((parameter) =>
+        isFunctionArgument(context.checker, parameter)
+      )
 
-    return returnsVoid && hasFunctionArgument
-  }
-
-  return false
+      return returnsVoid && hasFunctionArgument
+    }
+  })
 }
 
 const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
@@ -135,18 +134,20 @@ const isFunctionArgument = (
 ): boolean => {
   const parameterType = checker.getTypeAtLocation(parameter)
   const parameterHasCallSignature = hasCallSignature(checker, parameterType)
+  const restToken = Option.fromNullable(parameter.dotDotDotToken)
 
-  if (parameter.dotDotDotToken === undefined) {
+  if (Option.isNone(restToken)) {
     return parameterHasCallSignature
   }
 
-  const elementType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-
-  if (elementType !== undefined) {
-    return parameterHasCallSignature || hasCallSignature(checker, elementType)
-  }
-
-  return parameterHasCallSignature
+  return Option.match(
+    Option.fromNullable(checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)),
+    {
+      onNone: () => parameterHasCallSignature,
+      onSome: (elementType) =>
+        [parameterHasCallSignature, hasCallSignature(checker, elementType)].some(Boolean)
+    }
+  )
 }
 
 const hasCallSignature = (
@@ -207,13 +208,13 @@ const hasConstraintCallSignature = (
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
 ): boolean => {
-  const constraint = checker.getBaseConstraintOfType(type)
+  const constraint = Option.fromNullable(checker.getBaseConstraintOfType(type))
 
-  if (constraint !== undefined) {
-    return hasDifferentConstraintCallSignature(checker, type, constraint, seen)
-  }
-
-  return false
+  return Option.match(constraint, {
+    onNone: () => false,
+    onSome: (constraint) =>
+      hasDifferentConstraintCallSignature(checker, type, constraint, seen)
+  })
 }
 
 const hasDifferentConstraintCallSignature = (

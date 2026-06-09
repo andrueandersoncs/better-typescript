@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -39,11 +39,9 @@ const hasSingleValueReturnStatement = (
   return false
 }
 
-const isValueReturnStatement = (
-  statement: ts.Statement
-): statement is ts.ReturnStatement & { readonly expression: ts.Expression } => {
+const isValueReturnStatement = (statement: ts.Statement): boolean => {
   if (ts.isReturnStatement(statement)) {
-    return statement.expression !== undefined
+    return Option.isSome(Option.fromNullable(statement.expression))
   }
 
   return false

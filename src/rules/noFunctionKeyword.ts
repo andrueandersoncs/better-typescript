@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -46,66 +46,62 @@ const isDisallowedFunctionDeclaration = (
 ): boolean => {
   const declaration = functionDeclarationWithBody(node)
 
-  if (declaration !== undefined) {
-    return !hasOverloadSignature(context, declaration)
-  }
-
-  return false
+  return Option.match(declaration, {
+    onNone: () => false,
+    onSome: (declaration) => !hasOverloadSignature(context, declaration)
+  })
 }
 
 const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
-  node.asteriskToken !== undefined
-
-const hasFunctionBody = (
-  declaration: ts.FunctionDeclaration
-): declaration is FunctionDeclarationWithBody => declaration.body !== undefined
+  Option.isSome(Option.fromNullable(node.asteriskToken))
 
 const functionDeclarationWithBody = (
   node: FunctionKeywordNode
-): FunctionDeclarationWithBody | undefined => {
+): Option.Option<FunctionDeclarationWithBody> => {
   if (!ts.isFunctionDeclaration(node)) {
-    return undefined
+    return Option.none()
   }
 
-  if (!hasFunctionBody(node)) {
-    return undefined
-  }
-
-  return node
+  return Option.match(Option.fromNullable(node.body), {
+    onNone: () => Option.none(),
+    onSome: () => Option.some(node as FunctionDeclarationWithBody)
+  })
 }
 
 const hasOverloadSignature = (
   context: RuleContext,
   declaration: FunctionDeclarationWithBody
 ): boolean => {
-  const symbol = symbolFromDeclarationName(context, declaration.name)
-  const declarations = symbol?.declarations?.filter(ts.isFunctionDeclaration) ?? []
+  const symbol = symbolFromDeclarationName(context, Option.fromNullable(declaration.name))
+  const declarations = Option.match(symbol, {
+    onNone: () => [],
+    onSome: (symbol) =>
+      Option.match(Option.fromNullable(symbol.declarations), {
+        onNone: () => [],
+        onSome: (declarations) => declarations.filter(ts.isFunctionDeclaration)
+      })
+  })
 
   return declarations.some((candidate) => isOverloadCandidate(candidate, declaration))
 }
 
 const symbolFromDeclarationName = (
   context: RuleContext,
-  name: ts.Identifier | undefined
-): ts.Symbol | undefined => {
-  if (name !== undefined) {
-    return context.checker.getSymbolAtLocation(name)
-  }
-
-  return undefined
-}
+  name: Option.Option<ts.Identifier>
+): Option.Option<ts.Symbol> =>
+  Option.match(name, {
+    onNone: () => Option.none(),
+    onSome: (name) => Option.fromNullable(context.checker.getSymbolAtLocation(name))
+  })
 
 const isOverloadCandidate = (
   candidate: ts.FunctionDeclaration,
   implementation: FunctionDeclarationWithBody
 ): boolean => {
   const isImplementation = candidate === implementation
+  const hasNoBody = Option.isNone(Option.fromNullable(candidate.body))
 
-  if (!isImplementation) {
-    return candidate.body === undefined
-  }
-
-  return false
+  return [!isImplementation, hasNoBody].every(Boolean)
 }
 
 const createMatch = (context: RuleContext, node: FunctionKeywordNode): RuleMatch => {

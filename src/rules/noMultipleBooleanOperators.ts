@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { childNodeStream, nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -57,13 +57,13 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
 }
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
-  const parent = node.parent
+  const parent = Option.fromNullable(node.parent)
 
-  if (parent !== undefined) {
-    return isBooleanOperatorExpression(parent) || hasBooleanOperatorAncestor(parent)
-  }
-
-  return false
+  return Option.match(parent, {
+    onNone: () => false,
+    onSome: (parent) =>
+      [isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent)].some(Boolean)
+  })
 }
 
 const isBooleanOperatorExpression = (
