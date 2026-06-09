@@ -44,17 +44,11 @@ const isDisallowedFunctionDeclaration = (
   context: RuleContext,
   node: FunctionKeywordNode
 ): boolean => {
+  const declaration = functionDeclarationWithBody(node)
   let isDisallowed = false
 
-  if (ts.isFunctionDeclaration(node)) {
-    const hasBody = hasFunctionBody(node)
-    let hasNoOverloadSignature = false
-
-    if (hasBody) {
-      hasNoOverloadSignature = !hasOverloadSignature(context, node)
-    }
-
-    isDisallowed = hasBody && hasNoOverloadSignature
+  if (declaration !== undefined) {
+    isDisallowed = !hasOverloadSignature(context, declaration)
   }
 
   return isDisallowed
@@ -66,6 +60,20 @@ const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
 const hasFunctionBody = (
   declaration: ts.FunctionDeclaration
 ): declaration is FunctionDeclarationWithBody => declaration.body !== undefined
+
+const functionDeclarationWithBody = (
+  node: FunctionKeywordNode
+): FunctionDeclarationWithBody | undefined => {
+  if (!ts.isFunctionDeclaration(node)) {
+    return undefined
+  }
+
+  if (!hasFunctionBody(node)) {
+    return undefined
+  }
+
+  return node
+}
 
 const hasOverloadSignature = (
   context: RuleContext,

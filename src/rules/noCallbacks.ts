@@ -53,17 +53,13 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   if (ts.isVariableDeclaration(parent)) {
     const isTypeAnnotation = parent.type === typeNode
 
-    if (isTypeAnnotation) {
-      return isCallableTypeAnnotation(parent.initializer)
-    }
+    return isTypeAnnotation && isCallableTypeAnnotation(parent.initializer)
   }
 
   if (ts.isPropertyDeclaration(parent)) {
     const isTypeAnnotation = parent.type === typeNode
 
-    if (isTypeAnnotation) {
-      return isCallableTypeAnnotation(parent.initializer)
-    }
+    return isTypeAnnotation && isCallableTypeAnnotation(parent.initializer)
   }
 
   let isTypeAliasFunctionType = false
@@ -169,17 +165,8 @@ const hasUnseenCallSignature = (
     )
   }
 
-  const constraint = checker.getBaseConstraintOfType(type)
   const apparentType = checker.getApparentType(type)
-  let constraintHasCallSignature = false
-
-  if (constraint !== undefined) {
-    const constraintIsDifferent = constraint !== type
-
-    if (constraintIsDifferent) {
-      constraintHasCallSignature = hasCallSignature(checker, constraint, nextSeen)
-    }
-  }
+  const constraintHasCallSignature = hasConstraintCallSignature(checker, type, nextSeen)
 
   let apparentTypeHasCallSignature = false
 
@@ -191,6 +178,24 @@ const hasUnseenCallSignature = (
     constraintHasCallSignature || apparentTypeHasCallSignature
 
   return hasDirectCallSignature || hasIndirectCallSignature
+}
+
+const hasConstraintCallSignature = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  seen: ReadonlySet<ts.Type>
+): boolean => {
+  const constraint = checker.getBaseConstraintOfType(type)
+  const hasConstraint = constraint !== undefined
+  let constraintHasCallSignature = false
+
+  if (hasConstraint) {
+    const constraintIsDifferent = constraint !== type
+    constraintHasCallSignature =
+      constraintIsDifferent && hasCallSignature(checker, constraint, seen)
+  }
+
+  return constraintHasCallSignature
 }
 
 const createMatch = (

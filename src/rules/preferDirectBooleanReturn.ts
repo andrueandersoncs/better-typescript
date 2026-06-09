@@ -52,16 +52,7 @@ const directBooleanReturnMatch = (
 }
 
 const booleanReturnFromStatement = (statement: ts.Statement): BooleanReturn | undefined => {
-  let returnStatement = statement
-
-  if (ts.isBlock(statement)) {
-    const hasOneStatement = statement.statements.length === 1
-    const onlyStatement = statement.statements[0]
-
-    if (hasOneStatement) {
-      returnStatement = onlyStatement
-    }
-  }
+  const returnStatement = unwrapSingleStatementBlock(statement)
 
   if (!ts.isReturnStatement(returnStatement)) {
     return undefined
@@ -78,6 +69,20 @@ const booleanReturnFromStatement = (statement: ts.Statement): BooleanReturn | un
   }
 
   return { value }
+}
+
+const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
+  if (!ts.isBlock(statement)) {
+    return statement
+  }
+
+  const hasOneStatement = statement.statements.length === 1
+
+  if (!hasOneStatement) {
+    return statement
+  }
+
+  return statement.statements[0]
 }
 
 const booleanLiteralValue = (expression: ts.Expression): boolean | undefined => {

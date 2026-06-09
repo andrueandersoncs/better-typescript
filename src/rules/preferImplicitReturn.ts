@@ -33,13 +33,7 @@ const hasSingleValueReturnStatement = (
   if (ts.isBlock(arrowFunction.body)) {
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
-    let firstStatementReturnsValue = false
-
-    if (firstStatement !== undefined) {
-      firstStatementReturnsValue = isValueReturnStatement(firstStatement)
-    }
-
-    hasSingleReturn = hasOneStatement && firstStatementReturnsValue
+    hasSingleReturn = hasOneStatement && isValueReturnStatement(firstStatement)
   }
 
   return hasSingleReturn
