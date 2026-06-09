@@ -27,15 +27,35 @@ export const preferImplicitReturn: Rule = {
 
 const hasSingleValueReturnStatement = (
   arrowFunction: ts.ArrowFunction
-): arrowFunction is ArrowFunctionWithBlockBody =>
-  ts.isBlock(arrowFunction.body) &&
-  arrowFunction.body.statements.length === 1 &&
-  isValueReturnStatement(arrowFunction.body.statements[0])
+): arrowFunction is ArrowFunctionWithBlockBody => {
+  let hasSingleReturn = false
+
+  if (ts.isBlock(arrowFunction.body)) {
+    const hasOneStatement = arrowFunction.body.statements.length === 1
+    const firstStatement = arrowFunction.body.statements[0]
+    let firstStatementReturnsValue = false
+
+    if (firstStatement !== undefined) {
+      firstStatementReturnsValue = isValueReturnStatement(firstStatement)
+    }
+
+    hasSingleReturn = hasOneStatement && firstStatementReturnsValue
+  }
+
+  return hasSingleReturn
+}
 
 const isValueReturnStatement = (
   statement: ts.Statement
-): statement is ts.ReturnStatement & { readonly expression: ts.Expression } =>
-  ts.isReturnStatement(statement) && statement.expression !== undefined
+): statement is ts.ReturnStatement & { readonly expression: ts.Expression } => {
+  let returnsValue = false
+
+  if (ts.isReturnStatement(statement)) {
+    returnsValue = statement.expression !== undefined
+  }
+
+  return returnsValue
+}
 
 const createMatch = (
   context: RuleContext,
@@ -59,5 +79,10 @@ const createMatch = (
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
-  return relative.length === 0 ? fileName : relative
+
+  if (relative.length === 0) {
+    return fileName
+  }
+
+  return relative
 }

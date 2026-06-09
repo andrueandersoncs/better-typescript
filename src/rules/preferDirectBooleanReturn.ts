@@ -52,26 +52,45 @@ const directBooleanReturnMatch = (
 }
 
 const booleanReturnFromStatement = (statement: ts.Statement): BooleanReturn | undefined => {
-  const returnStatement =
-    ts.isBlock(statement) && statement.statements.length === 1 ? statement.statements[0] : statement
+  let returnStatement = statement
 
-  if (!ts.isReturnStatement(returnStatement) || returnStatement.expression === undefined) {
+  if (ts.isBlock(statement)) {
+    const hasOneStatement = statement.statements.length === 1
+    const onlyStatement = statement.statements[0]
+
+    if (hasOneStatement) {
+      returnStatement = onlyStatement
+    }
+  }
+
+  if (!ts.isReturnStatement(returnStatement)) {
+    return undefined
+  }
+
+  if (returnStatement.expression === undefined) {
     return undefined
   }
 
   const value = booleanLiteralValue(returnStatement.expression)
 
-  return value === undefined ? undefined : { value }
+  if (value === undefined) {
+    return undefined
+  }
+
+  return { value }
 }
 
 const booleanLiteralValue = (expression: ts.Expression): boolean | undefined => {
   const unwrapped = unwrapExpression(expression)
 
-  return unwrapped.kind === ts.SyntaxKind.TrueKeyword
-    ? true
-    : unwrapped.kind === ts.SyntaxKind.FalseKeyword
-      ? false
-      : undefined
+  switch (unwrapped.kind) {
+    case ts.SyntaxKind.TrueKeyword:
+      return true
+    case ts.SyntaxKind.FalseKeyword:
+      return false
+    default:
+      return undefined
+  }
 }
 
 const unwrapExpression = (expression: ts.Expression): ts.Expression => {
@@ -106,5 +125,10 @@ const isDefined = <A>(value: A | undefined): value is A => value !== undefined
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
-  return relative.length === 0 ? fileName : relative
+
+  if (relative.length === 0) {
+    return fileName
+  }
+
+  return relative
 }

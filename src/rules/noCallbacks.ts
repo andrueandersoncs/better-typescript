@@ -31,13 +31,15 @@ export const noCallbacks: Rule = {
 }
 
 const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration =>
-  ts.isFunctionDeclaration(node) ||
-  ts.isFunctionExpression(node) ||
-  ts.isArrowFunction(node) ||
-  ts.isMethodDeclaration(node) ||
-  ts.isMethodSignature(node) ||
-  ts.isCallSignatureDeclaration(node) ||
-  (ts.isFunctionTypeNode(node) && isCallableValueType(node))
+  [
+    ts.isFunctionDeclaration(node),
+    ts.isFunctionExpression(node),
+    ts.isArrowFunction(node),
+    ts.isMethodDeclaration(node),
+    ts.isMethodSignature(node),
+    ts.isCallSignatureDeclaration(node),
+    ts.isFunctionTypeNode(node) ? isCallableValueType(node) : false
+  ].some(Boolean)
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   let typeNode: ts.TypeNode = node
@@ -48,24 +50,55 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
     parent = parent.parent
   }
 
-  if (ts.isVariableDeclaration(parent) && parent.type === typeNode) {
-    return parent.initializer === undefined || !isRuntimeFunctionLike(parent.initializer)
+  if (ts.isVariableDeclaration(parent)) {
+    const isTypeAnnotation = parent.type === typeNode
+
+    if (isTypeAnnotation) {
+      return isCallableTypeAnnotation(parent.initializer)
+    }
   }
 
-  if (ts.isPropertyDeclaration(parent) && parent.type === typeNode) {
-    return parent.initializer === undefined || !isRuntimeFunctionLike(parent.initializer)
+  if (ts.isPropertyDeclaration(parent)) {
+    const isTypeAnnotation = parent.type === typeNode
+
+    if (isTypeAnnotation) {
+      return isCallableTypeAnnotation(parent.initializer)
+    }
   }
 
-  return (
-    (ts.isTypeAliasDeclaration(parent) && parent.type === typeNode) ||
-    (ts.isPropertySignature(parent) && parent.type === typeNode)
-  )
+  let isTypeAliasFunctionType = false
+
+  if (ts.isTypeAliasDeclaration(parent)) {
+    isTypeAliasFunctionType = parent.type === typeNode
+  }
+
+  let isPropertySignatureFunctionType = false
+
+  if (ts.isPropertySignature(parent)) {
+    isPropertySignatureFunctionType = parent.type === typeNode
+  }
+
+  return isTypeAliasFunctionType || isPropertySignatureFunctionType
 }
 
+const isCallableTypeAnnotation = (initializer: ts.Expression | undefined): boolean => {
+  let isCallableType = initializer === undefined
+
+  if (initializer !== undefined) {
+    isCallableType = !isRuntimeFunctionLike(initializer)
+  }
+
+  return isCallableType
+}
+
+const transparentTypeNodeKinds = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.ParenthesizedType,
+  ts.SyntaxKind.UnionType,
+  ts.SyntaxKind.IntersectionType
+])
+
 const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode =>
-  ts.isParenthesizedTypeNode(node) ||
-  ts.isUnionTypeNode(node) ||
-  ts.isIntersectionTypeNode(node)
+  transparentTypeNodeKinds.has(node.kind)
 
 const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
   ts.isFunctionExpression(node) || ts.isArrowFunction(node)
@@ -75,12 +108,17 @@ const isCallbackStyleDeclaration = (
   declaration: CallbackStyleDeclaration
 ): boolean => {
   const signature = context.checker.getSignatureFromDeclaration(declaration)
+  let isCallbackStyle = false
 
-  return (
-    signature !== undefined &&
-    isVoidType(context.checker.getReturnTypeOfSignature(signature)) &&
-    declaration.parameters.some((parameter) => isFunctionArgument(context.checker, parameter))
-  )
+  if (signature !== undefined) {
+    const returnsVoid = isVoidType(context.checker.getReturnTypeOfSignature(signature))
+    const hasFunctionArgument = declaration.parameters.some((parameter) =>
+      isFunctionArgument(context.checker, parameter)
+    )
+    isCallbackStyle = returnsVoid && hasFunctionArgument
+  }
+
+  return isCallbackStyle
 }
 
 const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
@@ -97,17 +135,24 @@ const isFunctionArgument = (
   }
 
   const elementType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-  return (
-    parameterHasCallSignature ||
-    (elementType !== undefined && hasCallSignature(checker, elementType))
-  )
+  let elementHasCallSignature = false
+
+  if (elementType !== undefined) {
+    elementHasCallSignature = hasCallSignature(checker, elementType)
+  }
+
+  return parameterHasCallSignature || elementHasCallSignature
 }
 
 const hasCallSignature = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type> = new Set()
-): boolean => !seen.has(type) && hasUnseenCallSignature(checker, type, seen)
+): boolean => {
+  const isUnseen = !seen.has(type)
+
+  return isUnseen && hasUnseenCallSignature(checker, type, seen)
+}
 
 const hasUnseenCallSignature = (
   checker: ts.TypeChecker,
@@ -126,14 +171,26 @@ const hasUnseenCallSignature = (
 
   const constraint = checker.getBaseConstraintOfType(type)
   const apparentType = checker.getApparentType(type)
+  let constraintHasCallSignature = false
 
-  return (
-    hasDirectCallSignature ||
-    (constraint !== undefined &&
-      constraint !== type &&
-      hasCallSignature(checker, constraint, nextSeen)) ||
-    (apparentType !== type && hasCallSignature(checker, apparentType, nextSeen))
-  )
+  if (constraint !== undefined) {
+    const constraintIsDifferent = constraint !== type
+
+    if (constraintIsDifferent) {
+      constraintHasCallSignature = hasCallSignature(checker, constraint, nextSeen)
+    }
+  }
+
+  let apparentTypeHasCallSignature = false
+
+  if (apparentType !== type) {
+    apparentTypeHasCallSignature = hasCallSignature(checker, apparentType, nextSeen)
+  }
+
+  const hasIndirectCallSignature =
+    constraintHasCallSignature || apparentTypeHasCallSignature
+
+  return hasDirectCallSignature || hasIndirectCallSignature
 }
 
 const createMatch = (
@@ -158,5 +215,10 @@ const createMatch = (
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
-  return relative.length === 0 ? fileName : relative
+
+  if (relative.length === 0) {
+    return fileName
+  }
+
+  return relative
 }

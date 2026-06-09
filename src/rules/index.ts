@@ -1,5 +1,6 @@
 import { noCallbacks } from "./noCallbacks.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
+import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
 import { noNewError } from "./noNewError.js"
 import { noThrow } from "./noThrow.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
@@ -13,6 +14,7 @@ export const rules: ReadonlyArray<Rule> = [
   preferImplicitReturn,
   noThrow,
   noNewError,
+  noMultipleBooleanOperators,
   noCallbacks,
   noFunctionKeyword
 ]

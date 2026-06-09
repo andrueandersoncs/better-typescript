@@ -32,12 +32,33 @@ const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
 const isDisallowedFunctionKeyword = (
   context: RuleContext,
   node: FunctionKeywordNode
-): boolean =>
-  !isGeneratorFunction(node) &&
-  (ts.isFunctionExpression(node) ||
-    (ts.isFunctionDeclaration(node) &&
-      hasFunctionBody(node) &&
-      !hasOverloadSignature(context, node)))
+): boolean => {
+  const isNotGenerator = !isGeneratorFunction(node)
+  const isDisallowedKind =
+    ts.isFunctionExpression(node) || isDisallowedFunctionDeclaration(context, node)
+
+  return isNotGenerator && isDisallowedKind
+}
+
+const isDisallowedFunctionDeclaration = (
+  context: RuleContext,
+  node: FunctionKeywordNode
+): boolean => {
+  let isDisallowed = false
+
+  if (ts.isFunctionDeclaration(node)) {
+    const hasBody = hasFunctionBody(node)
+    let hasNoOverloadSignature = false
+
+    if (hasBody) {
+      hasNoOverloadSignature = !hasOverloadSignature(context, node)
+    }
+
+    isDisallowed = hasBody && hasNoOverloadSignature
+  }
+
+  return isDisallowed
+}
 
 const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
   node.asteriskToken !== undefined
@@ -50,13 +71,29 @@ const hasOverloadSignature = (
   context: RuleContext,
   declaration: FunctionDeclarationWithBody
 ): boolean => {
-  const symbol =
-    declaration.name === undefined
-      ? undefined
-      : context.checker.getSymbolAtLocation(declaration.name)
+  let symbol: ts.Symbol | undefined
+
+  if (declaration.name !== undefined) {
+    symbol = context.checker.getSymbolAtLocation(declaration.name)
+  }
+
   const declarations = symbol?.declarations?.filter(ts.isFunctionDeclaration) ?? []
 
-  return declarations.some((candidate) => candidate !== declaration && candidate.body === undefined)
+  return declarations.some((candidate) => isOverloadCandidate(candidate, declaration))
+}
+
+const isOverloadCandidate = (
+  candidate: ts.FunctionDeclaration,
+  implementation: FunctionDeclarationWithBody
+): boolean => {
+  const isImplementation = candidate === implementation
+  let isOverload = false
+
+  if (!isImplementation) {
+    isOverload = candidate.body === undefined
+  }
+
+  return isOverload
 }
 
 const createMatch = (context: RuleContext, node: FunctionKeywordNode): RuleMatch => {
@@ -87,5 +124,10 @@ const functionKeywordStart = (sourceFile: ts.SourceFile, node: FunctionKeywordNo
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
-  return relative.length === 0 ? fileName : relative
+
+  if (relative.length === 0) {
+    return fileName
+  }
+
+  return relative
 }

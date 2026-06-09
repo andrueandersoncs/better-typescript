@@ -21,8 +21,15 @@ export const noNewError: Rule = {
     )
 }
 
-const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean =>
-  ts.isIdentifier(newExpression.expression) && newExpression.expression.text === "Error"
+const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
+  let isBareError = false
+
+  if (ts.isIdentifier(newExpression.expression)) {
+    isBareError = newExpression.expression.text === "Error"
+  }
+
+  return isBareError
+}
 
 const createMatch = (context: RuleContext, newExpression: ts.NewExpression): RuleMatch => {
   const sourceFile = context.sourceFile
@@ -43,5 +50,10 @@ const createMatch = (context: RuleContext, newExpression: ts.NewExpression): Rul
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
-  return relative.length === 0 ? fileName : relative
+
+  if (relative.length === 0) {
+    return fileName
+  }
+
+  return relative
 }

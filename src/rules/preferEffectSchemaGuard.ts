@@ -44,10 +44,18 @@ const expressionStream = (expression: ts.Expression): Stream.Stream<ts.Expressio
 
 const isStringKeyInExpression = (
   expression: ts.Expression
-): expression is ts.BinaryExpression =>
-  ts.isBinaryExpression(expression) &&
-  expression.operatorToken.kind === ts.SyntaxKind.InKeyword &&
-  isStringLiteralLike(unwrapExpression(expression.left))
+): expression is ts.BinaryExpression => {
+  let isStringKeyIn = false
+
+  if (ts.isBinaryExpression(expression)) {
+    const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
+    const hasStringKey = isStringLiteralLike(unwrapExpression(expression.left))
+
+    isStringKeyIn = isInOperator && hasStringKey
+  }
+
+  return isStringKeyIn
+}
 
 const isStringLiteralLike = (expression: ts.Expression): boolean =>
   ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
@@ -81,5 +89,10 @@ const createMatch = (context: RuleContext, expression: ts.BinaryExpression): Rul
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
-  return relative.length === 0 ? fileName : relative
+
+  if (relative.length === 0) {
+    return fileName
+  }
+
+  return relative
 }
