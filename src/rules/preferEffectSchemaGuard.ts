@@ -9,8 +9,8 @@ const ruleId = "prefer-effect-schema-guard"
 export const preferEffectSchemaGuard: Rule = {
   id: ruleId,
   description: "Prefer Effect Schema guards over string-key in-operator checks.",
-  check: (context) => {
-    return Effect.runSync(
+  check: (context) =>
+    Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isIfStatement),
         Stream.flatMap((ifStatement) => conditionMatchStream(context, ifStatement.expression)),
@@ -18,18 +18,16 @@ export const preferEffectSchemaGuard: Rule = {
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
     )
-  }
 }
 
 const conditionMatchStream = (
   context: RuleContext,
   expression: ts.Expression
-): Stream.Stream<RuleMatch> => {
-  return expressionStream(expression).pipe(
+): Stream.Stream<RuleMatch> =>
+  expressionStream(expression).pipe(
     Stream.filter(isStringKeyInExpression),
     Stream.map((match) => createMatch(context, match))
   )
-}
 
 const expressionStream = (expression: ts.Expression): Stream.Stream<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
@@ -46,17 +44,13 @@ const expressionStream = (expression: ts.Expression): Stream.Stream<ts.Expressio
 
 const isStringKeyInExpression = (
   expression: ts.Expression
-): expression is ts.BinaryExpression => {
-  return (
-    ts.isBinaryExpression(expression) &&
-    expression.operatorToken.kind === ts.SyntaxKind.InKeyword &&
-    isStringLiteralLike(unwrapExpression(expression.left))
-  )
-}
+): expression is ts.BinaryExpression =>
+  ts.isBinaryExpression(expression) &&
+  expression.operatorToken.kind === ts.SyntaxKind.InKeyword &&
+  isStringLiteralLike(unwrapExpression(expression.left))
 
-const isStringLiteralLike = (expression: ts.Expression): boolean => {
-  return ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
-}
+const isStringLiteralLike = (expression: ts.Expression): boolean =>
+  ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
 
 const unwrapExpression = (expression: ts.Expression): ts.Expression => {
   let current = expression

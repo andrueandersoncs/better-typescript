@@ -11,8 +11,8 @@ const project = Options.directory("project", { exists: "yes" }).pipe(
   Options.withDefault(process.cwd())
 )
 
-const analyzeProject = (projectPath: string): Effect.Effect<string, Error> => {
-  return Effect.gen(function* () {
+const analyzeProject = (projectPath: string): Effect.Effect<string, Error> =>
+  Effect.gen(function* () {
     const loadedProject = yield* loadProject(projectPath)
     const matches = runRules(loadedProject, rules)
 
@@ -25,7 +25,6 @@ const analyzeProject = (projectPath: string): Effect.Effect<string, Error> => {
     })
     return formatMatches(matches)
   })
-}
 
 const command = Command.make("better-typescript", { project }, ({ project }) =>
   analyzeProject(project).pipe(

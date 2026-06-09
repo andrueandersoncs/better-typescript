@@ -9,8 +9,8 @@ const ruleId = "no-throw"
 export const noThrow: Rule = {
   id: ruleId,
   description: "Disallow throw statements in favor of Effect errors.",
-  check: (context) => {
-    return Effect.runSync(
+  check: (context) =>
+    Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isThrowStatement),
         Stream.map((throwStatement) => createMatch(context, throwStatement)),
@@ -18,7 +18,6 @@ export const noThrow: Rule = {
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
     )
-  }
 }
 
 const createMatch = (context: RuleContext, throwStatement: ts.ThrowStatement): RuleMatch => {

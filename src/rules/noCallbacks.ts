@@ -18,8 +18,8 @@ type CallbackStyleDeclaration =
 export const noCallbacks: Rule = {
   id: ruleId,
   description: "Disallow callback-style functions returning void in favor of Effect.",
-  check: (context) => {
-    return Effect.runSync(
+  check: (context) =>
+    Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(isCallbackStyleCandidate),
         Stream.filter((declaration) => isCallbackStyleDeclaration(context, declaration)),
@@ -28,20 +28,16 @@ export const noCallbacks: Rule = {
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
     )
-  }
 }
 
-const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration => {
-  return (
-    ts.isFunctionDeclaration(node) ||
-    ts.isFunctionExpression(node) ||
-    ts.isArrowFunction(node) ||
-    ts.isMethodDeclaration(node) ||
-    ts.isMethodSignature(node) ||
-    ts.isCallSignatureDeclaration(node) ||
-    (ts.isFunctionTypeNode(node) && isCallableValueType(node))
-  )
-}
+const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration =>
+  ts.isFunctionDeclaration(node) ||
+  ts.isFunctionExpression(node) ||
+  ts.isArrowFunction(node) ||
+  ts.isMethodDeclaration(node) ||
+  ts.isMethodSignature(node) ||
+  ts.isCallSignatureDeclaration(node) ||
+  (ts.isFunctionTypeNode(node) && isCallableValueType(node))
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   let typeNode: ts.TypeNode = node
@@ -71,17 +67,13 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   return false
 }
 
-const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode => {
-  return (
-    ts.isParenthesizedTypeNode(node) ||
-    ts.isUnionTypeNode(node) ||
-    ts.isIntersectionTypeNode(node)
-  )
-}
+const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode =>
+  ts.isParenthesizedTypeNode(node) ||
+  ts.isUnionTypeNode(node) ||
+  ts.isIntersectionTypeNode(node)
 
-const isRuntimeFunctionLike = (node: ts.Expression): boolean => {
-  return ts.isFunctionExpression(node) || ts.isArrowFunction(node)
-}
+const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
+  ts.isFunctionExpression(node) || ts.isArrowFunction(node)
 
 const isCallbackStyleDeclaration = (
   context: RuleContext,
@@ -99,9 +91,7 @@ const isCallbackStyleDeclaration = (
   )
 }
 
-const isVoidType = (type: ts.Type): boolean => {
-  return (type.flags & ts.TypeFlags.Void) !== 0
-}
+const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
 
 const isFunctionArgument = (
   checker: ts.TypeChecker,

@@ -14,8 +14,8 @@ type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
 export const noFunctionKeyword: Rule = {
   id: ruleId,
   description: "Disallow non-generator function declarations in favor of const arrow functions.",
-  check: (context) => {
-    return Effect.runSync(
+  check: (context) =>
+    Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(isFunctionKeywordNode),
         Stream.filter((node) => isDisallowedFunctionKeyword(context, node)),
@@ -24,12 +24,10 @@ export const noFunctionKeyword: Rule = {
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
     )
-  }
 }
 
-const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode => {
-  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
-}
+const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
+  ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
 const isDisallowedFunctionKeyword = (
   context: RuleContext,
@@ -46,15 +44,12 @@ const isDisallowedFunctionKeyword = (
   return hasFunctionBody(node) && !hasOverloadSignature(context, node)
 }
 
-const isGeneratorFunction = (node: FunctionKeywordNode): boolean => {
-  return node.asteriskToken !== undefined
-}
+const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
+  node.asteriskToken !== undefined
 
 const hasFunctionBody = (
   declaration: ts.FunctionDeclaration
-): declaration is FunctionDeclarationWithBody => {
-  return declaration.body !== undefined
-}
+): declaration is FunctionDeclarationWithBody => declaration.body !== undefined
 
 const hasOverloadSignature = (
   context: RuleContext,

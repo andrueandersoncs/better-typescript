@@ -9,8 +9,8 @@ const ruleId = "no-new-error"
 export const noNewError: Rule = {
   id: ruleId,
   description: "Disallow direct Error construction in favor of Effect Schema tagged errors.",
-  check: (context) => {
-    return Effect.runSync(
+  check: (context) =>
+    Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isNewExpression),
         Stream.filter(isBareErrorConstruction),
@@ -19,12 +19,10 @@ export const noNewError: Rule = {
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
     )
-  }
 }
 
-const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
-  return ts.isIdentifier(newExpression.expression) && newExpression.expression.text === "Error"
-}
+const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean =>
+  ts.isIdentifier(newExpression.expression) && newExpression.expression.text === "Error"
 
 const createMatch = (context: RuleContext, newExpression: ts.NewExpression): RuleMatch => {
   const sourceFile = context.sourceFile

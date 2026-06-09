@@ -3,10 +3,12 @@ import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noNewError } from "./noNewError.js"
 import { noThrow } from "./noThrow.js"
 import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
+import { preferImplicitReturn } from "./preferImplicitReturn.js"
 import type { Rule } from "./types.js"
 
 export const rules: ReadonlyArray<Rule> = [
   preferEffectSchemaGuard,
+  preferImplicitReturn,
   noThrow,
   noNewError,
   noCallbacks,
