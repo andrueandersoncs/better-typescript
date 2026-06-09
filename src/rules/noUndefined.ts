@@ -70,57 +70,31 @@ const undefinedUsageMatches = (node: ts.Node): ReadonlyArray<UndefinedUsageMatch
 
 const parameterUndefinedUsageMatches = (
   node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> => {
-  if (!isParameterAcceptingUndefined(node)) {
-    return []
-  }
-
-  return [{ kind: "parameter", node }]
-}
+): ReadonlyArray<UndefinedUsageMatch> =>
+  isParameterAcceptingUndefined(node) ? [{ kind: "parameter", node }] : []
 
 const returnTypeUndefinedUsageMatches = (
   node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> => {
-  if (!isUndefinedReturnTypeDeclaration(node)) {
-    return []
-  }
-
-  return [{ kind: "return-type", node }]
-}
+): ReadonlyArray<UndefinedUsageMatch> =>
+  isUndefinedReturnTypeDeclaration(node) ? [{ kind: "return-type", node }] : []
 
 const returnExpressionUndefinedUsageMatches = (
   node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> => {
-  if (!isUndefinedReturnExpression(node)) {
-    return []
-  }
-
-  return [{ kind: "return-expression", node }]
-}
+): ReadonlyArray<UndefinedUsageMatch> =>
+  isUndefinedReturnExpression(node) ? [{ kind: "return-expression", node }] : []
 
 const typeDeclarationUndefinedUsageMatches = (
   node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> => {
-  if (!isUndefinedTypeDeclaration(node)) {
-    return []
-  }
-
-  return [{ kind: "type-declaration", node }]
-}
+): ReadonlyArray<UndefinedUsageMatch> =>
+  isUndefinedTypeDeclaration(node) ? [{ kind: "type-declaration", node }] : []
 
 const comparisonUndefinedUsageMatches = (
   node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> => {
-  if (!ts.isBinaryExpression(node)) {
-    return []
-  }
+): ReadonlyArray<UndefinedUsageMatch> =>
+  isUndefinedComparison(node) ? [{ kind: "comparison", node }] : []
 
-  if (!comparesAgainstUndefined(node)) {
-    return []
-  }
-
-  return [{ kind: "comparison", node }]
-}
+const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression =>
+  ts.isBinaryExpression(node) ? comparesAgainstUndefined(node) : false
 
 const isParameterAcceptingUndefined = (
   node: ts.Node
@@ -137,13 +111,10 @@ const isParameterAcceptingUndefined = (
 
 const isUndefinedReturnTypeDeclaration = (
   node: ts.Node
-): node is ReturnTypeDeclaration => {
-  if (isReturnTypeDeclaration(node)) {
-    return containsUndefinedType(Option.fromNullable(node.type))
-  }
-
-  return false
-}
+): node is ReturnTypeDeclaration =>
+  isReturnTypeDeclaration(node)
+    ? containsUndefinedType(Option.fromNullable(node.type))
+    : false
 
 const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =>
   [
@@ -189,13 +160,8 @@ const isUndefinedReturnExpression = (
 
 const expressionFromConciseBody = (
   body: ts.ConciseBody
-): Option.Option<ts.Expression> => {
-  if (ts.isBlock(body)) {
-    return Option.none()
-  }
-
-  return Option.some(body)
-}
+): Option.Option<ts.Expression> =>
+  ts.isBlock(body) ? Option.none() : Option.some(body)
 
 const isUndefinedTypeDeclaration = (
   node: ts.Node
@@ -260,13 +226,10 @@ const isUndefinedExpression = (expression: ts.Expression): boolean => {
   })
 }
 
-const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  if (ts.isParenthesizedExpression(expression)) {
-    return unwrapExpression(expression.expression)
-  }
-
-  return expression
-}
+const unwrapExpression = (expression: ts.Expression): ts.Expression =>
+  ts.isParenthesizedExpression(expression)
+    ? unwrapExpression(expression.expression)
+    : expression
 
 const createMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch => {
   const sourceFile = context.sourceFile
@@ -299,9 +262,5 @@ const messageForMatch = (match: UndefinedUsageMatch): string =>
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

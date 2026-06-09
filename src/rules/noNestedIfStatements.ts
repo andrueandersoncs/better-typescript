@@ -40,15 +40,13 @@ const containingIfStatementFrom = (
         return Option.none()
       }
 
-      if (!ts.isIfStatement(parent)) {
-        return containingIfStatementFrom(parent, Option.fromNullable(parent.parent))
-      }
-
-      if (!isElseIfStatement(child, parent)) {
-        return Option.some(parent)
-      }
-
-      return containingIfStatementFrom(parent, Option.fromNullable(parent.parent))
+      return Option.match(Option.liftPredicate(ts.isIfStatement)(parent), {
+        onNone: () => containingIfStatementFrom(parent, Option.fromNullable(parent.parent)),
+        onSome: (parent) =>
+          isElseIfStatement(child, parent)
+            ? containingIfStatementFrom(parent, Option.fromNullable(parent.parent))
+            : Option.some(parent)
+      })
     }
   })
 
@@ -88,9 +86,5 @@ const createMatch = (context: RuleContext, ifStatement: ts.IfStatement): RuleMat
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

@@ -78,13 +78,13 @@ const isBooleanOperatorExpression = (
   return [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator].some(Boolean)
 }
 
-const isUnaryBooleanOperatorExpression = (node: ts.Node): node is ts.PrefixUnaryExpression => {
-  if (ts.isPrefixUnaryExpression(node)) {
-    return node.operator === ts.SyntaxKind.ExclamationToken
-  }
-
-  return false
-}
+const isUnaryBooleanOperatorExpression = (
+  node: ts.Node
+): node is ts.PrefixUnaryExpression =>
+  Option.match(Option.liftPredicate(ts.isPrefixUnaryExpression)(node), {
+    onNone: () => false,
+    onSome: (node) => node.operator === ts.SyntaxKind.ExclamationToken
+  })
 
 const booleanBinaryOperatorKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.AmpersandAmpersandToken,
@@ -105,13 +105,10 @@ const nestedExpressionBoundaryKinds = new Set<ts.SyntaxKind>([
 const isNestedExpressionBoundary = (expression: ts.Expression): boolean =>
   nestedExpressionBoundaryKinds.has(expression.kind)
 
-const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  if (!ts.isParenthesizedExpression(expression)) {
-    return expression
-  }
-
-  return unwrapExpression(expression.expression)
-}
+const unwrapExpression = (expression: ts.Expression): ts.Expression =>
+  ts.isParenthesizedExpression(expression)
+    ? unwrapExpression(expression.expression)
+    : expression
 
 const createMatch = (context: RuleContext, expression: ts.Expression): RuleMatch => {
   const sourceFile = context.sourceFile
@@ -131,9 +128,5 @@ const createMatch = (context: RuleContext, expression: ts.Expression): RuleMatch
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

@@ -59,13 +59,10 @@ const isStringKeyInExpression = (
 const isStringLiteralLike = (expression: ts.Expression): boolean =>
   ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
 
-const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  if (!ts.isParenthesizedExpression(expression)) {
-    return expression
-  }
-
-  return unwrapExpression(expression.expression)
-}
+const unwrapExpression = (expression: ts.Expression): ts.Expression =>
+  ts.isParenthesizedExpression(expression)
+    ? unwrapExpression(expression.expression)
+    : expression
 
 const createMatch = (context: RuleContext, expression: ts.BinaryExpression): RuleMatch => {
   const sourceFile = context.sourceFile
@@ -87,9 +84,5 @@ const createMatch = (context: RuleContext, expression: ts.BinaryExpression): Rul
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

@@ -41,9 +41,5 @@ const createMatch = (context: RuleContext, forOfStatement: ts.ForOfStatement): R
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

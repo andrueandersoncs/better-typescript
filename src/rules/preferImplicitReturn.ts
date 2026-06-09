@@ -39,13 +39,10 @@ const hasSingleValueReturnStatement = (
   return false
 }
 
-const isValueReturnStatement = (statement: ts.Statement): boolean => {
-  if (ts.isReturnStatement(statement)) {
-    return Option.isSome(Option.fromNullable(statement.expression))
-  }
-
-  return false
-}
+const isValueReturnStatement = (statement: ts.Statement): boolean =>
+  ts.isReturnStatement(statement)
+    ? Option.isSome(Option.fromNullable(statement.expression))
+    : false
 
 const createMatch = (
   context: RuleContext,
@@ -70,9 +67,5 @@ const createMatch = (
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

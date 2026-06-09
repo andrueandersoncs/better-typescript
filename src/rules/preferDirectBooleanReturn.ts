@@ -77,11 +77,7 @@ const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
 
   const hasOneStatement = statement.statements.length === 1
 
-  if (!hasOneStatement) {
-    return statement
-  }
-
-  return statement.statements[0]
+  return hasOneStatement ? statement.statements[0] : statement
 }
 
 const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
@@ -94,13 +90,10 @@ const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> 
   )
 }
 
-const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  if (!ts.isParenthesizedExpression(expression)) {
-    return expression
-  }
-
-  return unwrapExpression(expression.expression)
-}
+const unwrapExpression = (expression: ts.Expression): ts.Expression =>
+  ts.isParenthesizedExpression(expression)
+    ? unwrapExpression(expression.expression)
+    : expression
 
 const createMatch = (
   context: RuleContext,
@@ -123,9 +116,5 @@ const createMatch = (
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

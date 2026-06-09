@@ -62,24 +62,20 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   return hasTypeAliasFunctionType || hasPropertySignatureFunctionType
 }
 
-const isTypeAliasFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean => {
-  if (ts.isTypeAliasDeclaration(parent)) {
-    return parent.type === typeNode
-  }
-
-  return false
-}
+const isTypeAliasFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean =>
+  Option.match(Option.liftPredicate(ts.isTypeAliasDeclaration)(parent), {
+    onNone: () => false,
+    onSome: (parent) => parent.type === typeNode
+  })
 
 const isPropertySignatureFunctionType = (
   parent: ts.Node,
   typeNode: ts.TypeNode
-): boolean => {
-  if (ts.isPropertySignature(parent)) {
-    return parent.type === typeNode
-  }
-
-  return false
-}
+): boolean =>
+  Option.match(Option.liftPredicate(ts.isPropertySignature)(parent), {
+    onNone: () => false,
+    onSome: (parent) => parent.type === typeNode
+  })
 
 const transparentCallableType = (
   typeNode: ts.TypeNode,
@@ -196,11 +192,9 @@ const hasApparentTypeCallSignature = (
   apparentType: ts.Type,
   seen: ReadonlySet<ts.Type>
 ): boolean => {
-  if (apparentType !== type) {
-    return hasCallSignature(checker, apparentType, seen)
-  }
+  const hasDifferentType = apparentType !== type
 
-  return false
+  return hasDifferentType ? hasCallSignature(checker, apparentType, seen) : false
 }
 
 const hasConstraintCallSignature = (
@@ -223,11 +217,9 @@ const hasDifferentConstraintCallSignature = (
   constraint: ts.Type,
   seen: ReadonlySet<ts.Type>
 ): boolean => {
-  if (constraint !== type) {
-    return hasCallSignature(checker, constraint, seen)
-  }
+  const hasDifferentType = constraint !== type
 
-  return false
+  return hasDifferentType ? hasCallSignature(checker, constraint, seen) : false
 }
 
 const createMatch = (
@@ -253,9 +245,5 @@ const createMatch = (
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -21,13 +21,11 @@ export const noNewError: Rule = {
     )
 }
 
-const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
-  if (ts.isIdentifier(newExpression.expression)) {
-    return newExpression.expression.text === "Error"
-  }
-
-  return false
-}
+const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean =>
+  Option.match(Option.liftPredicate(ts.isIdentifier)(newExpression.expression), {
+    onNone: () => false,
+    onSome: (expression) => expression.text === "Error"
+  })
 
 const createMatch = (context: RuleContext, newExpression: ts.NewExpression): RuleMatch => {
   const sourceFile = context.sourceFile
@@ -49,9 +47,5 @@ const createMatch = (context: RuleContext, newExpression: ts.NewExpression): Rul
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }

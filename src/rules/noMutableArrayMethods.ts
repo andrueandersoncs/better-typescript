@@ -78,13 +78,10 @@ const mutableArrayMethodCall = (
   })
 }
 
-const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMethod> => {
-  if (mutableArrayMethods.has(methodName as MutableArrayMethod)) {
-    return Option.some(methodName as MutableArrayMethod)
-  }
-
-  return Option.none()
-}
+const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMethod> =>
+  mutableArrayMethods.has(methodName as MutableArrayMethod)
+    ? Option.some(methodName as MutableArrayMethod)
+    : Option.none()
 
 const isArrayType = (
   checker: ts.TypeChecker,
@@ -185,9 +182,5 @@ const createMatch = (
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
-  if (relative.length === 0) {
-    return fileName
-  }
-
-  return relative
+  return relative || fileName
 }
