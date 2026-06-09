@@ -6,26 +6,20 @@ export const runRules = (
   rules: ReadonlyArray<Rule>
 ): ReadonlyArray<RuleMatch> => {
   const checker = loadedProject.program.getTypeChecker()
-  const matches: Array<RuleMatch> = []
 
-  for (const sourceFile of loadedProject.program.getSourceFiles()) {
-    if (shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile)) {
-      continue
-    }
-
-    for (const rule of rules) {
-      matches.push(
-        ...rule.check({
+  return loadedProject.program
+    .getSourceFiles()
+    .filter((sourceFile) => !shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile))
+    .flatMap((sourceFile) =>
+      rules.flatMap((rule) =>
+        rule.check({
           program: loadedProject.program,
           checker,
           projectRoot: loadedProject.rootPath,
           sourceFile
         })
       )
-    }
-  }
-
-  return matches
+    )
 }
 
 const shouldSkipSourceFile = (fileName: string, isDeclarationFile: boolean): boolean =>
