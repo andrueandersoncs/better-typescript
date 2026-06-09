@@ -2,12 +2,14 @@ import { noCallbacks } from "./noCallbacks.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noNewError } from "./noNewError.js"
 import { noThrow } from "./noThrow.js"
+import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
 import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
 import { preferImplicitReturn } from "./preferImplicitReturn.js"
 import type { Rule } from "./types.js"
 
 export const rules: ReadonlyArray<Rule> = [
   preferEffectSchemaGuard,
+  preferDirectBooleanReturn,
   preferImplicitReturn,
   noThrow,
   noNewError,

@@ -32,17 +32,12 @@ const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
 const isDisallowedFunctionKeyword = (
   context: RuleContext,
   node: FunctionKeywordNode
-): boolean => {
-  if (isGeneratorFunction(node)) {
-    return false
-  }
-
-  if (ts.isFunctionExpression(node)) {
-    return true
-  }
-
-  return hasFunctionBody(node) && !hasOverloadSignature(context, node)
-}
+): boolean =>
+  !isGeneratorFunction(node) &&
+  (ts.isFunctionExpression(node) ||
+    (ts.isFunctionDeclaration(node) &&
+      hasFunctionBody(node) &&
+      !hasOverloadSignature(context, node)))
 
 const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
   node.asteriskToken !== undefined
@@ -55,11 +50,10 @@ const hasOverloadSignature = (
   context: RuleContext,
   declaration: FunctionDeclarationWithBody
 ): boolean => {
-  if (declaration.name === undefined) {
-    return false
-  }
-
-  const symbol = context.checker.getSymbolAtLocation(declaration.name)
+  const symbol =
+    declaration.name === undefined
+      ? undefined
+      : context.checker.getSymbolAtLocation(declaration.name)
   const declarations = symbol?.declarations?.filter(ts.isFunctionDeclaration) ?? []
 
   return declarations.some((candidate) => candidate !== declaration && candidate.body === undefined)

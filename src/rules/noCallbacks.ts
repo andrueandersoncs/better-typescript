@@ -48,14 +48,6 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
     parent = parent.parent
   }
 
-  if (ts.isTypeAliasDeclaration(parent) && parent.type === typeNode) {
-    return true
-  }
-
-  if (ts.isPropertySignature(parent) && parent.type === typeNode) {
-    return true
-  }
-
   if (ts.isVariableDeclaration(parent) && parent.type === typeNode) {
     return parent.initializer === undefined || !isRuntimeFunctionLike(parent.initializer)
   }
@@ -64,7 +56,10 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
     return parent.initializer === undefined || !isRuntimeFunctionLike(parent.initializer)
   }
 
-  return false
+  return (
+    (ts.isTypeAliasDeclaration(parent) && parent.type === typeNode) ||
+    (ts.isPropertySignature(parent) && parent.type === typeNode)
+  )
 }
 
 const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode =>
@@ -81,11 +76,8 @@ const isCallbackStyleDeclaration = (
 ): boolean => {
   const signature = context.checker.getSignatureFromDeclaration(declaration)
 
-  if (signature === undefined) {
-    return false
-  }
-
   return (
+    signature !== undefined &&
     isVoidType(context.checker.getReturnTypeOfSignature(signature)) &&
     declaration.parameters.some((parameter) => isFunctionArgument(context.checker, parameter))
   )
@@ -98,50 +90,50 @@ const isFunctionArgument = (
   parameter: ts.ParameterDeclaration
 ): boolean => {
   const parameterType = checker.getTypeAtLocation(parameter)
-
-  if (hasCallSignature(checker, parameterType)) {
-    return true
-  }
+  const parameterHasCallSignature = hasCallSignature(checker, parameterType)
 
   if (parameter.dotDotDotToken === undefined) {
-    return false
+    return parameterHasCallSignature
   }
 
   const elementType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-  return elementType !== undefined && hasCallSignature(checker, elementType)
+  return (
+    parameterHasCallSignature ||
+    (elementType !== undefined && hasCallSignature(checker, elementType))
+  )
 }
 
 const hasCallSignature = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type> = new Set()
+): boolean => !seen.has(type) && hasUnseenCallSignature(checker, type, seen)
+
+const hasUnseenCallSignature = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  seen: ReadonlySet<ts.Type>
 ): boolean => {
-  if (seen.has(type)) {
-    return false
-  }
-
   const nextSeen = new Set(seen).add(type)
-
-  if (type.getCallSignatures().length > 0) {
-    return true
-  }
+  const hasDirectCallSignature = type.getCallSignatures().length > 0
 
   if (type.isUnionOrIntersection()) {
-    return type.types.some((part) => hasCallSignature(checker, part, nextSeen))
+    return (
+      hasDirectCallSignature ||
+      type.types.some((part) => hasCallSignature(checker, part, nextSeen))
+    )
   }
 
   const constraint = checker.getBaseConstraintOfType(type)
-
-  if (
-    constraint !== undefined &&
-    constraint !== type &&
-    hasCallSignature(checker, constraint, nextSeen)
-  ) {
-    return true
-  }
-
   const apparentType = checker.getApparentType(type)
-  return apparentType !== type && hasCallSignature(checker, apparentType, nextSeen)
+
+  return (
+    hasDirectCallSignature ||
+    (constraint !== undefined &&
+      constraint !== type &&
+      hasCallSignature(checker, constraint, nextSeen)) ||
+    (apparentType !== type && hasCallSignature(checker, apparentType, nextSeen))
+  )
 }
 
 const createMatch = (
