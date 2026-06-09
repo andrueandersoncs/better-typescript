@@ -2,6 +2,7 @@ import { noCallbacks } from "./noCallbacks.js"
 import { noForOfLoops } from "./noForOfLoops.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
+import { noMutableArrayMethods } from "./noMutableArrayMethods.js"
 import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
@@ -21,6 +22,7 @@ export const rules: ReadonlyArray<Rule> = [
   noNewError,
   noUndefined,
   noMultipleBooleanOperators,
+  noMutableArrayMethods,
   noMutableVariableDeclarations,
   noNestedIfStatements,
   noCallbacks,

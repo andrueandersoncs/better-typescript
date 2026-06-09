@@ -9,12 +9,4 @@ export const nodeStream = (node: ts.Node): Stream.Stream<ts.Node> =>
 export const childNodeStream = (node: ts.Node): Stream.Stream<ts.Node> =>
   Stream.fromIterable(childNodes(node))
 
-const childNodes = (node: ts.Node): ReadonlyArray<ts.Node> => {
-  const children: Array<ts.Node> = []
-
-  ts.forEachChild(node, (child) => {
-    children.push(child)
-  })
-
-  return children
-}
+const childNodes = (node: ts.Node): ReadonlyArray<ts.Node> => node.getChildren()

@@ -59,30 +59,67 @@ export const noUndefined: Rule = {
     )
 }
 
-const undefinedUsageMatches = (node: ts.Node): ReadonlyArray<UndefinedUsageMatch> => {
-  const matches: Array<UndefinedUsageMatch> = []
+const undefinedUsageMatches = (node: ts.Node): ReadonlyArray<UndefinedUsageMatch> =>
+  [
+    ...parameterUndefinedUsageMatches(node),
+    ...returnTypeUndefinedUsageMatches(node),
+    ...returnExpressionUndefinedUsageMatches(node),
+    ...typeDeclarationUndefinedUsageMatches(node),
+    ...comparisonUndefinedUsageMatches(node)
+  ]
 
-  if (isParameterAcceptingUndefined(node)) {
-    matches.push({ kind: "parameter", node })
+const parameterUndefinedUsageMatches = (
+  node: ts.Node
+): ReadonlyArray<UndefinedUsageMatch> => {
+  if (!isParameterAcceptingUndefined(node)) {
+    return []
   }
 
-  if (isUndefinedReturnTypeDeclaration(node)) {
-    matches.push({ kind: "return-type", node })
+  return [{ kind: "parameter", node }]
+}
+
+const returnTypeUndefinedUsageMatches = (
+  node: ts.Node
+): ReadonlyArray<UndefinedUsageMatch> => {
+  if (!isUndefinedReturnTypeDeclaration(node)) {
+    return []
   }
 
-  if (isUndefinedReturnExpression(node)) {
-    matches.push({ kind: "return-expression", node })
+  return [{ kind: "return-type", node }]
+}
+
+const returnExpressionUndefinedUsageMatches = (
+  node: ts.Node
+): ReadonlyArray<UndefinedUsageMatch> => {
+  if (!isUndefinedReturnExpression(node)) {
+    return []
   }
 
-  if (isUndefinedTypeDeclaration(node)) {
-    matches.push({ kind: "type-declaration", node })
+  return [{ kind: "return-expression", node }]
+}
+
+const typeDeclarationUndefinedUsageMatches = (
+  node: ts.Node
+): ReadonlyArray<UndefinedUsageMatch> => {
+  if (!isUndefinedTypeDeclaration(node)) {
+    return []
   }
 
-  if (ts.isBinaryExpression(node) && comparesAgainstUndefined(node)) {
-    matches.push({ kind: "comparison", node })
+  return [{ kind: "type-declaration", node }]
+}
+
+const comparisonUndefinedUsageMatches = (
+  node: ts.Node
+): ReadonlyArray<UndefinedUsageMatch> => {
+  if (!ts.isBinaryExpression(node)) {
+    return []
   }
 
-  return matches
+  if (!comparesAgainstUndefined(node)) {
+    return []
+  }
+
+  return [{ kind: "comparison", node }]
 }
 
 const isParameterAcceptingUndefined = (
