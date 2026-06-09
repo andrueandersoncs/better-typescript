@@ -33,7 +33,8 @@ const createMatch = (context: RuleContext, forOfStatement: ts.ForOfStatement): R
     message: "Avoid imperative logic in for..of loops.",
     hint:
       "Use immutable collection logic such as Array.prototype.map(), " +
-      "Array.prototype.reduce(), Array.prototype.filter(), or Array.prototype.flatMap() instead."
+      "Array.prototype.reduce(), Array.prototype.filter(), Array.prototype.flatMap(), " +
+      "or Streams for async iterables instead."
   }
 }
 
