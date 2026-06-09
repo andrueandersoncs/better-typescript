@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Chunk, Effect, Match, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -87,14 +87,11 @@ const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
 const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
-  switch (unwrapped.kind) {
-    case ts.SyntaxKind.TrueKeyword:
-      return Option.some(true)
-    case ts.SyntaxKind.FalseKeyword:
-      return Option.some(false)
-    default:
-      return Option.none()
-  }
+  return Match.value(unwrapped.kind).pipe(
+    Match.when(ts.SyntaxKind.TrueKeyword, () => true),
+    Match.when(ts.SyntaxKind.FalseKeyword, () => false),
+    Match.option
+  )
 }
 
 const unwrapExpression = (expression: ts.Expression): ts.Expression => {

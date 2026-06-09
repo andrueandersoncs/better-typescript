@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Chunk, Effect, Match, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -246,20 +246,18 @@ const createMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatc
   }
 }
 
-const messageForMatch = (match: UndefinedUsageMatch): string => {
-  switch (match.kind) {
-    case "parameter":
-      return "Avoid function parameters that accept undefined."
-    case "return-type":
-      return "Avoid function return types that include undefined."
-    case "return-expression":
-      return "Avoid returning undefined from functions."
-    case "type-declaration":
-      return "Avoid optional or undefined properties in type declarations."
-    case "comparison":
-      return "Avoid comparing values against undefined."
-  }
-}
+const messageForMatch = (match: UndefinedUsageMatch): string =>
+  Match.value(match.kind).pipe(
+    Match.when("parameter", () => "Avoid function parameters that accept undefined."),
+    Match.when("return-type", () => "Avoid function return types that include undefined."),
+    Match.when("return-expression", () => "Avoid returning undefined from functions."),
+    Match.when(
+      "type-declaration",
+      () => "Avoid optional or undefined properties in type declarations."
+    ),
+    Match.when("comparison", () => "Avoid comparing values against undefined."),
+    Match.exhaustive
+  )
 
 const toRelativeFileName = (projectRoot: string, fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)

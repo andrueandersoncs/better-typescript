@@ -5,6 +5,7 @@ import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
 import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
+import { noSwitchStatements } from "./noSwitchStatements.js"
 import { noThrow } from "./noThrow.js"
 import { noUndefined } from "./noUndefined.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
@@ -24,6 +25,7 @@ export const rules: ReadonlyArray<Rule> = [
   noNestedIfStatements,
   noCallbacks,
   noForOfLoops,
+  noSwitchStatements,
   noFunctionKeyword
 ]
 

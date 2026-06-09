@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Chunk, Effect, Match, Option, Stream } from "effect"
 import * as ts from "typescript"
 import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -54,16 +54,12 @@ const mutableVariableDeclarationKind = (
 
   return Option.match(Option.fromNullable(firstToken), {
     onNone: () => Option.none(),
-    onSome: (firstToken) => {
-      switch (firstToken.kind) {
-        case ts.SyntaxKind.LetKeyword:
-          return Option.some("let")
-        case ts.SyntaxKind.VarKeyword:
-          return Option.some("var")
-        default:
-          return Option.none()
-      }
-    }
+    onSome: (firstToken) =>
+      Match.value(firstToken.kind).pipe(
+        Match.when(ts.SyntaxKind.LetKeyword, () => "let" as const),
+        Match.when(ts.SyntaxKind.VarKeyword, () => "var" as const),
+        Match.option
+      )
   })
 }
 
