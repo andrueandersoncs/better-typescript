@@ -24,32 +24,30 @@ export const noNestedIfStatements: Rule = {
 const isNestedIfStatement = (ifStatement: ts.IfStatement): boolean =>
   containingIfStatement(ifStatement) !== undefined
 
-const containingIfStatement = (ifStatement: ts.IfStatement): ts.IfStatement | undefined => {
-  let child: ts.Node = ifStatement
-  let parent = child.parent
+const containingIfStatement = (ifStatement: ts.IfStatement): ts.IfStatement | undefined =>
+  containingIfStatementFrom(ifStatement, ifStatement.parent)
 
-  while (parent !== undefined) {
-    if (isNestedScopeBoundary(parent)) {
-      return undefined
-    }
-
-    if (!ts.isIfStatement(parent)) {
-      child = parent
-      parent = parent.parent
-      continue
-    }
-
-    const parentIsContainingIfStatement = !isElseIfStatement(child, parent)
-
-    if (parentIsContainingIfStatement) {
-      return parent
-    }
-
-    child = parent
-    parent = parent.parent
+const containingIfStatementFrom = (
+  child: ts.Node,
+  parent: ts.Node | undefined
+): ts.IfStatement | undefined => {
+  if (parent === undefined) {
+    return undefined
   }
 
-  return undefined
+  if (isNestedScopeBoundary(parent)) {
+    return undefined
+  }
+
+  if (!ts.isIfStatement(parent)) {
+    return containingIfStatementFrom(parent, parent.parent)
+  }
+
+  if (!isElseIfStatement(child, parent)) {
+    return parent
+  }
+
+  return containingIfStatementFrom(parent, parent.parent)
 }
 
 const isElseIfStatement = (child: ts.Node, parent: ts.IfStatement): boolean =>

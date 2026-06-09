@@ -42,13 +42,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
   ].some(Boolean)
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
-  let typeNode: ts.TypeNode = node
-  let parent = node.parent
-
-  while (isTransparentTypeNode(parent)) {
-    typeNode = parent
-    parent = parent.parent
-  }
+  const { typeNode, parent } = transparentCallableType(node, node.parent)
 
   if (ts.isVariableDeclaration(parent)) {
     const isTypeAnnotation = parent.type === typeNode
@@ -62,29 +56,45 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
     return isTypeAnnotation && isCallableTypeAnnotation(parent.initializer)
   }
 
-  let isTypeAliasFunctionType = false
+  const hasTypeAliasFunctionType = isTypeAliasFunctionType(parent, typeNode)
+  const hasPropertySignatureFunctionType = isPropertySignatureFunctionType(parent, typeNode)
 
-  if (ts.isTypeAliasDeclaration(parent)) {
-    isTypeAliasFunctionType = parent.type === typeNode
-  }
-
-  let isPropertySignatureFunctionType = false
-
-  if (ts.isPropertySignature(parent)) {
-    isPropertySignatureFunctionType = parent.type === typeNode
-  }
-
-  return isTypeAliasFunctionType || isPropertySignatureFunctionType
+  return hasTypeAliasFunctionType || hasPropertySignatureFunctionType
 }
 
-const isCallableTypeAnnotation = (initializer: ts.Expression | undefined): boolean => {
-  let isCallableType = initializer === undefined
-
-  if (initializer !== undefined) {
-    isCallableType = !isRuntimeFunctionLike(initializer)
+const isTypeAliasFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean => {
+  if (ts.isTypeAliasDeclaration(parent)) {
+    return parent.type === typeNode
   }
 
-  return isCallableType
+  return false
+}
+
+const isPropertySignatureFunctionType = (
+  parent: ts.Node,
+  typeNode: ts.TypeNode
+): boolean => {
+  if (ts.isPropertySignature(parent)) {
+    return parent.type === typeNode
+  }
+
+  return false
+}
+
+const transparentCallableType = (
+  typeNode: ts.TypeNode,
+  parent: ts.Node
+): { readonly typeNode: ts.TypeNode; readonly parent: ts.Node } =>
+  isTransparentTypeNode(parent)
+    ? transparentCallableType(parent, parent.parent)
+    : { typeNode, parent }
+
+const isCallableTypeAnnotation = (initializer: ts.Expression | undefined): boolean => {
+  if (initializer !== undefined) {
+    return !isRuntimeFunctionLike(initializer)
+  }
+
+  return true
 }
 
 const transparentTypeNodeKinds = new Set<ts.SyntaxKind>([
@@ -104,17 +114,17 @@ const isCallbackStyleDeclaration = (
   declaration: CallbackStyleDeclaration
 ): boolean => {
   const signature = context.checker.getSignatureFromDeclaration(declaration)
-  let isCallbackStyle = false
 
   if (signature !== undefined) {
     const returnsVoid = isVoidType(context.checker.getReturnTypeOfSignature(signature))
     const hasFunctionArgument = declaration.parameters.some((parameter) =>
       isFunctionArgument(context.checker, parameter)
     )
-    isCallbackStyle = returnsVoid && hasFunctionArgument
+
+    return returnsVoid && hasFunctionArgument
   }
 
-  return isCallbackStyle
+  return false
 }
 
 const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
@@ -131,13 +141,12 @@ const isFunctionArgument = (
   }
 
   const elementType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-  let elementHasCallSignature = false
 
   if (elementType !== undefined) {
-    elementHasCallSignature = hasCallSignature(checker, elementType)
+    return parameterHasCallSignature || hasCallSignature(checker, elementType)
   }
 
-  return parameterHasCallSignature || elementHasCallSignature
+  return parameterHasCallSignature
 }
 
 const hasCallSignature = (
@@ -167,17 +176,30 @@ const hasUnseenCallSignature = (
 
   const apparentType = checker.getApparentType(type)
   const constraintHasCallSignature = hasConstraintCallSignature(checker, type, nextSeen)
-
-  let apparentTypeHasCallSignature = false
-
-  if (apparentType !== type) {
-    apparentTypeHasCallSignature = hasCallSignature(checker, apparentType, nextSeen)
-  }
+  const apparentTypeHasCallSignature = hasApparentTypeCallSignature(
+    checker,
+    type,
+    apparentType,
+    nextSeen
+  )
 
   const hasIndirectCallSignature =
     constraintHasCallSignature || apparentTypeHasCallSignature
 
   return hasDirectCallSignature || hasIndirectCallSignature
+}
+
+const hasApparentTypeCallSignature = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  apparentType: ts.Type,
+  seen: ReadonlySet<ts.Type>
+): boolean => {
+  if (apparentType !== type) {
+    return hasCallSignature(checker, apparentType, seen)
+  }
+
+  return false
 }
 
 const hasConstraintCallSignature = (
@@ -186,16 +208,25 @@ const hasConstraintCallSignature = (
   seen: ReadonlySet<ts.Type>
 ): boolean => {
   const constraint = checker.getBaseConstraintOfType(type)
-  const hasConstraint = constraint !== undefined
-  let constraintHasCallSignature = false
 
-  if (hasConstraint) {
-    const constraintIsDifferent = constraint !== type
-    constraintHasCallSignature =
-      constraintIsDifferent && hasCallSignature(checker, constraint, seen)
+  if (constraint !== undefined) {
+    return hasDifferentConstraintCallSignature(checker, type, constraint, seen)
   }
 
-  return constraintHasCallSignature
+  return false
+}
+
+const hasDifferentConstraintCallSignature = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  constraint: ts.Type,
+  seen: ReadonlySet<ts.Type>
+): boolean => {
+  if (constraint !== type) {
+    return hasCallSignature(checker, constraint, seen)
+  }
+
+  return false
 }
 
 const createMatch = (

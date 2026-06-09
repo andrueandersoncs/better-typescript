@@ -1,7 +1,7 @@
 import * as path from "node:path"
 import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
-import { nodeStream } from "./traverse.js"
+import { childNodeStream, nodeStream } from "./traverse.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-multiple-boolean-operators"
@@ -45,53 +45,45 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
     return ownCount
   }
 
-  let count = ownCount
+  const childCount = Effect.runSync(
+    childNodeStream(unwrapped).pipe(
+      Stream.filter(ts.isExpression),
+      Stream.map(booleanOperatorCount),
+      Stream.runFold(0, (total, count) => total + count)
+    )
+  )
 
-  ts.forEachChild(unwrapped, (child) => {
-    if (ts.isExpression(child)) {
-      count += booleanOperatorCount(child)
-    }
-  })
-
-  return count
+  return ownCount + childCount
 }
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
-  let parent = node.parent
-  let hasBooleanOperator = false
+  const parent = node.parent
 
-  while (parent !== undefined) {
-    const parentUsesBooleanOperator = isBooleanOperatorExpression(parent)
-
-    if (parentUsesBooleanOperator) {
-      hasBooleanOperator = true
-      break
-    } else {
-      parent = parent.parent
-    }
+  if (parent !== undefined) {
+    return isBooleanOperatorExpression(parent) || hasBooleanOperatorAncestor(parent)
   }
 
-  return hasBooleanOperator
+  return false
 }
 
 const isBooleanOperatorExpression = (
   node: ts.Node
 ): node is BooleanOperatorExpression => {
-  let isBinaryBooleanOperator = false
-
-  if (ts.isBinaryExpression(node)) {
-    isBinaryBooleanOperator = isBooleanBinaryOperator(node.operatorToken.kind)
-  }
-
-  let isUnaryBooleanOperator = false
-
-  if (ts.isPrefixUnaryExpression(node)) {
-    isUnaryBooleanOperator = node.operator === ts.SyntaxKind.ExclamationToken
-  }
+  const isBinaryBooleanOperator =
+    ts.isBinaryExpression(node) && isBooleanBinaryOperator(node.operatorToken.kind)
+  const isUnaryBooleanOperator = isUnaryBooleanOperatorExpression(node)
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
   return [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator].some(Boolean)
+}
+
+const isUnaryBooleanOperatorExpression = (node: ts.Node): node is ts.PrefixUnaryExpression => {
+  if (ts.isPrefixUnaryExpression(node)) {
+    return node.operator === ts.SyntaxKind.ExclamationToken
+  }
+
+  return false
 }
 
 const booleanBinaryOperatorKinds = new Set<ts.SyntaxKind>([
@@ -114,13 +106,11 @@ const isNestedExpressionBoundary = (expression: ts.Expression): boolean =>
   nestedExpressionBoundaryKinds.has(expression.kind)
 
 const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  let current = expression
-
-  while (ts.isParenthesizedExpression(current)) {
-    current = current.expression
+  if (!ts.isParenthesizedExpression(expression)) {
+    return expression
   }
 
-  return current
+  return unwrapExpression(expression.expression)
 }
 
 const createMatch = (context: RuleContext, expression: ts.Expression): RuleMatch => {

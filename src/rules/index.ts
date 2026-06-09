@@ -1,6 +1,7 @@
 import { noCallbacks } from "./noCallbacks.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
+import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
 import { noThrow } from "./noThrow.js"
@@ -16,6 +17,7 @@ export const rules: ReadonlyArray<Rule> = [
   noThrow,
   noNewError,
   noMultipleBooleanOperators,
+  noMutableVariableDeclarations,
   noNestedIfStatements,
   noCallbacks,
   noFunctionKeyword

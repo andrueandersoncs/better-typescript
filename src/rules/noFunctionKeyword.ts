@@ -45,13 +45,12 @@ const isDisallowedFunctionDeclaration = (
   node: FunctionKeywordNode
 ): boolean => {
   const declaration = functionDeclarationWithBody(node)
-  let isDisallowed = false
 
   if (declaration !== undefined) {
-    isDisallowed = !hasOverloadSignature(context, declaration)
+    return !hasOverloadSignature(context, declaration)
   }
 
-  return isDisallowed
+  return false
 }
 
 const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
@@ -79,15 +78,21 @@ const hasOverloadSignature = (
   context: RuleContext,
   declaration: FunctionDeclarationWithBody
 ): boolean => {
-  let symbol: ts.Symbol | undefined
-
-  if (declaration.name !== undefined) {
-    symbol = context.checker.getSymbolAtLocation(declaration.name)
-  }
-
+  const symbol = symbolFromDeclarationName(context, declaration.name)
   const declarations = symbol?.declarations?.filter(ts.isFunctionDeclaration) ?? []
 
   return declarations.some((candidate) => isOverloadCandidate(candidate, declaration))
+}
+
+const symbolFromDeclarationName = (
+  context: RuleContext,
+  name: ts.Identifier | undefined
+): ts.Symbol | undefined => {
+  if (name !== undefined) {
+    return context.checker.getSymbolAtLocation(name)
+  }
+
+  return undefined
 }
 
 const isOverloadCandidate = (
@@ -95,13 +100,12 @@ const isOverloadCandidate = (
   implementation: FunctionDeclarationWithBody
 ): boolean => {
   const isImplementation = candidate === implementation
-  let isOverload = false
 
   if (!isImplementation) {
-    isOverload = candidate.body === undefined
+    return candidate.body === undefined
   }
 
-  return isOverload
+  return false
 }
 
 const createMatch = (context: RuleContext, node: FunctionKeywordNode): RuleMatch => {

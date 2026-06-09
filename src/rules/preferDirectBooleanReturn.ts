@@ -99,13 +99,11 @@ const booleanLiteralValue = (expression: ts.Expression): boolean | undefined => 
 }
 
 const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  let current = expression
-
-  while (ts.isParenthesizedExpression(current)) {
-    current = current.expression
+  if (!ts.isParenthesizedExpression(expression)) {
+    return expression
   }
 
-  return current
+  return unwrapExpression(expression.expression)
 }
 
 const createMatch = (

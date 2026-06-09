@@ -28,27 +28,25 @@ export const preferImplicitReturn: Rule = {
 const hasSingleValueReturnStatement = (
   arrowFunction: ts.ArrowFunction
 ): arrowFunction is ArrowFunctionWithBlockBody => {
-  let hasSingleReturn = false
-
   if (ts.isBlock(arrowFunction.body)) {
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
-    hasSingleReturn = hasOneStatement && isValueReturnStatement(firstStatement)
+    const hasSingleReturn = hasOneStatement && isValueReturnStatement(firstStatement)
+
+    return hasSingleReturn
   }
 
-  return hasSingleReturn
+  return false
 }
 
 const isValueReturnStatement = (
   statement: ts.Statement
 ): statement is ts.ReturnStatement & { readonly expression: ts.Expression } => {
-  let returnsValue = false
-
   if (ts.isReturnStatement(statement)) {
-    returnsValue = statement.expression !== undefined
+    return statement.expression !== undefined
   }
 
-  return returnsValue
+  return false
 }
 
 const createMatch = (

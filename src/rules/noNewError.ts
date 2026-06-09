@@ -22,13 +22,11 @@ export const noNewError: Rule = {
 }
 
 const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
-  let isBareError = false
-
   if (ts.isIdentifier(newExpression.expression)) {
-    isBareError = newExpression.expression.text === "Error"
+    return newExpression.expression.text === "Error"
   }
 
-  return isBareError
+  return false
 }
 
 const createMatch = (context: RuleContext, newExpression: ts.NewExpression): RuleMatch => {

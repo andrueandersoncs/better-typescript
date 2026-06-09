@@ -45,29 +45,26 @@ const expressionStream = (expression: ts.Expression): Stream.Stream<ts.Expressio
 const isStringKeyInExpression = (
   expression: ts.Expression
 ): expression is ts.BinaryExpression => {
-  let isStringKeyIn = false
-
   if (ts.isBinaryExpression(expression)) {
     const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
     const hasStringKey = isStringLiteralLike(unwrapExpression(expression.left))
+    const isStringKeyIn = isInOperator && hasStringKey
 
-    isStringKeyIn = isInOperator && hasStringKey
+    return isStringKeyIn
   }
 
-  return isStringKeyIn
+  return false
 }
 
 const isStringLiteralLike = (expression: ts.Expression): boolean =>
   ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
 
 const unwrapExpression = (expression: ts.Expression): ts.Expression => {
-  let current = expression
-
-  while (ts.isParenthesizedExpression(current)) {
-    current = current.expression
+  if (!ts.isParenthesizedExpression(expression)) {
+    return expression
   }
 
-  return current
+  return unwrapExpression(expression.expression)
 }
 
 const createMatch = (context: RuleContext, expression: ts.BinaryExpression): RuleMatch => {
