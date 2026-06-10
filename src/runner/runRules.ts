@@ -22,5 +22,5 @@ export const runRules = (
     )
 }
 
-const shouldSkipSourceFile = (fileName: string, isDeclarationFile: boolean): boolean =>
+export const shouldSkipSourceFile = (fileName: string, isDeclarationFile: boolean): boolean =>
   isDeclarationFile || fileName.replaceAll("\\", "/").includes("/node_modules/")
