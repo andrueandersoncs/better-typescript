@@ -51,7 +51,22 @@ The CLI will use the `typescript` package to:
 better-typescript
 ```
 
-By default, the CLI should analyze the current working directory. Future options may allow passing a specific project path or `tsconfig.json` file.
+By default, the CLI analyzes the current working directory and prints every match.
+
+### Options
+
+- `--project <directory>`: Analyze a specific project directory instead of the current working directory.
+- `--limit <integer>`: Maximum number of rule matches to display.
+- `--offset <integer>`: Number of rule matches to skip before displaying.
+
+Use `--limit` and `--offset` together to page through large result sets:
+
+```sh
+better-typescript --limit 20             # matches 1-20
+better-typescript --limit 20 --offset 20 # matches 21-40
+```
+
+When the output is truncated, the CLI prints the visible range and the `--offset` value for the next page. The exit code reflects the full result set: it is `1` whenever any matches exist, even if the current page is empty.
 
 ## Project status
 
