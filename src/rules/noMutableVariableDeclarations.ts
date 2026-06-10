@@ -1,8 +1,8 @@
-import * as path from "node:path"
 import { Chunk, Effect, Match, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-mutable-variable-declarations"
 
@@ -23,7 +23,16 @@ export const noMutableVariableDeclarations: Rule = {
         Stream.filterMap((declarationList) =>
           mutableVariableDeclarationMatch(context, declarationList)
         ),
-        Stream.map((match) => createMatch(context, match)),
+        Stream.map((match) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: match.declarationList,
+            message: `Avoid declaring mutable variables with ${match.kind}.`,
+            hint:
+              "Declare multiple const values to represent each state instead of mutating a single " +
+              "variable, and use immutable values that are not reassigned."
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -61,30 +70,4 @@ const mutableVariableDeclarationKind = (
         Match.option
       )
   })
-}
-
-const createMatch = (
-  context: RuleContext,
-  match: MutableVariableDeclarationMatch
-): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = match.declarationList.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: `Avoid declaring mutable variables with ${match.kind}.`,
-    hint:
-      "Declare multiple const values to represent each state instead of mutating a single " +
-      "variable, and use immutable values that are not reassigned."
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
 }

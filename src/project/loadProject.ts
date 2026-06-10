@@ -41,8 +41,8 @@ class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectRe
   }
 }
 
-export const loadProject = (projectPath: string): Effect.Effect<LoadedWorkspace, Error> =>
-  Effect.gen(function* () {
+export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
+  Effect.fn("loadProject")(function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
     const configPath = yield* Option.match(
       Option.fromNullable(ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")),
@@ -57,57 +57,62 @@ export const loadProject = (projectPath: string): Effect.Effect<LoadedWorkspace,
     return { rootPath: path.dirname(configPath), projects }
   })
 
-const loadConfig = (
+const loadConfig: (
   configPath: string,
   ancestorConfigPaths: ReadonlySet<string>
-): Effect.Effect<ReadonlyArray<LoadedProject>, Error> =>
-  Effect.gen(function* () {
-    if (ancestorConfigPaths.has(configPath)) {
-      return yield* Effect.fail(new CircularProjectReferenceError({ configPath }))
-    }
+) => Effect.Effect<ReadonlyArray<LoadedProject>, Error> = Effect.fn("loadConfig")(function* (
+  configPath: string,
+  ancestorConfigPaths: ReadonlySet<string>
+) {
+  if (ancestorConfigPaths.has(configPath)) {
+    return yield* Effect.fail(new CircularProjectReferenceError({ configPath }))
+  }
 
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
+  const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
 
-    yield* Option.match(Option.fromNullable(configFile.error), {
-      onNone: () => Effect.succeed(void 0),
-      onSome: (error) =>
-        Effect.fail(new InvalidTsconfigError({ message: formatDiagnostics([error]) }))
-    })
-
-    const parsedConfig = ts.parseJsonConfigFileContent(
-      configFile.config,
-      ts.sys,
-      path.dirname(configPath)
-    )
-
-    if (parsedConfig.errors.length > 0) {
-      return yield* Effect.fail(
-        new InvalidTsconfigError({ message: formatDiagnostics(parsedConfig.errors) })
-      )
-    }
-
-    const references = parsedConfig.projectReferences ?? []
-    const hasNoOwnFiles = parsedConfig.fileNames.length === 0
-    const hasReferences = references.length > 0
-    const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
-
-    if (isSolutionStyleConfig) {
-      return yield* loadReferencedProjects(
-        references,
-        new Set(ancestorConfigPaths).add(configPath)
-      )
-    }
-
-    return [loadedProjectFromConfig(configPath, parsedConfig)]
+  yield* Option.match(Option.fromNullable(configFile.error), {
+    onNone: () => Effect.succeed(void 0),
+    onSome: (error) =>
+      Effect.fail(new InvalidTsconfigError({ message: formatDiagnostics([error]) }))
   })
 
-const loadReferencedProjects = (
+  const parsedConfig = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    path.dirname(configPath)
+  )
+
+  if (parsedConfig.errors.length > 0) {
+    return yield* Effect.fail(
+      new InvalidTsconfigError({ message: formatDiagnostics(parsedConfig.errors) })
+    )
+  }
+
+  const references = parsedConfig.projectReferences ?? []
+  const hasNoOwnFiles = parsedConfig.fileNames.length === 0
+  const hasReferences = references.length > 0
+  const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
+
+  if (isSolutionStyleConfig) {
+    return yield* loadReferencedProjects(
+      references,
+      new Set(ancestorConfigPaths).add(configPath)
+    )
+  }
+
+  return [loadedProjectFromConfig(configPath, parsedConfig)]
+})
+
+const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
   ancestorConfigPaths: ReadonlySet<string>
-): Effect.Effect<ReadonlyArray<LoadedProject>, Error> =>
-  Effect.forEach(references, (reference) =>
+) {
+  const projects = yield* Effect.forEach(references, (reference) =>
     loadConfig(ts.resolveProjectReferencePath(reference), ancestorConfigPaths)
-  ).pipe(Effect.map((projects) => projects.flat()))
+  )
+
+  return projects.flat()
+})
 
 const loadedProjectFromConfig = (
   configPath: string,

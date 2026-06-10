@@ -1,8 +1,8 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-callbacks"
 
@@ -23,7 +23,17 @@ export const noCallbacks: Rule = {
       nodeStream(context.sourceFile).pipe(
         Stream.filter(isCallbackStyleCandidate),
         Stream.filter((declaration) => isCallbackStyleDeclaration(context, declaration)),
-        Stream.map((declaration) => createMatch(context, declaration)),
+        Stream.map((declaration) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: declaration,
+            message:
+              "Avoid callback-style functions that accept a function argument and return void.",
+            hint:
+              "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
+              "own API as an Effect-returning function from the start."
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -217,28 +227,3 @@ const hasDifferentConstraintCallSignature = (
   return hasDifferentType ? hasCallSignature(checker, constraint, seen) : false
 }
 
-const createMatch = (
-  context: RuleContext,
-  declaration: CallbackStyleDeclaration
-): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = declaration.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: "Avoid callback-style functions that accept a function argument and return void.",
-    hint:
-      "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your own API " +
-      "as an Effect-returning function from the start."
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

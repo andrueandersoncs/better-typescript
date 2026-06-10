@@ -1,8 +1,8 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import type { Rule } from "./types.js"
 
 const ruleId = "prefer-implicit-return"
 
@@ -18,7 +18,16 @@ export const preferImplicitReturn: Rule = {
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isArrowFunction),
         Stream.filter(hasSingleValueReturnStatement),
-        Stream.map((arrowFunction) => createMatch(context, arrowFunction)),
+        Stream.map((arrowFunction) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: arrowFunction.body,
+            message: "Avoid arrow function block bodies that only return a value.",
+            hint:
+              "Replace this with an implicit return by removing the return statement and function " +
+              "body braces. Wrap object literals in parentheses when needed."
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -43,29 +52,3 @@ const isValueReturnStatement = (statement: ts.Statement): boolean =>
   ts.isReturnStatement(statement)
     ? Option.isSome(Option.fromNullable(statement.expression))
     : false
-
-const createMatch = (
-  context: RuleContext,
-  arrowFunction: ArrowFunctionWithBlockBody
-): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = arrowFunction.body.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: "Avoid arrow function block bodies that only return a value.",
-    hint:
-      "Replace this with an implicit return by removing the return statement and function " +
-      "body braces. Wrap object literals in parentheses when needed."
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

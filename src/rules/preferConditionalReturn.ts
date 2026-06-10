@@ -1,8 +1,9 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
@@ -23,7 +24,14 @@ export const preferConditionalReturn: Rule = {
         Stream.flatMap((block) =>
           Stream.fromIterable(conditionalReturnMatches(context, block))
         ),
-        Stream.map((match) => createMatch(context, match)),
+        Stream.map((match) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: match.ifStatement,
+            message: "Avoid if statements that only choose between two return values.",
+            hint: `Return a conditional expression instead: return ${match.returnExpression}.`
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -127,16 +135,6 @@ const containsYieldExpression = (node: ts.Node): boolean =>
 const containsChildYieldExpression = (node: ts.Node): boolean =>
   ts.forEachChild(node, containsYieldExpression) === true
 
-const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
-  if (!ts.isBlock(statement)) {
-    return statement
-  }
-
-  const hasOneStatement = statement.statements.length === 1
-
-  return hasOneStatement ? statement.statements[0] : statement
-}
-
 const conditionalExpressionText = (
   context: RuleContext,
   condition: ts.Expression,
@@ -192,32 +190,3 @@ const parenthesizedExpressionText = (
   expression: ts.Expression,
   sourceFile: ts.SourceFile
 ): string => `(${expression.getText(sourceFile)})`
-
-const unwrapExpression = (expression: ts.Expression): ts.Expression =>
-  ts.isParenthesizedExpression(expression)
-    ? unwrapExpression(expression.expression)
-    : expression
-
-const createMatch = (
-  context: RuleContext,
-  match: ConditionalReturnMatch
-): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = match.ifStatement.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: "Avoid if statements that only choose between two return values.",
-    hint: `Return a conditional expression instead: return ${match.returnExpression}.`
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

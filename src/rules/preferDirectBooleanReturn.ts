@@ -1,8 +1,9 @@
-import * as path from "node:path"
 import { Chunk, Effect, Match, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
 
@@ -24,7 +25,14 @@ export const preferDirectBooleanReturn: Rule = {
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isIfStatement),
         Stream.filterMap((ifStatement) => directBooleanReturnMatch(context, ifStatement)),
-        Stream.map((match) => createMatch(context, match)),
+        Stream.map((match) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: match.ifStatement,
+            message: `Avoid returning ${String(match.literalValue)} from a conditional branch.`,
+            hint: `Use the condition as the boolean value instead: return ${match.returnExpression}.`
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -70,16 +78,6 @@ const booleanReturnFromStatement = (
   })
 }
 
-const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
-  if (!ts.isBlock(statement)) {
-    return statement
-  }
-
-  const hasOneStatement = statement.statements.length === 1
-
-  return hasOneStatement ? statement.statements[0] : statement
-}
-
 const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
@@ -88,33 +86,4 @@ const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> 
     Match.when(ts.SyntaxKind.FalseKeyword, () => false),
     Match.option
   )
-}
-
-const unwrapExpression = (expression: ts.Expression): ts.Expression =>
-  ts.isParenthesizedExpression(expression)
-    ? unwrapExpression(expression.expression)
-    : expression
-
-const createMatch = (
-  context: RuleContext,
-  match: DirectBooleanReturnMatch
-): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = match.ifStatement.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: `Avoid returning ${String(match.literalValue)} from a conditional branch.`,
-    hint: `Use the condition as the boolean value instead: return ${match.returnExpression}.`
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
 }

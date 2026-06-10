@@ -1,8 +1,9 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { unwrapSingleStatementBlock } from "./tsNode.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
 
@@ -20,7 +21,17 @@ export const noDuplicateIfBodies: Rule = {
       nodeStream(context.sourceFile).pipe(
         Stream.filter(ts.isIfStatement),
         Stream.filterMap((ifStatement) => duplicateIfBodyMatch(context, ifStatement)),
-        Stream.map((match) => createMatch(context, match)),
+        Stream.map((match) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: match.ifStatement,
+            message: "Avoid if branches that repeat the body of the branch before them.",
+            hint:
+              "These branches are pseudo-duplicates: the bodies are identical and only the " +
+              "conditions differ. Combine them into a single branch: " +
+              `if (${match.combinedCondition}) { ... }.`
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -117,16 +128,6 @@ const tokenTexts = (sourceFile: ts.SourceFile, node: ts.Node): ReadonlyArray<str
     : children.flatMap((child) => tokenTexts(sourceFile, child))
 }
 
-const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
-  if (!ts.isBlock(statement)) {
-    return statement
-  }
-
-  const hasOneStatement = statement.statements.length === 1
-
-  return hasOneStatement ? statement.statements[0] : statement
-}
-
 const exitStatementKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.BreakStatement,
   ts.SyntaxKind.ContinueStatement,
@@ -159,26 +160,3 @@ const toDuplicateMatch = (
     ifStatement.expression.getText(context.sourceFile)
   ].join(" || ")
 })
-
-const createMatch = (context: RuleContext, match: DuplicateIfBodyMatch): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = match.ifStatement.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: "Avoid if branches that repeat the body of the branch before them.",
-    hint:
-      "These branches are pseudo-duplicates: the bodies are identical and only the conditions " +
-      `differ. Combine them into a single branch: if (${match.combinedCondition}) { ... }.`
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

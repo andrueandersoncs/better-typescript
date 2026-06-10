@@ -1,4 +1,5 @@
 import { noCallbacks } from "./noCallbacks.js"
+import { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
 import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
 import { noForOfLoops } from "./noForOfLoops.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
@@ -13,12 +14,14 @@ import { noThrow } from "./noThrow.js"
 import { noUndefined } from "./noUndefined.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
+import { preferEffectFn } from "./preferEffectFn.js"
 import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
 import { preferImplicitReturn } from "./preferImplicitReturn.js"
 import type { Rule } from "./types.js"
 
 export const rules: ReadonlyArray<Rule> = [
   preferEffectSchemaGuard,
+  preferEffectFn,
   preferConditionalReturn,
   preferDirectBooleanReturn,
   preferImplicitReturn,
@@ -31,6 +34,7 @@ export const rules: ReadonlyArray<Rule> = [
   noMutableVariableDeclarations,
   noNestedIfStatements,
   noDuplicateIfBodies,
+  noDuplicateFunctionNames,
   noCallbacks,
   noForOfLoops,
   noSwitchStatements,

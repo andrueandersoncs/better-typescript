@@ -12,22 +12,21 @@ const project = Options.directory("project", { exists: "yes" }).pipe(
   Options.withDefault(process.cwd())
 )
 
-const analyzeProject = (projectPath: string): Effect.Effect<string, Error> =>
-  Effect.gen(function* () {
-    const workspace = yield* loadProject(projectPath)
-    const matches = dedupeMatches(
-      workspace.projects.flatMap((loadedProject) => runRules(loadedProject, rules))
-    )
+const analyzeProject = Effect.fn("analyzeProject")(function* (projectPath: string) {
+  const workspace = yield* loadProject(projectPath)
+  const matches = dedupeMatches(
+    workspace.projects.flatMap((loadedProject) => runRules(loadedProject, rules))
+  )
 
-    if (matches.length === 0) {
-      return `No rule matches found in ${workspace.rootPath}.`
-    }
+  if (matches.length === 0) {
+    return `No rule matches found in ${workspace.rootPath}.`
+  }
 
-    yield* Effect.sync(() => {
-      process.exitCode = 1
-    })
-    return formatMatches(matches)
+  yield* Effect.sync(() => {
+    process.exitCode = 1
   })
+  return formatMatches(matches)
+})
 
 const dedupeMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<RuleMatch> => [
   ...new Map(matches.map((match) => [matchKey(match), match])).values()

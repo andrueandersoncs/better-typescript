@@ -1,8 +1,8 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-mutable-array-methods"
 
@@ -44,7 +44,18 @@ export const noMutableArrayMethods: Rule = {
         Stream.filterMap((callExpression) =>
           mutableArrayMethodCall(context, callExpression)
         ),
-        Stream.map((match) => createMatch(context, match)),
+        Stream.map((match) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: match.callExpression,
+            message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
+            hint:
+              "This is a sign that you're doing something fundamentally procedural when you should " +
+              "be taking a more functional approach. Use immutable array operations such as " +
+              "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
+              "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -157,30 +168,3 @@ const isApparentArrayType = (
 const differentType = (left: ts.Type, right: ts.Type): Option.Option<ts.Type> =>
   Option.liftPredicate((left: ts.Type) => left !== right)(left)
 
-const createMatch = (
-  context: RuleContext,
-  match: MutableArrayMethodCall
-): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = match.callExpression.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
-    hint:
-      "This is a sign that you're doing something fundamentally procedural when you should " +
-      "be taking a more functional approach. Use immutable array operations such as " +
-      "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
-      "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

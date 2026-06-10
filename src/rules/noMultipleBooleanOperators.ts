@@ -1,8 +1,9 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { childNodeStream, nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { unwrapExpression } from "./tsNode.js"
+import type { Rule } from "./types.js"
 
 const ruleId = "no-multiple-boolean-operators"
 
@@ -20,7 +21,16 @@ export const noMultipleBooleanOperators: Rule = {
         Stream.filter(ts.isExpression),
         Stream.filter(isBooleanOperatorRoot),
         Stream.filter(hasMultipleBooleanOperators),
-        Stream.map((expression) => createMatch(context, expression)),
+        Stream.map((expression) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: expression,
+            message: "Avoid combining more than one boolean operator in a single expression.",
+            hint:
+              "Declare multiple constant variables instead of combining operators into a " +
+              "single expression."
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -104,29 +114,3 @@ const nestedExpressionBoundaryKinds = new Set<ts.SyntaxKind>([
 
 const isNestedExpressionBoundary = (expression: ts.Expression): boolean =>
   nestedExpressionBoundaryKinds.has(expression.kind)
-
-const unwrapExpression = (expression: ts.Expression): ts.Expression =>
-  ts.isParenthesizedExpression(expression)
-    ? unwrapExpression(expression.expression)
-    : expression
-
-const createMatch = (context: RuleContext, expression: ts.Expression): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = expression.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: "Avoid combining more than one boolean operator in a single expression.",
-    hint: "Declare multiple constant variables instead of combining operators into a single expression."
-  }
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

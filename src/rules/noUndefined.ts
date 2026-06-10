@@ -1,8 +1,9 @@
-import * as path from "node:path"
 import { Chunk, Effect, Match, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { unwrapExpression } from "./tsNode.js"
+import type { Rule } from "./types.js"
 
 const ruleId = "no-undefined"
 
@@ -52,7 +53,14 @@ export const noUndefined: Rule = {
     Effect.runSync(
       nodeStream(context.sourceFile).pipe(
         Stream.flatMap((node) => Stream.fromIterable(undefinedUsageMatches(node))),
-        Stream.map((match) => createMatch(context, match)),
+        Stream.map((match) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: match.node,
+            message: messageForMatch(match),
+            hint: optionHint
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -226,26 +234,6 @@ const isUndefinedExpression = (expression: ts.Expression): boolean => {
   })
 }
 
-const unwrapExpression = (expression: ts.Expression): ts.Expression =>
-  ts.isParenthesizedExpression(expression)
-    ? unwrapExpression(expression.expression)
-    : expression
-
-const createMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = match.node.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: messageForMatch(match),
-    hint: optionHint
-  }
-}
-
 const messageForMatch = (match: UndefinedUsageMatch): string =>
   Match.value(match.kind).pipe(
     Match.when("parameter", () => "Avoid function parameters that accept undefined."),
@@ -258,9 +246,3 @@ const messageForMatch = (match: UndefinedUsageMatch): string =>
     Match.when("comparison", () => "Avoid comparing values against undefined."),
     Match.exhaustive
   )
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}

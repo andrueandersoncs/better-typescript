@@ -1,8 +1,8 @@
-import * as path from "node:path"
 import { Chunk, Effect, Option, Stream } from "effect"
 import * as ts from "typescript"
+import { createRuleMatch } from "./ruleMatch.js"
 import { nodeStream } from "./traverse.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-function-keyword"
 
@@ -19,7 +19,17 @@ export const noFunctionKeyword: Rule = {
       nodeStream(context.sourceFile).pipe(
         Stream.filter(isFunctionKeywordNode),
         Stream.filter((node) => isDisallowedFunctionKeyword(context, node)),
-        Stream.map((node) => createMatch(context, node)),
+        Stream.map((node) =>
+          createRuleMatch(context, {
+            ruleId,
+            node: functionKeywordToken(context.sourceFile, node),
+            message: "Avoid using the function keyword.",
+            hint:
+              "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+              "declarations only when overload signatures are required, and keep function* when " +
+              "generator semantics are required."
+          })
+        ),
         Stream.runCollect,
         Effect.map((matches) => Chunk.toReadonlyArray(matches))
       )
@@ -104,34 +114,7 @@ const isOverloadCandidate = (
   return [!isImplementation, hasNoBody].every(Boolean)
 }
 
-const createMatch = (context: RuleContext, node: FunctionKeywordNode): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = functionKeywordStart(sourceFile, node)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-
-  return {
-    ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
-    line: location.line + 1,
-    column: location.character + 1,
-    message: "Avoid using the function keyword.",
-    hint:
-      "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-      "declarations only when overload signatures are required, and keep function* when " +
-      "generator semantics are required."
-  }
-}
-
-const functionKeywordStart = (sourceFile: ts.SourceFile, node: FunctionKeywordNode): number => {
-  const functionKeyword = node
+const functionKeywordToken = (sourceFile: ts.SourceFile, node: FunctionKeywordNode): ts.Node =>
+  node
     .getChildren(sourceFile)
-    .find((child) => child.kind === ts.SyntaxKind.FunctionKeyword)
-
-  return functionKeyword?.getStart(sourceFile) ?? node.getStart(sourceFile)
-}
-
-const toRelativeFileName = (projectRoot: string, fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
-
-  return relative || fileName
-}
+    .find((child) => child.kind === ts.SyntaxKind.FunctionKeyword) ?? node
