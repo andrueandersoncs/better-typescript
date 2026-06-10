@@ -5,6 +5,7 @@ import { Console, Effect } from "effect"
 import { formatMatches } from "./output/formatMatches.js"
 import { loadProject } from "./project/loadProject.js"
 import { rules } from "./rules/index.js"
+import type { RuleMatch } from "./rules/index.js"
 import { runRules } from "./runner/runRules.js"
 
 const project = Options.directory("project", { exists: "yes" }).pipe(
@@ -13,11 +14,13 @@ const project = Options.directory("project", { exists: "yes" }).pipe(
 
 const analyzeProject = (projectPath: string): Effect.Effect<string, Error> =>
   Effect.gen(function* () {
-    const loadedProject = yield* loadProject(projectPath)
-    const matches = runRules(loadedProject, rules)
+    const workspace = yield* loadProject(projectPath)
+    const matches = dedupeMatches(
+      workspace.projects.flatMap((loadedProject) => runRules(loadedProject, rules))
+    )
 
     if (matches.length === 0) {
-      return `No rule matches found in ${loadedProject.rootPath}.`
+      return `No rule matches found in ${workspace.rootPath}.`
     }
 
     yield* Effect.sync(() => {
@@ -25,6 +28,13 @@ const analyzeProject = (projectPath: string): Effect.Effect<string, Error> =>
     })
     return formatMatches(matches)
   })
+
+const dedupeMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<RuleMatch> => [
+  ...new Map(matches.map((match) => [matchKey(match), match])).values()
+]
+
+const matchKey = (match: RuleMatch): string =>
+  [match.ruleId, match.fileName, match.line, match.column, match.message].join(":")
 
 const command = Command.make("better-typescript", { project }, ({ project }) =>
   analyzeProject(project).pipe(
