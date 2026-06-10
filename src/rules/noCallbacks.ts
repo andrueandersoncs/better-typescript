@@ -43,8 +43,9 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   const { typeNode, parent } = transparentCallableType(node, node.parent)
+  const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
-  if (ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)) {
+  if (isValueDeclaration) {
     const isTypeAnnotation = parent.type === typeNode
 
     return isTypeAnnotation && isCallableTypeAnnotation(Option.fromNullable(parent.initializer))
