@@ -1,9 +1,9 @@
-import { Chunk, Effect, Match, Option, Stream } from "effect"
+import { Match, Option } from "effect"
 import * as ts from "typescript"
+import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
-import type { Rule } from "./types.js"
+import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-undefined"
 
@@ -45,61 +45,6 @@ type UndefinedUsageMatch =
 const optionHint =
   "Use Effect's Option module to model optional values, and convert nullable boundaries " +
   "with Option.fromNullable."
-
-export const noUndefined: Rule = {
-  id: ruleId,
-  description: "Disallow undefined usage in favor of Effect Option.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.flatMap((node) => Stream.fromIterable(undefinedUsageMatches(node))),
-        Stream.map((match) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: match.node,
-            message: messageForMatch(match),
-            hint: optionHint
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
-}
-
-const undefinedUsageMatches = (node: ts.Node): ReadonlyArray<UndefinedUsageMatch> =>
-  [
-    ...parameterUndefinedUsageMatches(node),
-    ...returnTypeUndefinedUsageMatches(node),
-    ...returnExpressionUndefinedUsageMatches(node),
-    ...typeDeclarationUndefinedUsageMatches(node),
-    ...comparisonUndefinedUsageMatches(node)
-  ]
-
-const parameterUndefinedUsageMatches = (
-  node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> =>
-  isParameterAcceptingUndefined(node) ? [{ kind: "parameter", node }] : []
-
-const returnTypeUndefinedUsageMatches = (
-  node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> =>
-  isUndefinedReturnTypeDeclaration(node) ? [{ kind: "return-type", node }] : []
-
-const returnExpressionUndefinedUsageMatches = (
-  node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> =>
-  isUndefinedReturnExpression(node) ? [{ kind: "return-expression", node }] : []
-
-const typeDeclarationUndefinedUsageMatches = (
-  node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> =>
-  isUndefinedTypeDeclaration(node) ? [{ kind: "type-declaration", node }] : []
-
-const comparisonUndefinedUsageMatches = (
-  node: ts.Node
-): ReadonlyArray<UndefinedUsageMatch> =>
-  isUndefinedComparison(node) ? [{ kind: "comparison", node }] : []
 
 const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression =>
   ts.isBinaryExpression(node) ? comparesAgainstUndefined(node) : false
@@ -246,3 +191,51 @@ const messageForMatch = (match: UndefinedUsageMatch): string =>
     Match.when("comparison", () => "Avoid comparing values against undefined."),
     Match.exhaustive
   )
+
+const undefinedMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch =>
+  createRuleMatch(context, {
+    ruleId,
+    node: match.node,
+    message: messageForMatch(match),
+    hint: optionHint
+  })
+
+const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.ArrowFunction,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.MethodSignature,
+  ts.SyntaxKind.CallSignature,
+  ts.SyntaxKind.FunctionType,
+  ts.SyntaxKind.GetAccessor
+]
+
+// One listener per undefined-usage category. Each guard already narrows to the
+// node type its category reports on, so the listeners compose the same matches
+// the old whole-file scan produced, in the same per-node order.
+export const noUndefined: Rule = {
+  id: ruleId,
+  description: "Disallow undefined usage in favor of Effect Option.",
+  check: combineAll([
+    onNode([ts.SyntaxKind.Parameter], isParameterAcceptingUndefined, (node, context) => [
+      undefinedMatch(context, { kind: "parameter", node })
+    ]),
+    onNode(returnTypeDeclarationKinds, isUndefinedReturnTypeDeclaration, (node, context) => [
+      undefinedMatch(context, { kind: "return-type", node })
+    ]),
+    onNode(
+      [ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction],
+      isUndefinedReturnExpression,
+      (node, context) => [undefinedMatch(context, { kind: "return-expression", node })]
+    ),
+    onNode(
+      [ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType],
+      isUndefinedTypeDeclaration,
+      (node, context) => [undefinedMatch(context, { kind: "type-declaration", node })]
+    ),
+    onNode([ts.SyntaxKind.BinaryExpression], isUndefinedComparison, (node, context) => [
+      undefinedMatch(context, { kind: "comparison", node })
+    ])
+  ])
+}

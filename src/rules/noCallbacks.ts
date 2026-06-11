@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-callbacks"
@@ -15,31 +15,6 @@ type CallbackStyleDeclaration =
   | ts.CallSignatureDeclaration
   | ts.FunctionTypeNode
 
-export const noCallbacks: Rule = {
-  id: ruleId,
-  description: "Disallow callback-style functions returning void in favor of Effect.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(isCallbackStyleCandidate),
-        Stream.filter((declaration) => isCallbackStyleDeclaration(context, declaration)),
-        Stream.map((declaration) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: declaration,
-            message:
-              "Avoid callback-style functions that accept a function argument and return void.",
-            hint:
-              "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-              "own API as an Effect-returning function from the start."
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
-}
-
 const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration =>
   [
     ts.isFunctionDeclaration(node),
@@ -50,6 +25,37 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
     ts.isCallSignatureDeclaration(node),
     ts.isFunctionTypeNode(node) ? isCallableValueType(node) : false
   ].some(Boolean)
+
+export const noCallbacks: Rule = {
+  id: ruleId,
+  description: "Disallow callback-style functions returning void in favor of Effect.",
+  check: onNode(
+    [
+      ts.SyntaxKind.FunctionDeclaration,
+      ts.SyntaxKind.FunctionExpression,
+      ts.SyntaxKind.ArrowFunction,
+      ts.SyntaxKind.MethodDeclaration,
+      ts.SyntaxKind.MethodSignature,
+      ts.SyntaxKind.CallSignature,
+      ts.SyntaxKind.FunctionType
+    ],
+    isCallbackStyleCandidate,
+    (declaration, context) =>
+      isCallbackStyleDeclaration(context, declaration)
+        ? [
+            createRuleMatch(context, {
+              ruleId,
+              node: declaration,
+              message:
+                "Avoid callback-style functions that accept a function argument and return void.",
+              hint:
+                "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
+                "own API as an Effect-returning function from the start."
+            })
+          ]
+        : []
+  )
+}
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   const { typeNode, parent } = transparentCallableType(node, node.parent)

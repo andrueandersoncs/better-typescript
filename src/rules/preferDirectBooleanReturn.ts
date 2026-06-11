@@ -1,7 +1,7 @@
-import { Chunk, Effect, Match, Option, Stream } from "effect"
+import { Match, Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
 import type { Rule, RuleContext } from "./types.js"
 
@@ -20,23 +20,19 @@ interface DirectBooleanReturnMatch {
 export const preferDirectBooleanReturn: Rule = {
   id: ruleId,
   description: "Prefer returning boolean expressions directly instead of conditional boolean literals.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isIfStatement),
-        Stream.filterMap((ifStatement) => directBooleanReturnMatch(context, ifStatement)),
-        Stream.map((match) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: match.ifStatement,
-            message: `Avoid returning ${String(match.literalValue)} from a conditional branch.`,
-            hint: `Use the condition as the boolean value instead: return ${match.returnExpression}.`
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, (ifStatement, context) =>
+    Option.match(directBooleanReturnMatch(context, ifStatement), {
+      onNone: () => [],
+      onSome: (match) => [
+        createRuleMatch(context, {
+          ruleId,
+          node: match.ifStatement,
+          message: `Avoid returning ${String(match.literalValue)} from a conditional branch.`,
+          hint: `Use the condition as the boolean value instead: return ${match.returnExpression}.`
+        })
+      ]
+    })
+  )
 }
 
 const directBooleanReturnMatch = (

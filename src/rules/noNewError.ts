@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule } from "./types.js"
 
 const ruleId = "no-new-error"
@@ -9,12 +9,9 @@ const ruleId = "no-new-error"
 export const noNewError: Rule = {
   id: ruleId,
   description: "Disallow direct Error construction in favor of Effect Schema tagged errors.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isNewExpression),
-        Stream.filter(isBareErrorConstruction),
-        Stream.map((newExpression) =>
+  check: onNode([ts.SyntaxKind.NewExpression], ts.isNewExpression, (newExpression, context) =>
+    isBareErrorConstruction(newExpression)
+      ? [
           createRuleMatch(context, {
             ruleId,
             node: newExpression,
@@ -23,11 +20,9 @@ export const noNewError: Rule = {
               "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
               "instead of bare new Error()."
           })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+        ]
+      : []
+  )
 }
 
 const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean =>

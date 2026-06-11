@@ -1,7 +1,7 @@
-import { Chunk, Effect, Match, Option, Stream } from "effect"
+import { Match, Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-mutable-variable-declarations"
@@ -16,14 +16,13 @@ interface MutableVariableDeclarationMatch {
 export const noMutableVariableDeclarations: Rule = {
   id: ruleId,
   description: "Disallow let and var declarations in favor of immutable const bindings.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isVariableDeclarationList),
-        Stream.filterMap((declarationList) =>
-          mutableVariableDeclarationMatch(context, declarationList)
-        ),
-        Stream.map((match) =>
+  check: onNode(
+    [ts.SyntaxKind.VariableDeclarationList],
+    ts.isVariableDeclarationList,
+    (declarationList, context) =>
+      Option.match(mutableVariableDeclarationMatch(context, declarationList), {
+        onNone: () => [],
+        onSome: (match) => [
           createRuleMatch(context, {
             ruleId,
             node: match.declarationList,
@@ -32,11 +31,9 @@ export const noMutableVariableDeclarations: Rule = {
               "Declare multiple const values to represent each state instead of mutating a single " +
               "variable, and use immutable values that are not reassigned."
           })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+        ]
+      })
+  )
 }
 
 const mutableVariableDeclarationMatch = (

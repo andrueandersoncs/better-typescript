@@ -1,7 +1,7 @@
-import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { childNodeStream, nodeStream } from "./traverse.js"
+import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
@@ -10,37 +10,26 @@ const ruleId = "prefer-effect-schema-guard"
 export const preferEffectSchemaGuard: Rule = {
   id: ruleId,
   description: "Prefer Effect Schema guards over string-key in-operator checks.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isIfStatement),
-        Stream.flatMap((ifStatement) => conditionMatchStream(context, ifStatement.expression)),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, (ifStatement, context) =>
+    conditionMatches(context, ifStatement.expression)
+  )
 }
 
-const conditionMatchStream = (
+const conditionMatches = (
   context: RuleContext,
   expression: ts.Expression
-): Stream.Stream<RuleMatch> =>
-  expressionStream(expression).pipe(
-    Stream.filter(isStringKeyInExpression),
-    Stream.map((match) => schemaGuardMatch(context, match))
-  )
+): ReadonlyArray<RuleMatch> =>
+  conditionExpressions(expression)
+    .filter(isStringKeyInExpression)
+    .map((match) => schemaGuardMatch(context, match))
 
-const expressionStream = (expression: ts.Expression): Stream.Stream<ts.Expression> => {
+const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
 
-  return Stream.succeed(unwrapped).pipe(
-    Stream.concat(
-      childNodeStream(unwrapped).pipe(
-        Stream.filter(ts.isExpression),
-        Stream.flatMap(expressionStream)
-      )
-    )
-  )
+  return [
+    unwrapped,
+    ...astChildren(unwrapped).filter(ts.isExpression).flatMap(conditionExpressions)
+  ]
 }
 
 const isStringKeyInExpression = (

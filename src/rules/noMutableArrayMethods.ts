@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-mutable-array-methods"
@@ -37,29 +37,23 @@ const mutableArrayMethods = new Set<MutableArrayMethod>([
 export const noMutableArrayMethods: Rule = {
   id: ruleId,
   description: "Disallow mutable array methods in favor of immutable array operations.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isCallExpression),
-        Stream.filterMap((callExpression) =>
-          mutableArrayMethodCall(context, callExpression)
-        ),
-        Stream.map((match) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: match.callExpression,
-            message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
-            hint:
-              "This is a sign that you're doing something fundamentally procedural when you should " +
-              "be taking a more functional approach. Use immutable array operations such as " +
-              "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
-              "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+  check: onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, (callExpression, context) =>
+    Option.match(mutableArrayMethodCall(context, callExpression), {
+      onNone: () => [],
+      onSome: (match) => [
+        createRuleMatch(context, {
+          ruleId,
+          node: match.callExpression,
+          message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
+          hint:
+            "This is a sign that you're doing something fundamentally procedural when you should " +
+            "be taking a more functional approach. Use immutable array operations such as " +
+            "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
+            "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
+        })
+      ]
+    })
+  )
 }
 
 const mutableArrayMethodCall = (

@@ -1,8 +1,8 @@
 import * as path from "node:path"
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import { functionInitializer } from "./tsNode.js"
 import type { FunctionInitializer } from "./tsNode.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -17,18 +17,21 @@ interface DeclaredFunction {
 export const preferEffectFn: Rule = {
   id: ruleId,
   description: "Require Effect.fn for functions with parameters that return an Effect.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isVariableDeclaration),
-        Stream.filterMap(effectFnCandidate),
-        Stream.filter(hasParameters),
-        Stream.filter((candidate) => returnsEffect(context, candidate)),
-        Stream.map((candidate) => effectFnMatch(context, candidate)),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
+  check: onNode(
+    [ts.SyntaxKind.VariableDeclaration],
+    ts.isVariableDeclaration,
+    (declaration, context) =>
+      Option.match(
+        effectFnCandidate(declaration).pipe(
+          Option.filter(hasParameters),
+          Option.filter((candidate) => returnsEffect(context, candidate))
+        ),
+        {
+          onNone: () => [],
+          onSome: (candidate) => [effectFnMatch(context, candidate)]
+        }
       )
-    )
+  )
 }
 
 const effectFnCandidate = (

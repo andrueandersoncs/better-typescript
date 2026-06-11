@@ -8,25 +8,20 @@
 //
 // Methodology:
 // - ts.createProgram() runs once in setup; it is project-load cost, not rule cost.
-// - One task per rule; one iteration = rule.check() over every non-skipped source file.
+// - One task per rule: compileRules([rule]) interpreted over every non-skipped source
+//   file (solo rules pay their own single-pass walk). "ALL rules (runRules)" is the
+//   real runner: all rules fused into one dispatch table and one walk per file.
 // - An untimed pass first warms the TypeChecker caches and records match counts, so
 //   timed iterations measure steady-state rule cost (first-resolution cost excluded).
-// - "share" = this rule's mean divided by the sum of all per-rule means: where a full
-//   lint pass spends its time. "ALL rules (runRules)" is the real runner end to end.
+// - "share" = this rule's mean divided by the sum of all per-rule means: each rule's
+//   relative weight. With fusion, solo means deliberately sum to MORE than the fused
+//   all-rules time — the gap is the shared-traversal win.
 //
-// Sample output (Apple Silicon, fixtures, 2026-06-10):
-// ┌─────────┬────────────────────────────────────┬────────────────┬──────────┬─────────┬────────┬─────────┐
-// │ (index) │ rule                               │ mean (ms/pass) │ margin   │ ops/sec │ share  │ matches │
-// ├─────────┼────────────────────────────────────┼────────────────┼──────────┼─────────┼────────┼─────────┤
-// │ 0       │ 'ALL rules (runRules)'             │ '1560.761'     │ '±0.26%' │ '1'     │ ''     │ ''      │
-// │ 1       │ 'no-undefined'                     │ '138.372'      │ '±1.06%' │ '7'     │ '8.8%' │ 2       │
-// │ 2       │ 'no-multiple-boolean-operators'    │ '99.194'       │ '±1.58%' │ '10'    │ '6.3%' │ 7       │
-// │ ...     │ (most rules cluster at ~80ms — the nodeStream traversal floor)                     │ ...     │
-// │ 19      │ 'no-duplicate-function-names'      │ '0.246'        │ '±1.74%' │ '4,561' │ '0.0%' │ 2       │
-// └─────────┴────────────────────────────────────┴────────────────┴──────────┴─────────┴────────┴─────────┘
-// Reading: every nodeStream-based rule pays ~80ms/pass over 3 small files regardless of
-// what it checks, while the one rule that walks statements directly runs in 0.25ms —
-// the per-node Effect Stream traversal dominates total lint time, not rule logic.
+// History (fixtures, Apple Silicon, 2026-06-10):
+// - Stream-per-node traversal, one walk per rule:   ALL rules 1560.761 ms/pass,
+//   typical rule ~80 ms (the traversal floor), no-undefined 138 ms.
+// - RuleCheck algebra + compileRules single pass:   ALL rules 0.921 ms/pass (~1700x),
+//   every rule 0.16-0.37 ms; solo sum 3.822 ms vs fused 0.921 ms = 4.1x fusion win.
 
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -35,7 +30,8 @@ import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
 import { loadProject } from "../src/project/loadProject.js"
 import { rules } from "../src/rules/index.js"
-import type { Rule, RuleContext } from "../src/rules/index.js"
+import type { Rule, RuleContext, RuleMatch } from "../src/rules/index.js"
+import { compileRules } from "../src/runner/compileRules.js"
 import { runRules, shouldSkipSourceFile } from "../src/runner/runRules.js"
 
 const benchDir = path.dirname(fileURLToPath(import.meta.url))
@@ -76,17 +72,27 @@ const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap((project
     }))
 })
 
-const checkAllFiles = (rule: Rule): number =>
-  contexts.reduce((total, context) => total + rule.check(context).length, 0)
+interface SoloRule {
+  readonly rule: Rule
+  readonly checkSourceFile: (context: RuleContext) => ReadonlyArray<RuleMatch>
+}
 
-const matchCounts = new Map(benchedRules.map((rule) => [rule.id, checkAllFiles(rule)]))
+const soloRules: ReadonlyArray<SoloRule> = benchedRules.map((rule) => ({
+  rule,
+  checkSourceFile: compileRules([rule])
+}))
+
+const checkAllFiles = (solo: SoloRule): number =>
+  contexts.reduce((total, context) => total + solo.checkSourceFile(context).length, 0)
+
+const matchCounts = new Map(soloRules.map((solo) => [solo.rule.id, checkAllFiles(solo)]))
 
 const allRulesTask = "ALL rules (runRules)"
 const bench = new Bench({ time: 1000 })
 
-benchedRules.forEach((rule) => {
-  bench.add(rule.id, () => {
-    checkAllFiles(rule)
+soloRules.forEach((solo) => {
+  bench.add(solo.rule.id, () => {
+    checkAllFiles(solo)
   })
 })
 
@@ -130,3 +136,12 @@ console.table(
     matches: matchCounts.get(task.name) ?? ""
   }))
 )
+
+if (benchedRules.length > 1) {
+  const fusedMs = meanLatencyMs(allRulesTask)
+  console.log(
+    `Sum of solo rule means: ${totalRuleTimeMs.toFixed(3)} ms/pass; ` +
+      `fused all-rules pass: ${fusedMs.toFixed(3)} ms/pass ` +
+      `(${(totalRuleTimeMs / fusedMs).toFixed(1)}x shared-traversal win)`
+  )
+}

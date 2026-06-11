@@ -1,5 +1,6 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onFile } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { functionInitializer } from "./tsNode.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
@@ -23,15 +24,14 @@ export const noDuplicateFunctionNames: Rule = {
   id: ruleId,
   description:
     "Disallow top-level functions that duplicate a function name declared in another file.",
-  check: (context) =>
-    Effect.runSync(
-      Stream.fromIterable(topLevelFunctions(context.sourceFile)).pipe(
-        Stream.filterMap((candidate) => duplicateFunction(context, candidate)),
-        Stream.map((duplicate) => duplicateFunctionMatch(context, duplicate)),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
+  check: onFile((context) =>
+    topLevelFunctions(context.sourceFile).flatMap((candidate) =>
+      Option.match(duplicateFunction(context, candidate), {
+        onNone: () => [],
+        onSome: (duplicate) => [duplicateFunctionMatch(context, duplicate)]
+      })
     )
+  )
 }
 
 const duplicateFunction = (

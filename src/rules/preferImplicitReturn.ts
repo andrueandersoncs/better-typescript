@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule } from "./types.js"
 
 const ruleId = "prefer-implicit-return"
@@ -13,12 +13,9 @@ type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
 export const preferImplicitReturn: Rule = {
   id: ruleId,
   description: "Prefer implicit arrow function returns over block bodies with a single return.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isArrowFunction),
-        Stream.filter(hasSingleValueReturnStatement),
-        Stream.map((arrowFunction) =>
+  check: onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, (arrowFunction, context) =>
+    hasSingleValueReturnStatement(arrowFunction)
+      ? [
           createRuleMatch(context, {
             ruleId,
             node: arrowFunction.body,
@@ -27,11 +24,9 @@ export const preferImplicitReturn: Rule = {
               "Replace this with an implicit return by removing the return statement and function " +
               "body braces. Wrap object literals in parentheses when needed."
           })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+        ]
+      : []
+  )
 }
 
 const hasSingleValueReturnStatement = (

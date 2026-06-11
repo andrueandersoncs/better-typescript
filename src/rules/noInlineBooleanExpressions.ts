@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
 import type { Rule } from "./types.js"
 
@@ -10,13 +10,11 @@ const ruleId = "no-inline-boolean-expressions"
 export const noInlineBooleanExpressions: Rule = {
   id: ruleId,
   description: "Disallow boolean operators inline in an if statement condition.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isIfStatement),
-        Stream.map((ifStatement) => unwrapExpression(ifStatement.expression)),
-        Stream.filter(isLogicalOperatorExpression),
-        Stream.map((expression) =>
+  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, (ifStatement, context) => {
+    const expression = unwrapExpression(ifStatement.expression)
+
+    return isLogicalOperatorExpression(expression)
+      ? [
           createRuleMatch(context, {
             ruleId,
             node: expression,
@@ -25,11 +23,9 @@ export const noInlineBooleanExpressions: Rule = {
               "Extract the expression into a well-named const variable declaration above the if " +
               "statement and use that variable in the if condition."
           })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+        ]
+      : []
+  })
 }
 
 const isLogicalOperatorExpression = (expression: ts.Expression): boolean =>

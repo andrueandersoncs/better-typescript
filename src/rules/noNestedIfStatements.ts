@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule } from "./types.js"
 
 const ruleId = "no-nested-if-statements"
@@ -9,12 +9,9 @@ const ruleId = "no-nested-if-statements"
 export const noNestedIfStatements: Rule = {
   id: ruleId,
   description: "Disallow nested if statements in favor of boolean operators or early returns.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isIfStatement),
-        Stream.filter(isNestedIfStatement),
-        Stream.map((ifStatement) =>
+  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, (ifStatement, context) =>
+    isNestedIfStatement(ifStatement)
+      ? [
           createRuleMatch(context, {
             ruleId,
             node: ifStatement,
@@ -23,11 +20,9 @@ export const noNestedIfStatements: Rule = {
               "Combine related conditions with boolean operators, or use an early return so this " +
               "condition can remain a single-level if statement."
           })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+        ]
+      : []
+  )
 }
 
 const isNestedIfStatement = (ifStatement: ts.IfStatement): boolean =>

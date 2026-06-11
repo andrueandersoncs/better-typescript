@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
 import type { Rule, RuleContext } from "./types.js"
 
@@ -17,25 +17,16 @@ export const preferConditionalReturn: Rule = {
   id: ruleId,
   description:
     "Prefer conditional return expressions over if statements that choose between two values.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isBlock),
-        Stream.flatMap((block) =>
-          Stream.fromIterable(conditionalReturnMatches(context, block))
-        ),
-        Stream.map((match) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: match.ifStatement,
-            message: "Avoid if statements that only choose between two return values.",
-            hint: `Return a conditional expression instead: return ${match.returnExpression}.`
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
+  check: onNode([ts.SyntaxKind.Block], ts.isBlock, (block, context) =>
+    conditionalReturnMatches(context, block).map((match) =>
+      createRuleMatch(context, {
+        ruleId,
+        node: match.ifStatement,
+        message: "Avoid if statements that only choose between two return values.",
+        hint: `Return a conditional expression instead: return ${match.returnExpression}.`
+      })
     )
+  )
 }
 
 const conditionalReturnMatches = (

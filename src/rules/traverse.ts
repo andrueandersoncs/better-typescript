@@ -1,12 +1,14 @@
-import { Stream } from "effect"
 import * as ts from "typescript"
 
-export const nodeStream = (node: ts.Node): Stream.Stream<ts.Node> =>
-  Stream.succeed(node).pipe(
-    Stream.concat(childNodeStream(node).pipe(Stream.flatMap(nodeStream)))
-  )
+// ts.forEachChild is the fast child enumerator (AST children only, no tokens), but it
+// is callback-shaped; the Map accumulator turns it into a value without array mutation.
+// The callback must return undefined, not the Map, or forEachChild would stop early.
+export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
+  const children = new Map<number, ts.Node>()
 
-export const childNodeStream = (node: ts.Node): Stream.Stream<ts.Node> =>
-  Stream.fromIterable(childNodes(node))
+  ts.forEachChild(node, (child) => {
+    children.set(children.size, child)
+  })
 
-const childNodes = (node: ts.Node): ReadonlyArray<ts.Node> => node.getChildren()
+  return [...children.values()]
+}

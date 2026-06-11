@@ -1,7 +1,8 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { childNodeStream, nodeStream } from "./traverse.js"
+import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
 import type { Rule } from "./types.js"
 
@@ -12,29 +13,48 @@ type BooleanOperatorExpression =
   | ts.PrefixUnaryExpression
   | ts.ConditionalExpression
 
+const isBooleanOperatorExpression = (
+  node: ts.Node
+): node is BooleanOperatorExpression => {
+  const isBinaryBooleanOperator =
+    ts.isBinaryExpression(node) && isBooleanBinaryOperator(node.operatorToken.kind)
+  const isUnaryBooleanOperator = isUnaryBooleanOperatorExpression(node)
+
+  const isTernaryOperator = ts.isConditionalExpression(node)
+
+  return [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator].some(Boolean)
+}
+
 export const noMultipleBooleanOperators: Rule = {
   id: ruleId,
   description: "Disallow combining multiple boolean operators in a single expression.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isExpression),
-        Stream.filter(isBooleanOperatorRoot),
-        Stream.filter(hasMultipleBooleanOperators),
-        Stream.map((expression) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: expression,
-            message: "Avoid combining more than one boolean operator in a single expression.",
-            hint:
-              "Declare multiple constant variables instead of combining operators into a " +
-              "single expression."
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+  check: onNode(
+    [
+      ts.SyntaxKind.BinaryExpression,
+      ts.SyntaxKind.PrefixUnaryExpression,
+      ts.SyntaxKind.ConditionalExpression
+    ],
+    isBooleanOperatorExpression,
+    (expression, context) => {
+      const isReportableRoot = [
+        isBooleanOperatorRoot(expression),
+        hasMultipleBooleanOperators(expression)
+      ].every(Boolean)
+
+      return isReportableRoot
+        ? [
+            createRuleMatch(context, {
+              ruleId,
+              node: expression,
+              message: "Avoid combining more than one boolean operator in a single expression.",
+              hint:
+                "Declare multiple constant variables instead of combining operators into a " +
+                "single expression."
+            })
+          ]
+        : []
+    }
+  )
 }
 
 const isBooleanOperatorRoot = (expression: ts.Expression): boolean => {
@@ -55,13 +75,9 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
     return ownCount
   }
 
-  const childCount = Effect.runSync(
-    childNodeStream(unwrapped).pipe(
-      Stream.filter(ts.isExpression),
-      Stream.map(booleanOperatorCount),
-      Stream.runFold(0, (total, count) => total + count)
-    )
-  )
+  const childCount = astChildren(unwrapped)
+    .filter(ts.isExpression)
+    .reduce((total, child) => total + booleanOperatorCount(child), 0)
 
   return ownCount + childCount
 }
@@ -74,18 +90,6 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
     onSome: (parent) =>
       [isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent)].some(Boolean)
   })
-}
-
-const isBooleanOperatorExpression = (
-  node: ts.Node
-): node is BooleanOperatorExpression => {
-  const isBinaryBooleanOperator =
-    ts.isBinaryExpression(node) && isBooleanBinaryOperator(node.operatorToken.kind)
-  const isUnaryBooleanOperator = isUnaryBooleanOperatorExpression(node)
-
-  const isTernaryOperator = ts.isConditionalExpression(node)
-
-  return [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator].some(Boolean)
 }
 
 const isUnaryBooleanOperatorExpression = (

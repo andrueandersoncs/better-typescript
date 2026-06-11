@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import type { Rule, RuleContext } from "./types.js"
 
 const ruleId = "no-function-keyword"
@@ -11,33 +11,31 @@ type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
   readonly body: NonNullable<ts.FunctionDeclaration["body"]>
 }
 
+const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
+  ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+
 export const noFunctionKeyword: Rule = {
   id: ruleId,
   description: "Disallow non-generator function declarations in favor of const arrow functions.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(isFunctionKeywordNode),
-        Stream.filter((node) => isDisallowedFunctionKeyword(context, node)),
-        Stream.map((node) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: functionKeywordToken(context.sourceFile, node),
-            message: "Avoid using the function keyword.",
-            hint:
-              "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-              "declarations only when overload signatures are required, and keep function* when " +
-              "generator semantics are required."
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+  check: onNode(
+    [ts.SyntaxKind.FunctionDeclaration, ts.SyntaxKind.FunctionExpression],
+    isFunctionKeywordNode,
+    (node, context) =>
+      isDisallowedFunctionKeyword(context, node)
+        ? [
+            createRuleMatch(context, {
+              ruleId,
+              node: functionKeywordToken(context.sourceFile, node),
+              message: "Avoid using the function keyword.",
+              hint:
+                "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+                "declarations only when overload signatures are required, and keep function* when " +
+                "generator semantics are required."
+            })
+          ]
+        : []
+  )
 }
-
-const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
-  ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
 const isDisallowedFunctionKeyword = (
   context: RuleContext,

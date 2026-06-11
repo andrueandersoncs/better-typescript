@@ -1,7 +1,7 @@
-import { Chunk, Effect, Option, Stream } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { nodeStream } from "./traverse.js"
 import { unwrapSingleStatementBlock } from "./tsNode.js"
 import type { Rule, RuleContext } from "./types.js"
 
@@ -16,26 +16,22 @@ export const noDuplicateIfBodies: Rule = {
   id: ruleId,
   description:
     "Disallow if branches that duplicate the body of the branch directly before them.",
-  check: (context) =>
-    Effect.runSync(
-      nodeStream(context.sourceFile).pipe(
-        Stream.filter(ts.isIfStatement),
-        Stream.filterMap((ifStatement) => duplicateIfBodyMatch(context, ifStatement)),
-        Stream.map((match) =>
-          createRuleMatch(context, {
-            ruleId,
-            node: match.ifStatement,
-            message: "Avoid if branches that repeat the body of the branch before them.",
-            hint:
-              "These branches are pseudo-duplicates: the bodies are identical and only the " +
-              "conditions differ. Combine them into a single branch: " +
-              `if (${match.combinedCondition}) { ... }.`
-          })
-        ),
-        Stream.runCollect,
-        Effect.map((matches) => Chunk.toReadonlyArray(matches))
-      )
-    )
+  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, (ifStatement, context) =>
+    Option.match(duplicateIfBodyMatch(context, ifStatement), {
+      onNone: () => [],
+      onSome: (match) => [
+        createRuleMatch(context, {
+          ruleId,
+          node: match.ifStatement,
+          message: "Avoid if branches that repeat the body of the branch before them.",
+          hint:
+            "These branches are pseudo-duplicates: the bodies are identical and only the " +
+            "conditions differ. Combine them into a single branch: " +
+            `if (${match.combinedCondition}) { ... }.`
+        })
+      ]
+    })
+  )
 }
 
 const duplicateIfBodyMatch = (
