@@ -3,15 +3,10 @@
 // match-construction path is exercised — not just its traversal/filter path.
 // This file must stay valid TypeScript under strict mode; violations are lint-level only.
 
-// Local phantom type named `Effect` — prefer-effect-fn matches on the return type's
-// symbol name, so this triggers the rule without depending on the effect package.
-export interface Effect<A, E, R> {
-  readonly success: A
-  readonly failure: E
-  readonly requirements: R
-}
-
-declare const succeed: <A>(value: A) => Effect<A, never, never>
+// prefer-effect-fn requires the `Effect` symbol to be declared in a file named
+// Effect.ts (or Effect.d.ts), so the phantom lives in the sibling ./Effect.ts module.
+import type { Effect } from "./Effect.js"
+import { succeed } from "./Effect.js"
 
 // prefer-effect-fn: variable-declared function with parameters returning an Effect.
 export const fetchUser = (id: string): Effect<string, never, never> => succeed(id)

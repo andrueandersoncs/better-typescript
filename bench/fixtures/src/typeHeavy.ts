@@ -3,6 +3,9 @@
 // prefer-effect-fn, no-callbacks): generics, unions, tuples, and method names that
 // collide with Array.prototype mutators on non-array receivers.
 
+import type { Effect } from "./Effect.js"
+import { fromValue } from "./Effect.js"
+
 type Primitive = string | number | boolean
 
 interface TreeNode<T> {
@@ -71,15 +74,8 @@ export const churnStack = (iterations: number): number => {
   return stack.pop()
 }
 
-// Local phantom Effect type (matched by name): checker-resolved generic returns.
-interface Effect<A, E, R> {
-  readonly success: A
-  readonly failure: E
-  readonly requirements: R
-}
-
-declare const fromValue: <A>(value: A) => Effect<A, never, never>
-
+// Phantom Effect from ./Effect.ts: checker-resolved generic returns exercise
+// prefer-effect-fn's symbol resolution on an instantiated generic type.
 export const mapTree = <T extends Primitive, U extends Primitive>(
   tree: TreeNode<T>,
   transform: (value: T) => U
