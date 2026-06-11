@@ -1,6 +1,7 @@
 import type * as ts from "typescript"
 import type { LoadedProject } from "../project/loadProject.js"
-import type { Rule, RuleContext, RuleMatch } from "../rules/index.js"
+import { RuleContext } from "../rules/index.js"
+import type { Rule, RuleMatch } from "../rules/index.js"
 import { compileRules } from "./compileRules.js"
 
 const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean =>
@@ -8,12 +9,13 @@ const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean =>
 
 const contextForSourceFile =
   (loadedProject: LoadedProject, checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile): RuleContext => ({
-    program: loadedProject.program,
-    checker,
-    projectRoot: loadedProject.rootPath,
-    sourceFile
-  })
+  (sourceFile: ts.SourceFile): RuleContext =>
+    new RuleContext({
+      program: loadedProject.program,
+      checker,
+      projectRoot: loadedProject.rootPath,
+      sourceFile
+    })
 
 export const runRules = (
   loadedProject: LoadedProject,

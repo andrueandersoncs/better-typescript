@@ -7,11 +7,6 @@ import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
 
-interface DuplicateIfBodyMatch {
-  readonly ifStatement: ts.IfStatement
-  readonly combinedCondition: string
-}
-
 const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean =>
   Option.isNone(Option.fromNullable(ifStatement.elseStatement))
 
@@ -71,34 +66,32 @@ const blockExitsScope = (block: ts.Block): boolean =>
 const lastStatement = (block: ts.Block): Option.Option<ts.Statement> =>
   Option.fromNullable(block.statements[block.statements.length - 1])
 
-const toDuplicateMatch = (
+const combinedConditionText = (
   context: RuleContext,
   firstIfStatement: ts.IfStatement,
   ifStatement: ts.IfStatement
-): DuplicateIfBodyMatch => ({
-  ifStatement,
-  combinedCondition: [
+): string =>
+  [
     firstIfStatement.expression.getText(context.sourceFile),
     ifStatement.expression.getText(context.sourceFile)
   ].join(" || ")
-})
 
 const guardDuplicate =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
-  (previousIfStatement: ts.IfStatement): Option.Option<DuplicateIfBodyMatch> => {
+  (previousIfStatement: ts.IfStatement): Option.Option<string> => {
     const hasDuplicateBody = haveIdenticalBodies(context, previousIfStatement, ifStatement)
     const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
     const isMergeableDuplicate = [hasDuplicateBody, bodyExitsScope].every(Boolean)
 
     return isMergeableDuplicate
-      ? Option.some(toDuplicateMatch(context, previousIfStatement, ifStatement))
+      ? Option.some(combinedConditionText(context, previousIfStatement, ifStatement))
       : Option.none()
   }
 
 const adjacentGuardDuplicate = (
   context: RuleContext,
   ifStatement: ts.IfStatement
-): Option.Option<DuplicateIfBodyMatch> => {
+): Option.Option<string> => {
   if (!isGuardIfStatement(ifStatement)) {
     return Option.none()
   }
@@ -118,21 +111,21 @@ const elseIfParent = (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement
 
 const parentBodyDuplicate =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
-  (parentIfStatement: ts.IfStatement): Option.Option<DuplicateIfBodyMatch> =>
+  (parentIfStatement: ts.IfStatement): Option.Option<string> =>
     haveIdenticalBodies(context, parentIfStatement, ifStatement)
-      ? Option.some(toDuplicateMatch(context, parentIfStatement, ifStatement))
+      ? Option.some(combinedConditionText(context, parentIfStatement, ifStatement))
       : Option.none()
 
 const elseIfDuplicate = (
   context: RuleContext,
   ifStatement: ts.IfStatement
-): Option.Option<DuplicateIfBodyMatch> =>
+): Option.Option<string> =>
   Option.flatMap(elseIfParent(ifStatement), parentBodyDuplicate(context, ifStatement))
 
 const duplicateIfBodyMatch = (
   context: RuleContext,
   ifStatement: ts.IfStatement
-): Option.Option<DuplicateIfBodyMatch> => {
+): Option.Option<string> => {
   const guardDuplicateMatch = adjacentGuardDuplicate(context, ifStatement)
 
   return Option.isSome(guardDuplicateMatch)
@@ -141,16 +134,16 @@ const duplicateIfBodyMatch = (
 }
 
 const duplicateIfRuleMatch =
-  (context: RuleContext) =>
-  (match: DuplicateIfBodyMatch): RuleMatch =>
+  (context: RuleContext, ifStatement: ts.IfStatement) =>
+  (combinedCondition: string): RuleMatch =>
     createRuleMatch(context, {
       ruleId,
-      node: match.ifStatement,
+      node: ifStatement,
       message: "Avoid if branches that repeat the body of the branch before them.",
       hint:
         "These branches are pseudo-duplicates: the bodies are identical and only the " +
         "conditions differ. Combine them into a single branch: " +
-        `if (${match.combinedCondition}) { ... }.`
+        `if (${combinedCondition}) { ... }.`
     })
 
 const duplicateIfMatches = (
@@ -158,7 +151,10 @@ const duplicateIfMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   Option.toArray(
-    Option.map(duplicateIfBodyMatch(context, ifStatement), duplicateIfRuleMatch(context))
+    Option.map(
+      duplicateIfBodyMatch(context, ifStatement),
+      duplicateIfRuleMatch(context, ifStatement)
+    )
   )
 
 export const noDuplicateIfBodies: Rule = {

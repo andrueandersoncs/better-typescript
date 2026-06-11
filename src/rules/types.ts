@@ -1,4 +1,6 @@
+import { Schema } from "effect"
 import type * as ts from "typescript"
+import { TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
 
 export interface Rule {
   readonly id: string
@@ -6,21 +8,24 @@ export interface Rule {
   readonly check: RuleCheck
 }
 
-export interface RuleContext {
-  readonly program: ts.Program
-  readonly checker: ts.TypeChecker
-  readonly projectRoot: string
-  readonly sourceFile: ts.SourceFile
-}
+// RuleContext and RuleMatch are Schema classes rather than plain interfaces so they
+// are built through validating constructors instead of raw object literals — the
+// same discipline prefer-effect-schema-constructor asks of target projects.
+export class RuleContext extends Schema.Class<RuleContext>("RuleContext")({
+  program: TsProgram,
+  checker: TsTypeChecker,
+  projectRoot: Schema.String,
+  sourceFile: TsSourceFile
+}) {}
 
-export interface RuleMatch {
-  readonly ruleId: string
-  readonly fileName: string
-  readonly line: number
-  readonly column: number
-  readonly message: string
-  readonly hint: string
-}
+export class RuleMatch extends Schema.Class<RuleMatch>("RuleMatch")({
+  ruleId: Schema.String,
+  fileName: Schema.String,
+  line: Schema.Int,
+  column: Schema.Int,
+  message: Schema.String,
+  hint: Schema.String
+}) {}
 
 // A RuleCheck is data, not a traversal: a free monoid of listeners describing which
 // nodes a rule wants to see. An interpreter (runner/compileRules.ts) folds every

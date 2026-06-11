@@ -127,6 +127,31 @@ export function readName(value: object): string {
   return ""
 }
 
+// prefer-effect-schema-constructor: raw object literals in return position instead of
+// values constructed through a schema.
+interface FlatMapStep {
+  readonly _tag: "FlatMap"
+  readonly first: string
+  readonly f: (input: string) => string
+}
+
+const echoInput = (input: string): string => input
+
+export const flatMapStep = (node: string): FlatMapStep => {
+  const first = node.trim()
+
+  return {
+    _tag: "FlatMap",
+    first,
+    f: echoInput
+  }
+}
+
+export const orderSummary = (
+  id: string,
+  amountCents: number
+): { readonly id: string; readonly amountCents: number } => ({ id, amountCents })
+
 // no-inline-closures: arrow function in argument position instead of naming or currying.
 export const shoutedWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
   words.map((word) => word.toUpperCase())

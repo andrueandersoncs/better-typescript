@@ -1,6 +1,7 @@
 import * as path from "node:path"
 import type * as ts from "typescript"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { RuleMatch } from "./types.js"
+import type { RuleContext } from "./types.js"
 
 export interface RuleMatchSource {
   readonly ruleId: string
@@ -14,14 +15,14 @@ export const createRuleMatch = (context: RuleContext, source: RuleMatchSource): 
   const start = source.node.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)
 
-  return {
+  return new RuleMatch({
     ruleId: source.ruleId,
     fileName: toRelativeFileName(context.projectRoot)(sourceFile.fileName),
     line: location.line + 1,
     column: location.character + 1,
     message: source.message,
     hint: source.hint
-  }
+  })
 }
 
 export const toRelativeFileName = (projectRoot: string) => (fileName: string): string => {

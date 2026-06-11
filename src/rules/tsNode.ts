@@ -16,6 +16,24 @@ export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
     ? unwrapExpression(expression.expression)
     : expression
 
+// Wrappers that leave an expression in the same position it would occupy without
+// them: `((x) => x)`, `((x) => x) satisfies F`, `((x) => x) as F`.
+export const transparentWrapperKinds = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.ParenthesizedExpression,
+  ts.SyntaxKind.SatisfiesExpression,
+  ts.SyntaxKind.AsExpression
+])
+
+type TransparentWrapper = ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
+
+const isTransparentWrapper = (expression: ts.Expression): expression is TransparentWrapper =>
+  transparentWrapperKinds.has(expression.kind)
+
+export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expression =>
+  isTransparentWrapper(expression)
+    ? unwrapTransparentExpression(expression.expression)
+    : expression
+
 export const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
   if (!ts.isBlock(statement)) {
     return statement

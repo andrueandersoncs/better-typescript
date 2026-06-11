@@ -36,13 +36,10 @@ const transparentTypeNodeKinds = new Set<ts.SyntaxKind>([
 const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode =>
   transparentTypeNodeKinds.has(node.kind)
 
-const transparentCallableType = (
-  typeNode: ts.TypeNode,
-  parent: ts.Node
-): { readonly typeNode: ts.TypeNode; readonly parent: ts.Node } =>
-  isTransparentTypeNode(parent)
-    ? transparentCallableType(parent, parent.parent)
-    : { typeNode, parent }
+const effectiveCallableTypeNode = (typeNode: ts.TypeNode): ts.TypeNode =>
+  isTransparentTypeNode(typeNode.parent)
+    ? effectiveCallableTypeNode(typeNode.parent)
+    : typeNode
 
 const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
   ts.isFunctionExpression(node) || ts.isArrowFunction(node)
@@ -70,7 +67,8 @@ const isPropertySignatureFunctionType = (parent: ts.Node, typeNode: ts.TypeNode)
   )
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
-  const { typeNode, parent } = transparentCallableType(node, node.parent)
+  const typeNode = effectiveCallableTypeNode(node)
+  const parent = typeNode.parent
   const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
   if (isValueDeclaration) {

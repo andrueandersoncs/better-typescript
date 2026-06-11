@@ -1,6 +1,7 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import { transparentWrapperKinds } from "./tsNode.js"
 import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-closures"
@@ -12,14 +13,6 @@ const ruleId = "no-inline-closures"
 const sanctionedParentKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.VariableDeclaration,
   ts.SyntaxKind.ArrowFunction
-])
-
-// Wrappers that leave an expression in the same position it would occupy without
-// them: `((x) => x)`, `((x) => x) satisfies F`, `((x) => x) as F`.
-const transparentWrapperKinds = new Set<ts.SyntaxKind>([
-  ts.SyntaxKind.ParenthesizedExpression,
-  ts.SyntaxKind.SatisfiesExpression,
-  ts.SyntaxKind.AsExpression
 ])
 
 const effectiveParent = (node: ts.Node): ts.Node =>

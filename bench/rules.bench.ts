@@ -25,6 +25,11 @@
 // - no-inline-closures rule + whole-src migration to named/curried handlers
 //   (2026-06-11, fixtures also conformed): ALL rules 0.473 ms/pass across 20 rules,
 //   every rule 0.16-0.22 ms; solo sum 3.618 ms vs fused 0.473 ms = 7.6x fusion win.
+// - prefer-effect-schema-constructor rule + Schema.Class construction for RuleMatch,
+//   RuleContext, LoadedProject, and MatchesPage (2026-06-11, fixtures grew 2 cases):
+//   ALL rules 0.657 ms/pass across 21 rules, every rule 0.18-0.24 ms; solo sum
+//   4.255 ms vs fused 0.657 ms = 6.5x fusion win. The bump over 0.473 is the extra
+//   rule, the larger fixture, and validated match construction.
 
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -32,8 +37,8 @@ import { Effect } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
 import { loadProject } from "../src/project/loadProject.js"
-import { rules } from "../src/rules/index.js"
-import type { Rule, RuleContext, RuleMatch } from "../src/rules/index.js"
+import { RuleContext, rules } from "../src/rules/index.js"
+import type { Rule, RuleMatch } from "../src/rules/index.js"
 import { compileRules } from "../src/runner/compileRules.js"
 import { runRules, shouldSkipSourceFile } from "../src/runner/runRules.js"
 
@@ -67,12 +72,15 @@ const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap((project
   return project.program
     .getSourceFiles()
     .filter((sourceFile) => !shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile))
-    .map((sourceFile) => ({
-      program: project.program,
-      checker,
-      projectRoot: project.rootPath,
-      sourceFile
-    }))
+    .map(
+      (sourceFile) =>
+        new RuleContext({
+          program: project.program,
+          checker,
+          projectRoot: project.rootPath,
+          sourceFile
+        })
+    )
 })
 
 interface SoloRule {

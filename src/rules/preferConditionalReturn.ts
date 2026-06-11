@@ -8,11 +8,6 @@ import type { Rule, RuleContext, RuleMatch } from "./types.js"
 const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
 
-interface ConditionalReturnMatch {
-  readonly ifStatement: ts.IfStatement
-  readonly returnExpression: string
-}
-
 const containsYieldExpression = (node: ts.Node): boolean =>
   ts.isYieldExpression(node) || containsChildYieldExpression(node)
 
@@ -102,7 +97,7 @@ const conditionalExpressionText = (
 
 const conditionalReturnMatch =
   (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
-  (ifStatement: ts.IfStatement): Option.Option<ConditionalReturnMatch> =>
+  (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
       const thenExpression = yield* returnExpressionFromStatement(context.sourceFile)(
         ifStatement.thenStatement
@@ -112,43 +107,34 @@ const conditionalReturnMatch =
         ifStatement,
         nextStatement
       )
+      const returnExpression = conditionalExpressionText(
+        context,
+        ifStatement.expression,
+        thenExpression,
+        fallbackExpression
+      )
 
-      return {
-        ifStatement,
-        returnExpression: conditionalExpressionText(
-          context,
-          ifStatement.expression,
-          thenExpression,
-          fallbackExpression
-        )
-      }
+      return createRuleMatch(context, {
+        ruleId,
+        node: ifStatement,
+        message: "Avoid if statements that only choose between two return values.",
+        hint: `Return a conditional expression instead: return ${returnExpression}.`
+      })
     })
 
 const statementConditionalMatch =
   (context: RuleContext, block: ts.Block) =>
-  (statement: ts.Statement, index: number): Option.Option<ConditionalReturnMatch> =>
+  (statement: ts.Statement, index: number): Option.Option<RuleMatch> =>
     Option.flatMap(
       Option.liftPredicate(ts.isIfStatement)(statement),
       conditionalReturnMatch(context, Option.fromNullable(block.statements[index + 1]))
     )
 
-const conditionalRuleMatch =
-  (context: RuleContext) =>
-  (match: ConditionalReturnMatch): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: match.ifStatement,
-      message: "Avoid if statements that only choose between two return values.",
-      hint: `Return a conditional expression instead: return ${match.returnExpression}.`
-    })
-
 const conditionalReturnRuleMatches = (
   block: ts.Block,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  Array.filterMap(block.statements, statementConditionalMatch(context, block)).map(
-    conditionalRuleMatch(context)
-  )
+  Array.filterMap(block.statements, statementConditionalMatch(context, block))
 
 export const preferConditionalReturn: Rule = {
   id: ruleId,

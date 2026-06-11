@@ -9,22 +9,8 @@ import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-fn"
 
-interface DeclaredFunction {
-  readonly declaration: ts.VariableDeclaration
-  readonly initializer: FunctionInitializer
-}
-
-const toDeclaredFunction =
-  (declaration: ts.VariableDeclaration) =>
-  (initializer: FunctionInitializer): DeclaredFunction => ({ declaration, initializer })
-
-const effectFnCandidate = (
-  declaration: ts.VariableDeclaration
-): Option.Option<DeclaredFunction> =>
-  Option.map(functionInitializer(declaration), toDeclaredFunction(declaration))
-
-const hasParameters = (candidate: DeclaredFunction): boolean =>
-  candidate.initializer.parameters.length > 0
+const hasParameters = (initializer: FunctionInitializer): boolean =>
+  initializer.parameters.length > 0
 
 const effectModuleFileNames: ReadonlySet<string> = new Set(["Effect.ts", "Effect.d.ts"])
 
@@ -48,20 +34,20 @@ const signatureReturnsEffect =
 
 const returnsEffect =
   (context: RuleContext) =>
-  (candidate: DeclaredFunction): boolean =>
+  (initializer: FunctionInitializer): boolean =>
     Option.exists(
-      Option.fromNullable(context.checker.getSignatureFromDeclaration(candidate.initializer)),
+      Option.fromNullable(context.checker.getSignatureFromDeclaration(initializer)),
       signatureReturnsEffect(context)
     )
 
 const effectFnRuleMatch =
   (context: RuleContext) =>
-  (candidate: DeclaredFunction): RuleMatch => {
-    const functionName = candidate.declaration.name.getText(context.sourceFile)
+  (declaration: ts.VariableDeclaration): RuleMatch => {
+    const functionName = declaration.name.getText(context.sourceFile)
 
     return createRuleMatch(context, {
       ruleId,
-      node: candidate.declaration.name,
+      node: declaration.name,
       message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
       hint:
         `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
@@ -74,9 +60,10 @@ const effectFnMatches = (
   declaration: ts.VariableDeclaration,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  effectFnCandidate(declaration).pipe(
+  functionInitializer(declaration).pipe(
     Option.filter(hasParameters),
     Option.filter(returnsEffect(context)),
+    Option.as(declaration),
     Option.map(effectFnRuleMatch(context)),
     Option.toArray
   )

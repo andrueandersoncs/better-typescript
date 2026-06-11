@@ -1,12 +1,12 @@
-import { Function, Option } from "effect"
-import type { RuleMatch } from "../rules/index.js"
+import { Function, Option, Schema } from "effect"
+import { RuleMatch } from "../rules/index.js"
 
-export interface MatchesPage {
-  readonly matches: ReadonlyArray<RuleMatch>
-  readonly totalCount: number
-  readonly startIndex: number
-  readonly endIndex: number
-}
+export class MatchesPage extends Schema.Class<MatchesPage>("MatchesPage")({
+  matches: Schema.Array(RuleMatch),
+  totalCount: Schema.Int,
+  startIndex: Schema.Int,
+  endIndex: Schema.Int
+}) {}
 
 export const paginateMatches = (
   matches: ReadonlyArray<RuleMatch>,
@@ -18,10 +18,10 @@ export const paginateMatches = (
     offset + Option.getOrElse(limit, Function.constant(matches.length))
   )
 
-  return {
+  return new MatchesPage({
     matches: pageMatches,
     totalCount: matches.length,
     startIndex: offset + 1,
     endIndex: offset + pageMatches.length
-  }
+  })
 }

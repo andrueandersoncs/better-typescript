@@ -7,16 +7,6 @@ import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
 
-interface BooleanReturn {
-  readonly value: boolean
-}
-
-interface DirectBooleanReturnMatch {
-  readonly ifStatement: ts.IfStatement
-  readonly literalValue: boolean
-  readonly returnExpression: string
-}
-
 const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
@@ -27,54 +17,39 @@ const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> 
   )
 }
 
-const booleanReturnFromStatement = (statement: ts.Statement): Option.Option<BooleanReturn> =>
+const booleanReturnFromStatement = (statement: ts.Statement): Option.Option<boolean> =>
   Option.gen(function* () {
     const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
       unwrapSingleStatementBlock(statement)
     )
     const expression = yield* Option.fromNullable(returnStatement.expression)
-    const value = yield* booleanLiteralValue(expression)
 
-    return { value }
+    return yield* booleanLiteralValue(expression)
   })
 
-const toDirectBooleanMatch =
-  (context: RuleContext, ifStatement: ts.IfStatement) =>
-  (thenReturn: BooleanReturn): DirectBooleanReturnMatch => {
-    const conditionText = ifStatement.expression.getText(context.sourceFile)
-
-    return {
-      ifStatement,
-      literalValue: thenReturn.value,
-      returnExpression: thenReturn.value ? `(${conditionText})` : `!(${conditionText})`
-    }
-  }
-
-const directBooleanReturnMatch = (
-  context: RuleContext,
-  ifStatement: ts.IfStatement
-): Option.Option<DirectBooleanReturnMatch> =>
-  Option.map(
-    booleanReturnFromStatement(ifStatement.thenStatement),
-    toDirectBooleanMatch(context, ifStatement)
-  )
-
 const directBooleanRuleMatch =
-  (context: RuleContext) =>
-  (match: DirectBooleanReturnMatch): RuleMatch =>
-    createRuleMatch(context, {
+  (context: RuleContext, ifStatement: ts.IfStatement) =>
+  (literalValue: boolean): RuleMatch => {
+    const conditionText = ifStatement.expression.getText(context.sourceFile)
+    const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
+
+    return createRuleMatch(context, {
       ruleId,
-      node: match.ifStatement,
-      message: `Avoid returning ${String(match.literalValue)} from a conditional branch.`,
-      hint: `Use the condition as the boolean value instead: return ${match.returnExpression}.`
+      node: ifStatement,
+      message: `Avoid returning ${String(literalValue)} from a conditional branch.`,
+      hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
     })
+  }
 
 const directBooleanMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   Option.toArray(
-    Option.map(directBooleanReturnMatch(context, ifStatement), directBooleanRuleMatch(context))
+    Option.map(
+      booleanReturnFromStatement(ifStatement.thenStatement),
+      directBooleanRuleMatch(context, ifStatement)
+    )
   )
 
 export const preferDirectBooleanReturn: Rule = {

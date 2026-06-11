@@ -13,12 +13,8 @@ import type {
 type NodeHandler = NodeListener["handler"]
 type FileHandler = FileListener["handler"]
 type NodeHandlerTable = ReadonlyMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
+type MutableHandlerTable = Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
 type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
-
-interface HandlerEntry {
-  readonly kind: ts.SyntaxKind
-  readonly handler: NodeHandler
-}
 
 // The interpreter for the RuleCheck algebra: folds every rule's listeners into a
 // kind-dispatch table once, then checks each source file with a single AST walk.
@@ -74,19 +70,14 @@ const isFileListener = (listener: RuleListener): listener is FileListener =>
   listener._tag === "OnFile"
 
 const nodeHandlerTable = (listeners: ReadonlyArray<NodeListener>): NodeHandlerTable =>
-  listeners
-    .flatMap(listenerEntries)
-    .reduce(addHandlerEntry, new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>())
+  listeners.reduce(addListenerHandlers, new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>())
 
-const listenerEntries = (listener: NodeListener): ReadonlyArray<HandlerEntry> =>
-  listener.kinds.map(entryForHandler(listener.handler))
+const addListenerHandlers = (
+  table: MutableHandlerTable,
+  listener: NodeListener
+): MutableHandlerTable => listener.kinds.reduce(addKindHandler(listener.handler), table)
 
-const entryForHandler =
+const addKindHandler =
   (handler: NodeHandler) =>
-  (kind: ts.SyntaxKind): HandlerEntry => ({ kind, handler })
-
-const addHandlerEntry = (
-  table: Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>,
-  entry: HandlerEntry
-): Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>> =>
-  table.set(entry.kind, [...(table.get(entry.kind) ?? []), entry.handler])
+  (table: MutableHandlerTable, kind: ts.SyntaxKind): MutableHandlerTable =>
+    table.set(kind, [...(table.get(kind) ?? []), handler])

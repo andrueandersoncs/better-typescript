@@ -1,17 +1,18 @@
 import * as path from "node:path"
 import { Effect, Function, Option, Schema } from "effect"
 import * as ts from "typescript"
+import { TsProgram } from "../rules/tsSchema.js"
 
-export interface LoadedProject {
-  readonly program: ts.Program
-  readonly configPath: string
-  readonly rootPath: string
-}
+export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")({
+  program: TsProgram,
+  configPath: Schema.String,
+  rootPath: Schema.String
+}) {}
 
-export interface LoadedWorkspace {
-  readonly rootPath: string
-  readonly projects: ReadonlyArray<LoadedProject>
-}
+export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorkspace")({
+  rootPath: Schema.String,
+  projects: Schema.Array(LoadedProject)
+}) {}
 
 class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>("MissingTsconfigError")(
   "MissingTsconfigError",
@@ -54,7 +55,7 @@ export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace
 
     const projects = yield* loadConfig(configPath.value, new Set<string>())
 
-    return { rootPath: path.dirname(configPath.value), projects }
+    return new LoadedWorkspace({ rootPath: path.dirname(configPath.value), projects })
   })
 
 const loadConfig: (
@@ -121,15 +122,16 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
 const loadedProjectFromConfig = (
   configPath: string,
   parsedConfig: ts.ParsedCommandLine
-): LoadedProject => ({
-  configPath,
-  rootPath: path.dirname(configPath),
-  program: ts.createProgram({
-    rootNames: parsedConfig.fileNames,
-    options: parsedConfig.options,
-    projectReferences: parsedConfig.projectReferences
+): LoadedProject =>
+  new LoadedProject({
+    configPath,
+    rootPath: path.dirname(configPath),
+    program: ts.createProgram({
+      rootNames: parsedConfig.fileNames,
+      options: parsedConfig.options,
+      projectReferences: parsedConfig.projectReferences
+    })
   })
-})
 
 const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {
