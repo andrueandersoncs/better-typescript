@@ -20,9 +20,8 @@ const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> 
 
 const booleanReturnFromStatement = (statement: ts.Statement): Option.Option<boolean> =>
   Option.gen(function* () {
-    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
-      unwrapSingleStatementBlock(statement)
-    )
+    const unwrappedStatement = unwrapSingleStatementBlock(statement)
+    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)
     const expression = yield* Option.fromNullable(returnStatement.expression)
 
     return yield* booleanLiteralValue(expression)
@@ -33,11 +32,12 @@ const directBooleanRuleMatch =
   (literalValue: boolean): RuleMatch => {
     const conditionText = ifStatement.expression.getText(context.sourceFile)
     const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
+    const literalText = String(literalValue)
 
     return createRuleMatch(context, {
       ruleId,
       node: ifStatement,
-      message: `Avoid returning ${String(literalValue)} from a conditional branch.`,
+      message: `Avoid returning ${literalText} from a conditional branch.`,
       hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
     })
   }
@@ -46,16 +46,16 @@ const directBooleanMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  Option.toArray(
-    Option.map(
-      booleanReturnFromStatement(ifStatement.thenStatement),
-      directBooleanRuleMatch(context, ifStatement)
-    )
+  booleanReturnFromStatement(ifStatement.thenStatement).pipe(
+    Option.map(directBooleanRuleMatch(context, ifStatement)),
+    Option.toArray
   )
+
+const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, directBooleanMatches)
 
 export const preferDirectBooleanReturn = new Rule({
   id: ruleId,
   description:
     "Prefer returning boolean expressions directly instead of conditional boolean literals.",
-  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, directBooleanMatches)
+  check
 })

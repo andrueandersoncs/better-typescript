@@ -14,14 +14,20 @@ const mutableKeywordKinds = new Map<ts.SyntaxKind, MutableVariableDeclarationKin
   [ts.SyntaxKind.VarKeyword, "var"]
 ])
 
-const tokenMutableKind = (firstToken: ts.Node): Option.Option<MutableVariableDeclarationKind> =>
-  Option.fromNullable(mutableKeywordKinds.get(firstToken.kind))
+const tokenMutableKind = (firstToken: ts.Node): Option.Option<MutableVariableDeclarationKind> => {
+  const mutableKind = mutableKeywordKinds.get(firstToken.kind)
+
+  return Option.fromNullable(mutableKind)
+}
 
 const mutableVariableDeclarationKind = (
   sourceFile: ts.SourceFile,
   declarationList: ts.VariableDeclarationList
-): Option.Option<MutableVariableDeclarationKind> =>
-  Option.flatMap(Option.fromNullable(declarationList.getFirstToken(sourceFile)), tokenMutableKind)
+): Option.Option<MutableVariableDeclarationKind> => {
+  const firstToken = declarationList.getFirstToken(sourceFile)
+
+  return Option.fromNullable(firstToken).pipe(Option.flatMap(tokenMutableKind))
+}
 
 const mutableDeclarationRuleMatch =
   (context: RuleContext, declarationList: ts.VariableDeclarationList) =>
@@ -39,19 +45,19 @@ const mutableDeclarationMatches = (
   declarationList: ts.VariableDeclarationList,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  Option.toArray(
-    Option.map(
-      mutableVariableDeclarationKind(context.sourceFile, declarationList),
-      mutableDeclarationRuleMatch(context, declarationList)
-    )
+  mutableVariableDeclarationKind(context.sourceFile, declarationList).pipe(
+    Option.map(mutableDeclarationRuleMatch(context, declarationList)),
+    Option.toArray
   )
+
+const check = onNode(
+  [ts.SyntaxKind.VariableDeclarationList],
+  ts.isVariableDeclarationList,
+  mutableDeclarationMatches
+)
 
 export const noMutableVariableDeclarations = new Rule({
   id: ruleId,
   description: "Disallow let and var declarations in favor of immutable const bindings.",
-  check: onNode(
-    [ts.SyntaxKind.VariableDeclarationList],
-    ts.isVariableDeclarationList,
-    mutableDeclarationMatches
-  )
+  check
 })

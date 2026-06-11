@@ -25,10 +25,14 @@ const hasSingleValueReturnStatement = (
   return false
 }
 
+const returnedExpression = (statement: ts.ReturnStatement): Option.Option<ts.Expression> =>
+  Option.fromNullable(statement.expression)
+
 const isValueReturnStatement = (statement: ts.Statement): boolean =>
-  ts.isReturnStatement(statement)
-    ? Option.isSome(Option.fromNullable(statement.expression))
-    : false
+  Option.liftPredicate(ts.isReturnStatement)(statement).pipe(
+    Option.flatMap(returnedExpression),
+    Option.isSome
+  )
 
 const implicitReturnMatches = (
   arrowFunction: ts.ArrowFunction,
@@ -47,8 +51,10 @@ const implicitReturnMatches = (
       ]
     : []
 
+const check = onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, implicitReturnMatches)
+
 export const preferImplicitReturn = new Rule({
   id: ruleId,
   description: "Prefer implicit arrow function returns over block bodies with a single return.",
-  check: onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, implicitReturnMatches)
+  check
 })

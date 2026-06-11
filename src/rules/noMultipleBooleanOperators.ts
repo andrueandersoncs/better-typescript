@@ -57,16 +57,22 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean =>
   [isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent)].some(Boolean)
 
-const hasBooleanOperatorAncestor = (node: ts.Node): boolean =>
-  Option.exists(Option.fromNullable(node.parent), isOrHasBooleanOperatorAncestor)
+const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
+  const parent = Option.fromNullable(node.parent)
+
+  return Option.exists(parent, isOrHasBooleanOperatorAncestor)
+}
 
 const isExclamationOperator = (node: ts.PrefixUnaryExpression): boolean =>
   node.operator === ts.SyntaxKind.ExclamationToken
 
 const isUnaryBooleanOperatorExpression = (
   node: ts.Node
-): node is ts.PrefixUnaryExpression =>
-  Option.exists(Option.liftPredicate(ts.isPrefixUnaryExpression)(node), isExclamationOperator)
+): node is ts.PrefixUnaryExpression => {
+  const prefixUnaryExpression = Option.liftPredicate(ts.isPrefixUnaryExpression)(node)
+
+  return Option.exists(prefixUnaryExpression, isExclamationOperator)
+}
 
 const booleanBinaryOperatorKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.AmpersandAmpersandToken,
@@ -110,16 +116,18 @@ const multipleBooleanOperatorMatches = (
     : []
 }
 
+const check = onNode(
+  [
+    ts.SyntaxKind.BinaryExpression,
+    ts.SyntaxKind.PrefixUnaryExpression,
+    ts.SyntaxKind.ConditionalExpression
+  ],
+  isBooleanOperatorExpression,
+  multipleBooleanOperatorMatches
+)
+
 export const noMultipleBooleanOperators = new Rule({
   id: ruleId,
   description: "Disallow combining multiple boolean operators in a single expression.",
-  check: onNode(
-    [
-      ts.SyntaxKind.BinaryExpression,
-      ts.SyntaxKind.PrefixUnaryExpression,
-      ts.SyntaxKind.ConditionalExpression
-    ],
-    isBooleanOperatorExpression,
-    multipleBooleanOperatorMatches
-  )
+  check
 })

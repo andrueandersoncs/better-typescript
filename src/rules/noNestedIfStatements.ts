@@ -37,22 +37,30 @@ const containingIfStatementFrom = (
     return Option.none()
   }
 
+  const grandparent = Option.fromNullable(parentNode.parent)
+
   if (!ts.isIfStatement(parentNode)) {
-    return containingIfStatementFrom(parentNode, Option.fromNullable(parentNode.parent))
+    return containingIfStatementFrom(parentNode, grandparent)
   }
 
   return isElseIfStatement(child, parentNode)
-    ? containingIfStatementFrom(parentNode, Option.fromNullable(parentNode.parent))
+    ? containingIfStatementFrom(parentNode, grandparent)
     : Option.some(parentNode)
 }
 
 const containingIfStatement = (
   ifStatement: ts.IfStatement
-): Option.Option<ts.IfStatement> =>
-  containingIfStatementFrom(ifStatement, Option.fromNullable(ifStatement.parent))
+): Option.Option<ts.IfStatement> => {
+  const parent = Option.fromNullable(ifStatement.parent)
 
-const isNestedIfStatement = (ifStatement: ts.IfStatement): boolean =>
-  Option.isSome(containingIfStatement(ifStatement))
+  return containingIfStatementFrom(ifStatement, parent)
+}
+
+const isNestedIfStatement = (ifStatement: ts.IfStatement): boolean => {
+  const containing = containingIfStatement(ifStatement)
+
+  return Option.isSome(containing)
+}
 
 const nestedIfMatches = (
   ifStatement: ts.IfStatement,
@@ -71,8 +79,10 @@ const nestedIfMatches = (
       ]
     : []
 
+const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, nestedIfMatches)
+
 export const noNestedIfStatements = new Rule({
   id: ruleId,
   description: "Disallow nested if statements in favor of boolean operators or early returns.",
-  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, nestedIfMatches)
+  check
 })

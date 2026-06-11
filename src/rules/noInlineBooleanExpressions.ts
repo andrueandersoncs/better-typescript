@@ -16,8 +16,11 @@ const logicalOperatorKinds = new Set<ts.SyntaxKind>([
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   logicalOperatorKinds.has(expression.operatorToken.kind)
 
-const isLogicalOperatorExpression = (expression: ts.Expression): boolean =>
-  Option.exists(Option.liftPredicate(ts.isBinaryExpression)(expression), hasLogicalOperator)
+const isLogicalOperatorExpression = (expression: ts.Expression): boolean => {
+  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
+
+  return Option.exists(binaryExpression, hasLogicalOperator)
+}
 
 const inlineBooleanConditionMatches = (
   ifStatement: ts.IfStatement,
@@ -39,8 +42,10 @@ const inlineBooleanConditionMatches = (
     : []
 }
 
+const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inlineBooleanConditionMatches)
+
 export const noInlineBooleanExpressions = new Rule({
   id: ruleId,
   description: "Disallow boolean operators inline in an if statement condition.",
-  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inlineBooleanConditionMatches)
+  check
 })

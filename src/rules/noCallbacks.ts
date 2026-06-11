@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { differentApparentType, differentBaseConstraint } from "./tsType.js"
+import { callSignatureCheck, hasCallSignature } from "./tsType.js"
 import { Rule } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -53,19 +53,22 @@ const isTypeOfAlias =
   (parent: ts.TypeAliasDeclaration): boolean =>
     parent.type === typeNode
 
-const isTypeAliasFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean =>
-  Option.exists(Option.liftPredicate(ts.isTypeAliasDeclaration)(parent), isTypeOfAlias(typeNode))
+const isTypeAliasFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean => {
+  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(parent)
+
+  return Option.exists(aliasDeclaration, isTypeOfAlias(typeNode))
+}
 
 const isTypeOfPropertySignature =
   (typeNode: ts.TypeNode) =>
   (parent: ts.PropertySignature): boolean =>
     parent.type === typeNode
 
-const isPropertySignatureFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean =>
-  Option.exists(
-    Option.liftPredicate(ts.isPropertySignature)(parent),
-    isTypeOfPropertySignature(typeNode)
-  )
+const isPropertySignatureFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean => {
+  const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
+
+  return Option.exists(propertySignature, isTypeOfPropertySignature(typeNode))
+}
 
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   const typeNode = effectiveCallableTypeNode(node)
@@ -74,8 +77,9 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
 
   if (isValueDeclaration) {
     const isTypeAnnotation = parent.type === typeNode
+    const initializer = Option.fromNullable(parent.initializer)
 
-    return isTypeAnnotation && isCallableTypeAnnotation(Option.fromNullable(parent.initializer))
+    return isTypeAnnotation && isCallableTypeAnnotation(initializer)
   }
 
   const hasTypeAliasFunctionType = isTypeAliasFunctionType(parent, typeNode)
@@ -85,47 +89,6 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
 }
 
 const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
-
-const callSignatureCheck =
-  (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type> = new Set()) =>
-  (type: ts.Type): boolean =>
-    hasCallSignature(checker, type, seen)
-
-const hasCallSignature = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: ReadonlySet<ts.Type> = new Set()
-): boolean => {
-  const isUnseen = !seen.has(type)
-
-  return isUnseen && hasUnseenCallSignature(checker, type, seen)
-}
-
-const hasUnseenCallSignature = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: ReadonlySet<ts.Type>
-): boolean => {
-  const nextSeen = new Set(seen).add(type)
-  const hasDirectCallSignature = type.getCallSignatures().length > 0
-
-  if (type.isUnionOrIntersection()) {
-    return hasDirectCallSignature || type.types.some(callSignatureCheck(checker, nextSeen))
-  }
-
-  const constraintHasCallSignature = Option.exists(
-    differentBaseConstraint(checker, type),
-    callSignatureCheck(checker, nextSeen)
-  )
-  const apparentTypeHasCallSignature = Option.exists(
-    differentApparentType(checker, type),
-    callSignatureCheck(checker, nextSeen)
-  )
-
-  const hasIndirectCallSignature = constraintHasCallSignature || apparentTypeHasCallSignature
-
-  return hasDirectCallSignature || hasIndirectCallSignature
-}
 
 const isFunctionArgument =
   (checker: ts.TypeChecker) =>
@@ -138,9 +101,8 @@ const isFunctionArgument =
       return parameterHasCallSignature
     }
 
-    const elementType = Option.fromNullable(
-      checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-    )
+    const indexType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
+    const elementType = Option.fromNullable(indexType)
     const elementHasCallSignature = Option.exists(elementType, callSignatureCheck(checker))
 
     return [parameterHasCallSignature, elementHasCallSignature].some(Boolean)
@@ -149,7 +111,8 @@ const isFunctionArgument =
 const isCallbackSignature =
   (context: RuleContext, declaration: CallbackStyleDeclaration) =>
   (signature: ts.Signature): boolean => {
-    const returnsVoid = isVoidType(context.checker.getReturnTypeOfSignature(signature))
+    const returnType = context.checker.getReturnTypeOfSignature(signature)
+    const returnsVoid = isVoidType(returnType)
     const hasFunctionArgument = declaration.parameters.some(isFunctionArgument(context.checker))
 
     return returnsVoid && hasFunctionArgument
@@ -158,11 +121,12 @@ const isCallbackSignature =
 const isCallbackStyleDeclaration = (
   context: RuleContext,
   declaration: CallbackStyleDeclaration
-): boolean =>
-  Option.exists(
-    Option.fromNullable(context.checker.getSignatureFromDeclaration(declaration)),
-    isCallbackSignature(context, declaration)
-  )
+): boolean => {
+  const declaredSignature = context.checker.getSignatureFromDeclaration(declaration)
+  const signature = Option.fromNullable(declaredSignature)
+
+  return Option.exists(signature, isCallbackSignature(context, declaration))
+}
 
 const callbackStyleMatches = (
   declaration: CallbackStyleDeclaration,
@@ -182,20 +146,22 @@ const callbackStyleMatches = (
       ]
     : []
 
+const check = onNode(
+  [
+    ts.SyntaxKind.FunctionDeclaration,
+    ts.SyntaxKind.FunctionExpression,
+    ts.SyntaxKind.ArrowFunction,
+    ts.SyntaxKind.MethodDeclaration,
+    ts.SyntaxKind.MethodSignature,
+    ts.SyntaxKind.CallSignature,
+    ts.SyntaxKind.FunctionType
+  ],
+  isCallbackStyleCandidate,
+  callbackStyleMatches
+)
+
 export const noCallbacks = new Rule({
   id: ruleId,
   description: "Disallow callback-style functions returning void in favor of Effect.",
-  check: onNode(
-    [
-      ts.SyntaxKind.FunctionDeclaration,
-      ts.SyntaxKind.FunctionExpression,
-      ts.SyntaxKind.ArrowFunction,
-      ts.SyntaxKind.MethodDeclaration,
-      ts.SyntaxKind.MethodSignature,
-      ts.SyntaxKind.CallSignature,
-      ts.SyntaxKind.FunctionType
-    ],
-    isCallbackStyleCandidate,
-    callbackStyleMatches
-  )
+  check
 })

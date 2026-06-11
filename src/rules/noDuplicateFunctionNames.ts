@@ -29,7 +29,10 @@ const variableStatementFunctions = (statement: ts.Statement): ReadonlyArray<ts.I
     : []
 
 const functionDeclarationFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> =>
-  ts.isFunctionDeclaration(statement) ? Option.toArray(namedFunctionDeclaration(statement)) : []
+  Option.liftPredicate(ts.isFunctionDeclaration)(statement).pipe(
+    Option.flatMap(namedFunctionDeclaration),
+    Option.toArray
+  )
 
 const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => [
   ...variableStatementFunctions(statement),
@@ -47,18 +50,26 @@ const declarationsForName = (
 const addFunctionToIndex = (
   index: Map<string, ReadonlyArray<ts.Identifier>>,
   nameNode: ts.Identifier
-): Map<string, ReadonlyArray<ts.Identifier>> =>
-  index.set(nameNode.text, [...declarationsForName(index, nameNode.text), nameNode])
+): Map<string, ReadonlyArray<ts.Identifier>> => {
+  const existingDeclarations = declarationsForName(index, nameNode.text)
 
-const functionsByName = (functions: ReadonlyArray<ts.Identifier>): FunctionNameIndex =>
-  functions.reduce(addFunctionToIndex, new Map<string, ReadonlyArray<ts.Identifier>>())
+  return index.set(nameNode.text, [...existingDeclarations, nameNode])
+}
+
+const functionsByName = (functions: ReadonlyArray<ts.Identifier>): FunctionNameIndex => {
+  const emptyIndex = new Map<string, ReadonlyArray<ts.Identifier>>()
+
+  return functions.reduce(addFunctionToIndex, emptyIndex)
+}
 
 const functionNameIndexCache = new WeakMap<ts.Program, FunctionNameIndex>()
 
 const buildFunctionNameIndex = (program: ts.Program): FunctionNameIndex => {
-  const index = functionsByName(
-    program.getSourceFiles().filter(isProjectSourceFile).flatMap(topLevelFunctions)
-  )
+  const projectFunctions = program
+    .getSourceFiles()
+    .filter(isProjectSourceFile)
+    .flatMap(topLevelFunctions)
+  const index = functionsByName(projectFunctions)
 
   functionNameIndexCache.set(program, index)
 
@@ -66,7 +77,8 @@ const buildFunctionNameIndex = (program: ts.Program): FunctionNameIndex => {
 }
 
 const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
-  const cached = Option.fromNullable(functionNameIndexCache.get(program))
+  const cachedIndex = functionNameIndexCache.get(program)
+  const cached = Option.fromNullable(cachedIndex)
 
   return Option.isSome(cached) ? cached.value : buildFunctionNameIndex(program)
 }
@@ -119,22 +131,33 @@ const duplicateFunctionMatch = (
 const candidateRuleMatch =
   (context: RuleContext) =>
   (candidate: ts.Identifier): Option.Option<RuleMatch> => {
-    const declarations = declarationsForName(functionNameIndex(context.program), candidate.text)
-    const otherFileNames = [...new Set(declarations.map(declaredFileName))].filter(
+    const index = functionNameIndex(context.program)
+    const declarations = declarationsForName(index, candidate.text)
+    const declaredFileNames = declarations.map(declaredFileName)
+    const otherFileNames = [...new Set(declaredFileNames)].filter(
       isOtherFileName(context.sourceFile.fileName)
     )
 
-    return otherFileNames.length > 0
-      ? Option.some(duplicateFunctionMatch(context, candidate, otherFileNames))
-      : Option.none()
+    if (otherFileNames.length === 0) {
+      return Option.none()
+    }
+
+    const match = duplicateFunctionMatch(context, candidate, otherFileNames)
+
+    return Option.some(match)
   }
 
-const duplicateFunctionMatches = (context: RuleContext): ReadonlyArray<RuleMatch> =>
-  Array.filterMap(topLevelFunctions(context.sourceFile), candidateRuleMatch(context))
+const duplicateFunctionMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
+  const fileFunctions = topLevelFunctions(context.sourceFile)
+
+  return Array.filterMap(fileFunctions, candidateRuleMatch(context))
+}
+
+const check = onFile(duplicateFunctionMatches)
 
 export const noDuplicateFunctionNames = new Rule({
   id: ruleId,
   description:
     "Disallow top-level functions that duplicate a function name declared in another file.",
-  check: onFile(duplicateFunctionMatches)
+  check
 })

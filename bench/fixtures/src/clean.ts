@@ -44,9 +44,11 @@ const lineSku = (line: OrderLine): string => line.sku
 
 export const skusForOrder = (order: Order): ReadonlyArray<string> => order.lines.map(lineSku)
 
-export const distinctSkus = (orders: ReadonlyArray<Order>): ReadonlyArray<string> => [
-  ...new Set(orders.flatMap(skusForOrder))
-]
+export const distinctSkus = (orders: ReadonlyArray<Order>): ReadonlyArray<string> => {
+  const allSkus = orders.flatMap(skusForOrder)
+
+  return [...new Set(allSkus)]
+}
 
 const largerOrder = (largest: Order | null, order: Order): Order | null =>
   largest === null || order.amountCents > largest.amountCents ? order : largest
@@ -64,5 +66,12 @@ export const ordersByStatus = (
   status: Order["status"]
 ): ReadonlyArray<Order> => orders.filter(hasStatus(status))
 
-export const averageAmountCents = (orders: ReadonlyArray<Order>): number =>
-  orders.length === 0 ? 0 : Math.round(totalPaidCents(orders) / orders.length)
+export const averageAmountCents = (orders: ReadonlyArray<Order>): number => {
+  if (orders.length === 0) {
+    return 0
+  }
+
+  const paidCents = totalPaidCents(orders)
+
+  return Math.round(paidCents / orders.length)
+}

@@ -19,8 +19,11 @@ const sanctionedParentKinds = new Set<ts.SyntaxKind>([
 const effectiveParent = (node: ts.Node): ts.Node =>
   transparentWrapperKinds.has(node.parent.kind) ? effectiveParent(node.parent) : node.parent
 
-const isSanctionedPosition = (arrowFunction: ts.ArrowFunction): boolean =>
-  sanctionedParentKinds.has(effectiveParent(arrowFunction).kind)
+const isSanctionedPosition = (arrowFunction: ts.ArrowFunction): boolean => {
+  const parent = effectiveParent(arrowFunction)
+
+  return sanctionedParentKinds.has(parent.kind)
+}
 
 const inlineClosureMatch = (context: RuleContext, arrowFunction: ts.ArrowFunction): RuleMatch =>
   createRuleMatch(context, {
@@ -41,10 +44,12 @@ const arrowFunctionMatches = (
 
 // Declared after its handler: onNode evaluates its arguments at module initialization,
 // so a handler passed by name — as this rule requires of itself — must already exist.
+const check = onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, arrowFunctionMatches)
+
 export const noInlineClosures = new Rule({
   id: ruleId,
   description:
     "Disallow arrow functions outside naming positions (const initializers) and currying " +
     "positions (arrow function bodies).",
-  check: onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, arrowFunctionMatches)
+  check
 })

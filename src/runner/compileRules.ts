@@ -22,7 +22,8 @@ type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 // adds table entries instead of traversals.
 export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
   const listeners = rules.flatMap(ruleListeners)
-  const table = nodeHandlerTable(listeners.filter(isNodeListener))
+  const nodeListeners = listeners.filter(isNodeListener)
+  const table = nodeHandlerTable(nodeListeners)
   const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
 
   return checkSourceFile(table, fileHandlers)
@@ -34,10 +35,12 @@ const listenerHandler = (listener: FileListener): FileHandler => listener.handle
 
 const checkSourceFile =
   (table: NodeHandlerTable, fileHandlers: ReadonlyArray<FileHandler>) =>
-  (context: RuleContext): ReadonlyArray<RuleMatch> =>
-    fileHandlers
-      .flatMap(applyFileHandler(context))
-      .concat(compiledVisitor(table, context)(context.sourceFile))
+  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+    const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
+    const nodeMatches = compiledVisitor(table, context)(context.sourceFile)
+
+    return fileMatches.concat(nodeMatches)
+  }
 
 const applyFileHandler =
   (context: RuleContext) =>
@@ -50,10 +53,12 @@ const compiledVisitor = (
   table: NodeHandlerTable,
   context: RuleContext
 ): ((node: ts.Node) => ReadonlyArray<RuleMatch>) => {
-  const visit = (node: ts.Node): ReadonlyArray<RuleMatch> =>
-    (table.get(node.kind) ?? [])
-      .flatMap(applyNodeHandler(node, context))
-      .concat(astChildren(node).flatMap(visit))
+  const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
+    const ownMatches = (table.get(node.kind) ?? []).flatMap(applyNodeHandler(node, context))
+    const childMatches = astChildren(node).flatMap(visit)
+
+    return ownMatches.concat(childMatches)
+  }
 
   return visit
 }
@@ -69,8 +74,11 @@ const isNodeListener = (listener: RuleListener): listener is NodeListener =>
 const isFileListener = (listener: RuleListener): listener is FileListener =>
   listener._tag === "OnFile"
 
-const nodeHandlerTable = (listeners: ReadonlyArray<NodeListener>): NodeHandlerTable =>
-  listeners.reduce(addListenerHandlers, new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>())
+const nodeHandlerTable = (listeners: ReadonlyArray<NodeListener>): NodeHandlerTable => {
+  const emptyTable = new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
+
+  return listeners.reduce(addListenerHandlers, emptyTable)
+}
 
 const addListenerHandlers = (
   table: MutableHandlerTable,
@@ -79,5 +87,8 @@ const addListenerHandlers = (
 
 const addKindHandler =
   (handler: NodeHandler) =>
-  (table: MutableHandlerTable, kind: ts.SyntaxKind): MutableHandlerTable =>
-    table.set(kind, [...(table.get(kind) ?? []), handler])
+  (table: MutableHandlerTable, kind: ts.SyntaxKind): MutableHandlerTable => {
+    const kindHandlers = table.get(kind) ?? []
+
+    return table.set(kind, [...kindHandlers, handler])
+  }

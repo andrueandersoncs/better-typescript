@@ -9,9 +9,11 @@ export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
   rootPath: Schema.String
 }) {}
 
+const loadedProjectsSchema = Schema.Array(LoadedProject)
+
 export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorkspace")({
   rootPath: Schema.String,
-  projects: Schema.Array(LoadedProject)
+  projects: loadedProjectsSchema
 }) {}
 
 class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>("MissingTsconfigError")(
@@ -45,17 +47,18 @@ class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectRe
 export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
   Effect.fn("loadProject")(function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
-    const configPath = Option.fromNullable(
-      ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
-    )
+    const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
+    const configPath = Option.fromNullable(foundConfigPath)
 
     if (Option.isNone(configPath)) {
-      return yield* Effect.fail(new MissingTsconfigError({ rootPath }))
+      return yield* new MissingTsconfigError({ rootPath })
     }
 
-    const projects = yield* loadConfig(configPath.value, new Set<string>())
+    const rootAncestorPaths = new Set<string>()
+    const projects = yield* loadConfig(configPath.value, rootAncestorPaths)
+    const workspaceRootPath = path.dirname(configPath.value)
 
-    return new LoadedWorkspace({ rootPath: path.dirname(configPath.value), projects })
+    return new LoadedWorkspace({ rootPath: workspaceRootPath, projects })
   })
 
 const loadConfig: (
@@ -66,28 +69,25 @@ const loadConfig: (
   ancestorConfigPaths: ReadonlySet<string>
 ) {
   if (ancestorConfigPaths.has(configPath)) {
-    return yield* Effect.fail(new CircularProjectReferenceError({ configPath }))
+    return yield* new CircularProjectReferenceError({ configPath })
   }
 
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
   const configError = Option.fromNullable(configFile.error)
 
   if (Option.isSome(configError)) {
-    return yield* Effect.fail(
-      new InvalidTsconfigError({ message: formatDiagnostics([configError.value]) })
-    )
+    const message = formatDiagnostics([configError.value])
+
+    return yield* new InvalidTsconfigError({ message })
   }
 
-  const parsedConfig = ts.parseJsonConfigFileContent(
-    configFile.config,
-    ts.sys,
-    path.dirname(configPath)
-  )
+  const configDirectory = path.dirname(configPath)
+  const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, configDirectory)
 
   if (parsedConfig.errors.length > 0) {
-    return yield* Effect.fail(
-      new InvalidTsconfigError({ message: formatDiagnostics(parsedConfig.errors) })
-    )
+    const message = formatDiagnostics(parsedConfig.errors)
+
+    return yield* new InvalidTsconfigError({ message })
   }
 
   const references = parsedConfig.projectReferences ?? []
@@ -96,10 +96,9 @@ const loadConfig: (
   const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
 
   if (isSolutionStyleConfig) {
-    return yield* loadReferencedProjects(
-      references,
-      new Set(ancestorConfigPaths).add(configPath)
-    )
+    const nextAncestorPaths = new Set(ancestorConfigPaths).add(configPath)
+
+    return yield* loadReferencedProjects(references, nextAncestorPaths)
   }
 
   return [loadedProjectFromConfig(configPath, parsedConfig)]
@@ -107,8 +106,11 @@ const loadConfig: (
 
 const loadReference =
   (ancestorConfigPaths: ReadonlySet<string>) =>
-  (reference: ts.ProjectReference): Effect.Effect<ReadonlyArray<LoadedProject>, Error> =>
-    loadConfig(ts.resolveProjectReferencePath(reference), ancestorConfigPaths)
+  (reference: ts.ProjectReference): Effect.Effect<ReadonlyArray<LoadedProject>, Error> => {
+    const referencedConfigPath = ts.resolveProjectReferencePath(reference)
+
+    return loadConfig(referencedConfigPath, ancestorConfigPaths)
+  }
 
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
@@ -122,16 +124,16 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
 const loadedProjectFromConfig = (
   configPath: string,
   parsedConfig: ts.ParsedCommandLine
-): LoadedProject =>
-  new LoadedProject({
-    configPath,
-    rootPath: path.dirname(configPath),
-    program: ts.createProgram({
-      rootNames: parsedConfig.fileNames,
-      options: parsedConfig.options,
-      projectReferences: parsedConfig.projectReferences
-    })
+): LoadedProject => {
+  const rootPath = path.dirname(configPath)
+  const program = ts.createProgram({
+    rootNames: parsedConfig.fileNames,
+    options: parsedConfig.options,
+    projectReferences: parsedConfig.projectReferences
   })
+
+  return new LoadedProject({ configPath, rootPath, program })
+}
 
 const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {

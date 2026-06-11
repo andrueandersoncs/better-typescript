@@ -18,10 +18,11 @@ export const createRuleMatch = (
   const sourceFile = context.sourceFile
   const start = source.node.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)
+  const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
 
   return new RuleMatch({
     ruleId: source.ruleId,
-    fileName: toRelativeFileName(context.projectRoot)(sourceFile.fileName),
+    fileName,
     line: location.line + 1,
     column: location.character + 1,
     message: source.message,

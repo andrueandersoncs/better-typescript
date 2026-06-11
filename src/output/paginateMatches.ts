@@ -1,8 +1,10 @@
 import { Function, Option, Schema } from "effect"
 import { RuleMatch } from "../rules/index.js"
 
+const pageMatchesSchema = Schema.Array(RuleMatch)
+
 export class MatchesPage extends Schema.Class<MatchesPage>("MatchesPage")({
-  matches: Schema.Array(RuleMatch),
+  matches: pageMatchesSchema,
   totalCount: Schema.Int,
   startIndex: Schema.Int,
   endIndex: Schema.Int
@@ -13,10 +15,8 @@ export const paginateMatches = (
   offset: number,
   limit: Option.Option<number>
 ): MatchesPage => {
-  const pageMatches = matches.slice(
-    offset,
-    offset + Option.getOrElse(limit, Function.constant(matches.length))
-  )
+  const pageSize = Option.getOrElse(limit, Function.constant(matches.length))
+  const pageMatches = matches.slice(offset, offset + pageSize)
 
   return new MatchesPage({
     matches: pageMatches,

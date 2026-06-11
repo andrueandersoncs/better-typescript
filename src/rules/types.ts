@@ -38,12 +38,15 @@ const FileHandlerSchema = Schema.declare(isFileHandler).annotations({
   identifier: "FileHandler"
 })
 
+const syntaxKindSchema = Schema.Enums(ts.SyntaxKind)
+const listenerKindsSchema = Schema.Array(syntaxKindSchema)
+
 // A RuleCheck is data, not a traversal: a free monoid of listeners describing which
 // nodes a rule wants to see. An interpreter (runner/compileRules.ts) folds every
 // rule's listeners into one kind-dispatch table and walks each source file once,
 // so adding rules does not add traversals.
 export class NodeListener extends Schema.TaggedClass<NodeListener>()("OnNode", {
-  kinds: Schema.Array(Schema.Enums(ts.SyntaxKind)),
+  kinds: listenerKindsSchema,
   handler: NodeHandlerSchema
 }) {}
 
@@ -55,8 +58,11 @@ export type RuleListener = NodeListener | FileListener
 
 export type RuleCheck = ReadonlyArray<RuleListener>
 
+const ruleListenerSchema = Schema.Union(NodeListener, FileListener)
+const ruleCheckSchema = Schema.Array(ruleListenerSchema)
+
 export class Rule extends Schema.Class<Rule>("Rule")({
   id: Schema.String,
   description: Schema.String,
-  check: Schema.Array(Schema.Union(NodeListener, FileListener))
+  check: ruleCheckSchema
 }) {}

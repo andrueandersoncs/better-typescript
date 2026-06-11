@@ -30,9 +30,8 @@ const returnExpressionFromStatement =
   (sourceFile: ts.SourceFile) =>
   (statement: ts.Statement): Option.Option<ts.Expression> =>
     Option.gen(function* () {
-      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
-        unwrapSingleStatementBlock(statement)
-      )
+      const unwrappedStatement = unwrapSingleStatementBlock(statement)
+      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)
       const expression = yield* Option.fromNullable(returnStatement.expression)
 
       return yield* Option.liftPredicate(isSimpleReturnExpression(sourceFile))(expression)
@@ -58,9 +57,8 @@ const negatedPrefixUnaryExpressionOperand = (
 }
 
 const negatedConditionOperand = (expression: ts.Expression): Option.Option<ts.Expression> =>
-  Option.flatMap(
-    Option.liftPredicate(ts.isPrefixUnaryExpression)(expression),
-    negatedPrefixUnaryExpressionOperand
+  Option.liftPredicate(ts.isPrefixUnaryExpression)(expression).pipe(
+    Option.flatMap(negatedPrefixUnaryExpressionOperand)
   )
 
 const parenthesizedExpressionText = (
@@ -89,7 +87,8 @@ const conditionalExpressionText = (
   fallbackExpression: ts.Expression
 ): string => {
   const sourceFile = context.sourceFile
-  const negatedCondition = negatedConditionOperand(unwrapExpression(condition))
+  const unwrappedCondition = unwrapExpression(condition)
+  const negatedCondition = negatedConditionOperand(unwrappedCondition)
 
   return Option.isSome(negatedCondition)
     ? ternaryText(sourceFile, negatedCondition.value, fallbackExpression, thenExpression)
@@ -125,11 +124,13 @@ const conditionalReturnMatch =
 
 const statementConditionalMatch =
   (context: RuleContext, block: ts.Block) =>
-  (statement: ts.Statement, index: number): Option.Option<RuleMatch> =>
-    Option.flatMap(
-      Option.liftPredicate(ts.isIfStatement)(statement),
-      conditionalReturnMatch(context, Option.fromNullable(block.statements[index + 1]))
+  (statement: ts.Statement, index: number): Option.Option<RuleMatch> => {
+    const nextStatement = Option.fromNullable(block.statements[index + 1])
+
+    return Option.liftPredicate(ts.isIfStatement)(statement).pipe(
+      Option.flatMap(conditionalReturnMatch(context, nextStatement))
     )
+  }
 
 const conditionalReturnRuleMatches = (
   block: ts.Block,
@@ -137,9 +138,11 @@ const conditionalReturnRuleMatches = (
 ): ReadonlyArray<RuleMatch> =>
   Array.filterMap(block.statements, statementConditionalMatch(context, block))
 
+const check = onNode([ts.SyntaxKind.Block], ts.isBlock, conditionalReturnRuleMatches)
+
 export const preferConditionalReturn = new Rule({
   id: ruleId,
   description:
     "Prefer conditional return expressions over if statements that choose between two values.",
-  check: onNode([ts.SyntaxKind.Block], ts.isBlock, conditionalReturnRuleMatches)
+  check
 })

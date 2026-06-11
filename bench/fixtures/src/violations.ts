@@ -157,5 +157,10 @@ export const orderSummary = (
 export const shoutedWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
   words.map((word) => word.toUpperCase())
 
+// no-nested-calls: a value-producing call computed inline in another call's arguments.
+const halfOf = (value: number): number => value / 2
+
+export const roundedHalf = (value: number): number => Math.round(halfOf(value))
+
 // no-duplicate-function-names: `formatValue` is also declared in typeHeavy.ts.
 export const formatValue = (value: number): string => value.toFixed(2)

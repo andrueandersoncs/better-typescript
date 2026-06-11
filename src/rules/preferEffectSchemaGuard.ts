@@ -25,7 +25,8 @@ const isStringKeyInExpression = (
 ): expression is ts.BinaryExpression => {
   if (ts.isBinaryExpression(expression)) {
     const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
-    const hasStringKey = isStringLiteralLike(unwrapExpression(expression.left))
+    const keyExpression = unwrapExpression(expression.left)
+    const hasStringKey = isStringLiteralLike(keyExpression)
     const isStringKeyIn = isInOperator && hasStringKey
 
     return isStringKeyIn
@@ -55,8 +56,10 @@ const inOperatorGuardMatches = (
     .filter(isStringKeyInExpression)
     .map(schemaGuardMatch(context))
 
+const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inOperatorGuardMatches)
+
 export const preferEffectSchemaGuard = new Rule({
   id: ruleId,
   description: "Prefer Effect Schema guards over string-key in-operator checks.",
-  check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inOperatorGuardMatches)
+  check
 })

@@ -20,8 +20,10 @@ const switchStatementMatches = (
   })
 ]
 
+const check = onNode([ts.SyntaxKind.SwitchStatement], ts.isSwitchStatement, switchStatementMatches)
+
 export const noSwitchStatements = new Rule({
   id: ruleId,
   description: "Disallow switch statements in favor of Effect Match.",
-  check: onNode([ts.SyntaxKind.SwitchStatement], ts.isSwitchStatement, switchStatementMatches)
+  check
 })

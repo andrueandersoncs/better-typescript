@@ -10,8 +10,10 @@ import { rules } from "./rules/index.js"
 import type { RuleMatch } from "./rules/index.js"
 import { runRules } from "./runner/runRules.js"
 
+const workingDirectory = process.cwd()
+
 const project = Options.directory("project", { exists: "yes" }).pipe(
-  Options.withDefault(process.cwd())
+  Options.withDefault(workingDirectory)
 )
 
 const limit = Options.integer("limit").pipe(
@@ -41,19 +43,23 @@ const setFailureExitCode = (): void => {
 
 const analyzeProject = Effect.fn("analyzeProject")(function* (options: AnalyzeOptions) {
   const workspace = yield* loadProject(options.project)
-  const matches = dedupeMatches(workspace.projects.flatMap(checkProject))
+  const projectMatches = workspace.projects.flatMap(checkProject)
+  const matches = dedupeMatches(projectMatches)
 
   if (matches.length === 0) {
     return `No rule matches found in ${workspace.rootPath}.`
   }
 
   yield* Effect.sync(setFailureExitCode)
-  return formatMatchesPage(paginateMatches(matches, options.offset, options.limit))
+  const page = paginateMatches(matches, options.offset, options.limit)
+  return formatMatchesPage(page)
 })
 
-const dedupeMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<RuleMatch> => [
-  ...new Map(matches.map(matchEntry)).values()
-]
+const dedupeMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<RuleMatch> => {
+  const entries = matches.map(matchEntry)
+
+  return [...new Map(entries).values()]
+}
 
 const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [matchKey(match), match]
 

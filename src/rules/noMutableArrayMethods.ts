@@ -74,23 +74,31 @@ const isUnionOrIntersectionArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
-): boolean =>
-  Option.exists(
-    Option.liftPredicate(isUnionOrIntersectionType)(type),
-    anyPartIsArrayType(checker, seen)
-  )
+): boolean => {
+  const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
+
+  return Option.exists(unionOrIntersection, anyPartIsArrayType(checker, seen))
+}
 
 const isConstrainedArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
-): boolean => Option.exists(differentBaseConstraint(checker, type), isArrayTypePart(checker, seen))
+): boolean => {
+  const baseConstraint = differentBaseConstraint(checker, type)
+
+  return Option.exists(baseConstraint, isArrayTypePart(checker, seen))
+}
 
 const isApparentArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
-): boolean => Option.exists(differentApparentType(checker, type), isArrayTypePart(checker, seen))
+): boolean => {
+  const apparentType = differentApparentType(checker, type)
+
+  return Option.exists(apparentType, isArrayTypePart(checker, seen))
+}
 
 const isArrayType = (
   checker: ts.TypeChecker,
@@ -139,15 +147,15 @@ const mutableArrayMatches = (
   callExpression: ts.CallExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  Option.toArray(
-    Option.map(
-      mutableArrayMethodCall(context, callExpression),
-      mutableArrayRuleMatch(context, callExpression)
-    )
+  mutableArrayMethodCall(context, callExpression).pipe(
+    Option.map(mutableArrayRuleMatch(context, callExpression)),
+    Option.toArray
   )
+
+const check = onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, mutableArrayMatches)
 
 export const noMutableArrayMethods = new Rule({
   id: ruleId,
   description: "Disallow mutable array methods in favor of immutable array operations.",
-  check: onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, mutableArrayMatches)
+  check
 })

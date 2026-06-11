@@ -21,8 +21,10 @@ const forOfMatches = (
   })
 ]
 
+const check = onNode([ts.SyntaxKind.ForOfStatement], ts.isForOfStatement, forOfMatches)
+
 export const noForOfLoops = new Rule({
   id: ruleId,
   description: "Disallow for..of loops in favor of immutable collection operations.",
-  check: onNode([ts.SyntaxKind.ForOfStatement], ts.isForOfStatement, forOfMatches)
+  check
 })

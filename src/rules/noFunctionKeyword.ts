@@ -15,8 +15,11 @@ type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
   ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
-const isGeneratorFunction = (node: FunctionKeywordNode): boolean =>
-  Option.isSome(Option.fromNullable(node.asteriskToken))
+const isGeneratorFunction = (node: FunctionKeywordNode): boolean => {
+  const asteriskToken = Option.fromNullable(node.asteriskToken)
+
+  return Option.isSome(asteriskToken)
+}
 
 const functionDeclarationWithBody = (
   node: FunctionKeywordNode
@@ -31,7 +34,8 @@ const overloadDeclarations = (
 ): Option.Option<ReadonlyArray<ts.FunctionDeclaration>> =>
   Option.gen(function* () {
     const name = yield* Option.fromNullable(implementation.name)
-    const symbol = yield* Option.fromNullable(context.checker.getSymbolAtLocation(name))
+    const nameSymbol = context.checker.getSymbolAtLocation(name)
+    const symbol = yield* Option.fromNullable(nameSymbol)
     const declarations = yield* Option.fromNullable(symbol.declarations)
 
     return declarations.filter(ts.isFunctionDeclaration)
@@ -41,7 +45,8 @@ const isOverloadOf =
   (implementation: FunctionDeclarationWithBody) =>
   (candidate: ts.FunctionDeclaration): boolean => {
     const isImplementation = candidate === implementation
-    const hasNoBody = Option.isNone(Option.fromNullable(candidate.body))
+    const body = Option.fromNullable(candidate.body)
+    const hasNoBody = Option.isNone(body)
 
     return [!isImplementation, hasNoBody].every(Boolean)
   }
@@ -54,8 +59,11 @@ const hasOverloadFor =
 const hasOverloadSignature = (
   context: RuleContext,
   implementation: FunctionDeclarationWithBody
-): boolean =>
-  Option.exists(overloadDeclarations(context, implementation), hasOverloadFor(implementation))
+): boolean => {
+  const declarations = overloadDeclarations(context, implementation)
+
+  return Option.exists(declarations, hasOverloadFor(implementation))
+}
 
 const lacksOverloadSignature =
   (context: RuleContext) =>
@@ -65,7 +73,11 @@ const lacksOverloadSignature =
 const isDisallowedFunctionDeclaration = (
   context: RuleContext,
   node: FunctionKeywordNode
-): boolean => Option.exists(functionDeclarationWithBody(node), lacksOverloadSignature(context))
+): boolean => {
+  const declarationWithBody = functionDeclarationWithBody(node)
+
+  return Option.exists(declarationWithBody, lacksOverloadSignature(context))
+}
 
 const isDisallowedFunctionKeyword = (
   context: RuleContext,
@@ -87,27 +99,34 @@ const functionKeywordToken = (sourceFile: ts.SourceFile, node: FunctionKeywordNo
 const functionKeywordMatches = (
   node: FunctionKeywordNode,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isDisallowedFunctionKeyword(context, node)
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: functionKeywordToken(context.sourceFile, node),
-          message: "Avoid using the function keyword.",
-          hint:
-            "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-            "declarations only when overload signatures are required, and keep function* when " +
-            "generator semantics are required."
-        })
-      ]
-    : []
+): ReadonlyArray<RuleMatch> => {
+  if (!isDisallowedFunctionKeyword(context, node)) {
+    return []
+  }
+
+  const keywordToken = functionKeywordToken(context.sourceFile, node)
+
+  return [
+    createRuleMatch(context, {
+      ruleId,
+      node: keywordToken,
+      message: "Avoid using the function keyword.",
+      hint:
+        "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+        "declarations only when overload signatures are required, and keep function* when " +
+        "generator semantics are required."
+    })
+  ]
+}
+
+const check = onNode(
+  [ts.SyntaxKind.FunctionDeclaration, ts.SyntaxKind.FunctionExpression],
+  isFunctionKeywordNode,
+  functionKeywordMatches
+)
 
 export const noFunctionKeyword = new Rule({
   id: ruleId,
   description: "Disallow non-generator function declarations in favor of const arrow functions.",
-  check: onNode(
-    [ts.SyntaxKind.FunctionDeclaration, ts.SyntaxKind.FunctionExpression],
-    isFunctionKeywordNode,
-    functionKeywordMatches
-  )
+  check
 })

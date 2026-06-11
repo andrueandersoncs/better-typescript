@@ -20,8 +20,10 @@ const throwMatches = (
   })
 ]
 
+const check = onNode([ts.SyntaxKind.ThrowStatement], ts.isThrowStatement, throwMatches)
+
 export const noThrow = new Rule({
   id: ruleId,
   description: "Disallow throw statements in favor of Effect errors.",
-  check: onNode([ts.SyntaxKind.ThrowStatement], ts.isThrowStatement, throwMatches)
+  check
 })

@@ -15,8 +15,12 @@ const hasParameters = (initializer: FunctionInitializer): boolean =>
 
 const effectModuleFileNames: ReadonlySet<string> = new Set(["Effect.ts", "Effect.d.ts"])
 
-const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean =>
-  effectModuleFileNames.has(path.basename(declaration.getSourceFile().fileName))
+const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
+  const declarationFileName = declaration.getSourceFile().fileName
+  const baseFileName = path.basename(declarationFileName)
+
+  return effectModuleFileNames.has(baseFileName)
+}
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
@@ -25,21 +29,29 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   return isNamedEffect && hasEffectModuleDeclaration
 }
 
-const isEffectType = (type: ts.Type): boolean =>
-  Option.exists(Option.fromNullable(type.getSymbol()), isEffectInterfaceSymbol)
+const isEffectType = (type: ts.Type): boolean => {
+  const typeSymbol = type.getSymbol()
+  const symbol = Option.fromNullable(typeSymbol)
+
+  return Option.exists(symbol, isEffectInterfaceSymbol)
+}
 
 const signatureReturnsEffect =
   (context: RuleContext) =>
-  (signature: ts.Signature): boolean =>
-    isEffectType(context.checker.getReturnTypeOfSignature(signature))
+  (signature: ts.Signature): boolean => {
+    const returnType = context.checker.getReturnTypeOfSignature(signature)
+
+    return isEffectType(returnType)
+  }
 
 const returnsEffect =
   (context: RuleContext) =>
-  (initializer: FunctionInitializer): boolean =>
-    Option.exists(
-      Option.fromNullable(context.checker.getSignatureFromDeclaration(initializer)),
-      signatureReturnsEffect(context)
-    )
+  (initializer: FunctionInitializer): boolean => {
+    const declaredSignature = context.checker.getSignatureFromDeclaration(initializer)
+    const signature = Option.fromNullable(declaredSignature)
+
+    return Option.exists(signature, signatureReturnsEffect(context))
+  }
 
 const effectFnRuleMatch =
   (context: RuleContext) =>
@@ -69,8 +81,10 @@ const effectFnMatches = (
     Option.toArray
   )
 
+const check = onNode([ts.SyntaxKind.VariableDeclaration], ts.isVariableDeclaration, effectFnMatches)
+
 export const preferEffectFn = new Rule({
   id: ruleId,
   description: "Require Effect.fn for functions with parameters that return an Effect.",
-  check: onNode([ts.SyntaxKind.VariableDeclaration], ts.isVariableDeclaration, effectFnMatches)
+  check
 })

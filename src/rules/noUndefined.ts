@@ -50,11 +50,12 @@ const optionHint =
 const isUndefinedIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "undefined"
 
-const isUndefinedExpression = (expression: ts.Expression): boolean =>
-  Option.exists(
-    Option.liftPredicate(ts.isIdentifier)(unwrapExpression(expression)),
-    isUndefinedIdentifier
-  )
+const isUndefinedExpression = (expression: ts.Expression): boolean => {
+  const unwrapped = unwrapExpression(expression)
+  const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
+
+  return Option.exists(identifier, isUndefinedIdentifier)
+}
 
 const containsUndefinedKeyword = (node: ts.Node): boolean => {
   const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
@@ -88,8 +89,10 @@ const isParameterAcceptingUndefined = (
   node: ts.Node
 ): node is ts.ParameterDeclaration => {
   if (ts.isParameter(node)) {
-    const hasQuestionToken = Option.isSome(Option.fromNullable(node.questionToken))
-    const hasUndefinedType = containsUndefinedType(Option.fromNullable(node.type))
+    const questionToken = Option.fromNullable(node.questionToken)
+    const hasQuestionToken = Option.isSome(questionToken)
+    const typeNode = Option.fromNullable(node.type)
+    const hasUndefinedType = containsUndefinedType(typeNode)
 
     return [hasQuestionToken, hasUndefinedType].some(Boolean)
   }
@@ -109,27 +112,39 @@ const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =
     ts.isGetAccessorDeclaration(node)
   ].some(Boolean)
 
+const declaredTypeContainsUndefined = (node: ReturnTypeDeclaration): boolean => {
+  const typeNode = Option.fromNullable(node.type)
+
+  return containsUndefinedType(typeNode)
+}
+
 const isUndefinedReturnTypeDeclaration = (
   node: ts.Node
 ): node is ReturnTypeDeclaration =>
-  isReturnTypeDeclaration(node)
-    ? containsUndefinedType(Option.fromNullable(node.type))
-    : false
+  isReturnTypeDeclaration(node) ? declaredTypeContainsUndefined(node) : false
 
 const expressionFromConciseBody = (
   body: ts.ConciseBody
 ): Option.Option<ts.Expression> =>
   ts.isBlock(body) ? Option.none() : Option.some(body)
 
+const returnedExpressionIsUndefined = (statement: ts.ReturnStatement): boolean => {
+  const expression = Option.fromNullable(statement.expression)
+
+  return Option.exists(expression, isUndefinedExpression)
+}
+
 const returnsUndefinedFromReturnStatement = (node: ts.Node): boolean =>
-  ts.isReturnStatement(node)
-    ? Option.exists(Option.fromNullable(node.expression), isUndefinedExpression)
-    : false
+  ts.isReturnStatement(node) ? returnedExpressionIsUndefined(node) : false
+
+const arrowBodyIsUndefined = (arrowFunction: ts.ArrowFunction): boolean => {
+  const expression = expressionFromConciseBody(arrowFunction.body)
+
+  return Option.exists(expression, isUndefinedExpression)
+}
 
 const returnsUndefinedFromArrowBody = (node: ts.Node): boolean =>
-  ts.isArrowFunction(node)
-    ? Option.exists(expressionFromConciseBody(node.body), isUndefinedExpression)
-    : false
+  ts.isArrowFunction(node) ? arrowBodyIsUndefined(node) : false
 
 const isUndefinedReturnExpression = (
   node: ts.Node
@@ -139,22 +154,28 @@ const isUndefinedReturnExpression = (
 const isNotMinusToken = (questionToken: ts.Node): boolean =>
   questionToken.kind !== ts.SyntaxKind.MinusToken
 
-const isOptionalMappedTypeNode = (node: ts.MappedTypeNode): boolean =>
-  Option.exists(Option.fromNullable(node.questionToken), isNotMinusToken)
+const isOptionalMappedTypeNode = (node: ts.MappedTypeNode): boolean => {
+  const questionToken = Option.fromNullable(node.questionToken)
+
+  return Option.exists(questionToken, isNotMinusToken)
+}
 
 const isUndefinedTypeDeclaration = (
   node: ts.Node
 ): node is UndefinedTypeDeclaration => {
   if (ts.isPropertySignature(node)) {
-    const hasQuestionToken = Option.isSome(Option.fromNullable(node.questionToken))
-    const hasUndefinedType = containsUndefinedType(Option.fromNullable(node.type))
+    const questionToken = Option.fromNullable(node.questionToken)
+    const hasQuestionToken = Option.isSome(questionToken)
+    const typeNode = Option.fromNullable(node.type)
+    const hasUndefinedType = containsUndefinedType(typeNode)
 
     return [hasQuestionToken, hasUndefinedType].some(Boolean)
   }
 
   if (ts.isMappedTypeNode(node)) {
     const hasQuestionToken = isOptionalMappedTypeNode(node)
-    const hasUndefinedType = containsUndefinedType(Option.fromNullable(node.type))
+    const typeNode = Option.fromNullable(node.type)
+    const hasUndefinedType = containsUndefinedType(typeNode)
 
     return [hasQuestionToken, hasUndefinedType].some(Boolean)
   }
@@ -172,13 +193,16 @@ const undefinedMessages: Record<UndefinedUsageMatch["kind"], string> = {
 
 const messageForMatch = (match: UndefinedUsageMatch): string => undefinedMessages[match.kind]
 
-const undefinedMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch =>
-  createRuleMatch(context, {
+const undefinedMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch => {
+  const message = messageForMatch(match)
+
+  return createRuleMatch(context, {
     ruleId,
     node: match.node,
-    message: messageForMatch(match),
+    message,
     hint: optionHint
   })
+}
 
 const undefinedParameterMatches = (
   node: ts.ParameterDeclaration,
@@ -219,22 +243,46 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
 // One listener per undefined-usage category. Each guard already narrows to the
 // node type its category reports on, so the listeners compose the same matches
 // the old whole-file scan produced, in the same per-node order.
+const parameterListener = onNode(
+  [ts.SyntaxKind.Parameter],
+  isParameterAcceptingUndefined,
+  undefinedParameterMatches
+)
+
+const returnTypeListener = onNode(
+  returnTypeDeclarationKinds,
+  isUndefinedReturnTypeDeclaration,
+  undefinedReturnTypeMatches
+)
+
+const returnExpressionListener = onNode(
+  [ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction],
+  isUndefinedReturnExpression,
+  undefinedReturnExpressionMatches
+)
+
+const typeDeclarationListener = onNode(
+  [ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType],
+  isUndefinedTypeDeclaration,
+  undefinedTypeDeclarationMatches
+)
+
+const comparisonListener = onNode(
+  [ts.SyntaxKind.BinaryExpression],
+  isUndefinedComparison,
+  undefinedComparisonMatches
+)
+
+const check = combineAll([
+  parameterListener,
+  returnTypeListener,
+  returnExpressionListener,
+  typeDeclarationListener,
+  comparisonListener
+])
+
 export const noUndefined = new Rule({
   id: ruleId,
   description: "Disallow undefined usage in favor of Effect Option.",
-  check: combineAll([
-    onNode([ts.SyntaxKind.Parameter], isParameterAcceptingUndefined, undefinedParameterMatches),
-    onNode(returnTypeDeclarationKinds, isUndefinedReturnTypeDeclaration, undefinedReturnTypeMatches),
-    onNode(
-      [ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction],
-      isUndefinedReturnExpression,
-      undefinedReturnExpressionMatches
-    ),
-    onNode(
-      [ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType],
-      isUndefinedTypeDeclaration,
-      undefinedTypeDeclarationMatches
-    ),
-    onNode([ts.SyntaxKind.BinaryExpression], isUndefinedComparison, undefinedComparisonMatches)
-  ])
+  check
 })

@@ -35,6 +35,12 @@
 //   solo sum 4.435 ms vs fused 0.677 ms = 6.6x fusion win. The rule's program-wide
 //   construction index is built once per program and cached, so its steady-state
 //   cost (0.189 ms) is just the per-interface lookups.
+// - no-nested-calls rule + whole-src linearization to named intermediates
+//   (2026-06-11, clean.ts conformed, fixtures grew 1 case): ALL rules 0.756 ms/pass
+//   across 23 rules, every rule 0.19-0.25 ms; solo sum 4.749 ms vs fused 0.756 ms =
+//   6.3x fusion win. The rule's checker query (the function-returning exemption)
+//   runs only for calls already sitting in a consuming argument position, so its
+//   steady-state cost (0.217 ms) stays at the traversal floor.
 
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"

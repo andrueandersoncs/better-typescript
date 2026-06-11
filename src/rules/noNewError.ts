@@ -9,8 +9,11 @@ const ruleId = "no-new-error"
 
 const isErrorIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Error"
 
-const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean =>
-  Option.exists(Option.liftPredicate(ts.isIdentifier)(newExpression.expression), isErrorIdentifier)
+const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
+  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(newExpression.expression)
+
+  return Option.exists(constructorIdentifier, isErrorIdentifier)
+}
 
 const newErrorMatches = (
   newExpression: ts.NewExpression,
@@ -29,8 +32,10 @@ const newErrorMatches = (
       ]
     : []
 
+const check = onNode([ts.SyntaxKind.NewExpression], ts.isNewExpression, newErrorMatches)
+
 export const noNewError = new Rule({
   id: ruleId,
   description: "Disallow direct Error construction in favor of Effect Schema tagged errors.",
-  check: onNode([ts.SyntaxKind.NewExpression], ts.isNewExpression, newErrorMatches)
+  check
 })
