@@ -128,7 +128,8 @@ export function readName(value: object): string {
 }
 
 // prefer-effect-schema-constructor: raw object literals in return position instead of
-// values constructed through a schema.
+// values constructed through a schema. prefer-effect-schema-class: FlatMapStep is an
+// interface whose values this file constructs, so it should be a Schema class.
 interface FlatMapStep {
   readonly _tag: "FlatMap"
   readonly first: string

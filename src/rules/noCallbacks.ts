@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { differentApparentType, differentBaseConstraint } from "./tsType.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-callbacks"
 
@@ -181,7 +182,7 @@ const callbackStyleMatches = (
       ]
     : []
 
-export const noCallbacks: Rule = {
+export const noCallbacks = new Rule({
   id: ruleId,
   description: "Disallow callback-style functions returning void in favor of Effect.",
   check: onNode(
@@ -197,4 +198,4 @@ export const noCallbacks: Rule = {
     isCallbackStyleCandidate,
     callbackStyleMatches
   )
-}
+})

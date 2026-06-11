@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-undefined"
 
@@ -218,7 +219,7 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
 // One listener per undefined-usage category. Each guard already narrows to the
 // node type its category reports on, so the listeners compose the same matches
 // the old whole-file scan produced, in the same per-node order.
-export const noUndefined: Rule = {
+export const noUndefined = new Rule({
   id: ruleId,
   description: "Disallow undefined usage in favor of Effect Option.",
   check: combineAll([
@@ -236,4 +237,4 @@ export const noUndefined: Rule = {
     ),
     onNode([ts.SyntaxKind.BinaryExpression], isUndefinedComparison, undefinedComparisonMatches)
   ])
-}
+})

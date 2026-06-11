@@ -34,6 +34,15 @@ export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expre
     ? unwrapTransparentExpression(expression.expression)
     : expression
 
+export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
+  const isSkippableSourceFile = [
+    sourceFile.isDeclarationFile,
+    sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
+  ].some(Boolean)
+
+  return !isSkippableSourceFile
+}
+
 export const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
   if (!ts.isBlock(statement)) {
     return statement

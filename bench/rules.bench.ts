@@ -30,6 +30,11 @@
 //   ALL rules 0.657 ms/pass across 21 rules, every rule 0.18-0.24 ms; solo sum
 //   4.255 ms vs fused 0.657 ms = 6.5x fusion win. The bump over 0.473 is the extra
 //   rule, the larger fixture, and validated match construction.
+// - prefer-effect-schema-class rule + Schema classes for Rule and the listeners
+//   (2026-06-11): ALL rules 0.677 ms/pass across 22 rules, every rule 0.18-0.24 ms;
+//   solo sum 4.435 ms vs fused 0.677 ms = 6.6x fusion win. The rule's program-wide
+//   construction index is built once per program and cached, so its steady-state
+//   cost (0.189 ms) is just the per-interface lookups.
 
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"

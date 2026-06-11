@@ -2,7 +2,8 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-mutable-variable-declarations"
 
@@ -45,7 +46,7 @@ const mutableDeclarationMatches = (
     )
   )
 
-export const noMutableVariableDeclarations: Rule = {
+export const noMutableVariableDeclarations = new Rule({
   id: ruleId,
   description: "Disallow let and var declarations in favor of immutable const bindings.",
   check: onNode(
@@ -53,4 +54,4 @@ export const noMutableVariableDeclarations: Rule = {
     ts.isVariableDeclarationList,
     mutableDeclarationMatches
   )
-}
+})

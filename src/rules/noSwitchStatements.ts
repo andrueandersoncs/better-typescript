@@ -1,7 +1,8 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-switch-statements"
 
@@ -19,8 +20,8 @@ const switchStatementMatches = (
   })
 ]
 
-export const noSwitchStatements: Rule = {
+export const noSwitchStatements = new Rule({
   id: ruleId,
   description: "Disallow switch statements in favor of Effect Match.",
   check: onNode([ts.SyntaxKind.SwitchStatement], ts.isSwitchStatement, switchStatementMatches)
-}
+})

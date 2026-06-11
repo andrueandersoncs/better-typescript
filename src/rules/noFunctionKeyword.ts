@@ -2,7 +2,8 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-function-keyword"
 
@@ -101,7 +102,7 @@ const functionKeywordMatches = (
       ]
     : []
 
-export const noFunctionKeyword: Rule = {
+export const noFunctionKeyword = new Rule({
   id: ruleId,
   description: "Disallow non-generator function declarations in favor of const arrow functions.",
   check: onNode(
@@ -109,4 +110,4 @@ export const noFunctionKeyword: Rule = {
     isFunctionKeywordNode,
     functionKeywordMatches
   )
-}
+})

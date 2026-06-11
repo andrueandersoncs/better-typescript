@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-boolean-expressions"
 
@@ -38,8 +39,8 @@ const inlineBooleanConditionMatches = (
     : []
 }
 
-export const noInlineBooleanExpressions: Rule = {
+export const noInlineBooleanExpressions = new Rule({
   id: ruleId,
   description: "Disallow boolean operators inline in an if statement condition.",
   check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inlineBooleanConditionMatches)
-}
+})

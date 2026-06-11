@@ -5,7 +5,8 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { functionInitializer } from "./tsNode.js"
 import type { FunctionInitializer } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-fn"
 
@@ -68,8 +69,8 @@ const effectFnMatches = (
     Option.toArray
   )
 
-export const preferEffectFn: Rule = {
+export const preferEffectFn = new Rule({
   id: ruleId,
   description: "Require Effect.fn for functions with parameters that return an Effect.",
   check: onNode([ts.SyntaxKind.VariableDeclaration], ts.isVariableDeclaration, effectFnMatches)
-}
+})

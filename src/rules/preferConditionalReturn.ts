@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
@@ -136,9 +137,9 @@ const conditionalReturnRuleMatches = (
 ): ReadonlyArray<RuleMatch> =>
   Array.filterMap(block.statements, statementConditionalMatch(context, block))
 
-export const preferConditionalReturn: Rule = {
+export const preferConditionalReturn = new Rule({
   id: ruleId,
   description:
     "Prefer conditional return expressions over if statements that choose between two values.",
   check: onNode([ts.SyntaxKind.Block], ts.isBlock, conditionalReturnRuleMatches)
-}
+})

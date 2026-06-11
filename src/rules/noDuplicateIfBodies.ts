@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapSingleStatementBlock } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
 
@@ -157,9 +158,9 @@ const duplicateIfMatches = (
     )
   )
 
-export const noDuplicateIfBodies: Rule = {
+export const noDuplicateIfBodies = new Rule({
   id: ruleId,
   description:
     "Disallow if branches that duplicate the body of the branch directly before them.",
   check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, duplicateIfMatches)
-}
+})

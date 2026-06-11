@@ -2,7 +2,8 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-nested-if-statements"
 
@@ -70,8 +71,8 @@ const nestedIfMatches = (
       ]
     : []
 
-export const noNestedIfStatements: Rule = {
+export const noNestedIfStatements = new Rule({
   id: ruleId,
   description: "Disallow nested if statements in favor of boolean operators or early returns.",
   check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, nestedIfMatches)
-}
+})

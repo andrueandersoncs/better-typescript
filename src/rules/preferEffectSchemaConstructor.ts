@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-constructor"
 
@@ -135,11 +136,11 @@ const arrowBodyReturnMatches = (
 ): ReadonlyArray<RuleMatch> =>
   Option.toArray(implicitReturnExpression(arrowFunction)).flatMap(expressionRuleMatches(context))
 
-export const preferEffectSchemaConstructor: Rule = {
+export const preferEffectSchemaConstructor = new Rule({
   id: ruleId,
   description: "Disallow returning raw object literals in favor of Effect Schema constructors.",
   check: combineAll([
     onNode([ts.SyntaxKind.ReturnStatement], ts.isReturnStatement, returnStatementMatches),
     onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, arrowBodyReturnMatches)
   ])
-}
+})

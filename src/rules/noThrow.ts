@@ -1,7 +1,8 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-throw"
 
@@ -19,8 +20,8 @@ const throwMatches = (
   })
 ]
 
-export const noThrow: Rule = {
+export const noThrow = new Rule({
   id: ruleId,
   description: "Disallow throw statements in favor of Effect errors.",
   check: onNode([ts.SyntaxKind.ThrowStatement], ts.isThrowStatement, throwMatches)
-}
+})

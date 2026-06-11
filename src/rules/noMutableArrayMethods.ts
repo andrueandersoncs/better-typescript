@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { differentApparentType, differentBaseConstraint } from "./tsType.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-mutable-array-methods"
 
@@ -17,11 +18,6 @@ type MutableArrayMethod =
   | "sort"
   | "splice"
   | "unshift"
-
-interface MutableArrayMethodCall {
-  readonly callExpression: ts.CallExpression
-  readonly methodName: MutableArrayMethod
-}
 
 const mutableArrayMethods = new Set<MutableArrayMethod>([
   "copyWithin",
@@ -43,7 +39,7 @@ const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMetho
 const mutableArrayMethodCall = (
   context: RuleContext,
   callExpression: ts.CallExpression
-): Option.Option<MutableArrayMethodCall> => {
+): Option.Option<MutableArrayMethod> => {
   if (!ts.isPropertyAccessExpression(callExpression.expression)) {
     return Option.none()
   }
@@ -57,14 +53,7 @@ const mutableArrayMethodCall = (
 
   const receiverType = context.checker.getTypeAtLocation(propertyAccess.expression)
 
-  if (!isArrayType(context.checker, receiverType)) {
-    return Option.none()
-  }
-
-  return Option.some({
-    callExpression,
-    methodName: methodName.value
-  })
+  return isArrayType(context.checker, receiverType) ? methodName : Option.none()
 }
 
 const isArrayTypePart =
@@ -133,12 +122,12 @@ const isUnseenArrayType = (
 }
 
 const mutableArrayRuleMatch =
-  (context: RuleContext) =>
-  (match: MutableArrayMethodCall): RuleMatch =>
+  (context: RuleContext, callExpression: ts.CallExpression) =>
+  (methodName: MutableArrayMethod): RuleMatch =>
     createRuleMatch(context, {
       ruleId,
-      node: match.callExpression,
-      message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
+      node: callExpression,
+      message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
       hint:
         "This is a sign that you're doing something fundamentally procedural when you should " +
         "be taking a more functional approach. Use immutable array operations such as " +
@@ -151,11 +140,14 @@ const mutableArrayMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   Option.toArray(
-    Option.map(mutableArrayMethodCall(context, callExpression), mutableArrayRuleMatch(context))
+    Option.map(
+      mutableArrayMethodCall(context, callExpression),
+      mutableArrayRuleMatch(context, callExpression)
+    )
   )
 
-export const noMutableArrayMethods: Rule = {
+export const noMutableArrayMethods = new Rule({
   id: ruleId,
   description: "Disallow mutable array methods in favor of immutable array operations.",
   check: onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, mutableArrayMatches)
-}
+})

@@ -2,7 +2,8 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-new-error"
 
@@ -28,8 +29,8 @@ const newErrorMatches = (
       ]
     : []
 
-export const noNewError: Rule = {
+export const noNewError = new Rule({
   id: ruleId,
   description: "Disallow direct Error construction in favor of Effect Schema tagged errors.",
   check: onNode([ts.SyntaxKind.NewExpression], ts.isNewExpression, newErrorMatches)
-}
+})

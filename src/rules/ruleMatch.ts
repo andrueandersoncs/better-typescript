@@ -3,14 +3,18 @@ import type * as ts from "typescript"
 import { RuleMatch } from "./types.js"
 import type { RuleContext } from "./types.js"
 
-export interface RuleMatchSource {
-  readonly ruleId: string
-  readonly node: ts.Node
-  readonly message: string
-  readonly hint: string
-}
-
-export const createRuleMatch = (context: RuleContext, source: RuleMatchSource): RuleMatch => {
+// The source parameter is an inline type, not a named interface: it is only this
+// function's parameter list, never a domain shape of its own (the domain shape is
+// RuleMatch, which validates the same data on construction).
+export const createRuleMatch = (
+  context: RuleContext,
+  source: {
+    readonly ruleId: string
+    readonly node: ts.Node
+    readonly message: string
+    readonly hint: string
+  }
+): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = source.node.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)

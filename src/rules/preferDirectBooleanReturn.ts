@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
 
@@ -52,9 +53,9 @@ const directBooleanMatches = (
     )
   )
 
-export const preferDirectBooleanReturn: Rule = {
+export const preferDirectBooleanReturn = new Rule({
   id: ruleId,
   description:
     "Prefer returning boolean expressions directly instead of conditional boolean literals.",
   check: onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, directBooleanMatches)
-}
+})

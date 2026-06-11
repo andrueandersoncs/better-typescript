@@ -1,4 +1,5 @@
 import type * as ts from "typescript"
+import { FileListener, NodeListener } from "./types.js"
 import type { RuleCheck, RuleContext, RuleMatch } from "./types.js"
 
 // Constructors for the RuleCheck algebra. The listener structure is static
@@ -18,16 +19,10 @@ export const onNode = <N extends ts.Node>(
   kinds: ReadonlyArray<ts.SyntaxKind>,
   refine: (node: ts.Node) => node is N,
   handler: (node: N, context: RuleContext) => ReadonlyArray<RuleMatch>
-): RuleCheck => [
-  {
-    _tag: "OnNode",
-    kinds,
-    handler: refinedHandler(refine, handler)
-  }
-]
+): RuleCheck => [new NodeListener({ kinds, handler: refinedHandler(refine, handler) })]
 
 export const onFile = (
   handler: (context: RuleContext) => ReadonlyArray<RuleMatch>
-): RuleCheck => [{ _tag: "OnFile", handler }]
+): RuleCheck => [new FileListener({ handler })]
 
 export const combineAll = (checks: ReadonlyArray<RuleCheck>): RuleCheck => checks.flat()

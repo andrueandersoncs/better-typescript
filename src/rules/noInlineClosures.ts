@@ -2,7 +2,8 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { transparentWrapperKinds } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-closures"
 
@@ -40,10 +41,10 @@ const arrowFunctionMatches = (
 
 // Declared after its handler: onNode evaluates its arguments at module initialization,
 // so a handler passed by name — as this rule requires of itself — must already exist.
-export const noInlineClosures: Rule = {
+export const noInlineClosures = new Rule({
   id: ruleId,
   description:
     "Disallow arrow functions outside naming positions (const initializers) and currying " +
     "positions (arrow function bodies).",
   check: onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, arrowFunctionMatches)
-}
+})

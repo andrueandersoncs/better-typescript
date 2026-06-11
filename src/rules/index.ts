@@ -16,6 +16,7 @@ import { noUndefined } from "./noUndefined.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
 import { preferEffectFn } from "./preferEffectFn.js"
+import { preferEffectSchemaClass } from "./preferEffectSchemaClass.js"
 import { preferEffectSchemaConstructor } from "./preferEffectSchemaConstructor.js"
 import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
 import { preferImplicitReturn } from "./preferImplicitReturn.js"
@@ -24,6 +25,7 @@ import type { Rule } from "./types.js"
 export const rules: ReadonlyArray<Rule> = [
   preferEffectSchemaGuard,
   preferEffectSchemaConstructor,
+  preferEffectSchemaClass,
   preferEffectFn,
   preferConditionalReturn,
   preferDirectBooleanReturn,

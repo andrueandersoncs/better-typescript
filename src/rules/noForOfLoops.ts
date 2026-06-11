@@ -1,7 +1,8 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-of-loops"
 
@@ -20,8 +21,8 @@ const forOfMatches = (
   })
 ]
 
-export const noForOfLoops: Rule = {
+export const noForOfLoops = new Rule({
   id: ruleId,
   description: "Disallow for..of loops in favor of immutable collection operations.",
   check: onNode([ts.SyntaxKind.ForOfStatement], ts.isForOfStatement, forOfMatches)
-}
+})

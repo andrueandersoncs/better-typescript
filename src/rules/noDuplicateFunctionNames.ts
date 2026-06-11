@@ -2,15 +2,11 @@ import { Array, Option } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
-import { functionInitializer } from "./tsNode.js"
-import type { Rule, RuleContext, RuleMatch } from "./types.js"
+import { functionInitializer, isProjectSourceFile } from "./tsNode.js"
+import { Rule } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-function-names"
-
-interface DuplicateFunction {
-  readonly candidate: ts.Identifier
-  readonly otherFileNames: ReadonlyArray<string>
-}
 
 // A top-level function is represented by its name identifier: the name text and the
 // declaring file are both derivable from the node, so no wrapper record is needed.
@@ -42,15 +38,6 @@ const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifie
 
 const topLevelFunctions = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Identifier> =>
   sourceFile.statements.flatMap(statementFunctions)
-
-const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
-  const isSkippableSourceFile = [
-    sourceFile.isDeclarationFile,
-    sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
-  ].some(Boolean)
-
-  return !isSkippableSourceFile
-}
 
 const declarationsForName = (
   index: FunctionNameIndex,
@@ -91,18 +78,6 @@ const isOtherFileName =
   (fileName: string): boolean =>
     fileName !== candidateFileName
 
-const duplicateFunction = (
-  context: RuleContext,
-  candidate: ts.Identifier
-): Option.Option<DuplicateFunction> => {
-  const declarations = declarationsForName(functionNameIndex(context.program), candidate.text)
-  const otherFileNames = [...new Set(declarations.map(declaredFileName))].filter(
-    isOtherFileName(context.sourceFile.fileName)
-  )
-
-  return otherFileNames.length > 0 ? Option.some({ candidate, otherFileNames }) : Option.none()
-}
-
 const maxListedFileNames = 3
 
 const formatFileNames = (projectRoot: string, fileNames: ReadonlyArray<string>): string => {
@@ -121,35 +96,45 @@ const moreFilesSuffix = (remainingCount: number): string => {
   return isSingleFile ? "1 more file" : `${remainingCount} more files`
 }
 
-const duplicateFunctionMatch =
-  (context: RuleContext) =>
-  (duplicate: DuplicateFunction): RuleMatch => {
-    const functionName = duplicate.candidate.text
-    const otherFiles = formatFileNames(context.projectRoot, duplicate.otherFileNames)
+const duplicateFunctionMatch = (
+  context: RuleContext,
+  candidate: ts.Identifier,
+  otherFileNames: ReadonlyArray<string>
+): RuleMatch => {
+  const functionName = candidate.text
+  const otherFiles = formatFileNames(context.projectRoot, otherFileNames)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node: duplicate.candidate,
-      message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
-      hint:
-        `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-        "into a module scoped to its domain and import it from every file that uses it. Name " +
-        "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-        "generic lib.ts or utils.ts."
-    })
-  }
+  return createRuleMatch(context, {
+    ruleId,
+    node: candidate,
+    message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
+    hint:
+      `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
+      "into a module scoped to its domain and import it from every file that uses it. Name " +
+      "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
+      "generic lib.ts or utils.ts."
+  })
+}
 
 const candidateRuleMatch =
   (context: RuleContext) =>
-  (candidate: ts.Identifier): Option.Option<RuleMatch> =>
-    Option.map(duplicateFunction(context, candidate), duplicateFunctionMatch(context))
+  (candidate: ts.Identifier): Option.Option<RuleMatch> => {
+    const declarations = declarationsForName(functionNameIndex(context.program), candidate.text)
+    const otherFileNames = [...new Set(declarations.map(declaredFileName))].filter(
+      isOtherFileName(context.sourceFile.fileName)
+    )
+
+    return otherFileNames.length > 0
+      ? Option.some(duplicateFunctionMatch(context, candidate, otherFileNames))
+      : Option.none()
+  }
 
 const duplicateFunctionMatches = (context: RuleContext): ReadonlyArray<RuleMatch> =>
   Array.filterMap(topLevelFunctions(context.sourceFile), candidateRuleMatch(context))
 
-export const noDuplicateFunctionNames: Rule = {
+export const noDuplicateFunctionNames = new Rule({
   id: ruleId,
   description:
     "Disallow top-level functions that duplicate a function name declared in another file.",
   check: onFile(duplicateFunctionMatches)
-}
+})
