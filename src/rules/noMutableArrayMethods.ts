@@ -2,7 +2,8 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule, RuleContext } from "./types.js"
+import { differentApparentType, differentBaseConstraint } from "./tsType.js"
+import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-mutable-array-methods"
 
@@ -34,27 +35,10 @@ const mutableArrayMethods = new Set<MutableArrayMethod>([
   "unshift"
 ])
 
-export const noMutableArrayMethods: Rule = {
-  id: ruleId,
-  description: "Disallow mutable array methods in favor of immutable array operations.",
-  check: onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, (callExpression, context) =>
-    Option.match(mutableArrayMethodCall(context, callExpression), {
-      onNone: () => [],
-      onSome: (match) => [
-        createRuleMatch(context, {
-          ruleId,
-          node: match.callExpression,
-          message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
-          hint:
-            "This is a sign that you're doing something fundamentally procedural when you should " +
-            "be taking a more functional approach. Use immutable array operations such as " +
-            "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
-            "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
-        })
-      ]
-    })
-  )
-}
+const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMethod> =>
+  mutableArrayMethods.has(methodName as MutableArrayMethod)
+    ? Option.some(methodName as MutableArrayMethod)
+    : Option.none()
 
 const mutableArrayMethodCall = (
   context: RuleContext,
@@ -83,82 +67,95 @@ const mutableArrayMethodCall = (
   })
 }
 
-const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMethod> =>
-  mutableArrayMethods.has(methodName as MutableArrayMethod)
-    ? Option.some(methodName as MutableArrayMethod)
-    : Option.none()
+const isArrayTypePart =
+  (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type>) =>
+  (part: ts.Type): boolean =>
+    isArrayType(checker, part, seen)
 
-const isArrayType = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: ReadonlySet<ts.Type> = new Set()
-): boolean =>
-  Option.match(unseenType(type, seen), {
-    onNone: () => false,
-    onSome: (type) => {
-      const nextSeen = new Set(seen).add(type)
-      const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
-      const hasUnionOrIntersectionArrayType = isUnionOrIntersectionArrayType(
-        checker,
-        type,
-        nextSeen
-      )
-      const hasConstrainedArrayType = isConstrainedArrayType(checker, type, nextSeen)
-      const hasApparentArrayType = isApparentArrayType(checker, type, nextSeen)
+const anyPartIsArrayType =
+  (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type>) =>
+  (type: ts.UnionOrIntersectionType): boolean =>
+    type.types.some(isArrayTypePart(checker, seen))
 
-      return [
-        isDirectArrayType,
-        hasUnionOrIntersectionArrayType,
-        hasConstrainedArrayType,
-        hasApparentArrayType
-      ].some(Boolean)
-    }
-  })
-
-const unseenType = (
-  type: ts.Type,
-  seen: ReadonlySet<ts.Type>
-): Option.Option<ts.Type> =>
-  Option.liftPredicate((type: ts.Type) => !seen.has(type))(type)
+const isUnionOrIntersectionType = (
+  type: ts.Type
+): type is ts.UnionOrIntersectionType => type.isUnionOrIntersection()
 
 const isUnionOrIntersectionArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
 ): boolean =>
-  Option.match(Option.liftPredicate(isUnionOrIntersectionType)(type), {
-    onNone: () => false,
-    onSome: (type) => type.types.some((part) => isArrayType(checker, part, seen))
-  })
-
-const isUnionOrIntersectionType = (
-  type: ts.Type
-): type is ts.UnionOrIntersectionType => type.isUnionOrIntersection()
+  Option.exists(
+    Option.liftPredicate(isUnionOrIntersectionType)(type),
+    anyPartIsArrayType(checker, seen)
+  )
 
 const isConstrainedArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
-): boolean =>
-  Option.match(Option.fromNullable(checker.getBaseConstraintOfType(type)), {
-    onNone: () => false,
-    onSome: (constraint) =>
-      Option.match(differentType(constraint, type), {
-        onNone: () => false,
-        onSome: (constraint) => isArrayType(checker, constraint, seen)
-      })
-  })
+): boolean => Option.exists(differentBaseConstraint(checker, type), isArrayTypePart(checker, seen))
 
 const isApparentArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: ReadonlySet<ts.Type>
-): boolean =>
-  Option.match(differentType(checker.getApparentType(type), type), {
-    onNone: () => false,
-    onSome: (apparentType) => isArrayType(checker, apparentType, seen)
-  })
+): boolean => Option.exists(differentApparentType(checker, type), isArrayTypePart(checker, seen))
 
-const differentType = (left: ts.Type, right: ts.Type): Option.Option<ts.Type> =>
-  Option.liftPredicate((left: ts.Type) => left !== right)(left)
+const isArrayType = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  seen: ReadonlySet<ts.Type> = new Set()
+): boolean => {
+  const isUnseen = !seen.has(type)
 
+  return isUnseen && isUnseenArrayType(checker, type, seen)
+}
+
+const isUnseenArrayType = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  seen: ReadonlySet<ts.Type>
+): boolean => {
+  const nextSeen = new Set(seen).add(type)
+  const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
+  const hasUnionOrIntersectionArrayType = isUnionOrIntersectionArrayType(checker, type, nextSeen)
+  const hasConstrainedArrayType = isConstrainedArrayType(checker, type, nextSeen)
+  const hasApparentArrayType = isApparentArrayType(checker, type, nextSeen)
+
+  return [
+    isDirectArrayType,
+    hasUnionOrIntersectionArrayType,
+    hasConstrainedArrayType,
+    hasApparentArrayType
+  ].some(Boolean)
+}
+
+const mutableArrayRuleMatch =
+  (context: RuleContext) =>
+  (match: MutableArrayMethodCall): RuleMatch =>
+    createRuleMatch(context, {
+      ruleId,
+      node: match.callExpression,
+      message: `Avoid mutating arrays with Array.prototype.${match.methodName}().`,
+      hint:
+        "This is a sign that you're doing something fundamentally procedural when you should " +
+        "be taking a more functional approach. Use immutable array operations such as " +
+        "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
+        "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
+    })
+
+const mutableArrayMatches = (
+  callExpression: ts.CallExpression,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> =>
+  Option.toArray(
+    Option.map(mutableArrayMethodCall(context, callExpression), mutableArrayRuleMatch(context))
+  )
+
+export const noMutableArrayMethods: Rule = {
+  id: ruleId,
+  description: "Disallow mutable array methods in favor of immutable array operations.",
+  check: onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, mutableArrayMatches)
+}

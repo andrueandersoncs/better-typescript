@@ -132,5 +132,9 @@ export function readName(value: object): string {
   return ""
 }
 
+// no-inline-closures: arrow function in argument position instead of naming or currying.
+export const shoutedWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
+  words.map((word) => word.toUpperCase())
+
 // no-duplicate-function-names: `formatValue` is also declared in typeHeavy.ts.
 export const formatValue = (value: number): string => value.toFixed(2)

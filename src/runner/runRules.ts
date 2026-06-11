@@ -1,6 +1,19 @@
+import type * as ts from "typescript"
 import type { LoadedProject } from "../project/loadProject.js"
-import type { Rule, RuleMatch } from "../rules/index.js"
+import type { Rule, RuleContext, RuleMatch } from "../rules/index.js"
 import { compileRules } from "./compileRules.js"
+
+const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean =>
+  !shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile)
+
+const contextForSourceFile =
+  (loadedProject: LoadedProject, checker: ts.TypeChecker) =>
+  (sourceFile: ts.SourceFile): RuleContext => ({
+    program: loadedProject.program,
+    checker,
+    projectRoot: loadedProject.rootPath,
+    sourceFile
+  })
 
 export const runRules = (
   loadedProject: LoadedProject,
@@ -11,15 +24,9 @@ export const runRules = (
 
   return loadedProject.program
     .getSourceFiles()
-    .filter((sourceFile) => !shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile))
-    .flatMap((sourceFile) =>
-      checkSourceFile({
-        program: loadedProject.program,
-        checker,
-        projectRoot: loadedProject.rootPath,
-        sourceFile
-      })
-    )
+    .filter(isCheckableSourceFile)
+    .map(contextForSourceFile(loadedProject, checker))
+    .flatMap(checkSourceFile)
 }
 
 export const shouldSkipSourceFile = (fileName: string, isDeclarationFile: boolean): boolean =>

@@ -22,6 +22,9 @@
 //   typical rule ~80 ms (the traversal floor), no-undefined 138 ms.
 // - RuleCheck algebra + compileRules single pass:   ALL rules 0.921 ms/pass (~1700x),
 //   every rule 0.16-0.37 ms; solo sum 3.822 ms vs fused 0.921 ms = 4.1x fusion win.
+// - no-inline-closures rule + whole-src migration to named/curried handlers
+//   (2026-06-11, fixtures also conformed): ALL rules 0.473 ms/pass across 20 rules,
+//   every rule 0.16-0.22 ms; solo sum 3.618 ms vs fused 0.473 ms = 7.6x fusion win.
 
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"

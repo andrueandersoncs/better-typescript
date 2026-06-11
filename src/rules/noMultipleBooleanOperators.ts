@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
-import type { Rule } from "./types.js"
+import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-multiple-boolean-operators"
 
@@ -25,38 +25,6 @@ const isBooleanOperatorExpression = (
   return [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator].some(Boolean)
 }
 
-export const noMultipleBooleanOperators: Rule = {
-  id: ruleId,
-  description: "Disallow combining multiple boolean operators in a single expression.",
-  check: onNode(
-    [
-      ts.SyntaxKind.BinaryExpression,
-      ts.SyntaxKind.PrefixUnaryExpression,
-      ts.SyntaxKind.ConditionalExpression
-    ],
-    isBooleanOperatorExpression,
-    (expression, context) => {
-      const isReportableRoot = [
-        isBooleanOperatorRoot(expression),
-        hasMultipleBooleanOperators(expression)
-      ].every(Boolean)
-
-      return isReportableRoot
-        ? [
-            createRuleMatch(context, {
-              ruleId,
-              node: expression,
-              message: "Avoid combining more than one boolean operator in a single expression.",
-              hint:
-                "Declare multiple constant variables instead of combining operators into a " +
-                "single expression."
-            })
-          ]
-        : []
-    }
-  )
-}
-
 const isBooleanOperatorRoot = (expression: ts.Expression): boolean => {
   const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
   const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
@@ -66,6 +34,9 @@ const isBooleanOperatorRoot = (expression: ts.Expression): boolean => {
 
 const hasMultipleBooleanOperators = (expression: ts.Expression): boolean =>
   booleanOperatorCount(expression) > 1
+
+const addBooleanOperatorCount = (total: number, child: ts.Expression): number =>
+  total + booleanOperatorCount(child)
 
 const booleanOperatorCount = (expression: ts.Expression): number => {
   const unwrapped = unwrapExpression(expression)
@@ -77,28 +48,24 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
 
   const childCount = astChildren(unwrapped)
     .filter(ts.isExpression)
-    .reduce((total, child) => total + booleanOperatorCount(child), 0)
+    .reduce(addBooleanOperatorCount, 0)
 
   return ownCount + childCount
 }
 
-const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
-  const parent = Option.fromNullable(node.parent)
+const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean =>
+  [isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent)].some(Boolean)
 
-  return Option.match(parent, {
-    onNone: () => false,
-    onSome: (parent) =>
-      [isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent)].some(Boolean)
-  })
-}
+const hasBooleanOperatorAncestor = (node: ts.Node): boolean =>
+  Option.exists(Option.fromNullable(node.parent), isOrHasBooleanOperatorAncestor)
+
+const isExclamationOperator = (node: ts.PrefixUnaryExpression): boolean =>
+  node.operator === ts.SyntaxKind.ExclamationToken
 
 const isUnaryBooleanOperatorExpression = (
   node: ts.Node
 ): node is ts.PrefixUnaryExpression =>
-  Option.match(Option.liftPredicate(ts.isPrefixUnaryExpression)(node), {
-    onNone: () => false,
-    onSome: (node) => node.operator === ts.SyntaxKind.ExclamationToken
-  })
+  Option.exists(Option.liftPredicate(ts.isPrefixUnaryExpression)(node), isExclamationOperator)
 
 const booleanBinaryOperatorKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.AmpersandAmpersandToken,
@@ -118,3 +85,40 @@ const nestedExpressionBoundaryKinds = new Set<ts.SyntaxKind>([
 
 const isNestedExpressionBoundary = (expression: ts.Expression): boolean =>
   nestedExpressionBoundaryKinds.has(expression.kind)
+
+const multipleBooleanOperatorMatches = (
+  expression: BooleanOperatorExpression,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => {
+  const isReportableRoot = [
+    isBooleanOperatorRoot(expression),
+    hasMultipleBooleanOperators(expression)
+  ].every(Boolean)
+
+  return isReportableRoot
+    ? [
+        createRuleMatch(context, {
+          ruleId,
+          node: expression,
+          message: "Avoid combining more than one boolean operator in a single expression.",
+          hint:
+            "Declare multiple constant variables instead of combining operators into a " +
+            "single expression."
+        })
+      ]
+    : []
+}
+
+export const noMultipleBooleanOperators: Rule = {
+  id: ruleId,
+  description: "Disallow combining multiple boolean operators in a single expression.",
+  check: onNode(
+    [
+      ts.SyntaxKind.BinaryExpression,
+      ts.SyntaxKind.PrefixUnaryExpression,
+      ts.SyntaxKind.ConditionalExpression
+    ],
+    isBooleanOperatorExpression,
+    multipleBooleanOperatorMatches
+  )
+}

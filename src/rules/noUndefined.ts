@@ -1,4 +1,4 @@
-import { Match, Option } from "effect"
+import { Option } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -46,6 +46,40 @@ const optionHint =
   "Use Effect's Option module to model optional values, and convert nullable boundaries " +
   "with Option.fromNullable."
 
+const isUndefinedIdentifier = (identifier: ts.Identifier): boolean =>
+  identifier.text === "undefined"
+
+const isUndefinedExpression = (expression: ts.Expression): boolean =>
+  Option.exists(
+    Option.liftPredicate(ts.isIdentifier)(unwrapExpression(expression)),
+    isUndefinedIdentifier
+  )
+
+const containsUndefinedKeyword = (node: ts.Node): boolean => {
+  const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
+  const childContainsUndefinedKeyword =
+    ts.forEachChild(node, containsUndefinedKeyword) === true
+
+  return [isUndefinedKeyword, childContainsUndefinedKeyword].some(Boolean)
+}
+
+const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
+  Option.exists(typeNode, containsUndefinedKeyword)
+
+const equalityComparisonOperators = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken
+])
+
+const comparesAgainstUndefined = (expression: ts.BinaryExpression): boolean => {
+  const isEqualityComparison = equalityComparisonOperators.has(expression.operatorToken.kind)
+  const hasUndefinedOperand = [expression.left, expression.right].some(isUndefinedExpression)
+
+  return [isEqualityComparison, hasUndefinedOperand].every(Boolean)
+}
+
 const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression =>
   ts.isBinaryExpression(node) ? comparesAgainstUndefined(node) : false
 
@@ -62,13 +96,6 @@ const isParameterAcceptingUndefined = (
   return false
 }
 
-const isUndefinedReturnTypeDeclaration = (
-  node: ts.Node
-): node is ReturnTypeDeclaration =>
-  isReturnTypeDeclaration(node)
-    ? containsUndefinedType(Option.fromNullable(node.type))
-    : false
-
 const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =>
   [
     ts.isFunctionDeclaration(node),
@@ -81,40 +108,38 @@ const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =
     ts.isGetAccessorDeclaration(node)
   ].some(Boolean)
 
-const isUndefinedReturnExpression = (
+const isUndefinedReturnTypeDeclaration = (
   node: ts.Node
-): node is UndefinedReturnExpression => {
-  const returnStatementReturnsUndefined = Option.match(
-    Option.liftPredicate(ts.isReturnStatement)(node),
-    {
-      onNone: () => false,
-      onSome: (returnStatement) =>
-        Option.match(Option.fromNullable(returnStatement.expression), {
-          onNone: () => false,
-          onSome: isUndefinedExpression
-        })
-    }
-  )
-
-  const arrowFunctionReturnsUndefined = Option.match(
-    Option.liftPredicate(ts.isArrowFunction)(node),
-    {
-      onNone: () => false,
-      onSome: (arrowFunction) =>
-        Option.match(expressionFromConciseBody(arrowFunction.body), {
-          onNone: () => false,
-          onSome: isUndefinedExpression
-        })
-    }
-  )
-
-  return [returnStatementReturnsUndefined, arrowFunctionReturnsUndefined].some(Boolean)
-}
+): node is ReturnTypeDeclaration =>
+  isReturnTypeDeclaration(node)
+    ? containsUndefinedType(Option.fromNullable(node.type))
+    : false
 
 const expressionFromConciseBody = (
   body: ts.ConciseBody
 ): Option.Option<ts.Expression> =>
   ts.isBlock(body) ? Option.none() : Option.some(body)
+
+const returnsUndefinedFromReturnStatement = (node: ts.Node): boolean =>
+  ts.isReturnStatement(node)
+    ? Option.exists(Option.fromNullable(node.expression), isUndefinedExpression)
+    : false
+
+const returnsUndefinedFromArrowBody = (node: ts.Node): boolean =>
+  ts.isArrowFunction(node)
+    ? Option.exists(expressionFromConciseBody(node.body), isUndefinedExpression)
+    : false
+
+const isUndefinedReturnExpression = (
+  node: ts.Node
+): node is UndefinedReturnExpression =>
+  [returnsUndefinedFromReturnStatement(node), returnsUndefinedFromArrowBody(node)].some(Boolean)
+
+const isNotMinusToken = (questionToken: ts.Node): boolean =>
+  questionToken.kind !== ts.SyntaxKind.MinusToken
+
+const isOptionalMappedTypeNode = (node: ts.MappedTypeNode): boolean =>
+  Option.exists(Option.fromNullable(node.questionToken), isNotMinusToken)
 
 const isUndefinedTypeDeclaration = (
   node: ts.Node
@@ -136,61 +161,15 @@ const isUndefinedTypeDeclaration = (
   return false
 }
 
-const isOptionalMappedTypeNode = (node: ts.MappedTypeNode): boolean =>
-  Option.match(Option.fromNullable(node.questionToken), {
-    onNone: () => false,
-    onSome: (questionToken) => questionToken.kind !== ts.SyntaxKind.MinusToken
-  })
-
-const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
-  Option.match(typeNode, {
-    onNone: () => false,
-    onSome: containsUndefinedKeyword
-  })
-
-const containsUndefinedKeyword = (node: ts.Node): boolean => {
-  const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
-  const childContainsUndefinedKeyword =
-    ts.forEachChild(node, containsUndefinedKeyword) === true
-
-  return [isUndefinedKeyword, childContainsUndefinedKeyword].some(Boolean)
+const undefinedMessages: Record<UndefinedUsageMatch["kind"], string> = {
+  parameter: "Avoid function parameters that accept undefined.",
+  "return-type": "Avoid function return types that include undefined.",
+  "return-expression": "Avoid returning undefined from functions.",
+  "type-declaration": "Avoid optional or undefined properties in type declarations.",
+  comparison: "Avoid comparing values against undefined."
 }
 
-const comparesAgainstUndefined = (expression: ts.BinaryExpression): boolean => {
-  const isEqualityComparison = equalityComparisonOperators.has(expression.operatorToken.kind)
-  const hasUndefinedOperand = [expression.left, expression.right].some(isUndefinedExpression)
-
-  return [isEqualityComparison, hasUndefinedOperand].every(Boolean)
-}
-
-const equalityComparisonOperators = new Set<ts.SyntaxKind>([
-  ts.SyntaxKind.EqualsEqualsToken,
-  ts.SyntaxKind.EqualsEqualsEqualsToken,
-  ts.SyntaxKind.ExclamationEqualsToken,
-  ts.SyntaxKind.ExclamationEqualsEqualsToken
-])
-
-const isUndefinedExpression = (expression: ts.Expression): boolean => {
-  const unwrapped = unwrapExpression(expression)
-
-  return Option.match(Option.liftPredicate(ts.isIdentifier)(unwrapped), {
-    onNone: () => false,
-    onSome: (identifier) => identifier.text === "undefined"
-  })
-}
-
-const messageForMatch = (match: UndefinedUsageMatch): string =>
-  Match.value(match.kind).pipe(
-    Match.when("parameter", () => "Avoid function parameters that accept undefined."),
-    Match.when("return-type", () => "Avoid function return types that include undefined."),
-    Match.when("return-expression", () => "Avoid returning undefined from functions."),
-    Match.when(
-      "type-declaration",
-      () => "Avoid optional or undefined properties in type declarations."
-    ),
-    Match.when("comparison", () => "Avoid comparing values against undefined."),
-    Match.exhaustive
-  )
+const messageForMatch = (match: UndefinedUsageMatch): string => undefinedMessages[match.kind]
 
 const undefinedMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch =>
   createRuleMatch(context, {
@@ -199,6 +178,31 @@ const undefinedMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleM
     message: messageForMatch(match),
     hint: optionHint
   })
+
+const undefinedParameterMatches = (
+  node: ts.ParameterDeclaration,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => [undefinedMatch(context, { kind: "parameter", node })]
+
+const undefinedReturnTypeMatches = (
+  node: ReturnTypeDeclaration,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => [undefinedMatch(context, { kind: "return-type", node })]
+
+const undefinedReturnExpressionMatches = (
+  node: UndefinedReturnExpression,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => [undefinedMatch(context, { kind: "return-expression", node })]
+
+const undefinedTypeDeclarationMatches = (
+  node: UndefinedTypeDeclaration,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => [undefinedMatch(context, { kind: "type-declaration", node })]
+
+const undefinedComparisonMatches = (
+  node: ts.BinaryExpression,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => [undefinedMatch(context, { kind: "comparison", node })]
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
@@ -218,24 +222,18 @@ export const noUndefined: Rule = {
   id: ruleId,
   description: "Disallow undefined usage in favor of Effect Option.",
   check: combineAll([
-    onNode([ts.SyntaxKind.Parameter], isParameterAcceptingUndefined, (node, context) => [
-      undefinedMatch(context, { kind: "parameter", node })
-    ]),
-    onNode(returnTypeDeclarationKinds, isUndefinedReturnTypeDeclaration, (node, context) => [
-      undefinedMatch(context, { kind: "return-type", node })
-    ]),
+    onNode([ts.SyntaxKind.Parameter], isParameterAcceptingUndefined, undefinedParameterMatches),
+    onNode(returnTypeDeclarationKinds, isUndefinedReturnTypeDeclaration, undefinedReturnTypeMatches),
     onNode(
       [ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction],
       isUndefinedReturnExpression,
-      (node, context) => [undefinedMatch(context, { kind: "return-expression", node })]
+      undefinedReturnExpressionMatches
     ),
     onNode(
       [ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType],
       isUndefinedTypeDeclaration,
-      (node, context) => [undefinedMatch(context, { kind: "type-declaration", node })]
+      undefinedTypeDeclarationMatches
     ),
-    onNode([ts.SyntaxKind.BinaryExpression], isUndefinedComparison, (node, context) => [
-      undefinedMatch(context, { kind: "comparison", node })
-    ])
+    onNode([ts.SyntaxKind.BinaryExpression], isUndefinedComparison, undefinedComparisonMatches)
   ])
 }

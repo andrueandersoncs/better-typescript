@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Effect, Option, Schema } from "effect"
+import { Effect, Function, Option, Schema } from "effect"
 import * as ts from "typescript"
 
 export interface LoadedProject {
@@ -44,17 +44,17 @@ class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectRe
 export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
   Effect.fn("loadProject")(function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
-    const configPath = yield* Option.match(
-      Option.fromNullable(ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")),
-      {
-        onNone: () => Effect.fail(new MissingTsconfigError({ rootPath })),
-        onSome: (configPath) => Effect.succeed(configPath)
-      }
+    const configPath = Option.fromNullable(
+      ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
     )
 
-    const projects = yield* loadConfig(configPath, new Set<string>())
+    if (Option.isNone(configPath)) {
+      return yield* Effect.fail(new MissingTsconfigError({ rootPath }))
+    }
 
-    return { rootPath: path.dirname(configPath), projects }
+    const projects = yield* loadConfig(configPath.value, new Set<string>())
+
+    return { rootPath: path.dirname(configPath.value), projects }
   })
 
 const loadConfig: (
@@ -69,12 +69,13 @@ const loadConfig: (
   }
 
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
+  const configError = Option.fromNullable(configFile.error)
 
-  yield* Option.match(Option.fromNullable(configFile.error), {
-    onNone: () => Effect.succeed(void 0),
-    onSome: (error) =>
-      Effect.fail(new InvalidTsconfigError({ message: formatDiagnostics([error]) }))
-  })
+  if (Option.isSome(configError)) {
+    return yield* Effect.fail(
+      new InvalidTsconfigError({ message: formatDiagnostics([configError.value]) })
+    )
+  }
 
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
@@ -103,13 +104,16 @@ const loadConfig: (
   return [loadedProjectFromConfig(configPath, parsedConfig)]
 })
 
+const loadReference =
+  (ancestorConfigPaths: ReadonlySet<string>) =>
+  (reference: ts.ProjectReference): Effect.Effect<ReadonlyArray<LoadedProject>, Error> =>
+    loadConfig(ts.resolveProjectReferencePath(reference), ancestorConfigPaths)
+
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
   ancestorConfigPaths: ReadonlySet<string>
 ) {
-  const projects = yield* Effect.forEach(references, (reference) =>
-    loadConfig(ts.resolveProjectReferencePath(reference), ancestorConfigPaths)
-  )
+  const projects = yield* Effect.forEach(references, loadReference(ancestorConfigPaths))
 
   return projects.flat()
 })
@@ -129,7 +133,7 @@ const loadedProjectFromConfig = (
 
 const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {
-    getCanonicalFileName: (fileName) => fileName,
+    getCanonicalFileName: Function.identity,
     getCurrentDirectory: ts.sys.getCurrentDirectory,
-    getNewLine: () => ts.sys.newLine
+    getNewLine: Function.constant(ts.sys.newLine)
   })

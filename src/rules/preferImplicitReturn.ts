@@ -2,31 +2,12 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import type { Rule } from "./types.js"
+import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-implicit-return"
 
 type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
-}
-
-export const preferImplicitReturn: Rule = {
-  id: ruleId,
-  description: "Prefer implicit arrow function returns over block bodies with a single return.",
-  check: onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, (arrowFunction, context) =>
-    hasSingleValueReturnStatement(arrowFunction)
-      ? [
-          createRuleMatch(context, {
-            ruleId,
-            node: arrowFunction.body,
-            message: "Avoid arrow function block bodies that only return a value.",
-            hint:
-              "Replace this with an implicit return by removing the return statement and function " +
-              "body braces. Wrap object literals in parentheses when needed."
-          })
-        ]
-      : []
-  )
 }
 
 const hasSingleValueReturnStatement = (
@@ -47,3 +28,26 @@ const isValueReturnStatement = (statement: ts.Statement): boolean =>
   ts.isReturnStatement(statement)
     ? Option.isSome(Option.fromNullable(statement.expression))
     : false
+
+const implicitReturnMatches = (
+  arrowFunction: ts.ArrowFunction,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> =>
+  hasSingleValueReturnStatement(arrowFunction)
+    ? [
+        createRuleMatch(context, {
+          ruleId,
+          node: arrowFunction.body,
+          message: "Avoid arrow function block bodies that only return a value.",
+          hint:
+            "Replace this with an implicit return by removing the return statement and function " +
+            "body braces. Wrap object literals in parentheses when needed."
+        })
+      ]
+    : []
+
+export const preferImplicitReturn: Rule = {
+  id: ruleId,
+  description: "Prefer implicit arrow function returns over block bodies with a single return.",
+  check: onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, implicitReturnMatches)
+}

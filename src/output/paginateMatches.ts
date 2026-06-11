@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Function, Option } from "effect"
 import type { RuleMatch } from "../rules/index.js"
 
 export interface MatchesPage {
@@ -13,10 +13,10 @@ export const paginateMatches = (
   offset: number,
   limit: Option.Option<number>
 ): MatchesPage => {
-  const pageMatches = Option.match(limit, {
-    onNone: () => matches.slice(offset),
-    onSome: (limit) => matches.slice(offset, offset + limit)
-  })
+  const pageMatches = matches.slice(
+    offset,
+    offset + Option.getOrElse(limit, Function.constant(matches.length))
+  )
 
   return {
     matches: pageMatches,

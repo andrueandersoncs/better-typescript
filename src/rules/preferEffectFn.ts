@@ -14,50 +14,22 @@ interface DeclaredFunction {
   readonly initializer: FunctionInitializer
 }
 
-export const preferEffectFn: Rule = {
-  id: ruleId,
-  description: "Require Effect.fn for functions with parameters that return an Effect.",
-  check: onNode(
-    [ts.SyntaxKind.VariableDeclaration],
-    ts.isVariableDeclaration,
-    (declaration, context) =>
-      Option.match(
-        effectFnCandidate(declaration).pipe(
-          Option.filter(hasParameters),
-          Option.filter((candidate) => returnsEffect(context, candidate))
-        ),
-        {
-          onNone: () => [],
-          onSome: (candidate) => [effectFnMatch(context, candidate)]
-        }
-      )
-  )
-}
+const toDeclaredFunction =
+  (declaration: ts.VariableDeclaration) =>
+  (initializer: FunctionInitializer): DeclaredFunction => ({ declaration, initializer })
 
 const effectFnCandidate = (
   declaration: ts.VariableDeclaration
 ): Option.Option<DeclaredFunction> =>
-  Option.map(functionInitializer(declaration), (initializer) => ({ declaration, initializer }))
+  Option.map(functionInitializer(declaration), toDeclaredFunction(declaration))
 
 const hasParameters = (candidate: DeclaredFunction): boolean =>
   candidate.initializer.parameters.length > 0
 
-const returnsEffect = (context: RuleContext, candidate: DeclaredFunction): boolean => {
-  const signature = Option.fromNullable(
-    context.checker.getSignatureFromDeclaration(candidate.initializer)
-  )
+const effectModuleFileNames: ReadonlySet<string> = new Set(["Effect.ts", "Effect.d.ts"])
 
-  return Option.match(signature, {
-    onNone: () => false,
-    onSome: (signature) => isEffectType(context.checker.getReturnTypeOfSignature(signature))
-  })
-}
-
-const isEffectType = (type: ts.Type): boolean =>
-  Option.match(Option.fromNullable(type.getSymbol()), {
-    onNone: () => false,
-    onSome: isEffectInterfaceSymbol
-  })
+const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean =>
+  effectModuleFileNames.has(path.basename(declaration.getSourceFile().fileName))
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
@@ -66,21 +38,51 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   return isNamedEffect && hasEffectModuleDeclaration
 }
 
-const effectModuleFileNames: ReadonlySet<string> = new Set(["Effect.ts", "Effect.d.ts"])
+const isEffectType = (type: ts.Type): boolean =>
+  Option.exists(Option.fromNullable(type.getSymbol()), isEffectInterfaceSymbol)
 
-const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean =>
-  effectModuleFileNames.has(path.basename(declaration.getSourceFile().fileName))
+const signatureReturnsEffect =
+  (context: RuleContext) =>
+  (signature: ts.Signature): boolean =>
+    isEffectType(context.checker.getReturnTypeOfSignature(signature))
 
-const effectFnMatch = (context: RuleContext, candidate: DeclaredFunction): RuleMatch => {
-  const functionName = candidate.declaration.name.getText(context.sourceFile)
+const returnsEffect =
+  (context: RuleContext) =>
+  (candidate: DeclaredFunction): boolean =>
+    Option.exists(
+      Option.fromNullable(context.checker.getSignatureFromDeclaration(candidate.initializer)),
+      signatureReturnsEffect(context)
+    )
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: candidate.declaration.name,
-    message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
-    hint:
-      `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
-      "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
-      "or a function returning an Effect."
-  })
+const effectFnRuleMatch =
+  (context: RuleContext) =>
+  (candidate: DeclaredFunction): RuleMatch => {
+    const functionName = candidate.declaration.name.getText(context.sourceFile)
+
+    return createRuleMatch(context, {
+      ruleId,
+      node: candidate.declaration.name,
+      message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
+      hint:
+        `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
+        "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
+        "or a function returning an Effect."
+    })
+  }
+
+const effectFnMatches = (
+  declaration: ts.VariableDeclaration,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> =>
+  effectFnCandidate(declaration).pipe(
+    Option.filter(hasParameters),
+    Option.filter(returnsEffect(context)),
+    Option.map(effectFnRuleMatch(context)),
+    Option.toArray
+  )
+
+export const preferEffectFn: Rule = {
+  id: ruleId,
+  description: "Require Effect.fn for functions with parameters that return an Effect.",
+  check: onNode([ts.SyntaxKind.VariableDeclaration], ts.isVariableDeclaration, effectFnMatches)
 }

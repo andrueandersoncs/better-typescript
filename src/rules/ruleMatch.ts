@@ -16,7 +16,7 @@ export const createRuleMatch = (context: RuleContext, source: RuleMatchSource): 
 
   return {
     ruleId: source.ruleId,
-    fileName: toRelativeFileName(context.projectRoot, sourceFile.fileName),
+    fileName: toRelativeFileName(context.projectRoot)(sourceFile.fileName),
     line: location.line + 1,
     column: location.character + 1,
     message: source.message,
@@ -24,7 +24,7 @@ export const createRuleMatch = (context: RuleContext, source: RuleMatchSource): 
   }
 }
 
-export const toRelativeFileName = (projectRoot: string, fileName: string): string => {
+export const toRelativeFileName = (projectRoot: string) => (fileName: string): string => {
   const relative = path.relative(projectRoot, fileName)
 
   return relative || fileName

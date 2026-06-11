@@ -1,9 +1,9 @@
-import { Option } from "effect"
+import { Array, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
-import type { Rule, RuleContext } from "./types.js"
+import type { Rule, RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
@@ -13,118 +13,78 @@ interface ConditionalReturnMatch {
   readonly returnExpression: string
 }
 
-export const preferConditionalReturn: Rule = {
-  id: ruleId,
-  description:
-    "Prefer conditional return expressions over if statements that choose between two values.",
-  check: onNode([ts.SyntaxKind.Block], ts.isBlock, (block, context) =>
-    conditionalReturnMatches(context, block).map((match) =>
-      createRuleMatch(context, {
-        ruleId,
-        node: match.ifStatement,
-        message: "Avoid if statements that only choose between two return values.",
-        hint: `Return a conditional expression instead: return ${match.returnExpression}.`
-      })
-    )
-  )
-}
-
-const conditionalReturnMatches = (
-  context: RuleContext,
-  block: ts.Block
-): ReadonlyArray<ConditionalReturnMatch> =>
-  block.statements.flatMap((statement, index) => {
-    if (!ts.isIfStatement(statement)) {
-      return []
-    }
-
-    const nextStatement = Option.fromNullable(block.statements[index + 1])
-
-    return Option.match(conditionalReturnMatch(context, statement, nextStatement), {
-      onNone: () => [],
-      onSome: (match) => [match]
-    })
-  })
-
-const conditionalReturnMatch = (
-  context: RuleContext,
-  ifStatement: ts.IfStatement,
-  nextStatement: Option.Option<ts.Statement>
-): Option.Option<ConditionalReturnMatch> => {
-  const sourceFile = context.sourceFile
-  const thenExpression = returnExpressionFromStatement(
-    sourceFile,
-    ifStatement.thenStatement
-  )
-
-  return Option.match(thenExpression, {
-    onNone: () => Option.none(),
-    onSome: (thenExpression) =>
-      Option.match(fallbackReturnExpression(sourceFile, ifStatement, nextStatement), {
-        onNone: () => Option.none(),
-        onSome: (fallbackExpression) =>
-          Option.some({
-            ifStatement,
-            returnExpression: conditionalExpressionText(
-              context,
-              ifStatement.expression,
-              thenExpression,
-              fallbackExpression
-            )
-          })
-      })
-  })
-}
-
-const fallbackReturnExpression = (
-  sourceFile: ts.SourceFile,
-  ifStatement: ts.IfStatement,
-  nextStatement: Option.Option<ts.Statement>
-): Option.Option<ts.Expression> =>
-  Option.match(Option.fromNullable(ifStatement.elseStatement), {
-    onNone: () =>
-      Option.flatMap(nextStatement, (statement) =>
-        returnExpressionFromStatement(sourceFile, statement)
-      ),
-    onSome: (statement) => returnExpressionFromStatement(sourceFile, statement)
-  })
-
-const returnExpressionFromStatement = (
-  sourceFile: ts.SourceFile,
-  statement: ts.Statement
-): Option.Option<ts.Expression> => {
-  const unwrappedStatement = unwrapSingleStatementBlock(statement)
-
-  if (!ts.isReturnStatement(unwrappedStatement)) {
-    return Option.none()
-  }
-
-  return Option.match(Option.fromNullable(unwrappedStatement.expression), {
-    onNone: () => Option.none(),
-    onSome: (expression) =>
-      isSimpleReturnExpression(sourceFile, expression)
-        ? Option.some(expression)
-        : Option.none()
-  })
-}
-
-const isSimpleReturnExpression = (
-  sourceFile: ts.SourceFile,
-  expression: ts.Expression
-): boolean => {
-  const text = expression.getText(sourceFile)
-  const isSingleLine = !text.includes("\n")
-  const isShort = text.length <= maximumReturnExpressionLength
-  const hasYieldExpression = containsYieldExpression(expression)
-
-  return [isSingleLine, isShort, !hasYieldExpression].every(Boolean)
-}
-
 const containsYieldExpression = (node: ts.Node): boolean =>
   ts.isYieldExpression(node) || containsChildYieldExpression(node)
 
 const containsChildYieldExpression = (node: ts.Node): boolean =>
   ts.forEachChild(node, containsYieldExpression) === true
+
+const isSimpleReturnExpression =
+  (sourceFile: ts.SourceFile) =>
+  (expression: ts.Expression): boolean => {
+    const text = expression.getText(sourceFile)
+    const isSingleLine = !text.includes("\n")
+    const isShort = text.length <= maximumReturnExpressionLength
+    const hasYieldExpression = containsYieldExpression(expression)
+
+    return [isSingleLine, isShort, !hasYieldExpression].every(Boolean)
+  }
+
+const returnExpressionFromStatement =
+  (sourceFile: ts.SourceFile) =>
+  (statement: ts.Statement): Option.Option<ts.Expression> =>
+    Option.gen(function* () {
+      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
+        unwrapSingleStatementBlock(statement)
+      )
+      const expression = yield* Option.fromNullable(returnStatement.expression)
+
+      return yield* Option.liftPredicate(isSimpleReturnExpression(sourceFile))(expression)
+    })
+
+const fallbackReturnExpression = (
+  sourceFile: ts.SourceFile,
+  ifStatement: ts.IfStatement,
+  nextStatement: Option.Option<ts.Statement>
+): Option.Option<ts.Expression> => {
+  const elseStatement = Option.fromNullable(ifStatement.elseStatement)
+  const fallbackStatement = Option.isSome(elseStatement) ? elseStatement : nextStatement
+
+  return Option.flatMap(fallbackStatement, returnExpressionFromStatement(sourceFile))
+}
+
+const negatedPrefixUnaryExpressionOperand = (
+  expression: ts.PrefixUnaryExpression
+): Option.Option<ts.Expression> => {
+  const isNegation = expression.operator === ts.SyntaxKind.ExclamationToken
+
+  return isNegation ? Option.some(expression.operand) : Option.none()
+}
+
+const negatedConditionOperand = (expression: ts.Expression): Option.Option<ts.Expression> =>
+  Option.flatMap(
+    Option.liftPredicate(ts.isPrefixUnaryExpression)(expression),
+    negatedPrefixUnaryExpressionOperand
+  )
+
+const parenthesizedExpressionText = (
+  expression: ts.Expression,
+  sourceFile: ts.SourceFile
+): string => `(${expression.getText(sourceFile)})`
+
+const ternaryText = (
+  sourceFile: ts.SourceFile,
+  condition: ts.Expression,
+  whenTrue: ts.Expression,
+  whenFalse: ts.Expression
+): string =>
+  [
+    parenthesizedExpressionText(condition, sourceFile),
+    "?",
+    whenTrue.getText(sourceFile),
+    ":",
+    whenFalse.getText(sourceFile)
+  ].join(" ")
 
 const conditionalExpressionText = (
   context: RuleContext,
@@ -135,49 +95,64 @@ const conditionalExpressionText = (
   const sourceFile = context.sourceFile
   const negatedCondition = negatedConditionOperand(unwrapExpression(condition))
 
-  return Option.match(negatedCondition, {
-    onNone: () =>
-      [
-        parenthesizedExpressionText(condition, sourceFile),
-        "?",
-        thenExpression.getText(sourceFile),
-        ":",
-        fallbackExpression.getText(sourceFile)
-      ].join(" "),
-    onSome: (operand) =>
-      [
-        parenthesizedExpressionText(operand, sourceFile),
-        "?",
-        fallbackExpression.getText(sourceFile),
-        ":",
-        thenExpression.getText(sourceFile)
-      ].join(" ")
-  })
+  return Option.isSome(negatedCondition)
+    ? ternaryText(sourceFile, negatedCondition.value, fallbackExpression, thenExpression)
+    : ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
 }
 
-const negatedConditionOperand = (
-  expression: ts.Expression
-): Option.Option<ts.Expression> =>
-  Option.match(Option.liftPredicate(ts.isPrefixUnaryExpression)(expression), {
-    onNone: () => Option.none(),
-    onSome: negatedPrefixUnaryExpressionOperand
-  })
+const conditionalReturnMatch =
+  (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
+  (ifStatement: ts.IfStatement): Option.Option<ConditionalReturnMatch> =>
+    Option.gen(function* () {
+      const thenExpression = yield* returnExpressionFromStatement(context.sourceFile)(
+        ifStatement.thenStatement
+      )
+      const fallbackExpression = yield* fallbackReturnExpression(
+        context.sourceFile,
+        ifStatement,
+        nextStatement
+      )
 
-const negatedPrefixUnaryExpressionOperand = (
-  expression: ts.PrefixUnaryExpression
-): Option.Option<ts.Expression> =>
-  Option.match(
-    Option.liftPredicate(
-      (expression: ts.PrefixUnaryExpression) =>
-        expression.operator === ts.SyntaxKind.ExclamationToken
-    )(expression),
-    {
-      onNone: () => Option.none(),
-      onSome: (expression) => Option.some(expression.operand)
-    }
+      return {
+        ifStatement,
+        returnExpression: conditionalExpressionText(
+          context,
+          ifStatement.expression,
+          thenExpression,
+          fallbackExpression
+        )
+      }
+    })
+
+const statementConditionalMatch =
+  (context: RuleContext, block: ts.Block) =>
+  (statement: ts.Statement, index: number): Option.Option<ConditionalReturnMatch> =>
+    Option.flatMap(
+      Option.liftPredicate(ts.isIfStatement)(statement),
+      conditionalReturnMatch(context, Option.fromNullable(block.statements[index + 1]))
+    )
+
+const conditionalRuleMatch =
+  (context: RuleContext) =>
+  (match: ConditionalReturnMatch): RuleMatch =>
+    createRuleMatch(context, {
+      ruleId,
+      node: match.ifStatement,
+      message: "Avoid if statements that only choose between two return values.",
+      hint: `Return a conditional expression instead: return ${match.returnExpression}.`
+    })
+
+const conditionalReturnRuleMatches = (
+  block: ts.Block,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> =>
+  Array.filterMap(block.statements, statementConditionalMatch(context, block)).map(
+    conditionalRuleMatch(context)
   )
 
-const parenthesizedExpressionText = (
-  expression: ts.Expression,
-  sourceFile: ts.SourceFile
-): string => `(${expression.getText(sourceFile)})`
+export const preferConditionalReturn: Rule = {
+  id: ruleId,
+  description:
+    "Prefer conditional return expressions over if statements that choose between two values.",
+  check: onNode([ts.SyntaxKind.Block], ts.isBlock, conditionalReturnRuleMatches)
+}

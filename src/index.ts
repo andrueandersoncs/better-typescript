@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, Schema } from "effect"
+import { Console, Effect, Option, Schema, flow } from "effect"
 import { formatMatchesPage } from "./output/formatMatches.js"
 import { paginateMatches } from "./output/paginateMatches.js"
 import { loadProject } from "./project/loadProject.js"
+import type { LoadedProject } from "./project/loadProject.js"
 import { rules } from "./rules/index.js"
 import type { RuleMatch } from "./rules/index.js"
 import { runRules } from "./runner/runRules.js"
@@ -31,42 +32,48 @@ interface AnalyzeOptions {
   readonly offset: number
 }
 
+const checkProject = (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> =>
+  runRules(loadedProject, rules)
+
+const setFailureExitCode = (): void => {
+  process.exitCode = 1
+}
+
 const analyzeProject = Effect.fn("analyzeProject")(function* (options: AnalyzeOptions) {
   const workspace = yield* loadProject(options.project)
-  const matches = dedupeMatches(
-    workspace.projects.flatMap((loadedProject) => runRules(loadedProject, rules))
-  )
+  const matches = dedupeMatches(workspace.projects.flatMap(checkProject))
 
   if (matches.length === 0) {
     return `No rule matches found in ${workspace.rootPath}.`
   }
 
-  yield* Effect.sync(() => {
-    process.exitCode = 1
-  })
+  yield* Effect.sync(setFailureExitCode)
   return formatMatchesPage(paginateMatches(matches, options.offset, options.limit))
 })
 
 const dedupeMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<RuleMatch> => [
-  ...new Map(matches.map((match) => [matchKey(match), match])).values()
+  ...new Map(matches.map(matchEntry)).values()
 ]
+
+const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [matchKey(match), match]
 
 const matchKey = (match: RuleMatch): string =>
   [match.ruleId, match.fileName, match.line, match.column, match.message].join(":")
 
-const command = Command.make("better-typescript", { project, limit, offset }, (options) =>
-  analyzeProject(options).pipe(
-    Effect.flatMap((output) => Console.log(output)),
-    Effect.catchAll((error) =>
-      Console.error(`Error: ${error.message}`).pipe(
-        Effect.zipRight(
-          Effect.sync(() => {
-            process.exitCode = 1
-          })
-        )
-      )
-    )
-  )
+const reportError = Effect.fn("reportError")(function* (error: Error) {
+  yield* Console.error(`Error: ${error.message}`)
+  yield* Effect.sync(setFailureExitCode)
+})
+
+const runCommand = Effect.fn("runCommand")(function* (options: AnalyzeOptions) {
+  const output = yield* analyzeProject(options)
+  yield* Console.log(output)
+})
+
+const command = Command.make(
+  "better-typescript",
+  { project, limit, offset },
+  flow(runCommand, Effect.catchAll(reportError))
 )
 
 const cli = Command.run(command, {

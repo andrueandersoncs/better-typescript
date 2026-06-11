@@ -1,15 +1,13 @@
 import type { MatchesPage } from "./paginateMatches.js"
 import type { RuleMatch } from "../rules/index.js"
 
+const formatMatch = (match: RuleMatch): string =>
+  `${match.fileName}:${match.line}:${match.column} ${match.ruleId}\n` +
+  `  ${match.message}\n` +
+  `  Hint: ${match.hint}`
+
 export const formatMatches = (matches: ReadonlyArray<RuleMatch>): string =>
-  matches
-    .map(
-      (match) =>
-        `${match.fileName}:${match.line}:${match.column} ${match.ruleId}\n` +
-        `  ${match.message}\n` +
-        `  Hint: ${match.hint}`
-    )
-    .join("\n\n")
+  matches.map(formatMatch).join("\n\n")
 
 export const formatMatchesPage = (page: MatchesPage): string => {
   if (page.matches.length === 0) {

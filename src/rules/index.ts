@@ -4,6 +4,7 @@ import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
 import { noForOfLoops } from "./noForOfLoops.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noInlineBooleanExpressions } from "./noInlineBooleanExpressions.js"
+import { noInlineClosures } from "./noInlineClosures.js"
 import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
 import { noMutableArrayMethods } from "./noMutableArrayMethods.js"
 import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
@@ -38,7 +39,8 @@ export const rules: ReadonlyArray<Rule> = [
   noCallbacks,
   noForOfLoops,
   noSwitchStatements,
-  noFunctionKeyword
+  noFunctionKeyword,
+  noInlineClosures
 ]
 
 export type { Rule, RuleContext, RuleMatch } from "./types.js"

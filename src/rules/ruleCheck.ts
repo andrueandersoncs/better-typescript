@@ -6,6 +6,14 @@ import type { RuleCheck, RuleContext, RuleMatch } from "./types.js"
 // to a single-pass dispatch table. Handlers are free to be as effectful as they
 // like internally; their scope is one node.
 
+const refinedHandler =
+  <N extends ts.Node>(
+    refine: (node: ts.Node) => node is N,
+    handler: (node: N, context: RuleContext) => ReadonlyArray<RuleMatch>
+  ) =>
+  (node: ts.Node, context: RuleContext): ReadonlyArray<RuleMatch> =>
+    refine(node) ? handler(node, context) : []
+
 export const onNode = <N extends ts.Node>(
   kinds: ReadonlyArray<ts.SyntaxKind>,
   refine: (node: ts.Node) => node is N,
@@ -14,7 +22,7 @@ export const onNode = <N extends ts.Node>(
   {
     _tag: "OnNode",
     kinds,
-    handler: (node, context) => (refine(node) ? handler(node, context) : [])
+    handler: refinedHandler(refine, handler)
   }
 ]
 

@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Array, Option } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
@@ -20,38 +20,79 @@ interface DuplicateFunction {
 
 type FunctionNameIndex = ReadonlyMap<string, ReadonlyArray<TopLevelFunction>>
 
-export const noDuplicateFunctionNames: Rule = {
-  id: ruleId,
-  description:
-    "Disallow top-level functions that duplicate a function name declared in another file.",
-  check: onFile((context) =>
-    topLevelFunctions(context.sourceFile).flatMap((candidate) =>
-      Option.match(duplicateFunction(context, candidate), {
-        onNone: () => [],
-        onSome: (duplicate) => [duplicateFunctionMatch(context, duplicate)]
-      })
-    )
-  )
+const toTopLevelFunction =
+  (sourceFile: ts.SourceFile) =>
+  (nameNode: ts.Identifier): TopLevelFunction => ({
+    name: nameNode.text,
+    nameNode,
+    fileName: sourceFile.fileName
+  })
+
+const declaredFunction =
+  (sourceFile: ts.SourceFile) =>
+  (declaration: ts.VariableDeclaration): Option.Option<TopLevelFunction> =>
+    Option.gen(function* () {
+      yield* functionInitializer(declaration)
+      const nameNode = yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
+
+      return toTopLevelFunction(sourceFile)(nameNode)
+    })
+
+const namedFunctionDeclaration =
+  (sourceFile: ts.SourceFile) =>
+  (declaration: ts.FunctionDeclaration): Option.Option<TopLevelFunction> =>
+    Option.map(Option.fromNullable(declaration.name), toTopLevelFunction(sourceFile))
+
+const variableStatementFunctions = (
+  sourceFile: ts.SourceFile,
+  statement: ts.Statement
+): ReadonlyArray<TopLevelFunction> =>
+  ts.isVariableStatement(statement)
+    ? Array.filterMap(statement.declarationList.declarations, declaredFunction(sourceFile))
+    : []
+
+const functionDeclarationFunctions = (
+  sourceFile: ts.SourceFile,
+  statement: ts.Statement
+): ReadonlyArray<TopLevelFunction> =>
+  ts.isFunctionDeclaration(statement)
+    ? Option.toArray(namedFunctionDeclaration(sourceFile)(statement))
+    : []
+
+const statementFunctions =
+  (sourceFile: ts.SourceFile) =>
+  (statement: ts.Statement): ReadonlyArray<TopLevelFunction> => [
+    ...variableStatementFunctions(sourceFile, statement),
+    ...functionDeclarationFunctions(sourceFile, statement)
+  ]
+
+const topLevelFunctions = (sourceFile: ts.SourceFile): ReadonlyArray<TopLevelFunction> =>
+  sourceFile.statements.flatMap(statementFunctions(sourceFile))
+
+const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
+  const isSkippableSourceFile = [
+    sourceFile.isDeclarationFile,
+    sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
+  ].some(Boolean)
+
+  return !isSkippableSourceFile
 }
 
-const duplicateFunction = (
-  context: RuleContext,
-  candidate: TopLevelFunction
-): Option.Option<DuplicateFunction> => {
-  const declarations = declarationsForName(functionNameIndex(context.program), candidate.name)
-  const otherFileNames = [...new Set(declarations.map((declared) => declared.fileName))].filter(
-    (fileName) => fileName !== candidate.fileName
-  )
+const declarationsForName = (
+  index: FunctionNameIndex,
+  name: string
+): ReadonlyArray<TopLevelFunction> => index.get(name) ?? []
 
-  return otherFileNames.length > 0 ? Option.some({ candidate, otherFileNames }) : Option.none()
-}
+const addFunctionToIndex = (
+  index: Map<string, ReadonlyArray<TopLevelFunction>>,
+  declared: TopLevelFunction
+): Map<string, ReadonlyArray<TopLevelFunction>> =>
+  index.set(declared.name, [...declarationsForName(index, declared.name), declared])
+
+const functionsByName = (functions: ReadonlyArray<TopLevelFunction>): FunctionNameIndex =>
+  functions.reduce(addFunctionToIndex, new Map<string, ReadonlyArray<TopLevelFunction>>())
 
 const functionNameIndexCache = new WeakMap<ts.Program, FunctionNameIndex>()
-
-const functionNameIndex = (program: ts.Program): FunctionNameIndex =>
-  Option.getOrElse(Option.fromNullable(functionNameIndexCache.get(program)), () =>
-    buildFunctionNameIndex(program)
-  )
 
 const buildFunctionNameIndex = (program: ts.Program): FunctionNameIndex => {
   const index = functionsByName(
@@ -63,87 +104,35 @@ const buildFunctionNameIndex = (program: ts.Program): FunctionNameIndex => {
   return index
 }
 
-const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
-  const isSkippableSourceFile = [
-    sourceFile.isDeclarationFile,
-    sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
-  ].some(Boolean)
+const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
+  const cached = Option.fromNullable(functionNameIndexCache.get(program))
 
-  return !isSkippableSourceFile
+  return Option.isSome(cached) ? cached.value : buildFunctionNameIndex(program)
 }
 
-const functionsByName = (functions: ReadonlyArray<TopLevelFunction>): FunctionNameIndex =>
-  functions.reduce(
-    (index, declared) =>
-      index.set(declared.name, [...declarationsForName(index, declared.name), declared]),
-    new Map<string, ReadonlyArray<TopLevelFunction>>()
+const declaredFileName = (declared: TopLevelFunction): string => declared.fileName
+
+const isOtherFileName =
+  (candidateFileName: string) =>
+  (fileName: string): boolean =>
+    fileName !== candidateFileName
+
+const duplicateFunction = (
+  context: RuleContext,
+  candidate: TopLevelFunction
+): Option.Option<DuplicateFunction> => {
+  const declarations = declarationsForName(functionNameIndex(context.program), candidate.name)
+  const otherFileNames = [...new Set(declarations.map(declaredFileName))].filter(
+    isOtherFileName(candidate.fileName)
   )
 
-const declarationsForName = (
-  index: FunctionNameIndex,
-  name: string
-): ReadonlyArray<TopLevelFunction> =>
-  Option.getOrElse(Option.fromNullable(index.get(name)), () => [])
-
-const topLevelFunctions = (sourceFile: ts.SourceFile): ReadonlyArray<TopLevelFunction> =>
-  sourceFile.statements.flatMap((statement) => statementFunctions(sourceFile, statement))
-
-const statementFunctions = (
-  sourceFile: ts.SourceFile,
-  statement: ts.Statement
-): ReadonlyArray<TopLevelFunction> => [
-  ...variableStatementFunctions(sourceFile, statement),
-  ...functionDeclarationFunctions(sourceFile, statement)
-]
-
-const variableStatementFunctions = (
-  sourceFile: ts.SourceFile,
-  statement: ts.Statement
-): ReadonlyArray<TopLevelFunction> =>
-  ts.isVariableStatement(statement)
-    ? statement.declarationList.declarations.flatMap((declaration) =>
-        Option.toArray(declaredFunction(sourceFile, declaration))
-      )
-    : []
-
-const functionDeclarationFunctions = (
-  sourceFile: ts.SourceFile,
-  statement: ts.Statement
-): ReadonlyArray<TopLevelFunction> =>
-  ts.isFunctionDeclaration(statement)
-    ? Option.toArray(namedFunctionDeclaration(sourceFile, statement))
-    : []
-
-const declaredFunction = (
-  sourceFile: ts.SourceFile,
-  declaration: ts.VariableDeclaration
-): Option.Option<TopLevelFunction> =>
-  functionInitializer(declaration).pipe(
-    Option.flatMap(() => Option.liftPredicate(ts.isIdentifier)(declaration.name)),
-    Option.map((nameNode) => toTopLevelFunction(sourceFile, nameNode))
-  )
-
-const namedFunctionDeclaration = (
-  sourceFile: ts.SourceFile,
-  declaration: ts.FunctionDeclaration
-): Option.Option<TopLevelFunction> =>
-  Option.map(Option.fromNullable(declaration.name), (nameNode) =>
-    toTopLevelFunction(sourceFile, nameNode)
-  )
-
-const toTopLevelFunction = (
-  sourceFile: ts.SourceFile,
-  nameNode: ts.Identifier
-): TopLevelFunction => ({
-  name: nameNode.text,
-  nameNode,
-  fileName: sourceFile.fileName
-})
+  return otherFileNames.length > 0 ? Option.some({ candidate, otherFileNames }) : Option.none()
+}
 
 const maxListedFileNames = 3
 
 const formatFileNames = (projectRoot: string, fileNames: ReadonlyArray<string>): string => {
-  const relativeFileNames = fileNames.map((fileName) => toRelativeFileName(projectRoot, fileName))
+  const relativeFileNames = fileNames.map(toRelativeFileName(projectRoot))
   const listedFileNames = relativeFileNames.slice(0, maxListedFileNames).join(", ")
   const remainingCount = relativeFileNames.length - maxListedFileNames
 
@@ -158,18 +147,35 @@ const moreFilesSuffix = (remainingCount: number): string => {
   return isSingleFile ? "1 more file" : `${remainingCount} more files`
 }
 
-const duplicateFunctionMatch = (context: RuleContext, duplicate: DuplicateFunction): RuleMatch => {
-  const functionName = duplicate.candidate.name
-  const otherFiles = formatFileNames(context.projectRoot, duplicate.otherFileNames)
+const duplicateFunctionMatch =
+  (context: RuleContext) =>
+  (duplicate: DuplicateFunction): RuleMatch => {
+    const functionName = duplicate.candidate.name
+    const otherFiles = formatFileNames(context.projectRoot, duplicate.otherFileNames)
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: duplicate.candidate.nameNode,
-    message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
-    hint:
-      `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-      "into a module scoped to its domain and import it from every file that uses it. Name " +
-      "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-      "generic lib.ts or utils.ts."
-  })
+    return createRuleMatch(context, {
+      ruleId,
+      node: duplicate.candidate.nameNode,
+      message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
+      hint:
+        `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
+        "into a module scoped to its domain and import it from every file that uses it. Name " +
+        "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
+        "generic lib.ts or utils.ts."
+    })
+  }
+
+const candidateRuleMatch =
+  (context: RuleContext) =>
+  (candidate: TopLevelFunction): Option.Option<RuleMatch> =>
+    Option.map(duplicateFunction(context, candidate), duplicateFunctionMatch(context))
+
+const duplicateFunctionMatches = (context: RuleContext): ReadonlyArray<RuleMatch> =>
+  Array.filterMap(topLevelFunctions(context.sourceFile), candidateRuleMatch(context))
+
+export const noDuplicateFunctionNames: Rule = {
+  id: ruleId,
+  description:
+    "Disallow top-level functions that duplicate a function name declared in another file.",
+  check: onFile(duplicateFunctionMatches)
 }
