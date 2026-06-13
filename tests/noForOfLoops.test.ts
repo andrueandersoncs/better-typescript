@@ -45,8 +45,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "collectionOperationsAreAllowed",
-    fileName: "src/cases.ts",
-    line: 25,
+    fileName: "src/allowed.ts",
+    line: 3,
     column: 1
   }
 ]

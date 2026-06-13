@@ -19,9 +19,3 @@ function copyRecord(record: Record<string, number>): Record<string, number> {
 
   return result
 }
-
-function recordOperationsAreAllowed(record: Record<string, number>): number {
-  return Object.entries(record)
-    .map(([, value]) => value * 2)
-    .reduce((left, right) => left + right, 0)
-}

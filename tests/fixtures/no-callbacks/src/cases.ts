@@ -1,4 +1,4 @@
-type Handler = () => void
+import type { Handler } from "./shared.js"
 
 function functionDeclaration(callback: Handler): void {
   callback()
@@ -30,22 +30,3 @@ type FunctionTypeAlias = (callback: Handler) => void
 
 declare const callbackImplementation: FunctionTypeAlias
 const functionTypeValue: (callback: Handler) => void = callbackImplementation
-
-function returnsValue(callback: Handler): number {
-  callback()
-  return 1
-}
-
-function acceptsValue(value: string): void {
-  void value
-}
-
-type FunctionTypeReturnsValue = (callback: Handler) => number
-
-interface NonCallableValue {
-  value: string
-}
-
-function acceptsNonCallableObject(input: NonCallableValue): void {
-  void input
-}

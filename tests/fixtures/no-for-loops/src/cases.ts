@@ -20,15 +20,3 @@ function sumValues(values: ReadonlyArray<number>): number {
 
   return total
 }
-
-function loopsWithoutIteratorsAreAllowed(isReady: () => boolean): void {
-  for (;;) {
-    if (isReady()) {
-      return
-    }
-  }
-
-  for (; isReady(); ) {
-    return
-  }
-}

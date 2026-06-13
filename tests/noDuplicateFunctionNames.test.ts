@@ -130,62 +130,62 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "alpha.localOverload.stringSignature",
-    fileName: "src/alpha.ts",
-    line: 11,
+    fileName: "src/allowed-alpha.ts",
+    line: 3,
     column: 10
   },
   {
     name: "alpha.localOverload.numberSignature",
-    fileName: "src/alpha.ts",
-    line: 12,
+    fileName: "src/allowed-alpha.ts",
+    line: 4,
     column: 10
   },
   {
     name: "alpha.localOverload.implementation",
-    fileName: "src/alpha.ts",
-    line: 13,
+    fileName: "src/allowed-alpha.ts",
+    line: 5,
     column: 10
   },
   {
     name: "alpha.containsNested",
-    fileName: "src/alpha.ts",
-    line: 17,
+    fileName: "src/allowed-alpha.ts",
+    line: 9,
     column: 10
   },
   {
     name: "alpha.containsNested.sharedDeclaration",
-    fileName: "src/alpha.ts",
-    line: 18,
+    fileName: "src/allowed-alpha.ts",
+    line: 10,
     column: 12
   },
   {
     name: "AlphaService.sharedArrow",
-    fileName: "src/alpha.ts",
-    line: 23,
+    fileName: "src/allowed-alpha.ts",
+    line: 15,
     column: 3
   },
   {
     name: "objectLiteral.sharedExpression",
-    fileName: "src/alpha.ts",
-    line: 27,
+    fileName: "src/allowed-alpha.ts",
+    line: 19,
     column: 3
   },
   {
     name: "alpha.valueOnly",
-    fileName: "src/alpha.ts",
-    line: 30,
+    fileName: "src/allowed-alpha.ts",
+    line: 22,
     column: 10
   },
   {
     name: "beta.betaOnly",
-    fileName: "src/beta.ts",
-    line: 9,
+    fileName: "src/allowed-beta.ts",
+    line: 3,
     column: 7
   },
   {
     name: "beta.valueOnly",
-    fileName: "src/beta.ts",
-    line: 11,
+    fileName: "src/allowed-beta.ts",
+    line: 5,
     column: 7
   }
 ]

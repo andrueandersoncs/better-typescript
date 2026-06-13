@@ -53,20 +53,20 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "ignoresExtractedCondition.condition",
-    fileName: "src/cases.ts",
-    line: 30,
+    fileName: "src/allowed.ts",
+    line: 6,
     column: 7
   },
   {
     name: "ignoresSingleCondition.condition",
-    fileName: "src/cases.ts",
-    line: 38,
+    fileName: "src/allowed.ts",
+    line: 14,
     column: 7
   },
   {
     name: "ignoresComparison.condition",
-    fileName: "src/cases.ts",
-    line: 46,
+    fileName: "src/allowed.ts",
+    line: 22,
     column: 7
   }
 ]

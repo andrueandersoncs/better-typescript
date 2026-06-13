@@ -63,50 +63,50 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "nestedExpression",
-    fileName: "src/cases.ts",
-    line: 15,
+    fileName: "src/allowed.ts",
+    line: 3,
     column: 26
   },
   {
     name: "overload.stringSignature",
-    fileName: "src/cases.ts",
-    line: 23,
+    fileName: "src/allowed.ts",
+    line: 5,
     column: 1
   },
   {
     name: "overload.numberSignature",
-    fileName: "src/cases.ts",
-    line: 24,
+    fileName: "src/allowed.ts",
+    line: 6,
     column: 1
   },
   {
     name: "overload.implementation",
-    fileName: "src/cases.ts",
-    line: 25,
+    fileName: "src/allowed.ts",
+    line: 7,
     column: 1
   },
   {
     name: "generatorDeclaration",
-    fileName: "src/cases.ts",
-    line: 29,
+    fileName: "src/allowed.ts",
+    line: 11,
     column: 1
   },
   {
     name: "generatorExpression",
-    fileName: "src/cases.ts",
-    line: 33,
+    fileName: "src/allowed.ts",
+    line: 15,
     column: 29
   },
   {
     name: "arrowFunction",
-    fileName: "src/cases.ts",
-    line: 37,
+    fileName: "src/allowed.ts",
+    line: 19,
     column: 23
   },
   {
     name: "Service.methodDeclaration",
-    fileName: "src/cases.ts",
-    line: 40,
+    fileName: "src/allowed.ts",
+    line: 22,
     column: 3
   }
 ]

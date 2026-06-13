@@ -70,7 +70,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "ServiceContract.methodSignature",
     ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
-    line: 32,
+    line: 24,
     column: 3,
     message: expectedMessage,
     hint: expectedHint
@@ -79,7 +79,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "CallableContract.callSignature",
     ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
-    line: 36,
+    line: 28,
     column: 3,
     message: expectedMessage,
     hint: expectedHint
@@ -88,7 +88,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "FunctionTypeAlias",
     ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
-    line: 39,
+    line: 31,
     column: 26,
     message: expectedMessage,
     hint: expectedHint
@@ -98,44 +98,44 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "Service.value.set",
-    fileName: "src/cases.ts",
-    line: 22,
+    fileName: "src/allowed.ts",
+    line: 4,
     column: 3
   },
   {
     name: "Service.preciseMethod",
-    fileName: "src/cases.ts",
-    line: 26,
+    fileName: "src/allowed.ts",
+    line: 8,
     column: 3
   },
   {
     name: "preciseReturn",
-    fileName: "src/cases.ts",
-    line: 41,
+    fileName: "src/allowed.ts",
+    line: 13,
     column: 1
   },
   {
     name: "inferredReturn",
-    fileName: "src/cases.ts",
-    line: 45,
+    fileName: "src/allowed.ts",
+    line: 17,
     column: 1
   },
   {
     name: "parameterOnly",
-    fileName: "src/cases.ts",
-    line: 49,
+    fileName: "src/allowed.ts",
+    line: 21,
     column: 1
   },
   {
     name: "AnyAlias",
-    fileName: "src/cases.ts",
-    line: 53,
+    fileName: "src/allowed.ts",
+    line: 25,
     column: 6
   },
   {
     name: "aliasReturn",
-    fileName: "src/cases.ts",
-    line: 55,
+    fileName: "src/allowed.ts",
+    line: 27,
     column: 1
   }
 ]

@@ -99,38 +99,38 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "Handler",
-    fileName: "src/cases.ts",
+    fileName: "src/shared.ts",
     line: 1,
-    column: 16
+    column: 23
   },
   {
     name: "returnsValue",
-    fileName: "src/cases.ts",
-    line: 34,
+    fileName: "src/allowed.ts",
+    line: 3,
     column: 1
   },
   {
     name: "acceptsValue",
-    fileName: "src/cases.ts",
-    line: 39,
+    fileName: "src/allowed.ts",
+    line: 8,
     column: 1
   },
   {
     name: "FunctionTypeReturnsValue",
-    fileName: "src/cases.ts",
-    line: 43,
+    fileName: "src/allowed.ts",
+    line: 12,
     column: 33
   },
   {
     name: "NonCallableValue",
-    fileName: "src/cases.ts",
-    line: 45,
+    fileName: "src/allowed.ts",
+    line: 14,
     column: 1
   },
   {
     name: "acceptsNonCallableObject",
-    fileName: "src/cases.ts",
-    line: 49,
+    fileName: "src/allowed.ts",
+    line: 18,
     column: 1
   }
 ]

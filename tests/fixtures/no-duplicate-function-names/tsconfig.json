@@ -13,6 +13,8 @@
     "src/beta.ts",
     "src/gamma.ts",
     "src/delta.ts",
-    "src/epsilon.ts"
+    "src/epsilon.ts",
+    "src/allowed-alpha.ts",
+    "src/allowed-beta.ts"
   ]
 }

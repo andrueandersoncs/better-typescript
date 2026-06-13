@@ -44,14 +44,14 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "loopsWithoutIteratorsAreAllowed.unconditionalLoop",
-    fileName: "src/cases.ts",
-    line: 25,
+    fileName: "src/allowed.ts",
+    line: 4,
     column: 3
   },
   {
     name: "loopsWithoutIteratorsAreAllowed.conditionOnlyLoop",
-    fileName: "src/cases.ts",
-    line: 31,
+    fileName: "src/allowed.ts",
+    line: 10,
     column: 3
   }
 ]

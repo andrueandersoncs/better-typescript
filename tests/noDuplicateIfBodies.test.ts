@@ -55,68 +55,68 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "adjacentGuardDuplicate.firstIf",
-    fileName: "src/cases.ts",
+    fileName: "src/allowed.ts",
     line: 4,
     column: 3
   },
   {
     name: "unwrappedGuardDuplicate.firstIf",
-    fileName: "src/cases.ts",
-    line: 13,
+    fileName: "src/allowed.ts",
+    line: 10,
     column: 3
   },
   {
     name: "elseIfDuplicate.firstIf",
-    fileName: "src/cases.ts",
-    line: 21,
+    fileName: "src/allowed.ts",
+    line: 15,
     column: 3
   },
   {
     name: "nonExitingGuardDuplicate.firstIf",
-    fileName: "src/cases.ts",
-    line: 30,
+    fileName: "src/allowed.ts",
+    line: 22,
     column: 3
   },
   {
     name: "nonExitingGuardDuplicate.secondIf",
-    fileName: "src/cases.ts",
-    line: 33,
+    fileName: "src/allowed.ts",
+    line: 25,
     column: 3
   },
   {
     name: "separatedGuardDuplicate.firstIf",
-    fileName: "src/cases.ts",
-    line: 39,
+    fileName: "src/allowed.ts",
+    line: 31,
     column: 3
   },
   {
     name: "separatedGuardDuplicate.secondIf",
-    fileName: "src/cases.ts",
-    line: 43,
+    fileName: "src/allowed.ts",
+    line: 35,
     column: 3
   },
   {
     name: "guardWithElseIsIgnored.firstIf",
-    fileName: "src/cases.ts",
-    line: 49,
+    fileName: "src/allowed.ts",
+    line: 41,
     column: 3
   },
   {
     name: "guardWithElseIsIgnored.secondIf",
-    fileName: "src/cases.ts",
-    line: 54,
+    fileName: "src/allowed.ts",
+    line: 46,
     column: 3
   },
   {
     name: "differentGuardBodies.firstIf",
-    fileName: "src/cases.ts",
-    line: 60,
+    fileName: "src/allowed.ts",
+    line: 52,
     column: 3
   },
   {
     name: "differentGuardBodies.secondIf",
-    fileName: "src/cases.ts",
-    line: 63,
+    fileName: "src/allowed.ts",
+    line: 55,
     column: 3
   }
 ]
