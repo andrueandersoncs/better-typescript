@@ -28,6 +28,8 @@ const orderLabel = (order: Order): string =>
 export const orderLabels = (orders: ReadonlyArray<Order>): ReadonlyArray<string> =>
   orders.map(orderLabel)
 
+export const parseOrderPayload = (raw: string): unknown => JSON.parse(raw)
+
 export const isOpen = (order: Order): boolean => order.status === "open"
 
 export const statusRank = (order: Order): number =>

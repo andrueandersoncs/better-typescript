@@ -58,6 +58,9 @@ export const findIndexOf = (
   return undefined
 }
 
+// no-explicit-any-return: explicit any in a function return type.
+export const parseUnsafeJson = (raw: string): any => JSON.parse(raw)
+
 // no-multiple-boolean-operators, no-inline-boolean-expressions.
 export const isValidUser = (name: string, age: number, active: boolean): boolean =>
   (name.length > 0 && age >= 18 && active) || name === "admin"
