@@ -1,8 +1,8 @@
+import { Schema, Struct } from "effect"
 import * as ts from "typescript"
 import { astChildren } from "../rules/traverse.js"
+import { FileListener, NodeListener } from "../rules/types.js"
 import type {
-  FileListener,
-  NodeListener,
   Rule,
   RuleCheck,
   RuleContext,
@@ -28,10 +28,6 @@ export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
 
   return checkSourceFile(table, fileHandlers)
 }
-
-const ruleListeners = (rule: Rule): RuleCheck => rule.check
-
-const listenerHandler = (listener: FileListener): FileHandler => listener.handler
 
 const checkSourceFile =
   (table: NodeHandlerTable, fileHandlers: ReadonlyArray<FileHandler>) =>
@@ -68,11 +64,19 @@ const applyNodeHandler =
   (handle: NodeHandler): ReadonlyArray<RuleMatch> =>
     handle(node, context)
 
+const nodeListenerSchema = Schema.is(NodeListener)
+
 const isNodeListener = (listener: RuleListener): listener is NodeListener =>
-  listener._tag === "OnNode"
+  nodeListenerSchema(listener)
+
+const fileListenerSchema = Schema.is(FileListener)
 
 const isFileListener = (listener: RuleListener): listener is FileListener =>
-  listener._tag === "OnFile"
+  fileListenerSchema(listener)
+
+const ruleListeners: (rule: Rule) => RuleCheck = Struct.get("check")
+
+const listenerHandler: (listener: FileListener) => FileHandler = Struct.get("handler")
 
 const nodeHandlerTable = (listeners: ReadonlyArray<NodeListener>): NodeHandlerTable => {
   const emptyTable = new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()

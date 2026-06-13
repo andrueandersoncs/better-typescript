@@ -2,20 +2,12 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import { isReturnTypeDeclaration } from "./tsNode.js"
+import type { ReturnTypeDeclaration } from "./tsNode.js"
 import { Rule } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-explicit-any-return"
-
-type ReturnTypeDeclaration =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration
-  | ts.MethodSignature
-  | ts.CallSignatureDeclaration
-  | ts.FunctionTypeNode
-  | ts.GetAccessorDeclaration
 
 const containsAnyKeyword = (node: ts.Node): boolean => {
   const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
@@ -29,18 +21,6 @@ const declaredTypeContainsAny = (node: ReturnTypeDeclaration): boolean => {
 
   return Option.exists(typeNode, containsAnyKeyword)
 }
-
-const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =>
-  [
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node),
-    ts.isMethodSignature(node),
-    ts.isCallSignatureDeclaration(node),
-    ts.isFunctionTypeNode(node),
-    ts.isGetAccessorDeclaration(node)
-  ].some(Boolean)
 
 const isAnyReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =>
   isReturnTypeDeclaration(node) ? declaredTypeContainsAny(node) : false

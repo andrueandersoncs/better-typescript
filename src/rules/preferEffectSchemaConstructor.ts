@@ -1,4 +1,4 @@
-import { Array, Function, Option } from "effect"
+import { Array, Function, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -30,8 +30,6 @@ const isShortCircuitExpression = (
   return Option.exists(binaryExpression, hasShortCircuitOperator)
 }
 
-const rightOperand = (expression: ts.BinaryExpression): ts.Expression => expression.right
-
 const ternaryBranches = (conditional: ts.ConditionalExpression): ReadonlyArray<ts.Expression> =>
   [conditional.whenTrue, conditional.whenFalse].flatMap(branchExpressions)
 
@@ -44,7 +42,7 @@ const shortCircuitBranches = (
   expression: ts.Expression
 ): Option.Option<ReadonlyArray<ts.Expression>> =>
   Option.liftPredicate(isShortCircuitExpression)(expression).pipe(
-    Option.map(rightOperand),
+    Option.map(Struct.get("right")),
     Option.map(branchExpressions)
   )
 
@@ -78,13 +76,11 @@ const isTagAssignment = (
 ): property is ts.PropertyAssignment =>
   ts.isPropertyAssignment(property) && isTagPropertyName(property.name)
 
-const stringLiteralText = (literal: ts.StringLiteralLike): string => literal.text
-
 const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> => {
   const initializer = unwrapTransparentExpression(property.initializer)
 
   return Option.liftPredicate(ts.isStringLiteralLike)(initializer).pipe(
-    Option.map(stringLiteralText)
+    Option.map(Struct.get("text"))
   )
 }
 

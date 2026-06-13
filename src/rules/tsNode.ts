@@ -3,8 +3,30 @@ import * as ts from "typescript"
 
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
+export type ReturnTypeDeclaration =
+  | ts.FunctionDeclaration
+  | ts.FunctionExpression
+  | ts.ArrowFunction
+  | ts.MethodDeclaration
+  | ts.MethodSignature
+  | ts.CallSignatureDeclaration
+  | ts.FunctionTypeNode
+  | ts.GetAccessorDeclaration
+
 export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
+
+export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =>
+  [
+    ts.isFunctionDeclaration(node),
+    ts.isFunctionExpression(node),
+    ts.isArrowFunction(node),
+    ts.isMethodDeclaration(node),
+    ts.isMethodSignature(node),
+    ts.isCallSignatureDeclaration(node),
+    ts.isFunctionTypeNode(node),
+    ts.isGetAccessorDeclaration(node)
+  ].some(Boolean)
 
 export const functionInitializer = (
   declaration: ts.VariableDeclaration

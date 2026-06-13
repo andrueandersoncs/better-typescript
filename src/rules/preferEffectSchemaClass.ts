@@ -1,4 +1,4 @@
-import { Array, Function, Option } from "effect"
+import { Array, Function, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
@@ -18,10 +18,8 @@ type ConstructionIndex = ReadonlyMap<ts.Symbol, string>
 
 const interfaceConstructionCache = new WeakMap<ts.Program, ConstructionIndex>()
 
-const identifierText = (identifier: ts.Identifier): string => identifier.text
-
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
-  Option.liftPredicate(ts.isIdentifier)(name).pipe(Option.map(identifierText))
+  Option.liftPredicate(ts.isIdentifier)(name).pipe(Option.map(Struct.get("text")))
 
 const namedPropertyText = (property: ts.ObjectLiteralElementLike): Option.Option<string> =>
   Option.fromNullable(property.name).pipe(Option.flatMap(propertyNameText))

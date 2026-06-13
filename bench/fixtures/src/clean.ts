@@ -2,6 +2,8 @@
 // Measures each rule's baseline traversal cost on code it has nothing to say about —
 // on real projects most files look like this, so this dominates real-world rule cost.
 
+import { Struct } from "effect"
+
 interface Order {
   readonly id: string
   readonly amountCents: number
@@ -42,7 +44,7 @@ const addLineTotalCents = (total: number, line: OrderLine): number => total + li
 export const computedAmountCents = (order: Order): number =>
   order.lines.reduce(addLineTotalCents, 0)
 
-const lineSku = (line: OrderLine): string => line.sku
+const lineSku = Struct.get("sku")
 
 export const skusForOrder = (order: Order): ReadonlyArray<string> => order.lines.map(lineSku)
 

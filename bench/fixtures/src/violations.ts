@@ -130,6 +130,21 @@ export function readName(value: object): string {
   return ""
 }
 
+// prefer-effect-schema-is: direct _tag comparison instead of Schema.is.
+interface ActiveSession {
+  readonly _tag: "ActiveSession"
+  readonly id: string
+}
+
+export const isActiveSession = (session: ActiveSession): boolean =>
+  session._tag === "ActiveSession"
+
+// prefer-effect-property-accessors: property-access-only functions should use
+// Struct.get for structs or Record.get / Record.has for records.
+export const sessionId = (session: ActiveSession): string => session.id
+
+export const acceptHeader = (headers: Record<string, string>): string => headers.accept
+
 // prefer-effect-schema-constructor: raw object literals in return position instead of
 // values constructed through a schema. prefer-effect-schema-class: FlatMapStep is an
 // interface whose values this file constructs, so it should be a Schema class.
