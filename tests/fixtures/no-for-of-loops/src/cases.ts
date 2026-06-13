@@ -22,18 +22,8 @@ async function collectAsyncValues(
   return result
 }
 
-function loopsThatAreAllowed(record: Record<string, number>): number {
-  let total = 0
-
-  for (const key in record) {
-    total += record[key] ?? 0
-  }
-
-  for (let index = 0; index < 3; index += 1) {
-    total += index
-  }
-
+function collectionOperationsAreAllowed(record: Record<string, number>): number {
   return Object.values(record)
     .map((value) => value * 2)
-    .reduce((left, right) => left + right, total)
+    .reduce((left, right) => left + right, 0)
 }

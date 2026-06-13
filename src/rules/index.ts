@@ -2,6 +2,8 @@ import { noCallbacks } from "./noCallbacks.js"
 import { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
 import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
 import { noExplicitAnyReturn } from "./noExplicitAnyReturn.js"
+import { noForInLoops } from "./noForInLoops.js"
+import { noForLoops } from "./noForLoops.js"
 import { noForOfLoops } from "./noForOfLoops.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noInlineBooleanExpressions } from "./noInlineBooleanExpressions.js"
@@ -48,6 +50,8 @@ export const rules: ReadonlyArray<Rule> = [
   noDuplicateIfBodies,
   noDuplicateFunctionNames,
   noCallbacks,
+  noForInLoops,
+  noForLoops,
   noForOfLoops,
   noSwitchStatements,
   noFunctionKeyword,
