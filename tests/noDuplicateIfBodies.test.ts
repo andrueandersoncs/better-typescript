@@ -1,4 +1,3 @@
-import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
@@ -7,15 +6,12 @@ import { loadProject } from "../src/project/loadProject.js"
 import { noDuplicateIfBodies } from "../src/rules/noDuplicateIfBodies.js"
 import type { RuleMatch } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
-
-interface MatchDetails {
-  readonly ruleId: string
-  readonly fileName: string
-  readonly line: number
-  readonly column: number
-  readonly message: string
-  readonly hint: string
-}
+import {
+  assertAllowedFixtureItems,
+  assertDisallowedFixtureItems,
+  type ExpectedRuleMatch,
+  type FixtureItem
+} from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-duplicate-if-bodies")
@@ -26,14 +22,104 @@ const hintFor = (combinedCondition: string): string =>
   "conditions differ. Combine them into a single branch: " +
   `if (${combinedCondition}) { ... }.`
 
-const matchDetails = (match: RuleMatch): MatchDetails => ({
-  ruleId: match.ruleId,
-  fileName: match.fileName,
-  line: match.line,
-  column: match.column,
-  message: match.message,
-  hint: match.hint
-})
+const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+  {
+    name: "adjacentGuardDuplicate.secondIf",
+    ruleId: "no-duplicate-if-bodies",
+    fileName: "src/cases.ts",
+    line: 7,
+    column: 3,
+    message: expectedMessage,
+    hint: hintFor('input === "empty" || input === "blank"')
+  },
+  {
+    name: "unwrappedGuardDuplicate.secondIf",
+    ruleId: "no-duplicate-if-bodies",
+    fileName: "src/cases.ts",
+    line: 15,
+    column: 3,
+    message: expectedMessage,
+    hint: hintFor('input === "one" || input === "two"')
+  },
+  {
+    name: "elseIfDuplicate.elseIf",
+    ruleId: "no-duplicate-if-bodies",
+    fileName: "src/cases.ts",
+    line: 23,
+    column: 10,
+    message: expectedMessage,
+    hint: hintFor('input === "short" || input === "tiny"')
+  }
+]
+
+const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
+  {
+    name: "adjacentGuardDuplicate.firstIf",
+    fileName: "src/cases.ts",
+    line: 4,
+    column: 3
+  },
+  {
+    name: "unwrappedGuardDuplicate.firstIf",
+    fileName: "src/cases.ts",
+    line: 13,
+    column: 3
+  },
+  {
+    name: "elseIfDuplicate.firstIf",
+    fileName: "src/cases.ts",
+    line: 21,
+    column: 3
+  },
+  {
+    name: "nonExitingGuardDuplicate.firstIf",
+    fileName: "src/cases.ts",
+    line: 30,
+    column: 3
+  },
+  {
+    name: "nonExitingGuardDuplicate.secondIf",
+    fileName: "src/cases.ts",
+    line: 33,
+    column: 3
+  },
+  {
+    name: "separatedGuardDuplicate.firstIf",
+    fileName: "src/cases.ts",
+    line: 39,
+    column: 3
+  },
+  {
+    name: "separatedGuardDuplicate.secondIf",
+    fileName: "src/cases.ts",
+    line: 43,
+    column: 3
+  },
+  {
+    name: "guardWithElseIsIgnored.firstIf",
+    fileName: "src/cases.ts",
+    line: 49,
+    column: 3
+  },
+  {
+    name: "guardWithElseIsIgnored.secondIf",
+    fileName: "src/cases.ts",
+    line: 54,
+    column: 3
+  },
+  {
+    name: "differentGuardBodies.firstIf",
+    fileName: "src/cases.ts",
+    line: 60,
+    column: 3
+  },
+  {
+    name: "differentGuardBodies.secondIf",
+    fileName: "src/cases.ts",
+    line: 63,
+    column: 3
+  }
+]
 
 const runNoDuplicateIfBodiesFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
@@ -41,33 +127,9 @@ const runNoDuplicateIfBodiesFixture = async (): Promise<ReadonlyArray<RuleMatch>
   return workspace.projects.flatMap((project) => runRules(project, [noDuplicateIfBodies]))
 }
 
-test("no-duplicate-if-bodies reports adjacent duplicate if bodies", async () => {
+test("no-duplicate-if-bodies reports disallowed and permits allowed fixture items", async () => {
   const matches = await runNoDuplicateIfBodiesFixture()
 
-  assert.deepEqual(matches.map(matchDetails), [
-    {
-      ruleId: "no-duplicate-if-bodies",
-      fileName: "src/cases.ts",
-      line: 7,
-      column: 3,
-      message: expectedMessage,
-      hint: hintFor('input === "empty" || input === "blank"')
-    },
-    {
-      ruleId: "no-duplicate-if-bodies",
-      fileName: "src/cases.ts",
-      line: 15,
-      column: 3,
-      message: expectedMessage,
-      hint: hintFor('input === "one" || input === "two"')
-    },
-    {
-      ruleId: "no-duplicate-if-bodies",
-      fileName: "src/cases.ts",
-      line: 23,
-      column: 10,
-      message: expectedMessage,
-      hint: hintFor('input === "short" || input === "tiny"')
-    }
-  ])
+  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
+  assertAllowedFixtureItems(matches, allowedFixtureItems)
 })
