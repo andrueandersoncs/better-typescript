@@ -15,6 +15,7 @@ import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.j
 import { noNestedCalls } from "./noNestedCalls.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
+import { noRootLevelClasses } from "./noRootLevelClasses.js"
 import { noSwitchStatements } from "./noSwitchStatements.js"
 import { noThrow } from "./noThrow.js"
 import { noUndefined } from "./noUndefined.js"
@@ -44,6 +45,7 @@ export const rules: ReadonlyArray<Rule> = [
   noNewError,
   noUndefined,
   noVoidFunctions,
+  noRootLevelClasses,
   noMultiLineComments,
   noExplicitAnyReturn,
   noMultipleBooleanOperators,

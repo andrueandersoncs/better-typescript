@@ -2,6 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import { namedNodeReportTarget } from "./tsNode.js"
 import { isVoidType } from "./tsType.js"
 import { Rule } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -46,16 +47,10 @@ const returnsVoid =
     return Option.exists(signature, signatureReturnsVoid(context))
   }
 
-const fallbackToDeclaration =
-  (declaration: VoidableFunction) => (): ts.Node => declaration
-
-const reportNode = (declaration: VoidableFunction): ts.Node =>
-  Option.fromNullable(declaration.name).pipe(Option.getOrElse(fallbackToDeclaration(declaration)))
-
 const voidFunctionMatch =
   (context: RuleContext) =>
   (declaration: VoidableFunction): RuleMatch => {
-    const node = reportNode(declaration)
+    const node = namedNodeReportTarget(declaration)
 
     return createRuleMatch(context, {
       ruleId,

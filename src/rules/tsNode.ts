@@ -13,6 +13,11 @@ export type ReturnTypeDeclaration =
   | ts.FunctionTypeNode
   | ts.GetAccessorDeclaration
 
+const fallbackToNode = (node: ts.Node) => (): ts.Node => node
+
+export const namedNodeReportTarget = (node: ts.NamedDeclaration): ts.Node =>
+  Option.fromNullable(node.name).pipe(Option.getOrElse(fallbackToNode(node)))
+
 export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
 
