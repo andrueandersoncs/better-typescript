@@ -10,9 +10,6 @@ const ruleId = "prefer-effect-schema-constructor"
 
 const tagPropertyName = "_tag"
 
-// `condition ? value : { ... }` and `fallback ?? { ... }` still return a raw literal
-// on one path, so conditional branches and short-circuit right operands count as
-// return positions too.
 const shortCircuitOperatorKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.QuestionQuestionToken,
   ts.SyntaxKind.BarBarToken,
@@ -53,8 +50,6 @@ const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expressi
   return Option.firstSomeOf(branches).pipe(Option.getOrElse(Function.constant([unwrapped])))
 }
 
-// Empty literals carry no data to define a schema for, so only literals with at
-// least one property are reported.
 const hasProperties = (literal: ts.ObjectLiteralExpression): boolean =>
   literal.properties.length > 0
 

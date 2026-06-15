@@ -3,9 +3,6 @@ import type * as ts from "typescript"
 import { RuleMatch } from "./types.js"
 import type { RuleContext } from "./types.js"
 
-// The source parameter is an inline type, not a named interface: it is only this
-// function's parameter list, never a domain shape of its own (the domain shape is
-// RuleMatch, which validates the same data on construction).
 export const createRuleMatch = (
   context: RuleContext,
   source: {

@@ -219,9 +219,6 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-// One listener per undefined-usage category. Each guard already narrows to the
-// node type its category reports on, so the listeners compose the same matches
-// the old whole-file scan produced, in the same per-node order.
 const parameterListener = onNode(
   [ts.SyntaxKind.Parameter],
   isParameterAcceptingUndefined,

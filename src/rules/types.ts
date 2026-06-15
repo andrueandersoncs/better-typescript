@@ -2,10 +2,6 @@ import { Predicate, Schema } from "effect"
 import * as ts from "typescript"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
 
-// Every record in the rule algebra is a Schema class rather than an interface, so
-// values are built through validating constructors instead of raw object literals —
-// the same discipline prefer-effect-schema-constructor and prefer-effect-schema-class
-// ask of target projects.
 export class RuleContext extends Schema.Class<RuleContext>("RuleContext")({
   program: TsProgram,
   checker: TsTypeChecker,
@@ -41,10 +37,6 @@ const FileHandlerSchema = Schema.declare(isFileHandler).annotations({
 const syntaxKindSchema = Schema.Enums(ts.SyntaxKind)
 const listenerKindsSchema = Schema.Array(syntaxKindSchema)
 
-// A RuleCheck is data, not a traversal: a free monoid of listeners describing which
-// nodes a rule wants to see. An interpreter (runner/compileRules.ts) folds every
-// rule's listeners into one kind-dispatch table and walks each source file once,
-// so adding rules does not add traversals.
 export class NodeListener extends Schema.TaggedClass<NodeListener>()("OnNode", {
   kinds: listenerKindsSchema,
   handler: NodeHandlerSchema

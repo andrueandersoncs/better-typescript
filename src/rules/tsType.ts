@@ -1,5 +1,7 @@
 import { Option } from "effect"
-import type * as ts from "typescript"
+import * as ts from "typescript"
+
+export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
 
 export const isDifferentType = (type: ts.Type) => (other: ts.Type): boolean => other !== type
 
@@ -21,9 +23,6 @@ export const differentApparentType = (
   return Option.liftPredicate(isDifferentType(type))(apparentType)
 }
 
-// Whether a type is callable, looking through union and intersection members, base
-// constraints, and apparent types. Shared by no-callbacks (does a parameter accept a
-// function?) and no-nested-calls (does a call return a function?).
 export const callSignatureCheck =
   (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type> = new Set()) =>
   (type: ts.Type): boolean =>

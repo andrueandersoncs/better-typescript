@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { callSignatureCheck, hasCallSignature } from "./tsType.js"
+import { callSignatureCheck, hasCallSignature, isVoidType } from "./tsType.js"
 import { Rule } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -87,8 +87,6 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
 
   return hasTypeAliasFunctionType || hasPropertySignatureFunctionType
 }
-
-const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
 
 const isFunctionArgument =
   (checker: ts.TypeChecker) =>

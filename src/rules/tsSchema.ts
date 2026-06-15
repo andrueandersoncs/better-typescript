@@ -1,10 +1,6 @@
 import { Predicate, Schema } from "effect"
 import type * as ts from "typescript"
 
-// Schemas for TypeScript compiler objects. ts.Program, ts.TypeChecker, and
-// ts.SourceFile are foreign interfaces with no runtime class to instanceof against,
-// so each schema is declared from a structural guard on a distinctive member.
-
 const isTsProgram = (input: unknown): input is ts.Program =>
   Predicate.hasProperty(input, "getTypeChecker")
 

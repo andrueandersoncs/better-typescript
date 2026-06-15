@@ -37,8 +37,10 @@ interface AnalyzeOptions {
 const checkProject = (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> =>
   runRules(loadedProject, rules)
 
-const setFailureExitCode = (): void => {
+const setFailureExitCode = (): number => {
   process.exitCode = 1
+
+  return process.exitCode
 }
 
 const analyzeProject = Effect.fn("analyzeProject")(function* (options: AnalyzeOptions) {

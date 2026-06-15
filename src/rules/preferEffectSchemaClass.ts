@@ -9,11 +9,6 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-class"
 
-// An interface whose values the project itself constructs is a data definition, not
-// a boundary type: the project controls construction, so construction should run
-// through a validating Schema class constructor. The index maps each in-project
-// interface symbol to one file that builds an object literal of its shape, found by
-// asking the checker for the contextual type of every object literal in the program.
 type ConstructionIndex = ReadonlyMap<ts.Symbol, string>
 
 const interfaceConstructionCache = new WeakMap<ts.Program, ConstructionIndex>()
@@ -36,9 +31,6 @@ const typeHasProperty =
     return Option.isSome(property)
   }
 
-// For a union contextual type (`Nil | Cons`), only members that carry every named
-// property of the literal are counted, so constructing one variant does not flag
-// its siblings.
 const matchesLiteralShape =
   (literal: ts.ObjectLiteralExpression) =>
   (type: ts.Type): boolean =>
@@ -66,11 +58,6 @@ const typeInterfaceSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   return Option.fromNullable(symbol).pipe(Option.filter(isProjectInterfaceSymbol))
 }
 
-// getContextualType stops at generic call boundaries: inside Option.some({ ... })
-// the argument's declared type is the uninstantiated parameter A, even when the
-// call itself is contextually typed Option.Option<DuplicateFunction>. The type
-// argument is recovered by lining the declared return type up against the call's
-// contextual type, member by member for unions (effect's Option is None<A> | Some<A>).
 const isObjectType = (type: ts.Type): type is ts.ObjectType =>
   (type.flags & ts.TypeFlags.Object) !== 0
 

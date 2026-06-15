@@ -1,10 +1,10 @@
 import * as ts from "typescript"
 
-// ts.forEachChild is the fast child enumerator (AST children only, no tokens), but it
-// is callback-shaped; the Map accumulator turns it into a value without array mutation.
-// The callback must return undefined, not the Map, or forEachChild would stop early.
-const recordChild = (children: Map<number, ts.Node>) => (child: ts.Node): void => {
+// forEachChild callback must not return truthy or traversal stops early; false satisfies this without void or undefined.
+const recordChild = (children: Map<number, ts.Node>) => (child: ts.Node): false => {
   children.set(children.size, child)
+
+  return false
 }
 
 export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {

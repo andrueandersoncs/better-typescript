@@ -8,8 +8,6 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-function-names"
 
-// A top-level function is represented by its name identifier: the name text and the
-// declaring file are both derivable from the node, so no wrapper record is needed.
 type FunctionNameIndex = ReadonlyMap<string, ReadonlyArray<ts.Identifier>>
 
 const declaredFunction = (declaration: ts.VariableDeclaration): Option.Option<ts.Identifier> =>

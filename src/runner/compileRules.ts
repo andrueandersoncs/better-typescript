@@ -16,10 +16,6 @@ type NodeHandlerTable = ReadonlyMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
 type MutableHandlerTable = Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
 type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 
-// The interpreter for the RuleCheck algebra: folds every rule's listeners into a
-// kind-dispatch table once, then checks each source file with a single AST walk.
-// Per node, only the handlers subscribed to that node's kind run, so adding rules
-// adds table entries instead of traversals.
 export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
   const listeners = rules.flatMap(ruleListeners)
   const nodeListeners = listeners.filter(isNodeListener)
@@ -43,8 +39,6 @@ const applyFileHandler =
   (handle: FileHandler): ReadonlyArray<RuleMatch> =>
     handle(context)
 
-// The recursive visitor is bound once per source file so recursion reuses a single
-// closure instead of re-currying at every node.
 const compiledVisitor = (
   table: NodeHandlerTable,
   context: RuleContext

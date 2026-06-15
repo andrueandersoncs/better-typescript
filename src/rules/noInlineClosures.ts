@@ -7,10 +7,6 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-closures"
 
-// The two positions where an arrow function may appear: named as a variable
-// initializer, or returned as the entire body of another arrow function (currying).
-// An expression whose parent is an ArrowFunction can only be its body — parameter
-// defaults sit under Parameter nodes — so a parent-kind check is sufficient.
 const sanctionedParentKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.VariableDeclaration,
   ts.SyntaxKind.ArrowFunction
@@ -42,8 +38,6 @@ const arrowFunctionMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isSanctionedPosition(arrowFunction) ? [] : [inlineClosureMatch(context, arrowFunction)]
 
-// Declared after its handler: onNode evaluates its arguments at module initialization,
-// so a handler passed by name — as this rule requires of itself — must already exist.
 const check = onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, arrowFunctionMatches)
 
 export const noInlineClosures = new Rule({

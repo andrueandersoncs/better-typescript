@@ -38,8 +38,6 @@ export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
     ? unwrapExpression(expression.expression)
     : expression
 
-// Wrappers that leave an expression in the same position it would occupy without
-// them: `((x) => x)`, `((x) => x) satisfies F`, `((x) => x) as F`.
 export const transparentWrapperKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.ParenthesizedExpression,
   ts.SyntaxKind.SatisfiesExpression,

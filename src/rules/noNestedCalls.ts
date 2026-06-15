@@ -13,11 +13,6 @@ type CallLikeExpression = ts.CallExpression | ts.NewExpression
 const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
   ts.isCallExpression(node) || ts.isNewExpression(node)
 
-// Positions that forward a value into the surrounding expression: a call result in
-// any of these keeps flowing outward until something consumes it. Notably absent are
-// callee and receiver positions (`f(a)(b)` and `f(a).pipe(g)` read left-to-right, so
-// chains are linear rather than nested) and statement or declaration positions (the
-// value comes to rest under a name, which is exactly what this rule asks for).
 const valueForwardingKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.ParenthesizedExpression,
   ts.SyntaxKind.AsExpression,
@@ -62,10 +57,6 @@ const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
     : forwardedConsumingCall(node)
 }
 
-// The currying exemption: a nested call whose result is itself a function is a
-// section being configured, not a computation being buried — `Option.filter(pred)`
-// as a pipe stage, `Function.constant(x)` as a fallback. The checker runs only for
-// calls that already sit in a consuming argument position.
 const returnsCallable = (context: RuleContext, call: CallLikeExpression): boolean => {
   const resultType = context.checker.getTypeAtLocation(call)
 
