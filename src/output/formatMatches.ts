@@ -1,4 +1,4 @@
-import { Array, Function, Option, Schema, Struct } from "effect"
+import { Array, Schema } from "effect"
 import { RuleMatch } from "../rules/index.js"
 import type { MatchesPage } from "./paginateMatches.js"
 
@@ -39,46 +39,15 @@ const groupMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<MatchGro
   return [...grouped.values()]
 }
 
-const groupMessages = (group: MatchGroup): ReadonlyArray<string> =>
-  Array.map(group.matches, Struct.get("message"))
+const formatLocation = (match: RuleMatch): string =>
+  `  ${match.fileName}:${match.line}:${match.column}`
 
-const sharedMessage = (group: MatchGroup): Option.Option<string> => {
-  const messages = groupMessages(group)
-  const distinct = Array.dedupe(messages)
-  const isSingleMessage = distinct.length === 1
-
-  return isSingleMessage ? Array.head(distinct) : Option.none()
-}
-
-const matchLocation = (match: RuleMatch): string =>
-  `${match.fileName}:${match.line}:${match.column}`
-
-const formatBareLocation = (match: RuleMatch): string => `  ${matchLocation(match)}`
-
-const formatLabelledLocation = (match: RuleMatch): string =>
-  `  ${matchLocation(match)}\n    ${match.message}`
-
-const formatLocations = (group: MatchGroup, hasSharedMessage: boolean): string => {
-  const formatter = hasSharedMessage ? formatBareLocation : formatLabelledLocation
-
-  return Array.map(group.matches, formatter).join("\n")
-}
-
-const prefixMessage = (message: string): string => `\n  ${message}`
-
-const emptyString = Function.constant("")
-
-const headingMessage = (shared: Option.Option<string>): string => {
-  const prefixed = Option.map(shared, prefixMessage)
-
-  return Option.getOrElse(prefixed, emptyString)
-}
+const formatLocations = (group: MatchGroup): string =>
+  Array.map(group.matches, formatLocation).join("\n")
 
 const formatGroup = (group: MatchGroup): string => {
-  const shared = sharedMessage(group)
-  const hasSharedMessage = Option.isSome(shared)
-  const heading = `${group.ruleId}${headingMessage(shared)}\n  Hint: ${group.hint}`
-  const locations = formatLocations(group, hasSharedMessage)
+  const heading = `${group.ruleId}\n  Hint: ${group.hint}`
+  const locations = formatLocations(group)
 
   return `${heading}\n${locations}`
 }
