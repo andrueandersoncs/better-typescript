@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Schema, Struct } from "effect"
+import { Array as Arr, Option, Schema, Struct } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { Rule, RuleMatch } from "./types.js"
@@ -20,21 +20,18 @@ class ScannedToken extends Schema.Class<ScannedToken>("ScannedToken")({
   pos: Schema.Number
 }) {}
 
-const collectTokens = (
-  scanner: ts.Scanner,
-  acc: ReadonlyArray<ScannedToken>
-): ReadonlyArray<ScannedToken> => {
+// Array.unfold drives the stateful scanner with a bounded internal loop; recursion overflows large files.
+const scanNextToken = (scanner: ts.Scanner): Option.Option<readonly [ScannedToken, ts.Scanner]> => {
   const kind = scanner.scan()
 
   if (kind === ts.SyntaxKind.EndOfFileToken) {
-    return acc
+    return Option.none()
   }
 
   const pos = scanner.getTokenStart()
   const token = new ScannedToken({ kind, pos })
-  const next = acc.concat(token)
 
-  return collectTokens(scanner, next)
+  return Option.some([token, scanner])
 }
 
 const scanTokens = (text: string): ReadonlyArray<ScannedToken> => {
@@ -45,7 +42,7 @@ const scanTokens = (text: string): ReadonlyArray<ScannedToken> => {
     text
   )
 
-  return collectTokens(scanner, [])
+  return Arr.unfold(scanner, scanNextToken)
 }
 
 const blockCommentEnd = (text: string, pos: number): number => {
@@ -104,25 +101,21 @@ const isRunStart = (
   return isFirst ? isFirst : prevBreaksRun(sourceFile, singles, index)
 }
 
-const collectAdjacentRunStarts = (
-  sourceFile: ts.SourceFile,
-  singles: ReadonlyArray<ScannedToken>,
-  index: number,
-  acc: ReadonlyArray<number>
-): ReadonlyArray<number> => {
-  if (index >= singles.length) {
-    return acc
+const runStartPosition =
+  (sourceFile: ts.SourceFile, singles: ReadonlyArray<ScannedToken>) =>
+  (current: ScannedToken, index: number): Option.Option<number> => {
+    const hasNextAdjacent =
+      index < singles.length - 1 && isAdjacentLine(sourceFile, current, singles[index + 1])
+    const shouldFlag = isRunStart(sourceFile, singles, index) && hasNextAdjacent
+
+    return shouldFlag ? Option.some(current.pos) : Option.none()
   }
 
-  const current = singles[index]
-  const hasNextAdjacent =
-    index < singles.length - 1 && isAdjacentLine(sourceFile, current, singles[index + 1])
-  const startsRun = isRunStart(sourceFile, singles, index)
-  const shouldFlag = startsRun && hasNextAdjacent
-  const next = shouldFlag ? acc.concat(current.pos) : acc
-
-  return collectAdjacentRunStarts(sourceFile, singles, index + 1, next)
-}
+// filterMap stays bounded by the comment array; per-comment recursion overflows large files.
+const collectAdjacentRunStarts = (
+  sourceFile: ts.SourceFile,
+  singles: ReadonlyArray<ScannedToken>
+): ReadonlyArray<number> => Arr.filterMap(singles, runStartPosition(sourceFile, singles))
 
 const multiLinePositions = (
   tokens: ReadonlyArray<ScannedToken>,
@@ -131,7 +124,7 @@ const multiLinePositions = (
 ): ReadonlyArray<number> => {
   const blockPositions = tokens.filter(isMultiLineBlock(text)).map(tokenPos)
   const singleLineTokens = tokens.filter(isSingleLineComment)
-  const adjacentRunPositions = collectAdjacentRunStarts(sourceFile, singleLineTokens, 0, [])
+  const adjacentRunPositions = collectAdjacentRunStarts(sourceFile, singleLineTokens)
 
   return blockPositions.concat(adjacentRunPositions)
 }
