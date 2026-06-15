@@ -17,6 +17,7 @@ import { noNewError } from "./noNewError.js"
 import { noSwitchStatements } from "./noSwitchStatements.js"
 import { noThrow } from "./noThrow.js"
 import { noUndefined } from "./noUndefined.js"
+import { noVoidFunctions } from "./noVoidFunctions.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
 import { preferEffectFn } from "./preferEffectFn.js"
@@ -41,6 +42,7 @@ export const rules: ReadonlyArray<Rule> = [
   noThrow,
   noNewError,
   noUndefined,
+  noVoidFunctions,
   noExplicitAnyReturn,
   noMultipleBooleanOperators,
   noInlineBooleanExpressions,
