@@ -1,3 +1,4 @@
+import { noAsyncFunctions } from "./noAsyncFunctions.js"
 import { noCallbacks } from "./noCallbacks.js"
 import { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
 import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
@@ -56,6 +57,7 @@ export const rules: ReadonlyArray<Rule> = [
   noDuplicateIfBodies,
   noDuplicateFunctionNames,
   noCallbacks,
+  noAsyncFunctions,
   noForInLoops,
   noForLoops,
   noForOfLoops,
