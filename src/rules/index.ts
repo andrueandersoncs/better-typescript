@@ -1,6 +1,7 @@
 import { noAbstractClasses } from "./noAbstractClasses.js"
 import { noAsyncFunctions } from "./noAsyncFunctions.js"
 import { noCallbacks } from "./noCallbacks.js"
+import { noClassMethodImplementations } from "./noClassMethodImplementations.js"
 import { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
 import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
 import { noExplicitAnyReturn } from "./noExplicitAnyReturn.js"
@@ -70,7 +71,8 @@ export const rules: ReadonlyArray<Rule> = [
   noInlineClosures,
   noNestedCalls,
   noManualTypeDispatch,
-  noAbstractClasses
+  noAbstractClasses,
+  noClassMethodImplementations
 ]
 
 export { RuleContext, RuleMatch } from "./types.js"
