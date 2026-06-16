@@ -20,6 +20,7 @@ import { noNewError } from "./noNewError.js"
 import { noRootLevelClasses } from "./noRootLevelClasses.js"
 import { noSwitchStatements } from "./noSwitchStatements.js"
 import { noThrow } from "./noThrow.js"
+import { noTryCatch } from "./noTryCatch.js"
 import { noUndefined } from "./noUndefined.js"
 import { noVoidFunctions } from "./noVoidFunctions.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
@@ -45,6 +46,7 @@ export const rules: ReadonlyArray<Rule> = [
   preferImplicitReturn,
   noThrow,
   noNewError,
+  noTryCatch,
   noUndefined,
   noVoidFunctions,
   noRootLevelClasses,
