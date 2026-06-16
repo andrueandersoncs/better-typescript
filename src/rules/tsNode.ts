@@ -77,3 +77,28 @@ export const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statemen
 
   return hasOneStatement ? statement.statements[0] : statement
 }
+
+export const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean => {
+  const elseStatement = Option.fromNullable(ifStatement.elseStatement)
+
+  return Option.isNone(elseStatement)
+}
+
+export const lastStatement = (block: ts.Block): Option.Option<ts.Statement> =>
+  Option.fromNullable(block.statements[block.statements.length - 1])
+
+const exitStatementKinds = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.BreakStatement,
+  ts.SyntaxKind.ContinueStatement,
+  ts.SyntaxKind.ReturnStatement,
+  ts.SyntaxKind.ThrowStatement
+])
+
+const blockExitsScope = (block: ts.Block): boolean => {
+  const finalStatement = lastStatement(block)
+
+  return Option.exists(finalStatement, alwaysExitsScope)
+}
+
+export const alwaysExitsScope = (statement: ts.Statement): boolean =>
+  ts.isBlock(statement) ? blockExitsScope(statement) : exitStatementKinds.has(statement.kind)

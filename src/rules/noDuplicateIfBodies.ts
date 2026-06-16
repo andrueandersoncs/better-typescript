@@ -2,17 +2,11 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { unwrapSingleStatementBlock } from "./tsNode.js"
+import { alwaysExitsScope, hasNoElseBranch, unwrapSingleStatementBlock } from "./tsNode.js"
 import { Rule } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
-
-const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean => {
-  const elseStatement = Option.fromNullable(ifStatement.elseStatement)
-
-  return Option.isNone(elseStatement)
-}
 
 const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatement =>
   ts.isIfStatement(statement) && hasNoElseBranch(statement)
@@ -56,27 +50,6 @@ const haveIdenticalBodies = (
 ): boolean =>
   bodyFingerprint(context.sourceFile, firstIfStatement.thenStatement) ===
   bodyFingerprint(context.sourceFile, secondIfStatement.thenStatement)
-
-const exitStatementKinds = new Set<ts.SyntaxKind>([
-  ts.SyntaxKind.BreakStatement,
-  ts.SyntaxKind.ContinueStatement,
-  ts.SyntaxKind.ReturnStatement,
-  ts.SyntaxKind.ThrowStatement
-])
-
-const alwaysExitsScope = (statement: ts.Statement): boolean =>
-  ts.isBlock(statement)
-    ? blockExitsScope(statement)
-    : exitStatementKinds.has(statement.kind)
-
-const blockExitsScope = (block: ts.Block): boolean => {
-  const finalStatement = lastStatement(block)
-
-  return Option.exists(finalStatement, alwaysExitsScope)
-}
-
-const lastStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  Option.fromNullable(block.statements[block.statements.length - 1])
 
 const combinedConditionText = (
   context: RuleContext,

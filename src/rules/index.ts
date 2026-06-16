@@ -9,6 +9,7 @@ import { noForOfLoops } from "./noForOfLoops.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noInlineBooleanExpressions } from "./noInlineBooleanExpressions.js"
 import { noInlineClosures } from "./noInlineClosures.js"
+import { noManualTypeDispatch } from "./noManualTypeDispatch.js"
 import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
 import { noMutableArrayMethods } from "./noMutableArrayMethods.js"
 import { noMultiLineComments } from "./noMultiLineComments.js"
@@ -64,7 +65,8 @@ export const rules: ReadonlyArray<Rule> = [
   noSwitchStatements,
   noFunctionKeyword,
   noInlineClosures,
-  noNestedCalls
+  noNestedCalls,
+  noManualTypeDispatch
 ]
 
 export { RuleContext, RuleMatch } from "./types.js"
