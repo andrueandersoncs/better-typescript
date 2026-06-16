@@ -2,9 +2,10 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { namedNodeReportTarget } from "./tsNode.js"
-import { isVoidType } from "./tsType.js"
+import { isFunctionInitializer, namedNodeReportTarget } from "./tsNode.js"
+import { isVoidType, permitsVoid } from "./tsType.js"
 import { Rule } from "./types.js"
+import type { FunctionInitializer } from "./tsNode.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-void-functions"
@@ -47,6 +48,35 @@ const returnsVoid =
     return Option.exists(signature, signatureReturnsVoid(context))
   }
 
+const signaturePermitsVoid =
+  (context: RuleContext) =>
+  (signature: ts.Signature): boolean => {
+    const returnType = context.checker.getReturnTypeOfSignature(signature)
+
+    return permitsVoid(returnType)
+  }
+
+const contextualSignaturePermitsVoid =
+  (context: RuleContext) =>
+  (contextualType: ts.Type): boolean =>
+    contextualType.getCallSignatures().some(signaturePermitsVoid(context))
+
+// Void imposed by a callback's contextual type (e.g. React's EffectCallback) is the consumer's contract, not the author's choice, so no Effect-returning alternative exists.
+const isContextuallyVoidCallback =
+  (context: RuleContext) =>
+  (initializer: FunctionInitializer): boolean => {
+    const contextualTypeNode = context.checker.getContextualType(initializer)
+    const contextualType = Option.fromNullable(contextualTypeNode)
+
+    return Option.exists(contextualType, contextualSignaturePermitsVoid(context))
+  }
+
+const isContextuallyImposedVoid = (
+  declaration: VoidableFunction,
+  context: RuleContext
+): boolean =>
+  isFunctionInitializer(declaration) && isContextuallyVoidCallback(context)(declaration)
+
 const voidFunctionMatch =
   (context: RuleContext) =>
   (declaration: VoidableFunction): RuleMatch => {
@@ -67,10 +97,12 @@ const voidFunctionMatches = (
   declaration: VoidableFunction,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  Option.liftPredicate(returnsVoid(context))(declaration).pipe(
-    Option.map(voidFunctionMatch(context)),
-    Option.toArray
-  )
+  isContextuallyImposedVoid(declaration, context)
+    ? []
+    : Option.liftPredicate(returnsVoid(context))(declaration).pipe(
+        Option.map(voidFunctionMatch(context)),
+        Option.toArray
+      )
 
 const check = onNode(voidableFunctionKinds, isVoidableFunction, voidFunctionMatches)
 

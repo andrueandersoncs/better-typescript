@@ -107,6 +107,18 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 25,
     column: 3
+  },
+  {
+    name: "useEffect callback void is imposed by EffectCallback contract",
+    fileName: "src/allowed.ts",
+    line: 42,
+    column: 13
+  },
+  {
+    name: "forEach-style callback void is imposed by the consumer",
+    fileName: "src/allowed.ts",
+    line: 66,
+    column: 22
   }
 ]
 

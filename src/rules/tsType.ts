@@ -3,6 +3,9 @@ import * as ts from "typescript"
 
 export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
 
+export const permitsVoid = (type: ts.Type): boolean =>
+  type.isUnion() ? type.types.some(isVoidType) : isVoidType(type)
+
 export const isDifferentType = (type: ts.Type) => (other: ts.Type): boolean => other !== type
 
 export const differentBaseConstraint = (
