@@ -53,9 +53,8 @@ const asyncFunctionMatch =
       node: keyword,
       message: "Avoid declaring functions as async.",
       hint:
-        "Model asynchronous work with Effect instead of async/await. Return an Effect from the " +
-        "function — use Effect.gen with yield* in place of an async body, or wrap a Promise with " +
-        "Effect.promise / Effect.tryPromise — so the asynchronous work is described, not run."
+        "Model asynchronous work with Effect instead of async/await." +
+        " To itegrate with a third-party library that uses async functions, wrap any async functions with Effect.tryPromise."
     })
 
 const asyncFunctionMatches = (
