@@ -58,7 +58,7 @@ const methodImplementationMatch =
         "A class method that carries a body couples behavior to an object, which is " +
         "object-oriented programming and is not allowed. Extract the logic into a reusable " +
         "exported function that takes the data as a parameter. The only permitted method " +
-        "implementation is one that overrides a base-class method (marked with `override`)."
+        "implementation is one that overrides a base-class method (marked with `override`) for the purposes of integrating with a third-party library."
     })
   }
 
