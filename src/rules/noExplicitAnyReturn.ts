@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { isReturnTypeDeclaration } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-explicit-any-return"
@@ -56,8 +56,26 @@ const check = onNode(
   anyReturnTypeMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/config.ts",
+  code: `const parseConfig = (raw: string): any =>
+  JSON.parse(raw)`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/config.ts",
+  code: `const parseConfig = (raw: string): unknown =>
+  JSON.parse(raw)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noExplicitAnyReturn = new Rule({
   id: ruleId,
   description: "Disallow explicit any in function return types.",
+  example,
   check
 })

@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { alwaysExitsScope, hasNoElseBranch, unwrapSingleStatementBlock } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
@@ -133,7 +133,7 @@ const duplicateIfRuleMatch =
         "These branches are pseudo-duplicates: the bodies are identical and only the " +
         "conditions differ. Combine them into a single branch: " +
         `if (${combinedCondition}) { ... }.`
-    })
+})
 
 const duplicateIfMatches = (
   ifStatement: ts.IfStatement,
@@ -146,9 +146,32 @@ const duplicateIfMatches = (
 
 const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, duplicateIfMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/auth.ts",
+  code: `if (isAdmin) {
+  return redirect("/dashboard")
+}
+if (isModerator) {
+  return redirect("/dashboard")
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/auth.ts",
+  code: `if (isAdmin || isModerator) {
+  return redirect("/dashboard")
+}`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noDuplicateIfBodies = new Rule({
   id: ruleId,
   description:
     "Disallow if branches that duplicate the body of the branch directly before them.",
+  example,
   check
 })

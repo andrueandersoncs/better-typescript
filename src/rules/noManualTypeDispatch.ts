@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { alwaysExitsScope, hasNoElseBranch } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-manual-type-dispatch"
@@ -122,7 +122,7 @@ const manualTypeDispatchMatch =
         "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
         "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
         "error rather than a silent fall-through."
-    })
+})
 
 const manualTypeDispatchMatches = (
   ifStatement: ts.IfStatement,
@@ -135,9 +135,38 @@ const manualTypeDispatchMatches = (
 
 const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, manualTypeDispatchMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/shape.ts",
+  code: `if (Schema.is(Circle)(shape)) {
+  return circleArea(shape)
+}
+if (Schema.is(Square)(shape)) {
+  return squareArea(shape)
+}
+if (Schema.is(Triangle)(shape)) {
+  return triangleArea(shape)
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/shape.ts",
+  code: `return Match.value(shape).pipe(
+  Match.when(Schema.is(Circle), circleArea),
+  Match.when(Schema.is(Square), squareArea),
+  Match.when(Schema.is(Triangle), triangleArea),
+  Match.exhaustive
+)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noManualTypeDispatch = new Rule({
   id: ruleId,
   description:
     "Disallow dispatching on a value with a chain of returning if statements in favor of Effect Match.",
+  example,
   check
 })

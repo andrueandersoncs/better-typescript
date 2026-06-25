@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-is"
@@ -137,8 +137,28 @@ const schemaIsMatches = (
 
 const check = onNode([ts.SyntaxKind.BinaryExpression], isSchemaTagComparison, schemaIsMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/shape.ts",
+  code: `if (shape._tag === "Circle") {
+  return circleArea(shape)
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/shape.ts",
+  code: `if (Schema.is(Circle)(shape)) {
+  return circleArea(shape)
+}`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferEffectSchemaIs = new Rule({
   id: ruleId,
   description: "Prefer Schema.is over direct _tag comparisons.",
+  example,
   check
 })

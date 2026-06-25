@@ -1,7 +1,7 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-in-loops"
@@ -22,8 +22,27 @@ const forInMatches = (
 
 const check = onNode([ts.SyntaxKind.ForInStatement], ts.isForInStatement, forInMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/config.ts",
+  code: `const result = {}
+for (const key in config) {
+  result[key] = config[key].toUpperCase()
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/config.ts",
+  code: `const result = Record.map(config, (value) => value.toUpperCase())`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noForInLoops = new Rule({
   id: ruleId,
   description: "Disallow for..in loops in favor of Effect Record operations.",
+  example,
   check
 })

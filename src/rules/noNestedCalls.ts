@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { hasCallSignature } from "./tsType.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-nested-calls"
@@ -116,10 +116,28 @@ const check = onNode(
   nestedCallMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/log.ts",
+  code: `console.log(formatDate(parseTimestamp(raw)))`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/log.ts",
+  code: `const timestamp = parseTimestamp(raw)
+const formatted = formatDate(timestamp)
+console.log(formatted)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noNestedCalls = new Rule({
   id: ruleId,
   description:
     "Disallow value-producing calls in the arguments of other calls; function-returning " +
     "calls (currying, pipe stages) stay inline.",
+  example,
   check
 })

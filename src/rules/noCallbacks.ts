@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { callSignatureCheck, hasCallSignature, isVoidType } from "./tsType.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-callbacks"
@@ -158,8 +158,37 @@ const check = onNode(
   callbackStyleMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/events.ts",
+  code: `const onMessage = (handler: (msg: Message) => void): void => {
+  socket.addEventListener("message", handler)
+}`
+})
+
+const goodOneShot = new ExampleSnippet({
+  filePath: "src/events.ts",
+  code: `// One-shot: resolves on the first event, then the Effect completes.
+const onMessage = Effect.async<Message>((resume) => {
+  socket.addEventListener("message", (msg) => resume(Effect.succeed(msg)))
+})`
+})
+
+const goodStream = new ExampleSnippet({
+  filePath: "src/events.ts",
+  code: `// Streaming: emits every event until the scope is closed.
+const messages = Stream.async<Message>((emit) => {
+  socket.addEventListener("message", (msg) => emit.single(msg))
+})`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodOneShot, goodStream]
+})
+
 export const noCallbacks = new Rule({
   id: ruleId,
   description: "Disallow callback-style functions returning void in favor of Effect.",
+  example,
   check
 })

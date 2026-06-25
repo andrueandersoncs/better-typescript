@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-async-functions"
@@ -65,8 +65,30 @@ const asyncFunctionMatches = (
 
 const check = onNode(asyncCapableFunctionKinds, isAsyncCapableFunction, asyncFunctionMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/user.ts",
+  code: `const fetchUser = async (id: string) => {
+  const response = await fetch(\`/users/\${id}\`)
+  return response.json()
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/user.ts",
+  code: `const fetchUser = Effect.fn("fetchUser")(function* (id: string) {
+  const response = yield* HttpClient.get(\`/users/\${id}\`)
+  return yield* response.json
+})`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noAsyncFunctions = new Rule({
   id: ruleId,
   description: "Disallow async functions in favor of Effect-returning functions.",
+  example,
   check
 })

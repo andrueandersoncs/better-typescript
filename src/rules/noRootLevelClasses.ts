@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { namedNodeReportTarget } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-root-level-classes"
@@ -56,9 +56,30 @@ const rootLevelClassMatches = (
 
 const check = onNode(classNodeKinds, isClassNode, rootLevelClassMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `class UserService {
+  getUser(id: string) { /* ... */ }
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `class User extends Schema.Class<User>("User")({
+  id: Schema.String,
+  name: Schema.String
+}) {}`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noRootLevelClasses = new Rule({
   id: ruleId,
   description:
     "Disallow classes that do not extend another class in favor of a functional approach.",
+  example,
   check
 })

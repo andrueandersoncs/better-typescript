@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-implicit-return"
@@ -53,8 +53,26 @@ const implicitReturnMatches = (
 
 const check = onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, implicitReturnMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/math.ts",
+  code: `const double = (n: number) => {
+  return n * 2
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/math.ts",
+  code: `const double = (n: number) => n * 2`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferImplicitReturn = new Rule({
   id: ruleId,
   description: "Prefer implicit arrow function returns over block bodies with a single return.",
+  example,
   check
 })

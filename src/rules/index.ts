@@ -75,5 +75,5 @@ export const rules: ReadonlyArray<Rule> = [
   noClassMethodImplementations
 ]
 
-export { RuleContext, RuleMatch } from "./types.js"
+export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"
 export type { Rule } from "./types.js"

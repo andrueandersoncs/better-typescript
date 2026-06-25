@@ -3,7 +3,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-guard"
@@ -58,8 +58,28 @@ const inOperatorGuardMatches = (
 
 const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inOperatorGuardMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/guard.ts",
+  code: `if ("name" in value) {
+  return value.name
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/guard.ts",
+  code: `if (Schema.is(User)(value)) {
+  return value.name
+}`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferEffectSchemaGuard = new Rule({
   id: ruleId,
   description: "Prefer Effect Schema guards over string-key in-operator checks.",
+  example,
   check
 })

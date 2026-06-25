@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-multiple-boolean-operators"
@@ -126,8 +126,25 @@ const check = onNode(
   multipleBooleanOperatorMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/access.ts",
+  code: `const canEdit = isAdmin && isActive || isOwner`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/access.ts",
+  code: `const hasAdminAccess = isAdmin && isActive
+const canEdit = hasAdminAccess || isOwner`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noMultipleBooleanOperators = new Rule({
   id: ruleId,
   description: "Disallow combining multiple boolean operators in a single expression.",
+  example,
   check
 })

@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { functionInitializer, isProjectSourceFile } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-function-names"
@@ -153,9 +153,40 @@ const duplicateFunctionMatches = (context: RuleContext): ReadonlyArray<RuleMatch
 
 const check = onFile(duplicateFunctionMatches)
 
+const badExample1 = new ExampleSnippet({
+  filePath: "src/routes/fileA.ts",
+  code: `const formatDate = (d: Date): string => d.toISOString()`
+})
+
+const badExample2 = new ExampleSnippet({
+  filePath: "src/routes/fileB.ts",
+  code: `const formatDate = (d: Date): string => d.toISOString()`
+})
+
+const goodExample1 = new ExampleSnippet({
+  filePath: "src/dateFormat.ts",
+  code: `export const formatDate = (d: Date): string => d.toISOString()`
+})
+
+const goodExample2 = new ExampleSnippet({
+  filePath: "src/routes/fileA.ts",
+  code: `import { formatDate } from "../dateFormat.js"`
+})
+
+const goodExample3 = new ExampleSnippet({
+  filePath: "src/routes/fileB.ts",
+  code: `import { formatDate } from "../dateFormat.js"`
+})
+
+const example = new RuleExample({
+  bad: [badExample1, badExample2],
+  good: [goodExample1, goodExample2, goodExample3]
+})
+
 export const noDuplicateFunctionNames = new Rule({
   id: ruleId,
   description:
     "Disallow top-level functions that duplicate a function name declared in another file.",
+  example,
   check
 })

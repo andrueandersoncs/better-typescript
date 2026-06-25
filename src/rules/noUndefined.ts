@@ -4,7 +4,7 @@ import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { isReturnTypeDeclaration, unwrapExpression } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-undefined"
@@ -257,8 +257,26 @@ const check = combineAll([
   comparisonListener
 ])
 
+const badExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const findUser = (id: string): User | undefined =>
+  users.find((u) => u.id === id)`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const findUser = (id: string): Option.Option<User> =>
+  Option.fromNullable(users.find((u) => u.id === id))`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noUndefined = new Rule({
   id: ruleId,
   description: "Disallow undefined usage in favor of Effect Option.",
+  example,
   check
 })

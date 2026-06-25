@@ -1,7 +1,7 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-of-loops"
@@ -23,8 +23,27 @@ const forOfMatches = (
 
 const check = onNode([ts.SyntaxKind.ForOfStatement], ts.isForOfStatement, forOfMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const names = []
+for (const user of users) {
+  names.push(user.name)
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const names = users.map((user) => user.name)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noForOfLoops = new Rule({
   id: ruleId,
   description: "Disallow for..of loops in favor of immutable collection operations.",
+  example,
   check
 })

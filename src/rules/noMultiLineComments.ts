@@ -2,7 +2,7 @@ import * as path from "node:path"
 import { Array as Arr, Option, Schema, Struct } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
-import { Rule, RuleMatch } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample, RuleMatch } from "./types.js"
 import type { RuleContext } from "./types.js"
 
 const ruleId = "no-multi-line-comments"
@@ -141,7 +141,7 @@ const positionToMatch =
       column: location.character + 1,
       message,
       hint
-    })
+})
   }
 
 const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
@@ -156,9 +156,32 @@ const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
 
 const check = onFile(fileMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/validate.ts",
+  code: `/*
+ * Validates the user input and
+ * returns the sanitized result.
+ */
+const validate = (input: string): string =>
+  input.trim()`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/validate.ts",
+  code: `// Strips whitespace to prevent injection via padded strings.
+const validate = (input: string): string =>
+  input.trim()`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noMultiLineComments = new Rule({
   id: ruleId,
   description:
     "Disallow multi-line comments in favor of self-documenting code and ADRs for architectural decisions.",
+  example,
   check
 })

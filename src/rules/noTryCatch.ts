@@ -1,7 +1,7 @@
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-try-catch"
@@ -23,8 +23,35 @@ const tryStatementMatches = (
 
 const check = onNode([ts.SyntaxKind.TryStatement], ts.isTryStatement, tryStatementMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/file.ts",
+  code: `try {
+  const data = readFile(path)
+  return parse(data)
+} catch (err) {
+  return defaultValue
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/file.ts",
+  code: `class ReadError extends Schema.TaggedError<ReadError>("ReadError")("ReadError", {}) {}
+
+const program = pipe(
+  readFile(path),
+  Effect.flatMap(parse),
+  Effect.catchTag("ReadError", () => Effect.succeed(defaultValue))
+)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noTryCatch = new Rule({
   id: ruleId,
   description: "Disallow try/catch in favor of Effect with Schema.TaggedError and Effect.catchTag.",
+  example,
   check
 })

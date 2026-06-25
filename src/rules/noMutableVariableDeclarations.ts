@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-mutable-variable-declarations"
@@ -39,7 +39,7 @@ const mutableDeclarationRuleMatch =
       hint:
         "Declare multiple const values to represent each state instead of mutating a single " +
         "variable, and use immutable values that are not reassigned."
-    })
+})
 
 const mutableDeclarationMatches = (
   declarationList: ts.VariableDeclarationList,
@@ -56,8 +56,30 @@ const check = onNode(
   mutableDeclarationMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/cart.ts",
+  code: `let total = 0
+for (const item of items) {
+  total += item.price
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/cart.ts",
+  code: `const total = items.reduce(
+  (sum, item) => sum + item.price,
+  0
+)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noMutableVariableDeclarations = new Rule({
   id: ruleId,
   description: "Disallow let and var declarations in favor of immutable const bindings.",
+  example,
   check
 })

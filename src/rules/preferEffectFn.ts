@@ -5,7 +5,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { functionInitializer } from "./tsNode.js"
 import type { FunctionInitializer } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-fn"
@@ -83,8 +83,29 @@ const effectFnMatches = (
 
 const check = onNode([ts.SyntaxKind.VariableDeclaration], ts.isVariableDeclaration, effectFnMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const getUser = (id: string) =>
+  Effect.gen(function* () {
+    return yield* fetchUser(id)
+  })`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const getUser = Effect.fn("getUser")(function* (id: string) {
+  return yield* fetchUser(id)
+})`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferEffectFn = new Rule({
   id: ruleId,
   description: "Require Effect.fn for functions with parameters that return an Effect.",
+  example,
   check
 })

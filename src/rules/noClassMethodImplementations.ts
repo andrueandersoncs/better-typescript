@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { namedNodeReportTarget } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-class-method-implementations"
@@ -73,9 +73,33 @@ const methodImplementationMatches = (
 
 const check = onNode(methodDeclarationKinds, isMethodDeclaration, methodImplementationMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `class User extends Schema.Class<User>("User")({
+  name: Schema.String
+}) {
+  greet(): string { return \`Hello, \${this.name}\` }
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `class User extends Schema.Class<User>("User")({
+  name: Schema.String
+}) {}
+
+const greet = (user: User): string => \`Hello, \${user.name}\``
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noClassMethodImplementations = new Rule({
   id: ruleId,
   description:
     "Disallow implementing methods on a class, except methods that override a base-class method.",
+  example,
   check
 })

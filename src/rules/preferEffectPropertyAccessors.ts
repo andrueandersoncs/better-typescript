@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-property-accessors"
@@ -202,7 +202,7 @@ const propertyAccessorRuleMatch =
       hint:
         `Replace this property-access-only function with ${suggestion} from Effect. ` +
         "Use Struct.get for non-record data types, and Record.get or Record.has for records."
-    })
+})
   }
 
 const propertyAccessorMatches = (
@@ -220,8 +220,25 @@ const check = onNode(
   propertyAccessorMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const getName = (user: User): string =>
+  user.name`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const getName = Struct.get("name")`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferEffectPropertyAccessors = new Rule({
   id: ruleId,
   description: "Prefer Effect Struct (`Struct.get`) and Record (`Record.has` -> `Record.get`) accessors over property-access-only functions.",
+  example,
   check
 })

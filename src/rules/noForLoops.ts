@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-loops"
@@ -38,8 +38,27 @@ const forMatches = (
 
 const check = onNode([ts.SyntaxKind.ForStatement], ts.isForStatement, forMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/transform.ts",
+  code: `const doubled = []
+for (let i = 0; i < items.length; i++) {
+  doubled.push(items[i] * 2)
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/transform.ts",
+  code: `const doubled = Array.map(items, (item) => item * 2)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noForLoops = new Rule({
   id: ruleId,
   description: "Disallow iterator-based for loops in favor of Effect collection operations.",
+  example,
   check
 })

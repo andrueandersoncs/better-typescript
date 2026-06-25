@@ -2,7 +2,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { transparentWrapperKinds } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-closures"
@@ -40,10 +40,29 @@ const arrowFunctionMatches = (
 
 const check = onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, arrowFunctionMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `users.map((user) => user.name.toUpperCase())`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/users.ts",
+  code: `const upperName = (user: User): string =>
+  user.name.toUpperCase()
+
+users.map(upperName)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noInlineClosures = new Rule({
   id: ruleId,
   description:
     "Disallow arrow functions outside naming positions (const initializers) and currying " +
     "positions (arrow function bodies).",
+  example,
   check
 })

@@ -53,8 +53,21 @@ export type RuleCheck = ReadonlyArray<RuleListener>
 const ruleListenerSchema = Schema.Union(NodeListener, FileListener)
 const ruleCheckSchema = Schema.Array(ruleListenerSchema)
 
+export class ExampleSnippet extends Schema.Class<ExampleSnippet>("ExampleSnippet")({
+  filePath: Schema.String,
+  code: Schema.String
+}) {}
+
+const exampleSnippetArraySchema = Schema.Array(ExampleSnippet)
+
+export class RuleExample extends Schema.Class<RuleExample>("RuleExample")({
+  bad: exampleSnippetArraySchema,
+  good: exampleSnippetArraySchema
+}) {}
+
 export class Rule extends Schema.Class<Rule>("Rule")({
   id: Schema.String,
   description: Schema.String,
+  example: RuleExample,
   check: ruleCheckSchema
 }) {}

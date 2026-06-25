@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-constructor"
@@ -157,8 +157,31 @@ const arrowBodyListener = onNode(
 
 const check = combineAll([returnStatementListener, arrowBodyListener])
 
+const badExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `const createUser = (name: string) =>
+  ({ _tag: "User" as const, name, createdAt: Date.now() })`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `class User extends Schema.TaggedClass<User>()("User", {
+  name: Schema.String,
+  createdAt: Schema.Number
+}) {}
+
+const createUser = (name: string) =>
+  new User({ name, createdAt: Date.now() })`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferEffectSchemaConstructor = new Rule({
   id: ruleId,
   description: "Disallow returning raw object literals in favor of Effect Schema constructors.",
+  example,
   check
 })

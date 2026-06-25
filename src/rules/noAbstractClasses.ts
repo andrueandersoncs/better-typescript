@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-abstract-classes"
@@ -40,7 +40,7 @@ const abstractClassMatch =
         "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
         "functionality, extract it into reusable functions and export those functions." +
         " To model a union of types, use a type union instead of an abstract class."
-    })
+})
 
 const abstractClassMatches = (
   node: ts.ClassDeclaration,
@@ -50,8 +50,31 @@ const abstractClassMatches = (
 
 const check = onNode(classDeclarationKinds, isClassDeclaration, abstractClassMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/shape.ts",
+  code: `abstract class Shape {
+  abstract area(): number
+}
+
+class Circle extends Shape {
+  area(): number { return Math.PI * this.radius ** 2 }
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/shape.ts",
+  code: `const circleArea = (radius: number): number =>
+  Math.PI * radius ** 2`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noAbstractClasses = new Rule({
   id: ruleId,
   description: "Disallow abstract classes in favor of reusable functions and Effect.",
+  example,
   check
 })

@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
@@ -39,7 +39,7 @@ const directBooleanRuleMatch =
       node: ifStatement,
       message: `Avoid returning ${literalText} from a conditional branch.`,
       hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
-    })
+})
   }
 
 const directBooleanMatches = (
@@ -53,9 +53,28 @@ const directBooleanMatches = (
 
 const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, directBooleanMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/age.ts",
+  code: `if (age >= 18) {
+  return true
+}
+return false`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/age.ts",
+  code: `return age >= 18`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferDirectBooleanReturn = new Rule({
   id: ruleId,
   description:
     "Prefer returning boolean expressions directly instead of conditional boolean literals.",
+  example,
   check
 })

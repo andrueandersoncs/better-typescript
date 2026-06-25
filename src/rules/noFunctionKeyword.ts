@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-function-keyword"
@@ -115,7 +115,7 @@ const functionKeywordMatches = (
         "Declare this function as a const using fat-arrow syntax instead. Keep function " +
         "declarations only when overload signatures are required, and keep function* when " +
         "generator semantics are required."
-    })
+})
   ]
 }
 
@@ -125,8 +125,27 @@ const check = onNode(
   functionKeywordMatches
 )
 
+const badExample = new ExampleSnippet({
+  filePath: "src/math.ts",
+  code: `function add(a: number, b: number): number {
+  return a + b
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/math.ts",
+  code: `const add = (a: number, b: number): number =>
+  a + b`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noFunctionKeyword = new Rule({
   id: ruleId,
   description: "Disallow non-generator function declarations in favor of const arrow functions.",
+  example,
   check
 })

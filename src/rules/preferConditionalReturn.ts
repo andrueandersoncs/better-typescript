@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-conditional-return"
@@ -35,7 +35,7 @@ const returnExpressionFromStatement =
       const expression = yield* Option.fromNullable(returnStatement.expression)
 
       return yield* Option.liftPredicate(isSimpleReturnExpression(sourceFile))(expression)
-    })
+})
 
 const fallbackReturnExpression = (
   sourceFile: ts.SourceFile,
@@ -120,7 +120,7 @@ const conditionalReturnMatch =
         message: "Avoid if statements that only choose between two return values.",
         hint: `Return a conditional expression instead: return ${returnExpression}.`
       })
-    })
+})
 
 const statementConditionalMatch =
   (context: RuleContext, block: ts.Block) =>
@@ -140,9 +140,29 @@ const conditionalReturnRuleMatches = (
 
 const check = onNode([ts.SyntaxKind.Block], ts.isBlock, conditionalReturnRuleMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/parity.ts",
+  code: `if (isEven(n)) {
+  return "even"
+} else {
+  return "odd"
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/parity.ts",
+  code: `return isEven(n) ? "even" : "odd"`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const preferConditionalReturn = new Rule({
   id: ruleId,
   description:
     "Prefer conditional return expressions over if statements that choose between two values.",
+  example,
   check
 })

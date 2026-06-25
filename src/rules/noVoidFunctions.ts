@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { isFunctionInitializer, namedNodeReportTarget } from "./tsNode.js"
 import { isVoidType, permitsVoid } from "./tsType.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { FunctionInitializer } from "./tsNode.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -90,7 +90,7 @@ const voidFunctionMatch =
         "A void function either does nothing or performs a side-effect. If it does nothing, " +
         "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
         "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not run."
-    })
+})
   }
 
 const voidFunctionMatches = (
@@ -106,8 +106,27 @@ const voidFunctionMatches = (
 
 const check = onNode(voidableFunctionKinds, isVoidableFunction, voidFunctionMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/log.ts",
+  code: `const logMessage = (msg: string): void => {
+  console.log(msg)
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/log.ts",
+  code: `const logMessage = (msg: string) =>
+  Effect.sync(() => console.log(msg))`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noVoidFunctions = new Rule({
   id: ruleId,
   description: "Disallow functions that return void in favor of Effect-returning functions.",
+  example,
   check
 })

@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { differentApparentType, differentBaseConstraint } from "./tsType.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-mutable-array-methods"
@@ -141,7 +141,7 @@ const mutableArrayRuleMatch =
         "be taking a more functional approach. Use immutable array operations such as " +
         "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
         "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
-    })
+})
 
 const mutableArrayMatches = (
   callExpression: ts.CallExpression,
@@ -154,8 +154,28 @@ const mutableArrayMatches = (
 
 const check = onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, mutableArrayMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/items.ts",
+  code: `const items: Array<string> = []
+items.push("a")
+items.push("b")
+items.sort()`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/items.ts",
+  code: `const items = ["a", "b"]
+const sorted = [...items].sort()`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noMutableArrayMethods = new Rule({
   id: ruleId,
   description: "Disallow mutable array methods in favor of immutable array operations.",
+  example,
   check
 })

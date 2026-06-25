@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-boolean-expressions"
@@ -44,8 +44,30 @@ const inlineBooleanConditionMatches = (
 
 const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inlineBooleanConditionMatches)
 
+const badExample = new ExampleSnippet({
+  filePath: "src/access.ts",
+  code: `if (user.isActive && user.hasPermission) {
+  grantAccess()
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/access.ts",
+  code: `const canAccess = user.isActive && user.hasPermission
+
+if (canAccess) {
+  grantAccess()
+}`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
 export const noInlineBooleanExpressions = new Rule({
   id: ruleId,
   description: "Disallow boolean operators inline in an if statement condition.",
+  example,
   check
 })

@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { isProjectSourceFile, transparentWrapperKinds } from "./tsNode.js"
-import { Rule } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-class"
@@ -300,10 +300,42 @@ const check = onNode(
   interfaceDeclarationMatches
 )
 
+const badExample1 = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `interface User {
+  readonly name: string
+  readonly age: number
+}`
+})
+
+const badExample2 = new ExampleSnippet({
+  filePath: "src/service/userService.ts",
+  code: `const user: User = { name: "Alice", age: 30 }`
+})
+
+const goodExample1 = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `class User extends Schema.Class<User>("User")({
+  name: Schema.String,
+  age: Schema.Number
+}) {}`
+})
+
+const goodExample2 = new ExampleSnippet({
+  filePath: "src/service/userService.ts",
+  code: `const user = new User({ name: "Alice", age: 30 })`
+})
+
+const example = new RuleExample({
+  bad: [badExample1, badExample2],
+  good: [goodExample1, goodExample2]
+})
+
 export const preferEffectSchemaClass = new Rule({
   id: ruleId,
   description:
     "Disallow interface declarations for data the project constructs in favor of Effect " +
     "Schema classes.",
+  example,
   check
 })
