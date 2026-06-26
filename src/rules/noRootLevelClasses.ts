@@ -71,9 +71,23 @@ const goodExample = new ExampleSnippet({
 }) {}`
 })
 
+const moduleGoodExample = new ExampleSnippet({
+  filePath: "src/model/user.ts",
+  code: `const UserId = Schema.String.pipe(Schema.brand("UserId"))
+type UserId = typeof UserId.Type
+
+export const User = Schema.Struct({
+  id: UserId,
+  name: Schema.String
+})
+export type User = typeof User.Type
+
+export const getById = Effect.fn("user/getById")(function* (id: UserId) {})`
+})
+
 const example = new RuleExample({
   bad: [badExample],
-  good: [goodExample]
+  good: [goodExample, moduleGoodExample]
 })
 
 export const noRootLevelClasses = new Rule({

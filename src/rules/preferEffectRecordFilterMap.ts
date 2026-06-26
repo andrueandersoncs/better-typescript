@@ -1,0 +1,99 @@
+import * as ts from "typescript"
+import { onNode } from "./ruleCheck.js"
+import { createRuleMatch } from "./ruleMatch.js"
+import { unwrapExpression } from "./tsNode.js"
+import { ExampleSnippet, Rule, RuleExample } from "./types.js"
+import type { RuleContext, RuleMatch } from "./types.js"
+
+const ruleId = "prefer-effect-record-filter-map"
+
+const message = "Avoid conditional object spreads."
+
+const hint =
+  "Build a record of candidate properties and use Record.filterMap from Effect with " +
+  "Option.some/Option.none (or Option.fromNullable) to keep only present entries."
+
+const objectLiteralPropertyCount = (expression: ts.Expression): number => {
+  const unwrapped = unwrapExpression(expression)
+
+  return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
+}
+
+const hasNoProperties = (expression: ts.Expression): boolean =>
+  objectLiteralPropertyCount(expression) === 0
+
+const hasSomeProperties = (expression: ts.Expression): boolean =>
+  objectLiteralPropertyCount(expression) > 0
+
+const hasEmptyObjectFallback = (conditional: ts.ConditionalExpression): boolean => {
+  const emptyThenNonEmptyElse = [
+    hasNoProperties(conditional.whenTrue),
+    hasSomeProperties(conditional.whenFalse)
+  ].every(Boolean)
+  const nonEmptyThenEmptyElse = [
+    hasSomeProperties(conditional.whenTrue),
+    hasNoProperties(conditional.whenFalse)
+  ].every(Boolean)
+
+  return [emptyThenNonEmptyElse, nonEmptyThenEmptyElse].some(Boolean)
+}
+
+const isConditionalObjectSpread = (spread: ts.SpreadAssignment): boolean => {
+  const expression = unwrapExpression(spread.expression)
+
+  return ts.isConditionalExpression(expression) ? hasEmptyObjectFallback(expression) : false
+}
+
+const conditionalObjectSpreadMatches = (
+  spread: ts.SpreadAssignment,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> =>
+  isConditionalObjectSpread(spread)
+    ? [
+        createRuleMatch(context, {
+          ruleId,
+          node: spread,
+          message,
+          hint
+        })
+      ]
+    : []
+
+const check = onNode(
+  [ts.SyntaxKind.SpreadAssignment],
+  ts.isSpreadAssignment,
+  conditionalObjectSpreadMatches
+)
+
+const badExample = new ExampleSnippet({
+  filePath: "src/search.ts",
+  code: `const queryParameters = {
+  ...(params.query ? { query: params.query } : {}),
+  ...(params.page ? { page: params.page } : {})
+}`
+})
+
+const goodExample = new ExampleSnippet({
+  filePath: "src/search.ts",
+  code: `const queryParameters = Record.filterMap(
+  {
+    query: params.query,
+    page: params.page
+  },
+  Option.fromNullable
+)`
+})
+
+const example = new RuleExample({
+  bad: [badExample],
+  good: [goodExample]
+})
+
+export const preferEffectRecordFilterMap = new Rule({
+  id: ruleId,
+  description:
+    "Prefer Effect Record.filterMap over object spreads that choose between an object " +
+    "literal and an empty object literal.",
+  example,
+  check
+})

@@ -121,16 +121,39 @@ const badExample = new ExampleSnippet({
   code: `console.log(formatDate(parseTimestamp(raw)))`
 })
 
-const goodExample = new ExampleSnippet({
+const goodExtractedValues = new ExampleSnippet({
   filePath: "src/log.ts",
   code: `const timestamp = parseTimestamp(raw)
 const formatted = formatDate(timestamp)
 console.log(formatted)`
 })
 
+const goodEffectPipe = new ExampleSnippet({
+  filePath: "src/loadUser.ts",
+  code: `import { Effect, Struct } from "effect"
+
+const program = fetchUser(userId).pipe(
+  Effect.map(Struct.get("id")),
+  Effect.flatMap(loadProfile),
+  Effect.map(renderProfile)
+)`
+})
+
+const goodEffectGen = new ExampleSnippet({
+  filePath: "src/loadUser.ts",
+  code: `import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const user = yield* fetchUser(userId)
+  const profile = yield* loadProfile(user.id)
+
+  return renderProfile(profile)
+})`
+})
+
 const example = new RuleExample({
   bad: [badExample],
-  good: [goodExample]
+  good: [goodExtractedValues, goodEffectPipe, goodEffectGen]
 })
 
 export const noNestedCalls = new Rule({
