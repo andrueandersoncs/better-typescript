@@ -18,9 +18,9 @@ const fixturePath = path.join(testDirectory, "fixtures", "no-mutable-array-metho
 
 const expectedHint =
   "This is a sign that you're doing something fundamentally procedural when you should " +
-  "be taking a more functional approach. Use immutable array operations such as " +
-  "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
-  "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
+  "be taking a more functional approach. Use Effect's Array module, such as " +
+  "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
+  "instead of manipulating an array in place."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {

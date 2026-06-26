@@ -50,7 +50,7 @@ const goodExample = new ExampleSnippet({
   code: `const upperName = (user: User): string =>
   user.name.toUpperCase()
 
-users.map(upperName)`
+Array.map(users, upperName)`
 })
 
 const example = new RuleExample({

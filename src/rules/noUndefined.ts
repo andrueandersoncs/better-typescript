@@ -266,7 +266,7 @@ const badExample = new ExampleSnippet({
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
   code: `const findUser = (id: string): Option.Option<User> =>
-  Option.fromNullable(users.find((u) => u.id === id))`
+  Array.findFirst(users, (user) => user.id === id)`
 })
 
 const example = new RuleExample({

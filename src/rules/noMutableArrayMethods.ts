@@ -138,9 +138,9 @@ const mutableArrayRuleMatch =
       message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
       hint:
         "This is a sign that you're doing something fundamentally procedural when you should " +
-        "be taking a more functional approach. Use immutable array operations such as " +
-        "Array.prototype.concat(), Array.prototype.slice(), Array.prototype.map(), " +
-        "Array.prototype.filter(), or spread syntax instead of manipulating an array in place."
+        "be taking a more functional approach. Use Effect's Array module, such as " +
+        "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
+        "instead of manipulating an array in place."
 })
 
 const mutableArrayMatches = (
@@ -164,8 +164,10 @@ items.sort()`
 
 const goodExample = new ExampleSnippet({
   filePath: "src/items.ts",
-  code: `const items = ["a", "b"]
-const sorted = [...items].sort()`
+  code: `import { Array, Order } from "effect"
+
+const items = ["b", "a"]
+const sorted = Array.sort(items, Order.string)`
 })
 
 const example = new RuleExample({

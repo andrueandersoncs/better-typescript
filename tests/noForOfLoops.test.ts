@@ -17,9 +17,8 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-for-of-loops")
 const expectedMessage = "Avoid imperative logic in for..of loops."
 const expectedHint =
-  "Use immutable collection logic such as Array.prototype.map(), " +
-  "Array.prototype.reduce(), Array.prototype.filter(), Array.prototype.flatMap(), " +
-  "or Streams for async iterables instead."
+  "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+  "Array.filter(), or Array.flatMap(), instead."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {

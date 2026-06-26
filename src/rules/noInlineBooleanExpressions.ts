@@ -47,7 +47,7 @@ const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inlineBoolea
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",
   code: `if (user.isActive && user.hasPermission) {
-  grantAccess()
+  await grantAccess()
 }`
 })
 
@@ -56,7 +56,7 @@ const goodExample = new ExampleSnippet({
   code: `const canAccess = user.isActive && user.hasPermission
 
 if (canAccess) {
-  grantAccess()
+  yield* grantAccess();
 }`
 })
 

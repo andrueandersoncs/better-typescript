@@ -66,9 +66,10 @@ for (const item of items) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/cart.ts",
-  code: `const total = items.reduce(
-  (sum, item) => sum + item.price,
-  0
+  code: `const total = Array.reduce(
+  items,
+  0,
+  (sum, item) => sum + item.price
 )`
 })
 

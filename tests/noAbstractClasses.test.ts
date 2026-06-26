@@ -19,9 +19,10 @@ const fixturePath = path.join(testDirectory, "fixtures", "no-abstract-classes")
 const message = "Avoid declaring classes as abstract."
 
 const hint =
-  "An abstract class is object-oriented programming, which is not allowed. To share " +
-  "functionality, extract it into reusable functions and export those functions. If you " +
-  "need impure functions that produce an effect, model the effect with Effect instead."
+  "Declaring an abstract class in first-party code implies object-oriented programming, " +
+  "which is not allowed. To share functionality, extract it into reusable functions and " +
+  "export those functions. To model a union of types, use a type union instead of an " +
+  "abstract class."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {

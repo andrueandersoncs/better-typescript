@@ -15,9 +15,8 @@ const forOfMatches = (
     node: forOfStatement,
     message: "Avoid imperative logic in for..of loops.",
     hint:
-      "Use immutable collection logic such as Array.prototype.map(), " +
-      "Array.prototype.reduce(), Array.prototype.filter(), Array.prototype.flatMap(), " +
-      "or Streams for async iterables instead."
+      "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+      "Array.filter(), or Array.flatMap(), instead."
   })
 ]
 
@@ -33,7 +32,7 @@ for (const user of users) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const names = users.map((user) => user.name)`
+  code: `const names = Array.map(users, (user) => user.name)`
 })
 
 const example = new RuleExample({
@@ -43,7 +42,7 @@ const example = new RuleExample({
 
 export const noForOfLoops = new Rule({
   id: ruleId,
-  description: "Disallow for..of loops in favor of immutable collection operations.",
+  description: "Disallow for..of loops in favor of Effect collection operations.",
   example,
   check
 })
