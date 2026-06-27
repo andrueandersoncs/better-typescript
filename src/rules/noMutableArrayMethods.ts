@@ -132,16 +132,14 @@ const isUnseenArrayType = (
 const mutableArrayRuleMatch =
   (context: RuleContext, callExpression: ts.CallExpression) =>
   (methodName: MutableArrayMethod): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: callExpression,
-      message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
-      hint:
-        "This is a sign that you're doing something fundamentally procedural when you should " +
-        "be taking a more functional approach. Use Effect's Array module, such as " +
-        "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
-        "instead of manipulating an array in place."
-})
+    createRuleMatch(context, {ruleId,
+    node: callExpression,
+    message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
+    hint:
+      "This is a sign that you're doing something fundamentally procedural when you should " +
+      "be taking a more functional approach. Use Effect's Array module, such as " +
+      "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
+      "instead of manipulating an array in place."})
 
 const mutableArrayMatches = (
   callExpression: ts.CallExpression,

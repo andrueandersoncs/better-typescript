@@ -1,16 +1,22 @@
 import * as path from "node:path"
+import { Schema } from "effect"
 import type * as ts from "typescript"
+import { TsNode } from "./tsSchema.js"
 import { RuleMatch } from "./types.js"
 import type { RuleContext } from "./types.js"
 
+export class MatchSource extends Schema.Class<MatchSource>("MatchSource")({
+  ruleId: Schema.String,
+  node: TsNode,
+  message: Schema.String,
+  hint: Schema.String
+}) {}
+
+type MatchSourceFields = Pick<MatchSource, "ruleId" | "node" | "message" | "hint">
+
 export const createRuleMatch = (
   context: RuleContext,
-  source: {
-    readonly ruleId: string
-    readonly node: ts.Node
-    readonly message: string
-    readonly hint: string
-  }
+  source: MatchSourceFields
 ): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = source.node.getStart(sourceFile)

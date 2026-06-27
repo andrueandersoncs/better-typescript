@@ -132,15 +132,13 @@ const callbackStyleMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isCallbackStyleDeclaration(context, declaration)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: declaration,
-          message:
-            "Avoid callback-style functions that accept a function argument and return void.",
-          hint:
-            "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-            "own API as an Effect-returning function from the start."
-        })
+        createRuleMatch(context, {ruleId,
+        node: declaration,
+        message:
+          "Avoid callback-style functions that accept a function argument and return void.",
+        hint:
+          "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
+          "own API as an Effect-returning function from the start."})
       ]
     : []
 

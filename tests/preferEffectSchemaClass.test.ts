@@ -16,16 +16,16 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-class")
 
-const makeMessage = (interfaceName: string): string =>
-  `Avoid declaring ${interfaceName} as an interface when this project constructs its values.`
+const makeMessage = (typeName: string, kindLabel: string): string =>
+  `Avoid declaring ${typeName} as ${kindLabel} when this project constructs its values.`
 
-const makeHint = (interfaceName: string): string =>
-  `Object literals of this shape are built in src/cases.ts, so ${interfaceName} is a ` +
-  "data definition rather than a boundary type. Replace the interface with an Effect " +
-  `Schema class \u2014 class ${interfaceName} extends ` +
-  `Schema.Class<${interfaceName}>("${interfaceName}")({ ... }) {} (or Schema.TaggedClass ` +
+const makeHint = (typeName: string): string =>
+  `Object literals of this shape are built in src/cases.ts, so ${typeName} is a ` +
+  "data definition rather than a boundary type. Replace it with an Effect " +
+  `Schema class \u2014 class ${typeName} extends ` +
+  `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
   "for tagged variants). The class is both the type and the constructor: keep using " +
-  `${interfaceName} in annotations and build values with new ${interfaceName}({ ... }) ` +
+  `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
   "so every construction is validated."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
@@ -35,7 +35,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     fileName: "src/cases.ts",
     line: 4,
     column: 18,
-    message: makeMessage("User"),
+    message: makeMessage("User", "an interface"),
     hint: makeHint("User")
   },
   {
@@ -44,7 +44,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     fileName: "src/cases.ts",
     line: 8,
     column: 18,
-    message: makeMessage("Point"),
+    message: makeMessage("Point", "an interface"),
     hint: makeHint("Point")
   },
   {
@@ -53,7 +53,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     fileName: "src/cases.ts",
     line: 12,
     column: 18,
-    message: makeMessage("Tag"),
+    message: makeMessage("Tag", "an interface"),
     hint: makeHint("Tag")
   },
   {
@@ -62,7 +62,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     fileName: "src/cases.ts",
     line: 16,
     column: 18,
-    message: makeMessage("Account"),
+    message: makeMessage("Account", "an interface"),
     hint: makeHint("Account")
   },
   {
@@ -71,8 +71,17 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     fileName: "src/cases.ts",
     line: 21,
     column: 18,
-    message: makeMessage("Cons"),
+    message: makeMessage("Cons", "an interface"),
     hint: makeHint("Cons")
+  },
+  {
+    name: "Settings.name",
+    ruleId: "prefer-effect-schema-class",
+    fileName: "src/cases.ts",
+    line: 25,
+    column: 13,
+    message: makeMessage("Settings", "a type alias"),
+    hint: makeHint("Settings")
   }
 ]
 

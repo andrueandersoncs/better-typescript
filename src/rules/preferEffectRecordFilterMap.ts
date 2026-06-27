@@ -50,12 +50,10 @@ const conditionalObjectSpreadMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isConditionalObjectSpread(spread)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: spread,
-          message,
-          hint
-        })
+        createRuleMatch(context, {ruleId,
+        node: spread,
+        message,
+        hint})
       ]
     : []
 

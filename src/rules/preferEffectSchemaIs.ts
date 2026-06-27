@@ -120,14 +120,12 @@ const schemaIsRuleMatch = (context: RuleContext, expression: ts.BinaryExpression
   const tagText = comparedTagText(expression)
   const suggestion = schemaIsSuggestion(expression, valueText)
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: expression,
-    message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
-    hint:
-      `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
-      `"${tagText}".`
-  })
+  return createRuleMatch(context, {ruleId,
+  node: expression,
+  message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
+  hint:
+    `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
+    `"${tagText}".`})
 }
 
 const schemaIsMatches = (

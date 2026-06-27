@@ -19,3 +19,8 @@ export const TsTypeChecker = Schema.declare(isTsTypeChecker).annotations({
 export const TsSourceFile = Schema.declare(isTsSourceFile).annotations({
   identifier: "ts.SourceFile"
 })
+
+const isTsNode = (input: unknown): input is ts.Node =>
+  Predicate.hasProperty(input, "kind")
+
+export const TsNode = Schema.declare(isTsNode).annotations({ identifier: "ts.Node" })

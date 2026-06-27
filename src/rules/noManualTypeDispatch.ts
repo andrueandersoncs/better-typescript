@@ -114,15 +114,13 @@ const dispatchChainHead = (ifStatement: ts.IfStatement): Option.Option<ts.IfStat
 const manualTypeDispatchMatch =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: ifStatement,
-      message: "Avoid dispatching on a value with a chain of if statements that each return.",
-      hint:
-        "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
-        "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
-        "error rather than a silent fall-through."
-})
+    createRuleMatch(context, {ruleId,
+    node: ifStatement,
+    message: "Avoid dispatching on a value with a chain of if statements that each return.",
+    hint:
+      "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
+      "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
+      "error rather than a silent fall-through."})
 
 const manualTypeDispatchMatches = (
   ifStatement: ts.IfStatement,

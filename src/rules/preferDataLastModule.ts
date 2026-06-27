@@ -382,16 +382,14 @@ const dataLastModuleMatch = (
   dataStructure: DataStructureModule,
   definition: FunctionDefinition
 ): RuleMatch =>
-  createRuleMatch(context, {
-    ruleId,
-    node: definition[1],
-    message:
-      `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
-      `its last parameter is ${dataStructure[0]}.`,
-    hint:
-      `Move ${definition[0]} to ${dataStructure[1]} so data-last ` +
-      `functions for ${dataStructure[0]} live with the ${dataStructure[0]} data structure.`
-  })
+  createRuleMatch(context, {ruleId,
+  node: definition[1],
+  message:
+    `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
+    `its last parameter is ${dataStructure[0]}.`,
+  hint:
+    `Move ${definition[0]} to ${dataStructure[1]} so data-last ` +
+    `functions for ${dataStructure[0]} live with the ${dataStructure[0]} data structure.`})
 
 const dataLastModuleMatchForDataStructure =
   (context: RuleContext, definition: FunctionDefinition) =>

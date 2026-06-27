@@ -1,6 +1,6 @@
 import { Array, Function, Option, Struct } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
+import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { isProjectSourceFile, outermostTransparentWrapper } from "./tsNode.js"
@@ -43,19 +43,35 @@ const candidateTypes =
       ? contextualType.types.filter(matchesLiteralShape(literal))
       : [contextualType]
 
-const isProjectInterfaceDeclaration = (declaration: ts.Declaration): boolean => {
-  const sourceFile = declaration.getSourceFile()
+type ObjectTypeDeclaration = ts.InterfaceDeclaration | ts.TypeAliasDeclaration
 
-  return ts.isInterfaceDeclaration(declaration) && isProjectSourceFile(sourceFile)
+const isObjectTypeAlias = (declaration: ts.Declaration): boolean =>
+  ts.isTypeAliasDeclaration(declaration) && ts.isTypeLiteralNode(declaration.type)
+
+const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean => {
+  const sourceFile = declaration.getSourceFile()
+  const isRelevantDeclaration = [
+    ts.isInterfaceDeclaration(declaration),
+    isObjectTypeAlias(declaration)
+  ].some(Boolean)
+
+  return isProjectSourceFile(sourceFile) && isRelevantDeclaration
 }
 
-const isProjectInterfaceSymbol = (symbol: ts.Symbol): boolean =>
-  (symbol.declarations ?? []).some(isProjectInterfaceDeclaration)
+const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean =>
+  (symbol.declarations ?? []).some(isProjectObjectTypeDeclaration)
 
-const typeInterfaceSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
+const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
+  const directSymbol = Option.fromNullable(symbol).pipe(
+    Option.filter(isProjectObjectTypeSymbol)
+  )
+  const aliasSymbol = Option.fromNullable(type.aliasSymbol).pipe(
+    Option.filter(isProjectObjectTypeSymbol)
+  )
+  const fallbackAlias = () => aliasSymbol
 
-  return Option.fromNullable(symbol).pipe(Option.filter(isProjectInterfaceSymbol))
+  return Option.orElse(directSymbol, fallbackAlias)
 }
 
 const isObjectType = (type: ts.Type): type is ts.ObjectType =>
@@ -195,7 +211,7 @@ const constructedInterfaceSymbols = (
 ): ReadonlyArray<ts.Symbol> => {
   const targetTypes = literalTargetTypes(checker, literal)
 
-  return Array.filterMap(targetTypes, typeInterfaceSymbol)
+  return Array.filterMap(targetTypes, typeObjectTypeSymbol)
 }
 
 const objectLiteralExpressions = (node: ts.Node): ReadonlyArray<ts.ObjectLiteralExpression> => {
@@ -253,47 +269,60 @@ const constructionFile =
     return Option.fromNullable(constructionFileName)
   }
 
-const schemaClassRuleMatch =
-  (context: RuleContext, declaration: ts.InterfaceDeclaration) =>
-  (constructionFileName: string): RuleMatch => {
-    const interfaceName = declaration.name.text
-    const exampleFile = toRelativeFileName(context.projectRoot)(constructionFileName)
+const declarationKindLabel = (declaration: ObjectTypeDeclaration): string =>
+  ts.isInterfaceDeclaration(declaration) ? "an interface" : "a type alias"
 
-    return createRuleMatch(context, {
-      ruleId,
-      node: declaration.name,
-      message:
-        `Avoid declaring ${interfaceName} as an interface when this project constructs ` +
-        "its values.",
-      hint:
-        `Object literals of this shape are built in ${exampleFile}, so ${interfaceName} is a ` +
-        "data definition rather than a boundary type. Replace the interface with an Effect " +
-        `Schema class — class ${interfaceName} extends ` +
-        `Schema.Class<${interfaceName}>("${interfaceName}")({ ... }) {} (or Schema.TaggedClass ` +
-        "for tagged variants). The class is both the type and the constructor: keep using " +
-        `${interfaceName} in annotations and build values with new ${interfaceName}({ ... }) ` +
-        "so every construction is validated."
-    })
+const schemaClassRuleMatch =
+  (context: RuleContext, declaration: ObjectTypeDeclaration) =>
+  (constructionFileName: string): RuleMatch => {
+    const typeName = declaration.name.text
+    const exampleFile = toRelativeFileName(context.projectRoot)(constructionFileName)
+    const kindLabel = declarationKindLabel(declaration)
+
+    return createRuleMatch(context, {ruleId,
+    node: declaration.name,
+    message:
+      `Avoid declaring ${typeName} as ${kindLabel} when this project constructs ` +
+      "its values.",
+    hint:
+      `Object literals of this shape are built in ${exampleFile}, so ${typeName} is a ` +
+      "data definition rather than a boundary type. Replace it with an Effect " +
+      `Schema class — class ${typeName} extends ` +
+      `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
+      "for tagged variants). The class is both the type and the constructor: keep using " +
+      `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
+      "so every construction is validated."})
   }
 
-const interfaceDeclarationMatches = (
-  declaration: ts.InterfaceDeclaration,
+const objectTypeDeclarationMatches = (
+  declaration: ObjectTypeDeclaration,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
-  const interfaceSymbol = context.checker.getSymbolAtLocation(declaration.name)
+  const declarationSymbol = context.checker.getSymbolAtLocation(declaration.name)
 
-  return Option.fromNullable(interfaceSymbol).pipe(
+  return Option.fromNullable(declarationSymbol).pipe(
     Option.flatMap(constructionFile(context)),
     Option.map(schemaClassRuleMatch(context, declaration)),
     Option.toArray
   )
 }
 
-const check = onNode(
+const isObjectTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclaration =>
+  ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)
+
+const interfaceListener = onNode(
   [ts.SyntaxKind.InterfaceDeclaration],
   ts.isInterfaceDeclaration,
-  interfaceDeclarationMatches
+  objectTypeDeclarationMatches
 )
+
+const typeAliasListener = onNode(
+  [ts.SyntaxKind.TypeAliasDeclaration],
+  isObjectTypeAliasDeclaration,
+  objectTypeDeclarationMatches
+)
+
+const check = combineAll([interfaceListener, typeAliasListener])
 
 const badExample1 = new ExampleSnippet({
   filePath: "src/model/user.ts",
@@ -329,8 +358,8 @@ const example = new RuleExample({
 export const preferEffectSchemaClass = new Rule({
   id: ruleId,
   description:
-    "Disallow interface declarations for data the project constructs in favor of Effect " +
-    "Schema classes.",
+    "Disallow interface and type alias declarations for data the project constructs in " +
+    "favor of Effect Schema classes.",
   example,
   check
 })

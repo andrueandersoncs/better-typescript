@@ -19,6 +19,7 @@ import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.j
 import { noNestedCalls } from "./noNestedCalls.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
+import { noRawObjectTypes } from "./noRawObjectTypes.js"
 import { noRootLevelClasses } from "./noRootLevelClasses.js"
 import { noSwitchStatements } from "./noSwitchStatements.js"
 import { noThrow } from "./noThrow.js"
@@ -76,7 +77,8 @@ export const rules: ReadonlyArray<Rule> = [
   noNestedCalls,
   noManualTypeDispatch,
   noAbstractClasses,
-  noClassMethodImplementations
+  noClassMethodImplementations,
+  noRawObjectTypes,
 ]
 
 export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"

@@ -175,12 +175,10 @@ const messageForMatch = (match: UndefinedUsageMatch): string => undefinedMessage
 const undefinedMatch = (context: RuleContext, match: UndefinedUsageMatch): RuleMatch => {
   const message = messageForMatch(match)
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: match.node,
-    message,
-    hint: optionHint
-  })
+  return createRuleMatch(context, {ruleId,
+  node: match.node,
+  message,
+  hint: optionHint})
 }
 
 const undefinedParameterMatches = (

@@ -48,14 +48,12 @@ const asyncModifier = (node: AsyncCapableFunction): Option.Option<ts.ModifierLik
 const asyncFunctionMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: keyword,
-      message: "Avoid declaring functions as async.",
-      hint:
-        "Model asynchronous work with Effect instead of async/await." +
-        " To itegrate with a third-party library that uses async functions, wrap any async functions with Effect.tryPromise."
-    })
+    createRuleMatch(context, {ruleId,
+    node: keyword,
+    message: "Avoid declaring functions as async.",
+    hint:
+      "Model asynchronous work with Effect instead of async/await." +
+      " To itegrate with a third-party library that uses async functions, wrap any async functions with Effect.tryPromise."})
 
 const asyncFunctionMatches = (
   node: AsyncCapableFunction,

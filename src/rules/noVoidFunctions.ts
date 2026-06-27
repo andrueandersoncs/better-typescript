@@ -82,15 +82,13 @@ const voidFunctionMatch =
   (declaration: VoidableFunction): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node,
-      message: "Avoid functions that return void.",
-      hint:
-        "A void function either does nothing or performs a side-effect. If it does nothing, " +
-        "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
-        "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not run."
-})
+    return createRuleMatch(context, {ruleId,
+    node,
+    message: "Avoid functions that return void.",
+    hint:
+      "A void function either does nothing or performs a side-effect. If it does nothing, " +
+      "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
+      "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not run."})
   }
 
 const voidFunctionMatches = (

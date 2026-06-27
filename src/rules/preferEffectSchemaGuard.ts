@@ -40,12 +40,10 @@ const schemaGuardMatch = (context: RuleContext) => (expression: ts.BinaryExpress
   const propertyName = unwrapExpression(expression.left).getText(sourceFile)
   const objectText = expression.right.getText(sourceFile)
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: expression,
-    message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
-    hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`
-  })
+  return createRuleMatch(context, {ruleId,
+  node: expression,
+  message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
+  hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`})
 }
 
 const inOperatorGuardMatches = (

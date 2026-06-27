@@ -4,9 +4,9 @@ import { Schema } from "effect"
 export interface ApiResponse { readonly status: number }
 export const readStatus = (response: ApiResponse): number => response.status
 
-// 2. Type alias instead of interface — rule only visits InterfaceDeclaration
+// 2. Boundary-only type alias — used as param/return type, never constructed
 export type Settings = { readonly verbose: boolean }
-export const settings: Settings = { verbose: true }
+export const readSettings = (settings: Settings): boolean => settings.verbose
 
 // 3. Already-correct Effect Schema class — ClassDeclaration, not an interface
 export class Money extends Schema.Class<Money>("Money")({ amount: Schema.Number }) {}

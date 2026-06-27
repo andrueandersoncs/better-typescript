@@ -10,14 +10,12 @@ const forInMatches = (
   forInStatement: ts.ForInStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => [
-  createRuleMatch(context, {
-    ruleId,
-    node: forInStatement,
-    message: "Avoid imperative logic in for..in loops.",
-    hint:
-      "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
-      "or Record.toEntries(), instead."
-  })
+  createRuleMatch(context, {ruleId,
+  node: forInStatement,
+  message: "Avoid imperative logic in for..in loops.",
+  hint:
+    "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
+    "or Record.toEntries(), instead."})
 ]
 
 const check = onNode([ts.SyntaxKind.ForInStatement], ts.isForInStatement, forInMatches)

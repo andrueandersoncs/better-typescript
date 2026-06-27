@@ -109,12 +109,10 @@ const objectLiteralRuleMatch =
     const message = matchMessage(tag)
     const hint = matchHint(tag)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node: literal,
-      message,
-      hint
-    })
+    return createRuleMatch(context, {ruleId,
+    node: literal,
+    message,
+    hint})
   }
 
 const expressionRuleMatches =

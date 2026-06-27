@@ -195,14 +195,12 @@ const propertyAccessorRuleMatch =
     const accessedText = access.getText(context.sourceFile)
     const suggestion = accessorSuggestion(context, access)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node: access,
-      message: `Avoid defining ${name} only to read ${accessedText}.`,
-      hint:
-        `Replace this property-access-only function with ${suggestion} from Effect. ` +
-        "Use Struct.get for non-record data types, and Record.get or Record.has for records."
-})
+    return createRuleMatch(context, {ruleId,
+    node: access,
+    message: `Avoid defining ${name} only to read ${accessedText}.`,
+    hint:
+      `Replace this property-access-only function with ${suggestion} from Effect. ` +
+      "Use Struct.get for non-record data types, and Record.get or Record.has for records."})
   }
 
 const propertyAccessorMatches = (

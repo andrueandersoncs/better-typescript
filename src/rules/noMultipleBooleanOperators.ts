@@ -104,14 +104,12 @@ const multipleBooleanOperatorMatches = (
 
   return isReportableRoot
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: expression,
-          message: "Avoid combining more than one boolean operator in a single expression.",
-          hint:
-            "Declare multiple constant variables instead of combining operators into a " +
-            "single expression."
-        })
+        createRuleMatch(context, {ruleId,
+        node: expression,
+        message: "Avoid combining more than one boolean operator in a single expression.",
+        hint:
+          "Declare multiple constant variables instead of combining operators into a " +
+          "single expression."})
       ]
     : []
 }

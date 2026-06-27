@@ -32,15 +32,13 @@ const abstractModifier = (node: ts.ClassDeclaration): Option.Option<ts.ModifierL
 const abstractClassMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: keyword,
-      message: "Avoid declaring classes as abstract.",
-      hint:
-        "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
-        "functionality, extract it into reusable functions and export those functions." +
-        " To model a union of types, use a type union instead of an abstract class."
-})
+    createRuleMatch(context, {ruleId,
+    node: keyword,
+    message: "Avoid declaring classes as abstract.",
+    hint:
+      "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
+      "functionality, extract it into reusable functions and export those functions." +
+      " To model a union of types, use a type union instead of an abstract class."})
 
 const abstractClassMatches = (
   node: ts.ClassDeclaration,

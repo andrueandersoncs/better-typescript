@@ -68,14 +68,12 @@ const nestedIfMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isNestedIfStatement(ifStatement)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: ifStatement,
-          message: "Avoid nesting if statements.",
-          hint:
-            "Combine related conditions with boolean operators, or use an early return so this " +
-            "condition can remain a single-level if statement."
-        })
+        createRuleMatch(context, {ruleId,
+        node: ifStatement,
+        message: "Avoid nesting if statements.",
+        hint:
+          "Combine related conditions with boolean operators, or use an early return so this " +
+          "condition can remain a single-level if statement."})
       ]
     : []
 

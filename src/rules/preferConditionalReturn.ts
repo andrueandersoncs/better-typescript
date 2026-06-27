@@ -114,12 +114,10 @@ const conditionalReturnMatch =
         fallbackExpression
       )
 
-      return createRuleMatch(context, {
-        ruleId,
-        node: ifStatement,
-        message: "Avoid if statements that only choose between two return values.",
-        hint: `Return a conditional expression instead: return ${returnExpression}.`
-      })
+      return createRuleMatch(context, {ruleId,
+      node: ifStatement,
+      message: "Avoid if statements that only choose between two return values.",
+      hint: `Return a conditional expression instead: return ${returnExpression}.`})
 })
 
 const statementConditionalMatch =

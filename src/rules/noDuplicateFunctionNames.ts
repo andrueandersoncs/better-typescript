@@ -114,16 +114,14 @@ const duplicateFunctionMatch = (
   const functionName = candidate.text
   const otherFiles = formatFileNames(context.projectRoot, otherFileNames)
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: candidate,
-    message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
-    hint:
-      `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-      "into a module scoped to its domain and import it from every file that uses it. Name " +
-      "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-      "generic lib.ts or utils.ts."
-  })
+  return createRuleMatch(context, {ruleId,
+  node: candidate,
+  message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
+  hint:
+    `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
+    "into a module scoped to its domain and import it from every file that uses it. Name " +
+    "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
+    "generic lib.ts or utils.ts."})
 }
 
 const candidateRuleMatch =

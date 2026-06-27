@@ -25,14 +25,12 @@ const forMatches = (
 ): ReadonlyArray<RuleMatch> =>
   hasIteratorAndStopCondition(forStatement)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: forStatement,
-          message: "Avoid imperative logic in iterator-based for loops.",
-          hint:
-            "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-            "Array.filter(), or Array.flatMap(), instead."
-        })
+        createRuleMatch(context, {ruleId,
+        node: forStatement,
+        message: "Avoid imperative logic in iterator-based for loops.",
+        hint:
+          "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+          "Array.filter(), or Array.flatMap(), instead."})
       ]
     : []
 

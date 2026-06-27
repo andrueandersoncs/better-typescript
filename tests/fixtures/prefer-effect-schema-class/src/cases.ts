@@ -20,3 +20,7 @@ export const maybeAccount: Option.Option<Account> = Option.some({ balance: 100 }
 export interface Nil { readonly _tag: "Nil" }
 export interface Cons { readonly _tag: "Cons"; readonly head: number }
 export const node: Nil | Cons = { _tag: "Cons", head: 1 }
+
+// 6. Type alias with object literal body, constructed
+export type Settings = { readonly verbose: boolean }
+export const settings: Settings = { verbose: true }

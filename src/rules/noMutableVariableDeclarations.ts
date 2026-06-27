@@ -32,14 +32,12 @@ const mutableVariableDeclarationKind = (
 const mutableDeclarationRuleMatch =
   (context: RuleContext, declarationList: ts.VariableDeclarationList) =>
   (kind: MutableVariableDeclarationKind): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: declarationList,
-      message: `Avoid declaring mutable variables with ${kind}.`,
-      hint:
-        "Declare multiple const values to represent each state instead of mutating a single " +
-        "variable, and use immutable values that are not reassigned."
-})
+    createRuleMatch(context, {ruleId,
+    node: declarationList,
+    message: `Avoid declaring mutable variables with ${kind}.`,
+    hint:
+      "Declare multiple const values to represent each state instead of mutating a single " +
+      "variable, and use immutable values that are not reassigned."})
 
 const mutableDeclarationMatches = (
   declarationList: ts.VariableDeclarationList,

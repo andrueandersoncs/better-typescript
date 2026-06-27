@@ -40,14 +40,12 @@ const implicitReturnMatches = (
 ): ReadonlyArray<RuleMatch> =>
   hasSingleValueReturnStatement(arrowFunction)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: arrowFunction.body,
-          message: "Avoid arrow function block bodies that only return a value.",
-          hint:
-            "Replace this with an implicit return by removing the return statement and function " +
-            "body braces. Wrap object literals in parentheses when needed."
-        })
+        createRuleMatch(context, {ruleId,
+        node: arrowFunction.body,
+        message: "Avoid arrow function block bodies that only return a value.",
+        hint:
+          "Replace this with an implicit return by removing the return statement and function " +
+          "body braces. Wrap object literals in parentheses when needed."})
       ]
     : []
 

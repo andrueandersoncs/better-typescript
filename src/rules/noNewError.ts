@@ -21,14 +21,12 @@ const newErrorMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isBareErrorConstruction(newExpression)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: newExpression,
-          message: "Avoid using new Error() directly.",
-          hint:
-            "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
-            "instead of bare new Error()."
-        })
+        createRuleMatch(context, {ruleId,
+        node: newExpression,
+        message: "Avoid using new Error() directly.",
+        hint:
+          "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+          "instead of bare new Error()."})
       ]
     : []
 

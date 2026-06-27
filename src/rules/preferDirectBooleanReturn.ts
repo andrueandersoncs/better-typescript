@@ -34,12 +34,10 @@ const directBooleanRuleMatch =
     const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
     const literalText = String(literalValue)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node: ifStatement,
-      message: `Avoid returning ${literalText} from a conditional branch.`,
-      hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
-})
+    return createRuleMatch(context, {ruleId,
+    node: ifStatement,
+    message: `Avoid returning ${literalText} from a conditional branch.`,
+    hint: `Use the condition as the boolean value instead: return ${returnExpression}.`})
   }
 
 const directBooleanMatches = (

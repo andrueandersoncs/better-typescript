@@ -125,15 +125,13 @@ const duplicateIfBodyMatch = (
 const duplicateIfRuleMatch =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
   (combinedCondition: string): RuleMatch =>
-    createRuleMatch(context, {
-      ruleId,
-      node: ifStatement,
-      message: "Avoid if branches that repeat the body of the branch before them.",
-      hint:
-        "These branches are pseudo-duplicates: the bodies are identical and only the " +
-        "conditions differ. Combine them into a single branch: " +
-        `if (${combinedCondition}) { ... }.`
-})
+    createRuleMatch(context, {ruleId,
+    node: ifStatement,
+    message: "Avoid if branches that repeat the body of the branch before them.",
+    hint:
+      "These branches are pseudo-duplicates: the bodies are identical and only the " +
+      "conditions differ. Combine them into a single branch: " +
+      `if (${combinedCondition}) { ... }.`})
 
 const duplicateIfMatches = (
   ifStatement: ts.IfStatement,

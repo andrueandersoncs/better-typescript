@@ -29,14 +29,12 @@ const anyReturnTypeMatches = (
   node: ReturnTypeDeclaration,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => [
-  createRuleMatch(context, {
-    ruleId,
-    node,
-    message: "Avoid function return types that include any.",
-    hint:
-      "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
-      "use unknown and narrow before use."
-  })
+  createRuleMatch(context, {ruleId,
+  node,
+  message: "Avoid function return types that include any.",
+  hint:
+    "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
+    "use unknown and narrow before use."})
 ]
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [

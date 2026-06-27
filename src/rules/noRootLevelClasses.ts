@@ -31,18 +31,16 @@ const rootLevelClassMatch =
   (declaration: ClassNode): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node,
-      message: "Avoid classes that do not extend another class.",
-      hint:
-        "Classes should never implement data structures, algorithms, or modules — model those " +
-        "with a functional approach (plain functions over Effect data types). The only sanctioned " +
-        "use of a class is integrating with a third-party library that requires subclassing, so " +
-        "every class must extend some other class as proof of that integration — for example " +
-        "extending Effect's Schema.Class, Schema.TaggedError, Data.TaggedClass, or a base class " +
-        "from the library you are integrating with."
-    })
+    return createRuleMatch(context, {ruleId,
+    node,
+    message: "Avoid classes that do not extend another class.",
+    hint:
+      "Classes should never implement data structures, algorithms, or modules — model those " +
+      "with a functional approach (plain functions over Effect data types). The only sanctioned " +
+      "use of a class is integrating with a third-party library that requires subclassing, so " +
+      "every class must extend some other class as proof of that integration — for example " +
+      "extending Effect's Schema.Class, Schema.TaggedError, Data.TaggedClass, or a base class " +
+      "from the library you are integrating with."})
   }
 
 const rootLevelClassMatches = (

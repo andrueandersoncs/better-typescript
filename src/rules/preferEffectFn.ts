@@ -58,15 +58,13 @@ const effectFnRuleMatch =
   (declaration: ts.VariableDeclaration): RuleMatch => {
     const functionName = declaration.name.getText(context.sourceFile)
 
-    return createRuleMatch(context, {
-      ruleId,
-      node: declaration.name,
-      message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
-      hint:
-        `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
-        "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
-        "or a function returning an Effect."
-    })
+    return createRuleMatch(context, {ruleId,
+    node: declaration.name,
+    message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
+    hint:
+      `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
+      "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
+      "or a function returning an Effect."})
   }
 
 const effectFnMatches = (

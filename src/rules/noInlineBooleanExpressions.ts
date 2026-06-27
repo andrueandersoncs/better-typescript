@@ -30,14 +30,12 @@ const inlineBooleanConditionMatches = (
 
   return isLogicalOperatorExpression(expression)
     ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: expression,
-          message: "Avoid boolean operators inline in an if statement condition.",
-          hint:
-            "Extract the expression into a well-named const variable declaration above the if " +
-            "statement and use that variable in the if condition."
-        })
+        createRuleMatch(context, {ruleId,
+        node: expression,
+        message: "Avoid boolean operators inline in an if statement condition.",
+        hint:
+          "Extract the expression into a well-named const variable declaration above the if " +
+          "statement and use that variable in the if condition."})
       ]
     : []
 }

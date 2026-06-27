@@ -107,15 +107,13 @@ const functionKeywordMatches = (
   const keywordToken = functionKeywordToken(context.sourceFile, node)
 
   return [
-    createRuleMatch(context, {
-      ruleId,
-      node: keywordToken,
-      message: "Avoid using the function keyword.",
-      hint:
-        "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-        "declarations only when overload signatures are required, and keep function* when " +
-        "generator semantics are required."
-})
+    createRuleMatch(context, {ruleId,
+    node: keywordToken,
+    message: "Avoid using the function keyword.",
+    hint:
+      "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+      "declarations only when overload signatures are required, and keep function* when " +
+      "generator semantics are required."})
   ]
 }
 

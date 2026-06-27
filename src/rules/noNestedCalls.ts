@@ -84,12 +84,10 @@ const nestedCallRuleMatch = (
   const callText = calleeDisplayText(context.sourceFile, call)
   const consumerText = calleeDisplayText(context.sourceFile, consumer)
 
-  return createRuleMatch(context, {
-    ruleId,
-    node: call,
-    message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
-    hint: ruleHint
-  })
+  return createRuleMatch(context, {ruleId,
+  node: call,
+  message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
+  hint: ruleHint})
 }
 
 const consumerRuleMatch =
