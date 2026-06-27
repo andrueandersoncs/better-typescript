@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
-import { isProjectSourceFile, transparentWrapperKinds } from "./tsNode.js"
+import { isProjectSourceFile, outermostTransparentWrapper } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -134,11 +134,6 @@ const extractedTypeArguments = (
   )
 }
 
-const isTransparentParent = (parent: ts.Node): parent is ts.Expression =>
-  transparentWrapperKinds.has(parent.kind)
-
-const outermostTransparentWrapper = (node: ts.Expression): ts.Expression =>
-  isTransparentParent(node.parent) ? outermostTransparentWrapper(node.parent) : node
 
 const signatureBoxedTypes =
   (checker: ts.TypeChecker, argumentPosition: number, contextual: ts.Type) =>

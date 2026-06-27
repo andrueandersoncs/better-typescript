@@ -59,6 +59,12 @@ export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expre
     ? unwrapTransparentExpression(expression.expression)
     : expression
 
+export const isTransparentParent = (node: ts.Node): node is ts.Expression =>
+  transparentWrapperKinds.has(node.kind)
+
+export const outermostTransparentWrapper = (expression: ts.Expression): ts.Expression =>
+  isTransparentParent(expression.parent) ? outermostTransparentWrapper(expression.parent) : expression
+
 export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
   const isSkippableSourceFile = [
     sourceFile.isDeclarationFile,

@@ -30,6 +30,7 @@ import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
 import { preferEffectFn } from "./preferEffectFn.js"
 import { preferEffectPropertyAccessors } from "./preferEffectPropertyAccessors.js"
 import { preferEffectRecordFilterMap } from "./preferEffectRecordFilterMap.js"
+import { preferDataLastModule } from "./preferDataLastModule.js"
 import { preferEffectSchemaClass } from "./preferEffectSchemaClass.js"
 import { preferEffectSchemaConstructor } from "./preferEffectSchemaConstructor.js"
 import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
@@ -45,6 +46,7 @@ export const rules: ReadonlyArray<Rule> = [
   preferEffectFn,
   preferEffectPropertyAccessors,
   preferEffectRecordFilterMap,
+  preferDataLastModule,
   preferConditionalReturn,
   preferDirectBooleanReturn,
   preferImplicitReturn,
