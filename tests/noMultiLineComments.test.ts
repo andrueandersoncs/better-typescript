@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-multi-line-comments")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-multi-line-comments"
+)
 
 const message = "Avoid multi-line comments."
 
@@ -90,10 +94,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoMultiLineCommentsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoMultiLineCommentsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noMultiLineComments]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noMultiLineComments])
+  )
 }
 
 test("no-multi-line-comments reports disallowed and permits allowed fixture items", async () => {

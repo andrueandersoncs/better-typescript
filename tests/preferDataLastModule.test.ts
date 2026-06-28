@@ -14,12 +14,24 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-data-last-module")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-data-last-module"
+)
 
-const messageFor = (functionName: string, dataStructureName: string, modulePath: string): string =>
+const messageFor = (
+  functionName: string,
+  dataStructureName: string,
+  modulePath: string
+): string =>
   `Avoid defining ${functionName} outside ${modulePath} when its last parameter is ${dataStructureName}.`
 
-const hintFor = (functionName: string, dataStructureName: string, modulePath: string): string =>
+const hintFor = (
+  functionName: string,
+  dataStructureName: string,
+  modulePath: string
+): string =>
   `Move ${functionName} to ${modulePath} so data-last functions for ${dataStructureName} ` +
   `live with the ${dataStructureName} data structure.`
 
@@ -31,7 +43,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "updateUser",
     ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
-    line: 14,
+    line: 13,
     column: 7,
     message: messageFor("updateUser", "User", userModulePath),
     hint: hintFor("updateUser", "User", userModulePath)
@@ -40,7 +52,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "archiveUser",
     ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
-    line: 19,
+    line: 18,
     column: 10,
     message: messageFor("archiveUser", "User", userModulePath),
     hint: hintFor("archiveUser", "User", userModulePath)
@@ -49,7 +61,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "saveUser",
     ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
-    line: 23,
+    line: 22,
     column: 7,
     message: messageFor("saveUser", "User", userModulePath),
     hint: hintFor("saveUser", "User", userModulePath)
@@ -58,7 +70,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "renameUser",
     ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
-    line: 25,
+    line: 24,
     column: 7,
     message: messageFor("renameUser", "User", userModulePath),
     hint: hintFor("renameUser", "User", userModulePath)
@@ -67,9 +79,13 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "updateOrganization",
     ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
-    line: 30,
+    line: 31,
     column: 7,
-    message: messageFor("updateOrganization", "Organization", organizationModulePath),
+    message: messageFor(
+      "updateOrganization",
+      "Organization",
+      organizationModulePath
+    ),
     hint: hintFor("updateOrganization", "Organization", organizationModulePath)
   }
 ]
@@ -122,7 +138,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferDataLastModule]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferDataLastModule])
+  )
 }
 
 test("prefer-data-last-module reports misplaced data-last functions", async () => {

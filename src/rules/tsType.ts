@@ -1,12 +1,16 @@
 import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 
-export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
+export const isVoidType = (type: ts.Type): boolean =>
+  (type.flags & ts.TypeFlags.Void) !== 0
 
 export const permitsVoid = (type: ts.Type): boolean =>
   type.isUnion() ? type.types.some(isVoidType) : isVoidType(type)
 
-export const isDifferentType = (type: ts.Type) => (other: ts.Type): boolean => other !== type
+export const isDifferentType =
+  (type: ts.Type) =>
+  (other: ts.Type): boolean =>
+    other !== type
 
 export const differentBaseConstraint = (
   checker: ts.TypeChecker,
@@ -14,7 +18,9 @@ export const differentBaseConstraint = (
 ): Option.Option<ts.Type> => {
   const baseConstraint = checker.getBaseConstraintOfType(type)
 
-  return Option.fromNullable(baseConstraint).pipe(Option.filter(isDifferentType(type)))
+  return Option.fromNullable(baseConstraint).pipe(
+    Option.filter(isDifferentType(type))
+  )
 }
 
 export const differentApparentType = (
@@ -50,7 +56,10 @@ const hasUnseenCallSignature = (
   const hasDirectCallSignature = type.getCallSignatures().length > 0
 
   if (type.isUnionOrIntersection()) {
-    return hasDirectCallSignature || type.types.some(callSignatureCheck(checker, nextSeen))
+    return (
+      hasDirectCallSignature ||
+      type.types.some(callSignatureCheck(checker, nextSeen))
+    )
   }
 
   const baseConstraint = differentBaseConstraint(checker, type)
@@ -63,7 +72,8 @@ const hasUnseenCallSignature = (
     apparentType,
     callSignatureCheck(checker, nextSeen)
   )
-  const hasIndirectCallSignature = constraintHasCallSignature || apparentTypeHasCallSignature
+  const hasIndirectCallSignature =
+    constraintHasCallSignature || apparentTypeHasCallSignature
 
   return hasDirectCallSignature || hasIndirectCallSignature
 }

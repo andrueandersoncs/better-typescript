@@ -31,7 +31,9 @@ const mutableArrayMethods = HashSet.make(
   "unshift" as MutableArrayMethod
 )
 
-const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMethod> =>
+const mutableArrayMethod = (
+  methodName: string
+): Option.Option<MutableArrayMethod> =>
   HashSet.has(mutableArrayMethods, methodName as MutableArrayMethod)
     ? Option.some(methodName as MutableArrayMethod)
     : Option.none()
@@ -51,7 +53,9 @@ const mutableArrayMethodCall = (
     return Option.none()
   }
 
-  const receiverType = context.checker.getTypeAtLocation(propertyAccess.expression)
+  const receiverType = context.checker.getTypeAtLocation(
+    propertyAccess.expression
+  )
 
   return isArrayType(context.checker, receiverType) ? methodName : Option.none()
 }
@@ -75,7 +79,9 @@ const isUnionOrIntersectionArrayType = (
   type: ts.Type,
   seen: HashSet.HashSet<ts.Type>
 ): boolean => {
-  const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
+  const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(
+    type
+  )
 
   return Option.exists(unionOrIntersection, anyPartIsArrayType(checker, seen))
 }
@@ -116,9 +122,18 @@ const isUnseenArrayType = (
   seen: HashSet.HashSet<ts.Type>
 ): boolean => {
   const nextSeen = HashSet.add(seen, type)
-  const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
-  const hasUnionOrIntersectionArrayType = isUnionOrIntersectionArrayType(checker, type, nextSeen)
-  const hasConstrainedArrayType = isConstrainedArrayType(checker, type, nextSeen)
+  const isDirectArrayType =
+    checker.isArrayType(type) || checker.isTupleType(type)
+  const hasUnionOrIntersectionArrayType = isUnionOrIntersectionArrayType(
+    checker,
+    type,
+    nextSeen
+  )
+  const hasConstrainedArrayType = isConstrainedArrayType(
+    checker,
+    type,
+    nextSeen
+  )
   const hasApparentArrayType = isApparentArrayType(checker, type, nextSeen)
 
   return [
@@ -132,14 +147,16 @@ const isUnseenArrayType = (
 const mutableArrayRuleMatch =
   (context: RuleContext, callExpression: ts.CallExpression) =>
   (methodName: MutableArrayMethod): RuleMatch =>
-    createRuleMatch(context, {ruleId,
-    node: callExpression,
-    message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
-    hint:
-      "This is a sign that you're doing something fundamentally procedural when you should " +
-      "be taking a more functional approach. Use Effect's Array module, such as " +
-      "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
-      "instead of manipulating an array in place."})
+    createRuleMatch(context, {
+      ruleId,
+      node: callExpression,
+      message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
+      hint:
+        "This is a sign that you're doing something fundamentally procedural when you should " +
+        "be taking a more functional approach. Use Effect's Array module, such as " +
+        "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
+        "instead of manipulating an array in place."
+    })
 
 const mutableArrayMatches = (
   callExpression: ts.CallExpression,
@@ -150,7 +167,11 @@ const mutableArrayMatches = (
     Option.toArray
   )
 
-const check = onNode([ts.SyntaxKind.CallExpression], ts.isCallExpression, mutableArrayMatches)
+const check = onNode(
+  [ts.SyntaxKind.CallExpression],
+  ts.isCallExpression,
+  mutableArrayMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/items.ts",
@@ -175,7 +196,8 @@ const example = new RuleExample({
 
 export const noMutableArrayMethods = new Rule({
   id: ruleId,
-  description: "Disallow mutable array methods in favor of immutable array operations.",
+  description:
+    "Disallow mutable array methods in favor of immutable array operations.",
   example,
   check
 })

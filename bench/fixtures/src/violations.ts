@@ -9,10 +9,13 @@ import type { Effect } from "./Effect.js"
 import { succeed } from "./Effect.js"
 
 // prefer-effect-fn: variable-declared function with parameters returning an Effect.
-export const fetchUser = (id: string): Effect<string, never, never> => succeed(id)
+export const fetchUser = (id: string): Effect<string, never, never> =>
+  succeed(id)
 
-export const combineUsers = (left: string, right: string): Effect<string, never, never> =>
-  succeed(`${left}:${right}`)
+export const combineUsers = (
+  left: string,
+  right: string
+): Effect<string, never, never> => succeed(`${left}:${right}`)
 
 // no-function-keyword, no-nested-if-statements, no-throw, no-new-error.
 export function legacyParse(raw: string): number {
@@ -62,11 +65,17 @@ export const findIndexOf = (
 export const parseUnsafeJson = (raw: string): any => JSON.parse(raw)
 
 // no-multiple-boolean-operators, no-inline-boolean-expressions.
-export const isValidUser = (name: string, age: number, active: boolean): boolean =>
-  (name.length > 0 && age >= 18 && active) || name === "admin"
+export const isValidUser = (
+  name: string,
+  age: number,
+  active: boolean
+): boolean => (name.length > 0 && age >= 18 && active) || name === "admin"
 
-export const hasAccess = (role: string, owner: boolean, locked: boolean): boolean =>
-  (role === "admin" || owner) && !locked
+export const hasAccess = (
+  role: string,
+  owner: boolean,
+  locked: boolean
+): boolean => (role === "admin" || owner) && !locked
 
 // no-mutable-variable-declarations, no-for-of-loops, no-mutable-array-methods.
 export function collectLengths(words: ReadonlyArray<string>): Array<number> {
@@ -101,7 +110,10 @@ export function describeCode(code: number): string {
 }
 
 // no-callbacks: declaration accepting a void-returning function argument.
-export function forEachChar(value: string, callback: (char: string) => void): void {
+export function forEachChar(
+  value: string,
+  callback: (char: string) => void
+): void {
   for (const char of value) {
     callback(char)
   }
@@ -124,7 +136,10 @@ export function classify(value: number): string {
 
 // prefer-effect-schema-guard: string-key in-operator check inside an if condition.
 export function readName(value: object): string {
-  if ("name" in value && typeof (value as { name: unknown }).name === "string") {
+  if (
+    "name" in value &&
+    typeof (value as { name: unknown }).name === "string"
+  ) {
     return String((value as { name: unknown }).name)
   }
   return ""
@@ -143,7 +158,8 @@ export const isActiveSession = (session: ActiveSession): boolean =>
 // Struct.get for structs or Record.get / Record.has for records.
 export const sessionId = (session: ActiveSession): string => session.id
 
-export const acceptHeader = (headers: Record<string, string>): string => headers.accept
+export const acceptHeader = (headers: Record<string, string>): string =>
+  headers.accept
 
 // prefer-effect-schema-constructor: raw object literals in return position instead of
 // values constructed through a schema. prefer-effect-schema-class: FlatMapStep is an
@@ -169,11 +185,15 @@ export const flatMapStep = (node: string): FlatMapStep => {
 export const orderSummary = (
   id: string,
   amountCents: number
-): { readonly id: string; readonly amountCents: number } => ({ id, amountCents })
+): { readonly id: string; readonly amountCents: number } => ({
+  id,
+  amountCents
+})
 
 // no-inline-closures: arrow function in argument position instead of naming or currying.
-export const shoutedWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
-  words.map((word) => word.toUpperCase())
+export const shoutedWords = (
+  words: ReadonlyArray<string>
+): ReadonlyArray<string> => words.map((word) => word.toUpperCase())
 
 // no-nested-calls: a value-producing call computed inline in another call's arguments.
 const halfOf = (value: number): number => value / 2

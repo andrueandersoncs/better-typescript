@@ -25,7 +25,9 @@ const functionDeclarationWithBody = (
   node: FunctionKeywordNode
 ): Option.Option<FunctionDeclarationWithBody> =>
   ts.isFunctionDeclaration(node)
-    ? Option.fromNullable(node.body).pipe(Option.as(node as FunctionDeclarationWithBody))
+    ? Option.fromNullable(node.body).pipe(
+        Option.as(node as FunctionDeclarationWithBody)
+      )
     : Option.none()
 
 const overloadDeclarations = (
@@ -85,7 +87,8 @@ const isDisallowedFunctionKeyword = (
 ): boolean => {
   const isNotGenerator = !isGeneratorFunction(node)
   const isDisallowedKind =
-    ts.isFunctionExpression(node) || isDisallowedFunctionDeclaration(context, node)
+    ts.isFunctionExpression(node) ||
+    isDisallowedFunctionDeclaration(context, node)
 
   return isNotGenerator && isDisallowedKind
 }
@@ -93,8 +96,10 @@ const isDisallowedFunctionKeyword = (
 const isFunctionKeywordToken = (child: ts.Node): boolean =>
   child.kind === ts.SyntaxKind.FunctionKeyword
 
-const functionKeywordToken = (sourceFile: ts.SourceFile, node: FunctionKeywordNode): ts.Node =>
-  node.getChildren(sourceFile).find(isFunctionKeywordToken) ?? node
+const functionKeywordToken = (
+  sourceFile: ts.SourceFile,
+  node: FunctionKeywordNode
+): ts.Node => node.getChildren(sourceFile).find(isFunctionKeywordToken) ?? node
 
 const functionKeywordMatches = (
   node: FunctionKeywordNode,
@@ -107,13 +112,15 @@ const functionKeywordMatches = (
   const keywordToken = functionKeywordToken(context.sourceFile, node)
 
   return [
-    createRuleMatch(context, {ruleId,
-    node: keywordToken,
-    message: "Avoid using the function keyword.",
-    hint:
-      "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-      "declarations only when overload signatures are required, and keep function* when " +
-      "generator semantics are required."})
+    createRuleMatch(context, {
+      ruleId,
+      node: keywordToken,
+      message: "Avoid using the function keyword.",
+      hint:
+        "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+        "declarations only when overload signatures are required, and keep function* when " +
+        "generator semantics are required."
+    })
   ]
 }
 
@@ -143,7 +150,8 @@ const example = new RuleExample({
 
 export const noFunctionKeyword = new Rule({
   id: ruleId,
-  description: "Disallow non-generator function declarations in favor of const arrow functions.",
+  description:
+    "Disallow non-generator function declarations in favor of const arrow functions.",
   example,
   check
 })

@@ -9,8 +9,12 @@ function applyFn(fn: (n: number) => number, n: number): number {
   return fn(n)
 }
 
-function inner(): number { return 42 }
-function outer(x: number): number { return x * 2 }
+function inner(): number {
+  return 42
+}
+function outer(x: number): number {
+  return x * 2
+}
 
 // Currying exemption: inner call returns a function, so no match
 const currying = applyFn(makeAdder(1), 2)

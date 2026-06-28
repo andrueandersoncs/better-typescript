@@ -21,7 +21,9 @@ const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.MethodDeclaration
 ]
 
-const isPropertyAccessorFunction = (node: ts.Node): node is PropertyAccessorFunction =>
+const isPropertyAccessorFunction = (
+  node: ts.Node
+): node is PropertyAccessorFunction =>
   [
     ts.isArrowFunction(node),
     ts.isFunctionExpression(node),
@@ -29,27 +31,42 @@ const isPropertyAccessorFunction = (node: ts.Node): node is PropertyAccessorFunc
     ts.isMethodDeclaration(node)
   ].some(Boolean)
 
-const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
-  ts.isReturnStatement(statement) ? Option.fromNullable(statement.expression) : Option.none()
+const returnExpression = (
+  statement: ts.Statement
+): Option.Option<ts.Expression> =>
+  ts.isReturnStatement(statement)
+    ? Option.fromNullable(statement.expression)
+    : Option.none()
 
-const hasOneStatement = (body: ts.Block): boolean => body.statements.length === 1
+const hasOneStatement = (body: ts.Block): boolean =>
+  body.statements.length === 1
 
 const firstStatement = (body: ts.Block): Option.Option<ts.Statement> =>
   Option.fromNullable(body.statements[0])
 
-const singleReturnExpression = (body: ts.Block): Option.Option<ts.Expression> => {
+const singleReturnExpression = (
+  body: ts.Block
+): Option.Option<ts.Expression> => {
   const statement = firstStatement(body)
 
-  return hasOneStatement(body) ? statement.pipe(Option.flatMap(returnExpression)) : Option.none()
+  return hasOneStatement(body)
+    ? statement.pipe(Option.flatMap(returnExpression))
+    : Option.none()
 }
 
-const conciseArrowBody = (arrowFunction: ts.ArrowFunction): Option.Option<ts.Expression> =>
-  ts.isBlock(arrowFunction.body) ? Option.none() : Option.some(arrowFunction.body)
+const conciseArrowBody = (
+  arrowFunction: ts.ArrowFunction
+): Option.Option<ts.Expression> =>
+  ts.isBlock(arrowFunction.body)
+    ? Option.none()
+    : Option.some(arrowFunction.body)
 
 const propertyAccessorImplicitReturnExpression = (
   node: PropertyAccessorFunction
 ): Option.Option<ts.Expression> =>
-  Option.liftPredicate(ts.isArrowFunction)(node).pipe(Option.flatMap(conciseArrowBody))
+  Option.liftPredicate(ts.isArrowFunction)(node).pipe(
+    Option.flatMap(conciseArrowBody)
+  )
 
 const blockReturnExpression = (
   node: PropertyAccessorFunction
@@ -76,15 +93,23 @@ const directPropertyAccessExpression = (
   return Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped)
 }
 
-const identifierBindingNameText = (name: ts.BindingName): Option.Option<string> =>
-  Option.liftPredicate(ts.isIdentifier)(name).pipe(Option.map(Struct.get("text")))
+const identifierBindingNameText = (
+  name: ts.BindingName
+): Option.Option<string> =>
+  Option.liftPredicate(ts.isIdentifier)(name).pipe(
+    Option.map(Struct.get("text"))
+  )
 
-const identifierParameterName = (parameter: ts.ParameterDeclaration): Option.Option<string> =>
-  identifierBindingNameText(parameter.name)
+const identifierParameterName = (
+  parameter: ts.ParameterDeclaration
+): Option.Option<string> => identifierBindingNameText(parameter.name)
 
-const hasSingleParameter = (node: PropertyAccessorFunction): boolean => node.parameters.length === 1
+const hasSingleParameter = (node: PropertyAccessorFunction): boolean =>
+  node.parameters.length === 1
 
-const soleIdentifierParameterName = (node: PropertyAccessorFunction): Option.Option<string> => {
+const soleIdentifierParameterName = (
+  node: PropertyAccessorFunction
+): Option.Option<string> => {
   const parameter = Option.fromNullable(node.parameters[0])
 
   return hasSingleParameter(node)
@@ -99,12 +124,15 @@ const hasIdentifierText =
 
 const propertyAccessBaseIdentifier = (
   access: ts.PropertyAccessExpression
-): Option.Option<ts.Identifier> => Option.liftPredicate(ts.isIdentifier)(access.expression)
+): Option.Option<ts.Identifier> =>
+  Option.liftPredicate(ts.isIdentifier)(access.expression)
 
 const accessesParameterProperty =
   (parameterName: string) =>
   (access: ts.PropertyAccessExpression): boolean =>
-    propertyAccessBaseIdentifier(access).pipe(Option.exists(hasIdentifierText(parameterName)))
+    propertyAccessBaseIdentifier(access).pipe(
+      Option.exists(hasIdentifierText(parameterName))
+    )
 
 const parameterPropertyAccess =
   (node: PropertyAccessorFunction) =>
@@ -117,7 +145,9 @@ const parameterPropertyAccess =
 const propertyAccessorExpression = (
   node: PropertyAccessorFunction
 ): Option.Option<ts.PropertyAccessExpression> =>
-  soleIdentifierParameterName(node).pipe(Option.flatMap(parameterPropertyAccess(node)))
+  soleIdentifierParameterName(node).pipe(
+    Option.flatMap(parameterPropertyAccess(node))
+  )
 
 const hasStringIndexSignature = (type: ts.Type): boolean => {
   const stringIndexType = type.getStringIndexType()
@@ -152,7 +182,10 @@ const isRecordType = (context: RuleContext, type: ts.Type): boolean => {
 const propertyKeyText = (access: ts.PropertyAccessExpression): string =>
   JSON.stringify(access.name.text)
 
-const accessorModuleName = (context: RuleContext, access: ts.PropertyAccessExpression): string => {
+const accessorModuleName = (
+  context: RuleContext,
+  access: ts.PropertyAccessExpression
+): string => {
   const accessedType = context.checker.getTypeAtLocation(access.expression)
 
   return isRecordType(context, accessedType) ? "Record" : "Struct"
@@ -174,14 +207,16 @@ const declarationNameText =
     name.getText(context.sourceFile)
 
 const variableDeclarationName =
-  (node: PropertyAccessorFunction) =>
-  (): Option.Option<string> =>
+  (node: PropertyAccessorFunction) => (): Option.Option<string> =>
     Option.liftPredicate(ts.isVariableDeclaration)(node.parent).pipe(
       Option.map(Struct.get("name")),
       Option.flatMap(identifierBindingNameText)
     )
 
-const functionName = (node: PropertyAccessorFunction, context: RuleContext): string =>
+const functionName = (
+  node: PropertyAccessorFunction,
+  context: RuleContext
+): string =>
   Option.fromNullable(node.name).pipe(
     Option.map(declarationNameText(context)),
     Option.orElse(variableDeclarationName(node)),
@@ -195,12 +230,14 @@ const propertyAccessorRuleMatch =
     const accessedText = access.getText(context.sourceFile)
     const suggestion = accessorSuggestion(context, access)
 
-    return createRuleMatch(context, {ruleId,
-    node: access,
-    message: `Avoid defining ${name} only to read ${accessedText}.`,
-    hint:
-      `Replace this property-access-only function with ${suggestion} from Effect. ` +
-      "Use Struct.get for non-record data types, and Record.get or Record.has for records."})
+    return createRuleMatch(context, {
+      ruleId,
+      node: access,
+      message: `Avoid defining ${name} only to read ${accessedText}.`,
+      hint:
+        `Replace this property-access-only function with ${suggestion} from Effect. ` +
+        "Use Struct.get for non-record data types, and Record.get or Record.has for records."
+    })
   }
 
 const propertyAccessorMatches = (
@@ -236,7 +273,8 @@ const example = new RuleExample({
 
 export const preferEffectPropertyAccessors = new Rule({
   id: ruleId,
-  description: "Prefer Effect Struct (`Struct.get`) and Record (`Record.has` -> `Record.get`) accessors over property-access-only functions.",
+  description:
+    "Prefer Effect Struct (`Struct.get`) and Record (`Record.has` -> `Record.get`) accessors over property-access-only functions.",
   example,
   check
 })

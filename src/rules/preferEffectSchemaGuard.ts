@@ -8,23 +8,29 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-guard"
 
-const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
+const conditionExpressions = (
+  expression: ts.Expression
+): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
 
   return [
     unwrapped,
-    ...astChildren(unwrapped).filter(ts.isExpression).flatMap(conditionExpressions)
+    ...astChildren(unwrapped)
+      .filter(ts.isExpression)
+      .flatMap(conditionExpressions)
   ]
 }
 
 const isStringLiteralLike = (expression: ts.Expression): boolean =>
-  ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)
+  ts.isStringLiteral(expression) ||
+  ts.isNoSubstitutionTemplateLiteral(expression)
 
 const isStringKeyInExpression = (
   expression: ts.Expression
 ): expression is ts.BinaryExpression => {
   if (ts.isBinaryExpression(expression)) {
-    const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
+    const isInOperator =
+      expression.operatorToken.kind === ts.SyntaxKind.InKeyword
     const keyExpression = unwrapExpression(expression.left)
     const hasStringKey = isStringLiteralLike(keyExpression)
     const isStringKeyIn = isInOperator && hasStringKey
@@ -35,16 +41,20 @@ const isStringKeyInExpression = (
   return false
 }
 
-const schemaGuardMatch = (context: RuleContext) => (expression: ts.BinaryExpression): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const propertyName = unwrapExpression(expression.left).getText(sourceFile)
-  const objectText = expression.right.getText(sourceFile)
+const schemaGuardMatch =
+  (context: RuleContext) =>
+  (expression: ts.BinaryExpression): RuleMatch => {
+    const sourceFile = context.sourceFile
+    const propertyName = unwrapExpression(expression.left).getText(sourceFile)
+    const objectText = expression.right.getText(sourceFile)
 
-  return createRuleMatch(context, {ruleId,
-  node: expression,
-  message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
-  hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`})
-}
+    return createRuleMatch(context, {
+      ruleId,
+      node: expression,
+      message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
+      hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`
+    })
+  }
 
 const inOperatorGuardMatches = (
   ifStatement: ts.IfStatement,
@@ -54,7 +64,11 @@ const inOperatorGuardMatches = (
     .filter(isStringKeyInExpression)
     .map(schemaGuardMatch(context))
 
-const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inOperatorGuardMatches)
+const check = onNode(
+  [ts.SyntaxKind.IfStatement],
+  ts.isIfStatement,
+  inOperatorGuardMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/guard.ts",
@@ -77,7 +91,8 @@ const example = new RuleExample({
 
 export const preferEffectSchemaGuard = new Rule({
   id: ruleId,
-  description: "Prefer Effect Schema guards over string-key in-operator checks.",
+  description:
+    "Prefer Effect Schema guards over string-key in-operator checks.",
   example,
   check
 })

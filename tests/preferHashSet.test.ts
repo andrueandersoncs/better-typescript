@@ -134,7 +134,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runPreferHashSetFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferHashSet]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferHashSet])
+  )
 }
 
 test("prefer-hash-set reports disallowed and permits allowed fixture items", async () => {

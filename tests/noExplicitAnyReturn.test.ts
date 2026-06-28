@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-explicit-any-return")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-explicit-any-return"
+)
 const expectedMessage = "Avoid function return types that include any."
 const expectedHint =
   "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
@@ -140,10 +144,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoExplicitAnyReturnFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoExplicitAnyReturnFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noExplicitAnyReturn]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noExplicitAnyReturn])
+  )
 }
 
 test("no-explicit-any-return reports disallowed and permits allowed fixture items", async () => {

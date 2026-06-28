@@ -47,7 +47,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "compute.name",
     ruleId: "prefer-effect-fn",
     fileName: "src/cases.ts",
-    line: 5,
+    line: 6,
     column: 14,
     message: makeMessage("compute"),
     hint: makeHint("compute")
@@ -56,7 +56,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "load.name",
     ruleId: "prefer-effect-fn",
     fileName: "src/cases.ts",
-    line: 6,
+    line: 10,
     column: 14,
     message: makeMessage("load"),
     hint: makeHint("load")
@@ -65,7 +65,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "failWith.name",
     ruleId: "prefer-effect-fn",
     fileName: "src/cases.ts",
-    line: 7,
+    line: 13,
     column: 14,
     message: makeMessage("failWith"),
     hint: makeHint("failWith")
@@ -105,10 +105,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEffectFnFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runPreferEffectFnFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferEffectFn]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferEffectFn])
+  )
 }
 
 test("prefer-effect-fn reports disallowed and permits allowed fixture items", async () => {

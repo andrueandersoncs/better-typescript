@@ -2,13 +2,19 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { alwaysExitsScope, hasNoElseBranch, unwrapSingleStatementBlock } from "./tsNode.js"
+import {
+  alwaysExitsScope,
+  hasNoElseBranch,
+  unwrapSingleStatementBlock
+} from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
 
-const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatement =>
+const isGuardIfStatement = (
+  statement: ts.Statement
+): statement is ts.IfStatement =>
   ts.isIfStatement(statement) && hasNoElseBranch(statement)
 
 const statementBefore =
@@ -19,7 +25,9 @@ const statementBefore =
     return Option.fromNullable(block.statements[statementIndex - 1])
   }
 
-const previousSiblingStatement = (statement: ts.Statement): Option.Option<ts.Statement> =>
+const previousSiblingStatement = (
+  statement: ts.Statement
+): Option.Option<ts.Statement> =>
   Option.liftPredicate(ts.isBlock)(statement.parent).pipe(
     Option.flatMap(statementBefore(statement))
   )
@@ -34,10 +42,15 @@ const tokenTexts =
     const children = node.getChildren(sourceFile)
     const isLeafToken = children.length === 0
 
-    return isLeafToken ? [node.getText(sourceFile)] : children.flatMap(tokenTexts(sourceFile))
+    return isLeafToken
+      ? [node.getText(sourceFile)]
+      : children.flatMap(tokenTexts(sourceFile))
   }
 
-const bodyFingerprint = (sourceFile: ts.SourceFile, statement: ts.Statement): string => {
+const bodyFingerprint = (
+  sourceFile: ts.SourceFile,
+  statement: ts.Statement
+): string => {
   const unwrappedBody = unwrapSingleStatementBlock(statement)
 
   return tokenTexts(sourceFile)(unwrappedBody).join(" ")
@@ -64,10 +77,20 @@ const combinedConditionText = (
 const guardDuplicate =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
   (previousIfStatement: ts.IfStatement): Option.Option<string> => {
-    const hasDuplicateBody = haveIdenticalBodies(context, previousIfStatement, ifStatement)
+    const hasDuplicateBody = haveIdenticalBodies(
+      context,
+      previousIfStatement,
+      ifStatement
+    )
     const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
-    const isMergeableDuplicate = [hasDuplicateBody, bodyExitsScope].every(Boolean)
-    const combinedCondition = combinedConditionText(context, previousIfStatement, ifStatement)
+    const isMergeableDuplicate = [hasDuplicateBody, bodyExitsScope].every(
+      Boolean
+    )
+    const combinedCondition = combinedConditionText(
+      context,
+      previousIfStatement,
+      ifStatement
+    )
 
     return isMergeableDuplicate ? Option.some(combinedCondition) : Option.none()
   }
@@ -91,7 +114,9 @@ const isElseOf =
   (parent: ts.IfStatement): boolean =>
     parent.elseStatement === ifStatement
 
-const elseIfParent = (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> =>
+const elseIfParent = (
+  ifStatement: ts.IfStatement
+): Option.Option<ts.IfStatement> =>
   Option.liftPredicate(ts.isIfStatement)(ifStatement.parent).pipe(
     Option.filter(isElseOf(ifStatement))
   )
@@ -99,8 +124,16 @@ const elseIfParent = (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement
 const parentBodyDuplicate =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
   (parentIfStatement: ts.IfStatement): Option.Option<string> => {
-    const hasDuplicateBody = haveIdenticalBodies(context, parentIfStatement, ifStatement)
-    const combinedCondition = combinedConditionText(context, parentIfStatement, ifStatement)
+    const hasDuplicateBody = haveIdenticalBodies(
+      context,
+      parentIfStatement,
+      ifStatement
+    )
+    const combinedCondition = combinedConditionText(
+      context,
+      parentIfStatement,
+      ifStatement
+    )
 
     return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
   }
@@ -109,7 +142,9 @@ const elseIfDuplicate = (
   context: RuleContext,
   ifStatement: ts.IfStatement
 ): Option.Option<string> =>
-  elseIfParent(ifStatement).pipe(Option.flatMap(parentBodyDuplicate(context, ifStatement)))
+  elseIfParent(ifStatement).pipe(
+    Option.flatMap(parentBodyDuplicate(context, ifStatement))
+  )
 
 const duplicateIfBodyMatch = (
   context: RuleContext,
@@ -125,13 +160,16 @@ const duplicateIfBodyMatch = (
 const duplicateIfRuleMatch =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
   (combinedCondition: string): RuleMatch =>
-    createRuleMatch(context, {ruleId,
-    node: ifStatement,
-    message: "Avoid if branches that repeat the body of the branch before them.",
-    hint:
-      "These branches are pseudo-duplicates: the bodies are identical and only the " +
-      "conditions differ. Combine them into a single branch: " +
-      `if (${combinedCondition}) { ... }.`})
+    createRuleMatch(context, {
+      ruleId,
+      node: ifStatement,
+      message:
+        "Avoid if branches that repeat the body of the branch before them.",
+      hint:
+        "These branches are pseudo-duplicates: the bodies are identical and only the " +
+        "conditions differ. Combine them into a single branch: " +
+        `if (${combinedCondition}) { ... }.`
+    })
 
 const duplicateIfMatches = (
   ifStatement: ts.IfStatement,
@@ -142,7 +180,11 @@ const duplicateIfMatches = (
     Option.toArray
   )
 
-const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, duplicateIfMatches)
+const check = onNode(
+  [ts.SyntaxKind.IfStatement],
+  ts.isIfStatement,
+  duplicateIfMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/auth.ts",

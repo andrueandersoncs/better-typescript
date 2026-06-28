@@ -14,8 +14,13 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-duplicate-if-bodies")
-const expectedMessage = "Avoid if branches that repeat the body of the branch before them."
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-duplicate-if-bodies"
+)
+const expectedMessage =
+  "Avoid if branches that repeat the body of the branch before them."
 
 const hintFor = (combinedCondition: string): string =>
   "These branches are pseudo-duplicates: the bodies are identical and only the " +
@@ -36,7 +41,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "unwrappedGuardDuplicate.secondIf",
     ruleId: "no-duplicate-if-bodies",
     fileName: "src/cases.ts",
-    line: 15,
+    line: 14,
     column: 3,
     message: expectedMessage,
     hint: hintFor('input === "one" || input === "two"')
@@ -45,7 +50,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "elseIfDuplicate.elseIf",
     ruleId: "no-duplicate-if-bodies",
     fileName: "src/cases.ts",
-    line: 23,
+    line: 22,
     column: 10,
     message: expectedMessage,
     hint: hintFor('input === "short" || input === "tiny"')
@@ -121,10 +126,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoDuplicateIfBodiesFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoDuplicateIfBodiesFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noDuplicateIfBodies]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noDuplicateIfBodies])
+  )
 }
 
 test("no-duplicate-if-bodies reports disallowed and permits allowed fixture items", async () => {

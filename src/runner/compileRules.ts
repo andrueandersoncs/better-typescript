@@ -44,7 +44,9 @@ const compiledVisitor = (
   context: RuleContext
 ): ((node: ts.Node) => ReadonlyArray<RuleMatch>) => {
   const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
-    const ownMatches = (table.get(node.kind) ?? []).flatMap(applyNodeHandler(node, context))
+    const ownMatches = (table.get(node.kind) ?? []).flatMap(
+      applyNodeHandler(node, context)
+    )
     const childMatches = astChildren(node).flatMap(visit)
 
     return ownMatches.concat(childMatches)
@@ -70,9 +72,12 @@ const isFileListener = (listener: RuleListener): listener is FileListener =>
 
 const ruleListeners: (rule: Rule) => RuleCheck = Struct.get("check")
 
-const listenerHandler: (listener: FileListener) => FileHandler = Struct.get("handler")
+const listenerHandler: (listener: FileListener) => FileHandler =
+  Struct.get("handler")
 
-const nodeHandlerTable = (listeners: ReadonlyArray<NodeListener>): NodeHandlerTable => {
+const nodeHandlerTable = (
+  listeners: ReadonlyArray<NodeListener>
+): NodeHandlerTable => {
   const emptyTable = new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
 
   return listeners.reduce(addListenerHandlers, emptyTable)
@@ -81,7 +86,8 @@ const nodeHandlerTable = (listeners: ReadonlyArray<NodeListener>): NodeHandlerTa
 const addListenerHandlers = (
   table: MutableHandlerTable,
   listener: NodeListener
-): MutableHandlerTable => listener.kinds.reduce(addKindHandler(listener.handler), table)
+): MutableHandlerTable =>
+  listener.kinds.reduce(addKindHandler(listener.handler), table)
 
 const addKindHandler =
   (handler: NodeHandler) =>

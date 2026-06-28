@@ -14,10 +14,13 @@ export const onNode = <N extends ts.Node>(
   kinds: ReadonlyArray<ts.SyntaxKind>,
   refine: (node: ts.Node) => node is N,
   handler: (node: N, context: RuleContext) => ReadonlyArray<RuleMatch>
-): RuleCheck => [new NodeListener({ kinds, handler: refinedHandler(refine, handler) })]
+): RuleCheck => [
+  new NodeListener({ kinds, handler: refinedHandler(refine, handler) })
+]
 
 export const onFile = (
   handler: (context: RuleContext) => ReadonlyArray<RuleMatch>
 ): RuleCheck => [new FileListener({ handler })]
 
-export const combineAll = (checks: ReadonlyArray<RuleCheck>): RuleCheck => checks.flat()
+export const combineAll = (checks: ReadonlyArray<RuleCheck>): RuleCheck =>
+  checks.flat()

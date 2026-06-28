@@ -52,16 +52,20 @@ const hasStringLiteralOperand = (expression: ts.Expression): boolean => {
 }
 
 const hasTagOnLeft = (expression: ts.BinaryExpression): boolean =>
-  hasTagPropertyOperand(expression.left) && hasStringLiteralOperand(expression.right)
+  hasTagPropertyOperand(expression.left) &&
+  hasStringLiteralOperand(expression.right)
 
 const hasTagOnRight = (expression: ts.BinaryExpression): boolean =>
-  hasStringLiteralOperand(expression.left) && hasTagPropertyOperand(expression.right)
+  hasStringLiteralOperand(expression.left) &&
+  hasTagPropertyOperand(expression.right)
 
 const hasTagComparisonOperands = (expression: ts.BinaryExpression): boolean =>
   hasTagOnLeft(expression) || hasTagOnRight(expression)
 
 const isTagComparison = (expression: ts.BinaryExpression): boolean => {
-  const isStrictComparison = isStrictTagComparisonOperator(expression.operatorToken.kind)
+  const isStrictComparison = isStrictTagComparisonOperator(
+    expression.operatorToken.kind
+  )
 
   return isStrictComparison && hasTagComparisonOperands(expression)
 }
@@ -100,32 +104,44 @@ const comparedTagText = (expression: ts.BinaryExpression): string =>
     Option.getOrElse(Function.constant("$tag"))
   )
 
-const checkedExpressionText = (expression: ts.BinaryExpression, sourceFile: ts.SourceFile): string =>
+const checkedExpressionText = (
+  expression: ts.BinaryExpression,
+  sourceFile: ts.SourceFile
+): string =>
   tagAccessExpression(expression).pipe(
     Option.map(checkedValueText(sourceFile)),
     Option.getOrElse(Function.constant("the value"))
   )
 
-const schemaIsSuggestion = (expression: ts.BinaryExpression, valueText: string): string => {
+const schemaIsSuggestion = (
+  expression: ts.BinaryExpression,
+  valueText: string
+): string => {
   const schemaIsCheck = `Schema.is($schema)(${valueText})`
-  const isNegated = expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+  const isNegated =
+    expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
 
   return isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 }
 
-const schemaIsRuleMatch = (context: RuleContext, expression: ts.BinaryExpression): RuleMatch => {
+const schemaIsRuleMatch = (
+  context: RuleContext,
+  expression: ts.BinaryExpression
+): RuleMatch => {
   const sourceFile = context.sourceFile
   const valueText = checkedExpressionText(expression, sourceFile)
   const operatorText = expression.operatorToken.getText(sourceFile)
   const tagText = comparedTagText(expression)
   const suggestion = schemaIsSuggestion(expression, valueText)
 
-  return createRuleMatch(context, {ruleId,
-  node: expression,
-  message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
-  hint:
-    `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
-    `"${tagText}".`})
+  return createRuleMatch(context, {
+    ruleId,
+    node: expression,
+    message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
+    hint:
+      `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
+      `"${tagText}".`
+  })
 }
 
 const schemaIsMatches = (
@@ -133,7 +149,11 @@ const schemaIsMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => [schemaIsRuleMatch(context, expression)]
 
-const check = onNode([ts.SyntaxKind.BinaryExpression], isSchemaTagComparison, schemaIsMatches)
+const check = onNode(
+  [ts.SyntaxKind.BinaryExpression],
+  isSchemaTagComparison,
+  schemaIsMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",

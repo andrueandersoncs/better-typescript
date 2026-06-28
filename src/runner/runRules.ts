@@ -31,5 +31,8 @@ export const runRules = (
     .flatMap(checkSourceFile)
 }
 
-export const shouldSkipSourceFile = (fileName: string, isDeclarationFile: boolean): boolean =>
+export const shouldSkipSourceFile = (
+  fileName: string,
+  isDeclarationFile: boolean
+): boolean =>
   isDeclarationFile || fileName.replaceAll("\\", "/").includes("/node_modules/")

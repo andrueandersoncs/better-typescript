@@ -22,18 +22,24 @@ const hasShortCircuitOperator = (expression: ts.BinaryExpression): boolean =>
 const isShortCircuitExpression = (
   expression: ts.Expression
 ): expression is ts.BinaryExpression => {
-  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
+  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
+    expression
+  )
 
   return Option.exists(binaryExpression, hasShortCircuitOperator)
 }
 
-const ternaryBranches = (conditional: ts.ConditionalExpression): ReadonlyArray<ts.Expression> =>
+const ternaryBranches = (
+  conditional: ts.ConditionalExpression
+): ReadonlyArray<ts.Expression> =>
   [conditional.whenTrue, conditional.whenFalse].flatMap(branchExpressions)
 
 const conditionalBranches = (
   expression: ts.Expression
 ): Option.Option<ReadonlyArray<ts.Expression>> =>
-  Option.liftPredicate(ts.isConditionalExpression)(expression).pipe(Option.map(ternaryBranches))
+  Option.liftPredicate(ts.isConditionalExpression)(expression).pipe(
+    Option.map(ternaryBranches)
+  )
 
 const shortCircuitBranches = (
   expression: ts.Expression
@@ -43,11 +49,18 @@ const shortCircuitBranches = (
     Option.map(branchExpressions)
   )
 
-const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
+const branchExpressions = (
+  expression: ts.Expression
+): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapTransparentExpression(expression)
-  const branches = [conditionalBranches(unwrapped), shortCircuitBranches(unwrapped)]
+  const branches = [
+    conditionalBranches(unwrapped),
+    shortCircuitBranches(unwrapped)
+  ]
 
-  return Option.firstSomeOf(branches).pipe(Option.getOrElse(Function.constant([unwrapped])))
+  return Option.firstSomeOf(branches).pipe(
+    Option.getOrElse(Function.constant([unwrapped]))
+  )
 }
 
 const hasProperties = (literal: ts.ObjectLiteralExpression): boolean =>
@@ -56,9 +69,12 @@ const hasProperties = (literal: ts.ObjectLiteralExpression): boolean =>
 const returnedObjectLiterals = (
   expression: ts.Expression
 ): ReadonlyArray<ts.ObjectLiteralExpression> =>
-  branchExpressions(expression).filter(ts.isObjectLiteralExpression).filter(hasProperties)
+  branchExpressions(expression)
+    .filter(ts.isObjectLiteralExpression)
+    .filter(hasProperties)
 
-const hasTagText = (identifier: ts.Identifier): boolean => identifier.text === tagPropertyName
+const hasTagText = (identifier: ts.Identifier): boolean =>
+  identifier.text === tagPropertyName
 
 const isTagPropertyName = (name: ts.PropertyName): boolean => {
   const identifier = Option.liftPredicate(ts.isIdentifier)(name)
@@ -71,7 +87,9 @@ const isTagAssignment = (
 ): property is ts.PropertyAssignment =>
   ts.isPropertyAssignment(property) && isTagPropertyName(property.name)
 
-const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> => {
+const tagValueText = (
+  property: ts.PropertyAssignment
+): Option.Option<string> => {
   const initializer = unwrapTransparentExpression(property.initializer)
 
   return Option.liftPredicate(ts.isStringLiteralLike)(initializer).pipe(
@@ -79,15 +97,23 @@ const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> =>
   )
 }
 
-const literalTag = (literal: ts.ObjectLiteralExpression): Option.Option<string> =>
-  Array.findFirst(literal.properties, isTagAssignment).pipe(Option.flatMap(tagValueText))
+const literalTag = (
+  literal: ts.ObjectLiteralExpression
+): Option.Option<string> =>
+  Array.findFirst(literal.properties, isTagAssignment).pipe(
+    Option.flatMap(tagValueText)
+  )
 
-const taggedMessage = (tag: string): string => `Avoid returning a raw "${tag}" object literal.`
+const taggedMessage = (tag: string): string =>
+  `Avoid returning a raw "${tag}" object literal.`
 
 const untaggedMessage = "Avoid returning a raw object literal."
 
 const matchMessage = (tag: Option.Option<string>): string =>
-  Option.match(tag, { onNone: Function.constant(untaggedMessage), onSome: taggedMessage })
+  Option.match(tag, {
+    onNone: Function.constant(untaggedMessage),
+    onSome: taggedMessage
+  })
 
 const taggedHint = (tag: string): string =>
   `Define an Effect Schema for this data — class ${tag} extends ` +
@@ -100,7 +126,10 @@ const untaggedHint =
   "return new TheData({ ... }) instead of assembling the object by hand."
 
 const matchHint = (tag: Option.Option<string>): string =>
-  Option.match(tag, { onNone: Function.constant(untaggedHint), onSome: taggedHint })
+  Option.match(tag, {
+    onNone: Function.constant(untaggedHint),
+    onSome: taggedHint
+  })
 
 const objectLiteralRuleMatch =
   (context: RuleContext) =>
@@ -109,10 +138,7 @@ const objectLiteralRuleMatch =
     const message = matchMessage(tag)
     const hint = matchHint(tag)
 
-    return createRuleMatch(context, {ruleId,
-    node: literal,
-    message,
-    hint})
+    return createRuleMatch(context, { ruleId, node: literal, message, hint })
   }
 
 const expressionRuleMatches =
@@ -129,7 +155,9 @@ const returnStatementMatches = (
   return Option.toArray(expression).flatMap(expressionRuleMatches(context))
 }
 
-const implicitReturnExpression = (arrowFunction: ts.ArrowFunction): Option.Option<ts.Expression> =>
+const implicitReturnExpression = (
+  arrowFunction: ts.ArrowFunction
+): Option.Option<ts.Expression> =>
   Option.liftPredicate(ts.isExpression)(arrowFunction.body)
 
 const arrowBodyReturnMatches = (
@@ -179,7 +207,8 @@ const example = new RuleExample({
 
 export const preferEffectSchemaConstructor = new Rule({
   id: ruleId,
-  description: "Disallow returning raw object literals in favor of Effect Schema constructors.",
+  description:
+    "Disallow returning raw object literals in favor of Effect Schema constructors.",
   example,
   check
 })

@@ -1,6 +1,9 @@
 export {}
 
-function ignoresExtractedCondition(isReady: boolean, hasAccess: boolean): string {
+function ignoresExtractedCondition(
+  isReady: boolean,
+  hasAccess: boolean
+): string {
   const shouldAllow = isReady && hasAccess
 
   if (shouldAllow) {

@@ -80,10 +80,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoSwitchStatementsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoSwitchStatementsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noSwitchStatements]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noSwitchStatements])
+  )
 }
 
 test("no-switch-statements reports disallowed and permits allowed fixture items", async () => {

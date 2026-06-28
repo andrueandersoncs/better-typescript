@@ -22,7 +22,10 @@ function compareReturned(count: number): boolean {
   return false
 }
 
-function multiStatement(active: boolean, log: (value: string) => void): boolean {
+function multiStatement(
+  active: boolean,
+  log: (value: string) => void
+): boolean {
   if (active) {
     log("hit")
     return true

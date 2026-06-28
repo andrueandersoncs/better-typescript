@@ -111,10 +111,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoFunctionKeywordFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoFunctionKeywordFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noFunctionKeyword]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noFunctionKeyword])
+  )
 }
 
 test("no-function-keyword reports disallowed and permits allowed fixture items", async () => {

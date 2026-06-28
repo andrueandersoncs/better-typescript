@@ -53,7 +53,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runNoForOfLoopsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noForOfLoops]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noForOfLoops])
+  )
 }
 
 test("no-for-of-loops reports disallowed and permits allowed fixture items", async () => {

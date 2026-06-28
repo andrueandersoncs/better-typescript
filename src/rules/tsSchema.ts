@@ -10,7 +10,9 @@ const isTsTypeChecker = (input: unknown): input is ts.TypeChecker =>
 const isTsSourceFile = (input: unknown): input is ts.SourceFile =>
   Predicate.hasProperty(input, "languageVersion")
 
-export const TsProgram = Schema.declare(isTsProgram).annotations({ identifier: "ts.Program" })
+export const TsProgram = Schema.declare(isTsProgram).annotations({
+  identifier: "ts.Program"
+})
 
 export const TsTypeChecker = Schema.declare(isTsTypeChecker).annotations({
   identifier: "ts.TypeChecker"
@@ -23,4 +25,6 @@ export const TsSourceFile = Schema.declare(isTsSourceFile).annotations({
 const isTsNode = (input: unknown): input is ts.Node =>
   Predicate.hasProperty(input, "kind")
 
-export const TsNode = Schema.declare(isTsNode).annotations({ identifier: "ts.Node" })
+export const TsNode = Schema.declare(isTsNode).annotations({
+  identifier: "ts.Node"
+})

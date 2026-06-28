@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-direct-boolean-return")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-direct-boolean-return"
+)
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
@@ -97,10 +101,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferDirectBooleanReturnFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runPreferDirectBooleanReturnFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferDirectBooleanReturn]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferDirectBooleanReturn])
+  )
 }
 
 test("prefer-direct-boolean-return reports disallowed and permits allowed fixture items", async () => {

@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-multiple-boolean-operators")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-multiple-boolean-operators"
+)
 const expectedMessage =
   "Avoid combining more than one boolean operator in a single expression."
 const expectedHint =
@@ -104,7 +108,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) => runRules(project, [noMultipleBooleanOperators]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noMultipleBooleanOperators])
+  )
 }
 
 test("no-multiple-boolean-operators reports disallowed and permits allowed fixture items", async () => {

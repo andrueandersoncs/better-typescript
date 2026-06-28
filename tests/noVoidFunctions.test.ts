@@ -122,10 +122,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoVoidFunctionsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoVoidFunctionsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noVoidFunctions]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noVoidFunctions])
+  )
 }
 
 test("no-void-functions reports disallowed and permits allowed fixture items", async () => {

@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-first-party-schema-declare")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-first-party-schema-declare"
+)
 
 const hint =
   "Schema.declare is meant for integrating third-party types you do not control. " +
@@ -76,7 +80,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noFirstPartySchemaDeclare]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noFirstPartySchemaDeclare])
+  )
 }
 
 test("no-first-party-schema-declare reports disallowed and permits allowed fixture items", async () => {

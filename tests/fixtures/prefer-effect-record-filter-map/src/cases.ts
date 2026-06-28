@@ -6,24 +6,30 @@ interface SearchParams {
   readonly expressionType: "both" | "glob" | "regex"
 }
 
-const truthyValueAddsField = (params: SearchParams): Record<string, string | number> => ({
+const truthyValueAddsField = (
+  params: SearchParams
+): Record<string, string | number> => ({
   ...(params.query ? { query: params.query } : {})
 })
 
-const emptyObjectInTrueBranch = (params: SearchParams): Record<string, string> => ({
-  ...(params.expressionType === "both" ? {} : { expressionType: params.expressionType })
+const emptyObjectInTrueBranch = (
+  params: SearchParams
+): Record<string, string> => ({
+  ...(params.expressionType === "both"
+    ? {}
+    : { expressionType: params.expressionType })
 })
 
-const parenthesizedConditional = (params: SearchParams): Record<string, number> => ({
-  ...((params.page ? { page: params.page } : {}))
+const parenthesizedConditional = (
+  params: SearchParams
+): Record<string, number> => ({
+  ...(params.page ? { page: params.page } : {})
 })
 
-const multiPropertyBranch = (params: SearchParams): Record<string, string | number> => ({
-  ...(
-    params.query
-      ? { query: params.query, page: params.page }
-      : {}
-  )
+const multiPropertyBranch = (
+  params: SearchParams
+): Record<string, string | number> => ({
+  ...(params.query ? { query: params.query, page: params.page } : {})
 })
 
 void truthyValueAddsField

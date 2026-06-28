@@ -24,7 +24,9 @@ const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
-  const hasEffectModuleDeclaration = (symbol.declarations ?? []).some(isEffectModuleDeclaration)
+  const hasEffectModuleDeclaration = (symbol.declarations ?? []).some(
+    isEffectModuleDeclaration
+  )
 
   return isNamedEffect && hasEffectModuleDeclaration
 }
@@ -47,7 +49,8 @@ const signatureReturnsEffect =
 const returnsEffect =
   (context: RuleContext) =>
   (initializer: FunctionInitializer): boolean => {
-    const declaredSignature = context.checker.getSignatureFromDeclaration(initializer)
+    const declaredSignature =
+      context.checker.getSignatureFromDeclaration(initializer)
     const signature = Option.fromNullable(declaredSignature)
 
     return Option.exists(signature, signatureReturnsEffect(context))
@@ -58,13 +61,15 @@ const effectFnRuleMatch =
   (declaration: ts.VariableDeclaration): RuleMatch => {
     const functionName = declaration.name.getText(context.sourceFile)
 
-    return createRuleMatch(context, {ruleId,
-    node: declaration.name,
-    message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
-    hint:
-      `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
-      "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
-      "or a function returning an Effect."})
+    return createRuleMatch(context, {
+      ruleId,
+      node: declaration.name,
+      message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
+      hint:
+        `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
+        "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
+        "or a function returning an Effect."
+    })
   }
 
 const effectFnMatches = (
@@ -79,7 +84,11 @@ const effectFnMatches = (
     Option.toArray
   )
 
-const check = onNode([ts.SyntaxKind.VariableDeclaration], ts.isVariableDeclaration, effectFnMatches)
+const check = onNode(
+  [ts.SyntaxKind.VariableDeclaration],
+  ts.isVariableDeclaration,
+  effectFnMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",
@@ -103,7 +112,8 @@ const example = new RuleExample({
 
 export const preferEffectFn = new Rule({
   id: ruleId,
-  description: "Require Effect.fn for functions with parameters that return an Effect.",
+  description:
+    "Require Effect.fn for functions with parameters that return an Effect.",
   example,
   check
 })

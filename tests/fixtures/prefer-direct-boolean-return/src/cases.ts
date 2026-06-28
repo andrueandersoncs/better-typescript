@@ -24,7 +24,7 @@ function ifElseBooleanThen(ready: boolean, override: boolean): boolean {
 
 function parenthesizedTrue(n: number): boolean {
   if (n % 2 === 1) {
-    return (true)
+    return true
   }
   return false
 }

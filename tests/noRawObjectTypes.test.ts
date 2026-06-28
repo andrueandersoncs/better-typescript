@@ -16,14 +16,16 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-raw-object-types")
 
-const parameterMessage = "Parameter uses an anonymous object type instead of a named type."
+const parameterMessage =
+  "Parameter uses an anonymous object type instead of a named type."
 const parameterHint =
   "Define a named type or interface that describes the data's domain meaning — " +
   "for example ConnectionConfig instead of { host: string, port: number }. " +
   "Name the type after what the data represents, not its structural role " +
   "(avoid names like FooParameters or BarOptions)."
 
-const returnMessage = "Return type uses an anonymous object type instead of a named type."
+const returnMessage =
+  "Return type uses an anonymous object type instead of a named type."
 const returnHint =
   "Define a named type or interface that describes the data's domain meaning — " +
   "for example UserProfile instead of { name: string, age: number }. " +
@@ -64,7 +66,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "formatUser destructured inline object parameter",
     ruleId,
     fileName: "src/cases.ts",
-    line: 17,
+    line: 16,
     column: 28,
     message: parameterMessage,
     hint: parameterHint
@@ -73,7 +75,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "handleInput union containing inline object parameter",
     ruleId,
     fileName: "src/cases.ts",
-    line: 21,
+    line: 25,
     column: 29,
     message: parameterMessage,
     hint: parameterHint
@@ -82,7 +84,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "identify intersection containing inline object parameter",
     ruleId,
     fileName: "src/cases.ts",
-    line: 25,
+    line: 29,
     column: 26,
     message: parameterMessage,
     hint: parameterHint
@@ -91,7 +93,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "createPair inline object return type",
     ruleId,
     fileName: "src/cases.ts",
-    line: 31,
+    line: 35,
     column: 27,
     message: returnMessage,
     hint: returnHint
@@ -100,7 +102,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "toObject object keyword return type",
     ruleId,
     fileName: "src/cases.ts",
-    line: 37,
+    line: 44,
     column: 25,
     message: returnMessage,
     hint: returnHint
@@ -109,7 +111,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "tryParse union containing inline object return type",
     ruleId,
     fileName: "src/cases.ts",
-    line: 41,
+    line: 47,
     column: 25,
     message: returnMessage,
     hint: returnHint
@@ -118,7 +120,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Connector.connect inline object parameter",
     ruleId,
     fileName: "src/cases.ts",
-    line: 46,
+    line: 52,
     column: 11,
     message: parameterMessage,
     hint: parameterHint
@@ -182,10 +184,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoRawObjectTypesFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoRawObjectTypesFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noRawObjectTypes]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noRawObjectTypes])
+  )
 }
 
 test("no-raw-object-types reports disallowed and permits allowed fixture items", async () => {

@@ -32,7 +32,9 @@ const addMatchToGroups = (
   return groups.set(key, group)
 }
 
-const groupMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<MatchGroup> => {
+const groupMatches = (
+  matches: ReadonlyArray<RuleMatch>
+): ReadonlyArray<MatchGroup> => {
   const initial = new Map<string, MatchGroup>()
   const grouped = matches.reduce(addMatchToGroups, initial)
 

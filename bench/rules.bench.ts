@@ -57,7 +57,8 @@ const benchDir = path.dirname(fileURLToPath(import.meta.url))
 
 const cliArguments = process.argv.slice(2)
 const targetPath =
-  cliArguments.find((argument) => !argument.startsWith("--")) ?? path.join(benchDir, "fixtures")
+  cliArguments.find((argument) => !argument.startsWith("--")) ??
+  path.join(benchDir, "fixtures")
 const ruleFilter = cliArguments
   .find((argument) => argument.startsWith("--rule="))
   ?.slice("--rule=".length)
@@ -77,22 +78,30 @@ const workspace = await Effect.runPromise(loadProject(targetPath))
 
 // One RuleContext per (project, source file), built once: program and checker are
 // shared across iterations exactly as they are in a real runRules() invocation.
-const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap((project) => {
-  const checker = project.program.getTypeChecker()
+const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap(
+  (project) => {
+    const checker = project.program.getTypeChecker()
 
-  return project.program
-    .getSourceFiles()
-    .filter((sourceFile) => !shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile))
-    .map(
-      (sourceFile) =>
-        new RuleContext({
-          program: project.program,
-          checker,
-          projectRoot: project.rootPath,
-          sourceFile
-        })
-    )
-})
+    return project.program
+      .getSourceFiles()
+      .filter(
+        (sourceFile) =>
+          !shouldSkipSourceFile(
+            sourceFile.fileName,
+            sourceFile.isDeclarationFile
+          )
+      )
+      .map(
+        (sourceFile) =>
+          new RuleContext({
+            program: project.program,
+            checker,
+            projectRoot: project.rootPath,
+            sourceFile
+          })
+      )
+  }
+)
 
 interface SoloRule {
   readonly rule: Rule
@@ -105,9 +114,14 @@ const soloRules: ReadonlyArray<SoloRule> = benchedRules.map((rule) => ({
 }))
 
 const checkAllFiles = (solo: SoloRule): number =>
-  contexts.reduce((total, context) => total + solo.checkSourceFile(context).length, 0)
+  contexts.reduce(
+    (total, context) => total + solo.checkSourceFile(context).length,
+    0
+  )
 
-const matchCounts = new Map(soloRules.map((solo) => [solo.rule.id, checkAllFiles(solo)]))
+const matchCounts = new Map(
+  soloRules.map((solo) => [solo.rule.id, checkAllFiles(solo)])
+)
 
 const allRulesTask = "ALL rules (runRules)"
 const bench = new Bench({ time: 1000 })
@@ -137,7 +151,10 @@ const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
 const meanLatencyMs = (taskName: string): number =>
   taskStatistics(bench.getTask(taskName))?.latency.mean ?? 0
 
-const totalRuleTimeMs = benchedRules.reduce((total, rule) => total + meanLatencyMs(rule.id), 0)
+const totalRuleTimeMs = benchedRules.reduce(
+  (total, rule) => total + meanLatencyMs(rule.id),
+  0
+)
 
 const sortedTasks = [...bench.tasks].sort(
   (left, right) => meanLatencyMs(right.name) - meanLatencyMs(left.name)
@@ -150,7 +167,9 @@ console.table(
     rule: task.name,
     "mean (ms/pass)": (taskStatistics(task)?.latency.mean ?? 0).toFixed(3),
     margin: `±${(taskStatistics(task)?.latency.rme ?? 0).toFixed(2)}%`,
-    "ops/sec": Math.round(taskStatistics(task)?.throughput.mean ?? 0).toLocaleString("en-US"),
+    "ops/sec": Math.round(
+      taskStatistics(task)?.throughput.mean ?? 0
+    ).toLocaleString("en-US"),
     share:
       task.name === allRulesTask
         ? ""

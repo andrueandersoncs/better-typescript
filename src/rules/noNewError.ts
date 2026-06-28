@@ -7,10 +7,13 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-new-error"
 
-const isErrorIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Error"
+const isErrorIdentifier = (identifier: ts.Identifier): boolean =>
+  identifier.text === "Error"
 
 const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
-  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(newExpression.expression)
+  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
+    newExpression.expression
+  )
 
   return Option.exists(constructorIdentifier, isErrorIdentifier)
 }
@@ -21,16 +24,22 @@ const newErrorMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isBareErrorConstruction(newExpression)
     ? [
-        createRuleMatch(context, {ruleId,
-        node: newExpression,
-        message: "Avoid using new Error() directly.",
-        hint:
-          "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
-          "instead of bare new Error()."})
+        createRuleMatch(context, {
+          ruleId,
+          node: newExpression,
+          message: "Avoid using new Error() directly.",
+          hint:
+            "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+            "instead of bare new Error()."
+        })
       ]
     : []
 
-const check = onNode([ts.SyntaxKind.NewExpression], ts.isNewExpression, newErrorMatches)
+const check = onNode(
+  [ts.SyntaxKind.NewExpression],
+  ts.isNewExpression,
+  newErrorMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/errors.ts",
@@ -51,7 +60,8 @@ const example = new RuleExample({
 
 export const noNewError = new Rule({
   id: ruleId,
-  description: "Disallow direct Error construction in favor of Effect Schema tagged errors.",
+  description:
+    "Disallow direct Error construction in favor of Effect Schema tagged errors.",
   example,
   check
 })

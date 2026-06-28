@@ -8,7 +8,9 @@ export const updateUser = (id: string, newData: User): User => ({
   id
 })
 
-export const renameUser = (name: string) => (user: User): User => ({
-  ...user,
-  name
-})
+export const renameUser =
+  (name: string) =>
+  (user: User): User => ({
+    ...user,
+    name
+  })

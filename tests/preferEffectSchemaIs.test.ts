@@ -14,9 +14,17 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-is")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-effect-schema-is"
+)
 
-const message = (valueText: string, operatorText: string, tagText: string): string =>
+const message = (
+  valueText: string,
+  operatorText: string,
+  tagText: string
+): string =>
   `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`
 
 const hint = (suggestion: string, tagText: string): string =>

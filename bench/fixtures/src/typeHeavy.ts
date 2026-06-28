@@ -14,7 +14,10 @@ interface TreeNode<T> {
 }
 
 // Array mutators on generic array types — the rule must resolve the instantiated type.
-export const insertChild = <T extends Primitive>(tree: TreeNode<T>, value: T): TreeNode<T> => {
+export const insertChild = <T extends Primitive>(
+  tree: TreeNode<T>,
+  value: T
+): TreeNode<T> => {
   const children = tree.children.slice()
   children.push({ value, children: [] })
   children.reverse()
@@ -94,7 +97,8 @@ const deepMap = <T extends Primitive, U extends Primitive>(
 })
 
 // Deeply instantiated generics so signature resolution does real work.
-type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false }
+type Result<T> =
+  { readonly ok: true; readonly value: T } | { readonly ok: false }
 
 export const traverseResults = <T extends Primitive>(
   results: Array<Result<Array<TreeNode<T>>>>

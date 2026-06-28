@@ -17,7 +17,9 @@ const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
 const isLogicalOperatorExpression = (expression: ts.Expression): boolean => {
-  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
+  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
+    expression
+  )
 
   return Option.exists(binaryExpression, hasLogicalOperator)
 }
@@ -30,17 +32,24 @@ const inlineBooleanConditionMatches = (
 
   return isLogicalOperatorExpression(expression)
     ? [
-        createRuleMatch(context, {ruleId,
-        node: expression,
-        message: "Avoid boolean operators inline in an if statement condition.",
-        hint:
-          "Extract the expression into a well-named const variable declaration above the if " +
-          "statement and use that variable in the if condition."})
+        createRuleMatch(context, {
+          ruleId,
+          node: expression,
+          message:
+            "Avoid boolean operators inline in an if statement condition.",
+          hint:
+            "Extract the expression into a well-named const variable declaration above the if " +
+            "statement and use that variable in the if condition."
+        })
       ]
     : []
 }
 
-const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, inlineBooleanConditionMatches)
+const check = onNode(
+  [ts.SyntaxKind.IfStatement],
+  ts.isIfStatement,
+  inlineBooleanConditionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",
@@ -65,7 +74,8 @@ const example = new RuleExample({
 
 export const noInlineBooleanExpressions = new Rule({
   id: ruleId,
-  description: "Disallow boolean operators inline in an if statement condition.",
+  description:
+    "Disallow boolean operators inline in an if statement condition.",
   example,
   check
 })

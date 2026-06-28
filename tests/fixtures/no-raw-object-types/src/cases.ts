@@ -10,12 +10,16 @@ export function sendEmail(envelope: { to: string; body: string }): boolean {
 }
 
 // object keyword in parameter
-export const processData = (data: object): string =>
-  String(data)
+export const processData = (data: object): string => String(data)
 
 // Destructured parameter with inline object type
-export const formatUser = ({ name, age }: { name: string; age: number }): string =>
-  `${name} (${age})`
+export const formatUser = ({
+  name,
+  age
+}: {
+  name: string
+  age: number
+}): string => `${name} (${age})`
 
 // Union containing inline object type in parameter
 export const handleInput = (input: { value: string } | null): string =>
@@ -28,14 +32,16 @@ export const identify = (entity: { id: number } & { name: string }): number =>
 // --- Return type violations ---
 
 // Inline object type as return type
-export const createPair = (a: string, b: string): { first: string; second: string } => ({
+export const createPair = (
+  a: string,
+  b: string
+): { first: string; second: string } => ({
   first: a,
   second: b
 })
 
 // object keyword as return type
-export const toObject = (value: string): object =>
-  ({ value })
+export const toObject = (value: string): object => ({ value })
 
 // Union containing inline object type in return
 export const tryParse = (raw: string): { parsed: boolean } | null =>

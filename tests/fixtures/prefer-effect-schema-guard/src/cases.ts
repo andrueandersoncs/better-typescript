@@ -26,7 +26,7 @@ export const hasTag = (value: object): boolean => {
 
 // 4. Parenthesized key
 export const hasKind = (value: object): boolean => {
-  if (("kind") in value) {
+  if ("kind" in value) {
     return true
   }
   return false

@@ -16,7 +16,9 @@ const hint =
 const objectLiteralPropertyCount = (expression: ts.Expression): number => {
   const unwrapped = unwrapExpression(expression)
 
-  return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
+  return ts.isObjectLiteralExpression(unwrapped)
+    ? unwrapped.properties.length
+    : 0
 }
 
 const hasNoProperties = (expression: ts.Expression): boolean =>
@@ -25,7 +27,9 @@ const hasNoProperties = (expression: ts.Expression): boolean =>
 const hasSomeProperties = (expression: ts.Expression): boolean =>
   objectLiteralPropertyCount(expression) > 0
 
-const hasEmptyObjectFallback = (conditional: ts.ConditionalExpression): boolean => {
+const hasEmptyObjectFallback = (
+  conditional: ts.ConditionalExpression
+): boolean => {
   const emptyThenNonEmptyElse = [
     hasNoProperties(conditional.whenTrue),
     hasSomeProperties(conditional.whenFalse)
@@ -41,7 +45,9 @@ const hasEmptyObjectFallback = (conditional: ts.ConditionalExpression): boolean 
 const isConditionalObjectSpread = (spread: ts.SpreadAssignment): boolean => {
   const expression = unwrapExpression(spread.expression)
 
-  return ts.isConditionalExpression(expression) ? hasEmptyObjectFallback(expression) : false
+  return ts.isConditionalExpression(expression)
+    ? hasEmptyObjectFallback(expression)
+    : false
 }
 
 const conditionalObjectSpreadMatches = (
@@ -49,12 +55,7 @@ const conditionalObjectSpreadMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   isConditionalObjectSpread(spread)
-    ? [
-        createRuleMatch(context, {ruleId,
-        node: spread,
-        message,
-        hint})
-      ]
+    ? [createRuleMatch(context, { ruleId, node: spread, message, hint })]
     : []
 
 const check = onNode(

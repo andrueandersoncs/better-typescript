@@ -13,7 +13,7 @@ declare const z: boolean
 const r1 = a && b && c
 
 // Mixed && / ||
-const r2 = a || b && c
+const r2 = a || (b && c)
 
 // === combined with &&
 const r3 = x === y && z

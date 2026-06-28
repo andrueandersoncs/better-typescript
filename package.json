@@ -16,7 +16,9 @@
     "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p tests/tsconfig.json",
     "bench": "tsx bench/rules.bench.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@effect/cli": "^0.75.2",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
+    "prettier": "^3.9.1",
     "tinybench": "^6.0.2",
     "tsx": "^4.22.4"
   }

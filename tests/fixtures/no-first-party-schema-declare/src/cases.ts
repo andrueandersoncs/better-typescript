@@ -20,8 +20,8 @@ const isAppConfig = (input: unknown): input is AppConfig =>
 const AppConfigSchema = Schema.declare(isAppConfig)
 
 // Case 3: Inline predicate with a first-party type
-const InlineSchema = Schema.declare(
-  (input: unknown): input is MyData => Predicate.hasProperty(input, "name")
+const InlineSchema = Schema.declare((input: unknown): input is MyData =>
+  Predicate.hasProperty(input, "name")
 )
 
 void MyDataSchema

@@ -67,7 +67,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noDataTaggedClass]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noDataTaggedClass])
+  )
 }
 
 test("no-data-tagged-class reports disallowed and permits allowed fixture items", async () => {

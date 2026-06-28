@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-property-accessors")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-effect-property-accessors"
+)
 
 // The hint suffix is the same for all matches
 const hintSuffix =
@@ -40,8 +44,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "getAge.user.age",
     ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
-    line: 2,
-    column: 59,
+    line: 3,
+    column: 10,
     message: makeMessage("getAge", "user.age"),
     hint: makeHint('Struct.get("age")')
   },
@@ -49,8 +53,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "getId.user.id",
     ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
-    line: 3,
-    column: 54,
+    line: 6,
+    column: 10,
     message: makeMessage("getId", "user.id"),
     hint: makeHint('Struct.get("id")')
   },
@@ -58,8 +62,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "getLabel.item.label",
     ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
-    line: 4,
-    column: 71,
+    line: 10,
+    column: 12,
     message: makeMessage("getLabel", "item.label"),
     hint: makeHint('Struct.get("label")')
   },
@@ -67,7 +71,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "lookup.dict.value",
     ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
-    line: 5,
+    line: 13,
     column: 57,
     message: makeMessage("lookup", "dict.value"),
     hint: makeHint('Record.get("value")')
@@ -76,8 +80,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "getKind.shape.kind",
     ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
-    line: 6,
-    column: 68,
+    line: 15,
+    column: 10,
     message: makeMessage("getKind", "shape.kind"),
     hint: makeHint('Struct.get("kind")')
   }
@@ -116,10 +120,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEffectPropertyAccessorsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runPreferEffectPropertyAccessorsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferEffectPropertyAccessors]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferEffectPropertyAccessors])
+  )
 }
 
 test("prefer-effect-property-accessors reports disallowed and permits allowed fixture items", async () => {

@@ -8,9 +8,7 @@ export function blockThenNesting(a: boolean, b: boolean): number {
 }
 
 export function bracelessThenNesting(a: boolean, b: boolean): number {
-  if (a)
-    if (b)
-      return 1
+  if (a) if (b) return 1
   return 0
 }
 

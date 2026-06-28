@@ -17,7 +17,9 @@ type CallbackStyleDeclaration =
   | ts.CallSignatureDeclaration
   | ts.FunctionTypeNode
 
-const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration =>
+const isCallbackStyleCandidate = (
+  node: ts.Node
+): node is CallbackStyleDeclaration =>
   [
     ts.isFunctionDeclaration(node),
     ts.isFunctionExpression(node),
@@ -45,16 +47,22 @@ const effectiveCallableTypeNode = (typeNode: ts.TypeNode): ts.TypeNode =>
 const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
   ts.isFunctionExpression(node) || ts.isArrowFunction(node)
 
-const isCallableTypeAnnotation = (initializer: Option.Option<ts.Expression>): boolean =>
-  !Option.exists(initializer, isRuntimeFunctionLike)
+const isCallableTypeAnnotation = (
+  initializer: Option.Option<ts.Expression>
+): boolean => !Option.exists(initializer, isRuntimeFunctionLike)
 
 const isTypeOfAlias =
   (typeNode: ts.TypeNode) =>
   (parent: ts.TypeAliasDeclaration): boolean =>
     parent.type === typeNode
 
-const isTypeAliasFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean => {
-  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(parent)
+const isTypeAliasFunctionType = (
+  parent: ts.Node,
+  typeNode: ts.TypeNode
+): boolean => {
+  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(
+    parent
+  )
 
   return Option.exists(aliasDeclaration, isTypeOfAlias(typeNode))
 }
@@ -64,7 +72,10 @@ const isTypeOfPropertySignature =
   (parent: ts.PropertySignature): boolean =>
     parent.type === typeNode
 
-const isPropertySignatureFunctionType = (parent: ts.Node, typeNode: ts.TypeNode): boolean => {
+const isPropertySignatureFunctionType = (
+  parent: ts.Node,
+  typeNode: ts.TypeNode
+): boolean => {
   const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
 
   return Option.exists(propertySignature, isTypeOfPropertySignature(typeNode))
@@ -73,7 +84,8 @@ const isPropertySignatureFunctionType = (parent: ts.Node, typeNode: ts.TypeNode)
 const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   const typeNode = effectiveCallableTypeNode(node)
   const parent = typeNode.parent
-  const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
+  const isValueDeclaration =
+    ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
   if (isValueDeclaration) {
     const isTypeAnnotation = parent.type === typeNode
@@ -83,7 +95,10 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   }
 
   const hasTypeAliasFunctionType = isTypeAliasFunctionType(parent, typeNode)
-  const hasPropertySignatureFunctionType = isPropertySignatureFunctionType(parent, typeNode)
+  const hasPropertySignatureFunctionType = isPropertySignatureFunctionType(
+    parent,
+    typeNode
+  )
 
   return hasTypeAliasFunctionType || hasPropertySignatureFunctionType
 }
@@ -99,9 +114,15 @@ const isFunctionArgument =
       return parameterHasCallSignature
     }
 
-    const indexType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
+    const indexType = checker.getIndexTypeOfType(
+      parameterType,
+      ts.IndexKind.Number
+    )
     const elementType = Option.fromNullable(indexType)
-    const elementHasCallSignature = Option.exists(elementType, callSignatureCheck(checker))
+    const elementHasCallSignature = Option.exists(
+      elementType,
+      callSignatureCheck(checker)
+    )
 
     return [parameterHasCallSignature, elementHasCallSignature].some(Boolean)
   }
@@ -111,7 +132,9 @@ const isCallbackSignature =
   (signature: ts.Signature): boolean => {
     const returnType = context.checker.getReturnTypeOfSignature(signature)
     const returnsVoid = isVoidType(returnType)
-    const hasFunctionArgument = declaration.parameters.some(isFunctionArgument(context.checker))
+    const hasFunctionArgument = declaration.parameters.some(
+      isFunctionArgument(context.checker)
+    )
 
     return returnsVoid && hasFunctionArgument
   }
@@ -120,7 +143,8 @@ const isCallbackStyleDeclaration = (
   context: RuleContext,
   declaration: CallbackStyleDeclaration
 ): boolean => {
-  const declaredSignature = context.checker.getSignatureFromDeclaration(declaration)
+  const declaredSignature =
+    context.checker.getSignatureFromDeclaration(declaration)
   const signature = Option.fromNullable(declaredSignature)
 
   return Option.exists(signature, isCallbackSignature(context, declaration))
@@ -132,13 +156,15 @@ const callbackStyleMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isCallbackStyleDeclaration(context, declaration)
     ? [
-        createRuleMatch(context, {ruleId,
-        node: declaration,
-        message:
-          "Avoid callback-style functions that accept a function argument and return void.",
-        hint:
-          "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-          "own API as an Effect-returning function from the start."})
+        createRuleMatch(context, {
+          ruleId,
+          node: declaration,
+          message:
+            "Avoid callback-style functions that accept a function argument and return void.",
+          hint:
+            "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
+            "own API as an Effect-returning function from the start."
+        })
       ]
     : []
 
@@ -186,7 +212,8 @@ const example = new RuleExample({
 
 export const noCallbacks = new Rule({
   id: ruleId,
-  description: "Disallow callback-style functions returning void in favor of Effect.",
+  description:
+    "Disallow callback-style functions returning void in favor of Effect.",
   example,
   check
 })

@@ -10,7 +10,9 @@ const ruleId = "no-duplicate-function-names"
 
 type FunctionNameIndex = ReadonlyMap<string, ReadonlyArray<ts.Identifier>>
 
-const declaredFunction = (declaration: ts.VariableDeclaration): Option.Option<ts.Identifier> =>
+const declaredFunction = (
+  declaration: ts.VariableDeclaration
+): Option.Option<ts.Identifier> =>
   Option.gen(function* () {
     yield* functionInitializer(declaration)
 
@@ -21,23 +23,31 @@ const namedFunctionDeclaration = (
   declaration: ts.FunctionDeclaration
 ): Option.Option<ts.Identifier> => Option.fromNullable(declaration.name)
 
-const variableStatementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> =>
+const variableStatementFunctions = (
+  statement: ts.Statement
+): ReadonlyArray<ts.Identifier> =>
   ts.isVariableStatement(statement)
     ? Array.filterMap(statement.declarationList.declarations, declaredFunction)
     : []
 
-const functionDeclarationFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> =>
+const functionDeclarationFunctions = (
+  statement: ts.Statement
+): ReadonlyArray<ts.Identifier> =>
   Option.liftPredicate(ts.isFunctionDeclaration)(statement).pipe(
     Option.flatMap(namedFunctionDeclaration),
     Option.toArray
   )
 
-const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => [
+const statementFunctions = (
+  statement: ts.Statement
+): ReadonlyArray<ts.Identifier> => [
   ...variableStatementFunctions(statement),
   ...functionDeclarationFunctions(statement)
 ]
 
-const topLevelFunctions = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Identifier> =>
+const topLevelFunctions = (
+  sourceFile: ts.SourceFile
+): ReadonlyArray<ts.Identifier> =>
   sourceFile.statements.flatMap(statementFunctions)
 
 const declarationsForName = (
@@ -54,7 +64,9 @@ const addFunctionToIndex = (
   return index.set(nameNode.text, [...existingDeclarations, nameNode])
 }
 
-const functionsByName = (functions: ReadonlyArray<ts.Identifier>): FunctionNameIndex => {
+const functionsByName = (
+  functions: ReadonlyArray<ts.Identifier>
+): FunctionNameIndex => {
   const emptyIndex = new Map<string, ReadonlyArray<ts.Identifier>>()
 
   return functions.reduce(addFunctionToIndex, emptyIndex)
@@ -81,7 +93,8 @@ const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
   return Option.isSome(cached) ? cached.value : buildFunctionNameIndex(program)
 }
 
-const declaredFileName = (nameNode: ts.Identifier): string => nameNode.getSourceFile().fileName
+const declaredFileName = (nameNode: ts.Identifier): string =>
+  nameNode.getSourceFile().fileName
 
 const isOtherFileName =
   (candidateFileName: string) =>
@@ -90,9 +103,14 @@ const isOtherFileName =
 
 const maxListedFileNames = 3
 
-const formatFileNames = (projectRoot: string, fileNames: ReadonlyArray<string>): string => {
+const formatFileNames = (
+  projectRoot: string,
+  fileNames: ReadonlyArray<string>
+): string => {
   const relativeFileNames = fileNames.map(toRelativeFileName(projectRoot))
-  const listedFileNames = relativeFileNames.slice(0, maxListedFileNames).join(", ")
+  const listedFileNames = relativeFileNames
+    .slice(0, maxListedFileNames)
+    .join(", ")
   const remainingCount = relativeFileNames.length - maxListedFileNames
 
   return remainingCount > 0
@@ -114,14 +132,16 @@ const duplicateFunctionMatch = (
   const functionName = candidate.text
   const otherFiles = formatFileNames(context.projectRoot, otherFileNames)
 
-  return createRuleMatch(context, {ruleId,
-  node: candidate,
-  message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
-  hint:
-    `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-    "into a module scoped to its domain and import it from every file that uses it. Name " +
-    "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-    "generic lib.ts or utils.ts."})
+  return createRuleMatch(context, {
+    ruleId,
+    node: candidate,
+    message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
+    hint:
+      `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
+      "into a module scoped to its domain and import it from every file that uses it. Name " +
+      "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
+      "generic lib.ts or utils.ts."
+  })
 }
 
 const candidateRuleMatch =
@@ -143,7 +163,9 @@ const candidateRuleMatch =
     return Option.some(match)
   }
 
-const duplicateFunctionMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
+const duplicateFunctionMatches = (
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => {
   const fileFunctions = topLevelFunctions(context.sourceFile)
 
   return Array.filterMap(fileFunctions, candidateRuleMatch(context))

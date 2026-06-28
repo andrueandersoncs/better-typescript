@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-class-method-implementations")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-class-method-implementations"
+)
 
 const message = "Avoid implementing methods on a class."
 
@@ -103,7 +107,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoClassMethodImplementationsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoClassMethodImplementationsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>

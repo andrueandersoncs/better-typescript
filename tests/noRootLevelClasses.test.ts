@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-root-level-classes")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-root-level-classes"
+)
 
 const message = "Avoid classes that do not extend another class."
 
@@ -92,10 +96,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoRootLevelClassesFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoRootLevelClassesFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noRootLevelClasses]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noRootLevelClasses])
+  )
 }
 
 test("no-root-level-classes reports disallowed and permits allowed fixture items", async () => {

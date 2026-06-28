@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-duplicate-function-names")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-duplicate-function-names"
+)
 
 const messageFor = (functionName: string): string =>
   `Avoid declaring the top-level function ${functionName} in multiple files.`
@@ -60,7 +64,10 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 9,
     column: 7,
     message: messageFor("crowded"),
-    hint: hintFor("crowded", "src/beta.ts, src/gamma.ts, src/delta.ts and 1 more file")
+    hint: hintFor(
+      "crowded",
+      "src/beta.ts, src/gamma.ts, src/delta.ts and 1 more file"
+    )
   },
   {
     name: "beta.sharedDeclaration",
@@ -87,7 +94,10 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 7,
     column: 7,
     message: messageFor("crowded"),
-    hint: hintFor("crowded", "src/alpha.ts, src/gamma.ts, src/delta.ts and 1 more file")
+    hint: hintFor(
+      "crowded",
+      "src/alpha.ts, src/gamma.ts, src/delta.ts and 1 more file"
+    )
   },
   {
     name: "gamma.sharedExpression",
@@ -105,7 +115,10 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 5,
     column: 7,
     message: messageFor("crowded"),
-    hint: hintFor("crowded", "src/alpha.ts, src/beta.ts, src/delta.ts and 1 more file")
+    hint: hintFor(
+      "crowded",
+      "src/alpha.ts, src/beta.ts, src/delta.ts and 1 more file"
+    )
   },
   {
     name: "delta.crowded",
@@ -114,7 +127,10 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 3,
     column: 10,
     message: messageFor("crowded"),
-    hint: hintFor("crowded", "src/alpha.ts, src/beta.ts, src/gamma.ts and 1 more file")
+    hint: hintFor(
+      "crowded",
+      "src/alpha.ts, src/beta.ts, src/gamma.ts and 1 more file"
+    )
   },
   {
     name: "epsilon.crowded",
@@ -123,7 +139,10 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 3,
     column: 7,
     message: messageFor("crowded"),
-    hint: hintFor("crowded", "src/alpha.ts, src/beta.ts, src/gamma.ts and 1 more file")
+    hint: hintFor(
+      "crowded",
+      "src/alpha.ts, src/beta.ts, src/gamma.ts and 1 more file"
+    )
   }
 ]
 
@@ -190,10 +209,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoDuplicateFunctionNamesFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoDuplicateFunctionNamesFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noDuplicateFunctionNames]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noDuplicateFunctionNames])
+  )
 }
 
 test("no-duplicate-function-names reports disallowed and permits allowed fixture items", async () => {

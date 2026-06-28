@@ -14,8 +14,13 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-conditional-return")
-const expectedMessage = "Avoid if statements that only choose between two return values."
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-conditional-return"
+)
+const expectedMessage =
+  "Avoid if statements that only choose between two return values."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
@@ -52,7 +57,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 26,
     column: 3,
     message: expectedMessage,
-    hint: 'Return a conditional expression instead: return (active) ? 1 : 0.'
+    hint: "Return a conditional expression instead: return (active) ? 1 : 0."
   },
   {
     name: "chooseVars.if",
@@ -61,7 +66,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     line: 31,
     column: 3,
     message: expectedMessage,
-    hint: 'Return a conditional expression instead: return (useFirst) ? first : second.'
+    hint: "Return a conditional expression instead: return (useFirst) ? first : second."
   }
 ]
 
@@ -98,10 +103,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferConditionalReturnFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runPreferConditionalReturnFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferConditionalReturn]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferConditionalReturn])
+  )
 }
 
 test("prefer-conditional-return reports disallowed and permits allowed fixture items", async () => {

@@ -10,20 +10,23 @@ import type { RuleContext, RuleMatch } from "./types.js"
 const ruleId = "no-multiple-boolean-operators"
 
 type BooleanOperatorExpression =
-  | ts.BinaryExpression
-  | ts.PrefixUnaryExpression
-  | ts.ConditionalExpression
+  ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
 
 const isBooleanOperatorExpression = (
   node: ts.Node
 ): node is BooleanOperatorExpression => {
   const isBinaryBooleanOperator =
-    ts.isBinaryExpression(node) && isBooleanBinaryOperator(node.operatorToken.kind)
+    ts.isBinaryExpression(node) &&
+    isBooleanBinaryOperator(node.operatorToken.kind)
   const isUnaryBooleanOperator = isUnaryBooleanOperatorExpression(node)
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
-  return [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator].some(Boolean)
+  return [
+    isBinaryBooleanOperator,
+    isUnaryBooleanOperator,
+    isTernaryOperator
+  ].some(Boolean)
 }
 
 const isBooleanOperatorRoot = (expression: ts.Expression): boolean => {
@@ -55,7 +58,10 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
 }
 
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean =>
-  [isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent)].some(Boolean)
+  [
+    isBooleanOperatorExpression(parent),
+    hasBooleanOperatorAncestor(parent)
+  ].some(Boolean)
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   const parent = Option.fromNullable(node.parent)
@@ -69,7 +75,9 @@ const isExclamationOperator = (node: ts.PrefixUnaryExpression): boolean =>
 const isUnaryBooleanOperatorExpression = (
   node: ts.Node
 ): node is ts.PrefixUnaryExpression => {
-  const prefixUnaryExpression = Option.liftPredicate(ts.isPrefixUnaryExpression)(node)
+  const prefixUnaryExpression = Option.liftPredicate(
+    ts.isPrefixUnaryExpression
+  )(node)
 
   return Option.exists(prefixUnaryExpression, isExclamationOperator)
 }
@@ -104,12 +112,15 @@ const multipleBooleanOperatorMatches = (
 
   return isReportableRoot
     ? [
-        createRuleMatch(context, {ruleId,
-        node: expression,
-        message: "Avoid combining more than one boolean operator in a single expression.",
-        hint:
-          "Declare multiple constant variables instead of combining operators into a " +
-          "single expression."})
+        createRuleMatch(context, {
+          ruleId,
+          node: expression,
+          message:
+            "Avoid combining more than one boolean operator in a single expression.",
+          hint:
+            "Declare multiple constant variables instead of combining operators into a " +
+            "single expression."
+        })
       ]
     : []
 }
@@ -142,7 +153,8 @@ const example = new RuleExample({
 
 export const noMultipleBooleanOperators = new Rule({
   id: ruleId,
-  description: "Disallow combining multiple boolean operators in a single expression.",
+  description:
+    "Disallow combining multiple boolean operators in a single expression.",
   example,
   check
 })

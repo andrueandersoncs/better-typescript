@@ -92,7 +92,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runNoNewErrorFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noNewError]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noNewError])
+  )
 }
 
 test("no-new-error reports disallowed and permits allowed fixture items", async () => {

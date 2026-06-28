@@ -96,10 +96,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoAbstractClassesFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoAbstractClassesFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noAbstractClasses]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noAbstractClasses])
+  )
 }
 
 test("no-abstract-classes reports disallowed and permits allowed fixture items", async () => {

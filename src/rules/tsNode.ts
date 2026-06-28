@@ -18,10 +18,14 @@ const fallbackToNode = (node: ts.Node) => (): ts.Node => node
 export const namedNodeReportTarget = (node: ts.NamedDeclaration): ts.Node =>
   Option.fromNullable(node.name).pipe(Option.getOrElse(fallbackToNode(node)))
 
-export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
+export const isFunctionInitializer = (
+  node: ts.Node
+): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
 
-export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration =>
+export const isReturnTypeDeclaration = (
+  node: ts.Node
+): node is ReturnTypeDeclaration =>
   [
     ts.isFunctionDeclaration(node),
     ts.isFunctionExpression(node),
@@ -36,7 +40,9 @@ export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclar
 export const functionInitializer = (
   declaration: ts.VariableDeclaration
 ): Option.Option<FunctionInitializer> =>
-  Option.fromNullable(declaration.initializer).pipe(Option.filter(isFunctionInitializer))
+  Option.fromNullable(declaration.initializer).pipe(
+    Option.filter(isFunctionInitializer)
+  )
 
 export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
   ts.isParenthesizedExpression(expression)
@@ -49,12 +55,17 @@ export const transparentWrapperKinds = HashSet.make(
   ts.SyntaxKind.AsExpression
 )
 
-type TransparentWrapper = ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
+type TransparentWrapper =
+  ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 
-const isTransparentWrapper = (expression: ts.Expression): expression is TransparentWrapper =>
+const isTransparentWrapper = (
+  expression: ts.Expression
+): expression is TransparentWrapper =>
   HashSet.has(transparentWrapperKinds, expression.kind)
 
-export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expression =>
+export const unwrapTransparentExpression = (
+  expression: ts.Expression
+): ts.Expression =>
   isTransparentWrapper(expression)
     ? unwrapTransparentExpression(expression.expression)
     : expression
@@ -62,8 +73,12 @@ export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expre
 export const isTransparentParent = (node: ts.Node): node is ts.Expression =>
   HashSet.has(transparentWrapperKinds, node.kind)
 
-export const outermostTransparentWrapper = (expression: ts.Expression): ts.Expression =>
-  isTransparentParent(expression.parent) ? outermostTransparentWrapper(expression.parent) : expression
+export const outermostTransparentWrapper = (
+  expression: ts.Expression
+): ts.Expression =>
+  isTransparentParent(expression.parent)
+    ? outermostTransparentWrapper(expression.parent)
+    : expression
 
 export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
   const isSkippableSourceFile = [
@@ -74,7 +89,9 @@ export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
   return !isSkippableSourceFile
 }
 
-export const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
+export const unwrapSingleStatementBlock = (
+  statement: ts.Statement
+): ts.Statement => {
   if (!ts.isBlock(statement)) {
     return statement
   }
@@ -107,7 +124,9 @@ const blockExitsScope = (block: ts.Block): boolean => {
 }
 
 export const alwaysExitsScope = (statement: ts.Statement): boolean =>
-  ts.isBlock(statement) ? blockExitsScope(statement) : HashSet.has(exitStatementKinds, statement.kind)
+  ts.isBlock(statement)
+    ? blockExitsScope(statement)
+    : HashSet.has(exitStatementKinds, statement.kind)
 
 export const isExtendsClause = (clause: ts.HeritageClause): boolean =>
   clause.token === ts.SyntaxKind.ExtendsKeyword

@@ -8,7 +8,9 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
 
-const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
+const booleanLiteralValue = (
+  expression: ts.Expression
+): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
   return Match.value(unwrapped.kind).pipe(
@@ -18,10 +20,14 @@ const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> 
   )
 }
 
-const booleanReturnFromStatement = (statement: ts.Statement): Option.Option<boolean> =>
+const booleanReturnFromStatement = (
+  statement: ts.Statement
+): Option.Option<boolean> =>
   Option.gen(function* () {
     const unwrappedStatement = unwrapSingleStatementBlock(statement)
-    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)
+    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
+      unwrappedStatement
+    )
     const expression = yield* Option.fromNullable(returnStatement.expression)
 
     return yield* booleanLiteralValue(expression)
@@ -31,13 +37,17 @@ const directBooleanRuleMatch =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
   (literalValue: boolean): RuleMatch => {
     const conditionText = ifStatement.expression.getText(context.sourceFile)
-    const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
+    const returnExpression = literalValue
+      ? `(${conditionText})`
+      : `!(${conditionText})`
     const literalText = String(literalValue)
 
-    return createRuleMatch(context, {ruleId,
-    node: ifStatement,
-    message: `Avoid returning ${literalText} from a conditional branch.`,
-    hint: `Use the condition as the boolean value instead: return ${returnExpression}.`})
+    return createRuleMatch(context, {
+      ruleId,
+      node: ifStatement,
+      message: `Avoid returning ${literalText} from a conditional branch.`,
+      hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
+    })
   }
 
 const directBooleanMatches = (
@@ -49,7 +59,11 @@ const directBooleanMatches = (
     Option.toArray
   )
 
-const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, directBooleanMatches)
+const check = onNode(
+  [ts.SyntaxKind.IfStatement],
+  ts.isIfStatement,
+  directBooleanMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/age.ts",

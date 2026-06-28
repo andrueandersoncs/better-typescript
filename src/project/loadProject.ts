@@ -3,36 +3,38 @@ import { Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { TsProgram } from "../rules/tsSchema.js"
 
-export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")({
-  program: TsProgram,
-  configPath: Schema.String,
-  rootPath: Schema.String
-}) {}
+export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
+  {
+    program: TsProgram,
+    configPath: Schema.String,
+    rootPath: Schema.String
+  }
+) {}
 
 const loadedProjectsSchema = Schema.Array(LoadedProject)
 
-export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorkspace")({
+export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>(
+  "LoadedWorkspace"
+)({
   rootPath: Schema.String,
   projects: loadedProjectsSchema
 }) {}
 
-class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>("MissingTsconfigError")(
-  "MissingTsconfigError",
-  {
-    rootPath: Schema.String
-  }
-) {
+class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>(
+  "MissingTsconfigError"
+)("MissingTsconfigError", {
+  rootPath: Schema.String
+}) {
   get message(): string {
     return `Could not find tsconfig.json from ${this.rootPath}`
   }
 }
 
-class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>("InvalidTsconfigError")(
-  "InvalidTsconfigError",
-  {
-    message: Schema.String
-  }
-) {}
+class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>(
+  "InvalidTsconfigError"
+)("InvalidTsconfigError", {
+  message: Schema.String
+}) {}
 
 class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectReferenceError>(
   "CircularProjectReferenceError"
@@ -44,10 +46,16 @@ class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectRe
   }
 }
 
-export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
-  Effect.fn("loadProject")(function* (projectPath: string) {
+export const loadProject: (
+  projectPath: string
+) => Effect.Effect<LoadedWorkspace, Error> = Effect.fn("loadProject")(
+  function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
-    const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
+    const foundConfigPath = ts.findConfigFile(
+      rootPath,
+      ts.sys.fileExists,
+      "tsconfig.json"
+    )
     const configPath = Option.fromNullable(foundConfigPath)
 
     if (Option.isNone(configPath)) {
@@ -59,15 +67,15 @@ export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace
     const workspaceRootPath = path.dirname(configPath.value)
 
     return new LoadedWorkspace({ rootPath: workspaceRootPath, projects })
-  })
+  }
+)
 
 const loadConfig: (
   configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
-) => Effect.Effect<ReadonlyArray<LoadedProject>, Error> = Effect.fn("loadConfig")(function* (
-  configPath: string,
-  ancestorConfigPaths: HashSet.HashSet<string>
-) {
+) => Effect.Effect<ReadonlyArray<LoadedProject>, Error> = Effect.fn(
+  "loadConfig"
+)(function* (configPath: string, ancestorConfigPaths: HashSet.HashSet<string>) {
   if (HashSet.has(ancestorConfigPaths, configPath)) {
     return yield* new CircularProjectReferenceError({ configPath })
   }
@@ -82,7 +90,11 @@ const loadConfig: (
   }
 
   const configDirectory = path.dirname(configPath)
-  const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, configDirectory)
+  const parsedConfig = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    configDirectory
+  )
 
   if (parsedConfig.errors.length > 0) {
     const message = formatDiagnostics(parsedConfig.errors)
@@ -106,7 +118,9 @@ const loadConfig: (
 
 const loadReference =
   (ancestorConfigPaths: HashSet.HashSet<string>) =>
-  (reference: ts.ProjectReference): Effect.Effect<ReadonlyArray<LoadedProject>, Error> => {
+  (
+    reference: ts.ProjectReference
+  ): Effect.Effect<ReadonlyArray<LoadedProject>, Error> => {
     const referencedConfigPath = ts.resolveProjectReferencePath(reference)
 
     return loadConfig(referencedConfigPath, ancestorConfigPaths)
@@ -116,7 +130,10 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
   ancestorConfigPaths: HashSet.HashSet<string>
 ) {
-  const projects = yield* Effect.forEach(references, loadReference(ancestorConfigPaths))
+  const projects = yield* Effect.forEach(
+    references,
+    loadReference(ancestorConfigPaths)
+  )
 
   return projects.flat()
 })

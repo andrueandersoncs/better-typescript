@@ -6,7 +6,9 @@ export const empty = () => {
 }
 
 // 2. Already-correct Schema construction (NewExpression, not a literal)
-class Circle extends Schema.TaggedClass<Circle>()("Circle", { radius: Schema.Number }) {}
+class Circle extends Schema.TaggedClass<Circle>()("Circle", {
+  radius: Schema.Number
+}) {}
 export const makeCircle = (radius: number): Circle => new Circle({ radius })
 
 // 3. Literal assigned to a variable, then the variable returned

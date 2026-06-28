@@ -30,7 +30,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "direct nesting outer(inner())",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 16,
+    line: 30,
     column: 22,
     message: "Avoid computing inner inline in the arguments of outer.",
     hint: expectedHint
@@ -39,7 +39,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "deep chain wrap consumed by outer",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 20,
+    line: 34,
     column: 21,
     message: "Avoid computing wrap inline in the arguments of outer.",
     hint: expectedHint
@@ -48,7 +48,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "deep chain inner consumed by wrap",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 20,
+    line: 34,
     column: 26,
     message: "Avoid computing inner inline in the arguments of wrap.",
     hint: expectedHint
@@ -57,7 +57,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "forwarded through arithmetic outer(inner() + 1)",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 23,
+    line: 37,
     column: 26,
     message: "Avoid computing inner inline in the arguments of outer.",
     hint: expectedHint
@@ -66,7 +66,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "forwarded through array literal collect([inner()])",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 26,
+    line: 40,
     column: 27,
     message: "Avoid computing inner inline in the arguments of collect.",
     hint: expectedHint
@@ -75,7 +75,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "forwarded through object literal build({ value: inner() })",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 29,
+    line: 43,
     column: 31,
     message: "Avoid computing inner inline in the arguments of build.",
     hint: expectedHint
@@ -84,7 +84,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "forwarded through as outer(inner() as number)",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 32,
+    line: 46,
     column: 22,
     message: "Avoid computing inner inline in the arguments of outer.",
     hint: expectedHint
@@ -93,7 +93,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "NewExpression as inner register(new Service())",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 35,
+    line: 49,
     column: 27,
     message: "Avoid computing new Service inline in the arguments of register.",
     hint: expectedHint
@@ -102,7 +102,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "NewExpression as consumer new Outer(inner())",
     ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
-    line: 39,
+    line: 57,
     column: 31,
     message: "Avoid computing inner inline in the arguments of new Outer.",
     hint: expectedHint
@@ -144,7 +144,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) => runRules(project, [noNestedCalls]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noNestedCalls])
+  )
 }
 
 test("no-nested-calls reports disallowed and permits allowed fixture items", async () => {

@@ -15,7 +15,8 @@ import {
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-inline-closures")
-const expectedMessage = "Avoid arrow functions outside naming and currying positions."
+const expectedMessage =
+  "Avoid arrow functions outside naming and currying positions."
 const expectedHint =
   "Name this function as a top-level const and pass it by reference, currying it when it " +
   "needs values from the enclosing scope. When the expression sequences several steps, " +
@@ -53,8 +54,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "returnedArrow",
     ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
-    line: 14,
-    column: 61,
+    line: 15,
+    column: 22,
     message: expectedMessage,
     hint: expectedHint
   },
@@ -62,7 +63,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "conditionalBranch.true",
     ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
-    line: 18,
+    line: 20,
     column: 30,
     message: expectedMessage,
     hint: expectedHint
@@ -71,7 +72,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "conditionalBranch.false",
     ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
-    line: 18,
+    line: 20,
     column: 49,
     message: expectedMessage,
     hint: expectedHint
@@ -111,10 +112,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoInlineClosuresFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoInlineClosuresFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noInlineClosures]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noInlineClosures])
+  )
 }
 
 test("no-inline-closures reports disallowed and permits allowed fixture items", async () => {

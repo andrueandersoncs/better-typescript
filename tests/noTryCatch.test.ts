@@ -115,7 +115,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runNoTryCatchFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noTryCatch]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noTryCatch])
+  )
 }
 
 test("no-try-catch reports disallowed and permits allowed fixture items", async () => {

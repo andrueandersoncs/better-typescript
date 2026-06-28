@@ -11,7 +11,9 @@ const concatenated = numbers.concat(4)
 const fakeStack = { push: (value: number): void => {} }
 fakeStack.push(1)
 
-class InPlaceSorter { sort(): void {} }
+class InPlaceSorter {
+  sort(): void {}
+}
 new InPlaceSorter().sort()
 
 // other collections' mutators

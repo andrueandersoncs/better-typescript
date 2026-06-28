@@ -10,15 +10,21 @@ const switchStatementMatches = (
   switchStatement: ts.SwitchStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => [
-  createRuleMatch(context, {ruleId,
-  node: switchStatement,
-  message: "Avoid switch statements.",
-  hint:
-    "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
-    "so every case is handled explicitly."})
+  createRuleMatch(context, {
+    ruleId,
+    node: switchStatement,
+    message: "Avoid switch statements.",
+    hint:
+      "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
+      "so every case is handled explicitly."
+  })
 ]
 
-const check = onNode([ts.SyntaxKind.SwitchStatement], ts.isSwitchStatement, switchStatementMatches)
+const check = onNode(
+  [ts.SyntaxKind.SwitchStatement],
+  ts.isSwitchStatement,
+  switchStatementMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/status.ts",

@@ -9,12 +9,17 @@ const ruleId = "no-mutable-variable-declarations"
 
 type MutableVariableDeclarationKind = "let" | "var"
 
-const mutableKeywordKinds = new Map<ts.SyntaxKind, MutableVariableDeclarationKind>([
+const mutableKeywordKinds = new Map<
+  ts.SyntaxKind,
+  MutableVariableDeclarationKind
+>([
   [ts.SyntaxKind.LetKeyword, "let"],
   [ts.SyntaxKind.VarKeyword, "var"]
 ])
 
-const tokenMutableKind = (firstToken: ts.Node): Option.Option<MutableVariableDeclarationKind> => {
+const tokenMutableKind = (
+  firstToken: ts.Node
+): Option.Option<MutableVariableDeclarationKind> => {
   const mutableKind = mutableKeywordKinds.get(firstToken.kind)
 
   return Option.fromNullable(mutableKind)
@@ -32,12 +37,14 @@ const mutableVariableDeclarationKind = (
 const mutableDeclarationRuleMatch =
   (context: RuleContext, declarationList: ts.VariableDeclarationList) =>
   (kind: MutableVariableDeclarationKind): RuleMatch =>
-    createRuleMatch(context, {ruleId,
-    node: declarationList,
-    message: `Avoid declaring mutable variables with ${kind}.`,
-    hint:
-      "Declare multiple const values to represent each state instead of mutating a single " +
-      "variable, and use immutable values that are not reassigned."})
+    createRuleMatch(context, {
+      ruleId,
+      node: declarationList,
+      message: `Avoid declaring mutable variables with ${kind}.`,
+      hint:
+        "Declare multiple const values to represent each state instead of mutating a single " +
+        "variable, and use immutable values that are not reassigned."
+    })
 
 const mutableDeclarationMatches = (
   declarationList: ts.VariableDeclarationList,
@@ -78,7 +85,8 @@ const example = new RuleExample({
 
 export const noMutableVariableDeclarations = new Rule({
   id: ruleId,
-  description: "Disallow let and var declarations in favor of immutable const bindings.",
+  description:
+    "Disallow let and var declarations in favor of immutable const bindings.",
   example,
   check
 })

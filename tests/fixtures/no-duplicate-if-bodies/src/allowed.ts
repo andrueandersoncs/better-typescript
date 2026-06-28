@@ -7,8 +7,7 @@ function adjacentGuardDuplicate(input: string): void {
 }
 
 function unwrappedGuardDuplicate(input: string): void {
-  if (input === "one")
-    return
+  if (input === "one") return
 }
 
 function elseIfDuplicate(input: string): string {

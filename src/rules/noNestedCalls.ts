@@ -38,16 +38,26 @@ const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.TemplateExpression
 )
 
-const isSameNode = (node: ts.Node) => (candidate: ts.Node): boolean => candidate === node
+const isSameNode =
+  (node: ts.Node) =>
+  (candidate: ts.Node): boolean =>
+    candidate === node
 
-const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
-  call.arguments ?? []
+const callArguments = (
+  call: CallLikeExpression
+): ReadonlyArray<ts.Expression> => call.arguments ?? []
 
-const consumesAsArgument = (node: ts.Node) => (call: CallLikeExpression): boolean =>
-  callArguments(call).some(isSameNode(node))
+const consumesAsArgument =
+  (node: ts.Node) =>
+  (call: CallLikeExpression): boolean =>
+    callArguments(call).some(isSameNode(node))
 
-const forwardedConsumingCall = (node: ts.Node): Option.Option<CallLikeExpression> =>
-  HashSet.has(valueForwardingKinds, node.parent.kind) ? consumingCall(node.parent) : Option.none()
+const forwardedConsumingCall = (
+  node: ts.Node
+): Option.Option<CallLikeExpression> =>
+  HashSet.has(valueForwardingKinds, node.parent.kind)
+    ? consumingCall(node.parent)
+    : Option.none()
 
 const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   const parent = node.parent
@@ -57,13 +67,19 @@ const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
     : forwardedConsumingCall(node)
 }
 
-const returnsCallable = (context: RuleContext, call: CallLikeExpression): boolean => {
+const returnsCallable = (
+  context: RuleContext,
+  call: CallLikeExpression
+): boolean => {
   const resultType = context.checker.getTypeAtLocation(call)
 
   return hasCallSignature(context.checker, resultType)
 }
 
-const calleeDisplayText = (sourceFile: ts.SourceFile, call: CallLikeExpression): string => {
+const calleeDisplayText = (
+  sourceFile: ts.SourceFile,
+  call: CallLikeExpression
+): string => {
   const calleeText = call.expression.getText(sourceFile)
 
   return ts.isNewExpression(call) ? `new ${calleeText}` : calleeText
@@ -84,10 +100,12 @@ const nestedCallRuleMatch = (
   const callText = calleeDisplayText(context.sourceFile, call)
   const consumerText = calleeDisplayText(context.sourceFile, consumer)
 
-  return createRuleMatch(context, {ruleId,
-  node: call,
-  message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
-  hint: ruleHint})
+  return createRuleMatch(context, {
+    ruleId,
+    node: call,
+    message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
+    hint: ruleHint
+  })
 }
 
 const consumerRuleMatch =
@@ -106,7 +124,10 @@ const nestedCallMatches = (
   call: CallLikeExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  consumingCall(call).pipe(Option.flatMap(consumerRuleMatch(context, call)), Option.toArray)
+  consumingCall(call).pipe(
+    Option.flatMap(consumerRuleMatch(context, call)),
+    Option.toArray
+  )
 
 const check = onNode(
   [ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression],

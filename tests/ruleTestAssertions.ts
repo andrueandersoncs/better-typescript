@@ -30,13 +30,17 @@ interface AssertDisallowedOptions {
 const locationKey = (location: SourceLocation): string =>
   [location.fileName, location.line, location.column].join(":")
 
-const compareLocations = (left: SourceLocation, right: SourceLocation): number =>
+const compareLocations = (
+  left: SourceLocation,
+  right: SourceLocation
+): number =>
   left.fileName.localeCompare(right.fileName) ||
   left.line - right.line ||
   left.column - right.column
 
-const sortByLocation = <T extends SourceLocation>(items: ReadonlyArray<T>): ReadonlyArray<T> =>
-  [...items].sort(compareLocations)
+const sortByLocation = <T extends SourceLocation>(
+  items: ReadonlyArray<T>
+): ReadonlyArray<T> => [...items].sort(compareLocations)
 
 const maybeSorted = <T extends SourceLocation>(
   items: ReadonlyArray<T>,
@@ -68,9 +72,16 @@ export const assertDisallowedFixtureItems = (
 ): void => {
   const shouldSort = options.sort === true
   const actual = maybeSorted(matches.map(matchDetails), shouldSort)
-  const expected = maybeSorted(disallowedFixtureItems.map(expectedMatchDetails), shouldSort)
+  const expected = maybeSorted(
+    disallowedFixtureItems.map(expectedMatchDetails),
+    shouldSort
+  )
 
-  assert.deepEqual(actual, expected, "expected only disallowed fixture items to be reported")
+  assert.deepEqual(
+    actual,
+    expected,
+    "expected only disallowed fixture items to be reported"
+  )
 }
 
 export const assertAllowedFixtureItems = (

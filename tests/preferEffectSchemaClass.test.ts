@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-class")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-effect-schema-class"
+)
 
 const makeMessage = (typeName: string, kindLabel: string): string =>
   `Avoid declaring ${typeName} as ${kindLabel} when this project constructs its values.`
@@ -42,7 +46,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Point.name",
     ruleId: "prefer-effect-schema-class",
     fileName: "src/cases.ts",
-    line: 8,
+    line: 11,
     column: 18,
     message: makeMessage("Point", "an interface"),
     hint: makeHint("Point")
@@ -51,7 +55,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Tag.name",
     ruleId: "prefer-effect-schema-class",
     fileName: "src/cases.ts",
-    line: 12,
+    line: 18,
     column: 18,
     message: makeMessage("Tag", "an interface"),
     hint: makeHint("Tag")
@@ -60,7 +64,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Account.name",
     ruleId: "prefer-effect-schema-class",
     fileName: "src/cases.ts",
-    line: 16,
+    line: 24,
     column: 18,
     message: makeMessage("Account", "an interface"),
     hint: makeHint("Account")
@@ -69,7 +73,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Cons.name",
     ruleId: "prefer-effect-schema-class",
     fileName: "src/cases.ts",
-    line: 21,
+    line: 35,
     column: 18,
     message: makeMessage("Cons", "an interface"),
     hint: makeHint("Cons")
@@ -78,7 +82,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Settings.name",
     ruleId: "prefer-effect-schema-class",
     fileName: "src/cases.ts",
-    line: 25,
+    line: 42,
     column: 13,
     message: makeMessage("Settings", "a type alias"),
     hint: makeHint("Settings")
@@ -115,7 +119,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [preferEffectSchemaClass]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferEffectSchemaClass])
+  )
 }
 
 test("prefer-effect-schema-class reports disallowed and permits allowed fixture items", async () => {

@@ -138,7 +138,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runNoCallbacksFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noCallbacks]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noCallbacks])
+  )
 }
 
 test("no-callbacks reports disallowed and permits allowed fixture items", async () => {

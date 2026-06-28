@@ -17,7 +17,8 @@ const isDeclarePropertyAccess = (
 ): expression is ts.PropertyAccessExpression =>
   ts.isPropertyAccessExpression(expression) && hasDeclareText(expression.name)
 
-const isSchemaText = (identifier: ts.Identifier): boolean => identifier.text === "Schema"
+const isSchemaText = (identifier: ts.Identifier): boolean =>
+  identifier.text === "Schema"
 
 const isSchemaObject = (expression: ts.Expression): boolean =>
   ts.isIdentifier(expression) && isSchemaText(expression)
@@ -25,13 +26,16 @@ const isSchemaObject = (expression: ts.Expression): boolean =>
 const accessExpression: (access: ts.PropertyAccessExpression) => ts.Expression =
   Struct.get("expression")
 
-const isSchemaPropertyAccess = (access: ts.PropertyAccessExpression): boolean => {
+const isSchemaPropertyAccess = (
+  access: ts.PropertyAccessExpression
+): boolean => {
   const object = accessExpression(access)
 
   return isSchemaObject(object)
 }
 
-const hasArguments = (call: ts.CallExpression): boolean => call.arguments.length > 0
+const hasArguments = (call: ts.CallExpression): boolean =>
+  call.arguments.length > 0
 
 const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
   ts.isCallExpression(node) && isDeclarePropertyAccess(node.expression)
@@ -59,8 +63,9 @@ const signatureTypePredicate =
     return Option.fromNullable(predicate)
   }
 
-const typePredicateAssertedType = (predicate: ts.TypePredicate): Option.Option<ts.Type> =>
-  Option.fromNullable(predicate.type)
+const typePredicateAssertedType = (
+  predicate: ts.TypePredicate
+): Option.Option<ts.Type> => Option.fromNullable(predicate.type)
 
 const predicateAssertedType =
   (checker: ts.TypeChecker) =>
@@ -79,14 +84,14 @@ const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   return Option.fromNullable(symbol)
 }
 
-
 const isFirstPartyType = (type: ts.Type): boolean => {
   const symbol = typeSymbol(type)
 
   return Option.exists(symbol, isFirstPartySymbol)
 }
 
-const hasCallSignatures = (type: ts.Type): boolean => type.getCallSignatures().length > 0
+const hasCallSignatures = (type: ts.Type): boolean =>
+  type.getCallSignatures().length > 0
 
 const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   const isFirstParty = isFirstPartyType(type)
@@ -100,7 +105,10 @@ const symbolName: (symbol: ts.Symbol) => string = Struct.get("name")
 const fallbackTypeName = (): string => "unknown"
 
 const typeName = (type: ts.Type): string =>
-  typeSymbol(type).pipe(Option.map(symbolName), Option.getOrElse(fallbackTypeName))
+  typeSymbol(type).pipe(
+    Option.map(symbolName),
+    Option.getOrElse(fallbackTypeName)
+  )
 
 // --- Rule match ---
 
@@ -150,9 +158,7 @@ const schemaDeclareMatches = (
   call: ts.CallExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  isDeclareCallOnSchema(call)
-    ? schemaDeclareCallMatches(context)(call)
-    : []
+  isDeclareCallOnSchema(call) ? schemaDeclareCallMatches(context)(call) : []
 
 const check = onNode(
   [ts.SyntaxKind.CallExpression],

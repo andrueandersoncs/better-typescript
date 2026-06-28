@@ -14,11 +14,16 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-constructor")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-effect-schema-constructor"
+)
 
 const untaggedMessage = "Avoid returning a raw object literal."
 
-const taggedMessage = (tag: string): string => `Avoid returning a raw "${tag}" object literal.`
+const taggedMessage = (tag: string): string =>
+  `Avoid returning a raw "${tag}" object literal.`
 
 const untaggedHint =
   "Define an Effect Schema for this data \u2014 class TheData extends " +

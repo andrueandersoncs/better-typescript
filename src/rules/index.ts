@@ -86,7 +86,7 @@ export const rules: ReadonlyArray<Rule> = [
   noFirstPartySchemaDeclare,
   noDataTaggedClass,
   noInstanceof,
-  preferHashSet,
+  preferHashSet
 ]
 
 export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"

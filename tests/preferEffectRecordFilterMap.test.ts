@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-record-filter-map")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "prefer-effect-record-filter-map"
+)
 const expectedMessage = "Avoid conditional object spreads."
 const expectedHint =
   "Build a record of candidate properties and use Record.filterMap from Effect " +
@@ -25,7 +29,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "truthy value adds field",
     ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
-    line: 10,
+    line: 12,
     column: 3,
     message: expectedMessage,
     hint: expectedHint
@@ -34,7 +38,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "empty object in true branch",
     ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
-    line: 14,
+    line: 18,
     column: 3,
     message: expectedMessage,
     hint: expectedHint
@@ -43,7 +47,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "parenthesized conditional",
     ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
-    line: 18,
+    line: 26,
     column: 3,
     message: expectedMessage,
     hint: expectedHint
@@ -52,7 +56,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "multi-property branch",
     ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
-    line: 22,
+    line: 32,
     column: 3,
     message: expectedMessage,
     hint: expectedHint
@@ -88,7 +92,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) => runRules(project, [preferEffectRecordFilterMap]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [preferEffectRecordFilterMap])
+  )
 }
 
 test("prefer-effect-record-filter-map reports disallowed and permits allowed fixture items", async () => {

@@ -39,7 +39,9 @@ const findAsyncModifier = (
   return Option.fromNullable(modifier)
 }
 
-const asyncModifier = (node: AsyncCapableFunction): Option.Option<ts.ModifierLike> => {
+const asyncModifier = (
+  node: AsyncCapableFunction
+): Option.Option<ts.ModifierLike> => {
   const modifiers = ts.getModifiers(node)
 
   return Option.fromNullable(modifiers).pipe(Option.flatMap(findAsyncModifier))
@@ -48,20 +50,29 @@ const asyncModifier = (node: AsyncCapableFunction): Option.Option<ts.ModifierLik
 const asyncFunctionMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context, {ruleId,
-    node: keyword,
-    message: "Avoid declaring functions as async.",
-    hint:
-      "Model asynchronous work with Effect instead of async/await." +
-      " To itegrate with a third-party library that uses async functions, wrap any async functions with Effect.tryPromise."})
+    createRuleMatch(context, {
+      ruleId,
+      node: keyword,
+      message: "Avoid declaring functions as async.",
+      hint:
+        "Model asynchronous work with Effect instead of async/await." +
+        " To itegrate with a third-party library that uses async functions, wrap any async functions with Effect.tryPromise."
+    })
 
 const asyncFunctionMatches = (
   node: AsyncCapableFunction,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  asyncModifier(node).pipe(Option.map(asyncFunctionMatch(context)), Option.toArray)
+  asyncModifier(node).pipe(
+    Option.map(asyncFunctionMatch(context)),
+    Option.toArray
+  )
 
-const check = onNode(asyncCapableFunctionKinds, isAsyncCapableFunction, asyncFunctionMatches)
+const check = onNode(
+  asyncCapableFunctionKinds,
+  isAsyncCapableFunction,
+  asyncFunctionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",
@@ -86,7 +97,8 @@ const example = new RuleExample({
 
 export const noAsyncFunctions = new Rule({
   id: ruleId,
-  description: "Disallow async functions in favor of Effect-returning functions.",
+  description:
+    "Disallow async functions in favor of Effect-returning functions.",
   example,
   check
 })

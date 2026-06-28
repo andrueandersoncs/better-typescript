@@ -4,9 +4,15 @@ import { Effect } from "effect"
 // React's `useEffect`, whose EffectCallback is `() => void | (() => void)`.
 type Destructor = () => void
 type EffectCallback = () => void | Destructor
-declare const useEffect: (effect: EffectCallback, deps: ReadonlyArray<unknown>) => void
+declare const useEffect: (
+  effect: EffectCallback,
+  deps: ReadonlyArray<unknown>
+) => void
 
-declare const forEachItem: (items: ReadonlyArray<number>, run: (item: number) => void) => void
+declare const forEachItem: (
+  items: ReadonlyArray<number>,
+  run: (item: number) => void
+) => void
 
 export const increment = (n: number): number => n + 1
 
@@ -38,7 +44,9 @@ export class Box {
 
 // The inner callback's void return is imposed by `useEffect`'s EffectCallback contract,
 // not chosen by the author — there is no Effect-returning alternative React would accept.
-export const registerInitialRefresh = (refresh: Effect.Effect<void>): number => {
+export const registerInitialRefresh = (
+  refresh: Effect.Effect<void>
+): number => {
   useEffect(() => {
     Effect.runFork(refresh)
   }, [refresh])

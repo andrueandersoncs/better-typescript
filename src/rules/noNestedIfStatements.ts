@@ -68,16 +68,22 @@ const nestedIfMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isNestedIfStatement(ifStatement)
     ? [
-        createRuleMatch(context, {ruleId,
-        node: ifStatement,
-        message: "Avoid nesting if statements.",
-        hint:
-          "Combine related conditions with boolean operators, or use an early return so this " +
-          "condition can remain a single-level if statement."})
+        createRuleMatch(context, {
+          ruleId,
+          node: ifStatement,
+          message: "Avoid nesting if statements.",
+          hint:
+            "Combine related conditions with boolean operators, or use an early return so this " +
+            "condition can remain a single-level if statement."
+        })
       ]
     : []
 
-const check = onNode([ts.SyntaxKind.IfStatement], ts.isIfStatement, nestedIfMatches)
+const check = onNode(
+  [ts.SyntaxKind.IfStatement],
+  ts.isIfStatement,
+  nestedIfMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",
@@ -105,7 +111,8 @@ const example = new RuleExample({
 
 export const noNestedIfStatements = new Rule({
   id: ruleId,
-  description: "Disallow nested if statements in favor of boolean operators or early returns.",
+  description:
+    "Disallow nested if statements in favor of boolean operators or early returns.",
   example,
   check
 })

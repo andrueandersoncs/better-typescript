@@ -9,10 +9,13 @@ const ruleId = "prefer-hash-set"
 
 // --- new Set(...) detection ---
 
-const isSetIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Set"
+const isSetIdentifier = (identifier: ts.Identifier): boolean =>
+  identifier.text === "Set"
 
 const isSetConstruction = (newExpression: ts.NewExpression): boolean => {
-  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(newExpression.expression)
+  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
+    newExpression.expression
+  )
 
   return Option.exists(constructorIdentifier, isSetIdentifier)
 }
@@ -43,7 +46,8 @@ const newSetMatches = (
 const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
 
 const isSetTypeName = (typeRef: ts.TypeReferenceNode): boolean =>
-  ts.isIdentifier(typeRef.typeName) && setTypeNames.includes(typeRef.typeName.text)
+  ts.isIdentifier(typeRef.typeName) &&
+  setTypeNames.includes(typeRef.typeName.text)
 
 const isSetTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
   ts.isTypeReferenceNode(node) && isSetTypeName(node)
@@ -51,7 +55,8 @@ const isSetTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
 const typeReferenceName = (typeRef: ts.TypeReferenceNode): string =>
   (typeRef.typeName as ts.Identifier).text
 
-const typeRefMessage = (name: string): string => `Avoid the built-in ${name} type.`
+const typeRefMessage = (name: string): string =>
+  `Avoid the built-in ${name} type.`
 
 const typeRefHint =
   "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +

@@ -14,8 +14,13 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-inline-boolean-expressions")
-const expectedMessage = "Avoid boolean operators inline in an if statement condition."
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-inline-boolean-expressions"
+)
+const expectedMessage =
+  "Avoid boolean operators inline in an if statement condition."
 const expectedHint =
   "Extract the expression into a well-named const variable declaration above the if " +
   "statement and use that variable in the if condition."
@@ -44,7 +49,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     ruleId: "no-inline-boolean-expressions",
     fileName: "src/cases.ts",
     line: 20,
-    column: 8,
+    column: 7,
     message: expectedMessage,
     hint: expectedHint
   }
@@ -71,10 +76,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoInlineBooleanExpressionsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoInlineBooleanExpressionsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noInlineBooleanExpressions]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noInlineBooleanExpressions])
+  )
 }
 
 test("no-inline-boolean-expressions reports disallowed and permits allowed fixture items", async () => {

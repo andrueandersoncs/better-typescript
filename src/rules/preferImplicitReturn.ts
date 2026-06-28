@@ -17,7 +17,8 @@ const hasSingleValueReturnStatement = (
   if (ts.isBlock(arrowFunction.body)) {
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
-    const hasSingleReturn = hasOneStatement && isValueReturnStatement(firstStatement)
+    const hasSingleReturn =
+      hasOneStatement && isValueReturnStatement(firstStatement)
 
     return hasSingleReturn
   }
@@ -25,8 +26,9 @@ const hasSingleValueReturnStatement = (
   return false
 }
 
-const returnedExpression = (statement: ts.ReturnStatement): Option.Option<ts.Expression> =>
-  Option.fromNullable(statement.expression)
+const returnedExpression = (
+  statement: ts.ReturnStatement
+): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
 const isValueReturnStatement = (statement: ts.Statement): boolean =>
   Option.liftPredicate(ts.isReturnStatement)(statement).pipe(
@@ -40,16 +42,23 @@ const implicitReturnMatches = (
 ): ReadonlyArray<RuleMatch> =>
   hasSingleValueReturnStatement(arrowFunction)
     ? [
-        createRuleMatch(context, {ruleId,
-        node: arrowFunction.body,
-        message: "Avoid arrow function block bodies that only return a value.",
-        hint:
-          "Replace this with an implicit return by removing the return statement and function " +
-          "body braces. Wrap object literals in parentheses when needed."})
+        createRuleMatch(context, {
+          ruleId,
+          node: arrowFunction.body,
+          message:
+            "Avoid arrow function block bodies that only return a value.",
+          hint:
+            "Replace this with an implicit return by removing the return statement and function " +
+            "body braces. Wrap object literals in parentheses when needed."
+        })
       ]
     : []
 
-const check = onNode([ts.SyntaxKind.ArrowFunction], ts.isArrowFunction, implicitReturnMatches)
+const check = onNode(
+  [ts.SyntaxKind.ArrowFunction],
+  ts.isArrowFunction,
+  implicitReturnMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",
@@ -70,7 +79,8 @@ const example = new RuleExample({
 
 export const preferImplicitReturn = new Rule({
   id: ruleId,
-  description: "Prefer implicit arrow function returns over block bodies with a single return.",
+  description:
+    "Prefer implicit arrow function returns over block bodies with a single return.",
   example,
   check
 })

@@ -89,10 +89,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoAsyncFunctionsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoAsyncFunctionsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noAsyncFunctions]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noAsyncFunctions])
+  )
 }
 
 test("no-async-functions reports disallowed and permits allowed fixture items", async () => {

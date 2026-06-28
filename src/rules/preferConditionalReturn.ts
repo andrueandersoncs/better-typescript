@@ -31,11 +31,15 @@ const returnExpressionFromStatement =
   (statement: ts.Statement): Option.Option<ts.Expression> =>
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(statement)
-      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)
+      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
+        unwrappedStatement
+      )
       const expression = yield* Option.fromNullable(returnStatement.expression)
 
-      return yield* Option.liftPredicate(isSimpleReturnExpression(sourceFile))(expression)
-})
+      return yield* Option.liftPredicate(isSimpleReturnExpression(sourceFile))(
+        expression
+      )
+    })
 
 const fallbackReturnExpression = (
   sourceFile: ts.SourceFile,
@@ -43,9 +47,14 @@ const fallbackReturnExpression = (
   nextStatement: Option.Option<ts.Statement>
 ): Option.Option<ts.Expression> => {
   const elseStatement = Option.fromNullable(ifStatement.elseStatement)
-  const fallbackStatement = Option.isSome(elseStatement) ? elseStatement : nextStatement
+  const fallbackStatement = Option.isSome(elseStatement)
+    ? elseStatement
+    : nextStatement
 
-  return Option.flatMap(fallbackStatement, returnExpressionFromStatement(sourceFile))
+  return Option.flatMap(
+    fallbackStatement,
+    returnExpressionFromStatement(sourceFile)
+  )
 }
 
 const negatedPrefixUnaryExpressionOperand = (
@@ -56,7 +65,9 @@ const negatedPrefixUnaryExpressionOperand = (
   return isNegation ? Option.some(expression.operand) : Option.none()
 }
 
-const negatedConditionOperand = (expression: ts.Expression): Option.Option<ts.Expression> =>
+const negatedConditionOperand = (
+  expression: ts.Expression
+): Option.Option<ts.Expression> =>
   Option.liftPredicate(ts.isPrefixUnaryExpression)(expression).pipe(
     Option.flatMap(negatedPrefixUnaryExpressionOperand)
   )
@@ -91,7 +102,12 @@ const conditionalExpressionText = (
   const negatedCondition = negatedConditionOperand(unwrappedCondition)
 
   return Option.isSome(negatedCondition)
-    ? ternaryText(sourceFile, negatedCondition.value, fallbackExpression, thenExpression)
+    ? ternaryText(
+        sourceFile,
+        negatedCondition.value,
+        fallbackExpression,
+        thenExpression
+      )
     : ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
 }
 
@@ -99,9 +115,9 @@ const conditionalReturnMatch =
   (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
-      const thenExpression = yield* returnExpressionFromStatement(context.sourceFile)(
-        ifStatement.thenStatement
-      )
+      const thenExpression = yield* returnExpressionFromStatement(
+        context.sourceFile
+      )(ifStatement.thenStatement)
       const fallbackExpression = yield* fallbackReturnExpression(
         context.sourceFile,
         ifStatement,
@@ -114,11 +130,14 @@ const conditionalReturnMatch =
         fallbackExpression
       )
 
-      return createRuleMatch(context, {ruleId,
-      node: ifStatement,
-      message: "Avoid if statements that only choose between two return values.",
-      hint: `Return a conditional expression instead: return ${returnExpression}.`})
-})
+      return createRuleMatch(context, {
+        ruleId,
+        node: ifStatement,
+        message:
+          "Avoid if statements that only choose between two return values.",
+        hint: `Return a conditional expression instead: return ${returnExpression}.`
+      })
+    })
 
 const statementConditionalMatch =
   (context: RuleContext, block: ts.Block) =>
@@ -136,7 +155,11 @@ const conditionalReturnRuleMatches = (
 ): ReadonlyArray<RuleMatch> =>
   Array.filterMap(block.statements, statementConditionalMatch(context, block))
 
-const check = onNode([ts.SyntaxKind.Block], ts.isBlock, conditionalReturnRuleMatches)
+const check = onNode(
+  [ts.SyntaxKind.Block],
+  ts.isBlock,
+  conditionalReturnRuleMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/parity.ts",

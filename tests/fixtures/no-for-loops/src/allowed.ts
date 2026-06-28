@@ -7,7 +7,7 @@ function loopsWithoutIteratorsAreAllowed(isReady: () => boolean): void {
     }
   }
 
-  for (; isReady(); ) {
+  for (; isReady();) {
     return
   }
 }

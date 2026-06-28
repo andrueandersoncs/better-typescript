@@ -7,7 +7,9 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-loops"
 
-const hasIteratorAndStopCondition = (forStatement: ts.ForStatement): boolean => {
+const hasIteratorAndStopCondition = (
+  forStatement: ts.ForStatement
+): boolean => {
   const condition = Option.fromNullable(forStatement.condition)
   const initializer = Option.fromNullable(forStatement.initializer)
   const incrementor = Option.fromNullable(forStatement.incrementor)
@@ -25,16 +27,22 @@ const forMatches = (
 ): ReadonlyArray<RuleMatch> =>
   hasIteratorAndStopCondition(forStatement)
     ? [
-        createRuleMatch(context, {ruleId,
-        node: forStatement,
-        message: "Avoid imperative logic in iterator-based for loops.",
-        hint:
-          "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-          "Array.filter(), or Array.flatMap(), instead."})
+        createRuleMatch(context, {
+          ruleId,
+          node: forStatement,
+          message: "Avoid imperative logic in iterator-based for loops.",
+          hint:
+            "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+            "Array.filter(), or Array.flatMap(), instead."
+        })
       ]
     : []
 
-const check = onNode([ts.SyntaxKind.ForStatement], ts.isForStatement, forMatches)
+const check = onNode(
+  [ts.SyntaxKind.ForStatement],
+  ts.isForStatement,
+  forMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/transform.ts",
@@ -56,7 +64,8 @@ const example = new RuleExample({
 
 export const noForLoops = new Rule({
   id: ruleId,
-  description: "Disallow iterator-based for loops in favor of Effect collection operations.",
+  description:
+    "Disallow iterator-based for loops in favor of Effect collection operations.",
   example,
   check
 })

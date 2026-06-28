@@ -18,13 +18,18 @@ export class RuleMatch extends Schema.Class<RuleMatch>("RuleMatch")({
   hint: Schema.String
 }) {}
 
-export type NodeHandler = (node: ts.Node, context: RuleContext) => ReadonlyArray<RuleMatch>
+export type NodeHandler = (
+  node: ts.Node,
+  context: RuleContext
+) => ReadonlyArray<RuleMatch>
 
 export type FileHandler = (context: RuleContext) => ReadonlyArray<RuleMatch>
 
-const isNodeHandler = (input: unknown): input is NodeHandler => Predicate.isFunction(input)
+const isNodeHandler = (input: unknown): input is NodeHandler =>
+  Predicate.isFunction(input)
 
-const isFileHandler = (input: unknown): input is FileHandler => Predicate.isFunction(input)
+const isFileHandler = (input: unknown): input is FileHandler =>
+  Predicate.isFunction(input)
 
 const NodeHandlerSchema = Schema.declare(isNodeHandler).annotations({
   identifier: "NodeHandler"
@@ -53,7 +58,9 @@ export type RuleCheck = ReadonlyArray<RuleListener>
 const ruleListenerSchema = Schema.Union(NodeListener, FileListener)
 const ruleCheckSchema = Schema.Array(ruleListenerSchema)
 
-export class ExampleSnippet extends Schema.Class<ExampleSnippet>("ExampleSnippet")({
+export class ExampleSnippet extends Schema.Class<ExampleSnippet>(
+  "ExampleSnippet"
+)({
   filePath: Schema.String,
   code: Schema.String
 }) {}

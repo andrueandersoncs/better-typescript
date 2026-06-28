@@ -42,7 +42,8 @@ const signatureReturnsVoid =
 const returnsVoid =
   (context: RuleContext) =>
   (declaration: VoidableFunction): boolean => {
-    const declaredSignature = context.checker.getSignatureFromDeclaration(declaration)
+    const declaredSignature =
+      context.checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
 
     return Option.exists(signature, signatureReturnsVoid(context))
@@ -68,27 +69,33 @@ const isContextuallyVoidCallback =
     const contextualTypeNode = context.checker.getContextualType(initializer)
     const contextualType = Option.fromNullable(contextualTypeNode)
 
-    return Option.exists(contextualType, contextualSignaturePermitsVoid(context))
+    return Option.exists(
+      contextualType,
+      contextualSignaturePermitsVoid(context)
+    )
   }
 
 const isContextuallyImposedVoid = (
   declaration: VoidableFunction,
   context: RuleContext
 ): boolean =>
-  isFunctionInitializer(declaration) && isContextuallyVoidCallback(context)(declaration)
+  isFunctionInitializer(declaration) &&
+  isContextuallyVoidCallback(context)(declaration)
 
 const voidFunctionMatch =
   (context: RuleContext) =>
   (declaration: VoidableFunction): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context, {ruleId,
-    node,
-    message: "Avoid functions that return void.",
-    hint:
-      "A void function either does nothing or performs a side-effect. If it does nothing, " +
-      "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
-      "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not run."})
+    return createRuleMatch(context, {
+      ruleId,
+      node,
+      message: "Avoid functions that return void.",
+      hint:
+        "A void function either does nothing or performs a side-effect. If it does nothing, " +
+        "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
+        "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not run."
+    })
   }
 
 const voidFunctionMatches = (
@@ -102,7 +109,11 @@ const voidFunctionMatches = (
         Option.toArray
       )
 
-const check = onNode(voidableFunctionKinds, isVoidableFunction, voidFunctionMatches)
+const check = onNode(
+  voidableFunctionKinds,
+  isVoidableFunction,
+  voidFunctionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/log.ts",
@@ -124,7 +135,8 @@ const example = new RuleExample({
 
 export const noVoidFunctions = new Rule({
   id: ruleId,
-  description: "Disallow functions that return void in favor of Effect-returning functions.",
+  description:
+    "Disallow functions that return void in favor of Effect-returning functions.",
   example,
   check
 })

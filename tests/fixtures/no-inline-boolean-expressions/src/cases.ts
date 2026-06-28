@@ -17,7 +17,7 @@ function allowsEither(isReady: boolean, hasOverride: boolean): string {
 }
 
 function unwrapsParenthesized(isReady: boolean, hasAccess: boolean): string {
-  if ((isReady && hasAccess)) {
+  if (isReady && hasAccess) {
     return "allowed"
   }
 

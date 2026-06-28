@@ -43,7 +43,9 @@ const setFailureExitCode = (): number => {
   return process.exitCode
 }
 
-const analyzeProject = Effect.fn("analyzeProject")(function* (options: AnalyzeOptions) {
+const analyzeProject = Effect.fn("analyzeProject")(function* (
+  options: AnalyzeOptions
+) {
   const workspace = yield* loadProject(options.project)
   const projectMatches = workspace.projects.flatMap(checkProject)
   const matches = dedupeMatches(projectMatches)
@@ -57,16 +59,23 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (options: AnalyzeOp
   return formatMatchesPage(page)
 })
 
-const dedupeMatches = (matches: ReadonlyArray<RuleMatch>): ReadonlyArray<RuleMatch> => {
+const dedupeMatches = (
+  matches: ReadonlyArray<RuleMatch>
+): ReadonlyArray<RuleMatch> => {
   const entries = matches.map(matchEntry)
 
   return [...new Map(entries).values()]
 }
 
-const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [matchKey(match), match]
+const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [
+  matchKey(match),
+  match
+]
 
 const matchKey = (match: RuleMatch): string =>
-  [match.ruleId, match.fileName, match.line, match.column, match.message].join(":")
+  [match.ruleId, match.fileName, match.line, match.column, match.message].join(
+    ":"
+  )
 
 const reportError = Effect.fn("reportError")(function* (error: Error) {
   yield* Console.error(`Error: ${error.message}`)

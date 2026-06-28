@@ -2,7 +2,6 @@ import { Option } from "effect"
 import type { User } from "./modules/user.js"
 import type { Organization } from "./modules/organization.js"
 
-
 type UserName = string
 
 type Handler = (user: User) => void
@@ -22,12 +21,17 @@ function archiveUser(reason: string, user: User): User {
 
 const saveUser = makeFunction((timestamp: Date, user: User): User => user)
 
-const renameUser = (name: string) => (user: User): User => ({
-  ...user,
-  name
-})
+const renameUser =
+  (name: string) =>
+  (user: User): User => ({
+    ...user,
+    name
+  })
 
-const updateOrganization = (id: string, organization: Organization): Organization => ({
+const updateOrganization = (
+  id: string,
+  organization: Organization
+): Organization => ({
   ...organization,
   id
 })
@@ -36,7 +40,8 @@ const parseAge = (user: User, value: string): number => Number(value)
 
 const countUsers = (users: ReadonlyArray<User>): number => users.length
 
-const inspectOption = (maybeUser: Option.Option<User>): Option.Option<User> => maybeUser
+const inspectOption = (maybeUser: Option.Option<User>): Option.Option<User> =>
+  maybeUser
 
 const normalizeUserName = (name: UserName): string => name
 

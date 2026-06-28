@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-nested-if-statements")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-nested-if-statements"
+)
 const expectedMessage = "Avoid nesting if statements."
 const expectedHint =
   "Combine related conditions with boolean operators, or use an early return so this " +
@@ -34,8 +38,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "bracelessThenNesting inner if",
     ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
-    line: 12,
-    column: 5,
+    line: 11,
+    column: 10,
     message: expectedMessage,
     hint: expectedHint
   },
@@ -43,7 +47,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "tripleThenNest first inner if (b)",
     ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
-    line: 19,
+    line: 17,
     column: 5,
     message: expectedMessage,
     hint: expectedHint
@@ -52,7 +56,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "tripleThenNest deepest inner if (c)",
     ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
-    line: 20,
+    line: 18,
     column: 7,
     message: expectedMessage,
     hint: expectedHint
@@ -86,10 +90,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoNestedIfStatementsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoNestedIfStatementsFixture = async (): Promise<
+  ReadonlyArray<RuleMatch>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noNestedIfStatements]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noNestedIfStatements])
+  )
 }
 
 test("no-nested-if-statements reports disallowed and permits allowed fixture items", async () => {

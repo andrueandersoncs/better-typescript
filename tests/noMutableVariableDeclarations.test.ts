@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-mutable-variable-declarations")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "no-mutable-variable-declarations"
+)
 
 const expectedHint =
   "Declare multiple const values to represent each state instead of mutating a single " +
@@ -52,7 +56,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "let uninitialized with type annotation",
     ruleId: "no-mutable-variable-declarations",
     fileName: "src/cases.ts",
-    line: 9,
+    line: 10,
     column: 1,
     message: "Avoid declaring mutable variables with let.",
     hint: expectedHint
@@ -61,7 +65,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "let in for-loop initializer",
     ruleId: "no-mutable-variable-declarations",
     fileName: "src/cases.ts",
-    line: 11,
+    line: 12,
     column: 6,
     message: "Avoid declaring mutable variables with let.",
     hint: expectedHint
@@ -110,7 +114,9 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noMutableVariableDeclarations]))
+  return workspace.projects.flatMap((project) =>
+    runRules(project, [noMutableVariableDeclarations])
+  )
 }
 
 test("no-mutable-variable-declarations reports disallowed and permits allowed fixture items", async () => {

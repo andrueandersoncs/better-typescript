@@ -21,7 +21,9 @@ class ScannedToken extends Schema.Class<ScannedToken>("ScannedToken")({
 }) {}
 
 // Array.unfold drives the stateful scanner with a bounded internal loop; recursion overflows large files.
-const scanNextToken = (scanner: ts.Scanner): Option.Option<readonly [ScannedToken, ts.Scanner]> => {
+const scanNextToken = (
+  scanner: ts.Scanner
+): Option.Option<readonly [ScannedToken, ts.Scanner]> => {
   const kind = scanner.scan()
 
   if (kind === ts.SyntaxKind.EndOfFileToken) {
@@ -75,8 +77,11 @@ const tokenPos = Struct.get("pos")
 const lineOf = (sourceFile: ts.SourceFile, pos: number): number =>
   sourceFile.getLineAndCharacterOfPosition(pos).line
 
-const isAdjacentLine = (sourceFile: ts.SourceFile, a: ScannedToken, b: ScannedToken): boolean =>
-  lineOf(sourceFile, b.pos) - lineOf(sourceFile, a.pos) === 1
+const isAdjacentLine = (
+  sourceFile: ts.SourceFile,
+  a: ScannedToken,
+  b: ScannedToken
+): boolean => lineOf(sourceFile, b.pos) - lineOf(sourceFile, a.pos) === 1
 
 const prevBreaksRun = (
   sourceFile: ts.SourceFile,
@@ -105,7 +110,8 @@ const runStartPosition =
   (sourceFile: ts.SourceFile, singles: ReadonlyArray<ScannedToken>) =>
   (current: ScannedToken, index: number): Option.Option<number> => {
     const hasNextAdjacent =
-      index < singles.length - 1 && isAdjacentLine(sourceFile, current, singles[index + 1])
+      index < singles.length - 1 &&
+      isAdjacentLine(sourceFile, current, singles[index + 1])
     const shouldFlag = isRunStart(sourceFile, singles, index) && hasNextAdjacent
 
     return shouldFlag ? Option.some(current.pos) : Option.none()
@@ -115,7 +121,8 @@ const runStartPosition =
 const collectAdjacentRunStarts = (
   sourceFile: ts.SourceFile,
   singles: ReadonlyArray<ScannedToken>
-): ReadonlyArray<number> => Arr.filterMap(singles, runStartPosition(sourceFile, singles))
+): ReadonlyArray<number> =>
+  Arr.filterMap(singles, runStartPosition(sourceFile, singles))
 
 const multiLinePositions = (
   tokens: ReadonlyArray<ScannedToken>,
@@ -124,7 +131,10 @@ const multiLinePositions = (
 ): ReadonlyArray<number> => {
   const blockPositions = tokens.filter(isMultiLineBlock(text)).map(tokenPos)
   const singleLineTokens = tokens.filter(isSingleLineComment)
-  const adjacentRunPositions = collectAdjacentRunStarts(sourceFile, singleLineTokens)
+  const adjacentRunPositions = collectAdjacentRunStarts(
+    sourceFile,
+    singleLineTokens
+  )
 
   return blockPositions.concat(adjacentRunPositions)
 }
@@ -141,13 +151,15 @@ const positionToMatch =
       column: location.character + 1,
       message,
       hint
-})
+    })
   }
 
 const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
-  const fileName = path.relative(context.projectRoot, sourceFile.fileName) || sourceFile.fileName
+  const fileName =
+    path.relative(context.projectRoot, sourceFile.fileName) ||
+    sourceFile.fileName
   const tokens = scanTokens(text)
   const positions = multiLinePositions(tokens, sourceFile, text)
 

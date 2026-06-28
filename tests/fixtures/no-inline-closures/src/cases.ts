@@ -11,7 +11,9 @@ const o = { run: (x: number) => x }
 const fns = [(x: number) => x]
 
 // Returned from a function via return
-function make(): (n: number) => number { return (n: number) => n }
+function make(): (n: number) => number {
+  return (n: number) => n
+}
 
 // Conditional branch (both branches are unsanctioned arrows)
 declare const cond: boolean

@@ -12,7 +12,10 @@ export class MatchSource extends Schema.Class<MatchSource>("MatchSource")({
   hint: Schema.String
 }) {}
 
-type MatchSourceFields = Pick<MatchSource, "ruleId" | "node" | "message" | "hint">
+type MatchSourceFields = Pick<
+  MatchSource,
+  "ruleId" | "node" | "message" | "hint"
+>
 
 export const createRuleMatch = (
   context: RuleContext,
@@ -33,8 +36,10 @@ export const createRuleMatch = (
   })
 }
 
-export const toRelativeFileName = (projectRoot: string) => (fileName: string): string => {
-  const relative = path.relative(projectRoot, fileName)
+export const toRelativeFileName =
+  (projectRoot: string) =>
+  (fileName: string): string => {
+    const relative = path.relative(projectRoot, fileName)
 
-  return relative || fileName
-}
+    return relative || fileName
+  }
