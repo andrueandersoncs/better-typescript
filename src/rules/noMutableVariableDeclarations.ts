@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -31,7 +31,7 @@ const mutableVariableDeclarationKind = (
 ): Option.Option<MutableVariableDeclarationKind> => {
   const firstToken = declarationList.getFirstToken(sourceFile)
 
-  return Option.fromNullable(firstToken).pipe(Option.flatMap(tokenMutableKind))
+  return pipe(Option.fromNullable(firstToken), Option.flatMap(tokenMutableKind))
 }
 
 const mutableDeclarationRuleMatch =
@@ -50,7 +50,8 @@ const mutableDeclarationMatches = (
   declarationList: ts.VariableDeclarationList,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  mutableVariableDeclarationKind(context.sourceFile, declarationList).pipe(
+  pipe(
+    mutableVariableDeclarationKind(context.sourceFile, declarationList),
     Option.map(mutableDeclarationRuleMatch(context, declarationList)),
     Option.toArray
   )

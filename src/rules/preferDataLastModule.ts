@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Function, Option } from "effect"
+import { Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -102,14 +102,16 @@ const typeFromTypeNode =
     checker.getTypeFromTypeNode(node)
 
 const typeAtLocation =
-  (checker: ts.TypeChecker, parameter: ts.ParameterDeclaration) => (): ts.Type =>
+  (checker: ts.TypeChecker, parameter: ts.ParameterDeclaration) =>
+  (): ts.Type =>
     checker.getTypeAtLocation(parameter)
 
 const parameterType = (
   context: RuleContext,
   parameter: ts.ParameterDeclaration
 ): ts.Type =>
-  Option.fromNullable(parameter.type).pipe(
+  pipe(
+    Option.fromNullable(parameter.type),
     Option.map(typeFromTypeNode(context.checker)),
     Option.getOrElse(typeAtLocation(context.checker, parameter))
   )
@@ -200,7 +202,7 @@ const parameterDataStructure = (
   const type = parameterType(context, parameter)
   const symbol = dataStructureSymbol(type)
 
-  return symbol.pipe(Option.flatMap(dataStructureForSymbol(context, type)))
+  return pipe(symbol, Option.flatMap(dataStructureForSymbol(context, type)))
 }
 
 const parameterDataStructureCurried =
@@ -217,7 +219,8 @@ const lastParameterDataStructure = (
   context: RuleContext,
   node: CheckedFunction
 ): Option.Option<DataStructureModule> =>
-  lastParameter(node).pipe(
+  pipe(
+    lastParameter(node),
     Option.flatMap(parameterDataStructureCurried(context))
   )
 
@@ -287,7 +290,7 @@ const callExpressionVariableDeclaration = (
   const parent = expression.parent
   const declaration = Option.liftPredicate(ts.isVariableDeclaration)(parent)
 
-  return declaration.pipe(Option.filter(isVariableInitializerFor(expression)))
+  return pipe(declaration, Option.filter(isVariableInitializerFor(expression)))
 }
 
 const definitionFromCallableDeclaration =
@@ -311,7 +314,8 @@ const variableDefinitionFromCallExpressionArgument = (
 
   const declaration = callExpressionVariableDeclaration(callExpression)
 
-  return declaration.pipe(
+  return pipe(
+    declaration,
     Option.flatMap(definitionFromCallableDeclaration(context))
   )
 }
@@ -393,7 +397,8 @@ const namedFunctionDefinition = (
   context: RuleContext,
   node: ts.FunctionDeclaration | ts.MethodDeclaration
 ) => {
-  const name = Option.fromNullable(node.name).pipe(
+  const name = pipe(
+    Option.fromNullable(node.name),
     Option.map(nameText(context.sourceFile)),
     Option.getOrElse(Function.constant("this function"))
   )
@@ -477,7 +482,8 @@ const dataLastModuleMatchForDefinition =
   (definition: FunctionDefinition): Option.Option<RuleMatch> => {
     const dataStructure = lastParameterDataStructure(context, node)
 
-    return dataStructure.pipe(
+    return pipe(
+      dataStructure,
       Option.flatMap(dataLastModuleMatchForDataStructure(context, definition))
     )
   }
@@ -486,7 +492,8 @@ const dataLastModuleMatches = (
   node: CheckedFunction,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  functionDefinition(context, node).pipe(
+  pipe(
+    functionDefinition(context, node),
     Option.flatMap(dataLastModuleMatchForDefinition(context, node)),
     Option.toArray
   )

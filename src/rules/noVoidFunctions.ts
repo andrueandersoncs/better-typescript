@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -104,7 +104,8 @@ const voidFunctionMatches = (
 ): ReadonlyArray<RuleMatch> =>
   isContextuallyImposedVoid(declaration, context)
     ? []
-    : Option.liftPredicate(returnsVoid(context))(declaration).pipe(
+    : pipe(
+        Option.liftPredicate(returnsVoid(context))(declaration),
         Option.map(voidFunctionMatch(context)),
         Option.toArray
       )

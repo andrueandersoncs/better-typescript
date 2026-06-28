@@ -1,3 +1,5 @@
+import { pipe } from "effect"
+
 export {}
 
 // Currying helper: makeAdder returns a function (callable), so the currying
@@ -31,3 +33,6 @@ const result = outer(bound)
 
 // Simple non-call argument — no nesting
 const simple = outer(42)
+
+// pipe() first-argument exemption: inner() is the data value of pipe, not nesting
+const piped = pipe(inner(), outer)

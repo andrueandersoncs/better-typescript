@@ -1,4 +1,4 @@
-import { Option, Struct } from "effect"
+import { Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -72,7 +72,8 @@ const predicateAssertedType =
   (predicate: ts.Expression): Option.Option<ts.Type> => {
     const type = checker.getTypeAtLocation(predicate)
 
-    return firstCallSignature(type).pipe(
+    return pipe(
+      firstCallSignature(type),
       Option.flatMap(signatureTypePredicate(checker)),
       Option.flatMap(typePredicateAssertedType)
     )
@@ -105,7 +106,8 @@ const symbolName: (symbol: ts.Symbol) => string = Struct.get("name")
 const fallbackTypeName = (): string => "unknown"
 
 const typeName = (type: ts.Type): string =>
-  typeSymbol(type).pipe(
+  pipe(
+    typeSymbol(type),
     Option.map(symbolName),
     Option.getOrElse(fallbackTypeName)
   )
@@ -140,7 +142,8 @@ const firstArgument = (call: ts.CallExpression): Option.Option<ts.Expression> =>
 const schemaDeclareMatchOption =
   (context: RuleContext) =>
   (call: ts.CallExpression): Option.Option<RuleMatch> =>
-    firstArgument(call).pipe(
+    pipe(
+      firstArgument(call),
       Option.flatMap(predicateAssertedType(context.checker)),
       Option.filter(isFirstPartyDataStructure),
       Option.map(schemaDeclareMatchSource(context, call))

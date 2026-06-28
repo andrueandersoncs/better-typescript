@@ -37,7 +37,8 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/status.ts",
-  code: `return Match.value(status).pipe(
+  code: `return pipe(
+  Match.value(status),
   Match.when("active", handleActive),
   Match.when("inactive", handleInactive),
   Match.exhaustive

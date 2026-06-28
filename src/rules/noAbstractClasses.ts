@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -30,7 +30,8 @@ const abstractModifier = (
 ): Option.Option<ts.ModifierLike> => {
   const modifiers = ts.getModifiers(node)
 
-  return Option.fromNullable(modifiers).pipe(
+  return pipe(
+    Option.fromNullable(modifiers),
     Option.flatMap(findAbstractModifier)
   )
 }
@@ -52,7 +53,8 @@ const abstractClassMatches = (
   node: ts.ClassDeclaration,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  abstractModifier(node).pipe(
+  pipe(
+    abstractModifier(node),
     Option.map(abstractClassMatch(context)),
     Option.toArray
   )

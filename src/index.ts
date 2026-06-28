@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, Schema, flow } from "effect"
+import { Console, Effect, Option, Schema, flow, pipe } from "effect"
 import { formatMatchesPage } from "./output/formatMatches.js"
 import { paginateMatches } from "./output/paginateMatches.js"
 import { loadProject } from "./project/loadProject.js"
@@ -12,17 +12,20 @@ import { runRules } from "./runner/runRules.js"
 
 const workingDirectory = process.cwd()
 
-const project = Options.directory("project", { exists: "yes" }).pipe(
+const project = pipe(
+  Options.directory("project", { exists: "yes" }),
   Options.withDefault(workingDirectory)
 )
 
-const limit = Options.integer("limit").pipe(
+const limit = pipe(
+  Options.integer("limit"),
   Options.withSchema(Schema.Positive),
   Options.withDescription("Maximum number of rule matches to display."),
   Options.optional
 )
 
-const offset = Options.integer("offset").pipe(
+const offset = pipe(
+  Options.integer("offset"),
   Options.withSchema(Schema.NonNegative),
   Options.withDescription("Number of rule matches to skip before displaying."),
   Options.withDefault(0)
@@ -98,4 +101,4 @@ const cli = Command.run(command, {
   version: "0.0.0"
 })
 
-cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
+pipe(cli(process.argv), Effect.provide(NodeContext.layer), NodeRuntime.runMain)

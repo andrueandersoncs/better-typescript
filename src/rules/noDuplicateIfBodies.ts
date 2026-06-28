@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -28,7 +28,8 @@ const statementBefore =
 const previousSiblingStatement = (
   statement: ts.Statement
 ): Option.Option<ts.Statement> =>
-  Option.liftPredicate(ts.isBlock)(statement.parent).pipe(
+  pipe(
+    Option.liftPredicate(ts.isBlock)(statement.parent),
     Option.flatMap(statementBefore(statement))
   )
 
@@ -117,7 +118,8 @@ const isElseOf =
 const elseIfParent = (
   ifStatement: ts.IfStatement
 ): Option.Option<ts.IfStatement> =>
-  Option.liftPredicate(ts.isIfStatement)(ifStatement.parent).pipe(
+  pipe(
+    Option.liftPredicate(ts.isIfStatement)(ifStatement.parent),
     Option.filter(isElseOf(ifStatement))
   )
 
@@ -142,7 +144,8 @@ const elseIfDuplicate = (
   context: RuleContext,
   ifStatement: ts.IfStatement
 ): Option.Option<string> =>
-  elseIfParent(ifStatement).pipe(
+  pipe(
+    elseIfParent(ifStatement),
     Option.flatMap(parentBodyDuplicate(context, ifStatement))
   )
 
@@ -175,7 +178,8 @@ const duplicateIfMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  duplicateIfBodyMatch(context, ifStatement).pipe(
+  pipe(
+    duplicateIfBodyMatch(context, ifStatement),
     Option.map(duplicateIfRuleMatch(context, ifStatement)),
     Option.toArray
   )

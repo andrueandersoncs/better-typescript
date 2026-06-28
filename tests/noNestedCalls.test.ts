@@ -139,6 +139,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 29,
     column: 16
+  },
+  {
+    name: "pipe() first-argument exemption (inner() is data value of pipe)",
+    fileName: "src/allowed.ts",
+    line: 38,
+    column: 20
   }
 ]
 

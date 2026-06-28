@@ -1,4 +1,4 @@
-import { Function, HashSet, Option, Struct } from "effect"
+import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -26,7 +26,8 @@ const tagPropertyAccess = (
 ): Option.Option<ts.PropertyAccessExpression> => {
   const unwrapped = unwrapExpression(expression)
 
-  return Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped).pipe(
+  return pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
     Option.filter(hasTagPropertyName)
   )
 }
@@ -99,7 +100,8 @@ const checkedValueText =
     access.expression.getText(sourceFile)
 
 const comparedTagText = (expression: ts.BinaryExpression): string =>
-  tagLiteralExpression(expression).pipe(
+  pipe(
+    tagLiteralExpression(expression),
     Option.map(Struct.get("text")),
     Option.getOrElse(Function.constant("$tag"))
   )
@@ -108,7 +110,8 @@ const checkedExpressionText = (
   expression: ts.BinaryExpression,
   sourceFile: ts.SourceFile
 ): string =>
-  tagAccessExpression(expression).pipe(
+  pipe(
+    tagAccessExpression(expression),
     Option.map(checkedValueText(sourceFile)),
     Option.getOrElse(Function.constant("the value"))
   )

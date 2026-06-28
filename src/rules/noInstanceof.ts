@@ -1,4 +1,4 @@
-import { Option, Struct } from "effect"
+import { Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -47,7 +47,8 @@ const instanceofMatches = (
 ): ReadonlyArray<RuleMatch> => {
   const symbol = instanceofClassSymbol(context.checker, expression)
 
-  return symbol.pipe(
+  return pipe(
+    symbol,
     Option.filter(isFirstPartySymbol),
     Option.map(instanceofRuleMatch(context, expression)),
     Option.toArray

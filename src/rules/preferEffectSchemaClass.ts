@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
@@ -14,14 +14,15 @@ type ConstructionIndex = ReadonlyMap<ts.Symbol, string>
 const interfaceConstructionCache = new WeakMap<ts.Program, ConstructionIndex>()
 
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
-  Option.liftPredicate(ts.isIdentifier)(name).pipe(
+  pipe(
+    Option.liftPredicate(ts.isIdentifier)(name),
     Option.map(Struct.get("text"))
   )
 
 const namedPropertyText = (
   property: ts.ObjectLiteralElementLike
 ): Option.Option<string> =>
-  Option.fromNullable(property.name).pipe(Option.flatMap(propertyNameText))
+  pipe(Option.fromNullable(property.name), Option.flatMap(propertyNameText))
 
 const literalPropertyNames = (
   literal: ts.ObjectLiteralExpression
@@ -72,10 +73,12 @@ const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean =>
 
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
-  const directSymbol = Option.fromNullable(symbol).pipe(
+  const directSymbol = pipe(
+    Option.fromNullable(symbol),
     Option.filter(isProjectObjectTypeSymbol)
   )
-  const aliasSymbol = Option.fromNullable(type.aliasSymbol).pipe(
+  const aliasSymbol = pipe(
+    Option.fromNullable(type.aliasSymbol),
     Option.filter(isProjectObjectTypeSymbol)
   )
   const fallbackAlias = () => aliasSymbol
@@ -158,7 +161,8 @@ const memberExtractions =
       return contextualMembers
     }
 
-    return Option.liftPredicate(isTypeReference)(declaredMember).pipe(
+    return pipe(
+      Option.liftPredicate(isTypeReference)(declaredMember),
       Option.map(
         referenceTypeArgument(checker, typeParameter, contextualMembers)
       ),
@@ -182,7 +186,8 @@ const extractedTypeArguments = (
 const signatureBoxedTypes =
   (checker: ts.TypeChecker, argumentPosition: number, contextual: ts.Type) =>
   (signature: ts.Signature): ReadonlyArray<ts.Type> =>
-    Option.fromNullable(signature.parameters[argumentPosition]).pipe(
+    pipe(
+      Option.fromNullable(signature.parameters[argumentPosition]),
       Option.map(declaredParameterType(checker)),
       Option.filter(isSignatureTypeParameter),
       Option.map(boxedExtraction(checker, signature, contextual)),
@@ -214,24 +219,27 @@ const boxedContextualTypes = (
   checker: ts.TypeChecker,
   literal: ts.ObjectLiteralExpression
 ): ReadonlyArray<ts.Type> =>
-  Option.gen(function* () {
-    const argument = outermostTransparentWrapper(literal)
-    const call = yield* Option.liftPredicate(ts.isCallExpression)(
-      argument.parent
-    )
-    const argumentIndex = call.arguments.indexOf(argument)
-    const argumentPosition =
-      yield* Option.liftPredicate(isFoundIndex)(argumentIndex)
-    const callContextualType = checker.getContextualType(call)
-    const contextual = yield* Option.fromNullable(callContextualType)
-    const signatures = checker
-      .getTypeAtLocation(call.expression)
-      .getCallSignatures()
+  pipe(
+    Option.gen(function* () {
+      const argument = outermostTransparentWrapper(literal)
+      const call = yield* Option.liftPredicate(ts.isCallExpression)(
+        argument.parent
+      )
+      const argumentIndex = call.arguments.indexOf(argument)
+      const argumentPosition =
+        yield* Option.liftPredicate(isFoundIndex)(argumentIndex)
+      const callContextualType = checker.getContextualType(call)
+      const contextual = yield* Option.fromNullable(callContextualType)
+      const signatures = checker
+        .getTypeAtLocation(call.expression)
+        .getCallSignatures()
 
-    return signatures.flatMap(
-      signatureBoxedTypes(checker, argumentPosition, contextual)
-    )
-  }).pipe(Option.getOrElse(Function.constant([])))
+      return signatures.flatMap(
+        signatureBoxedTypes(checker, argumentPosition, contextual)
+      )
+    }),
+    Option.getOrElse(Function.constant([]))
+  )
 
 const isFoundIndex = (index: number): boolean => index >= 0
 
@@ -315,7 +323,8 @@ const interfaceConstructionIndex = (
 ): ConstructionIndex => {
   const cached = interfaceConstructionCache.get(context.program)
 
-  return Option.fromNullable(cached).pipe(
+  return pipe(
+    Option.fromNullable(cached),
     Option.getOrElse(orBuildInterfaceConstructionIndex(context))
   )
 }
@@ -365,7 +374,8 @@ const objectTypeDeclarationMatches = (
     declaration.name
   )
 
-  return Option.fromNullable(declarationSymbol).pipe(
+  return pipe(
+    Option.fromNullable(declarationSymbol),
     Option.flatMap(constructionFile(context)),
     Option.map(schemaClassRuleMatch(context, declaration)),
     Option.toArray

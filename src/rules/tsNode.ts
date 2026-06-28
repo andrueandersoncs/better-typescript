@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
@@ -16,7 +16,7 @@ export type ReturnTypeDeclaration =
 const fallbackToNode = (node: ts.Node) => (): ts.Node => node
 
 export const namedNodeReportTarget = (node: ts.NamedDeclaration): ts.Node =>
-  Option.fromNullable(node.name).pipe(Option.getOrElse(fallbackToNode(node)))
+  pipe(Option.fromNullable(node.name), Option.getOrElse(fallbackToNode(node)))
 
 export const isFunctionInitializer = (
   node: ts.Node
@@ -40,7 +40,8 @@ export const isReturnTypeDeclaration = (
 export const functionInitializer = (
   declaration: ts.VariableDeclaration
 ): Option.Option<FunctionInitializer> =>
-  Option.fromNullable(declaration.initializer).pipe(
+  pipe(
+    Option.fromNullable(declaration.initializer),
     Option.filter(isFunctionInitializer)
   )
 

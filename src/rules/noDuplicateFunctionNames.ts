@@ -1,4 +1,4 @@
-import { Array, Option } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
@@ -33,7 +33,8 @@ const variableStatementFunctions = (
 const functionDeclarationFunctions = (
   statement: ts.Statement
 ): ReadonlyArray<ts.Identifier> =>
-  Option.liftPredicate(ts.isFunctionDeclaration)(statement).pipe(
+  pipe(
+    Option.liftPredicate(ts.isFunctionDeclaration)(statement),
     Option.flatMap(namedFunctionDeclaration),
     Option.toArray
   )
@@ -93,7 +94,8 @@ const orBuildFunctionNameIndex =
 const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
   const cached = functionNameIndexCache.get(program)
 
-  return Option.fromNullable(cached).pipe(
+  return pipe(
+    Option.fromNullable(cached),
     Option.getOrElse(orBuildFunctionNameIndex(program))
   )
 }

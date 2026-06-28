@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -76,7 +76,8 @@ const effectFnMatches = (
   declaration: ts.VariableDeclaration,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  functionInitializer(declaration).pipe(
+  pipe(
+    functionInitializer(declaration),
     Option.filter(hasParameters),
     Option.filter(returnsEffect(context)),
     Option.as(declaration),

@@ -1,4 +1,4 @@
-import { Function, Match, Option } from "effect"
+import { Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -13,7 +13,8 @@ const booleanLiteralValue = (
 ): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
-  return Match.value(unwrapped.kind).pipe(
+  return pipe(
+    Match.value(unwrapped.kind),
     Match.when(ts.SyntaxKind.TrueKeyword, Function.constTrue),
     Match.when(ts.SyntaxKind.FalseKeyword, Function.constFalse),
     Match.option
@@ -54,7 +55,8 @@ const directBooleanMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  booleanReturnFromStatement(ifStatement.thenStatement).pipe(
+  pipe(
+    booleanReturnFromStatement(ifStatement.thenStatement),
     Option.map(directBooleanRuleMatch(context, ifStatement)),
     Option.toArray
   )

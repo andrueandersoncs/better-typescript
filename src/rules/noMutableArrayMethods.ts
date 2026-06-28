@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -162,7 +162,8 @@ const mutableArrayMatches = (
   callExpression: ts.CallExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  mutableArrayMethodCall(context, callExpression).pipe(
+  pipe(
+    mutableArrayMethodCall(context, callExpression),
     Option.map(mutableArrayRuleMatch(context, callExpression)),
     Option.toArray
   )

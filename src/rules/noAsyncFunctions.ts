@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -44,7 +44,7 @@ const asyncModifier = (
 ): Option.Option<ts.ModifierLike> => {
   const modifiers = ts.getModifiers(node)
 
-  return Option.fromNullable(modifiers).pipe(Option.flatMap(findAsyncModifier))
+  return pipe(Option.fromNullable(modifiers), Option.flatMap(findAsyncModifier))
 }
 
 const asyncFunctionMatch =
@@ -63,7 +63,8 @@ const asyncFunctionMatches = (
   node: AsyncCapableFunction,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  asyncModifier(node).pipe(
+  pipe(
+    asyncModifier(node),
     Option.map(asyncFunctionMatch(context)),
     Option.toArray
   )

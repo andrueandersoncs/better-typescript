@@ -1,4 +1,4 @@
-import { Function, Option, Struct } from "effect"
+import { Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -50,7 +50,7 @@ const singleReturnExpression = (
   const statement = firstStatement(body)
 
   return hasOneStatement(body)
-    ? statement.pipe(Option.flatMap(returnExpression))
+    ? pipe(statement, Option.flatMap(returnExpression))
     : Option.none()
 }
 
@@ -64,14 +64,16 @@ const conciseArrowBody = (
 const propertyAccessorImplicitReturnExpression = (
   node: PropertyAccessorFunction
 ): Option.Option<ts.Expression> =>
-  Option.liftPredicate(ts.isArrowFunction)(node).pipe(
+  pipe(
+    Option.liftPredicate(ts.isArrowFunction)(node),
     Option.flatMap(conciseArrowBody)
   )
 
 const blockReturnExpression = (
   node: PropertyAccessorFunction
 ): Option.Option<ts.Expression> =>
-  Option.fromNullable(node.body).pipe(
+  pipe(
+    Option.fromNullable(node.body),
     Option.filter(ts.isBlock),
     Option.flatMap(singleReturnExpression)
   )
@@ -96,7 +98,8 @@ const directPropertyAccessExpression = (
 const identifierBindingNameText = (
   name: ts.BindingName
 ): Option.Option<string> =>
-  Option.liftPredicate(ts.isIdentifier)(name).pipe(
+  pipe(
+    Option.liftPredicate(ts.isIdentifier)(name),
     Option.map(Struct.get("text"))
   )
 
@@ -113,7 +116,7 @@ const soleIdentifierParameterName = (
   const parameter = Option.fromNullable(node.parameters[0])
 
   return hasSingleParameter(node)
-    ? parameter.pipe(Option.flatMap(identifierParameterName))
+    ? pipe(parameter, Option.flatMap(identifierParameterName))
     : Option.none()
 }
 
@@ -130,14 +133,16 @@ const propertyAccessBaseIdentifier = (
 const accessesParameterProperty =
   (parameterName: string) =>
   (access: ts.PropertyAccessExpression): boolean =>
-    propertyAccessBaseIdentifier(access).pipe(
+    pipe(
+      propertyAccessBaseIdentifier(access),
       Option.exists(hasIdentifierText(parameterName))
     )
 
 const parameterPropertyAccess =
   (node: PropertyAccessorFunction) =>
   (parameterName: string): Option.Option<ts.PropertyAccessExpression> =>
-    implementedExpression(node).pipe(
+    pipe(
+      implementedExpression(node),
       Option.flatMap(directPropertyAccessExpression),
       Option.filter(accessesParameterProperty(parameterName))
     )
@@ -145,7 +150,8 @@ const parameterPropertyAccess =
 const propertyAccessorExpression = (
   node: PropertyAccessorFunction
 ): Option.Option<ts.PropertyAccessExpression> =>
-  soleIdentifierParameterName(node).pipe(
+  pipe(
+    soleIdentifierParameterName(node),
     Option.flatMap(parameterPropertyAccess(node))
   )
 
@@ -208,7 +214,8 @@ const declarationNameText =
 
 const variableDeclarationName =
   (node: PropertyAccessorFunction) => (): Option.Option<string> =>
-    Option.liftPredicate(ts.isVariableDeclaration)(node.parent).pipe(
+    pipe(
+      Option.liftPredicate(ts.isVariableDeclaration)(node.parent),
       Option.map(Struct.get("name")),
       Option.flatMap(identifierBindingNameText)
     )
@@ -217,7 +224,8 @@ const functionName = (
   node: PropertyAccessorFunction,
   context: RuleContext
 ): string =>
-  Option.fromNullable(node.name).pipe(
+  pipe(
+    Option.fromNullable(node.name),
     Option.map(declarationNameText(context)),
     Option.orElse(variableDeclarationName(node)),
     Option.getOrElse(Function.constant("this function"))
@@ -244,7 +252,8 @@ const propertyAccessorMatches = (
   node: PropertyAccessorFunction,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  propertyAccessorExpression(node).pipe(
+  pipe(
+    propertyAccessorExpression(node),
     Option.map(propertyAccessorRuleMatch(context, node)),
     Option.toArray
   )

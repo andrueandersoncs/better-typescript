@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -25,7 +25,8 @@ const functionDeclarationWithBody = (
   node: FunctionKeywordNode
 ): Option.Option<FunctionDeclarationWithBody> =>
   ts.isFunctionDeclaration(node)
-    ? Option.fromNullable(node.body).pipe(
+    ? pipe(
+        Option.fromNullable(node.body),
         Option.as(node as FunctionDeclarationWithBody)
       )
     : Option.none()

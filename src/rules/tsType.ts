@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 
 export const isVoidType = (type: ts.Type): boolean =>
@@ -18,7 +18,8 @@ export const differentBaseConstraint = (
 ): Option.Option<ts.Type> => {
   const baseConstraint = checker.getBaseConstraintOfType(type)
 
-  return Option.fromNullable(baseConstraint).pipe(
+  return pipe(
+    Option.fromNullable(baseConstraint),
     Option.filter(isDifferentType(type))
   )
 }

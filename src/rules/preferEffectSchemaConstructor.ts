@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, Struct } from "effect"
+import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -37,14 +37,16 @@ const ternaryBranches = (
 const conditionalBranches = (
   expression: ts.Expression
 ): Option.Option<ReadonlyArray<ts.Expression>> =>
-  Option.liftPredicate(ts.isConditionalExpression)(expression).pipe(
+  pipe(
+    Option.liftPredicate(ts.isConditionalExpression)(expression),
     Option.map(ternaryBranches)
   )
 
 const shortCircuitBranches = (
   expression: ts.Expression
 ): Option.Option<ReadonlyArray<ts.Expression>> =>
-  Option.liftPredicate(isShortCircuitExpression)(expression).pipe(
+  pipe(
+    Option.liftPredicate(isShortCircuitExpression)(expression),
     Option.map(Struct.get("right")),
     Option.map(branchExpressions)
   )
@@ -58,7 +60,8 @@ const branchExpressions = (
     shortCircuitBranches(unwrapped)
   ]
 
-  return Option.firstSomeOf(branches).pipe(
+  return pipe(
+    Option.firstSomeOf(branches),
     Option.getOrElse(Function.constant([unwrapped]))
   )
 }
@@ -92,7 +95,8 @@ const tagValueText = (
 ): Option.Option<string> => {
   const initializer = unwrapTransparentExpression(property.initializer)
 
-  return Option.liftPredicate(ts.isStringLiteralLike)(initializer).pipe(
+  return pipe(
+    Option.liftPredicate(ts.isStringLiteralLike)(initializer),
     Option.map(Struct.get("text"))
   )
 }
@@ -100,7 +104,8 @@ const tagValueText = (
 const literalTag = (
   literal: ts.ObjectLiteralExpression
 ): Option.Option<string> =>
-  Array.findFirst(literal.properties, isTagAssignment).pipe(
+  pipe(
+    Array.findFirst(literal.properties, isTagAssignment),
     Option.flatMap(tagValueText)
   )
 

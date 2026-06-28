@@ -1,4 +1,4 @@
-import { Array, Option } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -68,7 +68,8 @@ const negatedPrefixUnaryExpressionOperand = (
 const negatedConditionOperand = (
   expression: ts.Expression
 ): Option.Option<ts.Expression> =>
-  Option.liftPredicate(ts.isPrefixUnaryExpression)(expression).pipe(
+  pipe(
+    Option.liftPredicate(ts.isPrefixUnaryExpression)(expression),
     Option.flatMap(negatedPrefixUnaryExpressionOperand)
   )
 
@@ -92,12 +93,21 @@ const ternaryText = (
   ].join(" ")
 
 const flippedTernaryText =
-  (sourceFile: ts.SourceFile, fallbackExpression: ts.Expression, thenExpression: ts.Expression) =>
+  (
+    sourceFile: ts.SourceFile,
+    fallbackExpression: ts.Expression,
+    thenExpression: ts.Expression
+  ) =>
   (operand: ts.Expression): string =>
     ternaryText(sourceFile, operand, fallbackExpression, thenExpression)
 
 const standardTernaryText =
-  (sourceFile: ts.SourceFile, condition: ts.Expression, thenExpression: ts.Expression, fallbackExpression: ts.Expression) =>
+  (
+    sourceFile: ts.SourceFile,
+    condition: ts.Expression,
+    thenExpression: ts.Expression,
+    fallbackExpression: ts.Expression
+  ) =>
   (): string =>
     ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
 
@@ -112,7 +122,12 @@ const conditionalExpressionText = (
   const negatedCondition = negatedConditionOperand(unwrappedCondition)
 
   return Option.match(negatedCondition, {
-    onNone: standardTernaryText(sourceFile, condition, thenExpression, fallbackExpression),
+    onNone: standardTernaryText(
+      sourceFile,
+      condition,
+      thenExpression,
+      fallbackExpression
+    ),
     onSome: flippedTernaryText(sourceFile, fallbackExpression, thenExpression)
   })
 }
@@ -150,7 +165,8 @@ const statementConditionalMatch =
   (statement: ts.Statement, index: number): Option.Option<RuleMatch> => {
     const nextStatement = Option.fromNullable(block.statements[index + 1])
 
-    return Option.liftPredicate(ts.isIfStatement)(statement).pipe(
+    return pipe(
+      Option.liftPredicate(ts.isIfStatement)(statement),
       Option.flatMap(conditionalReturnMatch(context, nextStatement))
     )
   }

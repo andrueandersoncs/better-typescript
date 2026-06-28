@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -47,7 +47,8 @@ const rootLevelClassMatches = (
   declaration: ClassNode,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  Option.liftPredicate(lacksExtendsClause)(declaration).pipe(
+  pipe(
+    Option.liftPredicate(lacksExtendsClause)(declaration),
     Option.map(rootLevelClassMatch(context)),
     Option.toArray
   )
@@ -71,7 +72,7 @@ const goodExample = new ExampleSnippet({
 
 const moduleGoodExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `const UserId = Schema.String.pipe(Schema.brand("UserId"))
+  code: `const UserId = pipe(Schema.String, Schema.brand("UserId"))
 type UserId = typeof UserId.Type
 
 export const User = Schema.Struct({

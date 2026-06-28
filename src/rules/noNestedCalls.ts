@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -67,6 +67,25 @@ const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
     : forwardedConsumingCall(node)
 }
 
+const hasPipeText = (identifier: ts.Identifier): boolean =>
+  identifier.text === "pipe"
+
+const isPipeIdentifier = (expression: ts.Expression): boolean =>
+  ts.isIdentifier(expression) && hasPipeText(expression)
+
+const isPipeCall = (consumer: CallLikeExpression): boolean =>
+  ts.isCallExpression(consumer) && isPipeIdentifier(consumer.expression)
+
+const isFirstArgument = (
+  call: ts.Node,
+  consumer: CallLikeExpression
+): boolean => callArguments(consumer)[0] === call
+
+const isFirstPipeArgument = (
+  call: ts.Node,
+  consumer: CallLikeExpression
+): boolean => isPipeCall(consumer) && isFirstArgument(call, consumer)
+
 const returnsCallable = (
   context: RuleContext,
   call: CallLikeExpression
@@ -111,7 +130,10 @@ const nestedCallRuleMatch = (
 const consumerRuleMatch =
   (context: RuleContext, call: CallLikeExpression) =>
   (consumer: CallLikeExpression): Option.Option<RuleMatch> => {
-    if (returnsCallable(context, call)) {
+    const isExempt =
+      returnsCallable(context, call) || isFirstPipeArgument(call, consumer)
+
+    if (isExempt) {
       return Option.none()
     }
 
@@ -124,7 +146,8 @@ const nestedCallMatches = (
   call: CallLikeExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  consumingCall(call).pipe(
+  pipe(
+    consumingCall(call),
     Option.flatMap(consumerRuleMatch(context, call)),
     Option.toArray
   )
@@ -149,9 +172,10 @@ console.log(formatted)`
 
 const goodEffectPipe = new ExampleSnippet({
   filePath: "src/loadUser.ts",
-  code: `import { Effect, Struct } from "effect"
+  code: `import { Effect, Struct, pipe } from "effect"
 
-const program = fetchUser(userId).pipe(
+const program = pipe(
+  fetchUser(userId),
   Effect.map(Struct.get("id")),
   Effect.flatMap(loadProfile),
   Effect.map(renderProfile)

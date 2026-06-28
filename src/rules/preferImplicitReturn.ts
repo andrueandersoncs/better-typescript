@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -31,7 +31,8 @@ const returnedExpression = (
 ): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
 const isValueReturnStatement = (statement: ts.Statement): boolean =>
-  Option.liftPredicate(ts.isReturnStatement)(statement).pipe(
+  pipe(
+    Option.liftPredicate(ts.isReturnStatement)(statement),
     Option.flatMap(returnedExpression),
     Option.isSome
   )

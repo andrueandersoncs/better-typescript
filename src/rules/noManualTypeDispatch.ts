@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -75,7 +75,7 @@ const statementAt =
 const siblingDispatchGuard =
   (offset: number) =>
   (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> =>
-    statementAt(offset)(ifStatement).pipe(Option.filter(isDispatchGuard))
+    pipe(statementAt(offset)(ifStatement), Option.filter(isDispatchGuard))
 
 const sharesSubjectWith =
   (ifStatement: ts.IfStatement) =>
@@ -85,7 +85,8 @@ const sharesSubjectWith =
 const continuesChain =
   (offset: number) =>
   (ifStatement: ts.IfStatement): boolean =>
-    siblingDispatchGuard(offset)(ifStatement).pipe(
+    pipe(
+      siblingDispatchGuard(offset)(ifStatement),
       Option.exists(sharesSubjectWith(ifStatement))
     )
 
@@ -102,7 +103,8 @@ const oneMoreThanRest = (next: ts.IfStatement): number =>
 
 const chainLengthFrom = (ifStatement: ts.IfStatement): number =>
   continuesChain(1)(ifStatement)
-    ? siblingDispatchGuard(1)(ifStatement).pipe(
+    ? pipe(
+        siblingDispatchGuard(1)(ifStatement),
         Option.map(oneMoreThanRest),
         Option.getOrElse(returnsOne)
       )
@@ -116,7 +118,8 @@ const isLongEnough = (head: ts.IfStatement): boolean =>
 const dispatchChainHead = (
   ifStatement: ts.IfStatement
 ): Option.Option<ts.IfStatement> =>
-  Option.liftPredicate(isDispatchGuard)(ifStatement).pipe(
+  pipe(
+    Option.liftPredicate(isDispatchGuard)(ifStatement),
     Option.filter(isChainHead),
     Option.filter(isLongEnough)
   )
@@ -139,7 +142,8 @@ const manualTypeDispatchMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  dispatchChainHead(ifStatement).pipe(
+  pipe(
+    dispatchChainHead(ifStatement),
     Option.map(manualTypeDispatchMatch(context)),
     Option.toArray
   )
@@ -165,7 +169,8 @@ if (Schema.is(Triangle)(shape)) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `return Match.value(shape).pipe(
+  code: `return pipe(
+  Match.value(shape),
   Match.when(Schema.is(Circle), circleArea),
   Match.when(Schema.is(Square), squareArea),
   Match.when(Schema.is(Triangle), triangleArea),

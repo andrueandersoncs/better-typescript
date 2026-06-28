@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -47,7 +47,8 @@ const identifierHasText =
 const objectHasName =
   (name: string) =>
   (access: ts.PropertyAccessExpression): boolean =>
-    ts.isIdentifier(access.expression) && identifierHasText(name)(access.expression)
+    ts.isIdentifier(access.expression) &&
+    identifierHasText(name)(access.expression)
 
 const isValueMember = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "value"
@@ -106,7 +107,8 @@ const optionMatchMatches = (
   conditional: ts.ConditionalExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
-  optionGuardCall(conditional.condition).pipe(
+  pipe(
+    optionGuardCall(conditional.condition),
     Option.filter(hasDotValueInBranch(conditional)),
     Option.map(optionMatchRuleMatch(context, conditional)),
     Option.toArray
