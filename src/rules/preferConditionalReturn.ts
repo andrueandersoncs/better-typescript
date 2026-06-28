@@ -91,6 +91,16 @@ const ternaryText = (
     whenFalse.getText(sourceFile)
   ].join(" ")
 
+const flippedTernaryText =
+  (sourceFile: ts.SourceFile, fallbackExpression: ts.Expression, thenExpression: ts.Expression) =>
+  (operand: ts.Expression): string =>
+    ternaryText(sourceFile, operand, fallbackExpression, thenExpression)
+
+const standardTernaryText =
+  (sourceFile: ts.SourceFile, condition: ts.Expression, thenExpression: ts.Expression, fallbackExpression: ts.Expression) =>
+  (): string =>
+    ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
+
 const conditionalExpressionText = (
   context: RuleContext,
   condition: ts.Expression,
@@ -101,14 +111,10 @@ const conditionalExpressionText = (
   const unwrappedCondition = unwrapExpression(condition)
   const negatedCondition = negatedConditionOperand(unwrappedCondition)
 
-  return Option.isSome(negatedCondition)
-    ? ternaryText(
-        sourceFile,
-        negatedCondition.value,
-        fallbackExpression,
-        thenExpression
-      )
-    : ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
+  return Option.match(negatedCondition, {
+    onNone: standardTernaryText(sourceFile, condition, thenExpression, fallbackExpression),
+    onSome: flippedTernaryText(sourceFile, fallbackExpression, thenExpression)
+  })
 }
 
 const conditionalReturnMatch =

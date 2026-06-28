@@ -86,11 +86,16 @@ const buildFunctionNameIndex = (program: ts.Program): FunctionNameIndex => {
   return index
 }
 
-const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
-  const cachedIndex = functionNameIndexCache.get(program)
-  const cached = Option.fromNullable(cachedIndex)
+const orBuildFunctionNameIndex =
+  (program: ts.Program) => (): FunctionNameIndex =>
+    buildFunctionNameIndex(program)
 
-  return Option.isSome(cached) ? cached.value : buildFunctionNameIndex(program)
+const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
+  const cached = functionNameIndexCache.get(program)
+
+  return Option.fromNullable(cached).pipe(
+    Option.getOrElse(orBuildFunctionNameIndex(program))
+  )
 }
 
 const declaredFileName = (nameNode: ts.Identifier): string =>

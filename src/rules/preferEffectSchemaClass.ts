@@ -306,15 +306,18 @@ const buildInterfaceConstructionIndex = (
   return index
 }
 
+const orBuildInterfaceConstructionIndex =
+  (context: RuleContext) => (): ConstructionIndex =>
+    buildInterfaceConstructionIndex(context)
+
 const interfaceConstructionIndex = (
   context: RuleContext
 ): ConstructionIndex => {
-  const cachedIndex = interfaceConstructionCache.get(context.program)
-  const cached = Option.fromNullable(cachedIndex)
+  const cached = interfaceConstructionCache.get(context.program)
 
-  return Option.isSome(cached)
-    ? cached.value
-    : buildInterfaceConstructionIndex(context)
+  return Option.fromNullable(cached).pipe(
+    Option.getOrElse(orBuildInterfaceConstructionIndex(context))
+  )
 }
 
 const constructionFile =

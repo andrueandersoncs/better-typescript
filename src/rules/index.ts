@@ -41,6 +41,7 @@ import { preferEffectSchemaConstructor } from "./preferEffectSchemaConstructor.j
 import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
 import { preferEffectSchemaIs } from "./preferEffectSchemaIs.js"
 import { preferImplicitReturn } from "./preferImplicitReturn.js"
+import { preferOptionMatch } from "./preferOptionMatch.js"
 import type { Rule } from "./types.js"
 
 export const rules: ReadonlyArray<Rule> = [
@@ -86,7 +87,8 @@ export const rules: ReadonlyArray<Rule> = [
   noFirstPartySchemaDeclare,
   noDataTaggedClass,
   noInstanceof,
-  preferHashSet
+  preferHashSet,
+  preferOptionMatch
 ]
 
 export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"

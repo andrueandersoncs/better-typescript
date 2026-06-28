@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Option } from "effect"
+import { Function, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -96,16 +96,23 @@ const isDataStructureDeclaration = (declaration: ts.Declaration): boolean =>
     ts.isClassDeclaration(declaration)
   ].some(Boolean)
 
+const typeFromTypeNode =
+  (checker: ts.TypeChecker) =>
+  (node: ts.TypeNode): ts.Type =>
+    checker.getTypeFromTypeNode(node)
+
+const typeAtLocation =
+  (checker: ts.TypeChecker, parameter: ts.ParameterDeclaration) => (): ts.Type =>
+    checker.getTypeAtLocation(parameter)
+
 const parameterType = (
   context: RuleContext,
   parameter: ts.ParameterDeclaration
-): ts.Type => {
-  const typeNode = Option.fromNullable(parameter.type)
-
-  return Option.isSome(typeNode)
-    ? context.checker.getTypeFromTypeNode(typeNode.value)
-    : context.checker.getTypeAtLocation(parameter)
-}
+): ts.Type =>
+  Option.fromNullable(parameter.type).pipe(
+    Option.map(typeFromTypeNode(context.checker)),
+    Option.getOrElse(typeAtLocation(context.checker, parameter))
+  )
 
 const dataStructureSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
@@ -196,6 +203,11 @@ const parameterDataStructure = (
   return symbol.pipe(Option.flatMap(dataStructureForSymbol(context, type)))
 }
 
+const parameterDataStructureCurried =
+  (context: RuleContext) =>
+  (parameter: ts.ParameterDeclaration): Option.Option<DataStructureModule> =>
+    parameterDataStructure(context, parameter)
+
 const lastParameter = (
   node: CheckedFunction
 ): Option.Option<ts.ParameterDeclaration> =>
@@ -204,13 +216,10 @@ const lastParameter = (
 const lastParameterDataStructure = (
   context: RuleContext,
   node: CheckedFunction
-): Option.Option<DataStructureModule> => {
-  const parameter = lastParameter(node)
-
-  return Option.isSome(parameter)
-    ? parameterDataStructure(context, parameter.value)
-    : Option.none()
-}
+): Option.Option<DataStructureModule> =>
+  lastParameter(node).pipe(
+    Option.flatMap(parameterDataStructureCurried(context))
+  )
 
 const variableDefinition = (
   context: RuleContext,
@@ -375,14 +384,19 @@ const conciseCurriedDefinition = (
     : Option.none()
 }
 
+const nameText =
+  (sourceFile: ts.SourceFile) =>
+  (nameNode: ts.DeclarationName): string =>
+    nameNode.getText(sourceFile)
+
 const namedFunctionDefinition = (
   context: RuleContext,
   node: ts.FunctionDeclaration | ts.MethodDeclaration
 ) => {
-  const nameNode = Option.fromNullable(node.name)
-  const name = Option.isSome(nameNode)
-    ? nameNode.value.getText(context.sourceFile)
-    : "this function"
+  const name = Option.fromNullable(node.name).pipe(
+    Option.map(nameText(context.sourceFile)),
+    Option.getOrElse(Function.constant("this function"))
+  )
   const reportNode = namedNodeReportTarget(node)
 
   return [name, reportNode] as const
