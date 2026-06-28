@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -29,21 +29,21 @@ const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
 }
 
 // The discriminants are the identifiers a guard inspects, e.g. `node` in `Schema.is(StepNode)(node)`.
-const discriminants = (ifStatement: ts.IfStatement): ReadonlySet<string> => {
+const discriminants = (ifStatement: ts.IfStatement): HashSet.HashSet<string> => {
   const names = identifierNames(ifStatement.expression)
 
-  return new Set(names)
+  return HashSet.fromIterable(names)
 }
 
 const memberOf =
-  (names: ReadonlySet<string>) =>
+  (names: HashSet.HashSet<string>) =>
   (name: string): boolean =>
-    names.has(name)
+    HashSet.has(names, name)
 
 const sharesDiscriminant = (
-  first: ReadonlySet<string>,
-  second: ReadonlySet<string>
-): boolean => [...first].some(memberOf(second))
+  first: HashSet.HashSet<string>,
+  second: HashSet.HashSet<string>
+): boolean => Array.from(first).some(memberOf(second))
 
 const guardsShareSubject = (first: ts.IfStatement, second: ts.IfStatement): boolean => {
   const firstDiscriminants = discriminants(first)

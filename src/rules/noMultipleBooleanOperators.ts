@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -74,24 +74,24 @@ const isUnaryBooleanOperatorExpression = (
   return Option.exists(prefixUnaryExpression, isExclamationOperator)
 }
 
-const booleanBinaryOperatorKinds = new Set<ts.SyntaxKind>([
+const booleanBinaryOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken,
   ts.SyntaxKind.BarBarToken,
   ts.SyntaxKind.EqualsEqualsEqualsToken,
   ts.SyntaxKind.ExclamationEqualsEqualsToken
-])
+)
 
 const isBooleanBinaryOperator = (kind: ts.SyntaxKind): boolean =>
-  booleanBinaryOperatorKinds.has(kind)
+  HashSet.has(booleanBinaryOperatorKinds, kind)
 
-const nestedExpressionBoundaryKinds = new Set<ts.SyntaxKind>([
+const nestedExpressionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ClassExpression
-])
+)
 
 const isNestedExpressionBoundary = (expression: ts.Expression): boolean =>
-  nestedExpressionBoundaryKinds.has(expression.kind)
+  HashSet.has(nestedExpressionBoundaryKinds, expression.kind)
 
 const multipleBooleanOperatorMatches = (
   expression: BooleanOperatorExpression,

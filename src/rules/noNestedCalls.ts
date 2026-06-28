@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -13,7 +13,7 @@ type CallLikeExpression = ts.CallExpression | ts.NewExpression
 const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
   ts.isCallExpression(node) || ts.isNewExpression(node)
 
-const valueForwardingKinds = new Set<ts.SyntaxKind>([
+const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
   ts.SyntaxKind.AsExpression,
   ts.SyntaxKind.SatisfiesExpression,
@@ -36,7 +36,7 @@ const valueForwardingKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.ElementAccessExpression,
   ts.SyntaxKind.TemplateSpan,
   ts.SyntaxKind.TemplateExpression
-])
+)
 
 const isSameNode = (node: ts.Node) => (candidate: ts.Node): boolean => candidate === node
 
@@ -47,7 +47,7 @@ const consumesAsArgument = (node: ts.Node) => (call: CallLikeExpression): boolea
   callArguments(call).some(isSameNode(node))
 
 const forwardedConsumingCall = (node: ts.Node): Option.Option<CallLikeExpression> =>
-  valueForwardingKinds.has(node.parent.kind) ? consumingCall(node.parent) : Option.none()
+  HashSet.has(valueForwardingKinds, node.parent.kind) ? consumingCall(node.parent) : Option.none()
 
 const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   const parent = node.parent

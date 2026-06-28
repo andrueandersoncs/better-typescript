@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct } from "effect"
+import { Array, Function, HashSet, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -10,14 +10,14 @@ const ruleId = "prefer-effect-schema-constructor"
 
 const tagPropertyName = "_tag"
 
-const shortCircuitOperatorKinds = new Set<ts.SyntaxKind>([
+const shortCircuitOperatorKinds = HashSet.make(
   ts.SyntaxKind.QuestionQuestionToken,
   ts.SyntaxKind.BarBarToken,
   ts.SyntaxKind.AmpersandAmpersandToken
-])
+)
 
 const hasShortCircuitOperator = (expression: ts.BinaryExpression): boolean =>
-  shortCircuitOperatorKinds.has(expression.operatorToken.kind)
+  HashSet.has(shortCircuitOperatorKinds, expression.operatorToken.kind)
 
 const isShortCircuitExpression = (
   expression: ts.Expression

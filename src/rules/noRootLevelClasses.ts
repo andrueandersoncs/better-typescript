@@ -2,7 +2,7 @@ import { Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { namedNodeReportTarget } from "./tsNode.js"
+import { isExtendsClause, namedNodeReportTarget } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -18,8 +18,6 @@ const classNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
 const isClassNode = (node: ts.Node): node is ClassNode =>
   ts.isClassDeclaration(node) || ts.isClassExpression(node)
 
-const isExtendsClause = (clause: ts.HeritageClause): boolean =>
-  clause.token === ts.SyntaxKind.ExtendsKeyword
 
 const extendsAnotherClass = (declaration: ClassNode): boolean =>
   (declaration.heritageClauses ?? []).some(isExtendsClause)

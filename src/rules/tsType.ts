@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 
 export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
@@ -27,16 +27,16 @@ export const differentApparentType = (
 }
 
 export const callSignatureCheck =
-  (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type> = new Set()) =>
+  (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type> = HashSet.empty()) =>
   (type: ts.Type): boolean =>
     hasCallSignature(checker, type, seen)
 
 export const hasCallSignature = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type> = new Set()
+  seen: HashSet.HashSet<ts.Type> = HashSet.empty()
 ): boolean => {
-  const isUnseen = !seen.has(type)
+  const isUnseen = !HashSet.has(seen, type)
 
   return isUnseen && hasUnseenCallSignature(checker, type, seen)
 }
@@ -44,9 +44,9 @@ export const hasCallSignature = (
 const hasUnseenCallSignature = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type>
+  seen: HashSet.HashSet<ts.Type>
 ): boolean => {
-  const nextSeen = new Set(seen).add(type)
+  const nextSeen = HashSet.add(seen, type)
   const hasDirectCallSignature = type.getCallSignatures().length > 0
 
   if (type.isUnionOrIntersection()) {

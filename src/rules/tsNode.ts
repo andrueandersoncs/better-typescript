@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
@@ -43,16 +43,16 @@ export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
     ? unwrapExpression(expression.expression)
     : expression
 
-export const transparentWrapperKinds = new Set<ts.SyntaxKind>([
+export const transparentWrapperKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
   ts.SyntaxKind.SatisfiesExpression,
   ts.SyntaxKind.AsExpression
-])
+)
 
 type TransparentWrapper = ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 
 const isTransparentWrapper = (expression: ts.Expression): expression is TransparentWrapper =>
-  transparentWrapperKinds.has(expression.kind)
+  HashSet.has(transparentWrapperKinds, expression.kind)
 
 export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expression =>
   isTransparentWrapper(expression)
@@ -60,7 +60,7 @@ export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expre
     : expression
 
 export const isTransparentParent = (node: ts.Node): node is ts.Expression =>
-  transparentWrapperKinds.has(node.kind)
+  HashSet.has(transparentWrapperKinds, node.kind)
 
 export const outermostTransparentWrapper = (expression: ts.Expression): ts.Expression =>
   isTransparentParent(expression.parent) ? outermostTransparentWrapper(expression.parent) : expression
@@ -93,12 +93,12 @@ export const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean => {
 export const lastStatement = (block: ts.Block): Option.Option<ts.Statement> =>
   Option.fromNullable(block.statements[block.statements.length - 1])
 
-const exitStatementKinds = new Set<ts.SyntaxKind>([
+const exitStatementKinds = HashSet.make(
   ts.SyntaxKind.BreakStatement,
   ts.SyntaxKind.ContinueStatement,
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ThrowStatement
-])
+)
 
 const blockExitsScope = (block: ts.Block): boolean => {
   const finalStatement = lastStatement(block)
@@ -107,4 +107,20 @@ const blockExitsScope = (block: ts.Block): boolean => {
 }
 
 export const alwaysExitsScope = (statement: ts.Statement): boolean =>
-  ts.isBlock(statement) ? blockExitsScope(statement) : exitStatementKinds.has(statement.kind)
+  ts.isBlock(statement) ? blockExitsScope(statement) : HashSet.has(exitStatementKinds, statement.kind)
+
+export const isExtendsClause = (clause: ts.HeritageClause): boolean =>
+  clause.token === ts.SyntaxKind.ExtendsKeyword
+
+export const isProjectFile = (sourceFile: ts.SourceFile): boolean =>
+  !sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
+
+const declarationFile = (declaration: ts.Declaration): ts.SourceFile =>
+  declaration.getSourceFile()
+
+export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
+  const declarations = symbol.getDeclarations() ?? []
+  const sourceFiles = declarations.map(declarationFile)
+
+  return sourceFiles.some(isProjectFile)
+}

@@ -130,7 +130,7 @@ const candidateRuleMatch =
     const index = functionNameIndex(context.program)
     const declarations = declarationsForName(index, candidate.text)
     const declaredFileNames = declarations.map(declaredFileName)
-    const otherFileNames = [...new Set(declaredFileNames)].filter(
+    const otherFileNames = Array.dedupe(declaredFileNames).filter(
       isOtherFileName(context.sourceFile.fileName)
     )
 

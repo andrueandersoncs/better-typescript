@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Effect, Function, Option, Schema } from "effect"
+import { Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { TsProgram } from "../rules/tsSchema.js"
 
@@ -54,7 +54,7 @@ export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace
       return yield* new MissingTsconfigError({ rootPath })
     }
 
-    const rootAncestorPaths = new Set<string>()
+    const rootAncestorPaths = HashSet.empty<string>()
     const projects = yield* loadConfig(configPath.value, rootAncestorPaths)
     const workspaceRootPath = path.dirname(configPath.value)
 
@@ -63,12 +63,12 @@ export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace
 
 const loadConfig: (
   configPath: string,
-  ancestorConfigPaths: ReadonlySet<string>
+  ancestorConfigPaths: HashSet.HashSet<string>
 ) => Effect.Effect<ReadonlyArray<LoadedProject>, Error> = Effect.fn("loadConfig")(function* (
   configPath: string,
-  ancestorConfigPaths: ReadonlySet<string>
+  ancestorConfigPaths: HashSet.HashSet<string>
 ) {
-  if (ancestorConfigPaths.has(configPath)) {
+  if (HashSet.has(ancestorConfigPaths, configPath)) {
     return yield* new CircularProjectReferenceError({ configPath })
   }
 
@@ -96,7 +96,7 @@ const loadConfig: (
   const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
 
   if (isSolutionStyleConfig) {
-    const nextAncestorPaths = new Set(ancestorConfigPaths).add(configPath)
+    const nextAncestorPaths = HashSet.add(ancestorConfigPaths, configPath)
 
     return yield* loadReferencedProjects(references, nextAncestorPaths)
   }
@@ -105,7 +105,7 @@ const loadConfig: (
 })
 
 const loadReference =
-  (ancestorConfigPaths: ReadonlySet<string>) =>
+  (ancestorConfigPaths: HashSet.HashSet<string>) =>
   (reference: ts.ProjectReference): Effect.Effect<ReadonlyArray<LoadedProject>, Error> => {
     const referencedConfigPath = ts.resolveProjectReferencePath(reference)
 
@@ -114,7 +114,7 @@ const loadReference =
 
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
-  ancestorConfigPaths: ReadonlySet<string>
+  ancestorConfigPaths: HashSet.HashSet<string>
 ) {
   const projects = yield* Effect.forEach(references, loadReference(ancestorConfigPaths))
 

@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -13,13 +13,13 @@ const ruleId = "prefer-effect-fn"
 const hasParameters = (initializer: FunctionInitializer): boolean =>
   initializer.parameters.length > 0
 
-const effectModuleFileNames: ReadonlySet<string> = new Set(["Effect.ts", "Effect.d.ts"])
+const effectModuleFileNames = HashSet.make("Effect.ts", "Effect.d.ts")
 
 const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
   const declarationFileName = declaration.getSourceFile().fileName
   const baseFileName = path.basename(declarationFileName)
 
-  return effectModuleFileNames.has(baseFileName)
+  return HashSet.has(effectModuleFileNames, baseFileName)
 }
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {

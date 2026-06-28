@@ -1,3 +1,4 @@
+import { HashSet } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -7,18 +8,18 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-closures"
 
-const sanctionedParentKinds = new Set<ts.SyntaxKind>([
+const sanctionedParentKinds = HashSet.make(
   ts.SyntaxKind.VariableDeclaration,
   ts.SyntaxKind.ArrowFunction
-])
+)
 
 const effectiveParent = (node: ts.Node): ts.Node =>
-  transparentWrapperKinds.has(node.parent.kind) ? effectiveParent(node.parent) : node.parent
+  HashSet.has(transparentWrapperKinds, node.parent.kind) ? effectiveParent(node.parent) : node.parent
 
 const isSanctionedPosition = (arrowFunction: ts.ArrowFunction): boolean => {
   const parent = effectiveParent(arrowFunction)
 
-  return sanctionedParentKinds.has(parent.kind)
+  return HashSet.has(sanctionedParentKinds, parent.kind)
 }
 
 const inlineClosureMatch = (context: RuleContext, arrowFunction: ts.ArrowFunction): RuleMatch =>

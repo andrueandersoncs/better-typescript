@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -19,20 +19,20 @@ type MutableArrayMethod =
   | "splice"
   | "unshift"
 
-const mutableArrayMethods = new Set<MutableArrayMethod>([
-  "copyWithin",
-  "fill",
-  "pop",
-  "push",
-  "reverse",
-  "shift",
-  "sort",
-  "splice",
-  "unshift"
-])
+const mutableArrayMethods = HashSet.make(
+  "copyWithin" as MutableArrayMethod,
+  "fill" as MutableArrayMethod,
+  "pop" as MutableArrayMethod,
+  "push" as MutableArrayMethod,
+  "reverse" as MutableArrayMethod,
+  "shift" as MutableArrayMethod,
+  "sort" as MutableArrayMethod,
+  "splice" as MutableArrayMethod,
+  "unshift" as MutableArrayMethod
+)
 
 const mutableArrayMethod = (methodName: string): Option.Option<MutableArrayMethod> =>
-  mutableArrayMethods.has(methodName as MutableArrayMethod)
+  HashSet.has(mutableArrayMethods, methodName as MutableArrayMethod)
     ? Option.some(methodName as MutableArrayMethod)
     : Option.none()
 
@@ -57,12 +57,12 @@ const mutableArrayMethodCall = (
 }
 
 const isArrayTypePart =
-  (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type>) =>
+  (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type>) =>
   (part: ts.Type): boolean =>
     isArrayType(checker, part, seen)
 
 const anyPartIsArrayType =
-  (checker: ts.TypeChecker, seen: ReadonlySet<ts.Type>) =>
+  (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type>) =>
   (type: ts.UnionOrIntersectionType): boolean =>
     type.types.some(isArrayTypePart(checker, seen))
 
@@ -73,7 +73,7 @@ const isUnionOrIntersectionType = (
 const isUnionOrIntersectionArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type>
+  seen: HashSet.HashSet<ts.Type>
 ): boolean => {
   const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
 
@@ -83,7 +83,7 @@ const isUnionOrIntersectionArrayType = (
 const isConstrainedArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type>
+  seen: HashSet.HashSet<ts.Type>
 ): boolean => {
   const baseConstraint = differentBaseConstraint(checker, type)
 
@@ -93,7 +93,7 @@ const isConstrainedArrayType = (
 const isApparentArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type>
+  seen: HashSet.HashSet<ts.Type>
 ): boolean => {
   const apparentType = differentApparentType(checker, type)
 
@@ -103,9 +103,9 @@ const isApparentArrayType = (
 const isArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type> = new Set()
+  seen: HashSet.HashSet<ts.Type> = HashSet.empty()
 ): boolean => {
-  const isUnseen = !seen.has(type)
+  const isUnseen = !HashSet.has(seen, type)
 
   return isUnseen && isUnseenArrayType(checker, type, seen)
 }
@@ -113,9 +113,9 @@ const isArrayType = (
 const isUnseenArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
-  seen: ReadonlySet<ts.Type>
+  seen: HashSet.HashSet<ts.Type>
 ): boolean => {
-  const nextSeen = new Set(seen).add(type)
+  const nextSeen = HashSet.add(seen, type)
   const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
   const hasUnionOrIntersectionArrayType = isUnionOrIntersectionArrayType(checker, type, nextSeen)
   const hasConstrainedArrayType = isConstrainedArrayType(checker, type, nextSeen)

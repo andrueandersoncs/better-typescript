@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -8,13 +8,13 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-inline-boolean-expressions"
 
-const logicalOperatorKinds = new Set<ts.SyntaxKind>([
+const logicalOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken,
   ts.SyntaxKind.BarBarToken
-])
+)
 
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
-  logicalOperatorKinds.has(expression.operatorToken.kind)
+  HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
 const isLogicalOperatorExpression = (expression: ts.Expression): boolean => {
   const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)

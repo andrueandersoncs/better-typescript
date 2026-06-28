@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -59,15 +59,15 @@ const containsUndefinedKeyword = (node: ts.Node): boolean => {
 const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
   Option.exists(typeNode, containsUndefinedKeyword)
 
-const equalityComparisonOperators = new Set<ts.SyntaxKind>([
+const equalityComparisonOperators = HashSet.make(
   ts.SyntaxKind.EqualsEqualsToken,
   ts.SyntaxKind.EqualsEqualsEqualsToken,
   ts.SyntaxKind.ExclamationEqualsToken,
   ts.SyntaxKind.ExclamationEqualsEqualsToken
-])
+)
 
 const comparesAgainstUndefined = (expression: ts.BinaryExpression): boolean => {
-  const isEqualityComparison = equalityComparisonOperators.has(expression.operatorToken.kind)
+  const isEqualityComparison = HashSet.has(equalityComparisonOperators, expression.operatorToken.kind)
   const hasUndefinedOperand = [expression.left, expression.right].some(isUndefinedExpression)
 
   return [isEqualityComparison, hasUndefinedOperand].every(Boolean)

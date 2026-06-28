@@ -2,11 +2,14 @@ import { noAbstractClasses } from "./noAbstractClasses.js"
 import { noAsyncFunctions } from "./noAsyncFunctions.js"
 import { noCallbacks } from "./noCallbacks.js"
 import { noClassMethodImplementations } from "./noClassMethodImplementations.js"
+import { noDataTaggedClass } from "./noDataTaggedClass.js"
 import { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
 import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
 import { noExplicitAnyReturn } from "./noExplicitAnyReturn.js"
 import { noForInLoops } from "./noForInLoops.js"
+import { noFirstPartySchemaDeclare } from "./noFirstPartySchemaDeclare.js"
 import { noForLoops } from "./noForLoops.js"
+import { noInstanceof } from "./noInstanceof.js"
 import { noForOfLoops } from "./noForOfLoops.js"
 import { noFunctionKeyword } from "./noFunctionKeyword.js"
 import { noInlineBooleanExpressions } from "./noInlineBooleanExpressions.js"
@@ -28,6 +31,7 @@ import { noUndefined } from "./noUndefined.js"
 import { noVoidFunctions } from "./noVoidFunctions.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
+import { preferHashSet } from "./preferHashSet.js"
 import { preferEffectFn } from "./preferEffectFn.js"
 import { preferEffectPropertyAccessors } from "./preferEffectPropertyAccessors.js"
 import { preferEffectRecordFilterMap } from "./preferEffectRecordFilterMap.js"
@@ -79,6 +83,10 @@ export const rules: ReadonlyArray<Rule> = [
   noAbstractClasses,
   noClassMethodImplementations,
   noRawObjectTypes,
+  noFirstPartySchemaDeclare,
+  noDataTaggedClass,
+  noInstanceof,
+  preferHashSet,
 ]
 
 export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"

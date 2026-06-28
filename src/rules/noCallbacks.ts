@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -28,14 +28,14 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
     ts.isFunctionTypeNode(node) ? isCallableValueType(node) : false
   ].some(Boolean)
 
-const transparentTypeNodeKinds = new Set<ts.SyntaxKind>([
+const transparentTypeNodeKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedType,
   ts.SyntaxKind.UnionType,
   ts.SyntaxKind.IntersectionType
-])
+)
 
 const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode =>
-  transparentTypeNodeKinds.has(node.kind)
+  HashSet.has(transparentTypeNodeKinds, node.kind)
 
 const effectiveCallableTypeNode = (typeNode: ts.TypeNode): ts.TypeNode =>
   isTransparentTypeNode(typeNode.parent)

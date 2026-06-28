@@ -1,4 +1,4 @@
-import { Function, Option, Struct } from "effect"
+import { Function, HashSet, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -10,13 +10,13 @@ const ruleId = "prefer-effect-schema-is"
 
 const tagPropertyName = "_tag"
 
-const strictTagComparisonOperators = new Set<ts.SyntaxKind>([
+const strictTagComparisonOperators = HashSet.make(
   ts.SyntaxKind.EqualsEqualsEqualsToken,
   ts.SyntaxKind.ExclamationEqualsEqualsToken
-])
+)
 
 const isStrictTagComparisonOperator = (operator: ts.SyntaxKind): boolean =>
-  strictTagComparisonOperators.has(operator)
+  HashSet.has(strictTagComparisonOperators, operator)
 
 const hasTagPropertyName = (expression: ts.PropertyAccessExpression): boolean =>
   expression.name.text === tagPropertyName

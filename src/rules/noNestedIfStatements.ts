@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -7,7 +7,7 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-nested-if-statements"
 
-const nestedScopeBoundaryKinds = new Set<ts.SyntaxKind>([
+const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.Constructor,
   ts.SyntaxKind.FunctionDeclaration,
@@ -15,10 +15,10 @@ const nestedScopeBoundaryKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.GetAccessor,
   ts.SyntaxKind.MethodDeclaration,
   ts.SyntaxKind.SetAccessor
-])
+)
 
 const isNestedScopeBoundary = (node: ts.Node): boolean =>
-  nestedScopeBoundaryKinds.has(node.kind)
+  HashSet.has(nestedScopeBoundaryKinds, node.kind)
 
 const isElseIfStatement = (child: ts.Node, parent: ts.IfStatement): boolean =>
   parent.elseStatement === child
