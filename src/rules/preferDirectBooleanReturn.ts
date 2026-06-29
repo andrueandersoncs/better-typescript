@@ -118,7 +118,6 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
     Option.exists(isFalseKeyword)
   )
 
-
 const conditionalFalseReturnMatch =
   (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
@@ -134,8 +133,7 @@ const conditionalFalseReturnMatch =
         ruleId,
         node: ifStatement,
         message: "Avoid conditional return followed by return false.",
-        hint:
-          "Return a boolean expression using && instead of branching to return false."
+        hint: "Return a boolean expression using && instead of branching to return false."
       })
     })
 

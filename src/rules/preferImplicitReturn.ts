@@ -21,7 +21,8 @@ const blockHasSingleValueReturn = (block: ts.Block): boolean => {
 const hasSingleValueReturnStatement = (
   arrowFunction: ts.ArrowFunction
 ): arrowFunction is ArrowFunctionWithBlockBody =>
-  ts.isBlock(arrowFunction.body) && blockHasSingleValueReturn(arrowFunction.body)
+  ts.isBlock(arrowFunction.body) &&
+  blockHasSingleValueReturn(arrowFunction.body)
 
 const returnedExpression = (
   statement: ts.ReturnStatement

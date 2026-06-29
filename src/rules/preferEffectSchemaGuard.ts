@@ -29,8 +29,7 @@ const isStringLiteralLike = (expression: ts.Expression): boolean =>
 const binaryExpressionIsStringKeyIn = (
   expression: ts.BinaryExpression
 ): boolean => {
-  const isInOperator =
-    expression.operatorToken.kind === ts.SyntaxKind.InKeyword
+  const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
   const keyExpression = unwrapExpression(expression.left)
   const hasStringKey = isStringLiteralLike(keyExpression)
 

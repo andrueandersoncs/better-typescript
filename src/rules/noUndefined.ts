@@ -81,9 +81,7 @@ const comparesAgainstUndefined = (expression: ts.BinaryExpression): boolean => {
 const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression =>
   ts.isBinaryExpression(node) ? comparesAgainstUndefined(node) : false
 
-const parameterAcceptsUndefined = (
-  param: ts.ParameterDeclaration
-): boolean => {
+const parameterAcceptsUndefined = (param: ts.ParameterDeclaration): boolean => {
   const hasQuestionToken = pipe(
     param.questionToken,
     Option.fromNullable,

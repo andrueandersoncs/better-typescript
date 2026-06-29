@@ -25,6 +25,7 @@ import { noNewError } from "./noNewError.js"
 import { noRawObjectTypes } from "./noRawObjectTypes.js"
 import { noRootLevelClasses } from "./noRootLevelClasses.js"
 import { noSwitchStatements } from "./noSwitchStatements.js"
+import { noSingleUseCallee } from "./noSingleUseCallee.js"
 import { noThrow } from "./noThrow.js"
 import { noTryCatch } from "./noTryCatch.js"
 import { noUndefined } from "./noUndefined.js"
@@ -88,6 +89,7 @@ export const rules: ReadonlyArray<Rule> = [
   noFirstPartySchemaDeclare,
   noDataTaggedClass,
   noInstanceof,
+  noSingleUseCallee,
   preferHashSet,
   preferOptionMatch,
   preferPipeFunction
