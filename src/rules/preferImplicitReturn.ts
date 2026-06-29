@@ -11,20 +11,17 @@ type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
 }
 
+const blockHasSingleValueReturn = (block: ts.Block): boolean => {
+  const hasOneStatement = block.statements.length === 1
+  const firstStatement = block.statements[0]
+
+  return hasOneStatement && isValueReturnStatement(firstStatement)
+}
+
 const hasSingleValueReturnStatement = (
   arrowFunction: ts.ArrowFunction
-): arrowFunction is ArrowFunctionWithBlockBody => {
-  if (ts.isBlock(arrowFunction.body)) {
-    const hasOneStatement = arrowFunction.body.statements.length === 1
-    const firstStatement = arrowFunction.body.statements[0]
-    const hasSingleReturn =
-      hasOneStatement && isValueReturnStatement(firstStatement)
-
-    return hasSingleReturn
-  }
-
-  return false
-}
+): arrowFunction is ArrowFunctionWithBlockBody =>
+  ts.isBlock(arrowFunction.body) && blockHasSingleValueReturn(arrowFunction.body)
 
 const returnedExpression = (
   statement: ts.ReturnStatement

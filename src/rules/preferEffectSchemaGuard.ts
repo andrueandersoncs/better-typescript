@@ -1,3 +1,4 @@
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -25,21 +26,24 @@ const isStringLiteralLike = (expression: ts.Expression): boolean =>
   ts.isStringLiteral(expression) ||
   ts.isNoSubstitutionTemplateLiteral(expression)
 
+const binaryExpressionIsStringKeyIn = (
+  expression: ts.BinaryExpression
+): boolean => {
+  const isInOperator =
+    expression.operatorToken.kind === ts.SyntaxKind.InKeyword
+  const keyExpression = unwrapExpression(expression.left)
+  const hasStringKey = isStringLiteralLike(keyExpression)
+
+  return isInOperator && hasStringKey
+}
+
 const isStringKeyInExpression = (
   expression: ts.Expression
-): expression is ts.BinaryExpression => {
-  if (ts.isBinaryExpression(expression)) {
-    const isInOperator =
-      expression.operatorToken.kind === ts.SyntaxKind.InKeyword
-    const keyExpression = unwrapExpression(expression.left)
-    const hasStringKey = isStringLiteralLike(keyExpression)
-    const isStringKeyIn = isInOperator && hasStringKey
-
-    return isStringKeyIn
-  }
-
-  return false
-}
+): expression is ts.BinaryExpression =>
+  pipe(
+    Option.liftPredicate(ts.isBinaryExpression)(expression),
+    Option.exists(binaryExpressionIsStringKeyIn)
+  )
 
 const schemaGuardMatch =
   (context: RuleContext) =>

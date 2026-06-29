@@ -1,12 +1,19 @@
-import { Function, Match, Option, pipe } from "effect"
+import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
+import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
+import {
+  hasNoElseBranch,
+  lastStatement,
+  unwrapExpression,
+  unwrapSingleStatementBlock
+} from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
+
+// --- Shared helpers ---
 
 const booleanLiteralValue = (
   expression: ts.Expression
@@ -20,6 +27,18 @@ const booleanLiteralValue = (
     Match.option
   )
 }
+
+const isBooleanLiteral = (expression: ts.Expression): boolean =>
+  pipe(expression, booleanLiteralValue, Option.isSome)
+
+const isNonBooleanLiteral = (expression: ts.Expression): boolean =>
+  !isBooleanLiteral(expression)
+
+const returnStatementExpression = (
+  statement: ts.ReturnStatement
+): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
+
+// --- Literal boolean return from conditional branch ---
 
 const booleanReturnFromStatement = (
   statement: ts.Statement
@@ -61,13 +80,96 @@ const directBooleanMatches = (
     Option.toArray
   )
 
-const check = onNode(
+const literalBooleanCheck = onNode(
   [ts.SyntaxKind.IfStatement],
   ts.isIfStatement,
   directBooleanMatches
 )
 
-const badExample = new ExampleSnippet({
+// --- Conditional return followed by return false ---
+
+const lastBlockReturnExpression = (
+  block: ts.Block
+): Option.Option<ts.Expression> =>
+  pipe(
+    lastStatement(block),
+    Option.filter(ts.isReturnStatement),
+    Option.flatMap(returnStatementExpression)
+  )
+
+const thenBranchReturnExpression = (
+  thenStatement: ts.Statement
+): Option.Option<ts.Expression> =>
+  ts.isBlock(thenStatement)
+    ? lastBlockReturnExpression(thenStatement)
+    : pipe(
+        Option.liftPredicate(ts.isReturnStatement)(thenStatement),
+        Option.flatMap(returnStatementExpression)
+      )
+
+const isFalseKeyword = (expression: ts.Expression): boolean =>
+  unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
+
+const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isReturnStatement)(statement),
+    Option.flatMap(returnStatementExpression),
+    Option.map(unwrapExpression),
+    Option.exists(isFalseKeyword)
+  )
+
+
+const conditionalFalseReturnMatch =
+  (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
+  (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
+    Option.gen(function* () {
+      yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
+      yield* pipe(
+        thenBranchReturnExpression(ifStatement.thenStatement),
+        Option.filter(isNonBooleanLiteral)
+      )
+      yield* Option.filter(nextStatement, isFalseLiteralReturn)
+
+      return createRuleMatch(context, {
+        ruleId,
+        node: ifStatement,
+        message: "Avoid conditional return followed by return false.",
+        hint:
+          "Return a boolean expression using && instead of branching to return false."
+      })
+    })
+
+const statementConditionalFalseMatch =
+  (context: RuleContext, block: ts.Block) =>
+  (statement: ts.Statement, index: number): Option.Option<RuleMatch> => {
+    const nextStatement = Option.fromNullable(block.statements[index + 1])
+
+    return pipe(
+      Option.liftPredicate(ts.isIfStatement)(statement),
+      Option.flatMap(conditionalFalseReturnMatch(context, nextStatement))
+    )
+  }
+
+const conditionalFalseReturnMatches = (
+  block: ts.Block,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> =>
+  Array.filterMap(
+    block.statements,
+    statementConditionalFalseMatch(context, block)
+  )
+
+const conditionalFalseCheck = onNode(
+  [ts.SyntaxKind.Block],
+  ts.isBlock,
+  conditionalFalseReturnMatches
+)
+
+// --- Combined ---
+
+const check = combineAll([literalBooleanCheck, conditionalFalseCheck])
+
+const badLiteralExample = new ExampleSnippet({
   filePath: "src/age.ts",
   code: `if (age >= 18) {
   return true
@@ -75,14 +177,28 @@ const badExample = new ExampleSnippet({
 return false`
 })
 
-const goodExample = new ExampleSnippet({
+const goodLiteralExample = new ExampleSnippet({
   filePath: "src/age.ts",
   code: `return age >= 18`
 })
 
+const badConditionalFalseExample = new ExampleSnippet({
+  filePath: "src/validate.ts",
+  code: `if (isValid(input)) {
+  const parsed = parse(input)
+  return hasRequiredFields(parsed)
+}
+return false`
+})
+
+const goodConditionalFalseExample = new ExampleSnippet({
+  filePath: "src/validate.ts",
+  code: `return isValid(input) && hasRequiredFields(parse(input))`
+})
+
 const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
+  bad: [badLiteralExample, badConditionalFalseExample],
+  good: [goodLiteralExample, goodConditionalFalseExample]
 })
 
 export const preferDirectBooleanReturn = new Rule({

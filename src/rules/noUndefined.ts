@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -81,20 +81,27 @@ const comparesAgainstUndefined = (expression: ts.BinaryExpression): boolean => {
 const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression =>
   ts.isBinaryExpression(node) ? comparesAgainstUndefined(node) : false
 
+const parameterAcceptsUndefined = (
+  param: ts.ParameterDeclaration
+): boolean => {
+  const hasQuestionToken = pipe(
+    param.questionToken,
+    Option.fromNullable,
+    Option.isSome
+  )
+  const typeNode = Option.fromNullable(param.type)
+  const hasUndefinedType = containsUndefinedType(typeNode)
+
+  return hasQuestionToken || hasUndefinedType
+}
+
 const isParameterAcceptingUndefined = (
   node: ts.Node
-): node is ts.ParameterDeclaration => {
-  if (ts.isParameter(node)) {
-    const questionToken = Option.fromNullable(node.questionToken)
-    const hasQuestionToken = Option.isSome(questionToken)
-    const typeNode = Option.fromNullable(node.type)
-    const hasUndefinedType = containsUndefinedType(typeNode)
-
-    return [hasQuestionToken, hasUndefinedType].some(Boolean)
-  }
-
-  return false
-}
+): node is ts.ParameterDeclaration =>
+  pipe(
+    Option.liftPredicate(ts.isParameter)(node),
+    Option.exists(parameterAcceptsUndefined)
+  )
 
 const declaredTypeContainsUndefined = (
   node: ReturnTypeDeclaration
@@ -151,27 +158,41 @@ const isOptionalMappedTypeNode = (node: ts.MappedTypeNode): boolean => {
   return Option.exists(questionToken, isNotMinusToken)
 }
 
+const propertySignatureAcceptsUndefined = (
+  node: ts.PropertySignature
+): boolean => {
+  const hasQuestionToken = pipe(
+    node.questionToken,
+    Option.fromNullable,
+    Option.isSome
+  )
+  const typeNode = Option.fromNullable(node.type)
+  const hasUndefinedType = containsUndefinedType(typeNode)
+
+  return hasQuestionToken || hasUndefinedType
+}
+
+const mappedTypeAcceptsUndefined = (node: ts.MappedTypeNode): boolean => {
+  const hasQuestionToken = isOptionalMappedTypeNode(node)
+  const typeNode = Option.fromNullable(node.type)
+  const hasUndefinedType = containsUndefinedType(typeNode)
+
+  return hasQuestionToken || hasUndefinedType
+}
+
 const isUndefinedTypeDeclaration = (
   node: ts.Node
 ): node is UndefinedTypeDeclaration => {
-  if (ts.isPropertySignature(node)) {
-    const questionToken = Option.fromNullable(node.questionToken)
-    const hasQuestionToken = Option.isSome(questionToken)
-    const typeNode = Option.fromNullable(node.type)
-    const hasUndefinedType = containsUndefinedType(typeNode)
+  const isPropertyWithUndefined = pipe(
+    Option.liftPredicate(ts.isPropertySignature)(node),
+    Option.exists(propertySignatureAcceptsUndefined)
+  )
+  const isMappedWithUndefined = pipe(
+    Option.liftPredicate(ts.isMappedTypeNode)(node),
+    Option.exists(mappedTypeAcceptsUndefined)
+  )
 
-    return [hasQuestionToken, hasUndefinedType].some(Boolean)
-  }
-
-  if (ts.isMappedTypeNode(node)) {
-    const hasQuestionToken = isOptionalMappedTypeNode(node)
-    const typeNode = Option.fromNullable(node.type)
-    const hasUndefinedType = containsUndefinedType(typeNode)
-
-    return [hasQuestionToken, hasUndefinedType].some(Boolean)
-  }
-
-  return false
+  return isPropertyWithUndefined || isMappedWithUndefined
 }
 
 const undefinedMessages: Record<UndefinedUsageMatch["kind"], string> = {

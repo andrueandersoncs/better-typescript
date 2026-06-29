@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -19,17 +19,18 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean =>
     ts.isParenthesizedTypeNode(typeNode) && containsRawObjectType(typeNode.type)
   ].some(Boolean)
 
+const parameterTypeNode = (
+  param: ts.ParameterDeclaration
+): Option.Option<ts.TypeNode> => Option.fromNullable(param.type)
+
 const parameterHasRawObjectType = (
   node: ts.Node
-): node is ts.ParameterDeclaration => {
-  if (ts.isParameter(node)) {
-    const typeNode = Option.fromNullable(node.type)
-
-    return Option.exists(typeNode, containsRawObjectType)
-  }
-
-  return false
-}
+): node is ts.ParameterDeclaration =>
+  pipe(
+    Option.liftPredicate(ts.isParameter)(node),
+    Option.flatMap(parameterTypeNode),
+    Option.exists(containsRawObjectType)
+  )
 
 const rawObjectParameterMatches = (
   node: ts.ParameterDeclaration,
