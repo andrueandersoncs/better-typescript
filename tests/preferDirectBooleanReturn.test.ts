@@ -22,6 +22,24 @@ const fixturePath = path.join(
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
+    name: "passesThrough.if",
+    ruleId: "prefer-direct-boolean-return",
+    fileName: "src/allowed.ts",
+    line: 4,
+    column: 3,
+    message: "Avoid conditional return followed by return false.",
+    hint: "Return a boolean expression using && instead of branching to return false."
+  },
+  {
+    name: "compareReturned.if",
+    ruleId: "prefer-direct-boolean-return",
+    fileName: "src/allowed.ts",
+    line: 19,
+    column: 3,
+    message: "Avoid conditional return followed by return false.",
+    hint: "Return a boolean expression using && instead of branching to return false."
+  },
+  {
     name: "returnTrue.if",
     ruleId: "prefer-direct-boolean-return",
     fileName: "src/cases.ts",
@@ -70,33 +88,21 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
-    name: "passesThrough.if",
-    fileName: "src/allowed.ts",
-    line: 4,
-    column: 3
-  },
-  {
     name: "fromElse.if",
     fileName: "src/allowed.ts",
     line: 11,
     column: 3
   },
   {
-    name: "compareReturned.if",
-    fileName: "src/allowed.ts",
-    line: 19,
-    column: 3
-  },
-  {
     name: "multiStatement.if",
     fileName: "src/allowed.ts",
-    line: 26,
+    line: 29,
     column: 3
   },
   {
     name: "bareReturn.if",
     fileName: "src/allowed.ts",
-    line: 34,
+    line: 37,
     column: 3
   }
 ]

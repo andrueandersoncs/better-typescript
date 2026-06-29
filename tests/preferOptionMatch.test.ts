@@ -28,7 +28,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "isSome ternary accessing .value in whenTrue",
     ruleId: "prefer-option-match",
     fileName: "src/cases.ts",
-    line: 19,
+    line: 28,
     column: 18,
     message,
     hint
@@ -37,7 +37,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "isSome ternary with .value property access in whenTrue",
     ruleId: "prefer-option-match",
     fileName: "src/cases.ts",
-    line: 25,
+    line: 36,
     column: 14,
     message,
     hint
@@ -46,7 +46,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "isNone ternary accessing .value in whenFalse",
     ruleId: "prefer-option-match",
     fileName: "src/cases.ts",
-    line: 31,
+    line: 40,
     column: 16,
     message,
     hint

@@ -36,7 +36,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "method pipe on Option",
     ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
-    line: 9,
+    line: 7,
     column: 31,
     message,
     hint
@@ -45,7 +45,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "chained method pipe",
     ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
-    line: 15,
+    line: 13,
     column: 46,
     message,
     hint
@@ -54,7 +54,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "method pipe on a variable",
     ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
-    line: 21,
+    line: 17,
     column: 21,
     message,
     hint
