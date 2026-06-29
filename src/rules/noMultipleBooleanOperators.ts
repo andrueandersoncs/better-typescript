@@ -17,8 +17,12 @@ const isBooleanOperatorExpression = (
 ): node is BooleanOperatorExpression => {
   const isBinaryBooleanOperator =
     ts.isBinaryExpression(node) &&
-    isBooleanBinaryOperator(node.operatorToken.kind)
-  const isUnaryBooleanOperator = isUnaryBooleanOperatorExpression(node)
+    HashSet.has(booleanBinaryOperatorKinds, node.operatorToken.kind)
+  const unaryOperator = ts.isPrefixUnaryExpression(node)
+    ? node.operator
+    : undefined
+  const isUnaryBooleanOperator =
+    unaryOperator === ts.SyntaxKind.ExclamationToken
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
@@ -29,16 +33,6 @@ const isBooleanOperatorExpression = (
   ].some(Boolean)
 }
 
-const isBooleanOperatorRoot = (expression: ts.Expression): boolean => {
-  const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
-  const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
-
-  return expressionUsesBooleanOperator && hasNoBooleanOperatorAncestor
-}
-
-const hasMultipleBooleanOperators = (expression: ts.Expression): boolean =>
-  booleanOperatorCount(expression) > 1
-
 const addBooleanOperatorCount = (total: number, child: ts.Expression): number =>
   total + booleanOperatorCount(child)
 
@@ -46,7 +40,7 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
   const unwrapped = unwrapExpression(expression)
   const ownCount = isBooleanOperatorExpression(unwrapped) ? 1 : 0
 
-  if (isNestedExpressionBoundary(unwrapped)) {
+  if (HashSet.has(nestedExpressionBoundaryKinds, unwrapped.kind)) {
     return ownCount
   }
 
@@ -69,19 +63,6 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   return Option.exists(parent, isOrHasBooleanOperatorAncestor)
 }
 
-const isExclamationOperator = (node: ts.PrefixUnaryExpression): boolean =>
-  node.operator === ts.SyntaxKind.ExclamationToken
-
-const isUnaryBooleanOperatorExpression = (
-  node: ts.Node
-): node is ts.PrefixUnaryExpression => {
-  const prefixUnaryExpression = Option.liftPredicate(
-    ts.isPrefixUnaryExpression
-  )(node)
-
-  return Option.exists(prefixUnaryExpression, isExclamationOperator)
-}
-
 const booleanBinaryOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken,
   ts.SyntaxKind.BarBarToken,
@@ -89,25 +70,23 @@ const booleanBinaryOperatorKinds = HashSet.make(
   ts.SyntaxKind.ExclamationEqualsEqualsToken
 )
 
-const isBooleanBinaryOperator = (kind: ts.SyntaxKind): boolean =>
-  HashSet.has(booleanBinaryOperatorKinds, kind)
-
 const nestedExpressionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ClassExpression
 )
 
-const isNestedExpressionBoundary = (expression: ts.Expression): boolean =>
-  HashSet.has(nestedExpressionBoundaryKinds, expression.kind)
-
 const multipleBooleanOperatorMatches = (
   expression: BooleanOperatorExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
+  const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
+  const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
+  const hasMultiple = booleanOperatorCount(expression) > 1
   const isReportableRoot = [
-    isBooleanOperatorRoot(expression),
-    hasMultipleBooleanOperators(expression)
+    expressionUsesBooleanOperator,
+    hasNoBooleanOperatorAncestor,
+    hasMultiple
   ].every(Boolean)
 
   return isReportableRoot

@@ -10,50 +10,25 @@ const ruleId = "no-first-party-schema-declare"
 
 // --- Detection ---
 
-const hasDeclareText = (name: ts.MemberName): boolean => name.text === "declare"
-
-const isDeclarePropertyAccess = (
-  expression: ts.Expression
-): expression is ts.PropertyAccessExpression =>
-  ts.isPropertyAccessExpression(expression) && hasDeclareText(expression.name)
-
-const isSchemaText = (identifier: ts.Identifier): boolean =>
-  identifier.text === "Schema"
-
-const isSchemaObject = (expression: ts.Expression): boolean =>
-  ts.isIdentifier(expression) && isSchemaText(expression)
-
 const accessExpression: (access: ts.PropertyAccessExpression) => ts.Expression =
   Struct.get("expression")
 
-const isSchemaPropertyAccess = (
-  access: ts.PropertyAccessExpression
-): boolean => {
-  const object = accessExpression(access)
+const declarePropertyAccess = (
+  call: ts.CallExpression
+): Option.Option<ts.PropertyAccessExpression> =>
+  Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
 
-  return isSchemaObject(object)
-}
-
-const hasArguments = (call: ts.CallExpression): boolean =>
-  call.arguments.length > 0
+const hasDeclareText = (access: ts.PropertyAccessExpression): boolean =>
+  access.name.text === "declare"
 
 const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
-  ts.isCallExpression(node) && isDeclarePropertyAccess(node.expression)
-
-const isDeclareCallOnSchema = (call: ts.CallExpression): boolean => {
-  const access = call.expression as ts.PropertyAccessExpression
-  const isOnSchema = isSchemaPropertyAccess(access)
-
-  return isOnSchema && hasArguments(call)
-}
+  pipe(
+    Option.liftPredicate(ts.isCallExpression)(node),
+    Option.flatMap(declarePropertyAccess),
+    Option.exists(hasDeclareText)
+  )
 
 // --- Type analysis ---
-
-const firstCallSignature = (type: ts.Type): Option.Option<ts.Signature> => {
-  const signatures = type.getCallSignatures()
-
-  return Option.fromNullable(signatures[0])
-}
 
 const signatureTypePredicate =
   (checker: ts.TypeChecker) =>
@@ -71,9 +46,10 @@ const predicateAssertedType =
   (checker: ts.TypeChecker) =>
   (predicate: ts.Expression): Option.Option<ts.Type> => {
     const type = checker.getTypeAtLocation(predicate)
+    const signatures = type.getCallSignatures()
 
     return pipe(
-      firstCallSignature(type),
+      Option.fromNullable(signatures[0]),
       Option.flatMap(signatureTypePredicate(checker)),
       Option.flatMap(typePredicateAssertedType)
     )
@@ -85,18 +61,10 @@ const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   return Option.fromNullable(symbol)
 }
 
-const isFirstPartyType = (type: ts.Type): boolean => {
-  const symbol = typeSymbol(type)
-
-  return Option.exists(symbol, isFirstPartySymbol)
-}
-
-const hasCallSignatures = (type: ts.Type): boolean =>
-  type.getCallSignatures().length > 0
-
 const isFirstPartyDataStructure = (type: ts.Type): boolean => {
-  const isFirstParty = isFirstPartyType(type)
-  const isDataStructure = !hasCallSignatures(type)
+  const symbol = typeSymbol(type)
+  const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
+  const isDataStructure = !(type.getCallSignatures().length > 0)
 
   return isFirstParty && isDataStructure
 }
@@ -136,14 +104,11 @@ const schemaDeclareMatchSource =
     })
   }
 
-const firstArgument = (call: ts.CallExpression): Option.Option<ts.Expression> =>
-  Option.fromNullable(call.arguments[0])
-
 const schemaDeclareMatchOption =
   (context: RuleContext) =>
   (call: ts.CallExpression): Option.Option<RuleMatch> =>
     pipe(
-      firstArgument(call),
+      Option.fromNullable(call.arguments[0]),
       Option.flatMap(predicateAssertedType(context.checker)),
       Option.filter(isFirstPartyDataStructure),
       Option.map(schemaDeclareMatchSource(context, call))
@@ -160,8 +125,15 @@ const schemaDeclareCallMatches =
 const schemaDeclareMatches = (
   call: ts.CallExpression,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isDeclareCallOnSchema(call) ? schemaDeclareCallMatches(context)(call) : []
+): ReadonlyArray<RuleMatch> => {
+  const access = call.expression as ts.PropertyAccessExpression
+  const object = accessExpression(access)
+  if (!ts.isIdentifier(object)) return []
+  const isOnSchema = object.text === "Schema"
+  const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
+
+  return isDeclareOnSchema ? schemaDeclareCallMatches(context)(call) : []
+}
 
 const check = onNode(
   [ts.SyntaxKind.CallExpression],

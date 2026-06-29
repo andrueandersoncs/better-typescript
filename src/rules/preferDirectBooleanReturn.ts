@@ -28,30 +28,14 @@ const booleanLiteralValue = (
   )
 }
 
-const isBooleanLiteral = (expression: ts.Expression): boolean =>
-  pipe(expression, booleanLiteralValue, Option.isSome)
-
 const isNonBooleanLiteral = (expression: ts.Expression): boolean =>
-  !isBooleanLiteral(expression)
+  !pipe(expression, booleanLiteralValue, Option.isSome)
 
 const returnStatementExpression = (
   statement: ts.ReturnStatement
 ): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
 // --- Literal boolean return from conditional branch ---
-
-const booleanReturnFromStatement = (
-  statement: ts.Statement
-): Option.Option<boolean> =>
-  Option.gen(function* () {
-    const unwrappedStatement = unwrapSingleStatementBlock(statement)
-    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
-      unwrappedStatement
-    )
-    const expression = yield* Option.fromNullable(returnStatement.expression)
-
-    return yield* booleanLiteralValue(expression)
-  })
 
 const directBooleanRuleMatch =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
@@ -75,7 +59,17 @@ const directBooleanMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   pipe(
-    booleanReturnFromStatement(ifStatement.thenStatement),
+    Option.gen(function* () {
+      const unwrappedStatement = unwrapSingleStatementBlock(
+        ifStatement.thenStatement
+      )
+      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
+        unwrappedStatement
+      )
+      const expression = yield* Option.fromNullable(returnStatement.expression)
+
+      return yield* booleanLiteralValue(expression)
+    }),
     Option.map(directBooleanRuleMatch(context, ifStatement)),
     Option.toArray
   )
@@ -87,25 +81,6 @@ const literalBooleanCheck = onNode(
 )
 
 // --- Conditional return followed by return false ---
-
-const lastBlockReturnExpression = (
-  block: ts.Block
-): Option.Option<ts.Expression> =>
-  pipe(
-    lastStatement(block),
-    Option.filter(ts.isReturnStatement),
-    Option.flatMap(returnStatementExpression)
-  )
-
-const thenBranchReturnExpression = (
-  thenStatement: ts.Statement
-): Option.Option<ts.Expression> =>
-  ts.isBlock(thenStatement)
-    ? lastBlockReturnExpression(thenStatement)
-    : pipe(
-        Option.liftPredicate(ts.isReturnStatement)(thenStatement),
-        Option.flatMap(returnStatementExpression)
-      )
 
 const isFalseKeyword = (expression: ts.Expression): boolean =>
   unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
@@ -123,10 +98,19 @@ const conditionalFalseReturnMatch =
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
       yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
-      yield* pipe(
-        thenBranchReturnExpression(ifStatement.thenStatement),
-        Option.filter(isNonBooleanLiteral)
-      )
+      const thenBranchExpr = ts.isBlock(ifStatement.thenStatement)
+        ? pipe(
+            lastStatement(ifStatement.thenStatement),
+            Option.filter(ts.isReturnStatement),
+            Option.flatMap(returnStatementExpression)
+          )
+        : pipe(
+            Option.liftPredicate(ts.isReturnStatement)(
+              ifStatement.thenStatement
+            ),
+            Option.flatMap(returnStatementExpression)
+          )
+      yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
       yield* Option.filter(nextStatement, isFalseLiteralReturn)
 
       return createRuleMatch(context, {

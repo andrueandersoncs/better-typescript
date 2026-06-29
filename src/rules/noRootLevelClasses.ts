@@ -18,11 +18,8 @@ const classNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
 const isClassNode = (node: ts.Node): node is ClassNode =>
   ts.isClassDeclaration(node) || ts.isClassExpression(node)
 
-const extendsAnotherClass = (declaration: ClassNode): boolean =>
-  (declaration.heritageClauses ?? []).some(isExtendsClause)
-
 const lacksExtendsClause = (declaration: ClassNode): boolean =>
-  !extendsAnotherClass(declaration)
+  !(declaration.heritageClauses ?? []).some(isExtendsClause)
 
 const rootLevelClassMatch =
   (context: RuleContext) =>

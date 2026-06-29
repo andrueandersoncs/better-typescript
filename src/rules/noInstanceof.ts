@@ -8,20 +8,14 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-instanceof"
 
-const isInstanceofOperator = (token: ts.BinaryOperatorToken): boolean =>
-  token.kind === ts.SyntaxKind.InstanceOfKeyword
+const isInstanceofOperator = (expr: ts.BinaryExpression): boolean =>
+  expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
 
 const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
-  ts.isBinaryExpression(node) && isInstanceofOperator(node.operatorToken)
-
-const instanceofClassSymbol = (
-  checker: ts.TypeChecker,
-  expression: ts.BinaryExpression
-): Option.Option<ts.Symbol> => {
-  const symbol = checker.getSymbolAtLocation(expression.right)
-
-  return Option.fromNullable(symbol)
-}
+  pipe(
+    Option.liftPredicate(ts.isBinaryExpression)(node),
+    Option.exists(isInstanceofOperator)
+  )
 
 const className: (symbol: ts.Symbol) => string = Struct.get("name")
 
@@ -45,7 +39,8 @@ const instanceofMatches = (
   expression: ts.BinaryExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
-  const symbol = instanceofClassSymbol(context.checker, expression)
+  const symbolAtLocation = context.checker.getSymbolAtLocation(expression.right)
+  const symbol = Option.fromNullable(symbolAtLocation)
 
   return pipe(
     symbol,

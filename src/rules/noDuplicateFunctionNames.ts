@@ -23,28 +23,20 @@ const namedFunctionDeclaration = (
   declaration: ts.FunctionDeclaration
 ): Option.Option<ts.Identifier> => Option.fromNullable(declaration.name)
 
-const variableStatementFunctions = (
+const statementFunctions = (
   statement: ts.Statement
-): ReadonlyArray<ts.Identifier> =>
-  ts.isVariableStatement(statement)
+): ReadonlyArray<ts.Identifier> => {
+  const variableDeclarationFunctions = ts.isVariableStatement(statement)
     ? Array.filterMap(statement.declarationList.declarations, declaredFunction)
     : []
-
-const functionDeclarationFunctions = (
-  statement: ts.Statement
-): ReadonlyArray<ts.Identifier> =>
-  pipe(
+  const functionDeclarationNames = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
     Option.flatMap(namedFunctionDeclaration),
     Option.toArray
   )
 
-const statementFunctions = (
-  statement: ts.Statement
-): ReadonlyArray<ts.Identifier> => [
-  ...variableStatementFunctions(statement),
-  ...functionDeclarationFunctions(statement)
-]
+  return Array.appendAll(variableDeclarationFunctions, functionDeclarationNames)
+}
 
 const topLevelFunctions = (
   sourceFile: ts.SourceFile
@@ -65,40 +57,21 @@ const addFunctionToIndex = (
   return index.set(nameNode.text, [...existingDeclarations, nameNode])
 }
 
-const functionsByName = (
-  functions: ReadonlyArray<ts.Identifier>
-): FunctionNameIndex => {
-  const emptyIndex = new Map<string, ReadonlyArray<ts.Identifier>>()
-
-  return functions.reduce(addFunctionToIndex, emptyIndex)
-}
-
 const functionNameIndexCache = new WeakMap<ts.Program, FunctionNameIndex>()
 
-const buildFunctionNameIndex = (program: ts.Program): FunctionNameIndex => {
-  const projectFunctions = program
-    .getSourceFiles()
-    .filter(isProjectSourceFile)
-    .flatMap(topLevelFunctions)
-  const index = functionsByName(projectFunctions)
-
-  functionNameIndexCache.set(program, index)
-
-  return index
-}
-
 const orBuildFunctionNameIndex =
-  (program: ts.Program) => (): FunctionNameIndex =>
-    buildFunctionNameIndex(program)
+  (program: ts.Program) => (): FunctionNameIndex => {
+    const projectFunctions = program
+      .getSourceFiles()
+      .filter(isProjectSourceFile)
+      .flatMap(topLevelFunctions)
+    const emptyIndex = new Map<string, ReadonlyArray<ts.Identifier>>()
+    const index = projectFunctions.reduce(addFunctionToIndex, emptyIndex)
 
-const functionNameIndex = (program: ts.Program): FunctionNameIndex => {
-  const cached = functionNameIndexCache.get(program)
+    functionNameIndexCache.set(program, index)
 
-  return pipe(
-    Option.fromNullable(cached),
-    Option.getOrElse(orBuildFunctionNameIndex(program))
-  )
-}
+    return index
+  }
 
 const declaredFileName = (nameNode: ts.Identifier): string =>
   nameNode.getSourceFile().fileName
@@ -110,51 +83,14 @@ const isOtherFileName =
 
 const maxListedFileNames = 3
 
-const formatFileNames = (
-  projectRoot: string,
-  fileNames: ReadonlyArray<string>
-): string => {
-  const relativeFileNames = fileNames.map(toRelativeFileName(projectRoot))
-  const listedFileNames = relativeFileNames
-    .slice(0, maxListedFileNames)
-    .join(", ")
-  const remainingCount = relativeFileNames.length - maxListedFileNames
-
-  return remainingCount > 0
-    ? `${listedFileNames} and ${moreFilesSuffix(remainingCount)}`
-    : listedFileNames
-}
-
-const moreFilesSuffix = (remainingCount: number): string => {
-  const isSingleFile = remainingCount === 1
-
-  return isSingleFile ? "1 more file" : `${remainingCount} more files`
-}
-
-const duplicateFunctionMatch = (
-  context: RuleContext,
-  candidate: ts.Identifier,
-  otherFileNames: ReadonlyArray<string>
-): RuleMatch => {
-  const functionName = candidate.text
-  const otherFiles = formatFileNames(context.projectRoot, otherFileNames)
-
-  return createRuleMatch(context, {
-    ruleId,
-    node: candidate,
-    message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
-    hint:
-      `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-      "into a module scoped to its domain and import it from every file that uses it. Name " +
-      "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-      "generic lib.ts or utils.ts."
-  })
-}
-
 const candidateRuleMatch =
   (context: RuleContext) =>
   (candidate: ts.Identifier): Option.Option<RuleMatch> => {
-    const index = functionNameIndex(context.program)
+    const cached = functionNameIndexCache.get(context.program)
+    const index = pipe(
+      Option.fromNullable(cached),
+      Option.getOrElse(orBuildFunctionNameIndex(context.program))
+    )
     const declarations = declarationsForName(index, candidate.text)
     const declaredFileNames = declarations.map(declaredFileName)
     const otherFileNames = Array.dedupe(declaredFileNames).filter(
@@ -165,7 +101,29 @@ const candidateRuleMatch =
       return Option.none()
     }
 
-    const match = duplicateFunctionMatch(context, candidate, otherFileNames)
+    const functionName = candidate.text
+    const relativeFileNames = otherFileNames.map(
+      toRelativeFileName(context.projectRoot)
+    )
+    const listedFileNames = relativeFileNames
+      .slice(0, maxListedFileNames)
+      .join(", ")
+    const remainingCount = relativeFileNames.length - maxListedFileNames
+    const isSingleFile = remainingCount === 1
+    const otherFiles =
+      remainingCount > 0
+        ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
+        : listedFileNames
+    const match = createRuleMatch(context, {
+      ruleId,
+      node: candidate,
+      message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
+      hint:
+        `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
+        "into a module scoped to its domain and import it from every file that uses it. Name " +
+        "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
+        "generic lib.ts or utils.ts."
+    })
 
     return Option.some(match)
   }

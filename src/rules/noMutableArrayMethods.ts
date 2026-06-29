@@ -2,7 +2,11 @@ import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { differentApparentType, differentBaseConstraint } from "./tsType.js"
+import {
+  differentApparentType,
+  differentBaseConstraint,
+  isUnseenType
+} from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -31,35 +35,6 @@ const mutableArrayMethods = HashSet.make(
   "unshift" as MutableArrayMethod
 )
 
-const mutableArrayMethod = (
-  methodName: string
-): Option.Option<MutableArrayMethod> =>
-  HashSet.has(mutableArrayMethods, methodName as MutableArrayMethod)
-    ? Option.some(methodName as MutableArrayMethod)
-    : Option.none()
-
-const mutableArrayMethodCall = (
-  context: RuleContext,
-  callExpression: ts.CallExpression
-): Option.Option<MutableArrayMethod> => {
-  if (!ts.isPropertyAccessExpression(callExpression.expression)) {
-    return Option.none()
-  }
-
-  const propertyAccess = callExpression.expression
-  const methodName = mutableArrayMethod(propertyAccess.name.text)
-
-  if (Option.isNone(methodName)) {
-    return Option.none()
-  }
-
-  const receiverType = context.checker.getTypeAtLocation(
-    propertyAccess.expression
-  )
-
-  return isArrayType(context.checker, receiverType) ? methodName : Option.none()
-}
-
 const isArrayTypePart =
   (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type>) =>
   (part: ts.Type): boolean =>
@@ -74,75 +49,47 @@ const isUnionOrIntersectionType = (
   type: ts.Type
 ): type is ts.UnionOrIntersectionType => type.isUnionOrIntersection()
 
-const isUnionOrIntersectionArrayType = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: HashSet.HashSet<ts.Type>
-): boolean => {
-  const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(
-    type
-  )
+const computeIsArrayType =
+  (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type>) =>
+  (type: ts.Type): boolean => {
+    const nextSeen = HashSet.add(seen, type)
+    const isDirectArrayType =
+      checker.isArrayType(type) || checker.isTupleType(type)
+    const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(
+      type
+    )
+    const hasUnionOrIntersectionArrayType = Option.exists(
+      unionOrIntersection,
+      anyPartIsArrayType(checker, nextSeen)
+    )
+    const baseConstraint = differentBaseConstraint(checker, type)
+    const hasConstrainedArrayType = Option.exists(
+      baseConstraint,
+      isArrayTypePart(checker, nextSeen)
+    )
+    const apparentType = differentApparentType(checker, type)
+    const hasApparentArrayType = Option.exists(
+      apparentType,
+      isArrayTypePart(checker, nextSeen)
+    )
 
-  return Option.exists(unionOrIntersection, anyPartIsArrayType(checker, seen))
-}
-
-const isConstrainedArrayType = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: HashSet.HashSet<ts.Type>
-): boolean => {
-  const baseConstraint = differentBaseConstraint(checker, type)
-
-  return Option.exists(baseConstraint, isArrayTypePart(checker, seen))
-}
-
-const isApparentArrayType = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: HashSet.HashSet<ts.Type>
-): boolean => {
-  const apparentType = differentApparentType(checker, type)
-
-  return Option.exists(apparentType, isArrayTypePart(checker, seen))
-}
+    return [
+      isDirectArrayType,
+      hasUnionOrIntersectionArrayType,
+      hasConstrainedArrayType,
+      hasApparentArrayType
+    ].some(Boolean)
+  }
 
 const isArrayType = (
   checker: ts.TypeChecker,
   type: ts.Type,
   seen: HashSet.HashSet<ts.Type> = HashSet.empty()
-): boolean => {
-  const isUnseen = !HashSet.has(seen, type)
-
-  return isUnseen && isUnseenArrayType(checker, type, seen)
-}
-
-const isUnseenArrayType = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: HashSet.HashSet<ts.Type>
-): boolean => {
-  const nextSeen = HashSet.add(seen, type)
-  const isDirectArrayType =
-    checker.isArrayType(type) || checker.isTupleType(type)
-  const hasUnionOrIntersectionArrayType = isUnionOrIntersectionArrayType(
-    checker,
-    type,
-    nextSeen
+): boolean =>
+  pipe(
+    Option.liftPredicate(isUnseenType(seen))(type),
+    Option.exists(computeIsArrayType(checker, seen))
   )
-  const hasConstrainedArrayType = isConstrainedArrayType(
-    checker,
-    type,
-    nextSeen
-  )
-  const hasApparentArrayType = isApparentArrayType(checker, type, nextSeen)
-
-  return [
-    isDirectArrayType,
-    hasUnionOrIntersectionArrayType,
-    hasConstrainedArrayType,
-    hasApparentArrayType
-  ].some(Boolean)
-}
 
 const mutableArrayRuleMatch =
   (context: RuleContext, callExpression: ts.CallExpression) =>
@@ -161,12 +108,37 @@ const mutableArrayRuleMatch =
 const mutableArrayMatches = (
   callExpression: ts.CallExpression,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    mutableArrayMethodCall(context, callExpression),
+): ReadonlyArray<RuleMatch> => {
+  if (!ts.isPropertyAccessExpression(callExpression.expression)) {
+    return []
+  }
+
+  const propertyAccess = callExpression.expression
+  const methodName = HashSet.has(
+    mutableArrayMethods,
+    propertyAccess.name.text as MutableArrayMethod
+  )
+    ? Option.some(propertyAccess.name.text as MutableArrayMethod)
+    : Option.none()
+
+  if (Option.isNone(methodName)) {
+    return []
+  }
+
+  const receiverType = context.checker.getTypeAtLocation(
+    propertyAccess.expression
+  )
+
+  const methodCall = isArrayType(context.checker, receiverType)
+    ? methodName
+    : Option.none()
+
+  return pipe(
+    methodCall,
     Option.map(mutableArrayRuleMatch(context, callExpression)),
     Option.toArray
   )
+}
 
 const check = onNode(
   [ts.SyntaxKind.CallExpression],

@@ -7,9 +7,10 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-loops"
 
-const hasIteratorAndStopCondition = (
-  forStatement: ts.ForStatement
-): boolean => {
+const forMatches = (
+  forStatement: ts.ForStatement,
+  context: RuleContext
+): ReadonlyArray<RuleMatch> => {
   const condition = Option.fromNullable(forStatement.condition)
   const initializer = Option.fromNullable(forStatement.initializer)
   const incrementor = Option.fromNullable(forStatement.incrementor)
@@ -17,15 +18,11 @@ const hasIteratorAndStopCondition = (
   const hasInitializer = Option.isSome(initializer)
   const hasIncrementor = Option.isSome(incrementor)
   const hasIterator = [hasInitializer, hasIncrementor].some(Boolean)
+  const hasIteratorAndStopCondition = [hasStopCondition, hasIterator].every(
+    Boolean
+  )
 
-  return [hasStopCondition, hasIterator].every(Boolean)
-}
-
-const forMatches = (
-  forStatement: ts.ForStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  hasIteratorAndStopCondition(forStatement)
+  return hasIteratorAndStopCondition
     ? [
         createRuleMatch(context, {
           ruleId,
@@ -37,6 +34,7 @@ const forMatches = (
         })
       ]
     : []
+}
 
 const check = onNode(
   [ts.SyntaxKind.ForStatement],

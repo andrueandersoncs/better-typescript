@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Function, Option, pipe } from "effect"
+import { Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -53,23 +53,17 @@ const primitiveTypeFlags =
   ts.TypeFlags.ESSymbolLike |
   ts.TypeFlags.EnumLike
 
-const hasPrimitiveFlag = (type: ts.Type): boolean =>
-  (type.flags & primitiveTypeFlags) !== 0
-
 const isFalse = (value: boolean): boolean => !value
-
-const isArrayLikeType = (context: RuleContext, type: ts.Type): boolean =>
-  [context.checker.isArrayType(type), context.checker.isTupleType(type)].some(
-    Boolean
-  )
 
 const isDataStructureMember = (
   context: RuleContext,
   type: ts.Type
 ): boolean => {
   const exclusions = [
-    hasPrimitiveFlag(type),
-    isArrayLikeType(context, type),
+    (type.flags & primitiveTypeFlags) !== 0,
+    [context.checker.isArrayType(type), context.checker.isTupleType(type)].some(
+      Boolean
+    ),
     hasCallSignature(context.checker, type)
   ]
 
@@ -81,21 +75,6 @@ const isDataStructureMemberOf =
   (member: ts.Type): boolean =>
     isDataStructureMember(context, member)
 
-const isStructuredDataType = (context: RuleContext, type: ts.Type): boolean => {
-  const isDataStructureMemberInContext = isDataStructureMemberOf(context)
-
-  return type.isUnionOrIntersection()
-    ? type.types.every(isDataStructureMemberInContext)
-    : isDataStructureMember(context, type)
-}
-
-const isDataStructureDeclaration = (declaration: ts.Declaration): boolean =>
-  [
-    ts.isInterfaceDeclaration(declaration),
-    ts.isTypeAliasDeclaration(declaration),
-    ts.isClassDeclaration(declaration)
-  ].some(Boolean)
-
 const typeFromTypeNode =
   (checker: ts.TypeChecker) =>
   (node: ts.TypeNode): ts.Type =>
@@ -106,32 +85,12 @@ const typeAtLocation =
   (): ts.Type =>
     checker.getTypeAtLocation(parameter)
 
-const parameterType = (
-  context: RuleContext,
-  parameter: ts.ParameterDeclaration
-): ts.Type =>
-  pipe(
-    Option.fromNullable(parameter.type),
-    Option.map(typeFromTypeNode(context.checker)),
-    Option.getOrElse(typeAtLocation(context.checker, parameter))
-  )
-
-const dataStructureSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
-  const symbol = type.getSymbol()
-  const aliasOrSymbol = type.aliasSymbol ?? symbol
-
-  return Option.fromNullable(aliasOrSymbol)
-}
-
-const kebabCase = (input: string): string =>
-  input
+const dataStructureModule = (name: string) => {
+  const moduleFileName = `${name
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .replaceAll("_", "-")
-    .toLowerCase()
-
-const dataStructureModule = (name: string) => {
-  const moduleFileName = `${kebabCase(name)}.ts`
+    .toLowerCase()}.ts`
   const expectedModulePath = path.posix.join("modules", moduleFileName)
 
   return [name, expectedModulePath] as const
@@ -157,7 +116,11 @@ const isDataStructureModuleDeclaration =
     const dataStructure = dataStructureModule(symbol.name)
     const sourceFile = declaration.getSourceFile()
     const sourceFileIsProject = isProjectSourceFile(sourceFile)
-    const declarationIsDataStructure = isDataStructureDeclaration(declaration)
+    const declarationIsDataStructure = [
+      ts.isInterfaceDeclaration(declaration),
+      ts.isTypeAliasDeclaration(declaration),
+      ts.isClassDeclaration(declaration)
+    ].some(Boolean)
     const declarationIsExpectedModule = isExpectedModulePath(
       context.projectRoot,
       sourceFile.fileName,
@@ -171,58 +134,37 @@ const isDataStructureModuleDeclaration =
     ].every(Boolean)
   }
 
-const isFirstPartyDataStructureSymbol = (
-  context: RuleContext,
-  symbol: ts.Symbol
-): boolean => {
-  const declarations = symbol.declarations ?? []
-  const isDataStructureDeclarationForSymbol = isDataStructureModuleDeclaration(
-    context,
-    symbol
-  )
-
-  return declarations.some(isDataStructureDeclarationForSymbol)
-}
-
 const dataStructureForSymbol =
   (context: RuleContext, type: ts.Type) =>
   (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
-    const isFirstParty = isFirstPartyDataStructureSymbol(context, symbol)
-    const isStructured = isStructuredDataType(context, type)
+    const declarations = symbol.declarations ?? []
+    const isDataStructureDeclarationForSymbol =
+      isDataStructureModuleDeclaration(context, symbol)
+    const isFirstParty = declarations.some(isDataStructureDeclarationForSymbol)
+    const isDataStructureMemberInContext = isDataStructureMemberOf(context)
+    const isStructured = type.isUnionOrIntersection()
+      ? type.types.every(isDataStructureMemberInContext)
+      : isDataStructureMember(context, type)
     const isDataStructure = [isFirstParty, isStructured].every(Boolean)
     const dataStructure = dataStructureModule(symbol.name)
 
     return isDataStructure ? Option.some(dataStructure) : Option.none()
   }
 
-const parameterDataStructure = (
-  context: RuleContext,
-  parameter: ts.ParameterDeclaration
-): Option.Option<DataStructureModule> => {
-  const type = parameterType(context, parameter)
-  const symbol = dataStructureSymbol(type)
-
-  return pipe(symbol, Option.flatMap(dataStructureForSymbol(context, type)))
-}
-
 const parameterDataStructureCurried =
   (context: RuleContext) =>
-  (parameter: ts.ParameterDeclaration): Option.Option<DataStructureModule> =>
-    parameterDataStructure(context, parameter)
+  (parameter: ts.ParameterDeclaration): Option.Option<DataStructureModule> => {
+    const type = pipe(
+      Option.fromNullable(parameter.type),
+      Option.map(typeFromTypeNode(context.checker)),
+      Option.getOrElse(typeAtLocation(context.checker, parameter))
+    )
+    const typeSymbol = type.getSymbol()
+    const aliasOrSymbol = type.aliasSymbol ?? typeSymbol
+    const symbol = Option.fromNullable(aliasOrSymbol)
 
-const lastParameter = (
-  node: CheckedFunction
-): Option.Option<ts.ParameterDeclaration> =>
-  Option.fromNullable(node.parameters[node.parameters.length - 1])
-
-const lastParameterDataStructure = (
-  context: RuleContext,
-  node: CheckedFunction
-): Option.Option<DataStructureModule> =>
-  pipe(
-    lastParameter(node),
-    Option.flatMap(parameterDataStructureCurried(context))
-  )
+    return pipe(symbol, Option.flatMap(dataStructureForSymbol(context, type)))
+  }
 
 const variableDefinition = (
   context: RuleContext,
@@ -264,61 +206,21 @@ const variableDefinitionFromInitializer = (
     : Option.none()
 }
 
-const hasCallableVariableType = (
-  context: RuleContext,
-  declaration: ts.VariableDeclaration
-): boolean => {
-  const declarationType = context.checker.getTypeAtLocation(declaration.name)
-
-  return hasCallSignature(context.checker, declarationType)
-}
-
-const isArgumentOfCall = (
-  expression: ts.Expression,
-  callExpression: ts.CallExpression
-): boolean => callExpression.arguments.some(sameExpression(expression))
-
 const isVariableInitializerFor =
   (expression: ts.Expression) =>
   (declaration: ts.VariableDeclaration): boolean =>
     isVariableInitializer(expression, declaration)
 
-const callExpressionVariableDeclaration = (
-  callExpression: ts.CallExpression
-): Option.Option<ts.VariableDeclaration> => {
-  const expression = outermostTransparentWrapper(callExpression)
-  const parent = expression.parent
-  const declaration = Option.liftPredicate(ts.isVariableDeclaration)(parent)
-
-  return pipe(declaration, Option.filter(isVariableInitializerFor(expression)))
-}
-
 const definitionFromCallableDeclaration =
   (context: RuleContext) =>
   (declaration: ts.VariableDeclaration): Option.Option<FunctionDefinition> => {
     const definition = variableDefinition(context, declaration)
+    const declarationType = context.checker.getTypeAtLocation(declaration.name)
 
-    return hasCallableVariableType(context, declaration)
+    return hasCallSignature(context.checker, declarationType)
       ? Option.some(definition)
       : Option.none()
   }
-
-const variableDefinitionFromCallExpressionArgument = (
-  context: RuleContext,
-  expression: ts.Expression,
-  callExpression: ts.CallExpression
-): Option.Option<FunctionDefinition> => {
-  if (!isArgumentOfCall(expression, callExpression)) {
-    return Option.none()
-  }
-
-  const declaration = callExpressionVariableDeclaration(callExpression)
-
-  return pipe(
-    declaration,
-    Option.flatMap(definitionFromCallableDeclaration(context))
-  )
-}
 
 const variableDefinitionFromCallArgument = (
   context: RuleContext,
@@ -326,9 +228,26 @@ const variableDefinitionFromCallArgument = (
 ): Option.Option<FunctionDefinition> => {
   const parent = expression.parent
 
-  return ts.isCallExpression(parent)
-    ? variableDefinitionFromCallExpressionArgument(context, expression, parent)
-    : Option.none()
+  if (!ts.isCallExpression(parent)) {
+    return Option.none()
+  }
+
+  const hasMatchingArgument = parent.arguments.some(sameExpression(expression))
+  if (!hasMatchingArgument) {
+    return Option.none()
+  }
+
+  const wrappedExpression = outermostTransparentWrapper(parent)
+  const wrappedParent = wrappedExpression.parent
+  const declaration = pipe(
+    Option.liftPredicate(ts.isVariableDeclaration)(wrappedParent),
+    Option.filter(isVariableInitializerFor(wrappedExpression))
+  )
+
+  return pipe(
+    declaration,
+    Option.flatMap(definitionFromCallableDeclaration(context))
+  )
 }
 
 const firstDefinition = (
@@ -345,37 +264,38 @@ const firstDefinition = (
     : curried
 }
 
-const conciseArrowCurriedDefinition = (
-  context: RuleContext,
-  expression: ts.Expression,
-  parent: ts.ArrowFunction
-): Option.Option<FunctionDefinition> => {
-  if (parent.body !== expression) {
-    return Option.none()
+const arrowHasBody =
+  (expression: ts.Expression) =>
+  (arrow: ts.ArrowFunction): boolean =>
+    arrow.body === expression
+
+const isArrowWithBody =
+  (expression: ts.Expression) =>
+  (p: ts.Node): p is ts.ArrowFunction =>
+    pipe(
+      Option.liftPredicate(ts.isArrowFunction)(p),
+      Option.exists(arrowHasBody(expression))
+    )
+
+const findCurriedDefinition =
+  (context: RuleContext) =>
+  (arrowParent: ts.ArrowFunction): Option.Option<FunctionDefinition> => {
+    const parentExpression = outermostTransparentWrapper(arrowParent)
+    const initializer = variableDefinitionFromInitializer(
+      context,
+      parentExpression
+    )
+    const callArgument = variableDefinitionFromCallArgument(
+      context,
+      parentExpression
+    )
+    const curried = conciseCurriedDefinition(context, parentExpression)
+
+    return firstDefinition(initializer, callArgument, curried)
   }
 
-  const parentExpression = outermostTransparentWrapper(parent)
-  const initializer = variableDefinitionFromInitializer(
-    context,
-    parentExpression
-  )
-  const callArgument = variableDefinitionFromCallArgument(
-    context,
-    parentExpression
-  )
-  const curried = conciseCurriedDefinition(context, parentExpression)
-
-  return firstDefinition(initializer, callArgument, curried)
-}
-
-const conciseFunctionCurriedDefinition = (
-  context: RuleContext,
-  expression: ts.Expression,
-  parent: CheckedFunction
-): Option.Option<FunctionDefinition> =>
-  ts.isArrowFunction(parent)
-    ? conciseArrowCurriedDefinition(context, expression, parent)
-    : Option.none()
+const noFunctionDefinition = (): Option.Option<FunctionDefinition> =>
+  Option.none()
 
 const conciseCurriedDefinition = (
   context: RuleContext,
@@ -383,9 +303,11 @@ const conciseCurriedDefinition = (
 ): Option.Option<FunctionDefinition> => {
   const parent = expression.parent
 
-  return isCheckedFunction(parent)
-    ? conciseFunctionCurriedDefinition(context, expression, parent)
-    : Option.none()
+  return pipe(
+    Match.value(parent),
+    Match.when(isArrowWithBody(expression), findCurriedDefinition(context)),
+    Match.orElse(noFunctionDefinition)
+  )
 }
 
 const nameText =
@@ -393,110 +315,71 @@ const nameText =
   (nameNode: ts.DeclarationName): string =>
     nameNode.getText(sourceFile)
 
-const namedFunctionDefinition = (
-  context: RuleContext,
-  node: ts.FunctionDeclaration | ts.MethodDeclaration
-) => {
-  const name = pipe(
-    Option.fromNullable(node.name),
-    Option.map(nameText(context.sourceFile)),
-    Option.getOrElse(Function.constant("this function"))
-  )
-  const reportNode = namedNodeReportTarget(node)
-
-  return [name, reportNode] as const
-}
-
-const expressionFunctionDefinition = (
-  context: RuleContext,
-  node: ts.ArrowFunction | ts.FunctionExpression
-): Option.Option<FunctionDefinition> => {
-  const expression = outermostTransparentWrapper(node)
-  const initializer = variableDefinitionFromInitializer(context, expression)
-  const callArgument = variableDefinitionFromCallArgument(context, expression)
-  const curried = conciseCurriedDefinition(context, expression)
-
-  return firstDefinition(initializer, callArgument, curried)
-}
-
-const namedDefinitionOption = (
-  context: RuleContext,
-  node: ts.FunctionDeclaration | ts.MethodDeclaration
-): Option.Option<FunctionDefinition> => {
-  const definition = namedFunctionDefinition(context, node)
-
-  return Option.some(definition)
-}
-
-const isNamedCheckedFunction = (
-  node: CheckedFunction
-): node is ts.FunctionDeclaration | ts.MethodDeclaration =>
-  [ts.isFunctionDeclaration(node), ts.isMethodDeclaration(node)].some(Boolean)
-
-const functionDefinition = (
-  context: RuleContext,
-  node: CheckedFunction
-): Option.Option<FunctionDefinition> =>
-  isNamedCheckedFunction(node)
-    ? namedDefinitionOption(context, node)
-    : expressionFunctionDefinition(context, node)
-
-const isExpectedModuleFile = (
-  context: RuleContext,
-  expectedModulePath: string
-): boolean =>
-  isExpectedModulePath(
-    context.projectRoot,
-    context.sourceFile.fileName,
-    expectedModulePath
-  )
-
-const dataLastModuleMatch = (
-  context: RuleContext,
-  dataStructure: DataStructureModule,
-  definition: FunctionDefinition
-): RuleMatch =>
-  createRuleMatch(context, {
-    ruleId,
-    node: definition[1],
-    message:
-      `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
-      `its last parameter is ${dataStructure[0]}.`,
-    hint:
-      `Move ${definition[0]} to ${dataStructure[1]} so data-last ` +
-      `functions for ${dataStructure[0]} live with the ${dataStructure[0]} data structure.`
-  })
-
 const dataLastModuleMatchForDataStructure =
   (context: RuleContext, definition: FunctionDefinition) =>
   (dataStructure: DataStructureModule): Option.Option<RuleMatch> => {
-    const match = dataLastModuleMatch(context, dataStructure, definition)
+    const match = createRuleMatch(context, {
+      ruleId,
+      node: definition[1],
+      message:
+        `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
+        `its last parameter is ${dataStructure[0]}.`,
+      hint:
+        `Move ${definition[0]} to ${dataStructure[1]} so data-last ` +
+        `functions for ${dataStructure[0]} live with the ${dataStructure[0]} data structure.`
+    })
 
-    return isExpectedModuleFile(context, dataStructure[1])
+    return isExpectedModulePath(
+      context.projectRoot,
+      context.sourceFile.fileName,
+      dataStructure[1]
+    )
       ? Option.none()
       : Option.some(match)
   }
 
 const dataLastModuleMatchForDefinition =
   (context: RuleContext, node: CheckedFunction) =>
-  (definition: FunctionDefinition): Option.Option<RuleMatch> => {
-    const dataStructure = lastParameterDataStructure(context, node)
-
-    return pipe(
-      dataStructure,
+  (definition: FunctionDefinition): Option.Option<RuleMatch> =>
+    pipe(
+      Option.fromNullable(node.parameters[node.parameters.length - 1]),
+      Option.flatMap(parameterDataStructureCurried(context)),
       Option.flatMap(dataLastModuleMatchForDataStructure(context, definition))
     )
-  }
 
 const dataLastModuleMatches = (
   node: CheckedFunction,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    functionDefinition(context, node),
+): ReadonlyArray<RuleMatch> => {
+  const isFunctionOrMethodDeclaration =
+    ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
+  if (isFunctionOrMethodDeclaration) {
+    const name = pipe(
+      Option.fromNullable(node.name),
+      Option.map(nameText(context.sourceFile)),
+      Option.getOrElse(Function.constant("this function"))
+    )
+    const reportNode = namedNodeReportTarget(node)
+    const definition: FunctionDefinition = [name, reportNode]
+
+    return pipe(
+      Option.some(definition),
+      Option.flatMap(dataLastModuleMatchForDefinition(context, node)),
+      Option.toArray
+    )
+  }
+
+  const expression = outermostTransparentWrapper(node)
+  const initializer = variableDefinitionFromInitializer(context, expression)
+  const callArgument = variableDefinitionFromCallArgument(context, expression)
+  const curried = conciseCurriedDefinition(context, expression)
+
+  return pipe(
+    firstDefinition(initializer, callArgument, curried),
     Option.flatMap(dataLastModuleMatchForDefinition(context, node)),
     Option.toArray
   )
+}
 
 const check = onNode(
   checkedFunctionKinds,

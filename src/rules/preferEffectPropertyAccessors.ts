@@ -2,7 +2,7 @@ import { Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { unwrapTransparentExpression } from "./tsNode.js"
+import { conciseArrowBody, unwrapTransparentExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -38,53 +38,15 @@ const returnExpression = (
     ? Option.fromNullable(statement.expression)
     : Option.none()
 
-const hasOneStatement = (body: ts.Block): boolean =>
-  body.statements.length === 1
-
-const firstStatement = (body: ts.Block): Option.Option<ts.Statement> =>
-  Option.fromNullable(body.statements[0])
-
 const singleReturnExpression = (
   body: ts.Block
 ): Option.Option<ts.Expression> => {
-  const statement = firstStatement(body)
+  const hasSingleStatement = body.statements.length === 1
+  const statement = hasSingleStatement
+    ? Option.fromNullable(body.statements[0])
+    : Option.none<ts.Statement>()
 
-  return hasOneStatement(body)
-    ? pipe(statement, Option.flatMap(returnExpression))
-    : Option.none()
-}
-
-const conciseArrowBody = (
-  arrowFunction: ts.ArrowFunction
-): Option.Option<ts.Expression> =>
-  ts.isBlock(arrowFunction.body)
-    ? Option.none()
-    : Option.some(arrowFunction.body)
-
-const propertyAccessorImplicitReturnExpression = (
-  node: PropertyAccessorFunction
-): Option.Option<ts.Expression> =>
-  pipe(
-    Option.liftPredicate(ts.isArrowFunction)(node),
-    Option.flatMap(conciseArrowBody)
-  )
-
-const blockReturnExpression = (
-  node: PropertyAccessorFunction
-): Option.Option<ts.Expression> =>
-  pipe(
-    Option.fromNullable(node.body),
-    Option.filter(ts.isBlock),
-    Option.flatMap(singleReturnExpression)
-  )
-
-const implementedExpression = (
-  node: PropertyAccessorFunction
-): Option.Option<ts.Expression> => {
-  const implicitExpression = propertyAccessorImplicitReturnExpression(node)
-  const blockExpression = blockReturnExpression(node)
-
-  return Option.firstSomeOf([implicitExpression, blockExpression])
+  return pipe(statement, Option.flatMap(returnExpression))
 }
 
 const directPropertyAccessExpression = (
@@ -107,70 +69,49 @@ const identifierParameterName = (
   parameter: ts.ParameterDeclaration
 ): Option.Option<string> => identifierBindingNameText(parameter.name)
 
-const hasSingleParameter = (node: PropertyAccessorFunction): boolean =>
-  node.parameters.length === 1
-
-const soleIdentifierParameterName = (
-  node: PropertyAccessorFunction
-): Option.Option<string> => {
-  const parameter = Option.fromNullable(node.parameters[0])
-
-  return hasSingleParameter(node)
-    ? pipe(parameter, Option.flatMap(identifierParameterName))
-    : Option.none()
-}
-
 const hasIdentifierText =
   (text: string) =>
   (identifier: ts.Identifier): boolean =>
     identifier.text === text
 
-const propertyAccessBaseIdentifier = (
-  access: ts.PropertyAccessExpression
-): Option.Option<ts.Identifier> =>
-  Option.liftPredicate(ts.isIdentifier)(access.expression)
-
 const accessesParameterProperty =
   (parameterName: string) =>
   (access: ts.PropertyAccessExpression): boolean =>
     pipe(
-      propertyAccessBaseIdentifier(access),
+      Option.liftPredicate(ts.isIdentifier)(access.expression),
       Option.exists(hasIdentifierText(parameterName))
     )
 
 const parameterPropertyAccess =
   (node: PropertyAccessorFunction) =>
-  (parameterName: string): Option.Option<ts.PropertyAccessExpression> =>
-    pipe(
-      implementedExpression(node),
+  (parameterName: string): Option.Option<ts.PropertyAccessExpression> => {
+    const implicitExpression = pipe(
+      Option.liftPredicate(ts.isArrowFunction)(node),
+      Option.flatMap(conciseArrowBody)
+    )
+    const blockExpression = pipe(
+      Option.fromNullable(node.body),
+      Option.filter(ts.isBlock),
+      Option.flatMap(singleReturnExpression)
+    )
+
+    return pipe(
+      Option.firstSomeOf([implicitExpression, blockExpression]),
       Option.flatMap(directPropertyAccessExpression),
       Option.filter(accessesParameterProperty(parameterName))
     )
+  }
 
-const propertyAccessorExpression = (
-  node: PropertyAccessorFunction
-): Option.Option<ts.PropertyAccessExpression> =>
-  pipe(
-    soleIdentifierParameterName(node),
-    Option.flatMap(parameterPropertyAccess(node))
-  )
+const hasIndexSignature = (type: ts.Type): boolean => {
+  const stringIndex = type.getStringIndexType()
+  const stringIndexType = Option.fromNullable(stringIndex)
+  const hasStringIndex = Option.isSome(stringIndexType)
+  const numberIndex = type.getNumberIndexType()
+  const numberIndexType = Option.fromNullable(numberIndex)
+  const hasNumberIndex = Option.isSome(numberIndexType)
 
-const hasStringIndexSignature = (type: ts.Type): boolean => {
-  const stringIndexType = type.getStringIndexType()
-  const indexType = Option.fromNullable(stringIndexType)
-
-  return Option.isSome(indexType)
+  return hasStringIndex || hasNumberIndex
 }
-
-const hasNumberIndexSignature = (type: ts.Type): boolean => {
-  const numberIndexType = type.getNumberIndexType()
-  const indexType = Option.fromNullable(numberIndexType)
-
-  return Option.isSome(indexType)
-}
-
-const hasIndexSignature = (type: ts.Type): boolean =>
-  [hasStringIndexSignature(type), hasNumberIndexSignature(type)].some(Boolean)
 
 const isRecordTypeMember =
   (context: RuleContext) =>
@@ -183,28 +124,6 @@ const isRecordType = (context: RuleContext, type: ts.Type): boolean => {
   return type.isUnionOrIntersection()
     ? type.types.every(isRecordTypeMember(context))
     : [hasIndexSignature(type), hasIndexSignature(apparentType)].some(Boolean)
-}
-
-const propertyKeyText = (access: ts.PropertyAccessExpression): string =>
-  JSON.stringify(access.name.text)
-
-const accessorModuleName = (
-  context: RuleContext,
-  access: ts.PropertyAccessExpression
-): string => {
-  const accessedType = context.checker.getTypeAtLocation(access.expression)
-
-  return isRecordType(context, accessedType) ? "Record" : "Struct"
-}
-
-const accessorSuggestion = (
-  context: RuleContext,
-  access: ts.PropertyAccessExpression
-): string => {
-  const moduleName = accessorModuleName(context, access)
-  const propertyKey = propertyKeyText(access)
-
-  return `${moduleName}.get(${propertyKey})`
 }
 
 const declarationNameText =
@@ -220,23 +139,20 @@ const variableDeclarationName =
       Option.flatMap(identifierBindingNameText)
     )
 
-const functionName = (
-  node: PropertyAccessorFunction,
-  context: RuleContext
-): string =>
-  pipe(
-    Option.fromNullable(node.name),
-    Option.map(declarationNameText(context)),
-    Option.orElse(variableDeclarationName(node)),
-    Option.getOrElse(Function.constant("this function"))
-  )
-
 const propertyAccessorRuleMatch =
   (context: RuleContext, node: PropertyAccessorFunction) =>
   (access: ts.PropertyAccessExpression): RuleMatch => {
-    const name = functionName(node, context)
+    const name = pipe(
+      Option.fromNullable(node.name),
+      Option.map(declarationNameText(context)),
+      Option.orElse(variableDeclarationName(node)),
+      Option.getOrElse(Function.constant("this function"))
+    )
     const accessedText = access.getText(context.sourceFile)
-    const suggestion = accessorSuggestion(context, access)
+    const accessedType = context.checker.getTypeAtLocation(access.expression)
+    const moduleName = isRecordType(context, accessedType) ? "Record" : "Struct"
+    const propertyKey = JSON.stringify(access.name.text)
+    const suggestion = `${moduleName}.get(${propertyKey})`
 
     return createRuleMatch(context, {
       ruleId,
@@ -251,12 +167,20 @@ const propertyAccessorRuleMatch =
 const propertyAccessorMatches = (
   node: PropertyAccessorFunction,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    propertyAccessorExpression(node),
+): ReadonlyArray<RuleMatch> => {
+  const hasSingleParam = node.parameters.length === 1
+  const singleParam = hasSingleParam
+    ? Option.fromNullable(node.parameters[0])
+    : Option.none<ts.ParameterDeclaration>()
+  const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
+
+  return pipe(
+    paramName,
+    Option.flatMap(parameterPropertyAccess(node)),
     Option.map(propertyAccessorRuleMatch(context, node)),
     Option.toArray
   )
+}
 
 const check = onNode(
   propertyAccessorFunctionKinds,

@@ -17,28 +17,6 @@ const isOptionText = (text: string): boolean => text === "Option"
 const isGuardMethodName = (name: string): boolean =>
   HashSet.has(guardMethodNames, name)
 
-// Extracts [kind, argumentName] from `Option.isSome(x)` or `Option.isNone(x)`.
-const optionGuardCall = (
-  expression: ts.Expression
-): Option.Option<readonly [OptionGuardKind, string]> =>
-  Option.gen(function* () {
-    const unwrapped = unwrapTransparentExpression(expression)
-    const call = yield* Option.liftPredicate(ts.isCallExpression)(unwrapped)
-    const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(
-      call.expression
-    )
-    const object = yield* Option.liftPredicate(ts.isIdentifier)(
-      callee.expression
-    )
-    yield* Option.liftPredicate(isOptionText)(object.text)
-    const methodName = callee.name.text
-    yield* Option.liftPredicate(isGuardMethodName)(methodName)
-    const firstArg = yield* Option.fromNullable(call.arguments[0])
-    const identifier = yield* Option.liftPredicate(ts.isIdentifier)(firstArg)
-
-    return [methodName as OptionGuardKind, identifier.text] as const
-  })
-
 const identifierHasText =
   (name: string) =>
   (identifier: ts.Identifier): boolean =>
@@ -50,13 +28,13 @@ const objectHasName =
     ts.isIdentifier(access.expression) &&
     identifierHasText(name)(access.expression)
 
-const isValueMember = (access: ts.PropertyAccessExpression): boolean =>
-  access.name.text === "value"
-
 const accessesNamedValue =
   (name: string) =>
-  (access: ts.PropertyAccessExpression): boolean =>
-    isValueMember(access) && objectHasName(name)(access)
+  (access: ts.PropertyAccessExpression): boolean => {
+    const isValueProperty = access.name.text === "value"
+
+    return isValueProperty && objectHasName(name)(access)
+  }
 
 const isDotValueAccess =
   (name: string) =>
@@ -68,11 +46,13 @@ const containsDotValueInChild =
   (child: ts.Node): boolean =>
     containsDotValue(name, child)
 
-const childHasDotValue = (name: string, node: ts.Node): boolean =>
-  ts.forEachChild(node, containsDotValueInChild(name)) === true
+const containsDotValue = (name: string, node: ts.Node): boolean => {
+  const isDotValue = isDotValueAccess(name)(node)
+  const childHasDotValue =
+    ts.forEachChild(node, containsDotValueInChild(name)) === true
 
-const containsDotValue = (name: string, node: ts.Node): boolean =>
-  isDotValueAccess(name)(node) || childHasDotValue(name, node)
+  return isDotValue || childHasDotValue
+}
 
 const branchToCheck =
   (kind: OptionGuardKind) =>
@@ -108,7 +88,23 @@ const optionMatchMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   pipe(
-    optionGuardCall(conditional.condition),
+    Option.gen(function* () {
+      const unwrapped = unwrapTransparentExpression(conditional.condition)
+      const call = yield* Option.liftPredicate(ts.isCallExpression)(unwrapped)
+      const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(
+        call.expression
+      )
+      const object = yield* Option.liftPredicate(ts.isIdentifier)(
+        callee.expression
+      )
+      yield* Option.liftPredicate(isOptionText)(object.text)
+      const methodName = callee.name.text
+      yield* Option.liftPredicate(isGuardMethodName)(methodName)
+      const firstArg = yield* Option.fromNullable(call.arguments[0])
+      const identifier = yield* Option.liftPredicate(ts.isIdentifier)(firstArg)
+
+      return [methodName as OptionGuardKind, identifier.text] as const
+    }),
     Option.filter(hasDotValueInBranch(conditional)),
     Option.map(optionMatchRuleMatch(context, conditional)),
     Option.toArray

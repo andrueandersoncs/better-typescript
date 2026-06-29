@@ -16,21 +16,20 @@ const logicalOperatorKinds = HashSet.make(
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
-const isLogicalOperatorExpression = (expression: ts.Expression): boolean => {
-  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
-    expression
-  )
-
-  return Option.exists(binaryExpression, hasLogicalOperator)
-}
-
 const inlineBooleanConditionMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
   const expression = unwrapExpression(ifStatement.expression)
+  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
+    expression
+  )
+  const isLogicalOperatorExpression = Option.exists(
+    binaryExpression,
+    hasLogicalOperator
+  )
 
-  return isLogicalOperatorExpression(expression)
+  return isLogicalOperatorExpression
     ? [
         createRuleMatch(context, {
           ruleId,

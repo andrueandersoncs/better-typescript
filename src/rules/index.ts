@@ -36,6 +36,7 @@ import { preferHashSet } from "./preferHashSet.js"
 import { preferEffectFn } from "./preferEffectFn.js"
 import { preferEffectPropertyAccessors } from "./preferEffectPropertyAccessors.js"
 import { preferEffectRecordFilterMap } from "./preferEffectRecordFilterMap.js"
+import { preferEffectArrayAppendAll } from "./preferEffectArrayAppendAll.js"
 import { preferDataLastModule } from "./preferDataLastModule.js"
 import { preferEffectSchemaClass } from "./preferEffectSchemaClass.js"
 import { preferEffectSchemaConstructor } from "./preferEffectSchemaConstructor.js"
@@ -54,6 +55,7 @@ export const rules: ReadonlyArray<Rule> = [
   preferEffectFn,
   preferEffectPropertyAccessors,
   preferEffectRecordFilterMap,
+  preferEffectArrayAppendAll,
   preferDataLastModule,
   preferConditionalReturn,
   preferDirectBooleanReturn,

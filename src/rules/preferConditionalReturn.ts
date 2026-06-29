@@ -9,11 +9,13 @@ import type { RuleContext, RuleMatch } from "./types.js"
 const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
 
-const containsYieldExpression = (node: ts.Node): boolean =>
-  ts.isYieldExpression(node) || containsChildYieldExpression(node)
+const containsYieldExpression = (node: ts.Node): boolean => {
+  const isYield = ts.isYieldExpression(node)
+  const childContainsYield =
+    ts.forEachChild(node, containsYieldExpression) === true
 
-const containsChildYieldExpression = (node: ts.Node): boolean =>
-  ts.forEachChild(node, containsYieldExpression) === true
+  return isYield || childContainsYield
+}
 
 const isSimpleReturnExpression =
   (sourceFile: ts.SourceFile) =>
@@ -41,22 +43,6 @@ const returnExpressionFromStatement =
       )
     })
 
-const fallbackReturnExpression = (
-  sourceFile: ts.SourceFile,
-  ifStatement: ts.IfStatement,
-  nextStatement: Option.Option<ts.Statement>
-): Option.Option<ts.Expression> => {
-  const elseStatement = Option.fromNullable(ifStatement.elseStatement)
-  const fallbackStatement = Option.isSome(elseStatement)
-    ? elseStatement
-    : nextStatement
-
-  return Option.flatMap(
-    fallbackStatement,
-    returnExpressionFromStatement(sourceFile)
-  )
-}
-
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
 ): Option.Option<ts.Expression> => {
@@ -65,19 +51,6 @@ const negatedPrefixUnaryExpressionOperand = (
   return isNegation ? Option.some(expression.operand) : Option.none()
 }
 
-const negatedConditionOperand = (
-  expression: ts.Expression
-): Option.Option<ts.Expression> =>
-  pipe(
-    Option.liftPredicate(ts.isPrefixUnaryExpression)(expression),
-    Option.flatMap(negatedPrefixUnaryExpressionOperand)
-  )
-
-const parenthesizedExpressionText = (
-  expression: ts.Expression,
-  sourceFile: ts.SourceFile
-): string => `(${expression.getText(sourceFile)})`
-
 const ternaryText = (
   sourceFile: ts.SourceFile,
   condition: ts.Expression,
@@ -85,7 +58,7 @@ const ternaryText = (
   whenFalse: ts.Expression
 ): string =>
   [
-    parenthesizedExpressionText(condition, sourceFile),
+    `(${condition.getText(sourceFile)})`,
     "?",
     whenTrue.getText(sourceFile),
     ":",
@@ -111,27 +84,6 @@ const standardTernaryText =
   (): string =>
     ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
 
-const conditionalExpressionText = (
-  context: RuleContext,
-  condition: ts.Expression,
-  thenExpression: ts.Expression,
-  fallbackExpression: ts.Expression
-): string => {
-  const sourceFile = context.sourceFile
-  const unwrappedCondition = unwrapExpression(condition)
-  const negatedCondition = negatedConditionOperand(unwrappedCondition)
-
-  return Option.match(negatedCondition, {
-    onNone: standardTernaryText(
-      sourceFile,
-      condition,
-      thenExpression,
-      fallbackExpression
-    ),
-    onSome: flippedTernaryText(sourceFile, fallbackExpression, thenExpression)
-  })
-}
-
 const conditionalReturnMatch =
   (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
@@ -139,17 +91,32 @@ const conditionalReturnMatch =
       const thenExpression = yield* returnExpressionFromStatement(
         context.sourceFile
       )(ifStatement.thenStatement)
-      const fallbackExpression = yield* fallbackReturnExpression(
-        context.sourceFile,
-        ifStatement,
-        nextStatement
+      const elseStatement = Option.fromNullable(ifStatement.elseStatement)
+      const fallbackStatement = Option.isSome(elseStatement)
+        ? elseStatement
+        : nextStatement
+      const fallbackExpression = yield* Option.flatMap(
+        fallbackStatement,
+        returnExpressionFromStatement(context.sourceFile)
       )
-      const returnExpression = conditionalExpressionText(
-        context,
-        ifStatement.expression,
-        thenExpression,
-        fallbackExpression
+      const unwrappedCondition = unwrapExpression(ifStatement.expression)
+      const negatedCondition = pipe(
+        Option.liftPredicate(ts.isPrefixUnaryExpression)(unwrappedCondition),
+        Option.flatMap(negatedPrefixUnaryExpressionOperand)
       )
+      const returnExpression = Option.match(negatedCondition, {
+        onNone: standardTernaryText(
+          context.sourceFile,
+          ifStatement.expression,
+          thenExpression,
+          fallbackExpression
+        ),
+        onSome: flippedTernaryText(
+          context.sourceFile,
+          fallbackExpression,
+          thenExpression
+        )
+      })
 
       return createRuleMatch(context, {
         ruleId,

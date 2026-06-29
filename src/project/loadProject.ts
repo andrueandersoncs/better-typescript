@@ -113,7 +113,14 @@ const loadConfig: (
     return yield* loadReferencedProjects(references, nextAncestorPaths)
   }
 
-  return [loadedProjectFromConfig(configPath, parsedConfig)]
+  const rootPath = path.dirname(configPath)
+  const program = ts.createProgram({
+    rootNames: parsedConfig.fileNames,
+    options: parsedConfig.options,
+    projectReferences: parsedConfig.projectReferences
+  })
+
+  return [new LoadedProject({ configPath, rootPath, program })]
 })
 
 const loadReference =
@@ -137,20 +144,6 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
 
   return projects.flat()
 })
-
-const loadedProjectFromConfig = (
-  configPath: string,
-  parsedConfig: ts.ParsedCommandLine
-): LoadedProject => {
-  const rootPath = path.dirname(configPath)
-  const program = ts.createProgram({
-    rootNames: parsedConfig.fileNames,
-    options: parsedConfig.options,
-    projectReferences: parsedConfig.projectReferences
-  })
-
-  return new LoadedProject({ configPath, rootPath, program })
-}
 
 const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {

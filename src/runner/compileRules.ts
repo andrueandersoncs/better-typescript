@@ -19,7 +19,8 @@ type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
   const listeners = rules.flatMap(ruleListeners)
   const nodeListeners = listeners.filter(isNodeListener)
-  const table = nodeHandlerTable(nodeListeners)
+  const emptyTable = new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
+  const table = nodeListeners.reduce(addListenerHandlers, emptyTable)
   const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
 
   return checkSourceFile(table, fileHandlers)
@@ -29,7 +30,15 @@ const checkSourceFile =
   (table: NodeHandlerTable, fileHandlers: ReadonlyArray<FileHandler>) =>
   (context: RuleContext): ReadonlyArray<RuleMatch> => {
     const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
-    const nodeMatches = compiledVisitor(table, context)(context.sourceFile)
+    const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
+      const ownMatches = (table.get(node.kind) ?? []).flatMap(
+        applyNodeHandler(node, context)
+      )
+      const childMatches = astChildren(node).flatMap(visit)
+
+      return ownMatches.concat(childMatches)
+    }
+    const nodeMatches = visit(context.sourceFile)
 
     return fileMatches.concat(nodeMatches)
   }
@@ -38,22 +47,6 @@ const applyFileHandler =
   (context: RuleContext) =>
   (handle: FileHandler): ReadonlyArray<RuleMatch> =>
     handle(context)
-
-const compiledVisitor = (
-  table: NodeHandlerTable,
-  context: RuleContext
-): ((node: ts.Node) => ReadonlyArray<RuleMatch>) => {
-  const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
-    const ownMatches = (table.get(node.kind) ?? []).flatMap(
-      applyNodeHandler(node, context)
-    )
-    const childMatches = astChildren(node).flatMap(visit)
-
-    return ownMatches.concat(childMatches)
-  }
-
-  return visit
-}
 
 const applyNodeHandler =
   (node: ts.Node, context: RuleContext) =>
@@ -74,14 +67,6 @@ const ruleListeners: (rule: Rule) => RuleCheck = Struct.get("check")
 
 const listenerHandler: (listener: FileListener) => FileHandler =
   Struct.get("handler")
-
-const nodeHandlerTable = (
-  listeners: ReadonlyArray<NodeListener>
-): NodeHandlerTable => {
-  const emptyTable = new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
-
-  return listeners.reduce(addListenerHandlers, emptyTable)
-}
 
 const addListenerHandlers = (
   table: MutableHandlerTable,

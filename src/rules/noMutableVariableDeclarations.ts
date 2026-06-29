@@ -25,15 +25,6 @@ const tokenMutableKind = (
   return Option.fromNullable(mutableKind)
 }
 
-const mutableVariableDeclarationKind = (
-  sourceFile: ts.SourceFile,
-  declarationList: ts.VariableDeclarationList
-): Option.Option<MutableVariableDeclarationKind> => {
-  const firstToken = declarationList.getFirstToken(sourceFile)
-
-  return pipe(Option.fromNullable(firstToken), Option.flatMap(tokenMutableKind))
-}
-
 const mutableDeclarationRuleMatch =
   (context: RuleContext, declarationList: ts.VariableDeclarationList) =>
   (kind: MutableVariableDeclarationKind): RuleMatch =>
@@ -49,12 +40,16 @@ const mutableDeclarationRuleMatch =
 const mutableDeclarationMatches = (
   declarationList: ts.VariableDeclarationList,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    mutableVariableDeclarationKind(context.sourceFile, declarationList),
+): ReadonlyArray<RuleMatch> => {
+  const firstToken = declarationList.getFirstToken(context.sourceFile)
+
+  return pipe(
+    Option.fromNullable(firstToken),
+    Option.flatMap(tokenMutableKind),
     Option.map(mutableDeclarationRuleMatch(context, declarationList)),
     Option.toArray
   )
+}
 
 const check = onNode(
   [ts.SyntaxKind.VariableDeclarationList],

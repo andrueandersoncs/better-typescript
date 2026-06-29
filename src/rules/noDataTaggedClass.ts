@@ -8,15 +8,6 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-data-tagged-class"
 
-const extendsClause = (
-  declaration: ts.ClassDeclaration
-): Option.Option<ts.HeritageClause> => {
-  const clauses = declaration.heritageClauses ?? []
-  const found = clauses.find(isExtendsClause)
-
-  return Option.fromNullable(found)
-}
-
 const hasTaggedClassName = (name: ts.MemberName): boolean =>
   name.text === "TaggedClass"
 
@@ -24,61 +15,55 @@ const isTaggedClassProperty = (expression: ts.Expression): boolean =>
   ts.isPropertyAccessExpression(expression) &&
   hasTaggedClassName(expression.name)
 
-const hasDataName = (identifier: ts.Identifier): boolean =>
-  identifier.text === "Data"
-
-const isDataIdentifier = (expression: ts.Expression): boolean =>
-  ts.isIdentifier(expression) && hasDataName(expression)
-
 const accessExpression: (access: ts.PropertyAccessExpression) => ts.Expression =
   Struct.get("expression")
-
-const isDataTaggedClassAccess = (
-  access: ts.PropertyAccessExpression
-): boolean => {
-  const object = accessExpression(access)
-  const hasTaggedClass = hasTaggedClassName(access.name)
-  const isOnData = isDataIdentifier(object)
-
-  return hasTaggedClass && isOnData
-}
 
 const callExpression: (call: ts.CallExpression) => ts.Expression =
   Struct.get("expression")
 
-const isCallToDataTaggedClass = (call: ts.CallExpression): boolean => {
-  const callee = callExpression(call)
+const isDataIdentifier = (id: ts.Identifier): boolean => id.text === "Data"
 
-  return isPropertyAccessCall(callee)
+const isDataTaggedCallee = (callee: ts.PropertyAccessExpression): boolean => {
+  const object = accessExpression(callee)
+  const hasTaggedClass = hasTaggedClassName(callee.name)
+  const identifierOption = Option.liftPredicate(ts.isIdentifier)(object)
+  const isOnData = Option.exists(identifierOption, isDataIdentifier)
+
+  return hasTaggedClass && isOnData
 }
-
-const isDataTaggedClassCall = (expression: ts.Expression): boolean =>
-  ts.isCallExpression(expression) ? isCallToDataTaggedClass(expression) : false
-
-const isPropertyAccessCall = (expression: ts.Expression): boolean =>
-  ts.isPropertyAccessExpression(expression)
-    ? isDataTaggedClassAccess(expression)
-    : false
 
 const exprContainsDataTaggedClass = (
   typeExpr: ts.ExpressionWithTypeArguments
-): boolean => isDataTaggedClassCall(typeExpr.expression)
+): boolean => {
+  const callExpr = Option.liftPredicate(ts.isCallExpression)(
+    typeExpr.expression
+  )
+  const calleeExpr = Option.map(callExpr, callExpression)
+  const propAccess = Option.filter(calleeExpr, ts.isPropertyAccessExpression)
+
+  return Option.exists(propAccess, isDataTaggedCallee)
+}
 
 const extendsDataTaggedClass = (clause: ts.HeritageClause): boolean =>
   clause.types.some(exprContainsDataTaggedClass)
 
-const hasDataTaggedClassExtension = (
-  declaration: ts.ClassDeclaration
+const hasDataTaggedClassHeritage = (
+  classNode: ts.ClassDeclaration
 ): boolean => {
-  const clause = extendsClause(declaration)
+  const clauses = classNode.heritageClauses ?? []
+  const found = clauses.find(isExtendsClause)
+  const clause = Option.fromNullable(found)
 
   return Option.exists(clause, extendsDataTaggedClass)
 }
 
 const isDataTaggedClassDeclaration = (
   node: ts.Node
-): node is ts.ClassDeclaration =>
-  ts.isClassDeclaration(node) ? hasDataTaggedClassExtension(node) : false
+): node is ts.ClassDeclaration => {
+  const classOption = Option.liftPredicate(ts.isClassDeclaration)(node)
+
+  return Option.exists(classOption, hasDataTaggedClassHeritage)
+}
 
 const dataTaggedClassMatches = (
   declaration: ts.ClassDeclaration,

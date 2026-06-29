@@ -27,36 +27,26 @@ const hasNoProperties = (expression: ts.Expression): boolean =>
 const hasSomeProperties = (expression: ts.Expression): boolean =>
   objectLiteralPropertyCount(expression) > 0
 
-const hasEmptyObjectFallback = (
-  conditional: ts.ConditionalExpression
-): boolean => {
-  const emptyThenNonEmptyElse = [
-    hasNoProperties(conditional.whenTrue),
-    hasSomeProperties(conditional.whenFalse)
-  ].every(Boolean)
-  const nonEmptyThenEmptyElse = [
-    hasSomeProperties(conditional.whenTrue),
-    hasNoProperties(conditional.whenFalse)
-  ].every(Boolean)
-
-  return [emptyThenNonEmptyElse, nonEmptyThenEmptyElse].some(Boolean)
-}
-
-const isConditionalObjectSpread = (spread: ts.SpreadAssignment): boolean => {
-  const expression = unwrapExpression(spread.expression)
-
-  return ts.isConditionalExpression(expression)
-    ? hasEmptyObjectFallback(expression)
-    : false
-}
-
 const conditionalObjectSpreadMatches = (
   spread: ts.SpreadAssignment,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isConditionalObjectSpread(spread)
+): ReadonlyArray<RuleMatch> => {
+  const expression = unwrapExpression(spread.expression)
+  if (!ts.isConditionalExpression(expression)) return []
+
+  const emptyThenNonEmptyElse = [
+    hasNoProperties(expression.whenTrue),
+    hasSomeProperties(expression.whenFalse)
+  ].every(Boolean)
+  const nonEmptyThenEmptyElse = [
+    hasSomeProperties(expression.whenTrue),
+    hasNoProperties(expression.whenFalse)
+  ].every(Boolean)
+
+  return [emptyThenNonEmptyElse, nonEmptyThenEmptyElse].some(Boolean)
     ? [createRuleMatch(context, { ruleId, node: spread, message, hint })]
     : []
+}
 
 const check = onNode(
   [ts.SyntaxKind.SpreadAssignment],

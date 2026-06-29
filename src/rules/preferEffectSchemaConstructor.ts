@@ -34,30 +34,20 @@ const ternaryBranches = (
 ): ReadonlyArray<ts.Expression> =>
   [conditional.whenTrue, conditional.whenFalse].flatMap(branchExpressions)
 
-const conditionalBranches = (
-  expression: ts.Expression
-): Option.Option<ReadonlyArray<ts.Expression>> =>
-  pipe(
-    Option.liftPredicate(ts.isConditionalExpression)(expression),
-    Option.map(ternaryBranches)
-  )
-
-const shortCircuitBranches = (
-  expression: ts.Expression
-): Option.Option<ReadonlyArray<ts.Expression>> =>
-  pipe(
-    Option.liftPredicate(isShortCircuitExpression)(expression),
-    Option.map(Struct.get("right")),
-    Option.map(branchExpressions)
-  )
-
 const branchExpressions = (
   expression: ts.Expression
 ): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapTransparentExpression(expression)
   const branches = [
-    conditionalBranches(unwrapped),
-    shortCircuitBranches(unwrapped)
+    pipe(
+      Option.liftPredicate(ts.isConditionalExpression)(unwrapped),
+      Option.map(ternaryBranches)
+    ),
+    pipe(
+      Option.liftPredicate(isShortCircuitExpression)(unwrapped),
+      Option.map(Struct.get("right")),
+      Option.map(branchExpressions)
+    )
   ]
 
   return pipe(
@@ -69,26 +59,17 @@ const branchExpressions = (
 const hasProperties = (literal: ts.ObjectLiteralExpression): boolean =>
   literal.properties.length > 0
 
-const returnedObjectLiterals = (
-  expression: ts.Expression
-): ReadonlyArray<ts.ObjectLiteralExpression> =>
-  branchExpressions(expression)
-    .filter(ts.isObjectLiteralExpression)
-    .filter(hasProperties)
-
 const hasTagText = (identifier: ts.Identifier): boolean =>
   identifier.text === tagPropertyName
-
-const isTagPropertyName = (name: ts.PropertyName): boolean => {
-  const identifier = Option.liftPredicate(ts.isIdentifier)(name)
-
-  return Option.exists(identifier, hasTagText)
-}
 
 const isTagAssignment = (
   property: ts.ObjectLiteralElementLike
 ): property is ts.PropertyAssignment =>
-  ts.isPropertyAssignment(property) && isTagPropertyName(property.name)
+  ts.isPropertyAssignment(property) &&
+  pipe(
+    Option.liftPredicate(ts.isIdentifier)(property.name),
+    Option.exists(hasTagText)
+  )
 
 const tagValueText = (
   property: ts.PropertyAssignment
@@ -101,24 +82,10 @@ const tagValueText = (
   )
 }
 
-const literalTag = (
-  literal: ts.ObjectLiteralExpression
-): Option.Option<string> =>
-  pipe(
-    Array.findFirst(literal.properties, isTagAssignment),
-    Option.flatMap(tagValueText)
-  )
-
 const taggedMessage = (tag: string): string =>
   `Avoid returning a raw "${tag}" object literal.`
 
 const untaggedMessage = "Avoid returning a raw object literal."
-
-const matchMessage = (tag: Option.Option<string>): string =>
-  Option.match(tag, {
-    onNone: Function.constant(untaggedMessage),
-    onSome: taggedMessage
-  })
 
 const taggedHint = (tag: string): string =>
   `Define an Effect Schema for this data — class ${tag} extends ` +
@@ -130,18 +97,21 @@ const untaggedHint =
   'Schema.Class<TheData>("TheData")({ ... }) {} — and construct it through the schema: ' +
   "return new TheData({ ... }) instead of assembling the object by hand."
 
-const matchHint = (tag: Option.Option<string>): string =>
-  Option.match(tag, {
-    onNone: Function.constant(untaggedHint),
-    onSome: taggedHint
-  })
-
 const objectLiteralRuleMatch =
   (context: RuleContext) =>
   (literal: ts.ObjectLiteralExpression): RuleMatch => {
-    const tag = literalTag(literal)
-    const message = matchMessage(tag)
-    const hint = matchHint(tag)
+    const tag = pipe(
+      Array.findFirst(literal.properties, isTagAssignment),
+      Option.flatMap(tagValueText)
+    )
+    const message = Option.match(tag, {
+      onNone: Function.constant(untaggedMessage),
+      onSome: taggedMessage
+    })
+    const hint = Option.match(tag, {
+      onNone: Function.constant(untaggedHint),
+      onSome: taggedHint
+    })
 
     return createRuleMatch(context, { ruleId, node: literal, message, hint })
   }
@@ -149,7 +119,10 @@ const objectLiteralRuleMatch =
 const expressionRuleMatches =
   (context: RuleContext) =>
   (expression: ts.Expression): ReadonlyArray<RuleMatch> =>
-    returnedObjectLiterals(expression).map(objectLiteralRuleMatch(context))
+    branchExpressions(expression)
+      .filter(ts.isObjectLiteralExpression)
+      .filter(hasProperties)
+      .map(objectLiteralRuleMatch(context))
 
 const returnStatementMatches = (
   statement: ts.ReturnStatement,
@@ -160,16 +133,11 @@ const returnStatementMatches = (
   return Option.toArray(expression).flatMap(expressionRuleMatches(context))
 }
 
-const implicitReturnExpression = (
-  arrowFunction: ts.ArrowFunction
-): Option.Option<ts.Expression> =>
-  Option.liftPredicate(ts.isExpression)(arrowFunction.body)
-
 const arrowBodyReturnMatches = (
   arrowFunction: ts.ArrowFunction,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
-  const expression = implicitReturnExpression(arrowFunction)
+  const expression = Option.liftPredicate(ts.isExpression)(arrowFunction.body)
 
   return Option.toArray(expression).flatMap(expressionRuleMatches(context))
 }

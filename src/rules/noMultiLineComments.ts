@@ -36,37 +36,17 @@ const scanNextToken = (
   return Option.some([token, scanner])
 }
 
-const scanTokens = (text: string): ReadonlyArray<ScannedToken> => {
-  const scanner = ts.createScanner(
-    ts.ScriptTarget.Latest,
-    false,
-    ts.LanguageVariant.Standard,
-    text
-  )
-
-  return Arr.unfold(scanner, scanNextToken)
-}
-
-const blockCommentEnd = (text: string, pos: number): number => {
-  const closeIndex = text.indexOf("*/", pos)
-  const notFound = closeIndex === -1
-
-  return notFound ? text.length : closeIndex + 2
-}
-
-const commentContainsNewline = (text: string, token: ScannedToken): boolean => {
-  const end = blockCommentEnd(text, token.pos)
-  const commentText = text.slice(token.pos, end)
-
-  return commentText.indexOf("\n") !== -1
-}
-
 const isMultiLineBlock =
   (text: string) =>
   (token: ScannedToken): boolean => {
     const isBlock = token.kind === ts.SyntaxKind.MultiLineCommentTrivia
+    const closeIndex = text.indexOf("*/", token.pos)
+    const notFound = closeIndex === -1
+    const end = notFound ? text.length : closeIndex + 2
+    const commentText = text.slice(token.pos, end)
+    const hasNewline = commentText.indexOf("\n") !== -1
 
-    return isBlock ? commentContainsNewline(text, token) : isBlock
+    return isBlock && hasNewline
   }
 
 const isSingleLineComment = (token: ScannedToken): boolean =>
@@ -83,61 +63,29 @@ const isAdjacentLine = (
   b: ScannedToken
 ): boolean => lineOf(sourceFile, b.pos) - lineOf(sourceFile, a.pos) === 1
 
-const prevBreaksRun = (
-  sourceFile: ts.SourceFile,
-  singles: ReadonlyArray<ScannedToken>,
-  index: number
-): boolean => {
-  const prev = singles[index - 1]
-  const current = singles[index]
-  const notAdjacent = !isAdjacentLine(sourceFile, prev, current)
-  const prevNotSingle = !isSingleLineComment(prev)
-
-  return notAdjacent || prevNotSingle
-}
-
-const isRunStart = (
-  sourceFile: ts.SourceFile,
-  singles: ReadonlyArray<ScannedToken>,
-  index: number
-): boolean => {
-  const isFirst = index === 0
-
-  return isFirst ? isFirst : prevBreaksRun(sourceFile, singles, index)
-}
-
 const runStartPosition =
   (sourceFile: ts.SourceFile, singles: ReadonlyArray<ScannedToken>) =>
   (current: ScannedToken, index: number): Option.Option<number> => {
     const hasNextAdjacent =
       index < singles.length - 1 &&
       isAdjacentLine(sourceFile, current, singles[index + 1])
-    const shouldFlag = isRunStart(sourceFile, singles, index) && hasNextAdjacent
+
+    if (index === 0) {
+      return hasNextAdjacent ? Option.some(current.pos) : Option.none()
+    }
+
+    const previousToken = singles[index - 1]
+    const isNotAdjacentToPrevious = !isAdjacentLine(
+      sourceFile,
+      previousToken,
+      current
+    )
+    const previousIsNotSingleLine = !isSingleLineComment(previousToken)
+    const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
+    const shouldFlag = isRunStart && hasNextAdjacent
 
     return shouldFlag ? Option.some(current.pos) : Option.none()
   }
-
-// filterMap stays bounded by the comment array; per-comment recursion overflows large files.
-const collectAdjacentRunStarts = (
-  sourceFile: ts.SourceFile,
-  singles: ReadonlyArray<ScannedToken>
-): ReadonlyArray<number> =>
-  Arr.filterMap(singles, runStartPosition(sourceFile, singles))
-
-const multiLinePositions = (
-  tokens: ReadonlyArray<ScannedToken>,
-  sourceFile: ts.SourceFile,
-  text: string
-): ReadonlyArray<number> => {
-  const blockPositions = tokens.filter(isMultiLineBlock(text)).map(tokenPos)
-  const singleLineTokens = tokens.filter(isSingleLineComment)
-  const adjacentRunPositions = collectAdjacentRunStarts(
-    sourceFile,
-    singleLineTokens
-  )
-
-  return blockPositions.concat(adjacentRunPositions)
-}
 
 const positionToMatch =
   (context: RuleContext, fileName: string) =>
@@ -154,14 +102,27 @@ const positionToMatch =
     })
   }
 
+// filterMap stays bounded by the comment array; per-comment recursion overflows large files.
 const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
   const fileName =
     path.relative(context.projectRoot, sourceFile.fileName) ||
     sourceFile.fileName
-  const tokens = scanTokens(text)
-  const positions = multiLinePositions(tokens, sourceFile, text)
+  const scanner = ts.createScanner(
+    ts.ScriptTarget.Latest,
+    false,
+    ts.LanguageVariant.Standard,
+    text
+  )
+  const tokens = Arr.unfold(scanner, scanNextToken)
+  const blockPositions = tokens.filter(isMultiLineBlock(text)).map(tokenPos)
+  const singleLineTokens = tokens.filter(isSingleLineComment)
+  const adjacentRunPositions = Arr.filterMap(
+    singleLineTokens,
+    runStartPosition(sourceFile, singleLineTokens)
+  )
+  const positions = blockPositions.concat(adjacentRunPositions)
 
   return positions.map(positionToMatch(context, fileName))
 }

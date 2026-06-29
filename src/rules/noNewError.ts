@@ -10,19 +10,19 @@ const ruleId = "no-new-error"
 const isErrorIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Error"
 
-const isBareErrorConstruction = (newExpression: ts.NewExpression): boolean => {
-  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
-    newExpression.expression
-  )
-
-  return Option.exists(constructorIdentifier, isErrorIdentifier)
-}
-
 const newErrorMatches = (
   newExpression: ts.NewExpression,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isBareErrorConstruction(newExpression)
+): ReadonlyArray<RuleMatch> => {
+  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
+    newExpression.expression
+  )
+  const isBareErrorConstruction = Option.exists(
+    constructorIdentifier,
+    isErrorIdentifier
+  )
+
+  return isBareErrorConstruction
     ? [
         createRuleMatch(context, {
           ruleId,
@@ -34,6 +34,7 @@ const newErrorMatches = (
         })
       ]
     : []
+}
 
 const check = onNode(
   [ts.SyntaxKind.NewExpression],

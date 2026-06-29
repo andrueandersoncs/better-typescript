@@ -2,7 +2,11 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { isReturnTypeDeclaration, namedNodeReportTarget } from "./tsNode.js"
+import {
+  isReturnTypeDeclaration,
+  namedNodeReportTarget,
+  returnTypeNode
+} from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -48,20 +52,14 @@ const rawObjectParameterMatches = (
   })
 ]
 
-const declaredReturnTypeContainsRawObject = (
-  node: ReturnTypeDeclaration
-): boolean => {
-  const typeNode = Option.fromNullable(node.type)
-
-  return Option.exists(typeNode, containsRawObjectType)
-}
-
 const isRawObjectReturnTypeDeclaration = (
   node: ts.Node
 ): node is ReturnTypeDeclaration =>
-  isReturnTypeDeclaration(node)
-    ? declaredReturnTypeContainsRawObject(node)
-    : false
+  pipe(
+    Option.liftPredicate(isReturnTypeDeclaration)(node),
+    Option.flatMap(returnTypeNode),
+    Option.exists(containsRawObjectType)
+  )
 
 const rawObjectReturnTypeMatches = (
   node: ReturnTypeDeclaration,

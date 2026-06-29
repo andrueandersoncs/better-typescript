@@ -10,52 +10,41 @@ class MatchGroup extends Schema.Class<MatchGroup>("MatchGroup")({
   matches: groupMatchesSchema
 }) {}
 
-const groupKey = (match: RuleMatch): string => `${match.ruleId}\n${match.hint}`
-
-const startGroup = (match: RuleMatch): MatchGroup =>
-  new MatchGroup({ ruleId: match.ruleId, hint: match.hint, matches: [match] })
-
-const extendGroup = (group: MatchGroup, match: RuleMatch): MatchGroup => {
-  const matches = [...group.matches, match]
-
-  return new MatchGroup({ ruleId: group.ruleId, hint: group.hint, matches })
-}
-
 const addMatchToGroups = (
   groups: Map<string, MatchGroup>,
   match: RuleMatch
 ): Map<string, MatchGroup> => {
-  const key = groupKey(match)
+  const key = `${match.ruleId}\n${match.hint}`
   const existing = groups.get(key)
-  const group = existing ? extendGroup(existing, match) : startGroup(match)
+  const group = existing
+    ? new MatchGroup({
+        ruleId: existing.ruleId,
+        hint: existing.hint,
+        matches: [...existing.matches, match]
+      })
+    : new MatchGroup({
+        ruleId: match.ruleId,
+        hint: match.hint,
+        matches: [match]
+      })
 
   return groups.set(key, group)
-}
-
-const groupMatches = (
-  matches: ReadonlyArray<RuleMatch>
-): ReadonlyArray<MatchGroup> => {
-  const initial = new Map<string, MatchGroup>()
-  const grouped = matches.reduce(addMatchToGroups, initial)
-
-  return [...grouped.values()]
 }
 
 const formatLocation = (match: RuleMatch): string =>
   `  ${match.fileName}:${match.line}:${match.column}`
 
-const formatLocations = (group: MatchGroup): string =>
-  Array.map(group.matches, formatLocation).join("\n")
-
 const formatGroup = (group: MatchGroup): string => {
   const heading = `${group.ruleId}\n  Hint: ${group.hint}`
-  const locations = formatLocations(group)
+  const locations = Array.map(group.matches, formatLocation).join("\n")
 
   return `${heading}\n${locations}`
 }
 
 export const formatMatches = (matches: ReadonlyArray<RuleMatch>): string => {
-  const groups = groupMatches(matches)
+  const initial = new Map<string, MatchGroup>()
+  const grouped = matches.reduce(addMatchToGroups, initial)
+  const groups = [...grouped.values()]
 
   return Array.map(groups, formatGroup).join("\n\n")
 }
@@ -67,17 +56,16 @@ export const formatMatchesPage = (page: MatchesPage): string => {
 
   const isCompletePage = page.matches.length === page.totalCount
 
-  return isCompletePage
-    ? formatMatches(page.matches)
-    : `${formatMatches(page.matches)}\n\n${formatPageSummary(page)}`
-}
+  if (isCompletePage) {
+    return formatMatches(page.matches)
+  }
 
-const formatPageSummary = (page: MatchesPage): string => {
   const hasMoreMatches = page.endIndex < page.totalCount
-
-  return hasMoreMatches
+  const pageSummary = hasMoreMatches
     ? `${formatPageRange(page)} Use --offset ${page.endIndex} to see the next page.`
     : formatPageRange(page)
+
+  return `${formatMatches(page.matches)}\n\n${pageSummary}`
 }
 
 const formatPageRange = (page: MatchesPage): string =>

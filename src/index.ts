@@ -51,7 +51,8 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
 ) {
   const workspace = yield* loadProject(options.project)
   const projectMatches = workspace.projects.flatMap(checkProject)
-  const matches = dedupeMatches(projectMatches)
+  const entries = projectMatches.map(matchEntry)
+  const matches = [...new Map(entries).values()]
 
   if (matches.length === 0) {
     return `No rule matches found in ${workspace.rootPath}.`
@@ -62,23 +63,12 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   return formatMatchesPage(page)
 })
 
-const dedupeMatches = (
-  matches: ReadonlyArray<RuleMatch>
-): ReadonlyArray<RuleMatch> => {
-  const entries = matches.map(matchEntry)
-
-  return [...new Map(entries).values()]
-}
-
 const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [
-  matchKey(match),
-  match
-]
-
-const matchKey = (match: RuleMatch): string =>
   [match.ruleId, match.fileName, match.line, match.column, match.message].join(
     ":"
-  )
+  ),
+  match
+]
 
 const reportError = Effect.fn("reportError")(function* (error: Error) {
   yield* Console.error(`Error: ${error.message}`)

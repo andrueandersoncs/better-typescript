@@ -31,19 +31,15 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   return isNamedEffect && hasEffectModuleDeclaration
 }
 
-const isEffectType = (type: ts.Type): boolean => {
-  const typeSymbol = type.getSymbol()
-  const symbol = Option.fromNullable(typeSymbol)
-
-  return Option.exists(symbol, isEffectInterfaceSymbol)
-}
-
 const signatureReturnsEffect =
   (context: RuleContext) =>
   (signature: ts.Signature): boolean => {
     const returnType = context.checker.getReturnTypeOfSignature(signature)
 
-    return isEffectType(returnType)
+    const typeSymbol = returnType.getSymbol()
+    const symbol = Option.fromNullable(typeSymbol)
+
+    return Option.exists(symbol, isEffectInterfaceSymbol)
   }
 
 const returnsEffect =

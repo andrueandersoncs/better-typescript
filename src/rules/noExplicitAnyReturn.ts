@@ -1,8 +1,8 @@
-import { Option } from "effect"
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { isReturnTypeDeclaration } from "./tsNode.js"
+import { isReturnTypeDeclaration, returnTypeNode } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -17,16 +17,14 @@ const containsAnyKeyword = (node: ts.Node): boolean => {
   return [isAnyKeyword, childContainsAnyKeyword].some(Boolean)
 }
 
-const declaredTypeContainsAny = (node: ReturnTypeDeclaration): boolean => {
-  const typeNode = Option.fromNullable(node.type)
-
-  return Option.exists(typeNode, containsAnyKeyword)
-}
-
 const isAnyReturnTypeDeclaration = (
   node: ts.Node
 ): node is ReturnTypeDeclaration =>
-  isReturnTypeDeclaration(node) ? declaredTypeContainsAny(node) : false
+  pipe(
+    Option.liftPredicate(isReturnTypeDeclaration)(node),
+    Option.flatMap(returnTypeNode),
+    Option.exists(containsAnyKeyword)
+  )
 
 const anyReturnTypeMatches = (
   node: ReturnTypeDeclaration,

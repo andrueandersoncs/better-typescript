@@ -45,6 +45,17 @@ export const functionInitializer = (
     Option.filter(isFunctionInitializer)
   )
 
+export const returnTypeNode = (
+  decl: ReturnTypeDeclaration
+): Option.Option<ts.TypeNode> => Option.fromNullable(decl.type)
+
+export const conciseArrowBody = (
+  arrowFunction: ts.ArrowFunction
+): Option.Option<ts.Expression> =>
+  ts.isBlock(arrowFunction.body)
+    ? Option.none()
+    : Option.some(arrowFunction.body)
+
 export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
   ts.isParenthesizedExpression(expression)
     ? unwrapExpression(expression.expression)
@@ -59,16 +70,11 @@ export const transparentWrapperKinds = HashSet.make(
 type TransparentWrapper =
   ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 
-const isTransparentWrapper = (
-  expression: ts.Expression
-): expression is TransparentWrapper =>
-  HashSet.has(transparentWrapperKinds, expression.kind)
-
 export const unwrapTransparentExpression = (
   expression: ts.Expression
 ): ts.Expression =>
-  isTransparentWrapper(expression)
-    ? unwrapTransparentExpression(expression.expression)
+  HashSet.has(transparentWrapperKinds, expression.kind)
+    ? unwrapTransparentExpression((expression as TransparentWrapper).expression)
     : expression
 
 export const isTransparentParent = (node: ts.Node): node is ts.Expression =>
@@ -118,16 +124,15 @@ const exitStatementKinds = HashSet.make(
   ts.SyntaxKind.ThrowStatement
 )
 
-const blockExitsScope = (block: ts.Block): boolean => {
-  const finalStatement = lastStatement(block)
+export const alwaysExitsScope = (statement: ts.Statement): boolean => {
+  if (ts.isBlock(statement)) {
+    const lastStmt = lastStatement(statement)
 
-  return Option.exists(finalStatement, alwaysExitsScope)
+    return Option.exists(lastStmt, alwaysExitsScope)
+  }
+
+  return HashSet.has(exitStatementKinds, statement.kind)
 }
-
-export const alwaysExitsScope = (statement: ts.Statement): boolean =>
-  ts.isBlock(statement)
-    ? blockExitsScope(statement)
-    : HashSet.has(exitStatementKinds, statement.kind)
 
 export const isExtendsClause = (clause: ts.HeritageClause): boolean =>
   clause.token === ts.SyntaxKind.ExtendsKeyword

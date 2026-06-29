@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -21,13 +21,11 @@ const isDispatchGuard = (
   return isBranchless && alwaysExitsScope(statement.thenStatement)
 }
 
-const ownIdentifierName = (node: ts.Node): ReadonlyArray<string> =>
-  ts.isIdentifier(node) ? [node.text] : []
-
 const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
+  const ownNames = ts.isIdentifier(node) ? [node.text] : []
   const childNames = node.getChildren().flatMap(identifierNames)
 
-  return [...ownIdentifierName(node), ...childNames]
+  return Array.appendAll(ownNames, childNames)
 }
 
 // The discriminants are the identifiers a guard inspects, e.g. `node` in `Schema.is(StepNode)(node)`.
@@ -43,21 +41,6 @@ const memberOf =
   (names: HashSet.HashSet<string>) =>
   (name: string): boolean =>
     HashSet.has(names, name)
-
-const sharesDiscriminant = (
-  first: HashSet.HashSet<string>,
-  second: HashSet.HashSet<string>
-): boolean => Array.from(first).some(memberOf(second))
-
-const guardsShareSubject = (
-  first: ts.IfStatement,
-  second: ts.IfStatement
-): boolean => {
-  const firstDiscriminants = discriminants(first)
-  const secondDiscriminants = discriminants(second)
-
-  return sharesDiscriminant(firstDiscriminants, secondDiscriminants)
-}
 
 const statementAt =
   (offset: number) =>
@@ -79,8 +62,12 @@ const siblingDispatchGuard =
 
 const sharesSubjectWith =
   (ifStatement: ts.IfStatement) =>
-  (sibling: ts.IfStatement): boolean =>
-    guardsShareSubject(ifStatement, sibling)
+  (sibling: ts.IfStatement): boolean => {
+    const firstDiscriminants = discriminants(ifStatement)
+    const secondDiscriminants = discriminants(sibling)
+
+    return HashSet.some(firstDiscriminants, memberOf(secondDiscriminants))
+  }
 
 const continuesChain =
   (offset: number) =>
@@ -115,15 +102,6 @@ const returnsOne = (): number => 1
 const isLongEnough = (head: ts.IfStatement): boolean =>
   chainLengthFrom(head) >= minimumChainLength
 
-const dispatchChainHead = (
-  ifStatement: ts.IfStatement
-): Option.Option<ts.IfStatement> =>
-  pipe(
-    Option.liftPredicate(isDispatchGuard)(ifStatement),
-    Option.filter(isChainHead),
-    Option.filter(isLongEnough)
-  )
-
 const manualTypeDispatchMatch =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement): RuleMatch =>
@@ -143,7 +121,9 @@ const manualTypeDispatchMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> =>
   pipe(
-    dispatchChainHead(ifStatement),
+    Option.liftPredicate(isDispatchGuard)(ifStatement),
+    Option.filter(isChainHead),
+    Option.filter(isLongEnough),
     Option.map(manualTypeDispatchMatch(context)),
     Option.toArray
   )

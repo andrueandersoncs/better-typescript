@@ -52,47 +52,17 @@ const consumesAsArgument =
   (call: CallLikeExpression): boolean =>
     callArguments(call).some(isSameNode(node))
 
-const forwardedConsumingCall = (
-  node: ts.Node
-): Option.Option<CallLikeExpression> =>
-  HashSet.has(valueForwardingKinds, node.parent.kind)
-    ? consumingCall(node.parent)
-    : Option.none()
-
 const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   const parent = node.parent
+  const isCallLike = isCallLikeExpression(parent)
 
-  return isCallLikeExpression(parent)
-    ? Option.liftPredicate(consumesAsArgument(node))(parent)
-    : forwardedConsumingCall(node)
-}
+  if (isCallLike) {
+    return Option.liftPredicate(consumesAsArgument(node))(parent)
+  }
 
-const hasPipeText = (identifier: ts.Identifier): boolean =>
-  identifier.text === "pipe"
+  const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)
 
-const isPipeIdentifier = (expression: ts.Expression): boolean =>
-  ts.isIdentifier(expression) && hasPipeText(expression)
-
-const isPipeCall = (consumer: CallLikeExpression): boolean =>
-  ts.isCallExpression(consumer) && isPipeIdentifier(consumer.expression)
-
-const isFirstArgument = (
-  call: ts.Node,
-  consumer: CallLikeExpression
-): boolean => callArguments(consumer)[0] === call
-
-const isFirstPipeArgument = (
-  call: ts.Node,
-  consumer: CallLikeExpression
-): boolean => isPipeCall(consumer) && isFirstArgument(call, consumer)
-
-const returnsCallable = (
-  context: RuleContext,
-  call: CallLikeExpression
-): boolean => {
-  const resultType = context.checker.getTypeAtLocation(call)
-
-  return hasCallSignature(context.checker, resultType)
+  return isForwarding ? consumingCall(node.parent) : Option.none()
 }
 
 const calleeDisplayText = (
@@ -111,33 +81,38 @@ const ruleHint =
   "pipe. Calls that return functions stay inline: currying and pipe stages read " +
   "left-to-right."
 
-const nestedCallRuleMatch = (
-  context: RuleContext,
-  call: CallLikeExpression,
-  consumer: CallLikeExpression
-): RuleMatch => {
-  const callText = calleeDisplayText(context.sourceFile, call)
-  const consumerText = calleeDisplayText(context.sourceFile, consumer)
-
-  return createRuleMatch(context, {
-    ruleId,
-    node: call,
-    message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
-    hint: ruleHint
-  })
-}
-
 const consumerRuleMatch =
   (context: RuleContext, call: CallLikeExpression) =>
   (consumer: CallLikeExpression): Option.Option<RuleMatch> => {
-    const isExempt =
-      returnsCallable(context, call) || isFirstPipeArgument(call, consumer)
+    const resultType = context.checker.getTypeAtLocation(call)
+    const hasCallSig = hasCallSignature(context.checker, resultType)
 
-    if (isExempt) {
+    if (hasCallSig) {
       return Option.none()
     }
 
-    const match = nestedCallRuleMatch(context, call, consumer)
+    const callerExpression = consumer.expression
+    const callerName = ts.isIdentifier(callerExpression)
+      ? callerExpression.text
+      : undefined
+    const isPipeName = callerName === "pipe"
+    const isCallConsumer = ts.isCallExpression(consumer)
+    const isFirstArg = callArguments(consumer)[0] === call
+    const isPipeCall = isPipeName && isFirstArg
+    const isPipeFirstArg = isCallConsumer && isPipeCall
+
+    if (isPipeFirstArg) {
+      return Option.none()
+    }
+
+    const callText = calleeDisplayText(context.sourceFile, call)
+    const consumerText = calleeDisplayText(context.sourceFile, consumer)
+    const match = createRuleMatch(context, {
+      ruleId,
+      node: call,
+      message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
+      hint: ruleHint
+    })
 
     return Option.some(match)
   }

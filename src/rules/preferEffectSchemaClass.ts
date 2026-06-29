@@ -24,11 +24,6 @@ const namedPropertyText = (
 ): Option.Option<string> =>
   pipe(Option.fromNullable(property.name), Option.flatMap(propertyNameText))
 
-const literalPropertyNames = (
-  literal: ts.ObjectLiteralExpression
-): ReadonlyArray<string> =>
-  Array.filterMap(literal.properties, namedPropertyText)
-
 const typeHasProperty =
   (type: ts.Type) =>
   (name: string): boolean => {
@@ -41,7 +36,9 @@ const typeHasProperty =
 const matchesLiteralShape =
   (literal: ts.ObjectLiteralExpression) =>
   (type: ts.Type): boolean =>
-    literalPropertyNames(literal).every(typeHasProperty(type))
+    Array.filterMap(literal.properties, namedPropertyText).every(
+      typeHasProperty(type)
+    )
 
 const candidateTypes =
   (literal: ts.ObjectLiteralExpression) =>
@@ -52,17 +49,14 @@ const candidateTypes =
 
 type ObjectTypeDeclaration = ts.InterfaceDeclaration | ts.TypeAliasDeclaration
 
-const isObjectTypeAlias = (declaration: ts.Declaration): boolean =>
-  ts.isTypeAliasDeclaration(declaration) &&
-  ts.isTypeLiteralNode(declaration.type)
-
 const isProjectObjectTypeDeclaration = (
   declaration: ts.Declaration
 ): boolean => {
   const sourceFile = declaration.getSourceFile()
   const isRelevantDeclaration = [
     ts.isInterfaceDeclaration(declaration),
-    isObjectTypeAlias(declaration)
+    ts.isTypeAliasDeclaration(declaration) &&
+      ts.isTypeLiteralNode(declaration.type)
   ].some(Boolean)
 
   return isProjectSourceFile(sourceFile) && isRelevantDeclaration
@@ -170,19 +164,6 @@ const memberExtractions =
     )
   }
 
-const extractedTypeArguments = (
-  checker: ts.TypeChecker,
-  typeParameter: ts.Type,
-  declaredReturn: ts.Type,
-  contextual: ts.Type
-): ReadonlyArray<ts.Type> => {
-  const contextualMembers = typeMembers(contextual)
-
-  return typeMembers(declaredReturn).flatMap(
-    memberExtractions(checker, typeParameter, contextualMembers)
-  )
-}
-
 const signatureBoxedTypes =
   (checker: ts.TypeChecker, argumentPosition: number, contextual: ts.Type) =>
   (signature: ts.Signature): ReadonlyArray<ts.Type> =>
@@ -206,64 +187,14 @@ const boxedExtraction =
   (checker: ts.TypeChecker, signature: ts.Signature, contextual: ts.Type) =>
   (typeParameter: ts.Type): ReadonlyArray<ts.Type> => {
     const declaredReturn = signature.getReturnType()
+    const contextualMembers = typeMembers(contextual)
 
-    return extractedTypeArguments(
-      checker,
-      typeParameter,
-      declaredReturn,
-      contextual
+    return typeMembers(declaredReturn).flatMap(
+      memberExtractions(checker, typeParameter, contextualMembers)
     )
   }
 
-const boxedContextualTypes = (
-  checker: ts.TypeChecker,
-  literal: ts.ObjectLiteralExpression
-): ReadonlyArray<ts.Type> =>
-  pipe(
-    Option.gen(function* () {
-      const argument = outermostTransparentWrapper(literal)
-      const call = yield* Option.liftPredicate(ts.isCallExpression)(
-        argument.parent
-      )
-      const argumentIndex = call.arguments.indexOf(argument)
-      const argumentPosition =
-        yield* Option.liftPredicate(isFoundIndex)(argumentIndex)
-      const callContextualType = checker.getContextualType(call)
-      const contextual = yield* Option.fromNullable(callContextualType)
-      const signatures = checker
-        .getTypeAtLocation(call.expression)
-        .getCallSignatures()
-
-      return signatures.flatMap(
-        signatureBoxedTypes(checker, argumentPosition, contextual)
-      )
-    }),
-    Option.getOrElse(Function.constant([]))
-  )
-
 const isFoundIndex = (index: number): boolean => index >= 0
-
-const literalTargetTypes = (
-  checker: ts.TypeChecker,
-  literal: ts.ObjectLiteralExpression
-): ReadonlyArray<ts.Type> => {
-  const contextualType = checker.getContextualType(literal)
-  const directContextualType = Option.fromNullable(contextualType)
-  const boxedTypes = boxedContextualTypes(checker, literal)
-
-  return [...Option.toArray(directContextualType), ...boxedTypes].flatMap(
-    candidateTypes(literal)
-  )
-}
-
-const constructedInterfaceSymbols = (
-  checker: ts.TypeChecker,
-  literal: ts.ObjectLiteralExpression
-): ReadonlyArray<ts.Symbol> => {
-  const targetTypes = literalTargetTypes(checker, literal)
-
-  return Array.filterMap(targetTypes, typeObjectTypeSymbol)
-}
 
 const objectLiteralExpressions = (
   node: ts.Node
@@ -283,8 +214,39 @@ const literalConstructionEntries =
   (checker: ts.TypeChecker, fileName: string) =>
   (
     literal: ts.ObjectLiteralExpression
-  ): ReadonlyArray<readonly [ts.Symbol, string]> =>
-    constructedInterfaceSymbols(checker, literal).map(symbolFileEntry(fileName))
+  ): ReadonlyArray<readonly [ts.Symbol, string]> => {
+    const contextualType = checker.getContextualType(literal)
+    const directContextualType = Option.fromNullable(contextualType)
+    const boxedTypes = pipe(
+      Option.gen(function* () {
+        const argument = outermostTransparentWrapper(literal)
+        const call = yield* Option.liftPredicate(ts.isCallExpression)(
+          argument.parent
+        )
+        const argumentIndex = call.arguments.indexOf(argument)
+        const argumentPosition =
+          yield* Option.liftPredicate(isFoundIndex)(argumentIndex)
+        const callContextualType = checker.getContextualType(call)
+        const contextual = yield* Option.fromNullable(callContextualType)
+        const signatures = checker
+          .getTypeAtLocation(call.expression)
+          .getCallSignatures()
+
+        return signatures.flatMap(
+          signatureBoxedTypes(checker, argumentPosition, contextual)
+        )
+      }),
+      Option.getOrElse(Function.constant([]))
+    )
+    const targetTypes = [
+      ...Option.toArray(directContextualType),
+      ...boxedTypes
+    ].flatMap(candidateTypes(literal))
+
+    return Array.filterMap(targetTypes, typeObjectTypeSymbol).map(
+      symbolFileEntry(fileName)
+    )
+  }
 
 const fileConstructionEntries =
   (checker: ts.TypeChecker) =>
@@ -299,46 +261,31 @@ const addConstructionEntry = (
 ): Map<ts.Symbol, string> =>
   index.has(entry[0]) ? index : index.set(entry[0], entry[1])
 
-const buildInterfaceConstructionIndex = (
-  context: RuleContext
-): ConstructionIndex => {
-  const emptyIndex = new Map<ts.Symbol, string>()
-  const index = context.program
-    .getSourceFiles()
-    .filter(isProjectSourceFile)
-    .flatMap(fileConstructionEntries(context.checker))
-    .reduce(addConstructionEntry, emptyIndex)
-
-  interfaceConstructionCache.set(context.program, index)
-
-  return index
-}
-
 const orBuildInterfaceConstructionIndex =
-  (context: RuleContext) => (): ConstructionIndex =>
-    buildInterfaceConstructionIndex(context)
+  (context: RuleContext) => (): ConstructionIndex => {
+    const emptyIndex = new Map<ts.Symbol, string>()
+    const index = context.program
+      .getSourceFiles()
+      .filter(isProjectSourceFile)
+      .flatMap(fileConstructionEntries(context.checker))
+      .reduce(addConstructionEntry, emptyIndex)
 
-const interfaceConstructionIndex = (
-  context: RuleContext
-): ConstructionIndex => {
-  const cached = interfaceConstructionCache.get(context.program)
+    interfaceConstructionCache.set(context.program, index)
 
-  return pipe(
-    Option.fromNullable(cached),
-    Option.getOrElse(orBuildInterfaceConstructionIndex(context))
-  )
-}
+    return index
+  }
 
 const constructionFile =
   (context: RuleContext) =>
   (symbol: ts.Symbol): Option.Option<string> => {
-    const constructionFileName = interfaceConstructionIndex(context).get(symbol)
+    const cached = interfaceConstructionCache.get(context.program)
+    const constructionFileName = pipe(
+      Option.fromNullable(cached),
+      Option.getOrElse(orBuildInterfaceConstructionIndex(context))
+    ).get(symbol)
 
     return Option.fromNullable(constructionFileName)
   }
-
-const declarationKindLabel = (declaration: ObjectTypeDeclaration): string =>
-  ts.isInterfaceDeclaration(declaration) ? "an interface" : "a type alias"
 
 const schemaClassRuleMatch =
   (context: RuleContext, declaration: ObjectTypeDeclaration) =>
@@ -347,7 +294,9 @@ const schemaClassRuleMatch =
     const exampleFile = toRelativeFileName(context.projectRoot)(
       constructionFileName
     )
-    const kindLabel = declarationKindLabel(declaration)
+    const kindLabel = ts.isInterfaceDeclaration(declaration)
+      ? "an interface"
+      : "a type alias"
 
     return createRuleMatch(context, {
       ruleId,

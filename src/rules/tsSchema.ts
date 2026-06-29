@@ -43,11 +43,9 @@ export const TsSymbol = Schema.declare(isTsSymbol).annotations({
   identifier: "ts.Symbol"
 })
 
-type FunctionDeclarationNode = ts.VariableDeclaration | ts.FunctionDeclaration
-
 const isFunctionDeclarationNode = (
   input: unknown
-): input is FunctionDeclarationNode =>
+): input is ts.VariableDeclaration | ts.FunctionDeclaration =>
   Predicate.hasProperty(input, "kind") && Predicate.hasProperty(input, "name")
 
 export const TsFunctionDeclarationNode = Schema.declare(

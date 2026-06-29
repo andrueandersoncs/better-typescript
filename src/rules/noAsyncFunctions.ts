@@ -39,14 +39,6 @@ const findAsyncModifier = (
   return Option.fromNullable(modifier)
 }
 
-const asyncModifier = (
-  node: AsyncCapableFunction
-): Option.Option<ts.ModifierLike> => {
-  const modifiers = ts.getModifiers(node)
-
-  return pipe(Option.fromNullable(modifiers), Option.flatMap(findAsyncModifier))
-}
-
 const asyncFunctionMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
@@ -62,12 +54,16 @@ const asyncFunctionMatch =
 const asyncFunctionMatches = (
   node: AsyncCapableFunction,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    asyncModifier(node),
+): ReadonlyArray<RuleMatch> => {
+  const modifiers = ts.getModifiers(node)
+
+  return pipe(
+    Option.fromNullable(modifiers),
+    Option.flatMap(findAsyncModifier),
     Option.map(asyncFunctionMatch(context)),
     Option.toArray
   )
+}
 
 const check = onNode(
   asyncCapableFunctionKinds,

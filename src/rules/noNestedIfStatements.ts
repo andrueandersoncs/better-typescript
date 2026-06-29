@@ -17,12 +17,6 @@ const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.SetAccessor
 )
 
-const isNestedScopeBoundary = (node: ts.Node): boolean =>
-  HashSet.has(nestedScopeBoundaryKinds, node.kind)
-
-const isElseIfStatement = (child: ts.Node, parent: ts.IfStatement): boolean =>
-  parent.elseStatement === child
-
 const containingIfStatementFrom = (
   child: ts.Node,
   parent: Option.Option<ts.Node>
@@ -33,7 +27,7 @@ const containingIfStatementFrom = (
 
   const parentNode = parent.value
 
-  if (isNestedScopeBoundary(parentNode)) {
+  if (HashSet.has(nestedScopeBoundaryKinds, parentNode.kind)) {
     return Option.none()
   }
 
@@ -43,30 +37,21 @@ const containingIfStatementFrom = (
     return containingIfStatementFrom(parentNode, grandparent)
   }
 
-  return isElseIfStatement(child, parentNode)
+  const isElseBranch = parentNode.elseStatement === child
+
+  return isElseBranch
     ? containingIfStatementFrom(parentNode, grandparent)
     : Option.some(parentNode)
-}
-
-const containingIfStatement = (
-  ifStatement: ts.IfStatement
-): Option.Option<ts.IfStatement> => {
-  const parent = Option.fromNullable(ifStatement.parent)
-
-  return containingIfStatementFrom(ifStatement, parent)
-}
-
-const isNestedIfStatement = (ifStatement: ts.IfStatement): boolean => {
-  const containing = containingIfStatement(ifStatement)
-
-  return Option.isSome(containing)
 }
 
 const nestedIfMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isNestedIfStatement(ifStatement)
+): ReadonlyArray<RuleMatch> => {
+  const parentOption = Option.fromNullable(ifStatement.parent)
+  const containingIf = containingIfStatementFrom(ifStatement, parentOption)
+
+  return Option.isSome(containingIf)
     ? [
         createRuleMatch(context, {
           ruleId,
@@ -78,6 +63,7 @@ const nestedIfMatches = (
         })
       ]
     : []
+}
 
 const check = onNode(
   [ts.SyntaxKind.IfStatement],

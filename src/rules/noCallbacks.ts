@@ -19,69 +19,20 @@ type CallbackStyleDeclaration =
 
 const isCallbackStyleCandidate = (
   node: ts.Node
-): node is CallbackStyleDeclaration =>
-  [
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node),
-    ts.isMethodSignature(node),
-    ts.isCallSignatureDeclaration(node),
-    ts.isFunctionTypeNode(node) ? isCallableValueType(node) : false
-  ].some(Boolean)
+): node is CallbackStyleDeclaration => {
+  const isFunctionOrExpression =
+    ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+  const isArrowOrMethod =
+    ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+  const isSignature =
+    ts.isMethodSignature(node) || ts.isCallSignatureDeclaration(node)
+  const isFunctionOrArrow = isFunctionOrExpression || isArrowOrMethod
+  const isDirectCallbackKind = isFunctionOrArrow || isSignature
 
-const transparentTypeNodeKinds = HashSet.make(
-  ts.SyntaxKind.ParenthesizedType,
-  ts.SyntaxKind.UnionType,
-  ts.SyntaxKind.IntersectionType
-)
+  if (!ts.isFunctionTypeNode(node)) {
+    return isDirectCallbackKind
+  }
 
-const isTransparentTypeNode = (node: ts.Node): node is ts.TypeNode =>
-  HashSet.has(transparentTypeNodeKinds, node.kind)
-
-const effectiveCallableTypeNode = (typeNode: ts.TypeNode): ts.TypeNode =>
-  isTransparentTypeNode(typeNode.parent)
-    ? effectiveCallableTypeNode(typeNode.parent)
-    : typeNode
-
-const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
-  ts.isFunctionExpression(node) || ts.isArrowFunction(node)
-
-const isCallableTypeAnnotation = (
-  initializer: Option.Option<ts.Expression>
-): boolean => !Option.exists(initializer, isRuntimeFunctionLike)
-
-const isTypeOfAlias =
-  (typeNode: ts.TypeNode) =>
-  (parent: ts.TypeAliasDeclaration): boolean =>
-    parent.type === typeNode
-
-const isTypeAliasFunctionType = (
-  parent: ts.Node,
-  typeNode: ts.TypeNode
-): boolean => {
-  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(
-    parent
-  )
-
-  return Option.exists(aliasDeclaration, isTypeOfAlias(typeNode))
-}
-
-const isTypeOfPropertySignature =
-  (typeNode: ts.TypeNode) =>
-  (parent: ts.PropertySignature): boolean =>
-    parent.type === typeNode
-
-const isPropertySignatureFunctionType = (
-  parent: ts.Node,
-  typeNode: ts.TypeNode
-): boolean => {
-  const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
-
-  return Option.exists(propertySignature, isTypeOfPropertySignature(typeNode))
-}
-
-const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
   const typeNode = effectiveCallableTypeNode(node)
   const parent = typeNode.parent
   const isValueDeclaration =
@@ -91,17 +42,53 @@ const isCallableValueType = (node: ts.FunctionTypeNode): boolean => {
     const isTypeAnnotation = parent.type === typeNode
     const initializer = Option.fromNullable(parent.initializer)
 
-    return isTypeAnnotation && isCallableTypeAnnotation(initializer)
+    const isNotRuntimeFunction = !Option.exists(
+      initializer,
+      isRuntimeFunctionLike
+    )
+
+    return isTypeAnnotation && isNotRuntimeFunction
   }
 
-  const hasTypeAliasFunctionType = isTypeAliasFunctionType(parent, typeNode)
-  const hasPropertySignatureFunctionType = isPropertySignatureFunctionType(
-    parent,
-    typeNode
+  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(
+    parent
+  )
+  const hasTypeAliasFunctionType = Option.exists(
+    aliasDeclaration,
+    isTypeOfAlias(typeNode)
+  )
+  const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
+  const hasPropertySignatureFunctionType = Option.exists(
+    propertySignature,
+    isTypeOfPropertySignature(typeNode)
   )
 
   return hasTypeAliasFunctionType || hasPropertySignatureFunctionType
 }
+
+const transparentTypeNodeKinds = HashSet.make(
+  ts.SyntaxKind.ParenthesizedType,
+  ts.SyntaxKind.UnionType,
+  ts.SyntaxKind.IntersectionType
+)
+
+const effectiveCallableTypeNode = (typeNode: ts.TypeNode): ts.TypeNode =>
+  HashSet.has(transparentTypeNodeKinds, typeNode.parent.kind)
+    ? effectiveCallableTypeNode(typeNode.parent as ts.TypeNode)
+    : typeNode
+
+const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
+  ts.isFunctionExpression(node) || ts.isArrowFunction(node)
+
+const isTypeOfAlias =
+  (typeNode: ts.TypeNode) =>
+  (parent: ts.TypeAliasDeclaration): boolean =>
+    parent.type === typeNode
+
+const isTypeOfPropertySignature =
+  (typeNode: ts.TypeNode) =>
+  (parent: ts.PropertySignature): boolean =>
+    parent.type === typeNode
 
 const isFunctionArgument =
   (checker: ts.TypeChecker) =>
@@ -139,22 +126,19 @@ const isCallbackSignature =
     return returnsVoid && hasFunctionArgument
   }
 
-const isCallbackStyleDeclaration = (
-  context: RuleContext,
-  declaration: CallbackStyleDeclaration
-): boolean => {
-  const declaredSignature =
-    context.checker.getSignatureFromDeclaration(declaration)
-  const signature = Option.fromNullable(declaredSignature)
-
-  return Option.exists(signature, isCallbackSignature(context, declaration))
-}
-
 const callbackStyleMatches = (
   declaration: CallbackStyleDeclaration,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isCallbackStyleDeclaration(context, declaration)
+): ReadonlyArray<RuleMatch> => {
+  const declaredSignature =
+    context.checker.getSignatureFromDeclaration(declaration)
+  const signature = Option.fromNullable(declaredSignature)
+  const isCallback = Option.exists(
+    signature,
+    isCallbackSignature(context, declaration)
+  )
+
+  return isCallback
     ? [
         createRuleMatch(context, {
           ruleId,
@@ -167,6 +151,7 @@ const callbackStyleMatches = (
         })
       ]
     : []
+}
 
 const check = onNode(
   [

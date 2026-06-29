@@ -25,17 +25,6 @@ const findAbstractModifier = (
   return Option.fromNullable(modifier)
 }
 
-const abstractModifier = (
-  node: ts.ClassDeclaration
-): Option.Option<ts.ModifierLike> => {
-  const modifiers = ts.getModifiers(node)
-
-  return pipe(
-    Option.fromNullable(modifiers),
-    Option.flatMap(findAbstractModifier)
-  )
-}
-
 const abstractClassMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
@@ -52,12 +41,16 @@ const abstractClassMatch =
 const abstractClassMatches = (
   node: ts.ClassDeclaration,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    abstractModifier(node),
+): ReadonlyArray<RuleMatch> => {
+  const modifiers = ts.getModifiers(node)
+
+  return pipe(
+    Option.fromNullable(modifiers),
+    Option.flatMap(findAbstractModifier),
     Option.map(abstractClassMatch(context)),
     Option.toArray
   )
+}
 
 const check = onNode(
   classDeclarationKinds,

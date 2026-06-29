@@ -25,14 +25,6 @@ const statementBefore =
     return Option.fromNullable(block.statements[statementIndex - 1])
   }
 
-const previousSiblingStatement = (
-  statement: ts.Statement
-): Option.Option<ts.Statement> =>
-  pipe(
-    Option.liftPredicate(ts.isBlock)(statement.parent),
-    Option.flatMap(statementBefore(statement))
-  )
-
 const tokenTexts =
   (sourceFile: ts.SourceFile) =>
   (node: ts.Node): ReadonlyArray<string> => {
@@ -96,32 +88,10 @@ const guardDuplicate =
     return isMergeableDuplicate ? Option.some(combinedCondition) : Option.none()
   }
 
-const adjacentGuardDuplicate = (
-  context: RuleContext,
-  ifStatement: ts.IfStatement
-): Option.Option<string> => {
-  if (!isGuardIfStatement(ifStatement)) {
-    return Option.none()
-  }
-
-  const previousStatement = previousSiblingStatement(ifStatement)
-  const previousGuard = Option.filter(previousStatement, isGuardIfStatement)
-
-  return Option.flatMap(previousGuard, guardDuplicate(context, ifStatement))
-}
-
 const isElseOf =
   (ifStatement: ts.IfStatement) =>
   (parent: ts.IfStatement): boolean =>
     parent.elseStatement === ifStatement
-
-const elseIfParent = (
-  ifStatement: ts.IfStatement
-): Option.Option<ts.IfStatement> =>
-  pipe(
-    Option.liftPredicate(ts.isIfStatement)(ifStatement.parent),
-    Option.filter(isElseOf(ifStatement))
-  )
 
 const parentBodyDuplicate =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
@@ -140,26 +110,6 @@ const parentBodyDuplicate =
     return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
   }
 
-const elseIfDuplicate = (
-  context: RuleContext,
-  ifStatement: ts.IfStatement
-): Option.Option<string> =>
-  pipe(
-    elseIfParent(ifStatement),
-    Option.flatMap(parentBodyDuplicate(context, ifStatement))
-  )
-
-const duplicateIfBodyMatch = (
-  context: RuleContext,
-  ifStatement: ts.IfStatement
-): Option.Option<string> => {
-  const guardDuplicateMatch = adjacentGuardDuplicate(context, ifStatement)
-
-  return Option.isSome(guardDuplicateMatch)
-    ? guardDuplicateMatch
-    : elseIfDuplicate(context, ifStatement)
-}
-
 const duplicateIfRuleMatch =
   (context: RuleContext, ifStatement: ts.IfStatement) =>
   (combinedCondition: string): RuleMatch =>
@@ -177,12 +127,30 @@ const duplicateIfRuleMatch =
 const duplicateIfMatches = (
   ifStatement: ts.IfStatement,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
-    duplicateIfBodyMatch(context, ifStatement),
+): ReadonlyArray<RuleMatch> => {
+  const guardDuplicateMatch = isGuardIfStatement(ifStatement)
+    ? pipe(
+        Option.liftPredicate(ts.isBlock)(ifStatement.parent),
+        Option.flatMap(statementBefore(ifStatement)),
+        Option.filter(isGuardIfStatement),
+        Option.flatMap(guardDuplicate(context, ifStatement))
+      )
+    : Option.none()
+
+  const bodyMatch = Option.isSome(guardDuplicateMatch)
+    ? guardDuplicateMatch
+    : pipe(
+        Option.liftPredicate(ts.isIfStatement)(ifStatement.parent),
+        Option.filter(isElseOf(ifStatement)),
+        Option.flatMap(parentBodyDuplicate(context, ifStatement))
+      )
+
+  return pipe(
+    bodyMatch,
     Option.map(duplicateIfRuleMatch(context, ifStatement)),
     Option.toArray
   )
+}
 
 const check = onNode(
   [ts.SyntaxKind.IfStatement],

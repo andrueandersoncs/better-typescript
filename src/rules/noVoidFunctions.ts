@@ -75,13 +75,6 @@ const isContextuallyVoidCallback =
     )
   }
 
-const isContextuallyImposedVoid = (
-  declaration: VoidableFunction,
-  context: RuleContext
-): boolean =>
-  isFunctionInitializer(declaration) &&
-  isContextuallyVoidCallback(context)(declaration)
-
 const voidFunctionMatch =
   (context: RuleContext) =>
   (declaration: VoidableFunction): RuleMatch => {
@@ -101,14 +94,19 @@ const voidFunctionMatch =
 const voidFunctionMatches = (
   declaration: VoidableFunction,
   context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  isContextuallyImposedVoid(declaration, context)
+): ReadonlyArray<RuleMatch> => {
+  const isContextualVoid =
+    isFunctionInitializer(declaration) &&
+    isContextuallyVoidCallback(context)(declaration)
+
+  return isContextualVoid
     ? []
     : pipe(
         Option.liftPredicate(returnsVoid(context))(declaration),
         Option.map(voidFunctionMatch(context)),
         Option.toArray
       )
+}
 
 const check = onNode(
   voidableFunctionKinds,

@@ -15,35 +15,6 @@ type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
   ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
-const isGeneratorFunction = (node: FunctionKeywordNode): boolean => {
-  const asteriskToken = Option.fromNullable(node.asteriskToken)
-
-  return Option.isSome(asteriskToken)
-}
-
-const functionDeclarationWithBody = (
-  node: FunctionKeywordNode
-): Option.Option<FunctionDeclarationWithBody> =>
-  ts.isFunctionDeclaration(node)
-    ? pipe(
-        Option.fromNullable(node.body),
-        Option.as(node as FunctionDeclarationWithBody)
-      )
-    : Option.none()
-
-const overloadDeclarations = (
-  context: RuleContext,
-  implementation: FunctionDeclarationWithBody
-): Option.Option<ReadonlyArray<ts.FunctionDeclaration>> =>
-  Option.gen(function* () {
-    const name = yield* Option.fromNullable(implementation.name)
-    const nameSymbol = context.checker.getSymbolAtLocation(name)
-    const symbol = yield* Option.fromNullable(nameSymbol)
-    const declarations = yield* Option.fromNullable(symbol.declarations)
-
-    return declarations.filter(ts.isFunctionDeclaration)
-  })
-
 const isOverloadOf =
   (implementation: FunctionDeclarationWithBody) =>
   (candidate: ts.FunctionDeclaration): boolean => {
@@ -59,58 +30,48 @@ const hasOverloadFor =
   (declarations: ReadonlyArray<ts.FunctionDeclaration>): boolean =>
     declarations.some(isOverloadOf(implementation))
 
-const hasOverloadSignature = (
-  context: RuleContext,
-  implementation: FunctionDeclarationWithBody
-): boolean => {
-  const declarations = overloadDeclarations(context, implementation)
-
-  return Option.exists(declarations, hasOverloadFor(implementation))
-}
-
 const lacksOverloadSignature =
   (context: RuleContext) =>
-  (declaration: FunctionDeclarationWithBody): boolean =>
-    !hasOverloadSignature(context, declaration)
+  (declaration: FunctionDeclarationWithBody): boolean => {
+    const declarations = Option.gen(function* () {
+      const name = yield* Option.fromNullable(declaration.name)
+      const nameSymbol = context.checker.getSymbolAtLocation(name)
+      const symbol = yield* Option.fromNullable(nameSymbol)
+      const decls = yield* Option.fromNullable(symbol.declarations)
 
-const isDisallowedFunctionDeclaration = (
-  context: RuleContext,
-  node: FunctionKeywordNode
-): boolean => {
-  const declarationWithBody = functionDeclarationWithBody(node)
+      return decls.filter(ts.isFunctionDeclaration)
+    })
 
-  return Option.exists(declarationWithBody, lacksOverloadSignature(context))
-}
-
-const isDisallowedFunctionKeyword = (
-  context: RuleContext,
-  node: FunctionKeywordNode
-): boolean => {
-  const isNotGenerator = !isGeneratorFunction(node)
-  const isDisallowedKind =
-    ts.isFunctionExpression(node) ||
-    isDisallowedFunctionDeclaration(context, node)
-
-  return isNotGenerator && isDisallowedKind
-}
+    return !Option.exists(declarations, hasOverloadFor(declaration))
+  }
 
 const isFunctionKeywordToken = (child: ts.Node): boolean =>
   child.kind === ts.SyntaxKind.FunctionKeyword
-
-const functionKeywordToken = (
-  sourceFile: ts.SourceFile,
-  node: FunctionKeywordNode
-): ts.Node => node.getChildren(sourceFile).find(isFunctionKeywordToken) ?? node
 
 const functionKeywordMatches = (
   node: FunctionKeywordNode,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
-  if (!isDisallowedFunctionKeyword(context, node)) {
+  const asteriskToken = Option.fromNullable(node.asteriskToken)
+  const isNotGenerator = !Option.isSome(asteriskToken)
+  const declarationWithBody = ts.isFunctionDeclaration(node)
+    ? pipe(
+        Option.fromNullable(node.body),
+        Option.as(node as FunctionDeclarationWithBody)
+      )
+    : Option.none()
+  const isDisallowedKind =
+    ts.isFunctionExpression(node) ||
+    Option.exists(declarationWithBody, lacksOverloadSignature(context))
+
+  const shouldFlag = isNotGenerator && isDisallowedKind
+
+  if (!shouldFlag) {
     return []
   }
 
-  const keywordToken = functionKeywordToken(context.sourceFile, node)
+  const keywordToken =
+    node.getChildren(context.sourceFile).find(isFunctionKeywordToken) ?? node
 
   return [
     createRuleMatch(context, {

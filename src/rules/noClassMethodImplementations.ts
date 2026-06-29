@@ -15,12 +15,6 @@ const methodDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
 const isMethodDeclaration = (node: ts.Node): node is ts.MethodDeclaration =>
   ts.isMethodDeclaration(node)
 
-const hasBody = (node: ts.MethodDeclaration): boolean => {
-  const body = Option.fromNullable(node.body)
-
-  return Option.isSome(body)
-}
-
 const isOverrideModifier = (modifier: ts.ModifierLike): boolean =>
   modifier.kind === ts.SyntaxKind.OverrideKeyword
 
@@ -32,25 +26,18 @@ const findOverrideModifier = (
   return Option.fromNullable(modifier)
 }
 
-const overrideModifier = (
-  node: ts.MethodDeclaration
-): Option.Option<ts.ModifierLike> => {
+const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
+  const bodyOption = Option.fromNullable(node.body)
+  const bodyExists = Option.isSome(bodyOption)
   const modifiers = ts.getModifiers(node)
-
-  return pipe(
+  const isOverride = pipe(
     Option.fromNullable(modifiers),
-    Option.flatMap(findOverrideModifier)
+    Option.flatMap(findOverrideModifier),
+    Option.isSome
   )
+
+  return [bodyExists, !isOverride].every(Boolean)
 }
-
-const isOverrideMethod = (node: ts.MethodDeclaration): boolean => {
-  const modifier = overrideModifier(node)
-
-  return Option.isSome(modifier)
-}
-
-const isReportableMethod = (node: ts.MethodDeclaration): boolean =>
-  [hasBody(node), !isOverrideMethod(node)].every(Boolean)
 
 const methodImplementationMatch =
   (context: RuleContext) =>

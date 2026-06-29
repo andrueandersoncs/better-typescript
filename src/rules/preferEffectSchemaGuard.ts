@@ -22,16 +22,14 @@ const conditionExpressions = (
   ]
 }
 
-const isStringLiteralLike = (expression: ts.Expression): boolean =>
-  ts.isStringLiteral(expression) ||
-  ts.isNoSubstitutionTemplateLiteral(expression)
-
 const binaryExpressionIsStringKeyIn = (
   expression: ts.BinaryExpression
 ): boolean => {
   const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
   const keyExpression = unwrapExpression(expression.left)
-  const hasStringKey = isStringLiteralLike(keyExpression)
+  const hasStringKey =
+    ts.isStringLiteral(keyExpression) ||
+    ts.isNoSubstitutionTemplateLiteral(keyExpression)
 
   return isInOperator && hasStringKey
 }

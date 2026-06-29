@@ -3,6 +3,7 @@ import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import {
+  conciseArrowBody,
   functionInitializer,
   isFunctionInitializer,
   isProjectSourceFile
@@ -27,16 +28,14 @@ class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")({
 
 // Export detection
 
-const statementModifiers = (
-  statement: ts.Statement
-): ReadonlyArray<ts.Modifier> =>
-  ts.canHaveModifiers(statement) ? (ts.getModifiers(statement) ?? []) : []
-
 const isExportKeyword = (modifier: ts.Modifier): boolean =>
   modifier.kind === ts.SyntaxKind.ExportKeyword
 
 const hasExportModifier = (statement: ts.Statement): boolean =>
-  statementModifiers(statement).some(isExportKeyword)
+  (ts.canHaveModifiers(statement)
+    ? (ts.getModifiers(statement) ?? [])
+    : []
+  ).some(isExportKeyword)
 
 // Currying detection
 
@@ -45,33 +44,28 @@ const unwrapParenthesized = (expression: ts.Expression): ts.Expression =>
     ? unwrapParenthesized(expression.expression)
     : expression
 
-const arrowBodyIsFunction = (fn: ts.ArrowFunction): boolean => {
-  const body = ts.isBlock(fn.body) ? Option.none() : Option.some(fn.body)
-  const unwrapped = Option.map(body, unwrapParenthesized)
-
-  return Option.exists(unwrapped, isFunctionInitializer)
-}
+const hasCurriedBody = (arrow: ts.ArrowFunction): boolean =>
+  pipe(
+    conciseArrowBody(arrow),
+    Option.map(unwrapParenthesized),
+    Option.exists(isFunctionInitializer)
+  )
 
 const isCurriedArrow = (initializer: ts.Expression): boolean =>
-  ts.isArrowFunction(initializer) ? arrowBodyIsFunction(initializer) : false
+  pipe(
+    Option.liftPredicate(ts.isArrowFunction)(initializer),
+    Option.exists(hasCurriedBody)
+  )
 
 // Entry collection: variable declarations
-
-const identifierFromDeclaration = (
-  declaration: ts.VariableDeclaration
-): Option.Option<ts.Identifier> =>
-  Option.liftPredicate(ts.isIdentifier)(declaration.name)
-
-const initializerIsCurried = (declaration: ts.VariableDeclaration): boolean =>
-  pipe(
-    Option.fromNullable(declaration.initializer),
-    Option.exists(isCurriedArrow)
-  )
 
 const variableEntryFromNameNode =
   (statement: ts.VariableStatement, declaration: ts.VariableDeclaration) =>
   (nameNode: ts.Identifier): FunctionEntry => {
-    const isCurried = initializerIsCurried(declaration)
+    const isCurried = pipe(
+      Option.fromNullable(declaration.initializer),
+      Option.exists(isCurriedArrow)
+    )
     const isExported = hasExportModifier(statement)
 
     return new FunctionEntry({
@@ -85,7 +79,7 @@ const variableEntryFromNameNode =
 const discardValue =
   (declaration: ts.VariableDeclaration) =>
   (_initializer: ts.Expression): Option.Option<ts.Identifier> =>
-    identifierFromDeclaration(declaration)
+    Option.liftPredicate(ts.isIdentifier)(declaration.name)
 
 const variableDeclarationEntry =
   (statement: ts.VariableStatement) =>
@@ -95,16 +89,6 @@ const variableDeclarationEntry =
       Option.flatMap(discardValue(declaration)),
       Option.map(variableEntryFromNameNode(statement, declaration))
     )
-
-const variableStatementEntries = (
-  statement: ts.Statement
-): ReadonlyArray<FunctionEntry> =>
-  ts.isVariableStatement(statement)
-    ? Array.filterMap(
-        statement.declarationList.declarations,
-        variableDeclarationEntry(statement)
-      )
-    : []
 
 // Entry collection: function declarations
 
@@ -129,23 +113,25 @@ const namedFunctionEntry = (
     Option.map(functionEntryFromNameNode(declaration))
   )
 
-const functionDeclarationEntries = (
+// Combined entry collection
+
+const statementEntries = (
   statement: ts.Statement
-): ReadonlyArray<FunctionEntry> =>
-  pipe(
+): ReadonlyArray<FunctionEntry> => {
+  const variableEntries = ts.isVariableStatement(statement)
+    ? Array.filterMap(
+        statement.declarationList.declarations,
+        variableDeclarationEntry(statement)
+      )
+    : []
+  const functionEntries = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
     Option.flatMap(namedFunctionEntry),
     Option.toArray
   )
 
-// Combined entry collection
-
-const statementEntries = (
-  statement: ts.Statement
-): ReadonlyArray<FunctionEntry> => [
-  ...variableStatementEntries(statement),
-  ...functionDeclarationEntries(statement)
-]
+  return Array.appendAll(variableEntries, functionEntries)
+}
 
 const sourceFileEntries = (
   sourceFile: ts.SourceFile
@@ -173,38 +159,10 @@ const emptyClassifications: Classifications = HashMap.empty()
 const fallbackEmptyClassification = (): SymbolClassification =>
   emptyClassification
 
-const classificationFor = (
-  classifications: Classifications,
-  sym: ts.Symbol
-): SymbolClassification =>
-  pipe(
-    HashMap.get(classifications, sym),
-    Option.getOrElse(fallbackEmptyClassification)
-  )
-
-const withCalleeRef = (
-  classifications: Classifications,
-  sym: ts.Symbol
-): Classifications => {
-  const current = classificationFor(classifications, sym)
-  const updated = new SymbolClassification({
-    calleeCount: current.calleeCount + 1,
-    disqualified: current.disqualified
-  })
-
-  return HashMap.set(classifications, sym, updated)
-}
-
 const disqualifiedClassification = new SymbolClassification({
   calleeCount: 0,
   disqualified: true
 })
-
-const withDisqualified = (
-  classifications: Classifications,
-  sym: ts.Symbol
-): Classifications =>
-  HashMap.set(classifications, sym, disqualifiedClassification)
 
 const declarationNameNode = (entry: FunctionEntry): ts.Node =>
   entry.declarationNode.name ?? entry.nameNode
@@ -231,18 +189,28 @@ const isCalleeOf =
   (call: ts.CallExpression): boolean =>
     call.expression === node
 
-const isCalleePosition = (node: ts.Identifier): boolean =>
-  pipe(
-    Option.liftPredicate(isCallExpression)(node.parent),
-    Option.exists(isCalleeOf(node))
-  )
-
 const classifyTrackedRef =
   (sym: ts.Symbol) =>
-  (classifications: Classifications, node: ts.Identifier): Classifications =>
-    isCalleePosition(node)
-      ? withCalleeRef(classifications, sym)
-      : withDisqualified(classifications, sym)
+  (classifications: Classifications, node: ts.Identifier): Classifications => {
+    if (
+      pipe(
+        Option.liftPredicate(isCallExpression)(node.parent),
+        Option.exists(isCalleeOf(node))
+      )
+    ) {
+      const current = pipe(
+        HashMap.get(classifications, sym),
+        Option.getOrElse(fallbackEmptyClassification)
+      )
+      const updated = new SymbolClassification({
+        calleeCount: current.calleeCount + 1,
+        disqualified: current.disqualified
+      })
+
+      return HashMap.set(classifications, sym, updated)
+    }
+    return HashMap.set(classifications, sym, disqualifiedClassification)
+  }
 
 const isTrackedSymbol =
   (symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>) =>
@@ -308,34 +276,12 @@ const classifyIdentifierNode =
       ? classifyIdentifierRef(checker, symbolToEntry)(classifications, node)
       : classifications
 
-const hasSingleCalleeRef = (classification: SymbolClassification): boolean =>
-  classification.calleeCount === 1
+const isSingleCalleeEntry = (classification: SymbolClassification): boolean => {
+  const isSingleCallee = classification.calleeCount === 1
+  const isNotDisqualified = !classification.disqualified
+  const isSingleAndQualified = isSingleCallee && isNotDisqualified
 
-const isNotDisqualified = (classification: SymbolClassification): boolean =>
-  !classification.disqualified
-
-const isSingleCalleeEntry = (classification: SymbolClassification): boolean =>
-  hasSingleCalleeRef(classification) && isNotDisqualified(classification)
-
-const classifyReferences = (
-  entries: ReadonlyArray<FunctionEntry>,
-  checker: ts.TypeChecker,
-  projectFiles: ReadonlyArray<ts.SourceFile>
-): HashSet.HashSet<ts.Symbol> => {
-  const symbolEntryPairs = Array.filterMap(entries, entryToSymbolPair(checker))
-  const symbolToEntry = HashMap.fromIterable(symbolEntryPairs)
-  const folder = foldDescendants(classifyIdentifierNode(checker, symbolToEntry))
-  const classifications = Array.reduce(
-    projectFiles,
-    emptyClassifications,
-    folder
-  )
-
-  return pipe(
-    HashMap.filter(classifications, isSingleCalleeEntry),
-    HashMap.keys,
-    HashSet.fromIterable
-  )
+  return isSingleAndQualified
 }
 
 const symbolForEntry =
@@ -367,35 +313,34 @@ class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
 
 const referenceIndexCache = new WeakMap<ts.Program, ReferenceIndex>()
 
-const buildReferenceIndex = (
-  program: ts.Program,
-  checker: ts.TypeChecker
-): ReferenceIndex => {
-  const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
-  const entries = projectFiles.flatMap(sourceFileEntries)
-  const calleeOnlySymbols = classifyReferences(entries, checker, projectFiles)
-  const index = new ReferenceIndex({ entries, calleeOnlySymbols })
-
-  referenceIndexCache.set(program, index)
-
-  return index
-}
-
 const orBuildReferenceIndex =
-  (program: ts.Program, checker: ts.TypeChecker) => (): ReferenceIndex =>
-    buildReferenceIndex(program, checker)
+  (program: ts.Program, checker: ts.TypeChecker) => (): ReferenceIndex => {
+    const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
+    const entries = projectFiles.flatMap(sourceFileEntries)
+    const symbolEntryPairs = Array.filterMap(
+      entries,
+      entryToSymbolPair(checker)
+    )
+    const symbolToEntry = HashMap.fromIterable(symbolEntryPairs)
+    const folder = foldDescendants(
+      classifyIdentifierNode(checker, symbolToEntry)
+    )
+    const classifications = Array.reduce(
+      projectFiles,
+      emptyClassifications,
+      folder
+    )
+    const calleeOnlySymbols = pipe(
+      HashMap.filter(classifications, isSingleCalleeEntry),
+      HashMap.keys,
+      HashSet.fromIterable
+    )
+    const index = new ReferenceIndex({ entries, calleeOnlySymbols })
 
-const referenceIndex = (
-  program: ts.Program,
-  checker: ts.TypeChecker
-): ReferenceIndex => {
-  const cached = referenceIndexCache.get(program)
+    referenceIndexCache.set(program, index)
 
-  return pipe(
-    Option.fromNullable(cached),
-    Option.getOrElse(orBuildReferenceIndex(program, checker))
-  )
-}
+    return index
+  }
 
 // Match generation
 const symbolInSet =
@@ -446,7 +391,11 @@ const isInFile =
 const singleUseCalleeMatches = (
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
-  const index = referenceIndex(context.program, context.checker)
+  const cached = referenceIndexCache.get(context.program)
+  const index = pipe(
+    Option.fromNullable(cached),
+    Option.getOrElse(orBuildReferenceIndex(context.program, context.checker))
+  )
 
   return pipe(
     index.entries,
