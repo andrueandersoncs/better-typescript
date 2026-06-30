@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, Schema, flow, pipe } from "effect"
+import { Array, Console, Effect, Option, Schema, flow, pipe } from "effect"
 import { formatMatchesPage } from "./output/formatMatches.js"
 import { paginateMatches } from "./output/paginateMatches.js"
 import { loadProject } from "./project/loadProject.js"
@@ -52,7 +52,10 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   const workspace = yield* loadProject(options.project)
   const projectMatches = workspace.projects.flatMap(checkProject)
   const entries = projectMatches.map(matchEntry)
-  const matches = [...new Map(entries).values()]
+  const matches = pipe(
+    new Map(entries).values(),
+    Array.fromIterable
+  )
 
   if (matches.length === 0) {
     return `No rule matches found in ${workspace.rootPath}.`

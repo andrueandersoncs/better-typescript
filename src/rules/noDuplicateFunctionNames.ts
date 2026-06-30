@@ -53,8 +53,9 @@ const addFunctionToIndex = (
   nameNode: ts.Identifier
 ): Map<string, ReadonlyArray<ts.Identifier>> => {
   const existingDeclarations = declarationsForName(index, nameNode.text)
+  const nextDeclarations = Array.append(existingDeclarations, nameNode)
 
-  return index.set(nameNode.text, [...existingDeclarations, nameNode])
+  return index.set(nameNode.text, nextDeclarations)
 }
 
 const functionNameIndexCache = new WeakMap<ts.Program, FunctionNameIndex>()

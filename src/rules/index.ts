@@ -1,4 +1,5 @@
 import { noAbstractClasses } from "./noAbstractClasses.js"
+import { noArraySpread } from "./noArraySpread.js"
 import { noAsyncFunctions } from "./noAsyncFunctions.js"
 import { noCallbacks } from "./noCallbacks.js"
 import { noClassMethodImplementations } from "./noClassMethodImplementations.js"
@@ -77,6 +78,7 @@ export const rules: ReadonlyArray<Rule> = [
   noDuplicateFunctionNames,
   noCallbacks,
   noAsyncFunctions,
+  noArraySpread,
   noForInLoops,
   noForLoops,
   noForOfLoops,

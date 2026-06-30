@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -14,12 +14,12 @@ const conditionExpressions = (
 ): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
 
-  return [
-    unwrapped,
-    ...astChildren(unwrapped)
+  return pipe(
+    astChildren(unwrapped)
       .filter(ts.isExpression)
-      .flatMap(conditionExpressions)
-  ]
+      .flatMap(conditionExpressions),
+    Array.prepend(unwrapped)
+  )
 }
 
 const binaryExpressionIsStringKeyIn = (

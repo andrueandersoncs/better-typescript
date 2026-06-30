@@ -202,7 +202,7 @@ const objectLiteralExpressions = (
   const childLiterals = astChildren(node).flatMap(objectLiteralExpressions)
 
   return ts.isObjectLiteralExpression(node)
-    ? [node, ...childLiterals]
+    ? Array.prepend(childLiterals, node)
     : childLiterals
 }
 
@@ -238,10 +238,10 @@ const literalConstructionEntries =
       }),
       Option.getOrElse(Function.constant([]))
     )
-    const targetTypes = [
-      ...Option.toArray(directContextualType),
-      ...boxedTypes
-    ].flatMap(candidateTypes(literal))
+    const targetTypes = pipe(
+      Option.toArray(directContextualType),
+      Array.appendAll(boxedTypes)
+    ).flatMap(candidateTypes(literal))
 
     return Array.filterMap(targetTypes, typeObjectTypeSymbol).map(
       symbolFileEntry(fileName)

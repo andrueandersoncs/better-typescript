@@ -1,4 +1,4 @@
-import { Schema, Struct } from "effect"
+import { Array, Schema, Struct } from "effect"
 import * as ts from "typescript"
 import { astChildren } from "../rules/traverse.js"
 import { FileListener, NodeListener } from "../rules/types.js"
@@ -78,6 +78,7 @@ const addKindHandler =
   (handler: NodeHandler) =>
   (table: MutableHandlerTable, kind: ts.SyntaxKind): MutableHandlerTable => {
     const kindHandlers = table.get(kind) ?? []
+    const nextHandlers = Array.append(kindHandlers, handler)
 
-    return table.set(kind, [...kindHandlers, handler])
+    return table.set(kind, nextHandlers)
   }

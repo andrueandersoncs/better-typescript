@@ -1,4 +1,4 @@
-import { Array, Schema } from "effect"
+import { Array, Schema, pipe } from "effect"
 import { RuleMatch } from "../rules/index.js"
 import type { MatchesPage } from "./paginateMatches.js"
 
@@ -16,17 +16,14 @@ const addMatchToGroups = (
 ): Map<string, MatchGroup> => {
   const key = `${match.ruleId}\n${match.hint}`
   const existing = groups.get(key)
-  const group = existing
-    ? new MatchGroup({
-        ruleId: existing.ruleId,
-        hint: existing.hint,
-        matches: [...existing.matches, match]
-      })
-    : new MatchGroup({
-        ruleId: match.ruleId,
-        hint: match.hint,
-        matches: [match]
-      })
+  const updatedMatches = existing
+    ? Array.append(existing.matches, match)
+    : [match]
+  const group = new MatchGroup({
+    ruleId: existing ? existing.ruleId : match.ruleId,
+    hint: existing ? existing.hint : match.hint,
+    matches: updatedMatches
+  })
 
   return groups.set(key, group)
 }
@@ -44,7 +41,7 @@ const formatGroup = (group: MatchGroup): string => {
 export const formatMatches = (matches: ReadonlyArray<RuleMatch>): string => {
   const initial = new Map<string, MatchGroup>()
   const grouped = matches.reduce(addMatchToGroups, initial)
-  const groups = [...grouped.values()]
+  const groups = pipe(grouped.values(), Array.fromIterable)
 
   return Array.map(groups, formatGroup).join("\n\n")
 }

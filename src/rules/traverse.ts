@@ -1,3 +1,4 @@
+import { Array } from "effect"
 import * as ts from "typescript"
 
 // forEachChild callback must not return truthy or traversal stops early; false satisfies this without void or undefined.
@@ -14,5 +15,7 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
 
   ts.forEachChild(node, recordChild(children))
 
-  return [...children.values()]
+  const values = children.values()
+
+  return Array.fromIterable(values)
 }
