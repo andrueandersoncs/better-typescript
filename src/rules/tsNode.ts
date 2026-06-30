@@ -149,3 +149,8 @@ export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
 
   return sourceFiles.some(isProjectFile)
 }
+
+export const typeNameIdentifier = (
+  ref: ts.TypeReferenceNode
+): Option.Option<ts.Identifier> =>
+  Option.liftPredicate(ts.isIdentifier)(ref.typeName)

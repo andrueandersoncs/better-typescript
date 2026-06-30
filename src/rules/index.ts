@@ -33,6 +33,7 @@ import { noUndefined } from "./noUndefined.js"
 import { noVoidFunctions } from "./noVoidFunctions.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
+import { preferHashMap } from "./preferHashMap.js"
 import { preferHashSet } from "./preferHashSet.js"
 import { preferEffectFn } from "./preferEffectFn.js"
 import { preferEffectPropertyAccessors } from "./preferEffectPropertyAccessors.js"
@@ -95,6 +96,7 @@ export const rules: ReadonlyArray<Rule> = [
   noInstanceof,
   noSingleUseCallee,
   preferHashSet,
+  preferHashMap,
   preferOptionMatch,
   preferPipeFunction
 ]

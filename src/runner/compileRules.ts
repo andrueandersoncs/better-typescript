@@ -1,4 +1,4 @@
-import { Array, Schema, Struct } from "effect"
+import { Array, Function, HashMap, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { astChildren } from "../rules/traverse.js"
 import { FileListener, NodeListener } from "../rules/types.js"
@@ -12,14 +12,13 @@ import type {
 
 type NodeHandler = NodeListener["handler"]
 type FileHandler = FileListener["handler"]
-type NodeHandlerTable = ReadonlyMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
-type MutableHandlerTable = Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
+type HandlerTable = HashMap.HashMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
 type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 
 export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
   const listeners = rules.flatMap(ruleListeners)
   const nodeListeners = listeners.filter(isNodeListener)
-  const emptyTable = new Map<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
+  const emptyTable = HashMap.empty<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
   const table = nodeListeners.reduce(addListenerHandlers, emptyTable)
   const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
 
@@ -27,11 +26,15 @@ export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
 }
 
 const checkSourceFile =
-  (table: NodeHandlerTable, fileHandlers: ReadonlyArray<FileHandler>) =>
+  (table: HandlerTable, fileHandlers: ReadonlyArray<FileHandler>) =>
   (context: RuleContext): ReadonlyArray<RuleMatch> => {
     const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
     const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
-      const ownMatches = (table.get(node.kind) ?? []).flatMap(
+      const handlersForKind = pipe(
+        HashMap.get(table, node.kind),
+        Option.getOrElse(emptyNodeHandlers)
+      )
+      const ownMatches = handlersForKind.flatMap(
         applyNodeHandler(node, context)
       )
       const childMatches = astChildren(node).flatMap(visit)
@@ -69,16 +72,22 @@ const listenerHandler: (listener: FileListener) => FileHandler =
   Struct.get("handler")
 
 const addListenerHandlers = (
-  table: MutableHandlerTable,
+  table: HandlerTable,
   listener: NodeListener
-): MutableHandlerTable =>
+): HandlerTable =>
   listener.kinds.reduce(addKindHandler(listener.handler), table)
+
+const emptyNodeHandlers: Function.LazyArg<ReadonlyArray<NodeHandler>> =
+  Function.constant([])
 
 const addKindHandler =
   (handler: NodeHandler) =>
-  (table: MutableHandlerTable, kind: ts.SyntaxKind): MutableHandlerTable => {
-    const kindHandlers = table.get(kind) ?? []
+  (table: HandlerTable, kind: ts.SyntaxKind): HandlerTable => {
+    const kindHandlers = pipe(
+      HashMap.get(table, kind),
+      Option.getOrElse(emptyNodeHandlers)
+    )
     const nextHandlers = Array.append(kindHandlers, handler)
 
-    return table.set(kind, nextHandlers)
+    return HashMap.set(table, kind, nextHandlers)
   }

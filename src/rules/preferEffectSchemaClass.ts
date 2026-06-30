@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { combineAll, onNode } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
@@ -9,7 +9,7 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-effect-schema-class"
 
-type ConstructionIndex = ReadonlyMap<ts.Symbol, string>
+type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 
 const interfaceConstructionCache = new WeakMap<ts.Program, ConstructionIndex>()
 
@@ -256,14 +256,16 @@ const fileConstructionEntries =
     )
 
 const addConstructionEntry = (
-  index: Map<ts.Symbol, string>,
+  index: ConstructionIndex,
   entry: readonly [ts.Symbol, string]
-): Map<ts.Symbol, string> =>
-  index.has(entry[0]) ? index : index.set(entry[0], entry[1])
+): ConstructionIndex =>
+  HashMap.has(index, entry[0])
+    ? index
+    : HashMap.set(index, entry[0], entry[1])
 
 const orBuildInterfaceConstructionIndex =
   (context: RuleContext) => (): ConstructionIndex => {
-    const emptyIndex = new Map<ts.Symbol, string>()
+    const emptyIndex = HashMap.empty<ts.Symbol, string>()
     const index = context.program
       .getSourceFiles()
       .filter(isProjectSourceFile)
@@ -279,12 +281,12 @@ const constructionFile =
   (context: RuleContext) =>
   (symbol: ts.Symbol): Option.Option<string> => {
     const cached = interfaceConstructionCache.get(context.program)
-    const constructionFileName = pipe(
+    const index = pipe(
       Option.fromNullable(cached),
       Option.getOrElse(orBuildInterfaceConstructionIndex(context))
-    ).get(symbol)
+    )
 
-    return Option.fromNullable(constructionFileName)
+    return HashMap.get(index, symbol)
   }
 
 const schemaClassRuleMatch =

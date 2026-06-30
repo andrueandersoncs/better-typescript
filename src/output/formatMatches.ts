@@ -1,4 +1,4 @@
-import { Array, Schema, pipe } from "effect"
+import { Array, HashMap, Option, Schema, pipe } from "effect"
 import { RuleMatch } from "../rules/index.js"
 import type { MatchesPage } from "./paginateMatches.js"
 
@@ -10,22 +10,39 @@ class MatchGroup extends Schema.Class<MatchGroup>("MatchGroup")({
   matches: groupMatchesSchema
 }) {}
 
-const addMatchToGroups = (
-  groups: Map<string, MatchGroup>,
-  match: RuleMatch
-): Map<string, MatchGroup> => {
-  const key = `${match.ruleId}\n${match.hint}`
-  const existing = groups.get(key)
-  const updatedMatches = existing
-    ? Array.append(existing.matches, match)
-    : [match]
-  const group = new MatchGroup({
-    ruleId: existing ? existing.ruleId : match.ruleId,
-    hint: existing ? existing.hint : match.hint,
-    matches: updatedMatches
-  })
+const newGroup =
+  (match: RuleMatch) =>
+  (): MatchGroup =>
+    new MatchGroup({
+      ruleId: match.ruleId,
+      hint: match.hint,
+      matches: [match]
+    })
 
-  return groups.set(key, group)
+const appendMatch =
+  (match: RuleMatch) =>
+  (existing: MatchGroup): MatchGroup => {
+    const matches = Array.append(existing.matches, match)
+
+    return new MatchGroup({
+      ruleId: existing.ruleId,
+      hint: existing.hint,
+      matches
+    })
+  }
+
+const addMatchToGroups = (
+  groups: HashMap.HashMap<string, MatchGroup>,
+  match: RuleMatch
+): HashMap.HashMap<string, MatchGroup> => {
+  const key = `${match.ruleId}\n${match.hint}`
+  const group = pipe(
+    HashMap.get(groups, key),
+    Option.map(appendMatch(match)),
+    Option.getOrElse(newGroup(match))
+  )
+
+  return HashMap.set(groups, key, group)
 }
 
 const formatLocation = (match: RuleMatch): string =>
@@ -39,9 +56,9 @@ const formatGroup = (group: MatchGroup): string => {
 }
 
 export const formatMatches = (matches: ReadonlyArray<RuleMatch>): string => {
-  const initial = new Map<string, MatchGroup>()
+  const initial = HashMap.empty<string, MatchGroup>()
   const grouped = matches.reduce(addMatchToGroups, initial)
-  const groups = pipe(grouped.values(), Array.fromIterable)
+  const groups = HashMap.toValues(grouped)
 
   return Array.map(groups, formatGroup).join("\n\n")
 }

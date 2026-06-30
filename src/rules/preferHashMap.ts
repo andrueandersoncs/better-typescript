@@ -6,29 +6,29 @@ import { createRuleMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
-const ruleId = "prefer-hash-set"
+const ruleId = "prefer-hash-map"
 
-// --- new Set(...) detection ---
+// --- new Map(...) detection ---
 
-const isSetIdentifier = (identifier: ts.Identifier): boolean =>
-  identifier.text === "Set"
+const isMapIdentifier = (identifier: ts.Identifier): boolean =>
+  identifier.text === "Map"
 
-const constructorMessage = "Avoid constructing a built-in Set."
+const constructorMessage = "Avoid constructing a built-in Map."
 
 const constructorHint =
-  "Use Effect's HashSet instead — for example HashSet.fromIterable([1, 2, 3]) or " +
-  "HashSet.empty(). HashSet integrates with Equal and Hash traits for structural equality."
+  "Use Effect's HashMap instead — for example HashMap.fromIterable([[\"a\", 1]]) or " +
+  "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality."
 
-const newSetMatches = (
+const newMapMatches = (
   newExpression: ts.NewExpression,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
   const expressionOption = Option.liftPredicate(ts.isIdentifier)(
     newExpression.expression
   )
-  const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)
+  const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
 
-  return isSetConstruction
+  return isMapConstruction
     ? [
         createRuleMatch(context, {
           ruleId,
@@ -40,25 +40,25 @@ const newSetMatches = (
     : []
 }
 
-// --- Set<T> / ReadonlySet<T> type reference detection ---
+// --- Map<K, V> / ReadonlyMap<K, V> type reference detection ---
 
-const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
+const mapTypeNames: ReadonlyArray<string> = ["Map", "ReadonlyMap"]
 
-const isSetTypeName = (id: ts.Identifier): boolean =>
-  setTypeNames.includes(id.text)
+const isMapTypeName = (id: ts.Identifier): boolean =>
+  mapTypeNames.includes(id.text)
 
-const isSetTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
+const isMapTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
     Option.flatMap(typeNameIdentifier),
-    Option.exists(isSetTypeName)
+    Option.exists(isMapTypeName)
   )
 
 const typeRefHint =
-  "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
+  "Use HashMap.HashMap<K, V> from Effect instead. HashMap integrates with Equal and Hash " +
   "traits for structural equality."
 
-const setTypeRefMatches = (
+const mapTypeRefMatches = (
   typeRef: ts.TypeReferenceNode,
   context: RuleContext
 ): ReadonlyArray<RuleMatch> => {
@@ -80,13 +80,13 @@ const setTypeRefMatches = (
 const constructorListener = onNode(
   [ts.SyntaxKind.NewExpression],
   ts.isNewExpression,
-  newSetMatches
+  newMapMatches
 )
 
 const typeReferenceListener = onNode(
   [ts.SyntaxKind.TypeReference],
-  isSetTypeReference,
-  setTypeRefMatches
+  isMapTypeReference,
+  mapTypeRefMatches
 )
 
 const check = combineAll([constructorListener, typeReferenceListener])
@@ -94,17 +94,17 @@ const check = combineAll([constructorListener, typeReferenceListener])
 // --- examples ---
 
 const badExample = new ExampleSnippet({
-  filePath: "src/collections.ts",
-  code: `const ids = new Set<number>([1, 2, 3])
-const has = ids.has(2)`
+  filePath: "src/lookup.ts",
+  code: `const lookup = new Map<string, number>([["a", 1], ["b", 2]])
+const value = lookup.get("a")`
 })
 
 const goodExample = new ExampleSnippet({
-  filePath: "src/collections.ts",
-  code: `import { HashSet } from "effect"
+  filePath: "src/lookup.ts",
+  code: `import { HashMap } from "effect"
 
-const ids = HashSet.make(1, 2, 3)
-const has = HashSet.has(ids, 2)`
+const lookup = HashMap.make(["a", 1], ["b", 2])
+const value = HashMap.get(lookup, "a")`
 })
 
 const example = new RuleExample({
@@ -112,10 +112,10 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const preferHashSet = new Rule({
+export const preferHashMap = new Rule({
   id: ruleId,
   description:
-    "Disallow built-in Set in favor of Effect's HashSet for structural equality.",
+    "Disallow built-in Map in favor of Effect's HashMap for structural equality.",
   example,
   check
 })

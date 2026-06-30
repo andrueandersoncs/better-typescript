@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
@@ -8,7 +8,7 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-duplicate-function-names"
 
-type FunctionNameIndex = ReadonlyMap<string, ReadonlyArray<ts.Identifier>>
+type FunctionNameIndex = HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
 
 const declaredFunction = (
   declaration: ts.VariableDeclaration
@@ -43,19 +43,23 @@ const topLevelFunctions = (
 ): ReadonlyArray<ts.Identifier> =>
   sourceFile.statements.flatMap(statementFunctions)
 
+const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
+  Function.constant([])
+
 const declarationsForName = (
   index: FunctionNameIndex,
   name: string
-): ReadonlyArray<ts.Identifier> => index.get(name) ?? []
+): ReadonlyArray<ts.Identifier> =>
+  pipe(HashMap.get(index, name), Option.getOrElse(emptyIdentifierList))
 
 const addFunctionToIndex = (
-  index: Map<string, ReadonlyArray<ts.Identifier>>,
+  index: FunctionNameIndex,
   nameNode: ts.Identifier
-): Map<string, ReadonlyArray<ts.Identifier>> => {
+): FunctionNameIndex => {
   const existingDeclarations = declarationsForName(index, nameNode.text)
   const nextDeclarations = Array.append(existingDeclarations, nameNode)
 
-  return index.set(nameNode.text, nextDeclarations)
+  return HashMap.set(index, nameNode.text, nextDeclarations)
 }
 
 const functionNameIndexCache = new WeakMap<ts.Program, FunctionNameIndex>()
@@ -66,7 +70,7 @@ const orBuildFunctionNameIndex =
       .getSourceFiles()
       .filter(isProjectSourceFile)
       .flatMap(topLevelFunctions)
-    const emptyIndex = new Map<string, ReadonlyArray<ts.Identifier>>()
+    const emptyIndex = HashMap.empty<string, ReadonlyArray<ts.Identifier>>()
     const index = projectFunctions.reduce(addFunctionToIndex, emptyIndex)
 
     functionNameIndexCache.set(program, index)

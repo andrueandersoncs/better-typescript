@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -9,21 +9,18 @@ const ruleId = "no-mutable-variable-declarations"
 
 type MutableVariableDeclarationKind = "let" | "var"
 
-const mutableKeywordKinds = new Map<
+const mutableKeywordKinds: HashMap.HashMap<
   ts.SyntaxKind,
   MutableVariableDeclarationKind
->([
-  [ts.SyntaxKind.LetKeyword, "let"],
-  [ts.SyntaxKind.VarKeyword, "var"]
-])
+> = HashMap.make(
+  [ts.SyntaxKind.LetKeyword, "let"] as const,
+  [ts.SyntaxKind.VarKeyword, "var"] as const
+)
 
 const tokenMutableKind = (
   firstToken: ts.Node
-): Option.Option<MutableVariableDeclarationKind> => {
-  const mutableKind = mutableKeywordKinds.get(firstToken.kind)
-
-  return Option.fromNullable(mutableKind)
-}
+): Option.Option<MutableVariableDeclarationKind> =>
+  HashMap.get(mutableKeywordKinds, firstToken.kind)
 
 const mutableDeclarationRuleMatch =
   (context: RuleContext, declarationList: ts.VariableDeclarationList) =>
