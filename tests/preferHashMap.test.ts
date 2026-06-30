@@ -19,7 +19,7 @@ const fixturePath = path.join(testDirectory, "fixtures", "prefer-hash-map")
 const constructorMessage = "Avoid constructing a built-in Map."
 
 const constructorHint =
-  "Use Effect's HashMap instead — for example HashMap.fromIterable([[\"a\", 1]]) or " +
+  'Use Effect\'s HashMap instead — for example HashMap.fromIterable([["a", 1]]) or ' +
   "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality."
 
 const mapTypeMessage = "Avoid the built-in Map type."
@@ -43,7 +43,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "new Map empty with type parameters",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 5,
+    line: 8,
     column: 15,
     message: constructorMessage,
     hint: constructorHint
@@ -52,7 +52,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Map<string, number> type annotation",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 7,
+    line: 10,
     column: 14,
     message: mapTypeMessage,
     hint: typeHint
@@ -61,7 +61,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "new Map with type annotation",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 7,
+    line: 10,
     column: 36,
     message: constructorMessage,
     hint: constructorHint
@@ -70,7 +70,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "ReadonlyMap<string, number> type annotation",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 9,
+    line: 12,
     column: 15,
     message: readonlyMapTypeMessage,
     hint: typeHint
@@ -79,7 +79,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "new Map for ReadonlyMap variable",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 9,
+    line: 12,
     column: 45,
     message: constructorMessage,
     hint: constructorHint
@@ -88,8 +88,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "Map<string, number> parameter type",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 11,
-    column: 29,
+    line: 15,
+    column: 10,
     message: mapTypeMessage,
     hint: typeHint
   },
@@ -97,7 +97,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "ReadonlyMap<string, number> parameter type",
     ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
-    line: 13,
+    line: 19,
     column: 24,
     message: readonlyMapTypeMessage,
     hint: typeHint

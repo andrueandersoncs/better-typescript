@@ -16,7 +16,7 @@ const isMapIdentifier = (identifier: ts.Identifier): boolean =>
 const constructorMessage = "Avoid constructing a built-in Map."
 
 const constructorHint =
-  "Use Effect's HashMap instead — for example HashMap.fromIterable([[\"a\", 1]]) or " +
+  'Use Effect\'s HashMap instead — for example HashMap.fromIterable([["a", 1]]) or ' +
   "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality."
 
 const newMapMatches = (

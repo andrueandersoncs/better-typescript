@@ -29,8 +29,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "empty array in false branch",
     ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
-    line: 8,
-    column: 3,
+    line: 7,
+    column: 29,
     message: expectedMessage,
     hint: expectedHint
   },
@@ -38,8 +38,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "empty array in true branch",
     ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
-    line: 13,
-    column: 3,
+    line: 9,
+    column: 28,
     message: expectedMessage,
     hint: expectedHint
   },
@@ -47,8 +47,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "parenthesized conditional",
     ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
-    line: 18,
-    column: 3,
+    line: 11,
+    column: 35,
     message: expectedMessage,
     hint: expectedHint
   },
@@ -56,8 +56,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "non-literal true branch with empty false branch",
     ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
-    line: 23,
-    column: 3,
+    line: 13,
+    column: 31,
     message: expectedMessage,
     hint: expectedHint
   }
@@ -67,32 +67,32 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "unconditional spread",
     fileName: "src/allowed.ts",
-    line: 8,
-    column: 3
+    line: 7,
+    column: 30
   },
   {
     name: "conditional outside spread",
     fileName: "src/allowed.ts",
-    line: 12,
-    column: 7
+    line: 9,
+    column: 34
   },
   {
     name: "both branches populated",
     fileName: "src/allowed.ts",
-    line: 15,
-    column: 3
+    line: 11,
+    column: 32
   },
   {
     name: "both branches empty",
     fileName: "src/allowed.ts",
-    line: 19,
-    column: 3
+    line: 13,
+    column: 28
   },
   {
     name: "spread in function call",
     fileName: "src/allowed.ts",
-    line: 22,
-    column: 36
+    line: 15,
+    column: 39
   }
 ]
 

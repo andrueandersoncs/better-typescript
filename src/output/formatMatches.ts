@@ -10,14 +10,12 @@ class MatchGroup extends Schema.Class<MatchGroup>("MatchGroup")({
   matches: groupMatchesSchema
 }) {}
 
-const newGroup =
-  (match: RuleMatch) =>
-  (): MatchGroup =>
-    new MatchGroup({
-      ruleId: match.ruleId,
-      hint: match.hint,
-      matches: [match]
-    })
+const newGroup = (match: RuleMatch) => (): MatchGroup =>
+  new MatchGroup({
+    ruleId: match.ruleId,
+    hint: match.hint,
+    matches: [match]
+  })
 
 const appendMatch =
   (match: RuleMatch) =>

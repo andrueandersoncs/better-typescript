@@ -259,9 +259,7 @@ const addConstructionEntry = (
   index: ConstructionIndex,
   entry: readonly [ts.Symbol, string]
 ): ConstructionIndex =>
-  HashMap.has(index, entry[0])
-    ? index
-    : HashMap.set(index, entry[0], entry[1])
+  HashMap.has(index, entry[0]) ? index : HashMap.set(index, entry[0], entry[1])
 
 const orBuildInterfaceConstructionIndex =
   (context: RuleContext) => (): ConstructionIndex => {

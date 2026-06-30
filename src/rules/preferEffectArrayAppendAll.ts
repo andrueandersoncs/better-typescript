@@ -16,9 +16,7 @@ const hint =
 const arrayLiteralElementCount = (expression: ts.Expression): number => {
   const unwrapped = unwrapExpression(expression)
 
-  return ts.isArrayLiteralExpression(unwrapped)
-    ? unwrapped.elements.length
-    : -1
+  return ts.isArrayLiteralExpression(unwrapped) ? unwrapped.elements.length : -1
 }
 
 const isEmptyArrayLiteral = (expression: ts.Expression): boolean =>
