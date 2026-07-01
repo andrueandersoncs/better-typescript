@@ -2,7 +2,11 @@
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Console, Effect, HashMap, Option, Schema, flow, pipe } from "effect"
-import { formatMatchesPage } from "./output/formatMatches.js"
+import {
+  formatMatchesPage,
+  formatMatchesPageJson
+} from "./output/formatMatches.js"
+import { formatRulesGuide, formatRulesJson } from "./output/formatRulesGuide.js"
 import { paginateMatches } from "./output/paginateMatches.js"
 import { loadProject } from "./project/loadProject.js"
 import type { LoadedProject } from "./project/loadProject.js"
@@ -31,10 +35,21 @@ const offset = pipe(
   Options.withDefault(0)
 )
 
+type OutputFormat = "text" | "json"
+
+const format = pipe(
+  Options.choice("format", ["text", "json"]),
+  Options.withDescription(
+    "Output format: human-readable text or machine-readable JSON."
+  ),
+  Options.withDefault("text")
+)
+
 interface AnalyzeOptions {
   readonly project: string
   readonly limit: Option.Option<number>
   readonly offset: number
+  readonly format: OutputFormat
 }
 
 const checkProject = (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> =>
@@ -53,14 +68,23 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   const projectMatches = workspace.projects.flatMap(checkProject)
   const entries = projectMatches.map(matchEntry)
   const matches = pipe(HashMap.fromIterable(entries), HashMap.toValues)
+  const isJsonFormat = options.format === "json"
 
   if (matches.length === 0) {
-    return `No rule matches found in ${workspace.rootPath}.`
+    const noLimit = Option.none<number>()
+    const emptyPage = paginateMatches([], 0, noLimit)
+
+    return isJsonFormat
+      ? formatMatchesPageJson(emptyPage, rules)
+      : `No rule matches found in ${workspace.rootPath}.`
   }
 
   yield* Effect.sync(setFailureExitCode)
   const page = paginateMatches(matches, options.offset, options.limit)
-  return formatMatchesPage(page)
+
+  return isJsonFormat
+    ? formatMatchesPageJson(page, rules)
+    : formatMatchesPage(page, rules)
 })
 
 const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [
@@ -80,11 +104,31 @@ const runCommand = Effect.fn("runCommand")(function* (options: AnalyzeOptions) {
   yield* Console.log(output)
 })
 
-const command = Command.make(
+interface RulesGuideOptions {
+  readonly format: OutputFormat
+}
+
+const runRulesGuideCommand = Effect.fn("runRulesGuideCommand")(function* (
+  options: RulesGuideOptions
+) {
+  const isJsonFormat = options.format === "json"
+  const output = isJsonFormat ? formatRulesJson(rules) : formatRulesGuide(rules)
+  yield* Console.log(output)
+})
+
+const rulesGuideCommand = Command.make(
+  "rules",
+  { format },
+  runRulesGuideCommand
+)
+
+const rootCommand = Command.make(
   "better-typescript",
-  { project, limit, offset },
+  { project, limit, offset, format },
   flow(runCommand, Effect.catchAll(reportError))
 )
+
+const command = pipe(rootCommand, Command.withSubcommands([rulesGuideCommand]))
 
 const cli = Command.run(command, {
   name: "Better TypeScript",
