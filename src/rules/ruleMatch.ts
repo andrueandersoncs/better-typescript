@@ -17,10 +17,9 @@ type MatchSourceFields = Pick<
   "ruleId" | "node" | "message" | "hint"
 >
 
-export const createRuleMatch = (
-  context: RuleContext,
-  source: MatchSourceFields
-): RuleMatch => {
+export const createRuleMatch =
+  (context: RuleContext) =>
+  (source: MatchSourceFields): RuleMatch => {
   const sourceFile = context.sourceFile
   const start = source.node.getStart(sourceFile)
   const location = sourceFile.getLineAndCharacterOfPosition(start)

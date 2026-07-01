@@ -16,39 +16,34 @@ const logicalOperatorKinds = HashSet.make(
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
-const inlineBooleanConditionMatches = (
-  ifStatement: ts.IfStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const expression = unwrapExpression(ifStatement.expression)
-  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
-    expression
-  )
-  const isLogicalOperatorExpression = Option.exists(
-    binaryExpression,
-    hasLogicalOperator
-  )
+const inlineBooleanConditionMatches =
+  (context: RuleContext) =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+    const expression = unwrapExpression(ifStatement.expression)
+    const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
+      expression
+    )
+    const isLogicalOperatorExpression = Option.exists(
+      binaryExpression,
+      hasLogicalOperator
+    )
+  
+    return isLogicalOperatorExpression
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: expression,
+            message:
+              "Avoid boolean operators inline in an if statement condition.",
+            hint:
+              "Extract the expression into a well-named const variable declaration above the if " +
+              "statement and use that variable in the if condition."
+          })
+        ]
+      : []
+  }
 
-  return isLogicalOperatorExpression
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: expression,
-          message:
-            "Avoid boolean operators inline in an if statement condition.",
-          hint:
-            "Extract the expression into a well-named const variable declaration above the if " +
-            "statement and use that variable in the if condition."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.IfStatement],
-  ts.isIfStatement,
-  inlineBooleanConditionMatches
-)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(inlineBooleanConditionMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",

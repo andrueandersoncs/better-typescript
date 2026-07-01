@@ -6,25 +6,20 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-throw"
 
-const throwMatches = (
-  throwStatement: ts.ThrowStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  createRuleMatch(context, {
-    ruleId,
-    node: throwStatement,
-    message: "Avoid throwing errors with throw.",
-    hint:
-      "Create a custom error with Schema.TaggedError, then yield it instead, for example: " +
-      'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().'
-  })
-]
+const throwMatches =
+  (context: RuleContext) =>
+  (throwStatement: ts.ThrowStatement): ReadonlyArray<RuleMatch> => [
+    createRuleMatch(context)({
+      ruleId,
+      node: throwStatement,
+      message: "Avoid throwing errors with throw.",
+      hint:
+        "Create a custom error with Schema.TaggedError, then yield it instead, for example: " +
+        'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().'
+    })
+  ]
 
-const check = onNode(
-  [ts.SyntaxKind.ThrowStatement],
-  ts.isThrowStatement,
-  throwMatches
-)
+const check = onNode([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(throwMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",

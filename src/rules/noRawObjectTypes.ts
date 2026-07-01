@@ -36,21 +36,20 @@ const parameterHasRawObjectType = (
     Option.exists(containsRawObjectType)
   )
 
-const rawObjectParameterMatches = (
-  node: ts.ParameterDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  createRuleMatch(context, {
-    ruleId,
-    node,
-    message: "Parameter uses an anonymous object type instead of a named type.",
-    hint:
-      "Define a named type or interface that describes the data's domain meaning — " +
-      "for example ConnectionConfig instead of { host: string, port: number }. " +
-      "Name the type after what the data represents, not its structural role " +
-      "(avoid names like FooParameters or BarOptions)."
-  })
-]
+const rawObjectParameterMatches =
+  (context: RuleContext) =>
+  (node: ts.ParameterDeclaration): ReadonlyArray<RuleMatch> => [
+    createRuleMatch(context)({
+      ruleId,
+      node,
+      message: "Parameter uses an anonymous object type instead of a named type.",
+      hint:
+        "Define a named type or interface that describes the data's domain meaning — " +
+        "for example ConnectionConfig instead of { host: string, port: number }. " +
+        "Name the type after what the data represents, not its structural role " +
+        "(avoid names like FooParameters or BarOptions)."
+    })
+  ]
 
 const isRawObjectReturnTypeDeclaration = (
   node: ts.Node
@@ -61,26 +60,25 @@ const isRawObjectReturnTypeDeclaration = (
     Option.exists(containsRawObjectType)
   )
 
-const rawObjectReturnTypeMatches = (
-  node: ReturnTypeDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const reportNode = namedNodeReportTarget(node)
-
-  return [
-    createRuleMatch(context, {
-      ruleId,
-      node: reportNode,
-      message:
-        "Return type uses an anonymous object type instead of a named type.",
-      hint:
-        "Define a named type or interface that describes the data's domain meaning — " +
-        "for example UserProfile instead of { name: string, age: number }. " +
-        "Name the type after what the data represents, not its structural role " +
-        "(avoid names like FooResult or BarResponse)."
-    })
-  ]
-}
+const rawObjectReturnTypeMatches =
+  (context: RuleContext) =>
+  (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => {
+    const reportNode = namedNodeReportTarget(node)
+  
+    return [
+      createRuleMatch(context)({
+        ruleId,
+        node: reportNode,
+        message:
+          "Return type uses an anonymous object type instead of a named type.",
+        hint:
+          "Define a named type or interface that describes the data's domain meaning — " +
+          "for example UserProfile instead of { name: string, age: number }. " +
+          "Name the type after what the data represents, not its structural role " +
+          "(avoid names like FooResult or BarResponse)."
+      })
+    ]
+  }
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
@@ -93,17 +91,9 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-const parameterListener = onNode(
-  [ts.SyntaxKind.Parameter],
-  parameterHasRawObjectType,
-  rawObjectParameterMatches
-)
+const parameterListener = onNode([ts.SyntaxKind.Parameter])(parameterHasRawObjectType)(rawObjectParameterMatches)
 
-const returnTypeListener = onNode(
-  returnTypeDeclarationKinds,
-  isRawObjectReturnTypeDeclaration,
-  rawObjectReturnTypeMatches
-)
+const returnTypeListener = onNode(returnTypeDeclarationKinds)(isRawObjectReturnTypeDeclaration)(rawObjectReturnTypeMatches)
 
 const check = combineAll([parameterListener, returnTypeListener])
 

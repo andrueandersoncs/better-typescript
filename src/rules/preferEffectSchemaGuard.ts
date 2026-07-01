@@ -49,7 +49,7 @@ const schemaGuardMatch =
     const propertyName = unwrapExpression(expression.left).getText(sourceFile)
     const objectText = expression.right.getText(sourceFile)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: expression,
       message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
@@ -57,19 +57,13 @@ const schemaGuardMatch =
     })
   }
 
-const inOperatorGuardMatches = (
-  ifStatement: ts.IfStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  conditionExpressions(ifStatement.expression)
+const inOperatorGuardMatches =
+  (context: RuleContext) =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => conditionExpressions(ifStatement.expression)
     .filter(isStringKeyInExpression)
     .map(schemaGuardMatch(context))
 
-const check = onNode(
-  [ts.SyntaxKind.IfStatement],
-  ts.isIfStatement,
-  inOperatorGuardMatches
-)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(inOperatorGuardMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/guard.ts",

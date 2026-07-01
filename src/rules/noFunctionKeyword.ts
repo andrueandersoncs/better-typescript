@@ -48,49 +48,44 @@ const lacksOverloadSignature =
 const isFunctionKeywordToken = (child: ts.Node): boolean =>
   child.kind === ts.SyntaxKind.FunctionKeyword
 
-const functionKeywordMatches = (
-  node: FunctionKeywordNode,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const asteriskToken = Option.fromNullable(node.asteriskToken)
-  const isNotGenerator = !Option.isSome(asteriskToken)
-  const declarationWithBody = ts.isFunctionDeclaration(node)
-    ? pipe(
-        Option.fromNullable(node.body),
-        Option.as(node as FunctionDeclarationWithBody)
-      )
-    : Option.none()
-  const isDisallowedKind =
-    ts.isFunctionExpression(node) ||
-    Option.exists(declarationWithBody, lacksOverloadSignature(context))
-
-  const shouldFlag = isNotGenerator && isDisallowedKind
-
-  if (!shouldFlag) {
-    return []
+const functionKeywordMatches =
+  (context: RuleContext) =>
+  (node: FunctionKeywordNode): ReadonlyArray<RuleMatch> => {
+    const asteriskToken = Option.fromNullable(node.asteriskToken)
+    const isNotGenerator = !Option.isSome(asteriskToken)
+    const declarationWithBody = ts.isFunctionDeclaration(node)
+      ? pipe(
+          Option.fromNullable(node.body),
+          Option.as(node as FunctionDeclarationWithBody)
+        )
+      : Option.none()
+    const isDisallowedKind =
+      ts.isFunctionExpression(node) ||
+      Option.exists(declarationWithBody, lacksOverloadSignature(context))
+  
+    const shouldFlag = isNotGenerator && isDisallowedKind
+  
+    if (!shouldFlag) {
+      return []
+    }
+  
+    const keywordToken =
+      node.getChildren(context.sourceFile).find(isFunctionKeywordToken) ?? node
+  
+    return [
+      createRuleMatch(context)({
+        ruleId,
+        node: keywordToken,
+        message: "Avoid using the function keyword.",
+        hint:
+          "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+          "declarations only when overload signatures are required, and keep function* when " +
+          "generator semantics are required."
+      })
+    ]
   }
 
-  const keywordToken =
-    node.getChildren(context.sourceFile).find(isFunctionKeywordToken) ?? node
-
-  return [
-    createRuleMatch(context, {
-      ruleId,
-      node: keywordToken,
-      message: "Avoid using the function keyword.",
-      hint:
-        "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-        "declarations only when overload signatures are required, and keep function* when " +
-        "generator semantics are required."
-    })
-  ]
-}
-
-const check = onNode(
-  [ts.SyntaxKind.FunctionDeclaration, ts.SyntaxKind.FunctionExpression],
-  isFunctionKeywordNode,
-  functionKeywordMatches
-)
+const check = onNode([ts.SyntaxKind.FunctionDeclaration, ts.SyntaxKind.FunctionExpression])(isFunctionKeywordNode)(functionKeywordMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",

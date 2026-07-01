@@ -100,7 +100,7 @@ const runPreferPipeFunctionFixture = async (): Promise<
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>
-    runRules(project, [preferPipeFunction])
+    runRules([preferPipeFunction])(project)
   )
 }
 

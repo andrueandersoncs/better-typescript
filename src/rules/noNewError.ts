@@ -10,37 +10,32 @@ const ruleId = "no-new-error"
 const isErrorIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Error"
 
-const newErrorMatches = (
-  newExpression: ts.NewExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
-    newExpression.expression
-  )
-  const isBareErrorConstruction = Option.exists(
-    constructorIdentifier,
-    isErrorIdentifier
-  )
+const newErrorMatches =
+  (context: RuleContext) =>
+  (newExpression: ts.NewExpression): ReadonlyArray<RuleMatch> => {
+    const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
+      newExpression.expression
+    )
+    const isBareErrorConstruction = Option.exists(
+      constructorIdentifier,
+      isErrorIdentifier
+    )
+  
+    return isBareErrorConstruction
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: newExpression,
+            message: "Avoid using new Error() directly.",
+            hint:
+              "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+              "instead of bare new Error()."
+          })
+        ]
+      : []
+  }
 
-  return isBareErrorConstruction
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: newExpression,
-          message: "Avoid using new Error() directly.",
-          hint:
-            "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
-            "instead of bare new Error()."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.NewExpression],
-  ts.isNewExpression,
-  newErrorMatches
-)
+const check = onNode([ts.SyntaxKind.NewExpression])(ts.isNewExpression)(newErrorMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/errors.ts",

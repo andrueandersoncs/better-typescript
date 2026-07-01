@@ -23,9 +23,10 @@ const tokenMutableKind = (
   HashMap.get(mutableKeywordKinds, firstToken.kind)
 
 const mutableDeclarationRuleMatch =
-  (context: RuleContext, declarationList: ts.VariableDeclarationList) =>
+  (context: RuleContext) =>
+  (declarationList: ts.VariableDeclarationList) =>
   (kind: MutableVariableDeclarationKind): RuleMatch =>
-    createRuleMatch(context, {
+    createRuleMatch(context)({
       ruleId,
       node: declarationList,
       message: `Avoid declaring mutable variables with ${kind}.`,
@@ -34,25 +35,20 @@ const mutableDeclarationRuleMatch =
         "variable, and use immutable values that are not reassigned."
     })
 
-const mutableDeclarationMatches = (
-  declarationList: ts.VariableDeclarationList,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const firstToken = declarationList.getFirstToken(context.sourceFile)
+const mutableDeclarationMatches =
+  (context: RuleContext) =>
+  (declarationList: ts.VariableDeclarationList): ReadonlyArray<RuleMatch> => {
+    const firstToken = declarationList.getFirstToken(context.sourceFile)
+  
+    return pipe(
+      Option.fromNullable(firstToken),
+      Option.flatMap(tokenMutableKind),
+      Option.map(mutableDeclarationRuleMatch(context)(declarationList)),
+      Option.toArray
+    )
+  }
 
-  return pipe(
-    Option.fromNullable(firstToken),
-    Option.flatMap(tokenMutableKind),
-    Option.map(mutableDeclarationRuleMatch(context, declarationList)),
-    Option.toArray
-  )
-}
-
-const check = onNode(
-  [ts.SyntaxKind.VariableDeclarationList],
-  ts.isVariableDeclarationList,
-  mutableDeclarationMatches
-)
+const check = onNode([ts.SyntaxKind.VariableDeclarationList])(ts.isVariableDeclarationList)(mutableDeclarationMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/cart.ts",

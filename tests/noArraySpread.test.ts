@@ -118,7 +118,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   return workspace.projects.flatMap((project) =>
-    runRules(project, [noArraySpread])
+    runRules([noArraySpread])(project)
   )
 }
 

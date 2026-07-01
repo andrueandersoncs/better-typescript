@@ -116,14 +116,16 @@ const hasIndexSignature = (type: ts.Type): boolean => {
 const isRecordTypeMember =
   (context: RuleContext) =>
   (type: ts.Type): boolean =>
-    isRecordType(context, type)
+    isRecordType(context)(type)
 
-const isRecordType = (context: RuleContext, type: ts.Type): boolean => {
-  const apparentType = context.checker.getApparentType(type)
+const isRecordType =
+  (context: RuleContext) =>
+  (type: ts.Type): boolean => {
+    const apparentType = context.checker.getApparentType(type)
 
-  return type.isUnionOrIntersection()
-    ? type.types.every(isRecordTypeMember(context))
-    : [hasIndexSignature(type), hasIndexSignature(apparentType)].some(Boolean)
+    return type.isUnionOrIntersection()
+      ? type.types.every(isRecordTypeMember(context))
+      : [hasIndexSignature(type), hasIndexSignature(apparentType)].some(Boolean)
 }
 
 const declarationNameText =
@@ -140,7 +142,8 @@ const variableDeclarationName =
     )
 
 const propertyAccessorRuleMatch =
-  (context: RuleContext, node: PropertyAccessorFunction) =>
+  (context: RuleContext) =>
+  (node: PropertyAccessorFunction) =>
   (access: ts.PropertyAccessExpression): RuleMatch => {
     const name = pipe(
       Option.fromNullable(node.name),
@@ -150,11 +153,11 @@ const propertyAccessorRuleMatch =
     )
     const accessedText = access.getText(context.sourceFile)
     const accessedType = context.checker.getTypeAtLocation(access.expression)
-    const moduleName = isRecordType(context, accessedType) ? "Record" : "Struct"
+    const moduleName = isRecordType(context)(accessedType) ? "Record" : "Struct"
     const propertyKey = JSON.stringify(access.name.text)
     const suggestion = `${moduleName}.get(${propertyKey})`
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: access,
       message: `Avoid defining ${name} only to read ${accessedText}.`,
@@ -164,29 +167,24 @@ const propertyAccessorRuleMatch =
     })
   }
 
-const propertyAccessorMatches = (
-  node: PropertyAccessorFunction,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const hasSingleParam = node.parameters.length === 1
-  const singleParam = hasSingleParam
-    ? Option.fromNullable(node.parameters[0])
-    : Option.none<ts.ParameterDeclaration>()
-  const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
+const propertyAccessorMatches =
+  (context: RuleContext) =>
+  (node: PropertyAccessorFunction): ReadonlyArray<RuleMatch> => {
+    const hasSingleParam = node.parameters.length === 1
+    const singleParam = hasSingleParam
+      ? Option.fromNullable(node.parameters[0])
+      : Option.none<ts.ParameterDeclaration>()
+    const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
+  
+    return pipe(
+      paramName,
+      Option.flatMap(parameterPropertyAccess(node)),
+      Option.map(propertyAccessorRuleMatch(context)(node)),
+      Option.toArray
+    )
+  }
 
-  return pipe(
-    paramName,
-    Option.flatMap(parameterPropertyAccess(node)),
-    Option.map(propertyAccessorRuleMatch(context, node)),
-    Option.toArray
-  )
-}
-
-const check = onNode(
-  propertyAccessorFunctionKinds,
-  isPropertyAccessorFunction,
-  propertyAccessorMatches
-)
+const check = onNode(propertyAccessorFunctionKinds)(isPropertyAccessorFunction)(propertyAccessorMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",

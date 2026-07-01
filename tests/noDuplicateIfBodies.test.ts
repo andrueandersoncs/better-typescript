@@ -132,7 +132,7 @@ const runNoDuplicateIfBodiesFixture = async (): Promise<
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>
-    runRules(project, [noDuplicateIfBodies])
+    runRules([noDuplicateIfBodies])(project)
   )
 }
 

@@ -7,40 +7,35 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-loops"
 
-const forMatches = (
-  forStatement: ts.ForStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const condition = Option.fromNullable(forStatement.condition)
-  const initializer = Option.fromNullable(forStatement.initializer)
-  const incrementor = Option.fromNullable(forStatement.incrementor)
-  const hasStopCondition = Option.isSome(condition)
-  const hasInitializer = Option.isSome(initializer)
-  const hasIncrementor = Option.isSome(incrementor)
-  const hasIterator = [hasInitializer, hasIncrementor].some(Boolean)
-  const hasIteratorAndStopCondition = [hasStopCondition, hasIterator].every(
-    Boolean
-  )
+const forMatches =
+  (context: RuleContext) =>
+  (forStatement: ts.ForStatement): ReadonlyArray<RuleMatch> => {
+    const condition = Option.fromNullable(forStatement.condition)
+    const initializer = Option.fromNullable(forStatement.initializer)
+    const incrementor = Option.fromNullable(forStatement.incrementor)
+    const hasStopCondition = Option.isSome(condition)
+    const hasInitializer = Option.isSome(initializer)
+    const hasIncrementor = Option.isSome(incrementor)
+    const hasIterator = [hasInitializer, hasIncrementor].some(Boolean)
+    const hasIteratorAndStopCondition = [hasStopCondition, hasIterator].every(
+      Boolean
+    )
+  
+    return hasIteratorAndStopCondition
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: forStatement,
+            message: "Avoid imperative logic in iterator-based for loops.",
+            hint:
+              "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+              "Array.filter(), or Array.flatMap(), instead."
+          })
+        ]
+      : []
+  }
 
-  return hasIteratorAndStopCondition
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: forStatement,
-          message: "Avoid imperative logic in iterator-based for loops.",
-          hint:
-            "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-            "Array.filter(), or Array.flatMap(), instead."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.ForStatement],
-  ts.isForStatement,
-  forMatches
-)
+const check = onNode([ts.SyntaxKind.ForStatement])(ts.isForStatement)(forMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/transform.ts",

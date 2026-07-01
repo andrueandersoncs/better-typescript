@@ -94,7 +94,7 @@ const isFunctionArgument =
   (checker: ts.TypeChecker) =>
   (parameter: ts.ParameterDeclaration): boolean => {
     const parameterType = checker.getTypeAtLocation(parameter)
-    const parameterHasCallSignature = hasCallSignature(checker, parameterType)
+    const parameterHasCallSignature = hasCallSignature(checker)(parameterType)
     const restToken = Option.fromNullable(parameter.dotDotDotToken)
 
     if (Option.isNone(restToken)) {
@@ -115,7 +115,8 @@ const isFunctionArgument =
   }
 
 const isCallbackSignature =
-  (context: RuleContext, declaration: CallbackStyleDeclaration) =>
+  (context: RuleContext) =>
+  (declaration: CallbackStyleDeclaration) =>
   (signature: ts.Signature): boolean => {
     const returnType = context.checker.getReturnTypeOfSignature(signature)
     const returnsVoid = isVoidType(returnType)
@@ -126,46 +127,41 @@ const isCallbackSignature =
     return returnsVoid && hasFunctionArgument
   }
 
-const callbackStyleMatches = (
-  declaration: CallbackStyleDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const declaredSignature =
-    context.checker.getSignatureFromDeclaration(declaration)
-  const signature = Option.fromNullable(declaredSignature)
-  const isCallback = Option.exists(
-    signature,
-    isCallbackSignature(context, declaration)
-  )
+const callbackStyleMatches =
+  (context: RuleContext) =>
+  (declaration: CallbackStyleDeclaration): ReadonlyArray<RuleMatch> => {
+    const declaredSignature =
+      context.checker.getSignatureFromDeclaration(declaration)
+    const signature = Option.fromNullable(declaredSignature)
+    const isCallback = Option.exists(
+      signature,
+      isCallbackSignature(context)(declaration)
+    )
+  
+    return isCallback
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: declaration,
+            message:
+              "Avoid callback-style functions that accept a function argument and return void.",
+            hint:
+              "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
+              "own API as an Effect-returning function from the start."
+          })
+        ]
+      : []
+  }
 
-  return isCallback
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: declaration,
-          message:
-            "Avoid callback-style functions that accept a function argument and return void.",
-          hint:
-            "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-            "own API as an Effect-returning function from the start."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [
-    ts.SyntaxKind.FunctionDeclaration,
-    ts.SyntaxKind.FunctionExpression,
-    ts.SyntaxKind.ArrowFunction,
-    ts.SyntaxKind.MethodDeclaration,
-    ts.SyntaxKind.MethodSignature,
-    ts.SyntaxKind.CallSignature,
-    ts.SyntaxKind.FunctionType
-  ],
-  isCallbackStyleCandidate,
-  callbackStyleMatches
-)
+const check = onNode([
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.ArrowFunction,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.MethodSignature,
+  ts.SyntaxKind.CallSignature,
+  ts.SyntaxKind.FunctionType
+])(isCallbackStyleCandidate)(callbackStyleMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/events.ts",

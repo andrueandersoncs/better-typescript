@@ -36,9 +36,15 @@ const returnStatementExpression = (
 ): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
 // --- Literal boolean return from conditional branch ---
+type StatementConditionalFalseMatch = (
+  statement: ts.Statement,
+  index: number
+) => Option.Option<RuleMatch>
+
 
 const directBooleanRuleMatch =
-  (context: RuleContext, ifStatement: ts.IfStatement) =>
+  (context: RuleContext) =>
+  (ifStatement: ts.IfStatement) =>
   (literalValue: boolean): RuleMatch => {
     const conditionText = ifStatement.expression.getText(context.sourceFile)
     const returnExpression = literalValue
@@ -46,7 +52,7 @@ const directBooleanRuleMatch =
       : `!(${conditionText})`
     const literalText = String(literalValue)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: ifStatement,
       message: `Avoid returning ${literalText} from a conditional branch.`,
@@ -54,11 +60,9 @@ const directBooleanRuleMatch =
     })
   }
 
-const directBooleanMatches = (
-  ifStatement: ts.IfStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
+const directBooleanMatches =
+  (context: RuleContext) =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => pipe(
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(
         ifStatement.thenStatement
@@ -70,15 +74,11 @@ const directBooleanMatches = (
 
       return yield* booleanLiteralValue(expression)
     }),
-    Option.map(directBooleanRuleMatch(context, ifStatement)),
+    Option.map(directBooleanRuleMatch(context)(ifStatement)),
     Option.toArray
   )
 
-const literalBooleanCheck = onNode(
-  [ts.SyntaxKind.IfStatement],
-  ts.isIfStatement,
-  directBooleanMatches
-)
+const literalBooleanCheck = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(directBooleanMatches)
 
 // --- Conditional return followed by return false ---
 
@@ -94,7 +94,8 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
   )
 
 const conditionalFalseReturnMatch =
-  (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
+  (context: RuleContext) =>
+  (nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
       yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
@@ -113,7 +114,7 @@ const conditionalFalseReturnMatch =
       yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
       yield* Option.filter(nextStatement, isFalseLiteralReturn)
 
-      return createRuleMatch(context, {
+      return createRuleMatch(context)({
         ruleId,
         node: ifStatement,
         message: "Avoid conditional return followed by return false.",
@@ -122,30 +123,25 @@ const conditionalFalseReturnMatch =
     })
 
 const statementConditionalFalseMatch =
-  (context: RuleContext, block: ts.Block) =>
-  (statement: ts.Statement, index: number): Option.Option<RuleMatch> => {
+  (context: RuleContext) =>
+  (block: ts.Block): StatementConditionalFalseMatch =>
+  (statement, index) => {
     const nextStatement = Option.fromNullable(block.statements[index + 1])
 
     return pipe(
       Option.liftPredicate(ts.isIfStatement)(statement),
-      Option.flatMap(conditionalFalseReturnMatch(context, nextStatement))
+      Option.flatMap(conditionalFalseReturnMatch(context)(nextStatement))
     )
   }
 
-const conditionalFalseReturnMatches = (
-  block: ts.Block,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  Array.filterMap(
+const conditionalFalseReturnMatches =
+  (context: RuleContext) =>
+  (block: ts.Block): ReadonlyArray<RuleMatch> => Array.filterMap(
     block.statements,
-    statementConditionalFalseMatch(context, block)
+    statementConditionalFalseMatch(context)(block)
   )
 
-const conditionalFalseCheck = onNode(
-  [ts.SyntaxKind.Block],
-  ts.isBlock,
-  conditionalFalseReturnMatches
-)
+const conditionalFalseCheck = onNode([ts.SyntaxKind.Block])(ts.isBlock)(conditionalFalseReturnMatches)
 
 // --- Combined ---
 

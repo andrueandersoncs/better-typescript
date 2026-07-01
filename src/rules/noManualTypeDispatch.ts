@@ -105,7 +105,7 @@ const isLongEnough = (head: ts.IfStatement): boolean =>
 const manualTypeDispatchMatch =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement): RuleMatch =>
-    createRuleMatch(context, {
+    createRuleMatch(context)({
       ruleId,
       node: ifStatement,
       message:
@@ -116,11 +116,9 @@ const manualTypeDispatchMatch =
         "error rather than a silent fall-through."
     })
 
-const manualTypeDispatchMatches = (
-  ifStatement: ts.IfStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
+const manualTypeDispatchMatches =
+  (context: RuleContext) =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => pipe(
     Option.liftPredicate(isDispatchGuard)(ifStatement),
     Option.filter(isChainHead),
     Option.filter(isLongEnough),
@@ -128,11 +126,7 @@ const manualTypeDispatchMatches = (
     Option.toArray
   )
 
-const check = onNode(
-  [ts.SyntaxKind.IfStatement],
-  ts.isIfStatement,
-  manualTypeDispatchMatches
-)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(manualTypeDispatchMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",

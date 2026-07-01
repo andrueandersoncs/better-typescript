@@ -60,7 +60,8 @@ const isCurriedArrow = (initializer: ts.Expression): boolean =>
 // Entry collection: variable declarations
 
 const variableEntryFromNameNode =
-  (statement: ts.VariableStatement, declaration: ts.VariableDeclaration) =>
+  (statement: ts.VariableStatement) =>
+  (declaration: ts.VariableDeclaration) =>
   (nameNode: ts.Identifier): FunctionEntry => {
     const isCurried = pipe(
       Option.fromNullable(declaration.initializer),
@@ -87,7 +88,7 @@ const variableDeclarationEntry =
     pipe(
       functionInitializer(declaration),
       Option.flatMap(discardValue(declaration)),
-      Option.map(variableEntryFromNameNode(statement, declaration))
+      Option.map(variableEntryFromNameNode(statement)(declaration))
     )
 
 // Entry collection: function declarations
@@ -148,6 +149,11 @@ class SymbolClassification extends Schema.Class<SymbolClassification>(
 }) {}
 
 type Classifications = HashMap.HashMap<ts.Symbol, SymbolClassification>
+type ClassificationFolder = (
+  classifications: Classifications,
+  node: ts.Node
+) => Classifications
+
 
 const emptyClassification = new SymbolClassification({
   calleeCount: 0,
@@ -174,7 +180,8 @@ const matchesNode =
 
 const isDeclarationIdentifier =
   (symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>) =>
-  (node: ts.Identifier, sym: ts.Symbol): boolean =>
+  (node: ts.Identifier) =>
+  (sym: ts.Symbol): boolean =>
     pipe(
       HashMap.get(symbolToEntry, sym),
       Option.map(declarationNameNode),
@@ -191,7 +198,8 @@ const isCalleeOf =
 
 const classifyTrackedRef =
   (sym: ts.Symbol) =>
-  (classifications: Classifications, node: ts.Identifier): Classifications => {
+  (node: ts.Identifier) =>
+  (classifications: Classifications): Classifications => {
     if (
       pipe(
         Option.liftPredicate(isCallExpression)(node.parent),
@@ -218,39 +226,37 @@ const isTrackedSymbol =
     HashMap.has(symbolToEntry, sym)
 
 const isNotDeclaration =
-  (
-    symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>,
-    node: ts.Identifier
-  ) =>
+  (symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>) =>
+  (node: ts.Identifier) =>
   (sym: ts.Symbol): boolean =>
-    !isDeclarationIdentifier(symbolToEntry)(node, sym)
+    !isDeclarationIdentifier(symbolToEntry)(node)(sym)
 
 const applyTrackedRef =
-  (classifications: Classifications, node: ts.Identifier) =>
+  (classifications: Classifications) =>
+  (node: ts.Identifier) =>
   (sym: ts.Symbol): Classifications =>
-    classifyTrackedRef(sym)(classifications, node)
+    classifyTrackedRef(sym)(node)(classifications)
 
 const fallbackClassifications =
   (classifications: Classifications) => (): Classifications =>
     classifications
 
 const classifyIdentifierRef =
-  (
-    checker: ts.TypeChecker,
-    symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>
-  ) =>
-  (classifications: Classifications, node: ts.Identifier): Classifications => {
+  (checker: ts.TypeChecker) =>
+  (symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>) =>
+  (classifications: Classifications) =>
+  (node: ts.Identifier): Classifications => {
     const sym = checker.getSymbolAtLocation(node)
     const symOption = Option.fromNullable(sym)
     const trackedSym = Option.filter(symOption, isTrackedSymbol(symbolToEntry))
     const nonDeclSym = Option.filter(
       trackedSym,
-      isNotDeclaration(symbolToEntry, node)
+      isNotDeclaration(symbolToEntry)(node)
     )
 
     return pipe(
       nonDeclSym,
-      Option.map(applyTrackedRef(classifications, node)),
+      Option.map(applyTrackedRef(classifications)(node)),
       Option.getOrElse(fallbackClassifications(classifications))
     )
   }
@@ -258,22 +264,20 @@ const classifyIdentifierRef =
 // Tree folding
 
 const foldDescendants =
-  (folder: (acc: Classifications, node: ts.Node) => Classifications) =>
-  (acc: Classifications, node: ts.Node): Classifications => {
-    const afterSelf = folder(acc, node)
+  (folder: ClassificationFolder): ClassificationFolder =>
+  (classifications, node) => {
+    const afterSelf = folder(classifications, node)
     const children = astChildren(node)
 
     return Array.reduce(children, afterSelf, foldDescendants(folder))
   }
 
 const classifyIdentifierNode =
-  (
-    checker: ts.TypeChecker,
-    symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>
-  ) =>
-  (classifications: Classifications, node: ts.Node): Classifications =>
+  (checker: ts.TypeChecker) =>
+  (symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>): ClassificationFolder =>
+  (classifications, node) =>
     ts.isIdentifier(node)
-      ? classifyIdentifierRef(checker, symbolToEntry)(classifications, node)
+      ? classifyIdentifierRef(checker)(symbolToEntry)(classifications)(node)
       : classifications
 
 const isSingleCalleeEntry = (classification: SymbolClassification): boolean => {
@@ -314,7 +318,8 @@ class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
 const referenceIndexCache = new WeakMap<ts.Program, ReferenceIndex>()
 
 const orBuildReferenceIndex =
-  (program: ts.Program, checker: ts.TypeChecker) => (): ReferenceIndex => {
+  (program: ts.Program) =>
+  (checker: ts.TypeChecker) => (): ReferenceIndex => {
     const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
     const entries = projectFiles.flatMap(sourceFileEntries)
     const symbolEntryPairs = Array.filterMap(
@@ -323,7 +328,7 @@ const orBuildReferenceIndex =
     )
     const symbolToEntry = HashMap.fromIterable(symbolEntryPairs)
     const folder = foldDescendants(
-      classifyIdentifierNode(checker, symbolToEntry)
+      classifyIdentifierNode(checker)(symbolToEntry)
     )
     const classifications = Array.reduce(
       projectFiles,
@@ -359,7 +364,8 @@ const entryIsNotExported =
     !entry.isExported
 
 const symbolIsFlaggable =
-  (calleeOnlySymbols: HashSet.HashSet<ts.Symbol>, checker: ts.TypeChecker) =>
+  (calleeOnlySymbols: HashSet.HashSet<ts.Symbol>) =>
+  (checker: ts.TypeChecker) =>
   (entry: FunctionEntry): boolean =>
     pipe(
       symbolForEntry(checker)(entry),
@@ -372,7 +378,7 @@ const symbolIsFlaggable =
 const singleUseCalleeMatch =
   (context: RuleContext) =>
   (entry: FunctionEntry): RuleMatch =>
-    createRuleMatch(context, {
+    createRuleMatch(context)({
       ruleId,
       node: entry.nameNode,
       message: "Avoid naming a function that is only called in one place.",
@@ -394,13 +400,13 @@ const singleUseCalleeMatches = (
   const cached = referenceIndexCache.get(context.program)
   const index = pipe(
     Option.fromNullable(cached),
-    Option.getOrElse(orBuildReferenceIndex(context.program, context.checker))
+    Option.getOrElse(orBuildReferenceIndex(context.program)(context.checker))
   )
 
   return pipe(
     index.entries,
     Array.filter(isInFile(context.sourceFile)),
-    Array.filter(symbolIsFlaggable(index.calleeOnlySymbols, context.checker)),
+    Array.filter(symbolIsFlaggable(index.calleeOnlySymbols)(context.checker)),
     Array.map(singleUseCalleeMatch(context))
   )
 }

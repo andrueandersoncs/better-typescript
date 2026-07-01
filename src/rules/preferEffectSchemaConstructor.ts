@@ -113,7 +113,7 @@ const objectLiteralRuleMatch =
       onSome: taggedHint
     })
 
-    return createRuleMatch(context, { ruleId, node: literal, message, hint })
+    return createRuleMatch(context)({ ruleId, node: literal, message, hint })
   }
 
 const expressionRuleMatches =
@@ -124,35 +124,25 @@ const expressionRuleMatches =
       .filter(hasProperties)
       .map(objectLiteralRuleMatch(context))
 
-const returnStatementMatches = (
-  statement: ts.ReturnStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const expression = Option.fromNullable(statement.expression)
+const returnStatementMatches =
+  (context: RuleContext) =>
+  (statement: ts.ReturnStatement): ReadonlyArray<RuleMatch> => {
+    const expression = Option.fromNullable(statement.expression)
+  
+    return Option.toArray(expression).flatMap(expressionRuleMatches(context))
+  }
 
-  return Option.toArray(expression).flatMap(expressionRuleMatches(context))
-}
+const arrowBodyReturnMatches =
+  (context: RuleContext) =>
+  (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
+    const expression = Option.liftPredicate(ts.isExpression)(arrowFunction.body)
+  
+    return Option.toArray(expression).flatMap(expressionRuleMatches(context))
+  }
 
-const arrowBodyReturnMatches = (
-  arrowFunction: ts.ArrowFunction,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const expression = Option.liftPredicate(ts.isExpression)(arrowFunction.body)
+const returnStatementListener = onNode([ts.SyntaxKind.ReturnStatement])(ts.isReturnStatement)(returnStatementMatches)
 
-  return Option.toArray(expression).flatMap(expressionRuleMatches(context))
-}
-
-const returnStatementListener = onNode(
-  [ts.SyntaxKind.ReturnStatement],
-  ts.isReturnStatement,
-  returnStatementMatches
-)
-
-const arrowBodyListener = onNode(
-  [ts.SyntaxKind.ArrowFunction],
-  ts.isArrowFunction,
-  arrowBodyReturnMatches
-)
+const arrowBodyListener = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(arrowBodyReturnMatches)
 
 const check = combineAll([returnStatementListener, arrowBodyListener])
 

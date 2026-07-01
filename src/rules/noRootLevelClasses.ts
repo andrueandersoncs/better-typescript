@@ -26,7 +26,7 @@ const rootLevelClassMatch =
   (declaration: ClassNode): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node,
       message: "Avoid classes that do not extend another class.",
@@ -40,17 +40,15 @@ const rootLevelClassMatch =
     })
   }
 
-const rootLevelClassMatches = (
-  declaration: ClassNode,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
+const rootLevelClassMatches =
+  (context: RuleContext) =>
+  (declaration: ClassNode): ReadonlyArray<RuleMatch> => pipe(
     Option.liftPredicate(lacksExtendsClause)(declaration),
     Option.map(rootLevelClassMatch(context)),
     Option.toArray
   )
 
-const check = onNode(classNodeKinds, isClassNode, rootLevelClassMatches)
+const check = onNode(classNodeKinds)(isClassNode)(rootLevelClassMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",

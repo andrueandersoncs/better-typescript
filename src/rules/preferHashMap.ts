@@ -19,26 +19,25 @@ const constructorHint =
   'Use Effect\'s HashMap instead — for example HashMap.fromIterable([["a", 1]]) or ' +
   "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality."
 
-const newMapMatches = (
-  newExpression: ts.NewExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const expressionOption = Option.liftPredicate(ts.isIdentifier)(
-    newExpression.expression
-  )
-  const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
-
-  return isMapConstruction
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: newExpression,
-          message: constructorMessage,
-          hint: constructorHint
-        })
-      ]
-    : []
-}
+const newMapMatches =
+  (context: RuleContext) =>
+  (newExpression: ts.NewExpression): ReadonlyArray<RuleMatch> => {
+    const expressionOption = Option.liftPredicate(ts.isIdentifier)(
+      newExpression.expression
+    )
+    const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
+  
+    return isMapConstruction
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: newExpression,
+            message: constructorMessage,
+            hint: constructorHint
+          })
+        ]
+      : []
+  }
 
 // --- Map<K, V> / ReadonlyMap<K, V> type reference detection ---
 
@@ -58,36 +57,27 @@ const typeRefHint =
   "Use HashMap.HashMap<K, V> from Effect instead. HashMap integrates with Equal and Hash " +
   "traits for structural equality."
 
-const mapTypeRefMatches = (
-  typeRef: ts.TypeReferenceNode,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const name = (typeRef.typeName as ts.Identifier).text
-  const message = `Avoid the built-in ${name} type.`
-
-  return [
-    createRuleMatch(context, {
-      ruleId,
-      node: typeRef,
-      message,
-      hint: typeRefHint
-    })
-  ]
-}
+const mapTypeRefMatches =
+  (context: RuleContext) =>
+  (typeRef: ts.TypeReferenceNode): ReadonlyArray<RuleMatch> => {
+    const name = (typeRef.typeName as ts.Identifier).text
+    const message = `Avoid the built-in ${name} type.`
+  
+    return [
+      createRuleMatch(context)({
+        ruleId,
+        node: typeRef,
+        message,
+        hint: typeRefHint
+      })
+    ]
+  }
 
 // --- listeners ---
 
-const constructorListener = onNode(
-  [ts.SyntaxKind.NewExpression],
-  ts.isNewExpression,
-  newMapMatches
-)
+const constructorListener = onNode([ts.SyntaxKind.NewExpression])(ts.isNewExpression)(newMapMatches)
 
-const typeReferenceListener = onNode(
-  [ts.SyntaxKind.TypeReference],
-  isMapTypeReference,
-  mapTypeRefMatches
-)
+const typeReferenceListener = onNode([ts.SyntaxKind.TypeReference])(isMapTypeReference)(mapTypeRefMatches)
 
 const check = combineAll([constructorListener, typeReferenceListener])
 

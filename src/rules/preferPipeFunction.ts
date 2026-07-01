@@ -6,33 +6,28 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "prefer-pipe-function"
 
-const pipeMethodCallMatches = (
-  callExpression: ts.CallExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  if (!ts.isPropertyAccessExpression(callExpression.expression)) return []
+const pipeMethodCallMatches =
+  (context: RuleContext) =>
+  (callExpression: ts.CallExpression): ReadonlyArray<RuleMatch> => {
+    if (!ts.isPropertyAccessExpression(callExpression.expression)) return []
+  
+    const isPipeMethod = callExpression.expression.name.text === "pipe"
+  
+    if (!isPipeMethod) return []
+  
+    return [
+      createRuleMatch(context)({
+        ruleId,
+        node: callExpression.expression.name,
+        message: "Avoid calling .pipe() as a method.",
+        hint:
+          'Import pipe from "effect" and call it as a standalone function: ' +
+          "pipe(value, fn1, fn2) instead of value.pipe(fn1, fn2)."
+      })
+    ]
+  }
 
-  const isPipeMethod = callExpression.expression.name.text === "pipe"
-
-  if (!isPipeMethod) return []
-
-  return [
-    createRuleMatch(context, {
-      ruleId,
-      node: callExpression.expression.name,
-      message: "Avoid calling .pipe() as a method.",
-      hint:
-        'Import pipe from "effect" and call it as a standalone function: ' +
-        "pipe(value, fn1, fn2) instead of value.pipe(fn1, fn2)."
-    })
-  ]
-}
-
-const check = onNode(
-  [ts.SyntaxKind.CallExpression],
-  ts.isCallExpression,
-  pipeMethodCallMatches
-)
+const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(pipeMethodCallMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",

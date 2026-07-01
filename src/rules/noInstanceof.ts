@@ -20,11 +20,12 @@ const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
 const className: (symbol: ts.Symbol) => string = Struct.get("name")
 
 const instanceofRuleMatch =
-  (context: RuleContext, expression: ts.BinaryExpression) =>
+  (context: RuleContext) =>
+  (expression: ts.BinaryExpression) =>
   (symbol: ts.Symbol): RuleMatch => {
     const name = className(symbol)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: expression,
       message: `Avoid instanceof for the first-party class "${name}".`,
@@ -35,26 +36,21 @@ const instanceofRuleMatch =
     })
   }
 
-const instanceofMatches = (
-  expression: ts.BinaryExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const symbolAtLocation = context.checker.getSymbolAtLocation(expression.right)
-  const symbol = Option.fromNullable(symbolAtLocation)
+const instanceofMatches =
+  (context: RuleContext) =>
+  (expression: ts.BinaryExpression): ReadonlyArray<RuleMatch> => {
+    const symbolAtLocation = context.checker.getSymbolAtLocation(expression.right)
+    const symbol = Option.fromNullable(symbolAtLocation)
+  
+    return pipe(
+      symbol,
+      Option.filter(isFirstPartySymbol),
+      Option.map(instanceofRuleMatch(context)(expression)),
+      Option.toArray
+    )
+  }
 
-  return pipe(
-    symbol,
-    Option.filter(isFirstPartySymbol),
-    Option.map(instanceofRuleMatch(context, expression)),
-    Option.toArray
-  )
-}
-
-const check = onNode(
-  [ts.SyntaxKind.BinaryExpression],
-  isInstanceofExpression,
-  instanceofMatches
-)
+const check = onNode([ts.SyntaxKind.BinaryExpression])(isInstanceofExpression)(instanceofMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/check.ts",

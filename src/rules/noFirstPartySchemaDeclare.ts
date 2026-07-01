@@ -92,11 +92,12 @@ const schemaDeclareHint =
   "encoding, and decoding for free."
 
 const schemaDeclareMatchSource =
-  (context: RuleContext, call: ts.CallExpression) =>
+  (context: RuleContext) =>
+  (call: ts.CallExpression) =>
   (assertedType: ts.Type): RuleMatch => {
     const name = typeName(assertedType)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: call,
       message: `Avoid Schema.declare for the first-party type "${name}".`,
@@ -111,7 +112,7 @@ const schemaDeclareMatchOption =
       Option.fromNullable(call.arguments[0]),
       Option.flatMap(predicateAssertedType(context.checker)),
       Option.filter(isFirstPartyDataStructure),
-      Option.map(schemaDeclareMatchSource(context, call))
+      Option.map(schemaDeclareMatchSource(context)(call))
     )
 
 const schemaDeclareCallMatches =
@@ -122,24 +123,19 @@ const schemaDeclareCallMatches =
     return Option.toArray(match)
   }
 
-const schemaDeclareMatches = (
-  call: ts.CallExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const access = call.expression as ts.PropertyAccessExpression
-  const object = accessExpression(access)
-  if (!ts.isIdentifier(object)) return []
-  const isOnSchema = object.text === "Schema"
-  const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
+const schemaDeclareMatches =
+  (context: RuleContext) =>
+  (call: ts.CallExpression): ReadonlyArray<RuleMatch> => {
+    const access = call.expression as ts.PropertyAccessExpression
+    const object = accessExpression(access)
+    if (!ts.isIdentifier(object)) return []
+    const isOnSchema = object.text === "Schema"
+    const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
+  
+    return isDeclareOnSchema ? schemaDeclareCallMatches(context)(call) : []
+  }
 
-  return isDeclareOnSchema ? schemaDeclareCallMatches(context)(call) : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.CallExpression],
-  isDeclareCall,
-  schemaDeclareMatches
-)
+const check = onNode([ts.SyntaxKind.CallExpression])(isDeclareCall)(schemaDeclareMatches)
 
 // --- Examples ---
 

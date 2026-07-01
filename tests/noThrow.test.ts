@@ -89,7 +89,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runNoThrowFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules(project, [noThrow]))
+  return workspace.projects.flatMap((project) => runRules([noThrow])(project))
 }
 
 test("no-throw reports disallowed and permits allowed fixture items", async () => {

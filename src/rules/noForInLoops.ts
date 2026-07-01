@@ -6,25 +6,20 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-in-loops"
 
-const forInMatches = (
-  forInStatement: ts.ForInStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  createRuleMatch(context, {
-    ruleId,
-    node: forInStatement,
-    message: "Avoid imperative logic in for..in loops.",
-    hint:
-      "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
-      "or Record.toEntries(), instead."
-  })
-]
+const forInMatches =
+  (context: RuleContext) =>
+  (forInStatement: ts.ForInStatement): ReadonlyArray<RuleMatch> => [
+    createRuleMatch(context)({
+      ruleId,
+      node: forInStatement,
+      message: "Avoid imperative logic in for..in loops.",
+      hint:
+        "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
+        "or Record.toEntries(), instead."
+    })
+  ]
 
-const check = onNode(
-  [ts.SyntaxKind.ForInStatement],
-  ts.isForInStatement,
-  forInMatches
-)
+const check = onNode([ts.SyntaxKind.ForInStatement])(ts.isForInStatement)(forInMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/config.ts",

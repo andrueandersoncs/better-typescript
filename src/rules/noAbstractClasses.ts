@@ -28,7 +28,7 @@ const findAbstractModifier = (
 const abstractClassMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context, {
+    createRuleMatch(context)({
       ruleId,
       node: keyword,
       message: "Avoid declaring classes as abstract.",
@@ -38,25 +38,20 @@ const abstractClassMatch =
         " To model a union of types, use a type union instead of an abstract class."
     })
 
-const abstractClassMatches = (
-  node: ts.ClassDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const modifiers = ts.getModifiers(node)
+const abstractClassMatches =
+  (context: RuleContext) =>
+  (node: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
+    const modifiers = ts.getModifiers(node)
+  
+    return pipe(
+      Option.fromNullable(modifiers),
+      Option.flatMap(findAbstractModifier),
+      Option.map(abstractClassMatch(context)),
+      Option.toArray
+    )
+  }
 
-  return pipe(
-    Option.fromNullable(modifiers),
-    Option.flatMap(findAbstractModifier),
-    Option.map(abstractClassMatch(context)),
-    Option.toArray
-  )
-}
-
-const check = onNode(
-  classDeclarationKinds,
-  isClassDeclaration,
-  abstractClassMatches
-)
+const check = onNode(classDeclarationKinds)(isClassDeclaration)(abstractClassMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",

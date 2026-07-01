@@ -80,7 +80,7 @@ const voidFunctionMatch =
   (declaration: VoidableFunction): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node,
       message: "Avoid functions that return void.",
@@ -91,28 +91,23 @@ const voidFunctionMatch =
     })
   }
 
-const voidFunctionMatches = (
-  declaration: VoidableFunction,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const isContextualVoid =
-    isFunctionInitializer(declaration) &&
-    isContextuallyVoidCallback(context)(declaration)
+const voidFunctionMatches =
+  (context: RuleContext) =>
+  (declaration: VoidableFunction): ReadonlyArray<RuleMatch> => {
+    const isContextualVoid =
+      isFunctionInitializer(declaration) &&
+      isContextuallyVoidCallback(context)(declaration)
+  
+    return isContextualVoid
+      ? []
+      : pipe(
+          Option.liftPredicate(returnsVoid(context))(declaration),
+          Option.map(voidFunctionMatch(context)),
+          Option.toArray
+        )
+  }
 
-  return isContextualVoid
-    ? []
-    : pipe(
-        Option.liftPredicate(returnsVoid(context))(declaration),
-        Option.map(voidFunctionMatch(context)),
-        Option.toArray
-      )
-}
-
-const check = onNode(
-  voidableFunctionKinds,
-  isVoidableFunction,
-  voidFunctionMatches
-)
+const check = onNode(voidableFunctionKinds)(isVoidableFunction)(voidFunctionMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/log.ts",

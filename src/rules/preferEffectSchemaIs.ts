@@ -74,50 +74,45 @@ const checkedValueText =
   (access: ts.PropertyAccessExpression): string =>
     access.expression.getText(sourceFile)
 
-const schemaIsMatches = (
-  expression: ts.BinaryExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const sourceFile = context.sourceFile
-  const leftAccess = tagPropertyAccess(expression.left)
-  const rightAccess = tagPropertyAccess(expression.right)
-  const accessOptions = [leftAccess, rightAccess]
-  const valueText = pipe(
-    Option.firstSomeOf(accessOptions),
-    Option.map(checkedValueText(sourceFile)),
-    Option.getOrElse(Function.constant("the value"))
-  )
-  const operatorText = expression.operatorToken.getText(sourceFile)
-  const leftLiteral = stringLiteralExpression(expression.left)
-  const rightLiteral = stringLiteralExpression(expression.right)
-  const literalOptions = [leftLiteral, rightLiteral]
-  const tagText = pipe(
-    Option.firstSomeOf(literalOptions),
-    Option.map(Struct.get("text")),
-    Option.getOrElse(Function.constant("$tag"))
-  )
-  const schemaIsCheck = `Schema.is($schema)(${valueText})`
-  const isNegated =
-    expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
-  const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
+const schemaIsMatches =
+  (context: RuleContext) =>
+  (expression: ts.BinaryExpression): ReadonlyArray<RuleMatch> => {
+    const sourceFile = context.sourceFile
+    const leftAccess = tagPropertyAccess(expression.left)
+    const rightAccess = tagPropertyAccess(expression.right)
+    const accessOptions = [leftAccess, rightAccess]
+    const valueText = pipe(
+      Option.firstSomeOf(accessOptions),
+      Option.map(checkedValueText(sourceFile)),
+      Option.getOrElse(Function.constant("the value"))
+    )
+    const operatorText = expression.operatorToken.getText(sourceFile)
+    const leftLiteral = stringLiteralExpression(expression.left)
+    const rightLiteral = stringLiteralExpression(expression.right)
+    const literalOptions = [leftLiteral, rightLiteral]
+    const tagText = pipe(
+      Option.firstSomeOf(literalOptions),
+      Option.map(Struct.get("text")),
+      Option.getOrElse(Function.constant("$tag"))
+    )
+    const schemaIsCheck = `Schema.is($schema)(${valueText})`
+    const isNegated =
+      expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+    const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
+  
+    return [
+      createRuleMatch(context)({
+        ruleId,
+        node: expression,
+        message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
+        hint:
+          `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
+          `"${tagText}".`
+      })
+    ]
+  }
 
-  return [
-    createRuleMatch(context, {
-      ruleId,
-      node: expression,
-      message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
-      hint:
-        `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
-        `"${tagText}".`
-    })
-  ]
-}
-
-const check = onNode(
-  [ts.SyntaxKind.BinaryExpression],
-  isSchemaTagComparison,
-  schemaIsMatches
-)
+const check = onNode([ts.SyntaxKind.BinaryExpression])(isSchemaTagComparison)(schemaIsMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",

@@ -65,10 +65,9 @@ const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   return isForwarding ? consumingCall(node.parent) : Option.none()
 }
 
-const calleeDisplayText = (
-  sourceFile: ts.SourceFile,
-  call: CallLikeExpression
-): string => {
+const calleeDisplayText =
+  (sourceFile: ts.SourceFile) =>
+  (call: CallLikeExpression): string => {
   const calleeText = call.expression.getText(sourceFile)
 
   return ts.isNewExpression(call) ? `new ${calleeText}` : calleeText
@@ -82,10 +81,11 @@ const ruleHint =
   "left-to-right."
 
 const consumerRuleMatch =
-  (context: RuleContext, call: CallLikeExpression) =>
+  (context: RuleContext) =>
+  (call: CallLikeExpression) =>
   (consumer: CallLikeExpression): Option.Option<RuleMatch> => {
     const resultType = context.checker.getTypeAtLocation(call)
-    const hasCallSig = hasCallSignature(context.checker, resultType)
+    const hasCallSig = hasCallSignature(context.checker)(resultType)
 
     if (hasCallSig) {
       return Option.none()
@@ -105,9 +105,9 @@ const consumerRuleMatch =
       return Option.none()
     }
 
-    const callText = calleeDisplayText(context.sourceFile, call)
-    const consumerText = calleeDisplayText(context.sourceFile, consumer)
-    const match = createRuleMatch(context, {
+    const callText = calleeDisplayText(context.sourceFile)(call)
+    const consumerText = calleeDisplayText(context.sourceFile)(consumer)
+    const match = createRuleMatch(context)({
       ruleId,
       node: call,
       message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
@@ -117,21 +117,15 @@ const consumerRuleMatch =
     return Option.some(match)
   }
 
-const nestedCallMatches = (
-  call: CallLikeExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
+const nestedCallMatches =
+  (context: RuleContext) =>
+  (call: CallLikeExpression): ReadonlyArray<RuleMatch> => pipe(
     consumingCall(call),
-    Option.flatMap(consumerRuleMatch(context, call)),
+    Option.flatMap(consumerRuleMatch(context)(call)),
     Option.toArray
   )
 
-const check = onNode(
-  [ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression],
-  isCallLikeExpression,
-  nestedCallMatches
-)
+const check = onNode([ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression])(isCallLikeExpression)(nestedCallMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/log.ts",

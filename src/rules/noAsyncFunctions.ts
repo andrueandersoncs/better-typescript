@@ -42,7 +42,7 @@ const findAsyncModifier = (
 const asyncFunctionMatch =
   (context: RuleContext) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context, {
+    createRuleMatch(context)({
       ruleId,
       node: keyword,
       message: "Avoid declaring functions as async.",
@@ -51,25 +51,20 @@ const asyncFunctionMatch =
         " To itegrate with a third-party library that uses async functions, wrap any async functions with Effect.tryPromise."
     })
 
-const asyncFunctionMatches = (
-  node: AsyncCapableFunction,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const modifiers = ts.getModifiers(node)
+const asyncFunctionMatches =
+  (context: RuleContext) =>
+  (node: AsyncCapableFunction): ReadonlyArray<RuleMatch> => {
+    const modifiers = ts.getModifiers(node)
+  
+    return pipe(
+      Option.fromNullable(modifiers),
+      Option.flatMap(findAsyncModifier),
+      Option.map(asyncFunctionMatch(context)),
+      Option.toArray
+    )
+  }
 
-  return pipe(
-    Option.fromNullable(modifiers),
-    Option.flatMap(findAsyncModifier),
-    Option.map(asyncFunctionMatch(context)),
-    Option.toArray
-  )
-}
-
-const check = onNode(
-  asyncCapableFunctionKinds,
-  isAsyncCapableFunction,
-  asyncFunctionMatches
-)
+const check = onNode(asyncCapableFunctionKinds)(isAsyncCapableFunction)(asyncFunctionMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",

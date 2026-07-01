@@ -38,7 +38,7 @@ interface AnalyzeOptions {
 }
 
 const checkProject = (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> =>
-  runRules(loadedProject, rules)
+  runRules(rules)(loadedProject)
 
 const setFailureExitCode = (): number => {
   process.exitCode = 1
@@ -59,7 +59,7 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   }
 
   yield* Effect.sync(setFailureExitCode)
-  const page = paginateMatches(matches, options.offset, options.limit)
+  const page = paginateMatches(options.offset)(options.limit)(matches)
   return formatMatchesPage(page)
 })
 

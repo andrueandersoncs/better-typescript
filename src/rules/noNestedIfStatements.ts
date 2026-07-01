@@ -17,10 +17,9 @@ const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.SetAccessor
 )
 
-const containingIfStatementFrom = (
-  child: ts.Node,
-  parent: Option.Option<ts.Node>
-): Option.Option<ts.IfStatement> => {
+const containingIfStatementFrom =
+  (child: ts.Node) =>
+  (parent: Option.Option<ts.Node>): Option.Option<ts.IfStatement> => {
   if (Option.isNone(parent)) {
     return Option.none()
   }
@@ -34,42 +33,37 @@ const containingIfStatementFrom = (
   const grandparent = Option.fromNullable(parentNode.parent)
 
   if (!ts.isIfStatement(parentNode)) {
-    return containingIfStatementFrom(parentNode, grandparent)
+    return containingIfStatementFrom(parentNode)(grandparent)
   }
 
   const isElseBranch = parentNode.elseStatement === child
 
   return isElseBranch
-    ? containingIfStatementFrom(parentNode, grandparent)
+    ? containingIfStatementFrom(parentNode)(grandparent)
     : Option.some(parentNode)
 }
 
-const nestedIfMatches = (
-  ifStatement: ts.IfStatement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const parentOption = Option.fromNullable(ifStatement.parent)
-  const containingIf = containingIfStatementFrom(ifStatement, parentOption)
+const nestedIfMatches =
+  (context: RuleContext) =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+    const parentOption = Option.fromNullable(ifStatement.parent)
+    const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
+  
+    return Option.isSome(containingIf)
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: ifStatement,
+            message: "Avoid nesting if statements.",
+            hint:
+              "Combine related conditions with boolean operators, or use an early return so this " +
+              "condition can remain a single-level if statement."
+          })
+        ]
+      : []
+  }
 
-  return Option.isSome(containingIf)
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: ifStatement,
-          message: "Avoid nesting if statements.",
-          hint:
-            "Combine related conditions with boolean operators, or use an early return so this " +
-            "condition can remain a single-level if statement."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.IfStatement],
-  ts.isIfStatement,
-  nestedIfMatches
-)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(nestedIfMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",

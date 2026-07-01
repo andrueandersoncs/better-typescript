@@ -35,6 +35,11 @@ const scanNextToken = (
 
   return Option.some([token, scanner])
 }
+type RunStartPosition = (
+  current: ScannedToken,
+  index: number
+) => Option.Option<number>
+
 
 const isMultiLineBlock =
   (text: string) =>
@@ -54,30 +59,31 @@ const isSingleLineComment = (token: ScannedToken): boolean =>
 
 const tokenPos = Struct.get("pos")
 
-const lineOf = (sourceFile: ts.SourceFile, pos: number): number =>
-  sourceFile.getLineAndCharacterOfPosition(pos).line
+const lineOf =
+  (sourceFile: ts.SourceFile) =>
+  (pos: number): number =>
+    sourceFile.getLineAndCharacterOfPosition(pos).line
 
-const isAdjacentLine = (
-  sourceFile: ts.SourceFile,
-  a: ScannedToken,
-  b: ScannedToken
-): boolean => lineOf(sourceFile, b.pos) - lineOf(sourceFile, a.pos) === 1
+const isAdjacentLine =
+  (sourceFile: ts.SourceFile) =>
+  (a: ScannedToken) =>
+  (b: ScannedToken): boolean =>
+    lineOf(sourceFile)(b.pos) - lineOf(sourceFile)(a.pos) === 1
 
 const runStartPosition =
-  (sourceFile: ts.SourceFile, singles: ReadonlyArray<ScannedToken>) =>
-  (current: ScannedToken, index: number): Option.Option<number> => {
+  (sourceFile: ts.SourceFile) =>
+  (singles: ReadonlyArray<ScannedToken>): RunStartPosition =>
+  (current, index) => {
     const hasNextAdjacent =
       index < singles.length - 1 &&
-      isAdjacentLine(sourceFile, current, singles[index + 1])
+      isAdjacentLine(sourceFile)(current)(singles[index + 1])
 
     if (index === 0) {
       return hasNextAdjacent ? Option.some(current.pos) : Option.none()
     }
 
     const previousToken = singles[index - 1]
-    const isNotAdjacentToPrevious = !isAdjacentLine(
-      sourceFile,
-      previousToken,
+    const isNotAdjacentToPrevious = !isAdjacentLine(sourceFile)(previousToken)(
       current
     )
     const previousIsNotSingleLine = !isSingleLineComment(previousToken)
@@ -88,7 +94,8 @@ const runStartPosition =
   }
 
 const positionToMatch =
-  (context: RuleContext, fileName: string) =>
+  (context: RuleContext) =>
+  (fileName: string) =>
   (pos: number): RuleMatch => {
     const location = context.sourceFile.getLineAndCharacterOfPosition(pos)
 
@@ -120,11 +127,11 @@ const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
   const singleLineTokens = tokens.filter(isSingleLineComment)
   const adjacentRunPositions = Arr.filterMap(
     singleLineTokens,
-    runStartPosition(sourceFile, singleLineTokens)
+    runStartPosition(sourceFile)(singleLineTokens)
   )
   const positions = blockPositions.concat(adjacentRunPositions)
 
-  return positions.map(positionToMatch(context, fileName))
+  return positions.map(positionToMatch(context)(fileName))
 }
 
 const check = onFile(fileMatches)

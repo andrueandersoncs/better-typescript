@@ -32,6 +32,7 @@ import { noTryCatch } from "./noTryCatch.js"
 import { noUndefined } from "./noUndefined.js"
 import { noVoidFunctions } from "./noVoidFunctions.js"
 import { preferConditionalReturn } from "./preferConditionalReturn.js"
+import { preferCurriedDataLastFunctions } from "./preferCurriedDataLastFunctions.js"
 import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
 import { preferHashMap } from "./preferHashMap.js"
 import { preferHashSet } from "./preferHashSet.js"
@@ -98,7 +99,8 @@ export const rules: ReadonlyArray<Rule> = [
   preferHashSet,
   preferHashMap,
   preferOptionMatch,
-  preferPipeFunction
+  preferPipeFunction,
+  preferCurriedDataLastFunctions
 ]
 
 export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"

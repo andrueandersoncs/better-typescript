@@ -190,7 +190,7 @@ const runNoRawObjectTypesFixture = async (): Promise<
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>
-    runRules(project, [noRawObjectTypes])
+    runRules([noRawObjectTypes])(project)
   )
 }
 

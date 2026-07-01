@@ -10,11 +10,10 @@ export class MatchesPage extends Schema.Class<MatchesPage>("MatchesPage")({
   endIndex: Schema.Int
 }) {}
 
-export const paginateMatches = (
-  matches: ReadonlyArray<RuleMatch>,
-  offset: number,
-  limit: Option.Option<number>
-): MatchesPage => {
+export const paginateMatches =
+  (offset: number) =>
+  (limit: Option.Option<number>) =>
+  (matches: ReadonlyArray<RuleMatch>): MatchesPage => {
   const pageSize = Option.getOrElse(limit, Function.constant(matches.length))
   const pageMatches = matches.slice(offset, offset + pageSize)
 

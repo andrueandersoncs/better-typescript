@@ -57,7 +57,7 @@ const effectFnRuleMatch =
   (declaration: ts.VariableDeclaration): RuleMatch => {
     const functionName = declaration.name.getText(context.sourceFile)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: declaration.name,
       message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
@@ -68,11 +68,9 @@ const effectFnRuleMatch =
     })
   }
 
-const effectFnMatches = (
-  declaration: ts.VariableDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
+const effectFnMatches =
+  (context: RuleContext) =>
+  (declaration: ts.VariableDeclaration): ReadonlyArray<RuleMatch> => pipe(
     functionInitializer(declaration),
     Option.filter(hasParameters),
     Option.filter(returnsEffect(context)),
@@ -81,11 +79,7 @@ const effectFnMatches = (
     Option.toArray
   )
 
-const check = onNode(
-  [ts.SyntaxKind.VariableDeclaration],
-  ts.isVariableDeclaration,
-  effectFnMatches
-)
+const check = onNode([ts.SyntaxKind.VariableDeclaration])(ts.isVariableDeclaration)(effectFnMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",

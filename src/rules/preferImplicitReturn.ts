@@ -15,41 +15,36 @@ const returnedExpression = (
   statement: ts.ReturnStatement
 ): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
-const implicitReturnMatches = (
-  arrowFunction: ts.ArrowFunction,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  if (!ts.isBlock(arrowFunction.body)) return []
-  const hasOneStatement = arrowFunction.body.statements.length === 1
-  const firstStatement = arrowFunction.body.statements[0]
-  const hasSingleValueReturn =
-    hasOneStatement &&
-    pipe(
-      Option.liftPredicate(ts.isReturnStatement)(firstStatement),
-      Option.flatMap(returnedExpression),
-      Option.isSome
-    )
+const implicitReturnMatches =
+  (context: RuleContext) =>
+  (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
+    if (!ts.isBlock(arrowFunction.body)) return []
+    const hasOneStatement = arrowFunction.body.statements.length === 1
+    const firstStatement = arrowFunction.body.statements[0]
+    const hasSingleValueReturn =
+      hasOneStatement &&
+      pipe(
+        Option.liftPredicate(ts.isReturnStatement)(firstStatement),
+        Option.flatMap(returnedExpression),
+        Option.isSome
+      )
+  
+    return hasSingleValueReturn
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: arrowFunction.body,
+            message:
+              "Avoid arrow function block bodies that only return a value.",
+            hint:
+              "Replace this with an implicit return by removing the return statement and function " +
+              "body braces. Wrap object literals in parentheses when needed."
+          })
+        ]
+      : []
+  }
 
-  return hasSingleValueReturn
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: arrowFunction.body,
-          message:
-            "Avoid arrow function block bodies that only return a value.",
-          hint:
-            "Replace this with an implicit return by removing the return statement and function " +
-            "body braces. Wrap object literals in parentheses when needed."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.ArrowFunction],
-  ts.isArrowFunction,
-  implicitReturnMatches
-)
+const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(implicitReturnMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",

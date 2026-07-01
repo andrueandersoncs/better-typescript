@@ -44,7 +44,7 @@ const methodImplementationMatch =
   (node: ts.MethodDeclaration): RuleMatch => {
     const reportTarget = namedNodeReportTarget(node)
 
-    return createRuleMatch(context, {
+    return createRuleMatch(context)({
       ruleId,
       node: reportTarget,
       message: "Avoid implementing methods on a class.",
@@ -56,24 +56,19 @@ const methodImplementationMatch =
     })
   }
 
-const methodImplementationMatches = (
-  node: ts.MethodDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const reportable = Option.liftPredicate(isReportableMethod)(node)
+const methodImplementationMatches =
+  (context: RuleContext) =>
+  (node: ts.MethodDeclaration): ReadonlyArray<RuleMatch> => {
+    const reportable = Option.liftPredicate(isReportableMethod)(node)
+  
+    return pipe(
+      reportable,
+      Option.map(methodImplementationMatch(context)),
+      Option.toArray
+    )
+  }
 
-  return pipe(
-    reportable,
-    Option.map(methodImplementationMatch(context)),
-    Option.toArray
-  )
-}
-
-const check = onNode(
-  methodDeclarationKinds,
-  isMethodDeclaration,
-  methodImplementationMatches
-)
+const check = onNode(methodDeclarationKinds)(isMethodDeclaration)(methodImplementationMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",

@@ -19,9 +19,8 @@ export class RuleMatch extends Schema.Class<RuleMatch>("RuleMatch")({
 }) {}
 
 export type NodeHandler = (
-  node: ts.Node,
   context: RuleContext
-) => ReadonlyArray<RuleMatch>
+) => (node: ts.Node) => ReadonlyArray<RuleMatch>
 
 export type FileHandler = (context: RuleContext) => ReadonlyArray<RuleMatch>
 

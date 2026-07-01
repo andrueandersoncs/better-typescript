@@ -25,34 +25,29 @@ const isEmptyArrayLiteral = (expression: ts.Expression): boolean =>
 const isNonEmptyArrayBranch = (expression: ts.Expression): boolean =>
   arrayLiteralElementCount(expression) !== 0
 
-const conditionalArraySpreadMatches = (
-  spread: ts.SpreadElement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  if (!ts.isArrayLiteralExpression(spread.parent)) return []
+const conditionalArraySpreadMatches =
+  (context: RuleContext) =>
+  (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => {
+    if (!ts.isArrayLiteralExpression(spread.parent)) return []
+  
+    const expression = unwrapExpression(spread.expression)
+    if (!ts.isConditionalExpression(expression)) return []
+  
+    const emptyThenNonEmpty = [
+      isEmptyArrayLiteral(expression.whenTrue),
+      isNonEmptyArrayBranch(expression.whenFalse)
+    ].every(Boolean)
+    const nonEmptyThenEmpty = [
+      isNonEmptyArrayBranch(expression.whenTrue),
+      isEmptyArrayLiteral(expression.whenFalse)
+    ].every(Boolean)
+  
+    return [emptyThenNonEmpty, nonEmptyThenEmpty].some(Boolean)
+      ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
+      : []
+  }
 
-  const expression = unwrapExpression(spread.expression)
-  if (!ts.isConditionalExpression(expression)) return []
-
-  const emptyThenNonEmpty = [
-    isEmptyArrayLiteral(expression.whenTrue),
-    isNonEmptyArrayBranch(expression.whenFalse)
-  ].every(Boolean)
-  const nonEmptyThenEmpty = [
-    isNonEmptyArrayBranch(expression.whenTrue),
-    isEmptyArrayLiteral(expression.whenFalse)
-  ].every(Boolean)
-
-  return [emptyThenNonEmpty, nonEmptyThenEmpty].some(Boolean)
-    ? [createRuleMatch(context, { ruleId, node: spread, message, hint })]
-    : []
-}
-
-const check = onNode(
-  [ts.SyntaxKind.SpreadElement],
-  ts.isSpreadElement,
-  conditionalArraySpreadMatches
-)
+const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(conditionalArraySpreadMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/names.ts",

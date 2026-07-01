@@ -43,6 +43,11 @@ const returnExpressionFromStatement =
       )
     })
 
+type StatementConditionalMatch = (
+  statement: ts.Statement,
+  index: number
+) => Option.Option<RuleMatch>
+
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
 ): Option.Option<ts.Expression> => {
@@ -51,12 +56,11 @@ const negatedPrefixUnaryExpressionOperand = (
   return isNegation ? Option.some(expression.operand) : Option.none()
 }
 
-const ternaryText = (
-  sourceFile: ts.SourceFile,
-  condition: ts.Expression,
-  whenTrue: ts.Expression,
-  whenFalse: ts.Expression
-): string =>
+const ternaryText =
+  (sourceFile: ts.SourceFile) =>
+  (condition: ts.Expression) =>
+  (whenTrue: ts.Expression) =>
+  (whenFalse: ts.Expression): string =>
   [
     `(${condition.getText(sourceFile)})`,
     "?",
@@ -66,26 +70,23 @@ const ternaryText = (
   ].join(" ")
 
 const flippedTernaryText =
-  (
-    sourceFile: ts.SourceFile,
-    fallbackExpression: ts.Expression,
-    thenExpression: ts.Expression
-  ) =>
+  (sourceFile: ts.SourceFile) =>
+  (fallbackExpression: ts.Expression) =>
+  (thenExpression: ts.Expression) =>
   (operand: ts.Expression): string =>
-    ternaryText(sourceFile, operand, fallbackExpression, thenExpression)
+    ternaryText(sourceFile)(operand)(fallbackExpression)(thenExpression)
 
 const standardTernaryText =
-  (
-    sourceFile: ts.SourceFile,
-    condition: ts.Expression,
-    thenExpression: ts.Expression,
-    fallbackExpression: ts.Expression
-  ) =>
+  (sourceFile: ts.SourceFile) =>
+  (condition: ts.Expression) =>
+  (thenExpression: ts.Expression) =>
+  (fallbackExpression: ts.Expression) =>
   (): string =>
-    ternaryText(sourceFile, condition, thenExpression, fallbackExpression)
+    ternaryText(sourceFile)(condition)(thenExpression)(fallbackExpression)
 
 const conditionalReturnMatch =
-  (context: RuleContext, nextStatement: Option.Option<ts.Statement>) =>
+  (context: RuleContext) =>
+  (nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
       const thenExpression = yield* returnExpressionFromStatement(
@@ -105,20 +106,15 @@ const conditionalReturnMatch =
         Option.flatMap(negatedPrefixUnaryExpressionOperand)
       )
       const returnExpression = Option.match(negatedCondition, {
-        onNone: standardTernaryText(
-          context.sourceFile,
-          ifStatement.expression,
-          thenExpression,
-          fallbackExpression
-        ),
-        onSome: flippedTernaryText(
-          context.sourceFile,
-          fallbackExpression,
+        onNone: standardTernaryText(context.sourceFile)(
+          ifStatement.expression
+        )(thenExpression)(fallbackExpression),
+        onSome: flippedTernaryText(context.sourceFile)(fallbackExpression)(
           thenExpression
         )
       })
 
-      return createRuleMatch(context, {
+      return createRuleMatch(context)({
         ruleId,
         node: ifStatement,
         message:
@@ -128,27 +124,22 @@ const conditionalReturnMatch =
     })
 
 const statementConditionalMatch =
-  (context: RuleContext, block: ts.Block) =>
-  (statement: ts.Statement, index: number): Option.Option<RuleMatch> => {
+  (context: RuleContext) =>
+  (block: ts.Block): StatementConditionalMatch =>
+  (statement, index) => {
     const nextStatement = Option.fromNullable(block.statements[index + 1])
 
     return pipe(
       Option.liftPredicate(ts.isIfStatement)(statement),
-      Option.flatMap(conditionalReturnMatch(context, nextStatement))
+      Option.flatMap(conditionalReturnMatch(context)(nextStatement))
     )
   }
 
-const conditionalReturnRuleMatches = (
-  block: ts.Block,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  Array.filterMap(block.statements, statementConditionalMatch(context, block))
+const conditionalReturnRuleMatches =
+  (context: RuleContext) =>
+  (block: ts.Block): ReadonlyArray<RuleMatch> => Array.filterMap(block.statements, statementConditionalMatch(context)(block))
 
-const check = onNode(
-  [ts.SyntaxKind.Block],
-  ts.isBlock,
-  conditionalReturnRuleMatches
-)
+const check = onNode([ts.SyntaxKind.Block])(ts.isBlock)(conditionalReturnRuleMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/parity.ts",

@@ -5,10 +5,11 @@ import type { Rule, RuleMatch } from "../rules/index.js"
 import { compileRules } from "./compileRules.js"
 
 const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean =>
-  !shouldSkipSourceFile(sourceFile.fileName, sourceFile.isDeclarationFile)
+  !shouldSkipSourceFile(sourceFile.isDeclarationFile)(sourceFile.fileName)
 
 const contextForSourceFile =
-  (loadedProject: LoadedProject, checker: ts.TypeChecker) =>
+  (loadedProject: LoadedProject) =>
+  (checker: ts.TypeChecker) =>
   (sourceFile: ts.SourceFile): RuleContext =>
     new RuleContext({
       program: loadedProject.program,
@@ -17,22 +18,20 @@ const contextForSourceFile =
       sourceFile
     })
 
-export const runRules = (
-  loadedProject: LoadedProject,
-  rules: ReadonlyArray<Rule>
-): ReadonlyArray<RuleMatch> => {
+export const runRules =
+  (rules: ReadonlyArray<Rule>) =>
+  (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> => {
   const checker = loadedProject.program.getTypeChecker()
   const checkSourceFile = compileRules(rules)
 
   return loadedProject.program
     .getSourceFiles()
     .filter(isCheckableSourceFile)
-    .map(contextForSourceFile(loadedProject, checker))
+    .map(contextForSourceFile(loadedProject)(checker))
     .flatMap(checkSourceFile)
 }
 
-export const shouldSkipSourceFile = (
-  fileName: string,
-  isDeclarationFile: boolean
-): boolean =>
-  isDeclarationFile || fileName.replaceAll("\\", "/").includes("/node_modules/")
+export const shouldSkipSourceFile =
+  (isDeclarationFile: boolean) =>
+  (fileName: string): boolean =>
+    isDeclarationFile || fileName.replaceAll("\\", "/").includes("/node_modules/")

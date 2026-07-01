@@ -46,17 +46,16 @@ const topLevelFunctions = (
 const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
   Function.constant([])
 
-const declarationsForName = (
-  index: FunctionNameIndex,
-  name: string
-): ReadonlyArray<ts.Identifier> =>
-  pipe(HashMap.get(index, name), Option.getOrElse(emptyIdentifierList))
+const declarationsForName =
+  (index: FunctionNameIndex) =>
+  (name: string): ReadonlyArray<ts.Identifier> =>
+    pipe(HashMap.get(index, name), Option.getOrElse(emptyIdentifierList))
 
 const addFunctionToIndex = (
   index: FunctionNameIndex,
   nameNode: ts.Identifier
 ): FunctionNameIndex => {
-  const existingDeclarations = declarationsForName(index, nameNode.text)
+  const existingDeclarations = declarationsForName(index)(nameNode.text)
   const nextDeclarations = Array.append(existingDeclarations, nameNode)
 
   return HashMap.set(index, nameNode.text, nextDeclarations)
@@ -96,7 +95,7 @@ const candidateRuleMatch =
       Option.fromNullable(cached),
       Option.getOrElse(orBuildFunctionNameIndex(context.program))
     )
-    const declarations = declarationsForName(index, candidate.text)
+    const declarations = declarationsForName(index)(candidate.text)
     const declaredFileNames = declarations.map(declaredFileName)
     const otherFileNames = Array.dedupe(declaredFileNames).filter(
       isOtherFileName(context.sourceFile.fileName)
@@ -119,7 +118,7 @@ const candidateRuleMatch =
       remainingCount > 0
         ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
         : listedFileNames
-    const match = createRuleMatch(context, {
+    const match = createRuleMatch(context)({
       ruleId,
       node: candidate,
       message: `Avoid declaring the top-level function ${functionName} in multiple files.`,

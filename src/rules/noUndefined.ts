@@ -194,13 +194,12 @@ const undefinedMessages: Record<UndefinedUsageMatch["kind"], string> = {
   comparison: "Avoid comparing values against undefined."
 }
 
-const undefinedMatch = (
-  context: RuleContext,
-  match: UndefinedUsageMatch
-): RuleMatch => {
+const undefinedMatch =
+  (context: RuleContext) =>
+  (match: UndefinedUsageMatch): RuleMatch => {
   const message = undefinedMessages[match.kind]
 
-  return createRuleMatch(context, {
+  return createRuleMatch(context)({
     ruleId,
     node: match.node,
     message,
@@ -208,40 +207,35 @@ const undefinedMatch = (
   })
 }
 
-const undefinedParameterMatches = (
-  node: ts.ParameterDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  undefinedMatch(context, { kind: "parameter", node })
-]
+const undefinedParameterMatches =
+  (context: RuleContext) =>
+  (node: ts.ParameterDeclaration): ReadonlyArray<RuleMatch> => [
+    undefinedMatch(context)({ kind: "parameter", node })
+  ]
 
-const undefinedReturnTypeMatches = (
-  node: ReturnTypeDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  undefinedMatch(context, { kind: "return-type", node })
-]
+const undefinedReturnTypeMatches =
+  (context: RuleContext) =>
+  (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => [
+    undefinedMatch(context)({ kind: "return-type", node })
+  ]
 
-const undefinedReturnExpressionMatches = (
-  node: UndefinedReturnExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  undefinedMatch(context, { kind: "return-expression", node })
-]
+const undefinedReturnExpressionMatches =
+  (context: RuleContext) =>
+  (node: UndefinedReturnExpression): ReadonlyArray<RuleMatch> => [
+    undefinedMatch(context)({ kind: "return-expression", node })
+  ]
 
-const undefinedTypeDeclarationMatches = (
-  node: UndefinedTypeDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  undefinedMatch(context, { kind: "type-declaration", node })
-]
+const undefinedTypeDeclarationMatches =
+  (context: RuleContext) =>
+  (node: UndefinedTypeDeclaration): ReadonlyArray<RuleMatch> => [
+    undefinedMatch(context)({ kind: "type-declaration", node })
+  ]
 
-const undefinedComparisonMatches = (
-  node: ts.BinaryExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => [
-  undefinedMatch(context, { kind: "comparison", node })
-]
+const undefinedComparisonMatches =
+  (context: RuleContext) =>
+  (node: ts.BinaryExpression): ReadonlyArray<RuleMatch> => [
+    undefinedMatch(context)({ kind: "comparison", node })
+  ]
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
@@ -254,35 +248,15 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-const parameterListener = onNode(
-  [ts.SyntaxKind.Parameter],
-  isParameterAcceptingUndefined,
-  undefinedParameterMatches
-)
+const parameterListener = onNode([ts.SyntaxKind.Parameter])(isParameterAcceptingUndefined)(undefinedParameterMatches)
 
-const returnTypeListener = onNode(
-  returnTypeDeclarationKinds,
-  isUndefinedReturnTypeDeclaration,
-  undefinedReturnTypeMatches
-)
+const returnTypeListener = onNode(returnTypeDeclarationKinds)(isUndefinedReturnTypeDeclaration)(undefinedReturnTypeMatches)
 
-const returnExpressionListener = onNode(
-  [ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction],
-  isUndefinedReturnExpression,
-  undefinedReturnExpressionMatches
-)
+const returnExpressionListener = onNode([ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction])(isUndefinedReturnExpression)(undefinedReturnExpressionMatches)
 
-const typeDeclarationListener = onNode(
-  [ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType],
-  isUndefinedTypeDeclaration,
-  undefinedTypeDeclarationMatches
-)
+const typeDeclarationListener = onNode([ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType])(isUndefinedTypeDeclaration)(undefinedTypeDeclarationMatches)
 
-const comparisonListener = onNode(
-  [ts.SyntaxKind.BinaryExpression],
-  isUndefinedComparison,
-  undefinedComparisonMatches
-)
+const comparisonListener = onNode([ts.SyntaxKind.BinaryExpression])(isUndefinedComparison)(undefinedComparisonMatches)
 
 const check = combineAll([
   parameterListener,

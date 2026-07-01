@@ -135,7 +135,7 @@ const runPreferHashSetFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>
-    runRules(project, [preferHashSet])
+    runRules([preferHashSet])(project)
   )
 }
 

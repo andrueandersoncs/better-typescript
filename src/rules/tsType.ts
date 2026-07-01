@@ -12,31 +12,30 @@ export const isDifferentType =
   (other: ts.Type): boolean =>
     other !== type
 
-export const differentBaseConstraint = (
-  checker: ts.TypeChecker,
-  type: ts.Type
-): Option.Option<ts.Type> => {
-  const baseConstraint = checker.getBaseConstraintOfType(type)
+export const differentBaseConstraint =
+  (checker: ts.TypeChecker) =>
+  (type: ts.Type): Option.Option<ts.Type> => {
+    const baseConstraint = checker.getBaseConstraintOfType(type)
 
-  return pipe(
-    Option.fromNullable(baseConstraint),
-    Option.filter(isDifferentType(type))
-  )
-}
+    return pipe(
+      Option.fromNullable(baseConstraint),
+      Option.filter(isDifferentType(type))
+    )
+  }
 
-export const differentApparentType = (
-  checker: ts.TypeChecker,
-  type: ts.Type
-): Option.Option<ts.Type> => {
-  const apparentType = checker.getApparentType(type)
+export const differentApparentType =
+  (checker: ts.TypeChecker) =>
+  (type: ts.Type): Option.Option<ts.Type> => {
+    const apparentType = checker.getApparentType(type)
 
-  return Option.liftPredicate(isDifferentType(type))(apparentType)
-}
+    return Option.liftPredicate(isDifferentType(type))(apparentType)
+  }
 
-export const callSignatureCheck =
-  (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type> = HashSet.empty()) =>
+const callSignatureCheckWithSeen =
+  (checker: ts.TypeChecker) =>
+  (seen: HashSet.HashSet<ts.Type>) =>
   (type: ts.Type): boolean =>
-    hasCallSignature(checker, type, seen)
+    hasCallSignatureWithSeen(checker)(seen)(type)
 
 export const isUnseenType =
   (seen: HashSet.HashSet<ts.Type>) =>
@@ -44,7 +43,8 @@ export const isUnseenType =
     !HashSet.has(seen, type)
 
 const computeCallSignature =
-  (checker: ts.TypeChecker, seen: HashSet.HashSet<ts.Type>) =>
+  (checker: ts.TypeChecker) =>
+  (seen: HashSet.HashSet<ts.Type>) =>
   (type: ts.Type): boolean => {
     const nextSeen = HashSet.add(seen, type)
     const hasDirectCallSignature = type.getCallSignatures().length > 0
@@ -52,19 +52,19 @@ const computeCallSignature =
     if (type.isUnionOrIntersection()) {
       return (
         hasDirectCallSignature ||
-        type.types.some(callSignatureCheck(checker, nextSeen))
+        type.types.some(callSignatureCheckWithSeen(checker)(nextSeen))
       )
     }
 
-    const baseConstraint = differentBaseConstraint(checker, type)
-    const apparentType = differentApparentType(checker, type)
+    const baseConstraint = differentBaseConstraint(checker)(type)
+    const apparentType = differentApparentType(checker)(type)
     const constraintHasCallSignature = Option.exists(
       baseConstraint,
-      callSignatureCheck(checker, nextSeen)
+      callSignatureCheckWithSeen(checker)(nextSeen)
     )
     const apparentTypeHasCallSignature = Option.exists(
       apparentType,
-      callSignatureCheck(checker, nextSeen)
+      callSignatureCheckWithSeen(checker)(nextSeen)
     )
     const hasIndirectCallSignature =
       constraintHasCallSignature || apparentTypeHasCallSignature
@@ -72,12 +72,19 @@ const computeCallSignature =
     return hasDirectCallSignature || hasIndirectCallSignature
   }
 
-export const hasCallSignature = (
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen: HashSet.HashSet<ts.Type> = HashSet.empty()
-): boolean =>
-  pipe(
-    Option.liftPredicate(isUnseenType(seen))(type),
-    Option.exists(computeCallSignature(checker, seen))
-  )
+const hasCallSignatureWithSeen =
+  (checker: ts.TypeChecker) =>
+  (seen: HashSet.HashSet<ts.Type>) =>
+  (type: ts.Type): boolean =>
+    pipe(
+      Option.liftPredicate(isUnseenType(seen))(type),
+      Option.exists(computeCallSignature(checker)(seen))
+    )
+
+export const callSignatureCheck = (checker: ts.TypeChecker) => {
+  const seen = HashSet.empty<ts.Type>()
+
+  return hasCallSignatureWithSeen(checker)(seen)
+}
+
+export const hasCallSignature = callSignatureCheck

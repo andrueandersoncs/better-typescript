@@ -44,14 +44,16 @@ const isDotValueAccess =
 const containsDotValueInChild =
   (name: string) =>
   (child: ts.Node): boolean =>
-    containsDotValue(name, child)
+    containsDotValue(name)(child)
 
-const containsDotValue = (name: string, node: ts.Node): boolean => {
-  const isDotValue = isDotValueAccess(name)(node)
-  const childHasDotValue =
-    ts.forEachChild(node, containsDotValueInChild(name)) === true
+const containsDotValue =
+  (name: string) =>
+  (node: ts.Node): boolean => {
+    const isDotValue = isDotValueAccess(name)(node)
+    const childHasDotValue =
+      ts.forEachChild(node, containsDotValueInChild(name)) === true
 
-  return isDotValue || childHasDotValue
+    return isDotValue || childHasDotValue
 }
 
 const branchToCheck =
@@ -63,9 +65,10 @@ const branchToCheck =
   }
 
 const optionMatchRuleMatch =
-  (context: RuleContext, conditional: ts.ConditionalExpression) =>
+  (context: RuleContext) =>
+  (conditional: ts.ConditionalExpression) =>
   (_guard: readonly [OptionGuardKind, string]): RuleMatch =>
-    createRuleMatch(context, {
+    createRuleMatch(context)({
       ruleId,
       node: conditional,
       message:
@@ -80,14 +83,12 @@ const hasDotValueInBranch =
   ([kind, argumentName]: readonly [OptionGuardKind, string]): boolean => {
     const branch = branchToCheck(kind)(conditional)
 
-    return containsDotValue(argumentName, branch)
+    return containsDotValue(argumentName)(branch)
   }
 
-const optionMatchMatches = (
-  conditional: ts.ConditionalExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  pipe(
+const optionMatchMatches =
+  (context: RuleContext) =>
+  (conditional: ts.ConditionalExpression): ReadonlyArray<RuleMatch> => pipe(
     Option.gen(function* () {
       const unwrapped = unwrapTransparentExpression(conditional.condition)
       const call = yield* Option.liftPredicate(ts.isCallExpression)(unwrapped)
@@ -106,15 +107,11 @@ const optionMatchMatches = (
       return [methodName as OptionGuardKind, identifier.text] as const
     }),
     Option.filter(hasDotValueInBranch(conditional)),
-    Option.map(optionMatchRuleMatch(context, conditional)),
+    Option.map(optionMatchRuleMatch(context)(conditional)),
     Option.toArray
   )
 
-const check = onNode(
-  [ts.SyntaxKind.ConditionalExpression],
-  ts.isConditionalExpression,
-  optionMatchMatches
-)
+const check = onNode([ts.SyntaxKind.ConditionalExpression])(ts.isConditionalExpression)(optionMatchMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/resolve.ts",

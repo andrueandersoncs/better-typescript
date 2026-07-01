@@ -13,6 +13,8 @@ import type {
 type NodeHandler = NodeListener["handler"]
 type FileHandler = FileListener["handler"]
 type HandlerTable = HashMap.HashMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
+type AddKindHandler = (table: HandlerTable, kind: ts.SyntaxKind) => HandlerTable
+
 type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 
 export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
@@ -22,11 +24,12 @@ export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
   const table = nodeListeners.reduce(addListenerHandlers, emptyTable)
   const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
 
-  return checkSourceFile(table, fileHandlers)
+  return checkSourceFile(table)(fileHandlers)
 }
 
 const checkSourceFile =
-  (table: HandlerTable, fileHandlers: ReadonlyArray<FileHandler>) =>
+  (table: HandlerTable) =>
+  (fileHandlers: ReadonlyArray<FileHandler>) =>
   (context: RuleContext): ReadonlyArray<RuleMatch> => {
     const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
     const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
@@ -35,7 +38,7 @@ const checkSourceFile =
         Option.getOrElse(emptyNodeHandlers)
       )
       const ownMatches = handlersForKind.flatMap(
-        applyNodeHandler(node, context)
+        applyNodeHandler(context)(node)
       )
       const childMatches = astChildren(node).flatMap(visit)
 
@@ -52,9 +55,10 @@ const applyFileHandler =
     handle(context)
 
 const applyNodeHandler =
-  (node: ts.Node, context: RuleContext) =>
+  (context: RuleContext) =>
+  (node: ts.Node) =>
   (handle: NodeHandler): ReadonlyArray<RuleMatch> =>
-    handle(node, context)
+    handle(context)(node)
 
 const nodeListenerSchema = Schema.is(NodeListener)
 
@@ -81,8 +85,8 @@ const emptyNodeHandlers: Function.LazyArg<ReadonlyArray<NodeHandler>> =
   Function.constant([])
 
 const addKindHandler =
-  (handler: NodeHandler) =>
-  (table: HandlerTable, kind: ts.SyntaxKind): HandlerTable => {
+  (handler: NodeHandler): AddKindHandler =>
+  (table, kind) => {
     const kindHandlers = pipe(
       HashMap.get(table, kind),
       Option.getOrElse(emptyNodeHandlers)

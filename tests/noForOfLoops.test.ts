@@ -54,7 +54,7 @@ const runNoForOfLoopsFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>
-    runRules(project, [noForOfLoops])
+    runRules([noForOfLoops])(project)
   )
 }
 

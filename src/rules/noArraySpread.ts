@@ -13,19 +13,13 @@ const hint =
   "single element, Array.appendAll or Array.prependAll to combine two arrays, " +
   "and Array.fromIterable to materialize an iterable."
 
-const arraySpreadMatches = (
-  spread: ts.SpreadElement,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> =>
-  ts.isArrayLiteralExpression(spread.parent)
-    ? [createRuleMatch(context, { ruleId, node: spread, message, hint })]
+const arraySpreadMatches =
+  (context: RuleContext) =>
+  (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => ts.isArrayLiteralExpression(spread.parent)
+    ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
     : []
 
-const check = onNode(
-  [ts.SyntaxKind.SpreadElement],
-  ts.isSpreadElement,
-  arraySpreadMatches
-)
+const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(arraySpreadMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/items.ts",

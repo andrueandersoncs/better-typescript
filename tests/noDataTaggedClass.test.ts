@@ -68,7 +68,7 @@ const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>
-    runRules(project, [noDataTaggedClass])
+    runRules([noDataTaggedClass])(project)
   )
 }
 

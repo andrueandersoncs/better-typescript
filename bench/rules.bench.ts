@@ -86,9 +86,8 @@ const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap(
       .getSourceFiles()
       .filter(
         (sourceFile) =>
-          !shouldSkipSourceFile(
-            sourceFile.fileName,
-            sourceFile.isDeclarationFile
+          !shouldSkipSourceFile(sourceFile.isDeclarationFile)(
+            sourceFile.fileName
           )
       )
       .map(
@@ -134,7 +133,7 @@ soloRules.forEach((solo) => {
 
 if (benchedRules.length > 1) {
   bench.add(allRulesTask, () => {
-    workspace.projects.forEach((project) => runRules(project, benchedRules))
+    workspace.projects.forEach((project) => runRules(benchedRules)(project))
   })
 }
 

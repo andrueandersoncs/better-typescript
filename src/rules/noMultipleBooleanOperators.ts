@@ -76,43 +76,38 @@ const nestedExpressionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ClassExpression
 )
 
-const multipleBooleanOperatorMatches = (
-  expression: BooleanOperatorExpression,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
-  const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
-  const hasMultiple = booleanOperatorCount(expression) > 1
-  const isReportableRoot = [
-    expressionUsesBooleanOperator,
-    hasNoBooleanOperatorAncestor,
-    hasMultiple
-  ].every(Boolean)
+const multipleBooleanOperatorMatches =
+  (context: RuleContext) =>
+  (expression: BooleanOperatorExpression): ReadonlyArray<RuleMatch> => {
+    const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
+    const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
+    const hasMultiple = booleanOperatorCount(expression) > 1
+    const isReportableRoot = [
+      expressionUsesBooleanOperator,
+      hasNoBooleanOperatorAncestor,
+      hasMultiple
+    ].every(Boolean)
+  
+    return isReportableRoot
+      ? [
+          createRuleMatch(context)({
+            ruleId,
+            node: expression,
+            message:
+              "Avoid combining more than one boolean operator in a single expression.",
+            hint:
+              "Declare multiple constant variables instead of combining operators into a " +
+              "single expression."
+          })
+        ]
+      : []
+  }
 
-  return isReportableRoot
-    ? [
-        createRuleMatch(context, {
-          ruleId,
-          node: expression,
-          message:
-            "Avoid combining more than one boolean operator in a single expression.",
-          hint:
-            "Declare multiple constant variables instead of combining operators into a " +
-            "single expression."
-        })
-      ]
-    : []
-}
-
-const check = onNode(
-  [
-    ts.SyntaxKind.BinaryExpression,
-    ts.SyntaxKind.PrefixUnaryExpression,
-    ts.SyntaxKind.ConditionalExpression
-  ],
-  isBooleanOperatorExpression,
-  multipleBooleanOperatorMatches
-)
+const check = onNode([
+  ts.SyntaxKind.BinaryExpression,
+  ts.SyntaxKind.PrefixUnaryExpression,
+  ts.SyntaxKind.ConditionalExpression
+])(isBooleanOperatorExpression)(multipleBooleanOperatorMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",

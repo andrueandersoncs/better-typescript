@@ -65,29 +65,24 @@ const isDataTaggedClassDeclaration = (
   return Option.exists(classOption, hasDataTaggedClassHeritage)
 }
 
-const dataTaggedClassMatches = (
-  declaration: ts.ClassDeclaration,
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const node = namedNodeReportTarget(declaration)
+const dataTaggedClassMatches =
+  (context: RuleContext) =>
+  (declaration: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
+    const node = namedNodeReportTarget(declaration)
+  
+    return [
+      createRuleMatch(context)({
+        ruleId,
+        node,
+        message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
+        hint:
+          "Schema.TaggedClass provides the same tagged-class features as Data.TaggedClass " +
+          "plus Schema validation, encoding, decoding, and Schema.is() type guards."
+      })
+    ]
+  }
 
-  return [
-    createRuleMatch(context, {
-      ruleId,
-      node,
-      message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
-      hint:
-        "Schema.TaggedClass provides the same tagged-class features as Data.TaggedClass " +
-        "plus Schema validation, encoding, decoding, and Schema.is() type guards."
-    })
-  ]
-}
-
-const check = onNode(
-  [ts.SyntaxKind.ClassDeclaration],
-  isDataTaggedClassDeclaration,
-  dataTaggedClassMatches
-)
+const check = onNode([ts.SyntaxKind.ClassDeclaration])(isDataTaggedClassDeclaration)(dataTaggedClassMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model.ts",
