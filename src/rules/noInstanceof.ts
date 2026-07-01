@@ -39,9 +39,11 @@ const instanceofRuleMatch =
 const instanceofMatches =
   (context: RuleContext) =>
   (expression: ts.BinaryExpression): ReadonlyArray<RuleMatch> => {
-    const symbolAtLocation = context.checker.getSymbolAtLocation(expression.right)
+    const symbolAtLocation = context.checker.getSymbolAtLocation(
+      expression.right
+    )
     const symbol = Option.fromNullable(symbolAtLocation)
-  
+
     return pipe(
       symbol,
       Option.filter(isFirstPartySymbol),
@@ -50,19 +52,33 @@ const instanceofMatches =
     )
   }
 
-const check = onNode([ts.SyntaxKind.BinaryExpression])(isInstanceofExpression)(instanceofMatches)
+const check = onNode([ts.SyntaxKind.BinaryExpression])(isInstanceofExpression)(
+  instanceofMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/check.ts",
-  code: `if (error instanceof NotFoundError) {
-  return fallback
+  code: `import { Schema } from "effect"
+
+class NotFoundError extends Schema.TaggedError<NotFoundError>("NotFoundError")("NotFoundError", {}) {}
+
+export const recover = (error: unknown, fallback: string) => {
+  if (error instanceof NotFoundError) {
+    return fallback
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/check.ts",
-  code: `if (Schema.is(NotFoundError)(error)) {
-  return fallback
+  code: `import { Schema } from "effect"
+
+class NotFoundError extends Schema.TaggedError<NotFoundError>("NotFoundError")("NotFoundError", {}) {}
+
+export const recover = (error: unknown, fallback: string) => {
+  if (Schema.is(NotFoundError)(error)) {
+    return fallback
+  }
 }`
 })
 

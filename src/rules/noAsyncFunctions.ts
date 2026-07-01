@@ -55,7 +55,7 @@ const asyncFunctionMatches =
   (context: RuleContext) =>
   (node: AsyncCapableFunction): ReadonlyArray<RuleMatch> => {
     const modifiers = ts.getModifiers(node)
-  
+
     return pipe(
       Option.fromNullable(modifiers),
       Option.flatMap(findAsyncModifier),
@@ -64,11 +64,13 @@ const asyncFunctionMatches =
     )
   }
 
-const check = onNode(asyncCapableFunctionKinds)(isAsyncCapableFunction)(asyncFunctionMatches)
+const check = onNode(asyncCapableFunctionKinds)(isAsyncCapableFunction)(
+  asyncFunctionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",
-  code: `const fetchUser = async (id: string) => {
+  code: `export const fetchUser = async (id: string) => {
   const response = await fetch(\`/users/\${id}\`)
   return response.json()
 }`
@@ -76,7 +78,10 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/user.ts",
-  code: `const fetchUser = Effect.fn("fetchUser")(function* (id: string) {
+  code: `import { HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+export const fetchUser = Effect.fn("fetchUser")(function* (id: string) {
   const response = yield* HttpClient.get(\`/users/\${id}\`)
   return yield* response.json
 })`

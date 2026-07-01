@@ -66,9 +66,16 @@ export class ExampleSnippet extends Schema.Class<ExampleSnippet>(
 
 const exampleSnippetArraySchema = Schema.Array(ExampleSnippet)
 
+const emptyContextSnippets = (): ReadonlyArray<ExampleSnippet> => []
+
+const contextSnippetsSchema = Schema.optionalWith(exampleSnippetArraySchema, {
+  default: emptyContextSnippets
+})
+
 export class RuleExample extends Schema.Class<RuleExample>("RuleExample")({
   bad: exampleSnippetArraySchema,
-  good: exampleSnippetArraySchema
+  good: exampleSnippetArraySchema,
+  context: contextSnippetsSchema
 }) {}
 
 export class Rule extends Schema.Class<Rule>("Rule")({

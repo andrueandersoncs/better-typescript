@@ -60,7 +60,7 @@ const methodImplementationMatches =
   (context: RuleContext) =>
   (node: ts.MethodDeclaration): ReadonlyArray<RuleMatch> => {
     const reportable = Option.liftPredicate(isReportableMethod)(node)
-  
+
     return pipe(
       reportable,
       Option.map(methodImplementationMatch(context)),
@@ -68,11 +68,15 @@ const methodImplementationMatches =
     )
   }
 
-const check = onNode(methodDeclarationKinds)(isMethodDeclaration)(methodImplementationMatches)
+const check = onNode(methodDeclarationKinds)(isMethodDeclaration)(
+  methodImplementationMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `class User extends Schema.Class<User>("User")({
+  code: `import { Schema } from "effect"
+
+export class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {
   greet(): string { return \`Hello, \${this.name}\` }
@@ -81,11 +85,13 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `class User extends Schema.Class<User>("User")({
+  code: `import { Schema } from "effect"
+
+export class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {}
 
-const greet = (user: User): string => \`Hello, \${user.name}\``
+export const greet = (user: User): string => \`Hello, \${user.name}\``
 })
 
 const example = new RuleExample({

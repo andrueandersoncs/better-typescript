@@ -29,10 +29,10 @@ const conditionalArraySpreadMatches =
   (context: RuleContext) =>
   (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => {
     if (!ts.isArrayLiteralExpression(spread.parent)) return []
-  
+
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
-  
+
     const emptyThenNonEmpty = [
       isEmptyArrayLiteral(expression.whenTrue),
       isNonEmptyArrayBranch(expression.whenFalse)
@@ -41,17 +41,23 @@ const conditionalArraySpreadMatches =
       isNonEmptyArrayBranch(expression.whenTrue),
       isEmptyArrayLiteral(expression.whenFalse)
     ].every(Boolean)
-  
+
     return [emptyThenNonEmpty, nonEmptyThenEmpty].some(Boolean)
       ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
       : []
   }
 
-const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(conditionalArraySpreadMatches)
+const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(
+  conditionalArraySpreadMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/names.ts",
-  code: `const names = [
+  code: `declare const hasPrefix: boolean
+declare const prefixNames: ReadonlyArray<string>
+declare const mainNames: ReadonlyArray<string>
+
+export const names = [
   ...(hasPrefix ? prefixNames : []),
   ...mainNames
 ]`
@@ -59,7 +65,13 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/names.ts",
-  code: `const names = Array.appendAll(
+  code: `import { Array } from "effect"
+
+declare const hasPrefix: boolean
+declare const prefixNames: ReadonlyArray<string>
+declare const mainNames: ReadonlyArray<string>
+
+export const names = Array.appendAll(
   hasPrefix ? prefixNames : [],
   mainNames
 )`

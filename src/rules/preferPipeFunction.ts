@@ -10,11 +10,11 @@ const pipeMethodCallMatches =
   (context: RuleContext) =>
   (callExpression: ts.CallExpression): ReadonlyArray<RuleMatch> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) return []
-  
+
     const isPipeMethod = callExpression.expression.name.text === "pipe"
-  
+
     if (!isPipeMethod) return []
-  
+
     return [
       createRuleMatch(context)({
         ruleId,
@@ -27,11 +27,19 @@ const pipeMethodCallMatches =
     ]
   }
 
-const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(pipeMethodCallMatches)
+const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+  pipeMethodCallMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",
-  code: `const program = fetchUser(userId).pipe(
+  code: `import { Effect, Struct } from "effect"
+
+declare const userId: string
+declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
+declare const loadProfile: (id: string) => Effect.Effect<{ readonly bio: string }>
+
+export const program = fetchUser(userId).pipe(
   Effect.map(Struct.get("id")),
   Effect.flatMap(loadProfile)
 )`
@@ -39,7 +47,13 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/user.ts",
-  code: `const program = pipe(
+  code: `import { Effect, Struct, pipe } from "effect"
+
+declare const userId: string
+declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
+declare const loadProfile: (id: string) => Effect.Effect<{ readonly bio: string }>
+
+export const program = pipe(
   fetchUser(userId),
   Effect.map(Struct.get("id")),
   Effect.flatMap(loadProfile)

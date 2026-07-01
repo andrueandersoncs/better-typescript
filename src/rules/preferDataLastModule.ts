@@ -60,9 +60,10 @@ const isDataStructureMember =
   (type: ts.Type): boolean => {
     const exclusions = [
       (type.flags & primitiveTypeFlags) !== 0,
-      [context.checker.isArrayType(type), context.checker.isTupleType(type)].some(
-        Boolean
-      ),
+      [
+        context.checker.isArrayType(type),
+        context.checker.isTupleType(type)
+      ].some(Boolean),
       hasCallSignature(context.checker)(type)
     ]
 
@@ -100,14 +101,14 @@ const isExpectedModulePath =
   (projectRoot: string) =>
   (expectedModulePath: string) =>
   (fileName: string): boolean => {
-  const relativeFileName = path.relative(projectRoot, fileName)
-  const normalizedFileName = relativeFileName.replaceAll("\\", "/")
+    const relativeFileName = path.relative(projectRoot, fileName)
+    const normalizedFileName = relativeFileName.replaceAll("\\", "/")
 
-  return [
-    normalizedFileName === expectedModulePath,
-    normalizedFileName.endsWith(`/${expectedModulePath}`)
-  ].some(Boolean)
-}
+    return [
+      normalizedFileName === expectedModulePath,
+      normalizedFileName.endsWith(`/${expectedModulePath}`)
+    ].some(Boolean)
+  }
 
 const isDataStructureModuleDeclaration =
   (context: RuleContext) =>
@@ -166,12 +167,11 @@ const parameterDataStructureCurried =
   }
 
 const variableDefinition =
-  (context: RuleContext) =>
-  (declaration: ts.VariableDeclaration) => {
-  const name = declaration.name.getText(context.sourceFile)
+  (context: RuleContext) => (declaration: ts.VariableDeclaration) => {
+    const name = declaration.name.getText(context.sourceFile)
 
-  return [name, declaration.name] as const
-}
+    return [name, declaration.name] as const
+  }
 
 const sameExpression =
   (expression: ts.Expression) =>
@@ -181,26 +181,26 @@ const sameExpression =
 const isVariableInitializer =
   (expression: ts.Expression) =>
   (declaration: ts.VariableDeclaration): boolean => {
-  const initializer = Option.fromNullable(declaration.initializer)
+    const initializer = Option.fromNullable(declaration.initializer)
 
-  return Option.exists(initializer, sameExpression(expression))
-}
+    return Option.exists(initializer, sameExpression(expression))
+  }
 
 const variableDefinitionFromInitializer =
   (context: RuleContext) =>
   (expression: ts.Expression): Option.Option<FunctionDefinition> => {
-  const parent = expression.parent
+    const parent = expression.parent
 
-  if (!ts.isVariableDeclaration(parent)) {
-    return Option.none()
+    if (!ts.isVariableDeclaration(parent)) {
+      return Option.none()
+    }
+
+    const definition = variableDefinition(context)(parent)
+
+    return isVariableInitializer(expression)(parent)
+      ? Option.some(definition)
+      : Option.none()
   }
-
-  const definition = variableDefinition(context)(parent)
-
-  return isVariableInitializer(expression)(parent)
-    ? Option.some(definition)
-    : Option.none()
-}
 
 const isVariableInitializerFor =
   (expression: ts.Expression) =>
@@ -221,42 +221,46 @@ const definitionFromCallableDeclaration =
 const variableDefinitionFromCallArgument =
   (context: RuleContext) =>
   (expression: ts.Expression): Option.Option<FunctionDefinition> => {
-  const parent = expression.parent
+    const parent = expression.parent
 
-  if (!ts.isCallExpression(parent)) {
-    return Option.none()
+    if (!ts.isCallExpression(parent)) {
+      return Option.none()
+    }
+
+    const hasMatchingArgument = parent.arguments.some(
+      sameExpression(expression)
+    )
+    if (!hasMatchingArgument) {
+      return Option.none()
+    }
+
+    const wrappedExpression = outermostTransparentWrapper(parent)
+    const wrappedParent = wrappedExpression.parent
+    const declaration = pipe(
+      Option.liftPredicate(ts.isVariableDeclaration)(wrappedParent),
+      Option.filter(isVariableInitializerFor(wrappedExpression))
+    )
+
+    return pipe(
+      declaration,
+      Option.flatMap(definitionFromCallableDeclaration(context))
+    )
   }
-
-  const hasMatchingArgument = parent.arguments.some(sameExpression(expression))
-  if (!hasMatchingArgument) {
-    return Option.none()
-  }
-
-  const wrappedExpression = outermostTransparentWrapper(parent)
-  const wrappedParent = wrappedExpression.parent
-  const declaration = pipe(
-    Option.liftPredicate(ts.isVariableDeclaration)(wrappedParent),
-    Option.filter(isVariableInitializerFor(wrappedExpression))
-  )
-
-  return pipe(
-    declaration,
-    Option.flatMap(definitionFromCallableDeclaration(context))
-  )
-}
 
 const firstDefinition =
   (initializer: Option.Option<FunctionDefinition>) =>
   (callArgument: Option.Option<FunctionDefinition>) =>
-  (curried: Option.Option<FunctionDefinition>): Option.Option<FunctionDefinition> => {
-  const initializerOrCallArgument = Option.isSome(initializer)
-    ? initializer
-    : callArgument
+  (
+    curried: Option.Option<FunctionDefinition>
+  ): Option.Option<FunctionDefinition> => {
+    const initializerOrCallArgument = Option.isSome(initializer)
+      ? initializer
+      : callArgument
 
-  return Option.isSome(initializerOrCallArgument)
-    ? initializerOrCallArgument
-    : curried
-}
+    return Option.isSome(initializerOrCallArgument)
+      ? initializerOrCallArgument
+      : curried
+  }
 
 const arrowHasBody =
   (expression: ts.Expression) =>
@@ -275,12 +279,10 @@ const findCurriedDefinition =
   (context: RuleContext) =>
   (arrowParent: ts.ArrowFunction): Option.Option<FunctionDefinition> => {
     const parentExpression = outermostTransparentWrapper(arrowParent)
-    const initializer = variableDefinitionFromInitializer(context)(
-      parentExpression
-    )
-    const callArgument = variableDefinitionFromCallArgument(context)(
-      parentExpression
-    )
+    const initializer =
+      variableDefinitionFromInitializer(context)(parentExpression)
+    const callArgument =
+      variableDefinitionFromCallArgument(context)(parentExpression)
     const curried = conciseCurriedDefinition(context)(parentExpression)
 
     return firstDefinition(initializer)(callArgument)(curried)
@@ -292,14 +294,14 @@ const noFunctionDefinition = (): Option.Option<FunctionDefinition> =>
 const conciseCurriedDefinition =
   (context: RuleContext) =>
   (expression: ts.Expression): Option.Option<FunctionDefinition> => {
-  const parent = expression.parent
+    const parent = expression.parent
 
-  return pipe(
-    Match.value(parent),
-    Match.when(isArrowWithBody(expression), findCurriedDefinition(context)),
-    Match.orElse(noFunctionDefinition)
-  )
-}
+    return pipe(
+      Match.value(parent),
+      Match.when(isArrowWithBody(expression), findCurriedDefinition(context)),
+      Match.orElse(noFunctionDefinition)
+    )
+  }
 
 const nameText =
   (sourceFile: ts.SourceFile) =>
@@ -351,19 +353,19 @@ const dataLastModuleMatches =
       )
       const reportNode = namedNodeReportTarget(node)
       const definition: FunctionDefinition = [name, reportNode]
-  
+
       return pipe(
         Option.some(definition),
         Option.flatMap(dataLastModuleMatchForDefinition(context)(node)),
         Option.toArray
       )
     }
-  
+
     const expression = outermostTransparentWrapper(node)
     const initializer = variableDefinitionFromInitializer(context)(expression)
     const callArgument = variableDefinitionFromCallArgument(context)(expression)
     const curried = conciseCurriedDefinition(context)(expression)
-  
+
     return pipe(
       firstDefinition(initializer)(callArgument)(curried),
       Option.flatMap(dataLastModuleMatchForDefinition(context)(node)),
@@ -371,13 +373,22 @@ const dataLastModuleMatches =
     )
   }
 
-const check = onNode(checkedFunctionKinds)(isCheckedFunction)(dataLastModuleMatches)
+const check = onNode(checkedFunctionKinds)(isCheckedFunction)(
+  dataLastModuleMatches
+)
+
+const contextExample = new ExampleSnippet({
+  filePath: "src/modules/user.ts",
+  code: `export interface User {
+  readonly name: string
+}`
+})
 
 const badExample = new ExampleSnippet({
   filePath: "src/cases.ts",
   code: `import type { User } from "./modules/user.js"
 
-const updateUser = (id: string, newData: User): User => newData`
+export const updateUser = (id: string, newData: User): User => newData`
 })
 
 const goodExample = new ExampleSnippet({
@@ -391,7 +402,8 @@ export const updateUser = (id: string, newData: User): User => newData`
 
 const example = new RuleExample({
   bad: [badExample],
-  good: [goodExample]
+  good: [goodExample],
+  context: [contextExample]
 })
 
 export const preferDataLastModule = new Rule({

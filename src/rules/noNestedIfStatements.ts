@@ -20,35 +20,35 @@ const nestedScopeBoundaryKinds = HashSet.make(
 const containingIfStatementFrom =
   (child: ts.Node) =>
   (parent: Option.Option<ts.Node>): Option.Option<ts.IfStatement> => {
-  if (Option.isNone(parent)) {
-    return Option.none()
+    if (Option.isNone(parent)) {
+      return Option.none()
+    }
+
+    const parentNode = parent.value
+
+    if (HashSet.has(nestedScopeBoundaryKinds, parentNode.kind)) {
+      return Option.none()
+    }
+
+    const grandparent = Option.fromNullable(parentNode.parent)
+
+    if (!ts.isIfStatement(parentNode)) {
+      return containingIfStatementFrom(parentNode)(grandparent)
+    }
+
+    const isElseBranch = parentNode.elseStatement === child
+
+    return isElseBranch
+      ? containingIfStatementFrom(parentNode)(grandparent)
+      : Option.some(parentNode)
   }
-
-  const parentNode = parent.value
-
-  if (HashSet.has(nestedScopeBoundaryKinds, parentNode.kind)) {
-    return Option.none()
-  }
-
-  const grandparent = Option.fromNullable(parentNode.parent)
-
-  if (!ts.isIfStatement(parentNode)) {
-    return containingIfStatementFrom(parentNode)(grandparent)
-  }
-
-  const isElseBranch = parentNode.elseStatement === child
-
-  return isElseBranch
-    ? containingIfStatementFrom(parentNode)(grandparent)
-    : Option.some(parentNode)
-}
 
 const nestedIfMatches =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
     const parentOption = Option.fromNullable(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
-  
+
     return Option.isSome(containingIf)
       ? [
           createRuleMatch(context)({
@@ -63,24 +63,36 @@ const nestedIfMatches =
       : []
   }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(nestedIfMatches)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+  nestedIfMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",
-  code: `if (user) {
-  if (user.isActive) {
-    grantAccess()
+  code: `declare const user: { readonly isActive: boolean } | null
+declare const grantAccess: () => void
+
+export const ensureAccess = (): void => {
+  if (user) {
+    if (user.isActive) {
+      grantAccess()
+    }
   }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/access.ts",
-  code: `if (!user) {
-  return
-}
-if (user.isActive) {
-  grantAccess()
+  code: `declare const user: { readonly isActive: boolean } | null
+declare const grantAccess: () => void
+
+export const ensureAccess = (): void => {
+  if (!user) {
+    return
+  }
+  if (user.isActive) {
+    grantAccess()
+  }
 }`
 })
 

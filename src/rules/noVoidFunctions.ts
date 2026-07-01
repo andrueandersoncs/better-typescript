@@ -97,7 +97,7 @@ const voidFunctionMatches =
     const isContextualVoid =
       isFunctionInitializer(declaration) &&
       isContextuallyVoidCallback(context)(declaration)
-  
+
     return isContextualVoid
       ? []
       : pipe(
@@ -107,18 +107,22 @@ const voidFunctionMatches =
         )
   }
 
-const check = onNode(voidableFunctionKinds)(isVoidableFunction)(voidFunctionMatches)
+const check = onNode(voidableFunctionKinds)(isVoidableFunction)(
+  voidFunctionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/log.ts",
-  code: `const logMessage = (msg: string): void => {
+  code: `export const logMessage = (msg: string): void => {
   console.log(msg)
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/log.ts",
-  code: `const logMessage = (msg: string) =>
+  code: `import { Effect } from "effect"
+
+export const logMessage = (msg: string) =>
   Effect.sync(() => console.log(msg))`
 })
 

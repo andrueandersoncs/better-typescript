@@ -214,7 +214,9 @@ const symbolFileEntry =
 const literalConstructionEntries =
   (checker: ts.TypeChecker) =>
   (fileName: string) =>
-  (literal: ts.ObjectLiteralExpression): ReadonlyArray<readonly [ts.Symbol, string]> => {
+  (
+    literal: ts.ObjectLiteralExpression
+  ): ReadonlyArray<readonly [ts.Symbol, string]> => {
     const contextualType = checker.getContextualType(literal)
     const directContextualType = Option.fromNullable(contextualType)
     const boxedTypes = pipe(
@@ -322,7 +324,7 @@ const objectTypeDeclarationMatches =
     const declarationSymbol = context.checker.getSymbolAtLocation(
       declaration.name
     )
-  
+
     return pipe(
       Option.fromNullable(declarationSymbol),
       Option.flatMap(constructionFile(context)),
@@ -336,28 +338,36 @@ const isObjectTypeAliasDeclaration = (
 ): node is ts.TypeAliasDeclaration =>
   ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)
 
-const interfaceListener = onNode([ts.SyntaxKind.InterfaceDeclaration])(ts.isInterfaceDeclaration)(objectTypeDeclarationMatches)
+const interfaceListener = onNode([ts.SyntaxKind.InterfaceDeclaration])(
+  ts.isInterfaceDeclaration
+)(objectTypeDeclarationMatches)
 
-const typeAliasListener = onNode([ts.SyntaxKind.TypeAliasDeclaration])(isObjectTypeAliasDeclaration)(objectTypeDeclarationMatches)
+const typeAliasListener = onNode([ts.SyntaxKind.TypeAliasDeclaration])(
+  isObjectTypeAliasDeclaration
+)(objectTypeDeclarationMatches)
 
 const check = combineAll([interfaceListener, typeAliasListener])
 
-const badExample1 = new ExampleSnippet({
+const contextExample = new ExampleSnippet({
+  filePath: "src/service/userService.ts",
+  code: `import type { User } from "../model/user.js"
+
+export const user: User = { name: "Alice", age: 30 }`
+})
+
+const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `interface User {
+  code: `export interface User {
   readonly name: string
   readonly age: number
 }`
 })
 
-const badExample2 = new ExampleSnippet({
-  filePath: "src/service/userService.ts",
-  code: `const user: User = { name: "Alice", age: 30 }`
-})
-
 const goodExample1 = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `class User extends Schema.Class<User>("User")({
+  code: `import { Schema } from "effect"
+
+export class User extends Schema.Class<User>("User")({
   name: Schema.String,
   age: Schema.Number
 }) {}`
@@ -365,12 +375,15 @@ const goodExample1 = new ExampleSnippet({
 
 const goodExample2 = new ExampleSnippet({
   filePath: "src/service/userService.ts",
-  code: `const user = new User({ name: "Alice", age: 30 })`
+  code: `import { User } from "../model/user.js"
+
+export const user = new User({ name: "Alice", age: 30 })`
 })
 
 const example = new RuleExample({
-  bad: [badExample1, badExample2],
-  good: [goodExample1, goodExample2]
+  bad: [badExample],
+  good: [goodExample1, goodExample2],
+  context: [contextExample]
 })
 
 export const preferEffectSchemaClass = new Rule({

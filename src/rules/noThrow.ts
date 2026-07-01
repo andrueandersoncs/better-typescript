@@ -19,18 +19,34 @@ const throwMatches =
     })
   ]
 
-const check = onNode([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(throwMatches)
+const check = onNode([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
+  throwMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",
-  code: `throw new Error("User not found")`
+  code: `export const requireName = (name: string | null): string => {
+  if (name === null) {
+    throw new Error("User not found")
+  }
+
+  return name
+}`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/user.ts",
-  code: `class UserNotFound extends Schema.TaggedError<UserNotFound>("UserNotFound")("UserNotFound", {}) {}
+  code: `import { Effect, Schema } from "effect"
 
-yield* new UserNotFound()`
+class UserNotFound extends Schema.TaggedError<UserNotFound>("UserNotFound")("UserNotFound", {}) {}
+
+export const requireName = Effect.fn("requireName")(function* (name: string | null) {
+  if (name === null) {
+    return yield* new UserNotFound()
+  }
+
+  return name
+})`
 })
 
 const example = new RuleExample({

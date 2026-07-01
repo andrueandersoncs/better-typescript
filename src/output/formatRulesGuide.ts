@@ -19,16 +19,20 @@ const labeledSnippet =
   (snippet: ExampleSnippet): string =>
     `${label} (${snippet.filePath}):\n\n\`\`\`ts\n${snippet.code}\n\`\`\``
 
+const contextSnippet = labeledSnippet("Context")
+
 const badSnippet = labeledSnippet("Bad")
 
 const goodSnippet = labeledSnippet("Good")
 
 const ruleSection = (rule: Rule): string => {
   const heading = `## ${rule.id}`
+  const contextSections = Array.map(rule.example.context, contextSnippet)
   const badSections = Array.map(rule.example.bad, badSnippet)
   const goodSections = Array.map(rule.example.good, goodSnippet)
   const sections = Array.flatten([
     [heading, rule.description],
+    contextSections,
     badSections,
     goodSections
   ])

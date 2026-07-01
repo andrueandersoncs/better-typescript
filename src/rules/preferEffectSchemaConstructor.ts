@@ -128,7 +128,7 @@ const returnStatementMatches =
   (context: RuleContext) =>
   (statement: ts.ReturnStatement): ReadonlyArray<RuleMatch> => {
     const expression = Option.fromNullable(statement.expression)
-  
+
     return Option.toArray(expression).flatMap(expressionRuleMatches(context))
   }
 
@@ -136,30 +136,36 @@ const arrowBodyReturnMatches =
   (context: RuleContext) =>
   (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
     const expression = Option.liftPredicate(ts.isExpression)(arrowFunction.body)
-  
+
     return Option.toArray(expression).flatMap(expressionRuleMatches(context))
   }
 
-const returnStatementListener = onNode([ts.SyntaxKind.ReturnStatement])(ts.isReturnStatement)(returnStatementMatches)
+const returnStatementListener = onNode([ts.SyntaxKind.ReturnStatement])(
+  ts.isReturnStatement
+)(returnStatementMatches)
 
-const arrowBodyListener = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(arrowBodyReturnMatches)
+const arrowBodyListener = onNode([ts.SyntaxKind.ArrowFunction])(
+  ts.isArrowFunction
+)(arrowBodyReturnMatches)
 
 const check = combineAll([returnStatementListener, arrowBodyListener])
 
 const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `const createUser = (name: string) =>
+  code: `export const createUser = (name: string) =>
   ({ _tag: "User" as const, name, createdAt: Date.now() })`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `class User extends Schema.TaggedClass<User>()("User", {
+  code: `import { Schema } from "effect"
+
+class User extends Schema.TaggedClass<User>()("User", {
   name: Schema.String,
   createdAt: Schema.Number
 }) {}
 
-const createUser = (name: string) =>
+export const createUser = (name: string) =>
   new User({ name, createdAt: Date.now() })`
 })
 

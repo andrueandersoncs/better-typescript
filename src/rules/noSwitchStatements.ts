@@ -19,25 +19,43 @@ const switchStatementMatches =
     })
   ]
 
-const check = onNode([ts.SyntaxKind.SwitchStatement])(ts.isSwitchStatement)(switchStatementMatches)
+const check = onNode([ts.SyntaxKind.SwitchStatement])(ts.isSwitchStatement)(
+  switchStatementMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/status.ts",
-  code: `switch (status) {
-  case "active": return handleActive()
-  case "inactive": return handleInactive()
-  default: return handleUnknown()
+  code: `declare const status: "active" | "inactive" | "unknown"
+declare const handleActive: () => string
+declare const handleInactive: () => string
+declare const handleUnknown: () => string
+
+export const describeStatus = (): string => {
+  switch (status) {
+    case "active": return handleActive()
+    case "inactive": return handleInactive()
+    default: return handleUnknown()
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/status.ts",
-  code: `return pipe(
-  Match.value(status),
-  Match.when("active", handleActive),
-  Match.when("inactive", handleInactive),
-  Match.exhaustive
-)`
+  code: `import { Match, pipe } from "effect"
+
+declare const status: "active" | "inactive" | "unknown"
+declare const handleActive: () => string
+declare const handleInactive: () => string
+declare const handleUnknown: () => string
+
+export const describeStatus = (): string =>
+  pipe(
+    Match.value(status),
+    Match.when("active", handleActive),
+    Match.when("inactive", handleInactive),
+    Match.when("unknown", handleUnknown),
+    Match.exhaustive
+  )`
 })
 
 const example = new RuleExample({

@@ -69,7 +69,7 @@ const dataTaggedClassMatches =
   (context: RuleContext) =>
   (declaration: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
     const node = namedNodeReportTarget(declaration)
-  
+
     return [
       createRuleMatch(context)({
         ruleId,
@@ -82,18 +82,24 @@ const dataTaggedClassMatches =
     ]
   }
 
-const check = onNode([ts.SyntaxKind.ClassDeclaration])(isDataTaggedClassDeclaration)(dataTaggedClassMatches)
+const check = onNode([ts.SyntaxKind.ClassDeclaration])(
+  isDataTaggedClassDeclaration
+)(dataTaggedClassMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model.ts",
-  code: `class MyEvent extends Data.TaggedClass("MyEvent")<{
+  code: `import { Data } from "effect"
+
+export class MyEvent extends Data.TaggedClass("MyEvent")<{
   readonly payload: string
 }> {}`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/model.ts",
-  code: `class MyEvent extends Schema.TaggedClass<MyEvent>()("MyEvent", {
+  code: `import { Schema } from "effect"
+
+export class MyEvent extends Schema.TaggedClass<MyEvent>()("MyEvent", {
   payload: Schema.String
 }) {}`
 })

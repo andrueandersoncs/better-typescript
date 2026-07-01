@@ -72,7 +72,8 @@ test("formatRulesJson round-trips a rule's id, description, and examples", () =>
     description: noThrow.description,
     example: {
       bad: noThrow.example.bad.map(plainSnippet),
-      good: noThrow.example.good.map(plainSnippet)
+      good: noThrow.example.good.map(plainSnippet),
+      context: noThrow.example.context.map(plainSnippet)
     }
   })
 })

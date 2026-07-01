@@ -137,7 +137,7 @@ const callbackStyleMatches =
       signature,
       isCallbackSignature(context)(declaration)
     )
-  
+
     return isCallback
       ? [
           createRuleMatch(context)({
@@ -165,24 +165,62 @@ const check = onNode([
 
 const badExample = new ExampleSnippet({
   filePath: "src/events.ts",
-  code: `const onMessage = (handler: (msg: Message) => void): void => {
+  code: `interface Message {
+  readonly data: string
+}
+
+interface MessageSocket {
+  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
+}
+
+declare const socket: MessageSocket
+
+export const onMessage = (handler: (msg: Message) => void): void => {
   socket.addEventListener("message", handler)
 }`
 })
 
 const goodOneShot = new ExampleSnippet({
   filePath: "src/events.ts",
-  code: `// One-shot: resolves on the first event, then the Effect completes.
-const onMessage = Effect.async<Message>((resume) => {
+  code: `import { Effect } from "effect"
+
+interface Message {
+  readonly data: string
+}
+
+interface MessageSocket {
+  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
+}
+
+declare const socket: MessageSocket
+
+// One-shot: resolves on the first event, then the Effect completes.
+export const onMessage = Effect.async<Message>((resume) => {
   socket.addEventListener("message", (msg) => resume(Effect.succeed(msg)))
+
+  return Effect.void
 })`
 })
 
 const goodStream = new ExampleSnippet({
-  filePath: "src/events.ts",
-  code: `// Streaming: emits every event until the scope is closed.
-const messages = Stream.async<Message>((emit) => {
+  filePath: "src/messages.ts",
+  code: `import { Effect, Stream } from "effect"
+
+interface Message {
+  readonly data: string
+}
+
+interface MessageSocket {
+  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
+}
+
+declare const socket: MessageSocket
+
+// Streaming: emits every event until the scope is closed.
+export const messages = Stream.async<Message>((emit) => {
   socket.addEventListener("message", (msg) => emit.single(msg))
+
+  return Effect.void
 })`
 })
 

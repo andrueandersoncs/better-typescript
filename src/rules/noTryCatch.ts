@@ -20,23 +20,46 @@ const tryStatementMatches =
     })
   ]
 
-const check = onNode([ts.SyntaxKind.TryStatement])(ts.isTryStatement)(tryStatementMatches)
+const check = onNode([ts.SyntaxKind.TryStatement])(ts.isTryStatement)(
+  tryStatementMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/file.ts",
-  code: `try {
-  const data = readFile(path)
-  return parse(data)
-} catch (err) {
-  return defaultValue
+  code: `interface Config {
+  readonly name: string
+}
+
+declare const readFile: (path: string) => string
+declare const parse: (data: string) => Config
+declare const defaultValue: Config
+
+export const loadConfig = (path: string): Config => {
+  try {
+    const data = readFile(path)
+    return parse(data)
+  } catch (err) {
+    return defaultValue
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/file.ts",
-  code: `class ReadError extends Schema.TaggedError<ReadError>("ReadError")("ReadError", {}) {}
+  code: `import { Effect, Schema, pipe } from "effect"
 
-const program = pipe(
+class ReadError extends Schema.TaggedError<ReadError>("ReadError")("ReadError", {}) {}
+
+interface Config {
+  readonly name: string
+}
+
+declare const path: string
+declare const readFile: (path: string) => Effect.Effect<string, ReadError>
+declare const parse: (data: string) => Effect.Effect<Config>
+declare const defaultValue: Config
+
+export const program = pipe(
   readFile(path),
   Effect.flatMap(parse),
   Effect.catchTag("ReadError", () => Effect.succeed(defaultValue))

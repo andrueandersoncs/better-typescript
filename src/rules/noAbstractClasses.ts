@@ -42,7 +42,7 @@ const abstractClassMatches =
   (context: RuleContext) =>
   (node: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
     const modifiers = ts.getModifiers(node)
-  
+
     return pipe(
       Option.fromNullable(modifiers),
       Option.flatMap(findAbstractModifier),
@@ -51,22 +51,28 @@ const abstractClassMatches =
     )
   }
 
-const check = onNode(classDeclarationKinds)(isClassDeclaration)(abstractClassMatches)
+const check = onNode(classDeclarationKinds)(isClassDeclaration)(
+  abstractClassMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `abstract class Shape {
+  code: `export abstract class Shape {
   abstract area(): number
 }
 
-class Circle extends Shape {
+export class Circle extends Shape {
+  constructor(readonly radius: number) {
+    super()
+  }
+
   area(): number { return Math.PI * this.radius ** 2 }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `const circleArea = (radius: number): number =>
+  code: `export const circleArea = (radius: number): number =>
   Math.PI * radius ** 2`
 })
 

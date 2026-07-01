@@ -79,7 +79,8 @@ const nestedExpressionBoundaryKinds = HashSet.make(
 const multipleBooleanOperatorMatches =
   (context: RuleContext) =>
   (expression: BooleanOperatorExpression): ReadonlyArray<RuleMatch> => {
-    const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
+    const expressionUsesBooleanOperator =
+      isBooleanOperatorExpression(expression)
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
     const isReportableRoot = [
@@ -87,7 +88,7 @@ const multipleBooleanOperatorMatches =
       hasNoBooleanOperatorAncestor,
       hasMultiple
     ].every(Boolean)
-  
+
     return isReportableRoot
       ? [
           createRuleMatch(context)({
@@ -111,13 +112,21 @@ const check = onNode([
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",
-  code: `const canEdit = isAdmin && isActive || isOwner`
+  code: `declare const isAdmin: boolean
+declare const isActive: boolean
+declare const isOwner: boolean
+
+export const canEdit = isAdmin && isActive || isOwner`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/access.ts",
-  code: `const hasAdminAccess = isAdmin && isActive
-const canEdit = hasAdminAccess || isOwner`
+  code: `declare const isAdmin: boolean
+declare const isActive: boolean
+declare const isOwner: boolean
+
+const hasAdminAccess = isAdmin && isActive
+export const canEdit = hasAdminAccess || isOwner`
 })
 
 const example = new RuleExample({

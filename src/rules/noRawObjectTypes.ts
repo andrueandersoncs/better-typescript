@@ -42,7 +42,8 @@ const rawObjectParameterMatches =
     createRuleMatch(context)({
       ruleId,
       node,
-      message: "Parameter uses an anonymous object type instead of a named type.",
+      message:
+        "Parameter uses an anonymous object type instead of a named type.",
       hint:
         "Define a named type or interface that describes the data's domain meaning — " +
         "for example ConnectionConfig instead of { host: string, port: number }. " +
@@ -64,7 +65,7 @@ const rawObjectReturnTypeMatches =
   (context: RuleContext) =>
   (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => {
     const reportNode = namedNodeReportTarget(node)
-  
+
     return [
       createRuleMatch(context)({
         ruleId,
@@ -91,26 +92,38 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-const parameterListener = onNode([ts.SyntaxKind.Parameter])(parameterHasRawObjectType)(rawObjectParameterMatches)
+const parameterListener = onNode([ts.SyntaxKind.Parameter])(
+  parameterHasRawObjectType
+)(rawObjectParameterMatches)
 
-const returnTypeListener = onNode(returnTypeDeclarationKinds)(isRawObjectReturnTypeDeclaration)(rawObjectReturnTypeMatches)
+const returnTypeListener = onNode(returnTypeDeclarationKinds)(
+  isRawObjectReturnTypeDeclaration
+)(rawObjectReturnTypeMatches)
 
 const check = combineAll([parameterListener, returnTypeListener])
 
 const badExample = new ExampleSnippet({
   filePath: "src/server.ts",
-  code: `const startServer = (config: { host: string, port: number }) =>
+  code: `import { Effect } from "effect"
+
+declare const listen: (config: { host: string, port: number }) => void
+
+export const startServer = (config: { host: string, port: number }) =>
   Effect.sync(() => listen(config))`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/server.ts",
-  code: `interface ServerAddress {
+  code: `import { Effect } from "effect"
+
+interface ServerAddress {
   readonly host: string
   readonly port: number
 }
 
-const startServer = (address: ServerAddress) =>
+declare const listen: (address: ServerAddress) => void
+
+export const startServer = (address: ServerAddress) =>
   Effect.sync(() => listen(address))`
 })
 

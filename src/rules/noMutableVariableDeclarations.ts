@@ -39,7 +39,7 @@ const mutableDeclarationMatches =
   (context: RuleContext) =>
   (declarationList: ts.VariableDeclarationList): ReadonlyArray<RuleMatch> => {
     const firstToken = declarationList.getFirstToken(context.sourceFile)
-  
+
     return pipe(
       Option.fromNullable(firstToken),
       Option.flatMap(tokenMutableKind),
@@ -48,11 +48,16 @@ const mutableDeclarationMatches =
     )
   }
 
-const check = onNode([ts.SyntaxKind.VariableDeclarationList])(ts.isVariableDeclarationList)(mutableDeclarationMatches)
+const check = onNode([ts.SyntaxKind.VariableDeclarationList])(
+  ts.isVariableDeclarationList
+)(mutableDeclarationMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/cart.ts",
-  code: `let total = 0
+  code: `declare const items: ReadonlyArray<{ readonly price: number }>
+
+export let total = 0
+
 for (const item of items) {
   total += item.price
 }`
@@ -60,7 +65,11 @@ for (const item of items) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/cart.ts",
-  code: `const total = Array.reduce(
+  code: `import { Array } from "effect"
+
+declare const items: ReadonlyArray<{ readonly price: number }>
+
+export const total = Array.reduce(
   items,
   0,
   (sum, item) => sum + item.price

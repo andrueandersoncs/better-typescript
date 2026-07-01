@@ -20,7 +20,7 @@ const forMatches =
     const hasIteratorAndStopCondition = [hasStopCondition, hasIterator].every(
       Boolean
     )
-  
+
     return hasIteratorAndStopCondition
       ? [
           createRuleMatch(context)({
@@ -35,11 +35,16 @@ const forMatches =
       : []
   }
 
-const check = onNode([ts.SyntaxKind.ForStatement])(ts.isForStatement)(forMatches)
+const check = onNode([ts.SyntaxKind.ForStatement])(ts.isForStatement)(
+  forMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/transform.ts",
-  code: `const doubled = []
+  code: `declare const items: ReadonlyArray<number>
+
+export const doubled: Array<number> = []
+
 for (let i = 0; i < items.length; i++) {
   doubled.push(items[i] * 2)
 }`
@@ -47,7 +52,11 @@ for (let i = 0; i < items.length; i++) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/transform.ts",
-  code: `const doubled = Array.map(items, (item) => item * 2)`
+  code: `import { Array } from "effect"
+
+declare const items: ReadonlyArray<number>
+
+export const doubled = Array.map(items, (item) => item * 2)`
 })
 
 const example = new RuleExample({

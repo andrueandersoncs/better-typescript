@@ -32,7 +32,7 @@ const conditionalObjectSpreadMatches =
   (spread: ts.SpreadAssignment): ReadonlyArray<RuleMatch> => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
-  
+
     const emptyThenNonEmptyElse = [
       hasNoProperties(expression.whenTrue),
       hasSomeProperties(expression.whenFalse)
@@ -41,17 +41,24 @@ const conditionalObjectSpreadMatches =
       hasSomeProperties(expression.whenTrue),
       hasNoProperties(expression.whenFalse)
     ].every(Boolean)
-  
+
     return [emptyThenNonEmptyElse, nonEmptyThenEmptyElse].some(Boolean)
       ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
       : []
   }
 
-const check = onNode([ts.SyntaxKind.SpreadAssignment])(ts.isSpreadAssignment)(conditionalObjectSpreadMatches)
+const check = onNode([ts.SyntaxKind.SpreadAssignment])(ts.isSpreadAssignment)(
+  conditionalObjectSpreadMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/search.ts",
-  code: `const queryParameters = {
+  code: `declare const params: {
+  readonly query: string | undefined
+  readonly page: number | undefined
+}
+
+export const queryParameters = {
   ...(params.query ? { query: params.query } : {}),
   ...(params.page ? { page: params.page } : {})
 }`
@@ -59,7 +66,14 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/search.ts",
-  code: `const queryParameters = Record.filterMap(
+  code: `import { Option, Record } from "effect"
+
+declare const params: {
+  readonly query: string | undefined
+  readonly page: number | undefined
+}
+
+export const queryParameters = Record.filterMap(
   {
     query: params.query,
     page: params.page

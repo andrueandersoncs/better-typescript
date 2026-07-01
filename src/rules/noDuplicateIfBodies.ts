@@ -68,16 +68,14 @@ const guardDuplicate =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement) =>
   (previousIfStatement: ts.IfStatement): Option.Option<string> => {
-    const hasDuplicateBody = haveIdenticalBodies(context)(previousIfStatement)(
-      ifStatement
-    )
+    const hasDuplicateBody =
+      haveIdenticalBodies(context)(previousIfStatement)(ifStatement)
     const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
     const isMergeableDuplicate = [hasDuplicateBody, bodyExitsScope].every(
       Boolean
     )
-    const combinedCondition = combinedConditionText(context)(previousIfStatement)(
-      ifStatement
-    )
+    const combinedCondition =
+      combinedConditionText(context)(previousIfStatement)(ifStatement)
 
     return isMergeableDuplicate ? Option.some(combinedCondition) : Option.none()
   }
@@ -91,12 +89,10 @@ const parentBodyDuplicate =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement) =>
   (parentIfStatement: ts.IfStatement): Option.Option<string> => {
-    const hasDuplicateBody = haveIdenticalBodies(context)(parentIfStatement)(
-      ifStatement
-    )
-    const combinedCondition = combinedConditionText(context)(parentIfStatement)(
-      ifStatement
-    )
+    const hasDuplicateBody =
+      haveIdenticalBodies(context)(parentIfStatement)(ifStatement)
+    const combinedCondition =
+      combinedConditionText(context)(parentIfStatement)(ifStatement)
 
     return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
   }
@@ -127,7 +123,7 @@ const duplicateIfMatches =
           Option.flatMap(guardDuplicate(context)(ifStatement))
         )
       : Option.none()
-  
+
     const bodyMatch = Option.isSome(guardDuplicateMatch)
       ? guardDuplicateMatch
       : pipe(
@@ -135,7 +131,7 @@ const duplicateIfMatches =
           Option.filter(isElseOf(ifStatement)),
           Option.flatMap(parentBodyDuplicate(context)(ifStatement))
         )
-  
+
     return pipe(
       bodyMatch,
       Option.map(duplicateIfRuleMatch(context)(ifStatement)),
@@ -143,22 +139,36 @@ const duplicateIfMatches =
     )
   }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(duplicateIfMatches)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+  duplicateIfMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/auth.ts",
-  code: `if (isAdmin) {
-  return redirect("/dashboard")
-}
-if (isModerator) {
-  return redirect("/dashboard")
+  code: `declare const isAdmin: boolean
+declare const isModerator: boolean
+declare const redirect: (path: string) => Response
+
+export const routeUser = (): Response | undefined => {
+  if (isAdmin) {
+    return redirect("/dashboard")
+  }
+  if (isModerator) {
+    return redirect("/dashboard")
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/auth.ts",
-  code: `if (isAdmin || isModerator) {
-  return redirect("/dashboard")
+  code: `declare const isAdmin: boolean
+declare const isModerator: boolean
+declare const redirect: (path: string) => Response
+
+export const routeUser = (): Response | undefined => {
+  if (isAdmin || isModerator) {
+    return redirect("/dashboard")
+  }
 }`
 })
 

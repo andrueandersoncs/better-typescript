@@ -54,7 +54,7 @@ const containsDotValue =
       ts.forEachChild(node, containsDotValueInChild(name)) === true
 
     return isDotValue || childHasDotValue
-}
+  }
 
 const branchToCheck =
   (kind: OptionGuardKind) =>
@@ -88,41 +88,60 @@ const hasDotValueInBranch =
 
 const optionMatchMatches =
   (context: RuleContext) =>
-  (conditional: ts.ConditionalExpression): ReadonlyArray<RuleMatch> => pipe(
-    Option.gen(function* () {
-      const unwrapped = unwrapTransparentExpression(conditional.condition)
-      const call = yield* Option.liftPredicate(ts.isCallExpression)(unwrapped)
-      const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(
-        call.expression
-      )
-      const object = yield* Option.liftPredicate(ts.isIdentifier)(
-        callee.expression
-      )
-      yield* Option.liftPredicate(isOptionText)(object.text)
-      const methodName = callee.name.text
-      yield* Option.liftPredicate(isGuardMethodName)(methodName)
-      const firstArg = yield* Option.fromNullable(call.arguments[0])
-      const identifier = yield* Option.liftPredicate(ts.isIdentifier)(firstArg)
+  (conditional: ts.ConditionalExpression): ReadonlyArray<RuleMatch> =>
+    pipe(
+      Option.gen(function* () {
+        const unwrapped = unwrapTransparentExpression(conditional.condition)
+        const call = yield* Option.liftPredicate(ts.isCallExpression)(unwrapped)
+        const callee = yield* Option.liftPredicate(
+          ts.isPropertyAccessExpression
+        )(call.expression)
+        const object = yield* Option.liftPredicate(ts.isIdentifier)(
+          callee.expression
+        )
+        yield* Option.liftPredicate(isOptionText)(object.text)
+        const methodName = callee.name.text
+        yield* Option.liftPredicate(isGuardMethodName)(methodName)
+        const firstArg = yield* Option.fromNullable(call.arguments[0])
+        const identifier = yield* Option.liftPredicate(ts.isIdentifier)(
+          firstArg
+        )
 
-      return [methodName as OptionGuardKind, identifier.text] as const
-    }),
-    Option.filter(hasDotValueInBranch(conditional)),
-    Option.map(optionMatchRuleMatch(context)(conditional)),
-    Option.toArray
-  )
+        return [methodName as OptionGuardKind, identifier.text] as const
+      }),
+      Option.filter(hasDotValueInBranch(conditional)),
+      Option.map(optionMatchRuleMatch(context)(conditional)),
+      Option.toArray
+    )
 
-const check = onNode([ts.SyntaxKind.ConditionalExpression])(ts.isConditionalExpression)(optionMatchMatches)
+const check = onNode([ts.SyntaxKind.ConditionalExpression])(
+  ts.isConditionalExpression
+)(optionMatchMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/resolve.ts",
-  code: `const resolved = Option.isSome(typeNode)
+  code: `import { Option } from "effect"
+import type * as ts from "typescript"
+
+declare const typeNode: Option.Option<ts.TypeNode>
+declare const checker: ts.TypeChecker
+declare const parameter: ts.ParameterDeclaration
+
+export const resolved = Option.isSome(typeNode)
   ? checker.getTypeFromTypeNode(typeNode.value)
   : checker.getTypeAtLocation(parameter)`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/resolve.ts",
-  code: `const resolved = Option.match(typeNode, {
+  code: `import { Option } from "effect"
+import type * as ts from "typescript"
+
+declare const typeNode: Option.Option<ts.TypeNode>
+declare const checker: ts.TypeChecker
+declare const parameter: ts.ParameterDeclaration
+
+export const resolved = Option.match(typeNode, {
   onNone: () => checker.getTypeAtLocation(parameter),
   onSome: (node) => checker.getTypeFromTypeNode(node)
 })`

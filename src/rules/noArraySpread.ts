@@ -15,24 +15,41 @@ const hint =
 
 const arraySpreadMatches =
   (context: RuleContext) =>
-  (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => ts.isArrayLiteralExpression(spread.parent)
-    ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
-    : []
+  (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> =>
+    ts.isArrayLiteralExpression(spread.parent)
+      ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
+      : []
 
-const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(arraySpreadMatches)
+const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(
+  arraySpreadMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/items.ts",
-  code: `const combined = [...left, ...right]
-const withTail = [...items, extra]
-const withHead = [first, ...items]`
+  code: `declare const left: ReadonlyArray<string>
+declare const right: ReadonlyArray<string>
+declare const items: ReadonlyArray<string>
+declare const extra: string
+declare const first: string
+
+export const combined = [...left, ...right]
+export const withTail = [...items, extra]
+export const withHead = [first, ...items]`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/items.ts",
-  code: `const combined = Array.appendAll(left, right)
-const withTail = Array.append(items, extra)
-const withHead = Array.prepend(items, first)`
+  code: `import { Array } from "effect"
+
+declare const left: ReadonlyArray<string>
+declare const right: ReadonlyArray<string>
+declare const items: ReadonlyArray<string>
+declare const extra: string
+declare const first: string
+
+export const combined = Array.appendAll(left, right)
+export const withTail = Array.append(items, extra)
+export const withHead = Array.prepend(items, first)`
 })
 
 const example = new RuleExample({

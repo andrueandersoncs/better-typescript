@@ -97,9 +97,10 @@ const schemaIsMatches =
     )
     const schemaIsCheck = `Schema.is($schema)(${valueText})`
     const isNegated =
-      expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+      expression.operatorToken.kind ===
+      ts.SyntaxKind.ExclamationEqualsEqualsToken
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
-  
+
     return [
       createRuleMatch(context)({
         ruleId,
@@ -112,19 +113,49 @@ const schemaIsMatches =
     ]
   }
 
-const check = onNode([ts.SyntaxKind.BinaryExpression])(isSchemaTagComparison)(schemaIsMatches)
+const check = onNode([ts.SyntaxKind.BinaryExpression])(isSchemaTagComparison)(
+  schemaIsMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `if (shape._tag === "Circle") {
-  return circleArea(shape)
+  code: `interface Circle {
+  readonly _tag: "Circle"
+  readonly radius: number
+}
+
+interface Square {
+  readonly _tag: "Square"
+  readonly side: number
+}
+
+declare const circleArea: (circle: Circle) => number
+
+export const area = (shape: Circle | Square) => {
+  if (shape._tag === "Circle") {
+    return circleArea(shape)
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `if (Schema.is(Circle)(shape)) {
-  return circleArea(shape)
+  code: `import { Schema } from "effect"
+
+class Circle extends Schema.TaggedClass<Circle>()("Circle", {
+  radius: Schema.Number
+}) {}
+
+class Square extends Schema.TaggedClass<Square>()("Square", {
+  side: Schema.Number
+}) {}
+
+declare const circleArea: (circle: Circle) => number
+
+export const area = (shape: Circle | Square) => {
+  if (Schema.is(Circle)(shape)) {
+    return circleArea(shape)
+  }
 }`
 })
 

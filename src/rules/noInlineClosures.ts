@@ -22,7 +22,7 @@ const arrowFunctionMatches =
   (context: RuleContext) =>
   (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
     const parent = effectiveParent(arrowFunction)
-  
+
     return HashSet.has(sanctionedParentKinds, parent.kind)
       ? []
       : [
@@ -39,19 +39,31 @@ const arrowFunctionMatches =
         ]
   }
 
-const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(arrowFunctionMatches)
+const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
+  arrowFunctionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `users.map((user) => user.name.toUpperCase())`
+  code: `declare const users: ReadonlyArray<{ readonly name: string }>
+
+export const names = users.map((user) => user.name.toUpperCase())`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const upperName = (user: User): string =>
+  code: `import { Array } from "effect"
+
+interface User {
+  readonly name: string
+}
+
+declare const users: ReadonlyArray<User>
+
+const upperName = (user: User): string =>
   user.name.toUpperCase()
 
-Array.map(users, upperName)`
+export const names = Array.map(users, upperName)`
 })
 
 const example = new RuleExample({

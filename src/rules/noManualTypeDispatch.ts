@@ -118,38 +118,68 @@ const manualTypeDispatchMatch =
 
 const manualTypeDispatchMatches =
   (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => pipe(
-    Option.liftPredicate(isDispatchGuard)(ifStatement),
-    Option.filter(isChainHead),
-    Option.filter(isLongEnough),
-    Option.map(manualTypeDispatchMatch(context)),
-    Option.toArray
-  )
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+    pipe(
+      Option.liftPredicate(isDispatchGuard)(ifStatement),
+      Option.filter(isChainHead),
+      Option.filter(isLongEnough),
+      Option.map(manualTypeDispatchMatch(context)),
+      Option.toArray
+    )
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(manualTypeDispatchMatches)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+  manualTypeDispatchMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `if (Schema.is(Circle)(shape)) {
-  return circleArea(shape)
-}
-if (Schema.is(Square)(shape)) {
-  return squareArea(shape)
-}
-if (Schema.is(Triangle)(shape)) {
-  return triangleArea(shape)
+  code: `import { Schema } from "effect"
+
+class Circle extends Schema.Class<Circle>("Circle")({ radius: Schema.Number }) {}
+class Square extends Schema.Class<Square>("Square")({ side: Schema.Number }) {}
+class Triangle extends Schema.Class<Triangle>("Triangle")({ base: Schema.Number, height: Schema.Number }) {}
+
+declare const circleArea: (circle: Circle) => number
+declare const squareArea: (square: Square) => number
+declare const triangleArea: (triangle: Triangle) => number
+
+export const area = (shape: Circle | Square | Triangle) => {
+  if (Schema.is(Circle)(shape)) {
+    return circleArea(shape)
+  }
+  if (Schema.is(Square)(shape)) {
+    return squareArea(shape)
+  }
+  if (Schema.is(Triangle)(shape)) {
+    return triangleArea(shape)
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/shape.ts",
-  code: `return pipe(
-  Match.value(shape),
-  Match.when(Schema.is(Circle), circleArea),
-  Match.when(Schema.is(Square), squareArea),
-  Match.when(Schema.is(Triangle), triangleArea),
-  Match.exhaustive
-)`
+  code: `import { Match, Schema, pipe } from "effect"
+
+class Circle extends Schema.Class<Circle>("Circle")({ radius: Schema.Number }) {}
+class Square extends Schema.Class<Square>("Square")({ side: Schema.Number }) {}
+class Triangle extends Schema.Class<Triangle>("Triangle")({ base: Schema.Number, height: Schema.Number }) {}
+
+declare const circleArea: (circle: Circle) => number
+declare const squareArea: (square: Square) => number
+declare const triangleArea: (triangle: Triangle) => number
+
+const isCircle = Schema.is(Circle)
+const isSquare = Schema.is(Square)
+const isTriangle = Schema.is(Triangle)
+
+export const area = (shape: Circle | Square | Triangle) =>
+  pipe(
+    Match.value(shape),
+    Match.when(isCircle, circleArea),
+    Match.when(isSquare, squareArea),
+    Match.when(isTriangle, triangleArea),
+    Match.exhaustive
+  )`
 })
 
 const example = new RuleExample({

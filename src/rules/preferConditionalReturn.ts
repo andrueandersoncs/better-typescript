@@ -61,13 +61,13 @@ const ternaryText =
   (condition: ts.Expression) =>
   (whenTrue: ts.Expression) =>
   (whenFalse: ts.Expression): string =>
-  [
-    `(${condition.getText(sourceFile)})`,
-    "?",
-    whenTrue.getText(sourceFile),
-    ":",
-    whenFalse.getText(sourceFile)
-  ].join(" ")
+    [
+      `(${condition.getText(sourceFile)})`,
+      "?",
+      whenTrue.getText(sourceFile),
+      ":",
+      whenFalse.getText(sourceFile)
+    ].join(" ")
 
 const flippedTernaryText =
   (sourceFile: ts.SourceFile) =>
@@ -106,9 +106,9 @@ const conditionalReturnMatch =
         Option.flatMap(negatedPrefixUnaryExpressionOperand)
       )
       const returnExpression = Option.match(negatedCondition, {
-        onNone: standardTernaryText(context.sourceFile)(
-          ifStatement.expression
-        )(thenExpression)(fallbackExpression),
+        onNone: standardTernaryText(context.sourceFile)(ifStatement.expression)(
+          thenExpression
+        )(fallbackExpression),
         onSome: flippedTernaryText(context.sourceFile)(fallbackExpression)(
           thenExpression
         )
@@ -137,22 +137,32 @@ const statementConditionalMatch =
 
 const conditionalReturnRuleMatches =
   (context: RuleContext) =>
-  (block: ts.Block): ReadonlyArray<RuleMatch> => Array.filterMap(block.statements, statementConditionalMatch(context)(block))
+  (block: ts.Block): ReadonlyArray<RuleMatch> =>
+    Array.filterMap(block.statements, statementConditionalMatch(context)(block))
 
-const check = onNode([ts.SyntaxKind.Block])(ts.isBlock)(conditionalReturnRuleMatches)
+const check = onNode([ts.SyntaxKind.Block])(ts.isBlock)(
+  conditionalReturnRuleMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/parity.ts",
-  code: `if (isEven(n)) {
-  return "even"
-} else {
-  return "odd"
+  code: `declare const isEven: (n: number) => boolean
+
+export const parityLabel = (n: number): string => {
+  if (isEven(n)) {
+    return "even"
+  } else {
+    return "odd"
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/parity.ts",
-  code: `return isEven(n) ? "even" : "odd"`
+  code: `declare const isEven: (n: number) => boolean
+
+export const parityLabel = (n: number): string =>
+  isEven(n) ? "even" : "odd"`
 })
 
 const example = new RuleExample({

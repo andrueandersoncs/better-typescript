@@ -70,20 +70,27 @@ const effectFnRuleMatch =
 
 const effectFnMatches =
   (context: RuleContext) =>
-  (declaration: ts.VariableDeclaration): ReadonlyArray<RuleMatch> => pipe(
-    functionInitializer(declaration),
-    Option.filter(hasParameters),
-    Option.filter(returnsEffect(context)),
-    Option.as(declaration),
-    Option.map(effectFnRuleMatch(context)),
-    Option.toArray
-  )
+  (declaration: ts.VariableDeclaration): ReadonlyArray<RuleMatch> =>
+    pipe(
+      functionInitializer(declaration),
+      Option.filter(hasParameters),
+      Option.filter(returnsEffect(context)),
+      Option.as(declaration),
+      Option.map(effectFnRuleMatch(context)),
+      Option.toArray
+    )
 
-const check = onNode([ts.SyntaxKind.VariableDeclaration])(ts.isVariableDeclaration)(effectFnMatches)
+const check = onNode([ts.SyntaxKind.VariableDeclaration])(
+  ts.isVariableDeclaration
+)(effectFnMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const getUser = (id: string) =>
+  code: `import { Effect } from "effect"
+
+declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
+
+export const getUser = (id: string) =>
   Effect.gen(function* () {
     return yield* fetchUser(id)
   })`
@@ -91,7 +98,11 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const getUser = Effect.fn("getUser")(function* (id: string) {
+  code: `import { Effect } from "effect"
+
+declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
+
+export const getUser = Effect.fn("getUser")(function* (id: string) {
   return yield* fetchUser(id)
 })`
 })

@@ -131,27 +131,33 @@ const schemaDeclareMatches =
     if (!ts.isIdentifier(object)) return []
     const isOnSchema = object.text === "Schema"
     const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
-  
+
     return isDeclareOnSchema ? schemaDeclareCallMatches(context)(call) : []
   }
 
-const check = onNode([ts.SyntaxKind.CallExpression])(isDeclareCall)(schemaDeclareMatches)
+const check = onNode([ts.SyntaxKind.CallExpression])(isDeclareCall)(
+  schemaDeclareMatches
+)
 
 // --- Examples ---
 
 const badExample = new ExampleSnippet({
   filePath: "src/schema.ts",
-  code: `type MyData = { readonly name: string }
+  code: `import { Schema } from "effect"
+
+type MyData = { readonly name: string }
 
 const isMyData = (input: unknown): input is MyData =>
   typeof input === "object" && input !== null && "name" in input
 
-const MyDataSchema = Schema.declare(isMyData)`
+export const MyDataSchema = Schema.declare(isMyData)`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/schema.ts",
-  code: `class MyData extends Schema.Class<MyData>("MyData")({
+  code: `import { Schema } from "effect"
+
+export class MyData extends Schema.Class<MyData>("MyData")({
   name: Schema.String
 }) {}`
 })

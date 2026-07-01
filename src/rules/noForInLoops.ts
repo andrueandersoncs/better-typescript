@@ -19,11 +19,16 @@ const forInMatches =
     })
   ]
 
-const check = onNode([ts.SyntaxKind.ForInStatement])(ts.isForInStatement)(forInMatches)
+const check = onNode([ts.SyntaxKind.ForInStatement])(ts.isForInStatement)(
+  forInMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/config.ts",
-  code: `const result = {}
+  code: `declare const config: Record<string, string>
+
+export const result: Record<string, string> = {}
+
 for (const key in config) {
   result[key] = config[key].toUpperCase()
 }`
@@ -31,7 +36,11 @@ for (const key in config) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/config.ts",
-  code: `const result = Record.map(config, (value) => value.toUpperCase())`
+  code: `import { Record } from "effect"
+
+declare const config: Record.ReadonlyRecord<string, string>
+
+export const result = Record.map(config, (value) => value.toUpperCase())`
 })
 
 const example = new RuleExample({

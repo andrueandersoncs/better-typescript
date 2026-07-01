@@ -42,41 +42,46 @@ const rootLevelClassMatch =
 
 const rootLevelClassMatches =
   (context: RuleContext) =>
-  (declaration: ClassNode): ReadonlyArray<RuleMatch> => pipe(
-    Option.liftPredicate(lacksExtendsClause)(declaration),
-    Option.map(rootLevelClassMatch(context)),
-    Option.toArray
-  )
+  (declaration: ClassNode): ReadonlyArray<RuleMatch> =>
+    pipe(
+      Option.liftPredicate(lacksExtendsClause)(declaration),
+      Option.map(rootLevelClassMatch(context)),
+      Option.toArray
+    )
 
 const check = onNode(classNodeKinds)(isClassNode)(rootLevelClassMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `class UserService {
+  code: `export class UserService {
   getUser(id: string) { /* ... */ }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/model/user.ts",
-  code: `class User extends Schema.Class<User>("User")({
+  code: `import { Schema } from "effect"
+
+export class User extends Schema.Class<User>("User")({
   id: Schema.String,
   name: Schema.String
 }) {}`
 })
 
 const moduleGoodExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `const UserId = pipe(Schema.String, Schema.brand("UserId"))
-type UserId = typeof UserId.Type
+  filePath: "src/model/account.ts",
+  code: `import { Effect, Schema, pipe } from "effect"
 
-export const User = Schema.Struct({
-  id: UserId,
+const AccountId = pipe(Schema.String, Schema.brand("AccountId"))
+type AccountId = typeof AccountId.Type
+
+export const Account = Schema.Struct({
+  id: AccountId,
   name: Schema.String
 })
-export type User = typeof User.Type
+export type Account = typeof Account.Type
 
-export const getById = Effect.fn("user/getById")(function* (id: UserId) {})`
+export const getById = Effect.fn("account/getById")(function* (id: AccountId) {})`
 })
 
 const example = new RuleExample({

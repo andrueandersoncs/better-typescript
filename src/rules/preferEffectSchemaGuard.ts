@@ -59,23 +59,36 @@ const schemaGuardMatch =
 
 const inOperatorGuardMatches =
   (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => conditionExpressions(ifStatement.expression)
-    .filter(isStringKeyInExpression)
-    .map(schemaGuardMatch(context))
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+    conditionExpressions(ifStatement.expression)
+      .filter(isStringKeyInExpression)
+      .map(schemaGuardMatch(context))
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(inOperatorGuardMatches)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+  inOperatorGuardMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/guard.ts",
-  code: `if ("name" in value) {
-  return value.name
+  code: `export const readName = (value: object) => {
+  if ("name" in value) {
+    return value.name
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/guard.ts",
-  code: `if (Schema.is(User)(value)) {
-  return value.name
+  code: `import { Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({
+  name: Schema.String
+}) {}
+
+export const readName = (value: unknown) => {
+  if (Schema.is(User)(value)) {
+    return value.name
+  }
 }`
 })
 

@@ -19,11 +19,16 @@ const forOfMatches =
     })
   ]
 
-const check = onNode([ts.SyntaxKind.ForOfStatement])(ts.isForOfStatement)(forOfMatches)
+const check = onNode([ts.SyntaxKind.ForOfStatement])(ts.isForOfStatement)(
+  forOfMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const names = []
+  code: `declare const users: ReadonlyArray<{ readonly name: string }>
+
+export const names: Array<string> = []
+
 for (const user of users) {
   names.push(user.name)
 }`
@@ -31,7 +36,11 @@ for (const user of users) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const names = Array.map(users, (user) => user.name)`
+  code: `import { Array } from "effect"
+
+declare const users: ReadonlyArray<{ readonly name: string }>
+
+export const names = Array.map(users, (user) => user.name)`
 })
 
 const example = new RuleExample({

@@ -144,12 +144,12 @@ const check = onFile(duplicateFunctionMatches)
 
 const badExample1 = new ExampleSnippet({
   filePath: "src/routes/fileA.ts",
-  code: `const formatDate = (d: Date): string => d.toISOString()`
+  code: `export const formatDate = (d: Date): string => d.toISOString()`
 })
 
 const badExample2 = new ExampleSnippet({
   filePath: "src/routes/fileB.ts",
-  code: `const formatDate = (d: Date): string => d.toISOString()`
+  code: `export const formatDate = (d: Date): string => d.toISOString()`
 })
 
 const goodExample1 = new ExampleSnippet({
@@ -159,12 +159,16 @@ const goodExample1 = new ExampleSnippet({
 
 const goodExample2 = new ExampleSnippet({
   filePath: "src/routes/fileA.ts",
-  code: `import { formatDate } from "../dateFormat.js"`
+  code: `import { formatDate } from "../dateFormat.js"
+
+export const startedAt = formatDate(new Date())`
 })
 
 const goodExample3 = new ExampleSnippet({
   filePath: "src/routes/fileB.ts",
-  code: `import { formatDate } from "../dateFormat.js"`
+  code: `import { formatDate } from "../dateFormat.js"
+
+export const finishedAt = formatDate(new Date())`
 })
 
 const example = new RuleExample({

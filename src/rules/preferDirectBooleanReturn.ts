@@ -41,7 +41,6 @@ type StatementConditionalFalseMatch = (
   index: number
 ) => Option.Option<RuleMatch>
 
-
 const directBooleanRuleMatch =
   (context: RuleContext) =>
   (ifStatement: ts.IfStatement) =>
@@ -62,23 +61,28 @@ const directBooleanRuleMatch =
 
 const directBooleanMatches =
   (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => pipe(
-    Option.gen(function* () {
-      const unwrappedStatement = unwrapSingleStatementBlock(
-        ifStatement.thenStatement
-      )
-      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
-        unwrappedStatement
-      )
-      const expression = yield* Option.fromNullable(returnStatement.expression)
+  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+    pipe(
+      Option.gen(function* () {
+        const unwrappedStatement = unwrapSingleStatementBlock(
+          ifStatement.thenStatement
+        )
+        const returnStatement = yield* Option.liftPredicate(
+          ts.isReturnStatement
+        )(unwrappedStatement)
+        const expression = yield* Option.fromNullable(
+          returnStatement.expression
+        )
 
-      return yield* booleanLiteralValue(expression)
-    }),
-    Option.map(directBooleanRuleMatch(context)(ifStatement)),
-    Option.toArray
-  )
+        return yield* booleanLiteralValue(expression)
+      }),
+      Option.map(directBooleanRuleMatch(context)(ifStatement)),
+      Option.toArray
+    )
 
-const literalBooleanCheck = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(directBooleanMatches)
+const literalBooleanCheck = onNode([ts.SyntaxKind.IfStatement])(
+  ts.isIfStatement
+)(directBooleanMatches)
 
 // --- Conditional return followed by return false ---
 
@@ -136,12 +140,15 @@ const statementConditionalFalseMatch =
 
 const conditionalFalseReturnMatches =
   (context: RuleContext) =>
-  (block: ts.Block): ReadonlyArray<RuleMatch> => Array.filterMap(
-    block.statements,
-    statementConditionalFalseMatch(context)(block)
-  )
+  (block: ts.Block): ReadonlyArray<RuleMatch> =>
+    Array.filterMap(
+      block.statements,
+      statementConditionalFalseMatch(context)(block)
+    )
 
-const conditionalFalseCheck = onNode([ts.SyntaxKind.Block])(ts.isBlock)(conditionalFalseReturnMatches)
+const conditionalFalseCheck = onNode([ts.SyntaxKind.Block])(ts.isBlock)(
+  conditionalFalseReturnMatches
+)
 
 // --- Combined ---
 
@@ -149,29 +156,42 @@ const check = combineAll([literalBooleanCheck, conditionalFalseCheck])
 
 const badLiteralExample = new ExampleSnippet({
   filePath: "src/age.ts",
-  code: `if (age >= 18) {
-  return true
-}
-return false`
+  code: `export const isAdult = (age: number): boolean => {
+  if (age >= 18) {
+    return true
+  }
+  return false
+}`
 })
 
 const goodLiteralExample = new ExampleSnippet({
   filePath: "src/age.ts",
-  code: `return age >= 18`
+  code: `export const isAdult = (age: number): boolean => age >= 18`
 })
 
 const badConditionalFalseExample = new ExampleSnippet({
   filePath: "src/validate.ts",
-  code: `if (isValid(input)) {
-  const parsed = parse(input)
-  return hasRequiredFields(parsed)
-}
-return false`
+  code: `declare const isValid: (input: string) => boolean
+declare const parse: (input: string) => unknown
+declare const hasRequiredFields: (parsed: unknown) => boolean
+
+export const isUsable = (input: string): boolean => {
+  if (isValid(input)) {
+    const parsed = parse(input)
+    return hasRequiredFields(parsed)
+  }
+  return false
+}`
 })
 
 const goodConditionalFalseExample = new ExampleSnippet({
   filePath: "src/validate.ts",
-  code: `return isValid(input) && hasRequiredFields(parse(input))`
+  code: `declare const isValid: (input: string) => boolean
+declare const parse: (input: string) => unknown
+declare const hasRequiredFields: (parsed: unknown) => boolean
+
+export const isUsable = (input: string): boolean =>
+  isValid(input) && hasRequiredFields(parse(input))`
 })
 
 const example = new RuleExample({

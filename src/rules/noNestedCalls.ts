@@ -68,10 +68,10 @@ const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
 const calleeDisplayText =
   (sourceFile: ts.SourceFile) =>
   (call: CallLikeExpression): string => {
-  const calleeText = call.expression.getText(sourceFile)
+    const calleeText = call.expression.getText(sourceFile)
 
-  return ts.isNewExpression(call) ? `new ${calleeText}` : calleeText
-}
+    return ts.isNewExpression(call) ? `new ${calleeText}` : calleeText
+  }
 
 const ruleHint =
   "A call whose result feeds another call hides a sequence of steps in one expression " +
@@ -119,31 +119,58 @@ const consumerRuleMatch =
 
 const nestedCallMatches =
   (context: RuleContext) =>
-  (call: CallLikeExpression): ReadonlyArray<RuleMatch> => pipe(
-    consumingCall(call),
-    Option.flatMap(consumerRuleMatch(context)(call)),
-    Option.toArray
-  )
+  (call: CallLikeExpression): ReadonlyArray<RuleMatch> =>
+    pipe(
+      consumingCall(call),
+      Option.flatMap(consumerRuleMatch(context)(call)),
+      Option.toArray
+    )
 
-const check = onNode([ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression])(isCallLikeExpression)(nestedCallMatches)
+const check = onNode([
+  ts.SyntaxKind.CallExpression,
+  ts.SyntaxKind.NewExpression
+])(isCallLikeExpression)(nestedCallMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/log.ts",
-  code: `console.log(formatDate(parseTimestamp(raw)))`
+  code: `declare const parseTimestamp: (raw: string) => Date
+declare const formatDate: (date: Date) => string
+
+export const logTimestamp = (raw: string): void => {
+  console.log(formatDate(parseTimestamp(raw)))
+}`
 })
 
 const goodExtractedValues = new ExampleSnippet({
   filePath: "src/log.ts",
-  code: `const timestamp = parseTimestamp(raw)
-const formatted = formatDate(timestamp)
-console.log(formatted)`
+  code: `declare const parseTimestamp: (raw: string) => Date
+declare const formatDate: (date: Date) => string
+
+export const logTimestamp = (raw: string): void => {
+  const timestamp = parseTimestamp(raw)
+  const formatted = formatDate(timestamp)
+  console.log(formatted)
+}`
 })
 
 const goodEffectPipe = new ExampleSnippet({
-  filePath: "src/loadUser.ts",
+  filePath: "src/loadUserPipe.ts",
   code: `import { Effect, Struct, pipe } from "effect"
 
-const program = pipe(
+interface User {
+  readonly id: string
+}
+
+interface Profile {
+  readonly displayName: string
+}
+
+declare const userId: string
+declare const fetchUser: (id: string) => Effect.Effect<User>
+declare const loadProfile: (id: string) => Effect.Effect<Profile>
+declare const renderProfile: (profile: Profile) => string
+
+export const program = pipe(
   fetchUser(userId),
   Effect.map(Struct.get("id")),
   Effect.flatMap(loadProfile),
@@ -152,10 +179,23 @@ const program = pipe(
 })
 
 const goodEffectGen = new ExampleSnippet({
-  filePath: "src/loadUser.ts",
+  filePath: "src/loadUserGen.ts",
   code: `import { Effect } from "effect"
 
-const program = Effect.gen(function* () {
+interface User {
+  readonly id: string
+}
+
+interface Profile {
+  readonly displayName: string
+}
+
+declare const userId: string
+declare const fetchUser: (id: string) => Effect.Effect<User>
+declare const loadProfile: (id: string) => Effect.Effect<Profile>
+declare const renderProfile: (profile: Profile) => string
+
+export const program = Effect.gen(function* () {
   const user = yield* fetchUser(userId)
   const profile = yield* loadProfile(user.id)
 

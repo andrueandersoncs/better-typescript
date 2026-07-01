@@ -27,7 +27,7 @@ const inlineBooleanConditionMatches =
       binaryExpression,
       hasLogicalOperator
     )
-  
+
     return isLogicalOperatorExpression
       ? [
           createRuleMatch(context)({
@@ -43,22 +43,36 @@ const inlineBooleanConditionMatches =
       : []
   }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(inlineBooleanConditionMatches)
+const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+  inlineBooleanConditionMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/access.ts",
-  code: `if (user.isActive && user.hasPermission) {
-  await grantAccess()
+  code: `declare const user: { readonly isActive: boolean; readonly hasPermission: boolean }
+declare const grantAccess: () => Promise<void>
+
+export const ensureAccess = async (): Promise<void> => {
+  if (user.isActive && user.hasPermission) {
+    await grantAccess()
+  }
 }`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/access.ts",
-  code: `const canAccess = user.isActive && user.hasPermission
+  code: `import { Effect } from "effect"
 
-if (canAccess) {
-  yield* grantAccess();
-}`
+declare const user: { readonly isActive: boolean; readonly hasPermission: boolean }
+declare const grantAccess: () => Effect.Effect<void>
+
+export const ensureAccess = Effect.fn(function* () {
+  const canAccess = user.isActive && user.hasPermission
+
+  if (canAccess) {
+    yield* grantAccess()
+  }
+})`
 })
 
 const example = new RuleExample({

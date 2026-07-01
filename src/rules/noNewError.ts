@@ -20,7 +20,7 @@ const newErrorMatches =
       constructorIdentifier,
       isErrorIdentifier
     )
-  
+
     return isBareErrorConstruction
       ? [
           createRuleMatch(context)({
@@ -35,18 +35,22 @@ const newErrorMatches =
       : []
   }
 
-const check = onNode([ts.SyntaxKind.NewExpression])(ts.isNewExpression)(newErrorMatches)
+const check = onNode([ts.SyntaxKind.NewExpression])(ts.isNewExpression)(
+  newErrorMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/errors.ts",
-  code: `const err = new Error("Not found")`
+  code: `export const err = new Error("Not found")`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/errors.ts",
-  code: `class NotFound extends Schema.TaggedError<NotFound>("NotFound")("NotFound", {}) {}
+  code: `import { Schema } from "effect"
 
-const err = new NotFound()`
+class NotFound extends Schema.TaggedError<NotFound>("NotFound")("NotFound", {}) {}
+
+export const err = new NotFound()`
 })
 
 const example = new RuleExample({

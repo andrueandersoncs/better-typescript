@@ -126,7 +126,7 @@ const isRecordType =
     return type.isUnionOrIntersection()
       ? type.types.every(isRecordTypeMember(context))
       : [hasIndexSignature(type), hasIndexSignature(apparentType)].some(Boolean)
-}
+  }
 
 const declarationNameText =
   (context: RuleContext) =>
@@ -175,7 +175,7 @@ const propertyAccessorMatches =
       ? Option.fromNullable(node.parameters[0])
       : Option.none<ts.ParameterDeclaration>()
     const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
-  
+
     return pipe(
       paramName,
       Option.flatMap(parameterPropertyAccess(node)),
@@ -184,17 +184,25 @@ const propertyAccessorMatches =
     )
   }
 
-const check = onNode(propertyAccessorFunctionKinds)(isPropertyAccessorFunction)(propertyAccessorMatches)
+const check = onNode(propertyAccessorFunctionKinds)(isPropertyAccessorFunction)(
+  propertyAccessorMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const getName = (user: User): string =>
+  code: `interface User {
+  readonly name: string
+}
+
+export const getName = (user: User): string =>
   user.name`
 })
 
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `const getName = Struct.get("name")`
+  code: `import { Struct } from "effect"
+
+export const getName = Struct.get("name")`
 })
 
 const example = new RuleExample({
