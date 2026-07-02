@@ -1,6 +1,6 @@
 import { Array, HashMap, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
-import { onFile } from "./ruleCheck.js"
+import { fileListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import {
   conciseArrowBody,
@@ -16,7 +16,12 @@ import {
   TsSymbol
 } from "./tsSchema.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type {
+  ProgramContext,
+  RuleContext,
+  RuleListener,
+  RuleMatch
+} from "./types.js"
 
 const ruleId = "no-single-use-callee"
 
@@ -296,7 +301,7 @@ const entryToSymbolPair =
   (entry: FunctionEntry): Option.Option<[ts.Symbol, FunctionEntry]> =>
     pipe(symbolForEntry(checker)(entry), Option.map(pairWithEntry(entry)))
 
-// Index caching
+// Index construction
 
 const functionEntryArraySchema = Schema.Array(FunctionEntry)
 const symbolHashSetSchema = Schema.HashSetFromSelf(TsSymbol)
@@ -306,36 +311,27 @@ class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
   calleeOnlySymbols: symbolHashSetSchema
 }) {}
 
-const referenceIndexCache = new WeakMap<ts.Program, ReferenceIndex>()
+const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
+  const program = context.program
+  const checker = context.checker
+  const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
+  const entries = projectFiles.flatMap(sourceFileEntries)
+  const symbolEntryPairs = Array.filterMap(entries, entryToSymbolPair(checker))
+  const symbolToEntry = HashMap.fromIterable(symbolEntryPairs)
+  const folder = foldDescendants(classifyIdentifierNode(checker)(symbolToEntry))
+  const classifications = Array.reduce(
+    projectFiles,
+    emptyClassifications,
+    folder
+  )
+  const calleeOnlySymbols = pipe(
+    HashMap.filter(classifications, isSingleCalleeEntry),
+    HashMap.keys,
+    HashSet.fromIterable
+  )
 
-const orBuildReferenceIndex =
-  (program: ts.Program) => (checker: ts.TypeChecker) => (): ReferenceIndex => {
-    const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
-    const entries = projectFiles.flatMap(sourceFileEntries)
-    const symbolEntryPairs = Array.filterMap(
-      entries,
-      entryToSymbolPair(checker)
-    )
-    const symbolToEntry = HashMap.fromIterable(symbolEntryPairs)
-    const folder = foldDescendants(
-      classifyIdentifierNode(checker)(symbolToEntry)
-    )
-    const classifications = Array.reduce(
-      projectFiles,
-      emptyClassifications,
-      folder
-    )
-    const calleeOnlySymbols = pipe(
-      HashMap.filter(classifications, isSingleCalleeEntry),
-      HashMap.keys,
-      HashSet.fromIterable
-    )
-    const index = new ReferenceIndex({ entries, calleeOnlySymbols })
-
-    referenceIndexCache.set(program, index)
-
-    return index
-  }
+  return new ReferenceIndex({ entries, calleeOnlySymbols })
+}
 
 // Match generation
 const symbolInSet =
@@ -384,24 +380,21 @@ const isInFile =
   (entry: FunctionEntry): boolean =>
     entry.nameNode.getSourceFile().fileName === sourceFile.fileName
 
-const singleUseCalleeMatches = (
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const cached = referenceIndexCache.get(context.program)
-  const index = pipe(
-    Option.fromNullable(cached),
-    Option.getOrElse(orBuildReferenceIndex(context.program)(context.checker))
-  )
+const singleUseCalleeMatches =
+  (index: ReferenceIndex) =>
+  (context: RuleContext): ReadonlyArray<RuleMatch> =>
+    pipe(
+      index.entries,
+      Array.filter(isInFile(context.sourceFile)),
+      Array.filter(symbolIsFlaggable(index.calleeOnlySymbols)(context.checker)),
+      Array.map(singleUseCalleeMatch(context))
+    )
 
-  return pipe(
-    index.entries,
-    Array.filter(isInFile(context.sourceFile)),
-    Array.filter(symbolIsFlaggable(index.calleeOnlySymbols)(context.checker)),
-    Array.map(singleUseCalleeMatch(context))
-  )
-}
+const singleUseCalleeListeners = (
+  index: ReferenceIndex
+): ReadonlyArray<RuleListener> => fileListeners(singleUseCalleeMatches(index))
 
-const check = onFile(singleUseCalleeMatches)
+const check = withProgramIndex(buildReferenceIndex)(singleUseCalleeListeners)
 
 const badExample = new ExampleSnippet({
   filePath: "src/validate.ts",

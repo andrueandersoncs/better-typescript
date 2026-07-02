@@ -1,10 +1,15 @@
 import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onFile } from "./ruleCheck.js"
+import { fileListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { functionInitializer, isProjectSourceFile } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type {
+  ProgramContext,
+  RuleContext,
+  RuleListener,
+  RuleMatch
+} from "./types.js"
 
 const ruleId = "no-duplicate-function-names"
 
@@ -61,22 +66,6 @@ const addFunctionToIndex = (
   return HashMap.set(index, nameNode.text, nextDeclarations)
 }
 
-const functionNameIndexCache = new WeakMap<ts.Program, FunctionNameIndex>()
-
-const orBuildFunctionNameIndex =
-  (program: ts.Program) => (): FunctionNameIndex => {
-    const projectFunctions = program
-      .getSourceFiles()
-      .filter(isProjectSourceFile)
-      .flatMap(topLevelFunctions)
-    const emptyIndex = HashMap.empty<string, ReadonlyArray<ts.Identifier>>()
-    const index = projectFunctions.reduce(addFunctionToIndex, emptyIndex)
-
-    functionNameIndexCache.set(program, index)
-
-    return index
-  }
-
 const declaredFileName = (nameNode: ts.Identifier): string =>
   nameNode.getSourceFile().fileName
 
@@ -101,13 +90,9 @@ const hasIdenticalSignature =
 const maxListedFileNames = 3
 
 const candidateRuleMatch =
+  (index: FunctionNameIndex) =>
   (context: RuleContext) =>
   (candidate: ts.Identifier): Option.Option<RuleMatch> => {
-    const cached = functionNameIndexCache.get(context.program)
-    const index = pipe(
-      Option.fromNullable(cached),
-      Option.getOrElse(orBuildFunctionNameIndex(context.program))
-    )
     const declarations = declarationsForName(index)(candidate.text)
     const identicalDeclarations = declarations.filter(
       hasIdenticalSignature(context.checker)(candidate)
@@ -150,15 +135,31 @@ const candidateRuleMatch =
     return Option.some(match)
   }
 
-const duplicateFunctionMatches = (
-  context: RuleContext
-): ReadonlyArray<RuleMatch> => {
-  const fileFunctions = topLevelFunctions(context.sourceFile)
+const duplicateFunctionMatches =
+  (index: FunctionNameIndex) =>
+  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+    const fileFunctions = topLevelFunctions(context.sourceFile)
 
-  return Array.filterMap(fileFunctions, candidateRuleMatch(context))
+    return Array.filterMap(fileFunctions, candidateRuleMatch(index)(context))
+  }
+
+const buildFunctionNameIndex = (
+  context: ProgramContext
+): FunctionNameIndex => {
+  const projectFunctions = context.program
+    .getSourceFiles()
+    .filter(isProjectSourceFile)
+    .flatMap(topLevelFunctions)
+  const emptyIndex = HashMap.empty<string, ReadonlyArray<ts.Identifier>>()
+
+  return projectFunctions.reduce(addFunctionToIndex, emptyIndex)
 }
 
-const check = onFile(duplicateFunctionMatches)
+const duplicateNameListeners = (
+  index: FunctionNameIndex
+): ReadonlyArray<RuleListener> => fileListeners(duplicateFunctionMatches(index))
+
+const check = withProgramIndex(buildFunctionNameIndex)(duplicateNameListeners)
 
 const badExample1 = new ExampleSnippet({
   filePath: "src/routes/fileA.ts",

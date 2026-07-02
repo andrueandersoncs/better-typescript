@@ -2,6 +2,14 @@ import { Predicate, Schema } from "effect"
 import * as ts from "typescript"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
 
+export class ProgramContext extends Schema.Class<ProgramContext>(
+  "ProgramContext"
+)({
+  program: TsProgram,
+  checker: TsTypeChecker,
+  projectRoot: Schema.String
+}) {}
+
 export class RuleContext extends Schema.Class<RuleContext>("RuleContext")({
   program: TsProgram,
   checker: TsTypeChecker,
@@ -52,10 +60,16 @@ export class FileListener extends Schema.TaggedClass<FileListener>()("OnFile", {
 
 export type RuleListener = NodeListener | FileListener
 
-export type RuleCheck = ReadonlyArray<RuleListener>
+export type RuleCheck = (
+  context: ProgramContext
+) => ReadonlyArray<RuleListener>
 
-const ruleListenerSchema = Schema.Union(NodeListener, FileListener)
-const ruleCheckSchema = Schema.Array(ruleListenerSchema)
+const isRuleCheck = (input: unknown): input is RuleCheck =>
+  Predicate.isFunction(input)
+
+const ruleCheckSchema = Schema.declare(isRuleCheck).annotations({
+  identifier: "RuleCheck"
+})
 
 export class ExampleSnippet extends Schema.Class<ExampleSnippet>(
   "ExampleSnippet"

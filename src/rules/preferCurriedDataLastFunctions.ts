@@ -1,7 +1,7 @@
 import { Array, Function, HashMap, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { astChildren } from "./traverse.js"
-import { onNode } from "./ruleCheck.js"
+import { nodeListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import {
   conciseArrowBody,
@@ -14,7 +14,12 @@ import {
 import { resolvedCallSignature, signatureIsExternal } from "./tsSignature.js"
 import { hasCallSignature } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type {
+  ProgramContext,
+  RuleContext,
+  RuleListener,
+  RuleMatch
+} from "./types.js"
 
 const ruleId = "prefer-curried-data-last-functions"
 
@@ -39,8 +44,6 @@ const emptySymbolUse = new SymbolUse({
 })
 
 const emptySymbolUses: SymbolUses = HashMap.empty()
-
-const symbolUseCache = new WeakMap<ts.Program, SymbolUses>()
 
 const candidateKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
@@ -472,30 +475,18 @@ const classifySourceFileUses =
       sourceFile
     )(uses)
 
-const buildSymbolUses =
-  (program: ts.Program) => (checker: ts.TypeChecker) => (): SymbolUses => {
-    const sourceFiles = program.getSourceFiles().filter(isProjectSourceFile)
-    const trackedSymbols = trackedSymbolsForProgram(program)(checker)
+const buildSymbolUses = (context: ProgramContext): SymbolUses => {
+  const sourceFiles = context.program.getSourceFiles().filter(isProjectSourceFile)
+  const trackedSymbols = trackedSymbolsForProgram(context.program)(
+    context.checker
+  )
 
-    return Array.reduce(
-      sourceFiles,
-      emptySymbolUses,
-      classifySourceFileUses(checker)(trackedSymbols)
-    )
-  }
-
-const symbolUsesForProgram =
-  (program: ts.Program) => (checker: ts.TypeChecker) => (): SymbolUses => {
-    const cached = symbolUseCache.get(program)
-    const symbolUses = pipe(
-      Option.fromNullable(cached),
-      Option.getOrElse(buildSymbolUses(program)(checker))
-    )
-
-    symbolUseCache.set(program, symbolUses)
-
-    return symbolUses
-  }
+  return Array.reduce(
+    sourceFiles,
+    emptySymbolUses,
+    classifySourceFileUses(context.checker)(trackedSymbols)
+  )
+}
 
 const isContextualOnlyUse = (use: SymbolUse): boolean => {
   const isContextualReference = use.hasContextualReference
@@ -513,16 +504,14 @@ const symbolUseFrom =
     HashMap.get(symbolUses, symbol)
 
 const hasOnlyContextualReferences =
-  (context: RuleContext) =>
-  (declaration: CurriedDataLastCandidate): boolean => {
-    const symbolUses = symbolUsesForProgram(context.program)(context.checker)()
-
-    return pipe(
-      symbolForDeclaration(context.checker)(declaration),
+  (symbolUses: SymbolUses) =>
+  (checker: ts.TypeChecker) =>
+  (declaration: CurriedDataLastCandidate): boolean =>
+    pipe(
+      symbolForDeclaration(checker)(declaration),
       Option.flatMap(symbolUseFrom(symbolUses)),
       Option.exists(isContextualOnlyUse)
     )
-  }
 
 const curriedDataLastMatch =
   (context: RuleContext) =>
@@ -553,6 +542,7 @@ const curriedDataLastMatch =
   }
 
 const curriedDataLastMatches =
+  (symbolUses: SymbolUses) =>
   (context: RuleContext) =>
   (declaration: CurriedDataLastCandidate): ReadonlyArray<RuleMatch> => {
     const hasDisallowedParameters = hasDisallowedParameterList(declaration)
@@ -560,8 +550,9 @@ const curriedDataLastMatches =
     const isContextual = isContextuallyTypedFunction(context.checker)(
       declaration
     )
-    const hasOnlyContextualUse =
-      hasOnlyContextualReferences(context)(declaration)
+    const hasOnlyContextualUse = hasOnlyContextualReferences(symbolUses)(
+      context.checker
+    )(declaration)
     const shouldReport = [
       hasDisallowedParameters,
       !hasCurriedBody,
@@ -572,9 +563,14 @@ const curriedDataLastMatches =
     return shouldReport ? [curriedDataLastMatch(context)(declaration)] : []
   }
 
-const check = onNode(candidateKinds)(isCurriedDataLastCandidate)(
-  curriedDataLastMatches
-)
+const curriedDataLastListeners = (
+  symbolUses: SymbolUses
+): ReadonlyArray<RuleListener> =>
+  nodeListeners(candidateKinds)(isCurriedDataLastCandidate)(
+    curriedDataLastMatches(symbolUses)
+  )
+
+const check = withProgramIndex(buildSymbolUses)(curriedDataLastListeners)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",

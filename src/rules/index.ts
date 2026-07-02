@@ -103,5 +103,11 @@ export const rules: ReadonlyArray<Rule> = [
   preferCurriedDataLastFunctions
 ]
 
-export { ExampleSnippet, RuleContext, RuleExample, RuleMatch } from "./types.js"
+export {
+  ExampleSnippet,
+  ProgramContext,
+  RuleContext,
+  RuleExample,
+  RuleMatch
+} from "./types.js"
 export type { Rule } from "./types.js"

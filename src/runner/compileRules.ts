@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { astChildren } from "../rules/traverse.js"
 import { FileListener, NodeListener } from "../rules/types.js"
 import type {
+  ProgramContext,
   Rule,
-  RuleCheck,
   RuleContext,
   RuleListener,
   RuleMatch
@@ -17,15 +17,20 @@ type AddKindHandler = (table: HandlerTable, kind: ts.SyntaxKind) => HandlerTable
 
 type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 
-export const compileRules = (rules: ReadonlyArray<Rule>): CheckSourceFile => {
-  const listeners = rules.flatMap(ruleListeners)
-  const nodeListeners = listeners.filter(isNodeListener)
-  const emptyTable = HashMap.empty<ts.SyntaxKind, ReadonlyArray<NodeHandler>>()
-  const table = nodeListeners.reduce(addListenerHandlers, emptyTable)
-  const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
+export const compileRules =
+  (rules: ReadonlyArray<Rule>) =>
+  (programContext: ProgramContext): CheckSourceFile => {
+    const listeners = rules.flatMap(ruleListeners(programContext))
+    const nodeListeners = listeners.filter(isNodeListener)
+    const emptyTable = HashMap.empty<
+      ts.SyntaxKind,
+      ReadonlyArray<NodeHandler>
+    >()
+    const table = nodeListeners.reduce(addListenerHandlers, emptyTable)
+    const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
 
-  return checkSourceFile(table)(fileHandlers)
-}
+    return checkSourceFile(table)(fileHandlers)
+  }
 
 const checkSourceFile =
   (table: HandlerTable) =>
@@ -70,7 +75,10 @@ const fileListenerSchema = Schema.is(FileListener)
 const isFileListener = (listener: RuleListener): listener is FileListener =>
   fileListenerSchema(listener)
 
-const ruleListeners: (rule: Rule) => RuleCheck = Struct.get("check")
+const ruleListeners =
+  (programContext: ProgramContext) =>
+  (rule: Rule): ReadonlyArray<RuleListener> =>
+    rule.check(programContext)
 
 const listenerHandler: (listener: FileListener) => FileHandler =
   Struct.get("handler")

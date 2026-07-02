@@ -1,17 +1,20 @@
 import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, onNode } from "./ruleCheck.js"
+import { nodeListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { isProjectSourceFile, outermostTransparentWrapper } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type {
+  ProgramContext,
+  RuleContext,
+  RuleListener,
+  RuleMatch
+} from "./types.js"
 
 const ruleId = "prefer-effect-schema-class"
 
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
-
-const interfaceConstructionCache = new WeakMap<ts.Program, ConstructionIndex>()
 
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
   pipe(
@@ -263,31 +266,22 @@ const addConstructionEntry = (
 ): ConstructionIndex =>
   HashMap.has(index, entry[0]) ? index : HashMap.set(index, entry[0], entry[1])
 
-const orBuildInterfaceConstructionIndex =
-  (context: RuleContext) => (): ConstructionIndex => {
-    const emptyIndex = HashMap.empty<ts.Symbol, string>()
-    const index = context.program
-      .getSourceFiles()
-      .filter(isProjectSourceFile)
-      .flatMap(fileConstructionEntries(context.checker))
-      .reduce(addConstructionEntry, emptyIndex)
+const buildConstructionIndex = (
+  context: ProgramContext
+): ConstructionIndex => {
+  const emptyIndex = HashMap.empty<ts.Symbol, string>()
 
-    interfaceConstructionCache.set(context.program, index)
+  return context.program
+    .getSourceFiles()
+    .filter(isProjectSourceFile)
+    .flatMap(fileConstructionEntries(context.checker))
+    .reduce(addConstructionEntry, emptyIndex)
+}
 
-    return index
-  }
-
-const constructionFile =
-  (context: RuleContext) =>
-  (symbol: ts.Symbol): Option.Option<string> => {
-    const cached = interfaceConstructionCache.get(context.program)
-    const index = pipe(
-      Option.fromNullable(cached),
-      Option.getOrElse(orBuildInterfaceConstructionIndex(context))
-    )
-
-    return HashMap.get(index, symbol)
-  }
+const constructionSymbolFile =
+  (index: ConstructionIndex) =>
+  (symbol: ts.Symbol): Option.Option<string> =>
+    HashMap.get(index, symbol)
 
 const schemaClassRuleMatch =
   (context: RuleContext) =>
@@ -319,6 +313,7 @@ const schemaClassRuleMatch =
   }
 
 const objectTypeDeclarationMatches =
+  (index: ConstructionIndex) =>
   (context: RuleContext) =>
   (declaration: ObjectTypeDeclaration): ReadonlyArray<RuleMatch> => {
     const declarationSymbol = context.checker.getSymbolAtLocation(
@@ -327,7 +322,7 @@ const objectTypeDeclarationMatches =
 
     return pipe(
       Option.fromNullable(declarationSymbol),
-      Option.flatMap(constructionFile(context)),
+      Option.flatMap(constructionSymbolFile(index)),
       Option.map(schemaClassRuleMatch(context)(declaration)),
       Option.toArray
     )
@@ -338,15 +333,20 @@ const isObjectTypeAliasDeclaration = (
 ): node is ts.TypeAliasDeclaration =>
   ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)
 
-const interfaceListener = onNode([ts.SyntaxKind.InterfaceDeclaration])(
-  ts.isInterfaceDeclaration
-)(objectTypeDeclarationMatches)
+const schemaClassListeners = (
+  index: ConstructionIndex
+): ReadonlyArray<RuleListener> => {
+  const interfaceListeners = nodeListeners([
+    ts.SyntaxKind.InterfaceDeclaration
+  ])(ts.isInterfaceDeclaration)(objectTypeDeclarationMatches(index))
+  const typeAliasListeners = nodeListeners([
+    ts.SyntaxKind.TypeAliasDeclaration
+  ])(isObjectTypeAliasDeclaration)(objectTypeDeclarationMatches(index))
 
-const typeAliasListener = onNode([ts.SyntaxKind.TypeAliasDeclaration])(
-  isObjectTypeAliasDeclaration
-)(objectTypeDeclarationMatches)
+  return Array.appendAll(interfaceListeners, typeAliasListeners)
+}
 
-const check = combineAll([interfaceListener, typeAliasListener])
+const check = withProgramIndex(buildConstructionIndex)(schemaClassListeners)
 
 const contextExample = new ExampleSnippet({
   filePath: "src/service/userService.ts",
