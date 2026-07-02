@@ -12,9 +12,13 @@ type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
 }
 
-const implicitReturnMatches =
-  (context: RuleContext) =>
-  (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so the hoisted match is shared by every ArrowFunction the dispatcher feeds to matches.
+const implicitReturnMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    arrowFunction: ts.ArrowFunction
+  ): ReadonlyArray<RuleMatch> => {
     if (!ts.isBlock(arrowFunction.body)) return []
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
@@ -28,7 +32,7 @@ const implicitReturnMatches =
 
     return hasSingleValueReturn
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: arrowFunction.body,
             message:
@@ -40,6 +44,9 @@ const implicitReturnMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
   implicitReturnMatches

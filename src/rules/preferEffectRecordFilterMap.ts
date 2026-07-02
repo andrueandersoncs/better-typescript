@@ -27,9 +27,11 @@ const hasNoProperties = (expression: ts.Expression): boolean =>
 const hasSomeProperties = (expression: ts.Expression): boolean =>
   objectLiteralPropertyCount(expression) > 0
 
-const conditionalObjectSpreadMatches =
-  (context: RuleContext) =>
-  (spread: ts.SpreadAssignment): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so the hoisted match is shared by every SpreadAssignment the dispatcher feeds to matches.
+const conditionalObjectSpreadMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (spread: ts.SpreadAssignment): ReadonlyArray<RuleMatch> => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
 
@@ -43,9 +45,12 @@ const conditionalObjectSpreadMatches =
     ].every(Boolean)
 
     return [emptyThenNonEmptyElse, nonEmptyThenEmptyElse].some(Boolean)
-      ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
+      ? [match({ ruleId, node: spread, message, hint })]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.SpreadAssignment])(ts.isSpreadAssignment)(
   conditionalObjectSpreadMatches

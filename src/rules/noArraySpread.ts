@@ -13,12 +13,17 @@ const hint =
   "single element, Array.appendAll or Array.prependAll to combine two arrays, " +
   "and Array.fromIterable to materialize an iterable."
 
-const arraySpreadMatches =
-  (context: RuleContext) =>
-  (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so match is shared by every SpreadElement the dispatcher feeds to matches.
+const arraySpreadMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> =>
     ts.isArrayLiteralExpression(spread.parent)
-      ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
+      ? [match({ ruleId, node: spread, message, hint })]
       : []
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(
   arraySpreadMatches

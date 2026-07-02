@@ -1,12 +1,13 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, onNode } from "./ruleCheck.js"
+import { onNode } from "./ruleCheck.js"
 import { isInAmbientContext, typeNameIdentifier } from "./tsNode.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
 } from "./tsSignature.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -25,21 +26,23 @@ const constructorHint =
   "Constructing a Set is permitted only when it is handed to a third-party API that " +
   "requires one."
 
-const newSetMatches =
-  (context: RuleContext) =>
-  (newExpression: ts.NewExpression): ReadonlyArray<RuleMatch> => {
+const newSetMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
+  const constructionEscapes = constructionEscapesExternally(checker)
+
+  const matches = (
+    newExpression: ts.NewExpression
+  ): ReadonlyArray<RuleMatch> => {
     const expressionOption = Option.liftPredicate(ts.isIdentifier)(
       newExpression.expression
     )
     const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)
     const escapesExternally =
-      isSetConstruction &&
-      constructionEscapesExternally(context.checker)(newExpression)
+      isSetConstruction && constructionEscapes(newExpression)
     const isReportable = [isSetConstruction, !escapesExternally].every(Boolean)
 
     return isReportable
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: newExpression,
             message: constructorMessage,
@@ -49,6 +52,9 @@ const newSetMatches =
       : []
   }
 
+  return matches
+}
+
 // --- Set<T> / ReadonlySet<T> type reference detection ---
 
 const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
@@ -56,26 +62,18 @@ const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
 const isSetTypeName = (id: ts.Identifier): boolean =>
   setTypeNames.includes(id.text)
 
-const isSetTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
-  pipe(
-    Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.flatMap(typeNameIdentifier),
-    Option.exists(isSetTypeName)
-  )
-
 const typeRefHint =
   "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
   "traits for structural equality. Writing the built-in Set type is permitted only where " +
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
-const setTypeRefMatches =
-  (context: RuleContext) =>
-  (typeRef: ts.TypeReferenceNode): ReadonlyArray<RuleMatch> => {
+const setTypeRefMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
+  const typeRefEscapes = typeReferenceEscapesExternally(checker)
+
+  const matches = (typeRef: ts.TypeReferenceNode): ReadonlyArray<RuleMatch> => {
     const isAmbient = isInAmbientContext(typeRef)
-    const escapesExternally = typeReferenceEscapesExternally(context.checker)(
-      typeRef
-    )
+    const escapesExternally = typeRefEscapes(typeRef)
     const isBoundaryMirror = isAmbient || escapesExternally
 
     if (isBoundaryMirror) {
@@ -86,7 +84,7 @@ const setTypeRefMatches =
     const message = `Avoid the built-in ${name} type.`
 
     return [
-      createRuleMatch(context)({
+      match({
         ruleId,
         node: typeRef,
         message,
@@ -95,17 +93,37 @@ const setTypeRefMatches =
     ]
   }
 
-// --- listeners ---
+  return matches
+}
 
-const constructorListener = onNode([ts.SyntaxKind.NewExpression])(
-  ts.isNewExpression
-)(newSetMatches)
+// --- listener ---
 
-const typeReferenceListener = onNode([ts.SyntaxKind.TypeReference])(
-  isSetTypeReference
-)(setTypeRefMatches)
+type SetRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
-const check = combineAll([constructorListener, typeReferenceListener])
+const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>
+  ts.isNewExpression(node) ||
+  pipe(
+    Option.liftPredicate(ts.isTypeReferenceNode)(node),
+    Option.flatMap(typeNameIdentifier),
+    Option.exists(isSetTypeName)
+  )
+
+// The context stage runs once per file, so both specialized handlers are shared by every node the dispatcher feeds to matches.
+const setMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+  const constructionMatches = newSetMatches(context.checker)(match)
+  const typeRefMatches = setTypeRefMatches(context.checker)(match)
+
+  const matches = (node: SetRuleNode): ReadonlyArray<RuleMatch> =>
+    ts.isNewExpression(node) ? constructionMatches(node) : typeRefMatches(node)
+
+  return matches
+}
+
+const check = onNode([
+  ts.SyntaxKind.NewExpression,
+  ts.SyntaxKind.TypeReference
+])(isSetRuleNode)(setMatches)
 
 // --- examples ---
 

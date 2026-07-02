@@ -2,6 +2,7 @@ import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -89,61 +90,89 @@ const standardTernaryText =
   (): string =>
     ternaryText(sourceFile)(condition)(thenExpression)(fallbackExpression)
 
+type ReturnExpression = (
+  statement: ts.Statement
+) => Option.Option<ts.Expression>
+type StandardTernary = (
+  condition: ts.Expression
+) => (
+  thenExpression: ts.Expression
+) => (fallbackExpression: ts.Expression) => () => string
+type FlippedTernary = (
+  fallbackExpression: ts.Expression
+) => (thenExpression: ts.Expression) => (operand: ts.Expression) => string
+
 const conditionalReturnMatch =
-  (context: RuleContext) =>
+  (returnExpression: ReturnExpression) =>
+  (standardTernary: StandardTernary) =>
+  (flippedTernary: FlippedTernary) =>
+  (match: CreateMatch) =>
   (nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
-      const thenExpression = yield* returnExpressionFromStatement(
-        context.sourceFile
-      )(ifStatement.thenStatement)
+      const thenExpression = yield* returnExpression(ifStatement.thenStatement)
       const elseStatement = Option.fromNullable(ifStatement.elseStatement)
       const fallbackStatement = Option.isSome(elseStatement)
         ? elseStatement
         : nextStatement
       const fallbackExpression = yield* Option.flatMap(
         fallbackStatement,
-        returnExpressionFromStatement(context.sourceFile)
+        returnExpression
       )
       const unwrappedCondition = unwrapExpression(ifStatement.expression)
       const negatedCondition = pipe(
         Option.liftPredicate(ts.isPrefixUnaryExpression)(unwrappedCondition),
         Option.flatMap(negatedPrefixUnaryExpressionOperand)
       )
-      const returnExpression = Option.match(negatedCondition, {
-        onNone: standardTernaryText(context.sourceFile)(ifStatement.expression)(
-          thenExpression
-        )(fallbackExpression),
-        onSome: flippedTernaryText(context.sourceFile)(fallbackExpression)(
-          thenExpression
-        )
+      const returnText = Option.match(negatedCondition, {
+        onNone: standardTernary(ifStatement.expression)(thenExpression)(
+          fallbackExpression
+        ),
+        onSome: flippedTernary(fallbackExpression)(thenExpression)
       })
 
-      return createRuleMatch(context)({
+      return match({
         ruleId,
         node: ifStatement,
         message:
           "Avoid if statements that only choose between two return values.",
-        hint: `Return a conditional expression instead: return ${returnExpression}.`
+        hint: `Return a conditional expression instead: return ${returnText}.`
       })
     })
 
+type IfConditionalMatch = (
+  nextStatement: Option.Option<ts.Statement>
+) => (ifStatement: ts.IfStatement) => Option.Option<RuleMatch>
+
 const statementConditionalMatch =
-  (context: RuleContext) =>
+  (ifMatch: IfConditionalMatch) =>
   (block: ts.Block): StatementConditionalMatch =>
   (statement, index) => {
     const nextStatement = Option.fromNullable(block.statements[index + 1])
 
     return pipe(
       Option.liftPredicate(ts.isIfStatement)(statement),
-      Option.flatMap(conditionalReturnMatch(context)(nextStatement))
+      Option.flatMap(ifMatch(nextStatement))
     )
   }
 
-const conditionalReturnRuleMatches =
-  (context: RuleContext) =>
-  (block: ts.Block): ReadonlyArray<RuleMatch> =>
-    Array.filterMap(block.statements, statementConditionalMatch(context)(block))
+// The context stage runs once per file, so every partial below is shared by all Blocks the dispatcher feeds to matches.
+const conditionalReturnRuleMatches = (context: RuleContext) => {
+  const returnExpression = returnExpressionFromStatement(context.sourceFile)
+  const standardTernary = standardTernaryText(context.sourceFile)
+  const flippedTernary = flippedTernaryText(context.sourceFile)
+  const match = createRuleMatch(context)
+  const ifMatch =
+    conditionalReturnMatch(returnExpression)(standardTernary)(flippedTernary)(
+      match
+    )
+  const conditionalMatch = statementConditionalMatch(ifMatch)
+
+  const matches = (block: ts.Block): ReadonlyArray<RuleMatch> =>
+    Array.filterMap(block.statements, conditionalMatch(block))
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.Block])(ts.isBlock)(
   conditionalReturnRuleMatches

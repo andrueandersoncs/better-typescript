@@ -17,23 +17,30 @@ type MatchSourceFields = Pick<
   "ruleId" | "node" | "message" | "hint"
 >
 
-export const createRuleMatch =
-  (context: RuleContext) =>
-  (source: MatchSourceFields): RuleMatch => {
-  const sourceFile = context.sourceFile
-  const start = source.node.getStart(sourceFile)
-  const location = sourceFile.getLineAndCharacterOfPosition(start)
-  const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
+export type CreateMatch = (source: MatchSourceFields) => RuleMatch
 
-  return new RuleMatch({
-    ruleId: source.ruleId,
-    fileName,
-    line: location.line + 1,
-    column: location.character + 1,
-    message: source.message,
-    hint: source.hint
-  })
-}
+// fileName is derived lazily per match, not in the context stage: the stage runs for every (rule, file) pair while matches are rare, so eager path.relative regresses the whole pass.
+export const createRuleMatch =
+  (context: RuleContext): CreateMatch => {
+    const sourceFile = context.sourceFile
+    const relativeFileName = toRelativeFileName(context.projectRoot)
+    const match = (source: MatchSourceFields): RuleMatch => {
+      const start = source.node.getStart(sourceFile)
+      const location = sourceFile.getLineAndCharacterOfPosition(start)
+      const fileName = relativeFileName(sourceFile.fileName)
+
+      return new RuleMatch({
+        ruleId: source.ruleId,
+        fileName,
+        line: location.line + 1,
+        column: location.character + 1,
+        message: source.message,
+        hint: source.hint
+      })
+    }
+
+    return match
+  }
 
 export const toRelativeFileName =
   (projectRoot: string) =>

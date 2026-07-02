@@ -23,17 +23,22 @@ const isEffectPipeAccess =
     )
   }
 
-const pipeMethodCallMatches =
-  (context: RuleContext) =>
-  (callExpression: ts.CallExpression): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so both partials are shared by every CallExpression the dispatcher feeds to matches.
+const pipeMethodCallMatches = (context: RuleContext) => {
+  const isEffectPipe = isEffectPipeAccess(context.checker)
+  const match = createRuleMatch(context)
+
+  const matches = (
+    callExpression: ts.CallExpression
+  ): ReadonlyArray<RuleMatch> =>
     pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(
         callExpression.expression
       ),
       Option.filter(isPipeName),
-      Option.filter(isEffectPipeAccess(context.checker)),
-      Option.map((access) => [
-        createRuleMatch(context)({
+      Option.filter(isEffectPipe),
+      Option.map((access) =>
+        match({
           ruleId,
           node: access.name,
           message: "Avoid calling .pipe() as a method.",
@@ -41,9 +46,12 @@ const pipeMethodCallMatches =
             'Import pipe from "effect" and call it as a standalone function: ' +
             "pipe(value, fn1, fn2) instead of value.pipe(fn1, fn2)."
         })
-      ]),
-      Option.getOrElse(() => [])
+      ),
+      Option.toArray
     )
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
   pipeMethodCallMatches

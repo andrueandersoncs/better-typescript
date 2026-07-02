@@ -2,6 +2,7 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { namedNodeReportTarget } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -42,11 +43,11 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
 }
 
 const methodImplementationMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (node: ts.MethodDeclaration): RuleMatch => {
     const reportTarget = namedNodeReportTarget(node)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node: reportTarget,
       message: "Avoid implementing methods on a class.",
@@ -58,17 +59,18 @@ const methodImplementationMatch =
     })
   }
 
-const methodImplementationMatches =
-  (context: RuleContext) =>
-  (node: ts.MethodDeclaration): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so the hoisted match partial is shared by all MethodDeclarations the dispatcher feeds to matches.
+const methodImplementationMatches = (context: RuleContext) => {
+  const ruleMatch = methodImplementationMatch(createRuleMatch(context))
+
+  const matches = (node: ts.MethodDeclaration): ReadonlyArray<RuleMatch> => {
     const reportable = Option.liftPredicate(isReportableMethod)(node)
 
-    return pipe(
-      reportable,
-      Option.map(methodImplementationMatch(context)),
-      Option.toArray
-    )
+    return pipe(reportable, Option.map(ruleMatch), Option.toArray)
   }
+
+  return matches
+}
 
 const check = onNode(methodDeclarationKinds)(isMethodDeclaration)(
   methodImplementationMatches

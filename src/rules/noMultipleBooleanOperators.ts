@@ -101,9 +101,13 @@ const nestedExpressionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ClassExpression
 )
 
-const multipleBooleanOperatorMatches =
-  (context: RuleContext) =>
-  (expression: BooleanOperatorExpression): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so match is shared by every boolean expression the dispatcher feeds to matches.
+const multipleBooleanOperatorMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    expression: BooleanOperatorExpression
+  ): ReadonlyArray<RuleMatch> => {
     const expressionUsesBooleanOperator =
       isBooleanOperatorExpression(expression)
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
@@ -116,7 +120,7 @@ const multipleBooleanOperatorMatches =
 
     return isReportableRoot
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: expression,
             message:
@@ -128,6 +132,9 @@ const multipleBooleanOperatorMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([
   ts.SyntaxKind.BinaryExpression,

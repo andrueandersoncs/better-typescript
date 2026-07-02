@@ -20,6 +20,7 @@ import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
 import { noMutableArrayMethods } from "./noMutableArrayMethods.js"
 import { noMultiLineComments } from "./noMultiLineComments.js"
 import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
+import { noMutation } from "./noMutation.js"
 import { noNestedCalls } from "./noNestedCalls.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
@@ -75,6 +76,7 @@ export const rules: ReadonlyArray<Rule> = [
   noInlineBooleanExpressions,
   noMutableArrayMethods,
   noMutableVariableDeclarations,
+  noMutation,
   noNestedIfStatements,
   noDuplicateIfBodies,
   noDuplicateFunctionNames,

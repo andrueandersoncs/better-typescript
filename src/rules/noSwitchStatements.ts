@@ -6,10 +6,14 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-switch-statements"
 
-const switchStatementMatches =
-  (context: RuleContext) =>
-  (switchStatement: ts.SwitchStatement): ReadonlyArray<RuleMatch> => [
-    createRuleMatch(context)({
+// The context stage runs once per file, so match is shared by every SwitchStatement the dispatcher feeds to matches.
+const switchStatementMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    switchStatement: ts.SwitchStatement
+  ): ReadonlyArray<RuleMatch> => [
+    match({
       ruleId,
       node: switchStatement,
       message: "Avoid switch statements.",
@@ -18,6 +22,9 @@ const switchStatementMatches =
         "so every case is handled explicitly."
     })
   ]
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.SwitchStatement])(ts.isSwitchStatement)(
   switchStatementMatches

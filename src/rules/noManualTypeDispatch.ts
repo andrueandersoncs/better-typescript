@@ -2,6 +2,7 @@ import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { alwaysExitsScope, hasNoElseBranch } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -103,9 +104,9 @@ const isLongEnough = (head: ts.IfStatement): boolean =>
   chainLengthFrom(head) >= minimumChainLength
 
 const manualTypeDispatchMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (ifStatement: ts.IfStatement): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: ifStatement,
       message:
@@ -116,16 +117,21 @@ const manualTypeDispatchMatch =
         "error rather than a silent fall-through."
     })
 
-const manualTypeDispatchMatches =
-  (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the dispatcher feeds to matches.
+const manualTypeDispatchMatches = (context: RuleContext) => {
+  const ruleMatch = manualTypeDispatchMatch(createRuleMatch(context))
+
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
     pipe(
       Option.liftPredicate(isDispatchGuard)(ifStatement),
       Option.filter(isChainHead),
       Option.filter(isLongEnough),
-      Option.map(manualTypeDispatchMatch(context)),
+      Option.map(ruleMatch),
       Option.toArray
     )
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   manualTypeDispatchMatches

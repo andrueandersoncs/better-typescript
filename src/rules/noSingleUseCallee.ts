@@ -2,6 +2,7 @@ import { Array, HashMap, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { fileListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import {
   conciseArrowBody,
   functionInitializer,
@@ -9,7 +10,7 @@ import {
   isFunctionInitializer,
   isProjectSourceFile
 } from "./tsNode.js"
-import { astChildren } from "./traverse.js"
+import { foldAst } from "./traverse.js"
 import {
   TsIdentifier,
   TsFunctionDeclarationNode,
@@ -259,12 +260,8 @@ const classifyIdentifierRef =
 
 const foldDescendants =
   (folder: ClassificationFolder): ClassificationFolder =>
-  (classifications, node) => {
-    const afterSelf = folder(classifications, node)
-    const children = astChildren(node)
-
-    return Array.reduce(children, afterSelf, foldDescendants(folder))
-  }
+  (classifications, sourceFile) =>
+    foldAst(folder)(sourceFile)(classifications)
 
 const classifyIdentifierNode =
   (checker: ts.TypeChecker) =>
@@ -362,9 +359,9 @@ const symbolIsFlaggable =
     )
 
 const singleUseCalleeMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (entry: FunctionEntry): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: entry.nameNode,
       message: "Avoid naming a function that is only called in one place.",
@@ -380,15 +377,23 @@ const isInFile =
   (entry: FunctionEntry): boolean =>
     entry.nameNode.getSourceFile().fileName === sourceFile.fileName
 
+// The file handler runs once per file, so every partial below is shared by all its entries.
 const singleUseCalleeMatches =
   (index: ReferenceIndex) =>
-  (context: RuleContext): ReadonlyArray<RuleMatch> =>
-    pipe(
+  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+    const flaggable = symbolIsFlaggable(index.calleeOnlySymbols)(
+      context.checker
+    )
+    const match = createRuleMatch(context)
+    const calleeMatch = singleUseCalleeMatch(match)
+
+    return pipe(
       index.entries,
       Array.filter(isInFile(context.sourceFile)),
-      Array.filter(symbolIsFlaggable(index.calleeOnlySymbols)(context.checker)),
-      Array.map(singleUseCalleeMatch(context))
+      Array.filter(flaggable),
+      Array.map(calleeMatch)
     )
+  }
 
 const singleUseCalleeListeners = (
   index: ReferenceIndex

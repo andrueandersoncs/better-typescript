@@ -2,6 +2,7 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -40,9 +41,9 @@ const findAsyncModifier = (
 }
 
 const asyncFunctionMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: keyword,
       message: "Avoid declaring functions as async.",
@@ -53,18 +54,23 @@ const asyncFunctionMatch =
         "returns Effect.runPromise(effect)."
     })
 
-const asyncFunctionMatches =
-  (context: RuleContext) =>
-  (node: AsyncCapableFunction): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so the specialized rule match is shared by every async-capable function the dispatcher feeds to matches.
+const asyncFunctionMatches = (context: RuleContext) => {
+  const ruleMatch = asyncFunctionMatch(createRuleMatch(context))
+
+  const matches = (node: AsyncCapableFunction): ReadonlyArray<RuleMatch> => {
     const modifiers = ts.getModifiers(node)
 
     return pipe(
       Option.fromNullable(modifiers),
       Option.flatMap(findAsyncModifier),
-      Option.map(asyncFunctionMatch(context)),
+      Option.map(ruleMatch),
       Option.toArray
     )
   }
+
+  return matches
+}
 
 const check = onNode(asyncCapableFunctionKinds)(isAsyncCapableFunction)(
   asyncFunctionMatches

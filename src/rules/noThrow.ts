@@ -6,10 +6,14 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-throw"
 
-const throwMatches =
-  (context: RuleContext) =>
-  (throwStatement: ts.ThrowStatement): ReadonlyArray<RuleMatch> => [
-    createRuleMatch(context)({
+// The context stage runs once per file, so match is shared by every ThrowStatement the dispatcher feeds to matches.
+const throwMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    throwStatement: ts.ThrowStatement
+  ): ReadonlyArray<RuleMatch> => [
+    match({
       ruleId,
       node: throwStatement,
       message: "Avoid throwing errors with throw.",
@@ -18,6 +22,9 @@ const throwMatches =
         'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().'
     })
   ]
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   throwMatches

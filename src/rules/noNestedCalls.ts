@@ -1,7 +1,8 @@
-import { HashSet, Option, pipe } from "effect"
+import { HashSet, Option, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { isSameNode } from "./tsNode.js"
 import { callArguments, isCallLikeExpression } from "./tsSignature.js"
 import type { CallLikeExpression } from "./tsSignature.js"
@@ -69,14 +70,16 @@ const ruleHint =
   "pipe. Calls that return functions stay inline: currying and pipe stages read " +
   "left-to-right."
 
+type ProducesCallable = (call: CallLikeExpression) => boolean
+type CalleeText = (call: CallLikeExpression) => string
+
 const consumerRuleMatch =
-  (context: RuleContext) =>
+  (producesCallable: ProducesCallable) =>
+  (calleeText: CalleeText) =>
+  (match: CreateMatch) =>
   (call: CallLikeExpression) =>
   (consumer: CallLikeExpression): Option.Option<RuleMatch> => {
-    const resultType = context.checker.getTypeAtLocation(call)
-    const hasCallSig = hasCallSignature(context.checker)(resultType)
-
-    if (hasCallSig) {
+    if (producesCallable(call)) {
       return Option.none()
     }
 
@@ -94,26 +97,38 @@ const consumerRuleMatch =
       return Option.none()
     }
 
-    const callText = calleeDisplayText(context.sourceFile)(call)
-    const consumerText = calleeDisplayText(context.sourceFile)(consumer)
-    const match = createRuleMatch(context)({
+    const callText = calleeText(call)
+    const consumerText = calleeText(consumer)
+    const ruleMatch = match({
       ruleId,
       node: call,
       message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
       hint: ruleHint
     })
 
-    return Option.some(match)
+    return Option.some(ruleMatch)
   }
 
-const nestedCallMatches =
-  (context: RuleContext) =>
-  (call: CallLikeExpression): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so every partial below is shared by all call-like expressions the dispatcher feeds to matches.
+const nestedCallMatches = (context: RuleContext) => {
+  const checker = context.checker
+  const producesCallable = flow(
+    (call: CallLikeExpression) => checker.getTypeAtLocation(call),
+    hasCallSignature(checker)
+  )
+  const calleeText = calleeDisplayText(context.sourceFile)
+  const match = createRuleMatch(context)
+  const consumerMatch = consumerRuleMatch(producesCallable)(calleeText)(match)
+
+  const matches = (call: CallLikeExpression): ReadonlyArray<RuleMatch> =>
     pipe(
       consumingCall(call),
-      Option.flatMap(consumerRuleMatch(context)(call)),
+      Option.flatMap(consumerMatch(call)),
       Option.toArray
     )
+
+  return matches
+}
 
 const check = onNode([
   ts.SyntaxKind.CallExpression,

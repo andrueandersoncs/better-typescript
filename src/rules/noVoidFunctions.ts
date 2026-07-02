@@ -2,6 +2,7 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { isFunctionInitializer, namedNodeReportTarget } from "./tsNode.js"
 import { isVoidType, permitsVoid } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
@@ -32,46 +33,45 @@ const isVoidableFunction = (node: ts.Node): node is VoidableFunction =>
   ].some(Boolean)
 
 const signatureReturnsVoid =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (signature: ts.Signature): boolean => {
-    const returnType = context.checker.getReturnTypeOfSignature(signature)
+    const returnType = checker.getReturnTypeOfSignature(signature)
 
     return isVoidType(returnType)
   }
 
 const returnsVoid =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (declaration: VoidableFunction): boolean => {
-    const declaredSignature =
-      context.checker.getSignatureFromDeclaration(declaration)
+    const declaredSignature = checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
 
-    return Option.exists(signature, signatureReturnsVoid(context))
+    return Option.exists(signature, signatureReturnsVoid(checker))
   }
 
 const signaturePermitsVoid =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (signature: ts.Signature): boolean => {
-    const returnType = context.checker.getReturnTypeOfSignature(signature)
+    const returnType = checker.getReturnTypeOfSignature(signature)
 
     return permitsVoid(returnType)
   }
 
 const contextualSignaturePermitsVoid =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (contextualType: ts.Type): boolean =>
-    contextualType.getCallSignatures().some(signaturePermitsVoid(context))
+    contextualType.getCallSignatures().some(signaturePermitsVoid(checker))
 
 // Void imposed by a callback's contextual type (e.g. React's EffectCallback) is the consumer's contract, not the author's choice, so no Effect-returning alternative exists.
 const isContextuallyVoidCallback =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (initializer: FunctionInitializer): boolean => {
-    const contextualTypeNode = context.checker.getContextualType(initializer)
+    const contextualTypeNode = checker.getContextualType(initializer)
     const contextualType = Option.fromNullable(contextualTypeNode)
 
     return Option.exists(
       contextualType,
-      contextualSignaturePermitsVoid(context)
+      contextualSignaturePermitsVoid(checker)
     )
   }
 
@@ -81,9 +81,9 @@ const objectLiteralParent = (
   Option.liftPredicate(ts.isObjectLiteralExpression)(declaration.parent)
 
 const literalHasContextualType =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (literal: ts.ObjectLiteralExpression): boolean => {
-    const contextualTypeNode = context.checker.getContextualType(literal)
+    const contextualTypeNode = checker.getContextualType(literal)
     const contextualType = Option.fromNullable(contextualTypeNode)
 
     return Option.isSome(contextualType)
@@ -91,20 +91,20 @@ const literalHasContextualType =
 
 // A method inside a contextually typed object literal (`const l: Logger = { log() {} }`) implements the annotated interface's contract, not an author-chosen signature.
 const isContextuallyTypedObjectMethod =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (declaration: VoidableFunction): boolean =>
     pipe(
       Option.liftPredicate(ts.isMethodDeclaration)(declaration),
       Option.flatMap(objectLiteralParent),
-      Option.exists(literalHasContextualType(context))
+      Option.exists(literalHasContextualType(checker))
     )
 
 const voidFunctionMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (declaration: VoidableFunction): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node,
       message: "Avoid functions that return void.",
@@ -117,24 +117,33 @@ const voidFunctionMatch =
     })
   }
 
-const voidFunctionMatches =
-  (context: RuleContext) =>
-  (declaration: VoidableFunction): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so every partial below is shared by all voidable functions the dispatcher feeds to matches.
+const voidFunctionMatches = (context: RuleContext) => {
+  const isContextualVoidCallback = isContextuallyVoidCallback(context.checker)
+  const isContextualObjectMethod = isContextuallyTypedObjectMethod(
+    context.checker
+  )
+  const declarationReturnsVoid = returnsVoid(context.checker)
+  const ruleMatch = voidFunctionMatch(createRuleMatch(context))
+
+  const matches = (declaration: VoidableFunction): ReadonlyArray<RuleMatch> => {
     const isContextualVoid =
       isFunctionInitializer(declaration) &&
-      isContextuallyVoidCallback(context)(declaration)
-    const isContextualMethod =
-      isContextuallyTypedObjectMethod(context)(declaration)
+      isContextualVoidCallback(declaration)
+    const isContextualMethod = isContextualObjectMethod(declaration)
     const isConsumerContract = isContextualVoid || isContextualMethod
 
     return isConsumerContract
       ? []
       : pipe(
-          Option.liftPredicate(returnsVoid(context))(declaration),
-          Option.map(voidFunctionMatch(context)),
+          Option.liftPredicate(declarationReturnsVoid)(declaration),
+          Option.map(ruleMatch),
           Option.toArray
         )
   }
+
+  return matches
+}
 
 const check = onNode(voidableFunctionKinds)(isVoidableFunction)(
   voidFunctionMatches

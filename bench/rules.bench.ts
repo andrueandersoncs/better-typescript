@@ -41,6 +41,13 @@
 //   6.3x fusion win. The rule's checker query (the function-returning exemption)
 //   runs only for calls already sitting in a consuming argument position, so its
 //   steady-state cost (0.217 ms) stays at the traversal floor.
+// - Once-per-file handler specialization (context stage hoisted out of the per-node
+//   loop), dense SyntaxKind-indexed dispatch table, ts.forEachChild visitation, and
+//   the no-mutation rule (2026-07-02, 52 rules): ALL rules 5.321 ms/pass on fixtures
+//   grown to 4 files, vs 5.387 ms for 51 rules before the change. Solo tasks now
+//   apply compileRules' program stage once, untimed, in setup — mirroring how the
+//   fused runner amortizes index construction — so solo means measure the per-file
+//   stage only and are not comparable with entries above.
 
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -48,7 +55,7 @@ import { Effect } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
 import { loadProject } from "../src/project/loadProject.js"
-import { RuleContext, rules } from "../src/rules/index.js"
+import { ProgramContext, RuleContext, rules } from "../src/rules/index.js"
 import type { Rule, RuleMatch } from "../src/rules/index.js"
 import { compileRules } from "../src/runner/compileRules.js"
 import { runRules, shouldSkipSourceFile } from "../src/runner/runRules.js"
@@ -76,13 +83,24 @@ if (benchedRules.length === 0) {
 console.log(`Loading project: ${targetPath}`)
 const workspace = await Effect.runPromise(loadProject(targetPath))
 
-// One RuleContext per (project, source file), built once: program and checker are
-// shared across iterations exactly as they are in a real runRules() invocation.
-const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap(
+// One (ProgramContext, RuleContext[]) pair per project, built once: program and
+// checker are shared across iterations exactly as they are in a real runRules()
+// invocation. compileRules' program stage (index construction) also runs once,
+// untimed, mirroring the docs above: timed iterations measure per-file rule cost.
+interface ProjectContexts {
+  readonly programContext: ProgramContext
+  readonly fileContexts: ReadonlyArray<RuleContext>
+}
+
+const projectContexts: ReadonlyArray<ProjectContexts> = workspace.projects.map(
   (project) => {
     const checker = project.program.getTypeChecker()
-
-    return project.program
+    const programContext = new ProgramContext({
+      program: project.program,
+      checker,
+      projectRoot: project.rootPath
+    })
+    const fileContexts = project.program
       .getSourceFiles()
       .filter(
         (sourceFile) =>
@@ -99,22 +117,36 @@ const contexts: ReadonlyArray<RuleContext> = workspace.projects.flatMap(
             sourceFile
           })
       )
+
+    return { programContext, fileContexts }
   }
 )
 
+interface SoloRuleRun {
+  readonly checkSourceFile: (context: RuleContext) => ReadonlyArray<RuleMatch>
+  readonly fileContexts: ReadonlyArray<RuleContext>
+}
+
 interface SoloRule {
   readonly rule: Rule
-  readonly checkSourceFile: (context: RuleContext) => ReadonlyArray<RuleMatch>
+  readonly runs: ReadonlyArray<SoloRuleRun>
 }
 
 const soloRules: ReadonlyArray<SoloRule> = benchedRules.map((rule) => ({
   rule,
-  checkSourceFile: compileRules([rule])
+  runs: projectContexts.map((project) => ({
+    checkSourceFile: compileRules([rule])(project.programContext),
+    fileContexts: project.fileContexts
+  }))
 }))
 
 const checkAllFiles = (solo: SoloRule): number =>
-  contexts.reduce(
-    (total, context) => total + solo.checkSourceFile(context).length,
+  solo.runs.reduce(
+    (total, run) =>
+      run.fileContexts.reduce(
+        (runTotal, context) => runTotal + run.checkSourceFile(context).length,
+        total
+      ),
     0
   )
 
@@ -160,7 +192,11 @@ const sortedTasks = [...bench.tasks].sort(
 )
 
 console.log(`\nProject: ${workspace.rootPath}`)
-console.log(`Source files checked per pass: ${contexts.length}`)
+const checkedFileCount = projectContexts.reduce(
+  (total, project) => total + project.fileContexts.length,
+  0
+)
+console.log(`Source files checked per pass: ${checkedFileCount}`)
 console.table(
   sortedTasks.map((task) => ({
     rule: task.name,

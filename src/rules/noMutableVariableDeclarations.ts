@@ -2,6 +2,7 @@ import { HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -23,10 +24,10 @@ const tokenMutableKind = (
   HashMap.get(mutableKeywordKinds, firstToken.kind)
 
 const mutableDeclarationRuleMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (declarationList: ts.VariableDeclarationList) =>
   (kind: MutableVariableDeclarationKind): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: declarationList,
       message: `Avoid declaring mutable variables with ${kind}.`,
@@ -35,18 +36,26 @@ const mutableDeclarationRuleMatch =
         "variable, and use immutable values that are not reassigned."
     })
 
-const mutableDeclarationMatches =
-  (context: RuleContext) =>
-  (declarationList: ts.VariableDeclarationList): ReadonlyArray<RuleMatch> => {
-    const firstToken = declarationList.getFirstToken(context.sourceFile)
+// The context stage runs once per file, so both partials below are shared by every VariableDeclarationList the dispatcher feeds to matches.
+const mutableDeclarationMatches = (context: RuleContext) => {
+  const sourceFile = context.sourceFile
+  const ruleMatch = mutableDeclarationRuleMatch(createRuleMatch(context))
+
+  const matches = (
+    declarationList: ts.VariableDeclarationList
+  ): ReadonlyArray<RuleMatch> => {
+    const firstToken = declarationList.getFirstToken(sourceFile)
 
     return pipe(
       Option.fromNullable(firstToken),
       Option.flatMap(tokenMutableKind),
-      Option.map(mutableDeclarationRuleMatch(context)(declarationList)),
+      Option.map(ruleMatch(declarationList)),
       Option.toArray
     )
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.VariableDeclarationList])(
   ts.isVariableDeclarationList

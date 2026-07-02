@@ -7,9 +7,11 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-loops"
 
-const forMatches =
-  (context: RuleContext) =>
-  (forStatement: ts.ForStatement): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so match is shared by every ForStatement the dispatcher feeds to matches.
+const forMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (forStatement: ts.ForStatement): ReadonlyArray<RuleMatch> => {
     const condition = Option.fromNullable(forStatement.condition)
     const initializer = Option.fromNullable(forStatement.initializer)
     const incrementor = Option.fromNullable(forStatement.incrementor)
@@ -23,7 +25,7 @@ const forMatches =
 
     return hasIteratorAndStopCondition
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: forStatement,
             message: "Avoid imperative logic in iterator-based for loops.",
@@ -34,6 +36,9 @@ const forMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ForStatement])(ts.isForStatement)(
   forMatches

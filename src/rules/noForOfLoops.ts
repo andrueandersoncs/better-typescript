@@ -6,10 +6,14 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-for-of-loops"
 
-const forOfMatches =
-  (context: RuleContext) =>
-  (forOfStatement: ts.ForOfStatement): ReadonlyArray<RuleMatch> => [
-    createRuleMatch(context)({
+// The context stage runs once per file, so match is shared by every ForOfStatement the dispatcher feeds to matches.
+const forOfMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    forOfStatement: ts.ForOfStatement
+  ): ReadonlyArray<RuleMatch> => [
+    match({
       ruleId,
       node: forOfStatement,
       message: "Avoid imperative logic in for..of loops.",
@@ -18,6 +22,9 @@ const forOfMatches =
         "Array.filter(), or Array.flatMap(), instead."
     })
   ]
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ForOfStatement])(ts.isForOfStatement)(
   forOfMatches

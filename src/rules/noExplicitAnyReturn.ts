@@ -26,10 +26,12 @@ const isAnyReturnTypeDeclaration = (
     Option.exists(containsAnyKeyword)
   )
 
-const anyReturnTypeMatches =
-  (context: RuleContext) =>
-  (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => [
-    createRuleMatch(context)({
+// The context stage runs once per file, so match is shared by every ReturnTypeDeclaration the dispatcher feeds to matches.
+const anyReturnTypeMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => [
+    match({
       ruleId,
       node,
       message: "Avoid function return types that include any.",
@@ -38,6 +40,9 @@ const anyReturnTypeMatches =
         "use unknown and narrow before use."
     })
   ]
+
+  return matches
+}
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,

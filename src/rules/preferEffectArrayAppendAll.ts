@@ -25,9 +25,11 @@ const isEmptyArrayLiteral = (expression: ts.Expression): boolean =>
 const isNonEmptyArrayBranch = (expression: ts.Expression): boolean =>
   arrayLiteralElementCount(expression) !== 0
 
-const conditionalArraySpreadMatches =
-  (context: RuleContext) =>
-  (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so match is shared by every SpreadElement the dispatcher feeds to matches.
+const conditionalArraySpreadMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => {
     if (!ts.isArrayLiteralExpression(spread.parent)) return []
 
     const expression = unwrapExpression(spread.expression)
@@ -43,9 +45,12 @@ const conditionalArraySpreadMatches =
     ].every(Boolean)
 
     return [emptyThenNonEmpty, nonEmptyThenEmpty].some(Boolean)
-      ? [createRuleMatch(context)({ ruleId, node: spread, message, hint })]
+      ? [match({ ruleId, node: spread, message, hint })]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(
   conditionalArraySpreadMatches

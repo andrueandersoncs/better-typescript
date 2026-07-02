@@ -116,37 +116,42 @@ const isFunctionArgument =
   }
 
 const isCallbackSignature =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (declaration: CallbackStyleDeclaration) =>
   (signature: ts.Signature): boolean => {
-    const returnType = context.checker.getReturnTypeOfSignature(signature)
+    const returnType = checker.getReturnTypeOfSignature(signature)
     const returnsVoid = isVoidType(returnType)
     const hasFunctionArgument = declaration.parameters.some(
-      isFunctionArgument(context.checker)
+      isFunctionArgument(checker)
     )
 
     return returnsVoid && hasFunctionArgument
   }
 
-const callbackStyleMatches =
-  (context: RuleContext) =>
-  (declaration: CallbackStyleDeclaration): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so every partial below is shared by all callback-style declarations the dispatcher feeds to matches.
+const callbackStyleMatches = (context: RuleContext) => {
+  const checker = context.checker
+  const declarationIsCallbackSignature = isCallbackSignature(checker)
+  const match = createRuleMatch(context)
+
+  const matches = (
+    declaration: CallbackStyleDeclaration
+  ): ReadonlyArray<RuleMatch> => {
     // A declare statement mirrors a third-party API's existing shape; there is no Effect-returning alternative to describe.
     if (isInAmbientContext(declaration)) {
       return []
     }
 
-    const declaredSignature =
-      context.checker.getSignatureFromDeclaration(declaration)
+    const declaredSignature = checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
     const isCallback = Option.exists(
       signature,
-      isCallbackSignature(context)(declaration)
+      declarationIsCallbackSignature(declaration)
     )
 
     return isCallback
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: declaration,
             message:
@@ -159,6 +164,9 @@ const callbackStyleMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([
   ts.SyntaxKind.FunctionDeclaration,

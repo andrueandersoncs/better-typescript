@@ -43,15 +43,17 @@ const containingIfStatementFrom =
       : Option.some(parentNode)
   }
 
-const nestedIfMatches =
-  (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so match is shared by every IfStatement the dispatcher feeds to matches.
+const nestedIfMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
     const parentOption = Option.fromNullable(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
 
     return Option.isSome(containingIf)
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: ifStatement,
             message: "Avoid nesting if statements.",
@@ -62,6 +64,9 @@ const nestedIfMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   nestedIfMatches

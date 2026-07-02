@@ -3,6 +3,7 @@ import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import {
   functionInitializer,
   returnedExpression,
@@ -37,9 +38,9 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
 }
 
 const signatureReturnsEffect =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (signature: ts.Signature): boolean => {
-    const returnType = context.checker.getReturnTypeOfSignature(signature)
+    const returnType = checker.getReturnTypeOfSignature(signature)
 
     const typeSymbol = returnType.getSymbol()
     const symbol = Option.fromNullable(typeSymbol)
@@ -48,13 +49,12 @@ const signatureReturnsEffect =
   }
 
 const returnsEffect =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (initializer: FunctionInitializer): boolean => {
-    const declaredSignature =
-      context.checker.getSignatureFromDeclaration(initializer)
+    const declaredSignature = checker.getSignatureFromDeclaration(initializer)
     const signature = Option.fromNullable(declaredSignature)
 
-    return Option.exists(signature, signatureReturnsEffect(context))
+    return Option.exists(signature, signatureReturnsEffect(checker))
   }
 
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
@@ -107,11 +107,12 @@ const bodyIsEffectGenCall =
   }
 
 const effectFnRuleMatch =
-  (context: RuleContext) =>
+  (sourceFile: ts.SourceFile) =>
+  (match: CreateMatch) =>
   (declaration: ts.VariableDeclaration): RuleMatch => {
-    const functionName = declaration.name.getText(context.sourceFile)
+    const functionName = declaration.name.getText(sourceFile)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node: declaration.name,
       message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
@@ -122,18 +123,29 @@ const effectFnRuleMatch =
     })
   }
 
-const effectFnMatches =
-  (context: RuleContext) =>
-  (declaration: ts.VariableDeclaration): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so every partial below is shared by all VariableDeclarations the dispatcher feeds to matches.
+const effectFnMatches = (context: RuleContext) => {
+  const returnsEffectType = returnsEffect(context.checker)
+  const bodyIsGenCall = bodyIsEffectGenCall(context.checker)
+  const ruleMatch = effectFnRuleMatch(context.sourceFile)(
+    createRuleMatch(context)
+  )
+
+  const matches = (
+    declaration: ts.VariableDeclaration
+  ): ReadonlyArray<RuleMatch> =>
     pipe(
       functionInitializer(declaration),
       Option.filter(hasParameters),
-      Option.filter(returnsEffect(context)),
-      Option.filter(bodyIsEffectGenCall(context.checker)),
+      Option.filter(returnsEffectType),
+      Option.filter(bodyIsGenCall),
       Option.as(declaration),
-      Option.map(effectFnRuleMatch(context)),
+      Option.map(ruleMatch),
       Option.toArray
     )
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.VariableDeclaration])(
   ts.isVariableDeclaration

@@ -10,14 +10,19 @@ import type {
   RuleMatch
 } from "./types.js"
 
+// Applying handler(context) outside the per-node lambda lets the dispatcher's once-per-file specialization reach the rule's context stage.
 const refinedHandler =
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
     handler: (context: RuleContext) => (node: N) => ReadonlyArray<RuleMatch>
   ): NodeHandler =>
-  (context) =>
-  (node) =>
-    refine(node) ? handler(context)(node) : []
+  (context) => {
+    const matches = handler(context)
+    const refined = (node: ts.Node): ReadonlyArray<RuleMatch> =>
+      refine(node) ? matches(node) : []
+
+    return refined
+  }
 
 export const nodeListeners =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>

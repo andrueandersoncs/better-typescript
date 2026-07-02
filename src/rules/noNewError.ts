@@ -10,9 +10,13 @@ const ruleId = "no-new-error"
 const isErrorIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Error"
 
-const newErrorMatches =
-  (context: RuleContext) =>
-  (newExpression: ts.NewExpression): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so match is shared by every NewExpression the dispatcher feeds to matches.
+const newErrorMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    newExpression: ts.NewExpression
+  ): ReadonlyArray<RuleMatch> => {
     const constructorIdentifier = Option.liftPredicate(ts.isIdentifier)(
       newExpression.expression
     )
@@ -23,7 +27,7 @@ const newErrorMatches =
 
     return isBareErrorConstruction
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: newExpression,
             message: "Avoid using new Error() directly.",
@@ -34,6 +38,9 @@ const newErrorMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.NewExpression])(ts.isNewExpression)(
   newErrorMatches

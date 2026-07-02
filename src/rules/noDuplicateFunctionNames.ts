@@ -2,6 +2,7 @@ import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { fileListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { functionInitializer, isProjectSourceFile } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type {
@@ -89,17 +90,23 @@ const hasIdenticalSignature =
 
 const maxListedFileNames = 3
 
+type IdenticalSignature = (
+  candidate: ts.Identifier
+) => (other: ts.Identifier) => boolean
+type RelativeFileName = (fileName: string) => string
+
 const candidateRuleMatch =
   (index: FunctionNameIndex) =>
-  (context: RuleContext) =>
+  (identicalTo: IdenticalSignature) =>
+  (toRelative: RelativeFileName) =>
+  (match: CreateMatch) =>
+  (candidateFileName: string) =>
   (candidate: ts.Identifier): Option.Option<RuleMatch> => {
     const declarations = declarationsForName(index)(candidate.text)
-    const identicalDeclarations = declarations.filter(
-      hasIdenticalSignature(context.checker)(candidate)
-    )
+    const identicalDeclarations = declarations.filter(identicalTo(candidate))
     const declaredFileNames = identicalDeclarations.map(declaredFileName)
     const otherFileNames = Array.dedupe(declaredFileNames).filter(
-      isOtherFileName(context.sourceFile.fileName)
+      isOtherFileName(candidateFileName)
     )
 
     if (otherFileNames.length === 0) {
@@ -107,9 +114,7 @@ const candidateRuleMatch =
     }
 
     const functionName = candidate.text
-    const relativeFileNames = otherFileNames.map(
-      toRelativeFileName(context.projectRoot)
-    )
+    const relativeFileNames = otherFileNames.map(toRelative)
     const listedFileNames = relativeFileNames
       .slice(0, maxListedFileNames)
       .join(", ")
@@ -119,7 +124,7 @@ const candidateRuleMatch =
       remainingCount > 0
         ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
         : listedFileNames
-    const match = createRuleMatch(context)({
+    const duplicateMatch = match({
       ruleId,
       node: candidate,
       message: `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,
@@ -132,15 +137,22 @@ const candidateRuleMatch =
         "account.ts#make) are module vocabulary, not duplicates."
     })
 
-    return Option.some(match)
+    return Option.some(duplicateMatch)
   }
 
+// The file handler runs once per file, so every partial below is shared by all its top-level functions.
 const duplicateFunctionMatches =
   (index: FunctionNameIndex) =>
   (context: RuleContext): ReadonlyArray<RuleMatch> => {
     const fileFunctions = topLevelFunctions(context.sourceFile)
+    const identicalTo = hasIdenticalSignature(context.checker)
+    const toRelative = toRelativeFileName(context.projectRoot)
+    const match = createRuleMatch(context)
+    const candidateMatch = candidateRuleMatch(index)(identicalTo)(toRelative)(
+      match
+    )(context.sourceFile.fileName)
 
-    return Array.filterMap(fileFunctions, candidateRuleMatch(index)(context))
+    return Array.filterMap(fileFunctions, candidateMatch)
   }
 
 const buildFunctionNameIndex = (

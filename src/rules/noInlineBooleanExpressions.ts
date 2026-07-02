@@ -16,9 +16,11 @@ const logicalOperatorKinds = HashSet.make(
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
-const inlineBooleanConditionMatches =
-  (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the dispatcher feeds to matches.
+const inlineBooleanConditionMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
     const expression = unwrapExpression(ifStatement.expression)
     const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
       expression
@@ -30,7 +32,7 @@ const inlineBooleanConditionMatches =
 
     return isLogicalOperatorExpression
       ? [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: expression,
             message:
@@ -42,6 +44,9 @@ const inlineBooleanConditionMatches =
         ]
       : []
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   inlineBooleanConditionMatches

@@ -2,6 +2,7 @@ import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
@@ -43,13 +44,13 @@ const isStringKeyInExpression = (
   )
 
 const schemaGuardMatch =
-  (context: RuleContext) =>
+  (sourceFile: ts.SourceFile) =>
+  (match: CreateMatch) =>
   (expression: ts.BinaryExpression): RuleMatch => {
-    const sourceFile = context.sourceFile
     const propertyName = unwrapExpression(expression.left).getText(sourceFile)
     const objectText = expression.right.getText(sourceFile)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node: expression,
       message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
@@ -57,12 +58,18 @@ const schemaGuardMatch =
     })
   }
 
-const inOperatorGuardMatches =
-  (context: RuleContext) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so the specialized guard match is shared by every IfStatement the dispatcher feeds to matches.
+const inOperatorGuardMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+  const guardMatch = schemaGuardMatch(context.sourceFile)(match)
+
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
     conditionExpressions(ifStatement.expression)
       .filter(isStringKeyInExpression)
-      .map(schemaGuardMatch(context))
+      .map(guardMatch)
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   inOperatorGuardMatches

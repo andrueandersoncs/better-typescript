@@ -1,6 +1,14 @@
-import { Array, Function, HashMap, Option, Schema, Struct, pipe } from "effect"
+import {
+  Array,
+  Function,
+  HashMap,
+  MutableList,
+  Option,
+  Schema,
+  Struct,
+  pipe
+} from "effect"
 import * as ts from "typescript"
-import { astChildren } from "../rules/traverse.js"
 import { FileListener, NodeListener } from "../rules/types.js"
 import type {
   ProgramContext,
@@ -15,6 +23,11 @@ type FileHandler = FileListener["handler"]
 type HandlerTable = HashMap.HashMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
 type AddKindHandler = (table: HandlerTable, kind: ts.SyntaxKind) => HandlerTable
 
+type SpecializedNodeHandler = (node: ts.Node) => ReadonlyArray<RuleMatch>
+// SyntaxKind is a dense small-int enum, so a flat row-per-kind table beats a HashMap on the per-node hot path.
+type DenseTable = ReadonlyArray<ReadonlyArray<NodeHandler>>
+type SpecializedTable = ReadonlyArray<ReadonlyArray<SpecializedNodeHandler>>
+
 type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
 
 export const compileRules =
@@ -27,43 +40,74 @@ export const compileRules =
       ReadonlyArray<NodeHandler>
     >()
     const table = nodeListeners.reduce(addListenerHandlers, emptyTable)
+    const dense: DenseTable = Array.makeBy(ts.SyntaxKind.Count, kindRow(table))
     const fileHandlers = listeners.filter(isFileListener).map(listenerHandler)
 
-    return checkSourceFile(table)(fileHandlers)
+    return checkSourceFile(dense)(fileHandlers)
   }
 
-const checkSourceFile =
+const kindRow =
   (table: HandlerTable) =>
-  (fileHandlers: ReadonlyArray<FileHandler>) =>
-  (context: RuleContext): ReadonlyArray<RuleMatch> => {
-    const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
-    const visit = (node: ts.Node): ReadonlyArray<RuleMatch> => {
-      const handlersForKind = pipe(
-        HashMap.get(table, node.kind),
-        Option.getOrElse(emptyNodeHandlers)
-      )
-      const ownMatches = handlersForKind.flatMap(
-        applyNodeHandler(context)(node)
-      )
-      const childMatches = astChildren(node).flatMap(visit)
+  (kind: number): ReadonlyArray<NodeHandler> =>
+    pipe(
+      HashMap.get(table, kind as ts.SyntaxKind),
+      Option.getOrElse(emptyNodeHandlers)
+    )
 
-      return ownMatches.concat(childMatches)
-    }
-    const nodeMatches = visit(context.sourceFile)
+const emptySpecializedRow: ReadonlyArray<SpecializedNodeHandler> = []
 
-    return fileMatches.concat(nodeMatches)
-  }
+// Context is applied to every handler once per file; the per-node loop reuses the specialized closures instead of re-running each rule's context stage per node.
+const applyContext =
+  (context: RuleContext) =>
+  (handler: NodeHandler): SpecializedNodeHandler =>
+    handler(context)
+
+const specializeRow =
+  (context: RuleContext) =>
+  (row: ReadonlyArray<NodeHandler>): ReadonlyArray<SpecializedNodeHandler> =>
+    row.length === 0 ? emptySpecializedRow : row.map(applyContext(context))
 
 const applyFileHandler =
   (context: RuleContext) =>
   (handle: FileHandler): ReadonlyArray<RuleMatch> =>
     handle(context)
 
-const applyNodeHandler =
-  (context: RuleContext) =>
+const appendMatch =
+  (collected: MutableList.MutableList<RuleMatch>) =>
+  (match: RuleMatch): MutableList.MutableList<RuleMatch> =>
+    MutableList.append(collected, match)
+
+const checkSourceFile =
+  (dense: DenseTable) =>
+  (fileHandlers: ReadonlyArray<FileHandler>) =>
+  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+    const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
+    const specialized: SpecializedTable = dense.map(specializeRow(context))
+    // ts.forEachChild is callback-only, so match accumulation needs a mutable seam; MutableList keeps it bounded to this file's pass. The callback returns false so traversal never stops early.
+    const collected = MutableList.empty<RuleMatch>()
+    const collect = appendMatch(collected)
+    const visit = (node: ts.Node): false => {
+      const row = specialized[node.kind]
+
+      if (row.length > 0) {
+        row.flatMap(applyToNode(node)).forEach(collect)
+      }
+
+      ts.forEachChild(node, visit)
+
+      return false
+    }
+    visit(context.sourceFile)
+    const nodeMatches = Array.fromIterable(collected)
+
+    return fileMatches.concat(nodeMatches)
+  }
+
+// Function.apply would also work here, but its variadic rest/spread sits on the per-node hot path; a direct curried call keeps the loop monomorphic.
+const applyToNode =
   (node: ts.Node) =>
-  (handle: NodeHandler): ReadonlyArray<RuleMatch> =>
-    handle(context)(node)
+  (handle: SpecializedNodeHandler): ReadonlyArray<RuleMatch> =>
+    handle(node)
 
 const nodeListenerSchema = Schema.is(NodeListener)
 

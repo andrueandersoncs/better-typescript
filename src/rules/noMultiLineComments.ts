@@ -94,10 +94,10 @@ const runStartPosition =
   }
 
 const positionToMatch =
-  (context: RuleContext) =>
+  (sourceFile: ts.SourceFile) =>
   (fileName: string) =>
   (pos: number): RuleMatch => {
-    const location = context.sourceFile.getLineAndCharacterOfPosition(pos)
+    const location = sourceFile.getLineAndCharacterOfPosition(pos)
 
     return new RuleMatch({
       ruleId,
@@ -131,7 +131,7 @@ const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
   )
   const positions = blockPositions.concat(adjacentRunPositions)
 
-  return positions.map(positionToMatch(context)(fileName))
+  return positions.map(positionToMatch(sourceFile)(fileName))
 }
 
 const check = onFile(fileMatches)

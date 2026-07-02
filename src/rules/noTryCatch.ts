@@ -6,10 +6,12 @@ import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-try-catch"
 
-const tryStatementMatches =
-  (context: RuleContext) =>
-  (tryStatement: ts.TryStatement): ReadonlyArray<RuleMatch> => [
-    createRuleMatch(context)({
+// The context stage runs once per file, so match is shared by every TryStatement the dispatcher feeds to matches.
+const tryStatementMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (tryStatement: ts.TryStatement): ReadonlyArray<RuleMatch> => [
+    match({
       ruleId,
       node: tryStatement,
       message: "Avoid try/catch for error handling.",
@@ -19,6 +21,9 @@ const tryStatementMatches =
         "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block."
     })
   ]
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.TryStatement])(ts.isTryStatement)(
   tryStatementMatches

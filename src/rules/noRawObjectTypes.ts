@@ -1,7 +1,8 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, onNode } from "./ruleCheck.js"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import {
   isReturnTypeDeclaration,
   namedNodeReportTarget,
@@ -27,19 +28,12 @@ const parameterTypeNode = (
   param: ts.ParameterDeclaration
 ): Option.Option<ts.TypeNode> => Option.fromNullable(param.type)
 
-const parameterHasRawObjectType = (
-  node: ts.Node
-): node is ts.ParameterDeclaration =>
-  pipe(
-    Option.liftPredicate(ts.isParameter)(node),
-    Option.flatMap(parameterTypeNode),
-    Option.exists(containsRawObjectType)
-  )
+type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
-const rawObjectParameterMatches =
-  (context: RuleContext) =>
-  (node: ts.ParameterDeclaration): ReadonlyArray<RuleMatch> => [
-    createRuleMatch(context)({
+const rawObjectParameterMatch =
+  (match: CreateMatch) =>
+  (node: ts.ParameterDeclaration): RuleMatch =>
+    match({
       ruleId,
       node,
       message:
@@ -50,38 +44,39 @@ const rawObjectParameterMatches =
         "Name the type after what the data represents, not its structural role " +
         "(avoid names like FooParameters or BarOptions)."
     })
-  ]
 
-const isRawObjectReturnTypeDeclaration = (
-  node: ts.Node
-): node is ReturnTypeDeclaration =>
+const rawObjectReturnTypeMatch =
+  (match: CreateMatch) =>
+  (node: ReturnTypeDeclaration): RuleMatch => {
+    const reportNode = namedNodeReportTarget(node)
+
+    return match({
+      ruleId,
+      node: reportNode,
+      message:
+        "Return type uses an anonymous object type instead of a named type.",
+      hint:
+        "Define a named type or interface that describes the data's domain meaning — " +
+        "for example UserProfile instead of { name: string, age: number }. " +
+        "Name the type after what the data represents, not its structural role " +
+        "(avoid names like FooResult or BarResponse)."
+    })
+  }
+
+const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
+  pipe(
+    Option.liftPredicate(ts.isParameter)(node),
+    Option.flatMap(parameterTypeNode),
+    Option.exists(containsRawObjectType)
+  ) ||
   pipe(
     Option.liftPredicate(isReturnTypeDeclaration)(node),
     Option.flatMap(returnTypeNode),
     Option.exists(containsRawObjectType)
   )
 
-const rawObjectReturnTypeMatches =
-  (context: RuleContext) =>
-  (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => {
-    const reportNode = namedNodeReportTarget(node)
-
-    return [
-      createRuleMatch(context)({
-        ruleId,
-        node: reportNode,
-        message:
-          "Return type uses an anonymous object type instead of a named type.",
-        hint:
-          "Define a named type or interface that describes the data's domain meaning — " +
-          "for example UserProfile instead of { name: string, age: number }. " +
-          "Name the type after what the data represents, not its structural role " +
-          "(avoid names like FooResult or BarResponse)."
-      })
-    ]
-  }
-
-const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
+const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
+  ts.SyntaxKind.Parameter,
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
@@ -92,15 +87,20 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-const parameterListener = onNode([ts.SyntaxKind.Parameter])(
-  parameterHasRawObjectType
-)(rawObjectParameterMatches)
+// The context stage runs once per file, so both rule-match partials are shared by every raw-object target the dispatcher feeds to matches.
+const rawObjectTypeMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+  const parameterMatch = rawObjectParameterMatch(match)
+  const returnTypeMatch = rawObjectReturnTypeMatch(match)
 
-const returnTypeListener = onNode(returnTypeDeclarationKinds)(
-  isRawObjectReturnTypeDeclaration
-)(rawObjectReturnTypeMatches)
+  const matches = (node: RawObjectTarget): ReadonlyArray<RuleMatch> =>
+    ts.isParameter(node) ? [parameterMatch(node)] : [returnTypeMatch(node)]
 
-const check = combineAll([parameterListener, returnTypeListener])
+  return matches
+}
+
+const check =
+  onNode(rawObjectTargetKinds)(isRawObjectTarget)(rawObjectTypeMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/server.ts",

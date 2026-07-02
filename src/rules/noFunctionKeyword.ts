@@ -31,11 +31,11 @@ const hasOverloadFor =
     declarations.some(isOverloadOf(implementation))
 
 const lacksOverloadSignature =
-  (context: RuleContext) =>
+  (checker: ts.TypeChecker) =>
   (declaration: FunctionDeclarationWithBody): boolean => {
     const declarations = Option.gen(function* () {
       const name = yield* Option.fromNullable(declaration.name)
-      const nameSymbol = context.checker.getSymbolAtLocation(name)
+      const nameSymbol = checker.getSymbolAtLocation(name)
       const symbol = yield* Option.fromNullable(nameSymbol)
       const decls = yield* Option.fromNullable(symbol.declarations)
 
@@ -48,9 +48,13 @@ const lacksOverloadSignature =
 const isFunctionKeywordToken = (child: ts.Node): boolean =>
   child.kind === ts.SyntaxKind.FunctionKeyword
 
-const functionKeywordMatches =
-  (context: RuleContext) =>
-  (node: FunctionKeywordNode): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so every partial below is shared by all function-keyword nodes the dispatcher feeds to matches.
+const functionKeywordMatches = (context: RuleContext) => {
+  const sourceFile = context.sourceFile
+  const lacksOverloads = lacksOverloadSignature(context.checker)
+  const match = createRuleMatch(context)
+
+  const matches = (node: FunctionKeywordNode): ReadonlyArray<RuleMatch> => {
     const asteriskToken = Option.fromNullable(node.asteriskToken)
     const isNotGenerator = !Option.isSome(asteriskToken)
     const declarationWithBody = ts.isFunctionDeclaration(node)
@@ -61,7 +65,7 @@ const functionKeywordMatches =
       : Option.none()
     const isDisallowedKind =
       ts.isFunctionExpression(node) ||
-      Option.exists(declarationWithBody, lacksOverloadSignature(context))
+      Option.exists(declarationWithBody, lacksOverloads)
 
     const shouldFlag = isNotGenerator && isDisallowedKind
 
@@ -70,10 +74,10 @@ const functionKeywordMatches =
     }
 
     const keywordToken =
-      node.getChildren(context.sourceFile).find(isFunctionKeywordToken) ?? node
+      node.getChildren(sourceFile).find(isFunctionKeywordToken) ?? node
 
     return [
-      createRuleMatch(context)({
+      match({
         ruleId,
         node: keywordToken,
         message: "Avoid using the function keyword.",
@@ -84,6 +88,9 @@ const functionKeywordMatches =
       })
     ]
   }
+
+  return matches
+}
 
 const check = onNode([
   ts.SyntaxKind.FunctionDeclaration,

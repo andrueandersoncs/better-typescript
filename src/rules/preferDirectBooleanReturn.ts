@@ -1,7 +1,8 @@
 import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, onNode } from "./ruleCheck.js"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import {
   hasNoElseBranch,
   lastStatement,
@@ -42,16 +43,17 @@ type StatementConditionalFalseMatch = (
 ) => Option.Option<RuleMatch>
 
 const directBooleanRuleMatch =
-  (context: RuleContext) =>
+  (sourceFile: ts.SourceFile) =>
+  (match: CreateMatch) =>
   (ifStatement: ts.IfStatement) =>
   (literalValue: boolean): RuleMatch => {
-    const conditionText = ifStatement.expression.getText(context.sourceFile)
+    const conditionText = ifStatement.expression.getText(sourceFile)
     const returnExpression = literalValue
       ? `(${conditionText})`
       : `!(${conditionText})`
     const literalText = String(literalValue)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node: ifStatement,
       message: `Avoid returning ${literalText} from a conditional branch.`,
@@ -59,8 +61,12 @@ const directBooleanRuleMatch =
     })
   }
 
+type DirectBooleanRuleMatch = (
+  ifStatement: ts.IfStatement
+) => (literalValue: boolean) => RuleMatch
+
 const directBooleanMatches =
-  (context: RuleContext) =>
+  (ruleMatch: DirectBooleanRuleMatch) =>
   (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
     pipe(
       Option.gen(function* () {
@@ -76,13 +82,9 @@ const directBooleanMatches =
 
         return yield* booleanLiteralValue(expression)
       }),
-      Option.map(directBooleanRuleMatch(context)(ifStatement)),
+      Option.map(ruleMatch(ifStatement)),
       Option.toArray
     )
-
-const literalBooleanCheck = onNode([ts.SyntaxKind.IfStatement])(
-  ts.isIfStatement
-)(directBooleanMatches)
 
 // --- Conditional return followed by return false ---
 
@@ -98,7 +100,7 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
   )
 
 const conditionalFalseReturnMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (nextStatement: Option.Option<ts.Statement>) =>
   (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
     Option.gen(function* () {
@@ -118,7 +120,7 @@ const conditionalFalseReturnMatch =
       yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
       yield* Option.filter(nextStatement, isFalseLiteralReturn)
 
-      return createRuleMatch(context)({
+      return match({
         ruleId,
         node: ifStatement,
         message: "Avoid conditional return followed by return false.",
@@ -127,32 +129,54 @@ const conditionalFalseReturnMatch =
     })
 
 const statementConditionalFalseMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (block: ts.Block): StatementConditionalFalseMatch =>
   (statement, index) => {
     const nextStatement = Option.fromNullable(block.statements[index + 1])
 
     return pipe(
       Option.liftPredicate(ts.isIfStatement)(statement),
-      Option.flatMap(conditionalFalseReturnMatch(context)(nextStatement))
+      Option.flatMap(conditionalFalseReturnMatch(match)(nextStatement))
     )
   }
 
 const conditionalFalseReturnMatches =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (block: ts.Block): ReadonlyArray<RuleMatch> =>
     Array.filterMap(
       block.statements,
-      statementConditionalFalseMatch(context)(block)
+      statementConditionalFalseMatch(match)(block)
     )
-
-const conditionalFalseCheck = onNode([ts.SyntaxKind.Block])(ts.isBlock)(
-  conditionalFalseReturnMatches
-)
 
 // --- Combined ---
 
-const check = combineAll([literalBooleanCheck, conditionalFalseCheck])
+type BooleanReturnTarget = ts.IfStatement | ts.Block
+
+const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget =>
+  ts.isIfStatement(node) || ts.isBlock(node)
+
+const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
+  ts.SyntaxKind.IfStatement,
+  ts.SyntaxKind.Block
+]
+
+// The context stage runs once per file, so every partial below is shared by all IfStatements and Blocks the dispatcher feeds to matches.
+const booleanReturnMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+  const literalMatches = directBooleanMatches(
+    directBooleanRuleMatch(context.sourceFile)(match)
+  )
+  const falseMatches = conditionalFalseReturnMatches(match)
+
+  const matches = (node: BooleanReturnTarget): ReadonlyArray<RuleMatch> =>
+    ts.isIfStatement(node) ? literalMatches(node) : falseMatches(node)
+
+  return matches
+}
+
+const check = onNode(booleanReturnTargetKinds)(isBooleanReturnTarget)(
+  booleanReturnMatches
+)
 
 const badLiteralExample = new ExampleSnippet({
   filePath: "src/age.ts",

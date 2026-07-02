@@ -1,8 +1,10 @@
 import { Array, Function, HashMap, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { astChildren } from "./traverse.js"
+import { foldAst } from "./traverse.js"
+import type { AstFold } from "./traverse.js"
 import { nodeListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import {
   conciseArrowBody,
   isFunctionInitializer,
@@ -225,27 +227,21 @@ const collectTrackedSymbol =
       Option.getOrElse(Function.constant(symbols))
     )
 
-type FoldChild<A> = (current: A, child: ts.Node) => A
-
 type SourceFileTrackedSymbolReducer = (
   symbols: HashSet.HashSet<ts.Symbol>,
   sourceFile: ts.SourceFile
 ) => HashSet.HashSet<ts.Symbol>
 
-const foldCurriedDataLastChild =
-  <A>(visit: (node: ts.Node) => (accumulator: A) => A): FoldChild<A> =>
-  (current, child) =>
-    foldCurriedDataLastDescendants(visit)(child)(current)
+const uncurriedFold =
+  <A>(visit: (node: ts.Node) => (accumulator: A) => A): AstFold<A> =>
+  (accumulator, node) =>
+    visit(node)(accumulator)
 
 const foldCurriedDataLastDescendants =
   <A>(visit: (node: ts.Node) => (accumulator: A) => A) =>
   (node: ts.Node) =>
-  (accumulator: A): A => {
-    const afterSelf = visit(node)(accumulator)
-    const children = astChildren(node)
-
-    return Array.reduce(children, afterSelf, foldCurriedDataLastChild(visit))
-  }
+  (accumulator: A): A =>
+    foldAst(uncurriedFold(visit))(node)(accumulator)
 
 const collectSourceFileTrackedSymbols =
   (checker: ts.TypeChecker): SourceFileTrackedSymbolReducer =>
@@ -476,7 +472,9 @@ const classifySourceFileUses =
     )(uses)
 
 const buildSymbolUses = (context: ProgramContext): SymbolUses => {
-  const sourceFiles = context.program.getSourceFiles().filter(isProjectSourceFile)
+  const sourceFiles = context.program
+    .getSourceFiles()
+    .filter(isProjectSourceFile)
   const trackedSymbols = trackedSymbolsForProgram(context.program)(
     context.checker
   )
@@ -514,7 +512,7 @@ const hasOnlyContextualReferences =
     )
 
 const curriedDataLastMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (declaration: CurriedDataLastCandidate): RuleMatch => {
     const functionTarget = pipe(
       Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
@@ -530,7 +528,7 @@ const curriedDataLastMatch =
       Option.getOrElse(Function.constant(declaration))
     )
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node,
       message: "Prefer curried, data-last functions.",
@@ -541,26 +539,34 @@ const curriedDataLastMatch =
     })
   }
 
+// The context stage runs once per file, so every partial below is shared by all candidate declarations the dispatcher feeds to matches.
 const curriedDataLastMatches =
-  (symbolUses: SymbolUses) =>
-  (context: RuleContext) =>
-  (declaration: CurriedDataLastCandidate): ReadonlyArray<RuleMatch> => {
-    const hasDisallowedParameters = hasDisallowedParameterList(declaration)
-    const hasCurriedBody = hasCurriedArrowBody(declaration)
-    const isContextual = isContextuallyTypedFunction(context.checker)(
-      declaration
-    )
-    const hasOnlyContextualUse = hasOnlyContextualReferences(symbolUses)(
+  (symbolUses: SymbolUses) => (context: RuleContext) => {
+    const isContextuallyTyped = isContextuallyTypedFunction(context.checker)
+    const hasOnlyContextualUses = hasOnlyContextualReferences(symbolUses)(
       context.checker
-    )(declaration)
-    const shouldReport = [
-      hasDisallowedParameters,
-      !hasCurriedBody,
-      !isContextual,
-      !hasOnlyContextualUse
-    ].every(Boolean)
+    )
+    const match = createRuleMatch(context)
+    const ruleMatch = curriedDataLastMatch(match)
 
-    return shouldReport ? [curriedDataLastMatch(context)(declaration)] : []
+    const matches = (
+      declaration: CurriedDataLastCandidate
+    ): ReadonlyArray<RuleMatch> => {
+      const hasDisallowedParameters = hasDisallowedParameterList(declaration)
+      const hasCurriedBody = hasCurriedArrowBody(declaration)
+      const isContextual = isContextuallyTyped(declaration)
+      const hasOnlyContextualUse = hasOnlyContextualUses(declaration)
+      const shouldReport = [
+        hasDisallowedParameters,
+        !hasCurriedBody,
+        !isContextual,
+        !hasOnlyContextualUse
+      ].every(Boolean)
+
+      return shouldReport ? [ruleMatch(declaration)] : []
+    }
+
+    return matches
   }
 
 const curriedDataLastListeners = (

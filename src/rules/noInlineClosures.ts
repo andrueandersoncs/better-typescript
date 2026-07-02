@@ -19,20 +19,25 @@ const effectiveParent = (node: ts.Node): ts.Node =>
     ? effectiveParent(node.parent)
     : node.parent
 
-const arrowFunctionMatches =
-  (context: RuleContext) =>
-  (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so every partial below is shared by all ArrowFunctions the dispatcher feeds to matches.
+const arrowFunctionMatches = (context: RuleContext) => {
+  const isExternalArgument = isExternalPackageArgument(context.checker)(
+    context.program
+  )
+  const match = createRuleMatch(context)
+
+  const matches = (
+    arrowFunction: ts.ArrowFunction
+  ): ReadonlyArray<RuleMatch> => {
     const parent = effectiveParent(arrowFunction)
     const hasSanctionedParent = HashSet.has(sanctionedParentKinds, parent.kind)
-    const isExternalCallback = isExternalPackageArgument(context.checker)(
-      context.program
-    )(arrowFunction)
+    const isExternalCallback = isExternalArgument(arrowFunction)
     const isSanctioned = hasSanctionedParent || isExternalCallback
 
     return isSanctioned
       ? []
       : [
-          createRuleMatch(context)({
+          match({
             ruleId,
             node: arrowFunction.equalsGreaterThanToken,
             message:
@@ -46,6 +51,9 @@ const arrowFunctionMatches =
           })
         ]
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
   arrowFunctionMatches

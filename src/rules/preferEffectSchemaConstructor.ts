@@ -1,7 +1,8 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, onNode } from "./ruleCheck.js"
+import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -98,7 +99,7 @@ const untaggedHint =
   "return new TheData({ ... }) instead of assembling the object by hand."
 
 const objectLiteralRuleMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (literal: ts.ObjectLiteralExpression): RuleMatch => {
     const tag = pipe(
       Array.findFirst(literal.properties, isTagAssignment),
@@ -113,42 +114,42 @@ const objectLiteralRuleMatch =
       onSome: taggedHint
     })
 
-    return createRuleMatch(context)({ ruleId, node: literal, message, hint })
+    return match({ ruleId, node: literal, message, hint })
   }
 
 const expressionRuleMatches =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (expression: ts.Expression): ReadonlyArray<RuleMatch> =>
     branchExpressions(expression)
       .filter(ts.isObjectLiteralExpression)
       .filter(hasProperties)
-      .map(objectLiteralRuleMatch(context))
+      .map(objectLiteralRuleMatch(match))
 
-const returnStatementMatches =
-  (context: RuleContext) =>
-  (statement: ts.ReturnStatement): ReadonlyArray<RuleMatch> => {
-    const expression = Option.fromNullable(statement.expression)
+type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 
-    return Option.toArray(expression).flatMap(expressionRuleMatches(context))
+const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
+  ts.isReturnStatement(node) || ts.isArrowFunction(node)
+
+// The context stage runs once per file, so both partials below are shared by every ReturnStatement and ArrowFunction the dispatcher feeds to matches.
+const objectLiteralReturnMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+  const expressionMatches = expressionRuleMatches(match)
+
+  const matches = (node: ReturnCandidate): ReadonlyArray<RuleMatch> => {
+    const expression = ts.isReturnStatement(node)
+      ? Option.fromNullable(node.expression)
+      : Option.liftPredicate(ts.isExpression)(node.body)
+
+    return Option.toArray(expression).flatMap(expressionMatches)
   }
 
-const arrowBodyReturnMatches =
-  (context: RuleContext) =>
-  (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
-    const expression = Option.liftPredicate(ts.isExpression)(arrowFunction.body)
+  return matches
+}
 
-    return Option.toArray(expression).flatMap(expressionRuleMatches(context))
-  }
-
-const returnStatementListener = onNode([ts.SyntaxKind.ReturnStatement])(
-  ts.isReturnStatement
-)(returnStatementMatches)
-
-const arrowBodyListener = onNode([ts.SyntaxKind.ArrowFunction])(
-  ts.isArrowFunction
-)(arrowBodyReturnMatches)
-
-const check = combineAll([returnStatementListener, arrowBodyListener])
+const check = onNode([
+  ts.SyntaxKind.ReturnStatement,
+  ts.SyntaxKind.ArrowFunction
+])(isReturnCandidate)(objectLiteralReturnMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/model/user.ts",

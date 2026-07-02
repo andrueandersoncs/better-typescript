@@ -2,6 +2,7 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { isExtendsClause, namedNodeReportTarget } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -22,11 +23,11 @@ const lacksExtendsClause = (declaration: ClassNode): boolean =>
   !(declaration.heritageClauses ?? []).some(isExtendsClause)
 
 const rootLevelClassMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (declaration: ClassNode): RuleMatch => {
     const node = namedNodeReportTarget(declaration)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node,
       message: "Avoid classes that do not extend another class.",
@@ -40,14 +41,19 @@ const rootLevelClassMatch =
     })
   }
 
-const rootLevelClassMatches =
-  (context: RuleContext) =>
-  (declaration: ClassNode): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so ruleMatch is shared by every class node the dispatcher feeds to matches.
+const rootLevelClassMatches = (context: RuleContext) => {
+  const ruleMatch = rootLevelClassMatch(createRuleMatch(context))
+
+  const matches = (declaration: ClassNode): ReadonlyArray<RuleMatch> =>
     pipe(
       Option.liftPredicate(lacksExtendsClause)(declaration),
-      Option.map(rootLevelClassMatch(context)),
+      Option.map(ruleMatch),
       Option.toArray
     )
+
+  return matches
+}
 
 const check = onNode(classNodeKinds)(isClassNode)(rootLevelClassMatches)
 

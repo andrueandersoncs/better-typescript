@@ -12,27 +12,12 @@ const ruleId = "no-undefined"
 type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
-type UndefinedUsageMatch =
-  | {
-      readonly kind: "parameter"
-      readonly node: ts.ParameterDeclaration
-    }
-  | {
-      readonly kind: "return-type"
-      readonly node: ReturnTypeDeclaration
-    }
-  | {
-      readonly kind: "return-expression"
-      readonly node: UndefinedReturnExpression
-    }
-  | {
-      readonly kind: "type-declaration"
-      readonly node: UndefinedTypeDeclaration
-    }
-  | {
-      readonly kind: "comparison"
-      readonly node: ts.BinaryExpression
-    }
+type UndefinedUsageKind =
+  | "parameter"
+  | "return-type"
+  | "return-expression"
+  | "type-declaration"
+  | "comparison"
 
 const optionHint =
   "Use Effect's Option module to model optional values, and convert nullable boundaries " +
@@ -188,7 +173,7 @@ const isUndefinedTypeDeclaration = (
   return isPropertyWithUndefined || isMappedWithUndefined
 }
 
-const undefinedMessages: Record<UndefinedUsageMatch["kind"], string> = {
+const undefinedMessages: Record<UndefinedUsageKind, string> = {
   parameter: "Avoid function parameters that accept undefined.",
   "return-type": "Avoid function return types that include undefined.",
   "return-expression": "Avoid returning undefined from functions.",
@@ -197,48 +182,18 @@ const undefinedMessages: Record<UndefinedUsageMatch["kind"], string> = {
   comparison: "Avoid comparing values against undefined."
 }
 
-const undefinedMatch =
-  (context: RuleContext) =>
-  (match: UndefinedUsageMatch): RuleMatch => {
-    const message = undefinedMessages[match.kind]
+// Each listener applies this factory with its kind; the resulting context stage runs once per file, so match and message are shared by every node that listener feeds to matches.
+const undefinedUsageMatches =
+  (kind: UndefinedUsageKind) => (context: RuleContext) => {
+    const match = createRuleMatch(context)
+    const message = undefinedMessages[kind]
 
-    return createRuleMatch(context)({
-      ruleId,
-      node: match.node,
-      message,
-      hint: optionHint
-    })
+    const matches = (node: ts.Node): ReadonlyArray<RuleMatch> => [
+      match({ ruleId, node, message, hint: optionHint })
+    ]
+
+    return matches
   }
-
-const undefinedParameterMatches =
-  (context: RuleContext) =>
-  (node: ts.ParameterDeclaration): ReadonlyArray<RuleMatch> => [
-    undefinedMatch(context)({ kind: "parameter", node })
-  ]
-
-const undefinedReturnTypeMatches =
-  (context: RuleContext) =>
-  (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => [
-    undefinedMatch(context)({ kind: "return-type", node })
-  ]
-
-const undefinedReturnExpressionMatches =
-  (context: RuleContext) =>
-  (node: UndefinedReturnExpression): ReadonlyArray<RuleMatch> => [
-    undefinedMatch(context)({ kind: "return-expression", node })
-  ]
-
-const undefinedTypeDeclarationMatches =
-  (context: RuleContext) =>
-  (node: UndefinedTypeDeclaration): ReadonlyArray<RuleMatch> => [
-    undefinedMatch(context)({ kind: "type-declaration", node })
-  ]
-
-const undefinedComparisonMatches =
-  (context: RuleContext) =>
-  (node: ts.BinaryExpression): ReadonlyArray<RuleMatch> => [
-    undefinedMatch(context)({ kind: "comparison", node })
-  ]
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
@@ -253,25 +208,25 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
 
 const parameterListener = onNode([ts.SyntaxKind.Parameter])(
   isParameterAcceptingUndefined
-)(undefinedParameterMatches)
+)(undefinedUsageMatches("parameter"))
 
 const returnTypeListener = onNode(returnTypeDeclarationKinds)(
   isUndefinedReturnTypeDeclaration
-)(undefinedReturnTypeMatches)
+)(undefinedUsageMatches("return-type"))
 
 const returnExpressionListener = onNode([
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ArrowFunction
-])(isUndefinedReturnExpression)(undefinedReturnExpressionMatches)
+])(isUndefinedReturnExpression)(undefinedUsageMatches("return-expression"))
 
 const typeDeclarationListener = onNode([
   ts.SyntaxKind.PropertySignature,
   ts.SyntaxKind.MappedType
-])(isUndefinedTypeDeclaration)(undefinedTypeDeclarationMatches)
+])(isUndefinedTypeDeclaration)(undefinedUsageMatches("type-declaration"))
 
 const comparisonListener = onNode([ts.SyntaxKind.BinaryExpression])(
   isUndefinedComparison
-)(undefinedComparisonMatches)
+)(undefinedUsageMatches("comparison"))
 
 const check = combineAll([
   parameterListener,

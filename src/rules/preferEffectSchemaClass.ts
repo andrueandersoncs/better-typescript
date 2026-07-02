@@ -2,7 +2,9 @@ import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeListeners, withProgramIndex } from "./ruleCheck.js"
 import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
-import { astChildren } from "./traverse.js"
+import type { CreateMatch } from "./ruleMatch.js"
+import { foldAst } from "./traverse.js"
+import type { AstFold } from "./traverse.js"
 import { isProjectSourceFile, outermostTransparentWrapper } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type {
@@ -200,15 +202,11 @@ const boxedExtraction =
 
 const isFoundIndex = (index: number): boolean => index >= 0
 
-const objectLiteralExpressions = (
-  node: ts.Node
-): ReadonlyArray<ts.ObjectLiteralExpression> => {
-  const childLiterals = astChildren(node).flatMap(objectLiteralExpressions)
-
-  return ts.isObjectLiteralExpression(node)
-    ? Array.prepend(childLiterals, node)
-    : childLiterals
-}
+const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (
+  literals,
+  node
+) =>
+  ts.isObjectLiteralExpression(node) ? Array.append(literals, node) : literals
 
 const symbolFileEntry =
   (fileName: string) =>
@@ -255,10 +253,13 @@ const literalConstructionEntries =
 
 const fileConstructionEntries =
   (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile): ReadonlyArray<readonly [ts.Symbol, string]> =>
-    objectLiteralExpressions(sourceFile).flatMap(
+  (sourceFile: ts.SourceFile): ReadonlyArray<readonly [ts.Symbol, string]> => {
+    const literals = foldAst(addObjectLiteral)(sourceFile)([])
+
+    return literals.flatMap(
       literalConstructionEntries(checker)(sourceFile.fileName)
     )
+  }
 
 const addConstructionEntry = (
   index: ConstructionIndex,
@@ -266,9 +267,7 @@ const addConstructionEntry = (
 ): ConstructionIndex =>
   HashMap.has(index, entry[0]) ? index : HashMap.set(index, entry[0], entry[1])
 
-const buildConstructionIndex = (
-  context: ProgramContext
-): ConstructionIndex => {
+const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   const emptyIndex = HashMap.empty<ts.Symbol, string>()
 
   return context.program
@@ -283,19 +282,20 @@ const constructionSymbolFile =
   (symbol: ts.Symbol): Option.Option<string> =>
     HashMap.get(index, symbol)
 
+type RelativeFileName = (fileName: string) => string
+
 const schemaClassRuleMatch =
-  (context: RuleContext) =>
+  (toRelative: RelativeFileName) =>
+  (match: CreateMatch) =>
   (declaration: ObjectTypeDeclaration) =>
   (constructionFileName: string): RuleMatch => {
     const typeName = declaration.name.text
-    const exampleFile = toRelativeFileName(context.projectRoot)(
-      constructionFileName
-    )
+    const exampleFile = toRelative(constructionFileName)
     const kindLabel = ts.isInterfaceDeclaration(declaration)
       ? "an interface"
       : "a type alias"
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node: declaration.name,
       message:
@@ -312,20 +312,29 @@ const schemaClassRuleMatch =
     })
   }
 
+// The context stage runs once per file, so every partial below is shared by all declarations the dispatcher feeds to matches.
 const objectTypeDeclarationMatches =
-  (index: ConstructionIndex) =>
-  (context: RuleContext) =>
-  (declaration: ObjectTypeDeclaration): ReadonlyArray<RuleMatch> => {
-    const declarationSymbol = context.checker.getSymbolAtLocation(
-      declaration.name
-    )
+  (index: ConstructionIndex) => (context: RuleContext) => {
+    const checker = context.checker
+    const symbolFile = constructionSymbolFile(index)
+    const ruleMatch = schemaClassRuleMatch(
+      toRelativeFileName(context.projectRoot)
+    )(createRuleMatch(context))
 
-    return pipe(
-      Option.fromNullable(declarationSymbol),
-      Option.flatMap(constructionSymbolFile(index)),
-      Option.map(schemaClassRuleMatch(context)(declaration)),
-      Option.toArray
-    )
+    const matches = (
+      declaration: ObjectTypeDeclaration
+    ): ReadonlyArray<RuleMatch> => {
+      const declarationSymbol = checker.getSymbolAtLocation(declaration.name)
+
+      return pipe(
+        Option.fromNullable(declarationSymbol),
+        Option.flatMap(symbolFile),
+        Option.map(ruleMatch(declaration)),
+        Option.toArray
+      )
+    }
+
+    return matches
   }
 
 const isObjectTypeAliasDeclaration = (

@@ -1,6 +1,5 @@
 import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { astChildren } from "./traverse.js"
 import {
   declarationSourceFile,
   isProjectSourceFile,
@@ -124,13 +123,19 @@ const isExternalArgumentPosition =
       Option.exists(hasExternalDeclaration)
     )
 
+// ts.forEachChild stops as soon as the callback returns truthy, which is exactly the some() short-circuit.
 const someDescendant =
   (predicate: (node: ts.Node) => boolean) =>
   (node: ts.Node): boolean => {
-    const matchesSelf = predicate(node)
-    const children = astChildren(node)
+    const findMatch = (candidate: ts.Node): boolean => {
+      const childMatch = predicate(candidate)
+        ? true
+        : ts.forEachChild(candidate, findMatch)
 
-    return matchesSelf || children.some(someDescendant(predicate))
+      return childMatch === true
+    }
+
+    return findMatch(node)
   }
 
 const isSameSymbol =

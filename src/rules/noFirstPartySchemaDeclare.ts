@@ -2,6 +2,7 @@ import { Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { isFirstPartySymbol } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -73,17 +74,7 @@ const symbolName: (symbol: ts.Symbol) => string = Struct.get("name")
 
 const fallbackTypeName = (): string => "unknown"
 
-const typeName = (type: ts.Type): string =>
-  pipe(
-    typeSymbol(type),
-    Option.map(symbolName),
-    Option.getOrElse(fallbackTypeName)
-  )
-
 // --- Rule match ---
-
-const schemaDeclareMessage = (assertedType: ts.Type): string =>
-  `Avoid Schema.declare for the first-party type "${typeName(assertedType)}".`
 
 const schemaDeclareHint =
   "Schema.declare is meant for integrating third-party types you do not control. " +
@@ -92,48 +83,51 @@ const schemaDeclareHint =
   "encoding, and decoding for free."
 
 const schemaDeclareMatchSource =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (call: ts.CallExpression) =>
   (assertedType: ts.Type): RuleMatch => {
-    const name = typeName(assertedType)
+    const name = pipe(
+      typeSymbol(assertedType),
+      Option.map(symbolName),
+      Option.getOrElse(fallbackTypeName)
+    )
+    const message = `Avoid Schema.declare for the first-party type "${name}".`
 
-    return createRuleMatch(context)({
-      ruleId,
-      node: call,
-      message: `Avoid Schema.declare for the first-party type "${name}".`,
-      hint: schemaDeclareHint
-    })
+    return match({ ruleId, node: call, message, hint: schemaDeclareHint })
   }
 
+type AssertedType = (predicate: ts.Expression) => Option.Option<ts.Type>
+
 const schemaDeclareMatchOption =
-  (context: RuleContext) =>
+  (assertedType: AssertedType) =>
+  (match: CreateMatch) =>
   (call: ts.CallExpression): Option.Option<RuleMatch> =>
     pipe(
       Option.fromNullable(call.arguments[0]),
-      Option.flatMap(predicateAssertedType(context.checker)),
+      Option.flatMap(assertedType),
       Option.filter(isFirstPartyDataStructure),
-      Option.map(schemaDeclareMatchSource(context)(call))
+      Option.map(schemaDeclareMatchSource(match)(call))
     )
 
-const schemaDeclareCallMatches =
-  (context: RuleContext) =>
-  (call: ts.CallExpression): ReadonlyArray<RuleMatch> => {
-    const match = schemaDeclareMatchOption(context)(call)
+// The context stage runs once per file, so every partial below is shared by all Schema.declare calls the dispatcher feeds to matches.
+const schemaDeclareMatches = (context: RuleContext) => {
+  const assertedType = predicateAssertedType(context.checker)
+  const match = createRuleMatch(context)
+  const matchOption = schemaDeclareMatchOption(assertedType)(match)
 
-    return Option.toArray(match)
-  }
-
-const schemaDeclareMatches =
-  (context: RuleContext) =>
-  (call: ts.CallExpression): ReadonlyArray<RuleMatch> => {
+  const matches = (call: ts.CallExpression): ReadonlyArray<RuleMatch> => {
     const access = call.expression as ts.PropertyAccessExpression
     const object = accessExpression(access)
     if (!ts.isIdentifier(object)) return []
     const isOnSchema = object.text === "Schema"
     const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
+    const declareMatch = isDeclareOnSchema ? matchOption(call) : Option.none()
 
-    return isDeclareOnSchema ? schemaDeclareCallMatches(context)(call) : []
+    return Option.toArray(declareMatch)
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.CallExpression])(isDeclareCall)(
   schemaDeclareMatches

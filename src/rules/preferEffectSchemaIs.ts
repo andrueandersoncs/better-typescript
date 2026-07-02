@@ -95,25 +95,28 @@ const isFirstPartyTagAccess =
     return constituents.every(constituentIsFirstParty)
   }
 
-const schemaIsMatches =
-  (context: RuleContext) =>
-  (expression: ts.BinaryExpression): ReadonlyArray<RuleMatch> => {
-    const sourceFile = context.sourceFile
+// The context stage runs once per file, so every partial below is shared by all BinaryExpressions the dispatcher feeds to matches.
+const schemaIsMatches = (context: RuleContext) => {
+  const sourceFile = context.sourceFile
+  const match = createRuleMatch(context)
+  const isFirstPartyAccess = isFirstPartyTagAccess(context.checker)
+  const valueTextOf = checkedValueText(sourceFile)
+
+  const matches = (
+    expression: ts.BinaryExpression
+  ): ReadonlyArray<RuleMatch> => {
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = [leftAccess, rightAccess]
     const tagAccess = Option.firstSomeOf(accessOptions)
-    const isFirstParty = Option.exists(
-      tagAccess,
-      isFirstPartyTagAccess(context.checker)
-    )
+    const isFirstParty = Option.exists(tagAccess, isFirstPartyAccess)
 
     if (!isFirstParty) {
       return []
     }
     const valueText = pipe(
       tagAccess,
-      Option.map(checkedValueText(sourceFile)),
+      Option.map(valueTextOf),
       Option.getOrElse(Function.constant("the value"))
     )
     const operatorText = expression.operatorToken.getText(sourceFile)
@@ -132,7 +135,7 @@ const schemaIsMatches =
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
     return [
-      createRuleMatch(context)({
+      match({
         ruleId,
         node: expression,
         message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
@@ -142,6 +145,9 @@ const schemaIsMatches =
       })
     ]
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.BinaryExpression])(isSchemaTagComparison)(
   schemaIsMatches

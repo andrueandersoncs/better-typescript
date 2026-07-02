@@ -2,6 +2,7 @@ import { Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { isFirstPartySymbol } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -20,12 +21,12 @@ const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
 const className: (symbol: ts.Symbol) => string = Struct.get("name")
 
 const instanceofRuleMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (expression: ts.BinaryExpression) =>
   (symbol: ts.Symbol): RuleMatch => {
     const name = className(symbol)
 
-    return createRuleMatch(context)({
+    return match({
       ruleId,
       node: expression,
       message: `Avoid instanceof for the first-party class "${name}".`,
@@ -36,21 +37,27 @@ const instanceofRuleMatch =
     })
   }
 
-const instanceofMatches =
-  (context: RuleContext) =>
-  (expression: ts.BinaryExpression): ReadonlyArray<RuleMatch> => {
-    const symbolAtLocation = context.checker.getSymbolAtLocation(
-      expression.right
-    )
+// The context stage runs once per file, so every partial below is shared by all instanceof expressions the dispatcher feeds to matches.
+const instanceofMatches = (context: RuleContext) => {
+  const checker = context.checker
+  const ruleMatch = instanceofRuleMatch(createRuleMatch(context))
+
+  const matches = (
+    expression: ts.BinaryExpression
+  ): ReadonlyArray<RuleMatch> => {
+    const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
     const symbol = Option.fromNullable(symbolAtLocation)
 
     return pipe(
       symbol,
       Option.filter(isFirstPartySymbol),
-      Option.map(instanceofRuleMatch(context)(expression)),
+      Option.map(ruleMatch(expression)),
       Option.toArray
     )
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.BinaryExpression])(isInstanceofExpression)(
   instanceofMatches

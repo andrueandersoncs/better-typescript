@@ -2,6 +2,7 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -26,9 +27,9 @@ const findAbstractModifier = (
 }
 
 const abstractClassMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (keyword: ts.ModifierLike): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: keyword,
       message: "Avoid declaring classes as abstract.",
@@ -38,18 +39,23 @@ const abstractClassMatch =
         " To model a union of types, use a type union instead of an abstract class."
     })
 
-const abstractClassMatches =
-  (context: RuleContext) =>
-  (node: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so the specialized match is shared by every ClassDeclaration the dispatcher feeds to matches.
+const abstractClassMatches = (context: RuleContext) => {
+  const keywordMatch = abstractClassMatch(createRuleMatch(context))
+
+  const matches = (node: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
     const modifiers = ts.getModifiers(node)
 
     return pipe(
       Option.fromNullable(modifiers),
       Option.flatMap(findAbstractModifier),
-      Option.map(abstractClassMatch(context)),
+      Option.map(keywordMatch),
       Option.toArray
     )
   }
+
+  return matches
+}
 
 const check = onNode(classDeclarationKinds)(isClassDeclaration)(
   abstractClassMatches

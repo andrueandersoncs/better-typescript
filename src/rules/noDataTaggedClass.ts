@@ -65,13 +65,17 @@ const isDataTaggedClassDeclaration = (
   return Option.exists(classOption, hasDataTaggedClassHeritage)
 }
 
-const dataTaggedClassMatches =
-  (context: RuleContext) =>
-  (declaration: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so match is shared by every ClassDeclaration the dispatcher feeds to matches.
+const dataTaggedClassMatches = (context: RuleContext) => {
+  const match = createRuleMatch(context)
+
+  const matches = (
+    declaration: ts.ClassDeclaration
+  ): ReadonlyArray<RuleMatch> => {
     const node = namedNodeReportTarget(declaration)
 
     return [
-      createRuleMatch(context)({
+      match({
         ruleId,
         node,
         message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
@@ -81,6 +85,9 @@ const dataTaggedClassMatches =
       })
     ]
   }
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ClassDeclaration])(
   isDataTaggedClassDeclaration

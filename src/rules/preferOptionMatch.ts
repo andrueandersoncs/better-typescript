@@ -2,6 +2,7 @@ import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -65,10 +66,10 @@ const branchToCheck =
   }
 
 const optionMatchRuleMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (conditional: ts.ConditionalExpression) =>
   (_guard: readonly [OptionGuardKind, string]): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: conditional,
       message:
@@ -86,9 +87,13 @@ const hasDotValueInBranch =
     return containsDotValue(argumentName)(branch)
   }
 
-const optionMatchMatches =
-  (context: RuleContext) =>
-  (conditional: ts.ConditionalExpression): ReadonlyArray<RuleMatch> =>
+// The context stage runs once per file, so the specialized rule match is shared by every ConditionalExpression the dispatcher feeds to matches.
+const optionMatchMatches = (context: RuleContext) => {
+  const ruleMatch = optionMatchRuleMatch(createRuleMatch(context))
+
+  const matches = (
+    conditional: ts.ConditionalExpression
+  ): ReadonlyArray<RuleMatch> =>
     pipe(
       Option.gen(function* () {
         const unwrapped = unwrapTransparentExpression(conditional.condition)
@@ -110,9 +115,12 @@ const optionMatchMatches =
         return [methodName as OptionGuardKind, identifier.text] as const
       }),
       Option.filter(hasDotValueInBranch(conditional)),
-      Option.map(optionMatchRuleMatch(context)(conditional)),
+      Option.map(ruleMatch(conditional)),
       Option.toArray
     )
+
+  return matches
+}
 
 const check = onNode([ts.SyntaxKind.ConditionalExpression])(
   ts.isConditionalExpression

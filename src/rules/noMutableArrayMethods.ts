@@ -2,6 +2,7 @@ import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import type { CreateMatch } from "./ruleMatch.js"
 import {
   differentApparentType,
   differentBaseConstraint,
@@ -102,10 +103,10 @@ const isArrayType =
   }
 
 const mutableArrayRuleMatch =
-  (context: RuleContext) =>
+  (match: CreateMatch) =>
   (callExpression: ts.CallExpression) =>
   (methodName: MutableArrayMethod): RuleMatch =>
-    createRuleMatch(context)({
+    match({
       ruleId,
       node: callExpression,
       message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
@@ -116,13 +117,19 @@ const mutableArrayRuleMatch =
         "instead of manipulating an array in place."
     })
 
-const mutableArrayMatches =
-  (context: RuleContext) =>
-  (callExpression: ts.CallExpression): ReadonlyArray<RuleMatch> => {
+// The context stage runs once per file, so every partial below is shared by all CallExpressions the dispatcher feeds to matches.
+const mutableArrayMatches = (context: RuleContext) => {
+  const checker = context.checker
+  const isReceiverArrayType = isArrayType(checker)
+  const ruleMatch = mutableArrayRuleMatch(createRuleMatch(context))
+
+  const matches = (
+    callExpression: ts.CallExpression
+  ): ReadonlyArray<RuleMatch> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return []
     }
-  
+
     const propertyAccess = callExpression.expression
     const methodName = HashSet.has(
       mutableArrayMethods,
@@ -130,27 +137,30 @@ const mutableArrayMatches =
     )
       ? Option.some(propertyAccess.name.text as MutableArrayMethod)
       : Option.none()
-  
+
     if (Option.isNone(methodName)) {
       return []
     }
-  
-    const receiverType = context.checker.getTypeAtLocation(
-      propertyAccess.expression
-    )
-  
-    const methodCall = isArrayType(context.checker)(receiverType)
+
+    const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+
+    const methodCall = isReceiverArrayType(receiverType)
       ? methodName
       : Option.none()
-  
+
     return pipe(
       methodCall,
-      Option.map(mutableArrayRuleMatch(context)(callExpression)),
+      Option.map(ruleMatch(callExpression)),
       Option.toArray
     )
   }
 
-const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(mutableArrayMatches)
+  return matches
+}
+
+const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+  mutableArrayMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/items.ts",
