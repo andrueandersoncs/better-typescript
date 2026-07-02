@@ -2,7 +2,7 @@ import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { unwrapExpression } from "./tsNode.js"
+import { isFirstPartySymbol, unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -74,6 +74,27 @@ const checkedValueText =
   (access: ts.PropertyAccessExpression): string =>
     access.expression.getText(sourceFile)
 
+const constituentIsFirstParty = (type: ts.Type): boolean => {
+  const aliasSymbol = Option.fromNullable(type.aliasSymbol)
+  const typeSymbol = type.getSymbol()
+  const ownSymbol = Option.fromNullable(typeSymbol)
+  const symbol = Option.orElse(aliasSymbol, Function.constant(ownSymbol))
+
+  return Option.exists(symbol, isFirstPartySymbol)
+}
+
+// Schema.is(Class) uses instanceof semantics: rewriting a _tag check on a type the project does not declare (plain JSON, third-party unions) would invert its runtime result.
+const isFirstPartyTagAccess =
+  (checker: ts.TypeChecker) =>
+  (access: ts.PropertyAccessExpression): boolean => {
+    const checkedType = checker.getTypeAtLocation(access.expression)
+    const constituents = checkedType.isUnion()
+      ? checkedType.types
+      : [checkedType]
+
+    return constituents.every(constituentIsFirstParty)
+  }
+
 const schemaIsMatches =
   (context: RuleContext) =>
   (expression: ts.BinaryExpression): ReadonlyArray<RuleMatch> => {
@@ -81,8 +102,17 @@ const schemaIsMatches =
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = [leftAccess, rightAccess]
+    const tagAccess = Option.firstSomeOf(accessOptions)
+    const isFirstParty = Option.exists(
+      tagAccess,
+      isFirstPartyTagAccess(context.checker)
+    )
+
+    if (!isFirstParty) {
+      return []
+    }
     const valueText = pipe(
-      Option.firstSomeOf(accessOptions),
+      tagAccess,
       Option.map(checkedValueText(sourceFile)),
       Option.getOrElse(Function.constant("the value"))
     )
@@ -166,7 +196,9 @@ const example = new RuleExample({
 
 export const preferEffectSchemaIs = new Rule({
   id: ruleId,
-  description: "Prefer Schema.is over direct _tag comparisons.",
+  description:
+    "Prefer Schema.is over direct _tag comparisons on first-party types; tags on " +
+    "third-party unions (where no Schema class exists) are left alone.",
   example,
   check
 })

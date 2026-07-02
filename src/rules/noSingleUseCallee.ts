@@ -5,6 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import {
   conciseArrowBody,
   functionInitializer,
+  hasExportModifier,
   isFunctionInitializer,
   isProjectSourceFile
 } from "./tsNode.js"
@@ -25,17 +26,6 @@ class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")({
   isCurried: Schema.Boolean,
   isExported: Schema.Boolean
 }) {}
-
-// Export detection
-
-const isExportKeyword = (modifier: ts.Modifier): boolean =>
-  modifier.kind === ts.SyntaxKind.ExportKeyword
-
-const hasExportModifier = (statement: ts.Statement): boolean =>
-  (ts.canHaveModifiers(statement)
-    ? (ts.getModifiers(statement) ?? [])
-    : []
-  ).some(isExportKeyword)
 
 // Currying detection
 
@@ -153,7 +143,6 @@ type ClassificationFolder = (
   classifications: Classifications,
   node: ts.Node
 ) => Classifications
-
 
 const emptyClassification = new SymbolClassification({
   calleeCount: 0,
@@ -274,7 +263,9 @@ const foldDescendants =
 
 const classifyIdentifierNode =
   (checker: ts.TypeChecker) =>
-  (symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>): ClassificationFolder =>
+  (
+    symbolToEntry: HashMap.HashMap<ts.Symbol, FunctionEntry>
+  ): ClassificationFolder =>
   (classifications, node) =>
     ts.isIdentifier(node)
       ? classifyIdentifierRef(checker)(symbolToEntry)(classifications)(node)
@@ -318,8 +309,7 @@ class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
 const referenceIndexCache = new WeakMap<ts.Program, ReferenceIndex>()
 
 const orBuildReferenceIndex =
-  (program: ts.Program) =>
-  (checker: ts.TypeChecker) => (): ReferenceIndex => {
+  (program: ts.Program) => (checker: ts.TypeChecker) => (): ReferenceIndex => {
     const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
     const entries = projectFiles.flatMap(sourceFileEntries)
     const symbolEntryPairs = Array.filterMap(

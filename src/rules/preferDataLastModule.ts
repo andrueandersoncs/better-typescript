@@ -388,7 +388,10 @@ const badExample = new ExampleSnippet({
   filePath: "src/cases.ts",
   code: `import type { User } from "./modules/user.js"
 
-export const updateUser = (id: string, newData: User): User => newData`
+export const updateUser =
+  (id: string) =>
+  (newData: User): User =>
+    newData`
 })
 
 const goodExample = new ExampleSnippet({
@@ -397,7 +400,10 @@ const goodExample = new ExampleSnippet({
   readonly name: string
 }
 
-export const updateUser = (id: string, newData: User): User => newData`
+export const updateUser =
+  (id: string) =>
+  (newData: User): User =>
+    newData`
 })
 
 const example = new RuleExample({

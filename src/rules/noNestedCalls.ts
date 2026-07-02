@@ -2,16 +2,14 @@ import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import { isSameNode } from "./tsNode.js"
+import { callArguments, isCallLikeExpression } from "./tsSignature.js"
+import type { CallLikeExpression } from "./tsSignature.js"
 import { hasCallSignature } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
 const ruleId = "no-nested-calls"
-
-type CallLikeExpression = ts.CallExpression | ts.NewExpression
-
-const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
-  ts.isCallExpression(node) || ts.isNewExpression(node)
 
 const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
@@ -37,15 +35,6 @@ const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.TemplateSpan,
   ts.SyntaxKind.TemplateExpression
 )
-
-const isSameNode =
-  (node: ts.Node) =>
-  (candidate: ts.Node): boolean =>
-    candidate === node
-
-const callArguments = (
-  call: CallLikeExpression
-): ReadonlyArray<ts.Expression> => call.arguments ?? []
 
 const consumesAsArgument =
   (node: ts.Node) =>
@@ -146,10 +135,10 @@ const goodExtractedValues = new ExampleSnippet({
   code: `declare const parseTimestamp: (raw: string) => Date
 declare const formatDate: (date: Date) => string
 
-export const logTimestamp = (raw: string): void => {
+export const formatTimestamp = (raw: string): string => {
   const timestamp = parseTimestamp(raw)
-  const formatted = formatDate(timestamp)
-  console.log(formatted)
+
+  return formatDate(timestamp)
 }`
 })
 

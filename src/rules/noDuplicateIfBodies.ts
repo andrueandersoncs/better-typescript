@@ -161,14 +161,22 @@ export const routeUser = (): Response | undefined => {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/auth.ts",
-  code: `declare const isAdmin: boolean
+  code: `import { Option } from "effect"
+
+declare const isAdmin: boolean
 declare const isModerator: boolean
 declare const redirect: (path: string) => Response
 
-export const routeUser = (): Response | undefined => {
-  if (isAdmin || isModerator) {
-    return redirect("/dashboard")
+export const routeUser = (): Option.Option<Response> => {
+  const canSeeDashboard = isAdmin || isModerator
+
+  if (canSeeDashboard) {
+    const response = redirect("/dashboard")
+
+    return Option.some(response)
   }
+
+  return Option.none()
 }`
 })
 

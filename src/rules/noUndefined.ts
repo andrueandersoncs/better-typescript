@@ -36,7 +36,10 @@ type UndefinedUsageMatch =
 
 const optionHint =
   "Use Effect's Option module to model optional values, and convert nullable boundaries " +
-  "with Option.fromNullable."
+  "with Option.fromNullable (incoming) and Option.getOrUndefined (outgoing). When a " +
+  "third-party signature forces undefined on a callback, keep the callback inline or " +
+  "annotate it with the library's own callback type so the undefined stays in the " +
+  "library's declaration, not yours."
 
 const isUndefinedIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "undefined"

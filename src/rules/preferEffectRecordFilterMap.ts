@@ -54,8 +54,8 @@ const check = onNode([ts.SyntaxKind.SpreadAssignment])(ts.isSpreadAssignment)(
 const badExample = new ExampleSnippet({
   filePath: "src/search.ts",
   code: `declare const params: {
-  readonly query: string | undefined
-  readonly page: number | undefined
+  readonly query: string | null
+  readonly page: number | null
 }
 
 export const queryParameters = {
@@ -69,8 +69,8 @@ const goodExample = new ExampleSnippet({
   code: `import { Option, Record } from "effect"
 
 declare const params: {
-  readonly query: string | undefined
-  readonly page: number | undefined
+  readonly query: string | null
+  readonly page: number | null
 }
 
 export const queryParameters = Record.filterMap(

@@ -126,6 +126,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 25,
     column: 53
+  },
+  {
+    name: "isSome.thirdPartyEffectTag",
+    fileName: "src/externalTag.ts",
+    line: 6,
+    column: 23
   }
 ]
 

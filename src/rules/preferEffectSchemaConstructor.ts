@@ -165,8 +165,11 @@ class User extends Schema.TaggedClass<User>()("User", {
   createdAt: Schema.Number
 }) {}
 
-export const createUser = (name: string) =>
-  new User({ name, createdAt: Date.now() })`
+export const createUser = (name: string) => {
+  const createdAt = Date.now()
+
+  return new User({ name, createdAt })
+}`
 })
 
 const example = new RuleExample({

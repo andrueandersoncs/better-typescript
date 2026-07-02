@@ -91,6 +91,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 26,
     column: 18
+  },
+  {
+    name: "first-party interface pipe method",
+    fileName: "src/firstPartyPipe.ts",
+    line: 8,
+    column: 30
   }
 ]
 

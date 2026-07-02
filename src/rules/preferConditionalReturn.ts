@@ -17,6 +17,7 @@ const containsYieldExpression = (node: ts.Node): boolean => {
   return isYield || childContainsYield
 }
 
+// A branch already returning a ternary would collapse into a nested ternary, which no-multiple-boolean-operators forbids; leave those if statements alone.
 const isSimpleReturnExpression =
   (sourceFile: ts.SourceFile) =>
   (expression: ts.Expression): boolean => {
@@ -24,8 +25,12 @@ const isSimpleReturnExpression =
     const isSingleLine = !text.includes("\n")
     const isShort = text.length <= maximumReturnExpressionLength
     const hasYieldExpression = containsYieldExpression(expression)
+    const unwrapped = unwrapExpression(expression)
+    const isTernary = ts.isConditionalExpression(unwrapped)
 
-    return [isSingleLine, isShort, !hasYieldExpression].every(Boolean)
+    return [isSingleLine, isShort, !hasYieldExpression, !isTernary].every(
+      Boolean
+    )
   }
 
 const returnExpressionFromStatement =

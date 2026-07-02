@@ -11,6 +11,7 @@ import {
   outermostTransparentWrapper,
   unwrapTransparentExpression
 } from "./tsNode.js"
+import { resolvedCallSignature, signatureIsExternal } from "./tsSignature.js"
 import { hasCallSignature } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -84,7 +85,9 @@ const hasDisallowedParameterList = (
 ): boolean => {
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
 
-  return [hasRestParameter(declaration), hasMultipleRuntimeParameters].some(Boolean)
+  return [hasRestParameter(declaration), hasMultipleRuntimeParameters].some(
+    Boolean
+  )
 }
 
 const hasCurriedArrowBody = (
@@ -123,7 +126,10 @@ const contextualType =
 const hasContextualCallableType =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): boolean =>
-    pipe(contextualType(checker)(expression), Option.exists(hasCallableType(checker)))
+    pipe(
+      contextualType(checker)(expression),
+      Option.exists(hasCallableType(checker))
+    )
 
 const isContextuallyTypedFunction =
   (checker: ts.TypeChecker) =>
@@ -194,11 +200,9 @@ const shouldTrackDeclaration =
     const hasCurriedBody = hasCurriedArrowBody(declaration)
     const isContextual = isContextuallyTypedFunction(checker)(declaration)
 
-    return [
-      hasDisallowedParameters,
-      !hasCurriedBody,
-      !isContextual
-    ].every(Boolean)
+    return [hasDisallowedParameters, !hasCurriedBody, !isContextual].every(
+      Boolean
+    )
   }
 
 const addTrackedSymbol =
@@ -319,36 +323,13 @@ const parameterTypeAtCall =
   (parameter: ts.Symbol): ts.Type =>
     checker.getTypeOfSymbolAtLocation(parameter, call)
 
-const resolvedCallSignature =
-  (checker: ts.TypeChecker) =>
-  (call: ts.CallExpression): Option.Option<ts.Signature> => {
-    const signature = checker.getResolvedSignature(call)
-
-    return Option.fromNullable(signature)
-  }
-
-const signatureDeclarationIsExternal = (
-  declaration: ts.Declaration
-): boolean => {
-  const sourceFile = declaration.getSourceFile()
-
-  return !isProjectSourceFile(sourceFile)
-}
-
-const signatureIsExternal = (signature: ts.Signature): boolean => {
-  const declaration = signature.getDeclaration()
-
-  return pipe(
-    Option.fromNullable(declaration),
-    Option.map(signatureDeclarationIsExternal),
-    Option.getOrElse(Function.constant(true))
-  )
-}
-
 const resolvedSignatureIsExternal =
   (checker: ts.TypeChecker) =>
   (call: ts.CallExpression): boolean =>
-    pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
+    pipe(
+      resolvedCallSignature(checker)(call),
+      Option.exists(signatureIsExternal)
+    )
 
 const resolvedSignatureParameterType =
   (checker: ts.TypeChecker) =>
@@ -401,9 +382,7 @@ const curriedDataLastSymbolInSet =
     HashSet.has(symbols, symbol)
 
 type NameDeclaration =
-  | ts.VariableDeclaration
-  | ts.FunctionDeclaration
-  | ts.MethodDeclaration
+  ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
 const declarationHasName =
   (identifier: ts.Identifier) =>
@@ -494,9 +473,7 @@ const classifySourceFileUses =
     )(uses)
 
 const buildSymbolUses =
-  (program: ts.Program) =>
-  (checker: ts.TypeChecker) =>
-  (): SymbolUses => {
+  (program: ts.Program) => (checker: ts.TypeChecker) => (): SymbolUses => {
     const sourceFiles = program.getSourceFiles().filter(isProjectSourceFile)
     const trackedSymbols = trackedSymbolsForProgram(program)(checker)
 
@@ -508,9 +485,7 @@ const buildSymbolUses =
   }
 
 const symbolUsesForProgram =
-  (program: ts.Program) =>
-  (checker: ts.TypeChecker) =>
-  (): SymbolUses => {
+  (program: ts.Program) => (checker: ts.TypeChecker) => (): SymbolUses => {
     const cached = symbolUseCache.get(program)
     const symbolUses = pipe(
       Option.fromNullable(cached),
@@ -527,11 +502,9 @@ const isContextualOnlyUse = (use: SymbolUse): boolean => {
   const hasNoDirectCall = !use.hasDirectCall
   const hasNoOtherReference = !use.hasOtherReference
 
-  return [
-    isContextualReference,
-    hasNoDirectCall,
-    hasNoOtherReference
-  ].every(Boolean)
+  return [isContextualReference, hasNoDirectCall, hasNoOtherReference].every(
+    Boolean
+  )
 }
 
 const symbolUseFrom =
@@ -550,7 +523,6 @@ const hasOnlyContextualReferences =
       Option.exists(isContextualOnlyUse)
     )
   }
-
 
 const curriedDataLastMatch =
   (context: RuleContext) =>
@@ -585,19 +557,24 @@ const curriedDataLastMatches =
   (declaration: CurriedDataLastCandidate): ReadonlyArray<RuleMatch> => {
     const hasDisallowedParameters = hasDisallowedParameterList(declaration)
     const hasCurriedBody = hasCurriedArrowBody(declaration)
-    const isContextual = isContextuallyTypedFunction(context.checker)(declaration)
-    const hasOnlyContextualUse = hasOnlyContextualReferences(context)(declaration)
+    const isContextual = isContextuallyTypedFunction(context.checker)(
+      declaration
+    )
+    const hasOnlyContextualUse =
+      hasOnlyContextualReferences(context)(declaration)
     const shouldReport = [
       hasDisallowedParameters,
       !hasCurriedBody,
       !isContextual,
       !hasOnlyContextualUse
     ].every(Boolean)
-  
+
     return shouldReport ? [curriedDataLastMatch(context)(declaration)] : []
   }
 
-const check = onNode(candidateKinds)(isCurriedDataLastCandidate)(curriedDataLastMatches)
+const check = onNode(candidateKinds)(isCurriedDataLastCandidate)(
+  curriedDataLastMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",

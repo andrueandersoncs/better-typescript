@@ -2,6 +2,7 @@ import { HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import { isInAmbientContext } from "./tsNode.js"
 import { callSignatureCheck, hasCallSignature, isVoidType } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -130,6 +131,11 @@ const isCallbackSignature =
 const callbackStyleMatches =
   (context: RuleContext) =>
   (declaration: CallbackStyleDeclaration): ReadonlyArray<RuleMatch> => {
+    // A declare statement mirrors a third-party API's existing shape; there is no Effect-returning alternative to describe.
+    if (isInAmbientContext(declaration)) {
+      return []
+    }
+
     const declaredSignature =
       context.checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
@@ -147,7 +153,8 @@ const callbackStyleMatches =
               "Avoid callback-style functions that accept a function argument and return void.",
             hint:
               "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-              "own API as an Effect-returning function from the start."
+              "own API as an Effect-returning function from the start. Ambient declarations " +
+              "(declare statements) describing a third-party API are permitted."
           })
         ]
       : []
@@ -194,9 +201,20 @@ interface MessageSocket {
 
 declare const socket: MessageSocket
 
+type MessageListener = (msg: Message) => void
+
+type MessageResume = (effect: Effect.Effect<Message>) => void
+
+const resumeWithMessage =
+  (resume: MessageResume): MessageListener =>
+  (msg) => {
+    const succeeded = Effect.succeed(msg)
+    resume(succeeded)
+  }
+
 // One-shot: resolves on the first event, then the Effect completes.
 export const onMessage = Effect.async<Message>((resume) => {
-  socket.addEventListener("message", (msg) => resume(Effect.succeed(msg)))
+  socket.addEventListener("message", resumeWithMessage(resume))
 
   return Effect.void
 })`
@@ -204,7 +222,7 @@ export const onMessage = Effect.async<Message>((resume) => {
 
 const goodStream = new ExampleSnippet({
   filePath: "src/messages.ts",
-  code: `import { Effect, Stream } from "effect"
+  code: `import { Effect, Stream, StreamEmit } from "effect"
 
 interface Message {
   readonly data: string
@@ -216,9 +234,19 @@ interface MessageSocket {
 
 declare const socket: MessageSocket
 
+type MessageListener = (msg: Message) => void
+
+type MessageEmit = StreamEmit.Emit<never, never, Message, void>
+
+const emitMessage =
+  (emit: MessageEmit): MessageListener =>
+  (msg) => {
+    void emit.single(msg)
+  }
+
 // Streaming: emits every event until the scope is closed.
 export const messages = Stream.async<Message>((emit) => {
-  socket.addEventListener("message", (msg) => emit.single(msg))
+  socket.addEventListener("message", emitMessage(emit))
 
   return Effect.void
 })`

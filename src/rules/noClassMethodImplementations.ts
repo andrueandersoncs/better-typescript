@@ -26,7 +26,9 @@ const findOverrideModifier = (
   return Option.fromNullable(modifier)
 }
 
+// MethodDeclaration also covers object-literal method shorthand; only class members are OOP coupling.
 const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
+  const isClassMember = ts.isClassLike(node.parent)
   const bodyOption = Option.fromNullable(node.body)
   const bodyExists = Option.isSome(bodyOption)
   const modifiers = ts.getModifiers(node)
@@ -36,7 +38,7 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
     Option.isSome
   )
 
-  return [bodyExists, !isOverride].every(Boolean)
+  return [isClassMember, bodyExists, !isOverride].every(Boolean)
 }
 
 const methodImplementationMatch =
@@ -102,7 +104,9 @@ const example = new RuleExample({
 export const noClassMethodImplementations = new Rule({
   id: ruleId,
   description:
-    "Disallow implementing methods on a class, except methods that override a base-class method.",
+    "Disallow implementing methods on a class, except methods that override a base-class " +
+    "method; object-literal methods (e.g. implementing a third-party interface) are not " +
+    "class methods.",
   example,
   check
 })

@@ -67,6 +67,15 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     column: 3,
     message: expectedMessage,
     hint: "Return a conditional expression instead: return (useFirst) ? first : second."
+  },
+  {
+    name: "ternaryBranch.label.if",
+    ruleId: "prefer-conditional-return",
+    fileName: "src/ternaryBranch.ts",
+    line: 9,
+    column: 3,
+    message: expectedMessage,
+    hint: 'Return a conditional expression instead: return (on) ? "on" : "off".'
   }
 ]
 
@@ -100,6 +109,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 38,
     column: 3
+  },
+  {
+    name: "ternaryBranch.pick.if",
+    fileName: "src/ternaryBranch.ts",
+    line: 2,
+    column: 3
   }
 ]
 
@@ -116,6 +131,6 @@ const runPreferConditionalReturnFixture = async (): Promise<
 test("prefer-conditional-return reports disallowed and permits allowed fixture items", async () => {
   const matches = await runPreferConditionalReturnFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
+  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
   assertAllowedFixtureItems(matches, allowedFixtureItems)
 })

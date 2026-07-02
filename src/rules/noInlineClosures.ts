@@ -3,6 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { transparentWrapperKinds } from "./tsNode.js"
+import { isExternalPackageArgument } from "./tsSignature.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -22,19 +23,26 @@ const arrowFunctionMatches =
   (context: RuleContext) =>
   (arrowFunction: ts.ArrowFunction): ReadonlyArray<RuleMatch> => {
     const parent = effectiveParent(arrowFunction)
+    const hasSanctionedParent = HashSet.has(sanctionedParentKinds, parent.kind)
+    const isExternalCallback = isExternalPackageArgument(context.checker)(
+      context.program
+    )(arrowFunction)
+    const isSanctioned = hasSanctionedParent || isExternalCallback
 
-    return HashSet.has(sanctionedParentKinds, parent.kind)
+    return isSanctioned
       ? []
       : [
           createRuleMatch(context)({
             ruleId,
             node: arrowFunction.equalsGreaterThanToken,
             message:
-              "Avoid arrow functions outside naming and currying positions.",
+              "Avoid arrow functions outside naming, currying, and third-party callback positions.",
             hint:
               "Name this function as a top-level const and pass it by reference, currying it when it " +
-              "needs values from the enclosing scope. When the expression sequences several steps, " +
-              "prefer a generator (Option.gen or Effect.gen) over nesting functions."
+              "needs values from the enclosing scope. Inline arrows are permitted only as arguments " +
+              "to third-party functions (effect combinators, node_modules callbacks). When the " +
+              "expression sequences several steps, prefer a generator (Option.gen or Effect.gen) " +
+              "over nesting functions."
           })
         ]
   }
@@ -66,16 +74,30 @@ const upperName = (user: User): string =>
 export const names = Array.map(users, upperName)`
 })
 
+const goodInlineAtBoundary = new ExampleSnippet({
+  filePath: "src/labels.ts",
+  code: `import { Array } from "effect"
+
+interface User {
+  readonly name: string
+}
+
+declare const users: ReadonlyArray<User>
+
+export const labels = Array.map(users, (user) => user.name.toUpperCase())`
+})
+
 const example = new RuleExample({
   bad: [badExample],
-  good: [goodExample]
+  good: [goodExample, goodInlineAtBoundary]
 })
 
 export const noInlineClosures = new Rule({
   id: ruleId,
   description:
-    "Disallow arrow functions outside naming positions (const initializers) and currying " +
-    "positions (arrow function bodies).",
+    "Disallow arrow functions outside naming positions (const initializers), currying " +
+    "positions (arrow function bodies), and third-party callback positions (arguments to " +
+    "functions declared in node_modules).",
   example,
   check
 })

@@ -19,7 +19,8 @@ const expectedMessage =
   "Avoid callback-style functions that accept a function argument and return void."
 const expectedHint =
   "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-  "own API as an Effect-returning function from the start."
+  "own API as an Effect-returning function from the start. Ambient declarations " +
+  "(declare statements) describing a third-party API are permitted."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
@@ -131,6 +132,18 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     name: "acceptsNonCallableObject",
     fileName: "src/allowed.ts",
     line: 18,
+    column: 1
+  },
+  {
+    name: "ambient.subscribeFunctionType",
+    fileName: "src/ambient.ts",
+    line: 5,
+    column: 26
+  },
+  {
+    name: "ambient.onTickDeclaration",
+    fileName: "src/ambient.ts",
+    line: 8,
     column: 1
   }
 ]

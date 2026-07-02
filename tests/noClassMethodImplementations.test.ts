@@ -65,6 +65,15 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     column: 10,
     message,
     hint
+  },
+  {
+    name: "Recorder.record non-override class method",
+    ruleId: "no-class-method-implementations",
+    fileName: "src/objectLiteral.ts",
+    line: 12,
+    column: 3,
+    message,
+    hint
   }
 ]
 
@@ -104,6 +113,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 22,
     column: 12
+  },
+  {
+    name: "logger.log object-literal method shorthand",
+    fileName: "src/objectLiteral.ts",
+    line: 5,
+    column: 3
   }
 ]
 

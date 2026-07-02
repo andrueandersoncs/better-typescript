@@ -20,16 +20,38 @@ const constructorMessage = "Avoid constructing a built-in Map."
 
 const constructorHint =
   'Use Effect\'s HashMap instead — for example HashMap.fromIterable([["a", 1]]) or ' +
-  "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality."
+  "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality. " +
+  "Constructing a Map is permitted only when it is handed to a third-party API that " +
+  "requires one."
 
 const mapTypeMessage = "Avoid the built-in Map type."
 const readonlyMapTypeMessage = "Avoid the built-in ReadonlyMap type."
 
 const typeHint =
   "Use HashMap.HashMap<K, V> from Effect instead. HashMap integrates with Equal and Hash " +
-  "traits for structural equality."
+  "traits for structural equality. Writing the built-in Map type is permitted only where " +
+  "it mirrors a third-party contract: ambient declarations and values that cross into a " +
+  "third-party call."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+  {
+    name: "new Map only used locally in boundary file",
+    ruleId: "prefer-hash-map",
+    fileName: "src/boundary.ts",
+    line: 14,
+    column: 15,
+    message: constructorMessage,
+    hint: constructorHint
+  },
+  {
+    name: "non-ambient Map type annotation in boundary file",
+    ruleId: "prefer-hash-map",
+    fileName: "src/boundary.ts",
+    line: 18,
+    column: 18,
+    message: mapTypeMessage,
+    hint: typeHint
+  },
   {
     name: "new Map with array literal",
     ruleId: "prefer-hash-map",
@@ -128,6 +150,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 10,
     column: 15
+  },
+  {
+    name: "new Map escaping via variable to JSON.stringify",
+    fileName: "src/boundary.ts",
+    line: 4,
+    column: 17
+  },
+  {
+    name: "new Map as direct argument to JSON.stringify",
+    fileName: "src/boundary.ts",
+    line: 8,
+    column: 31
+  },
+  {
+    name: "ambient Map type reference",
+    fileName: "src/boundary.ts",
+    line: 11,
+    column: 34
   }
 ]
 

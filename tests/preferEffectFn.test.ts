@@ -17,32 +17,14 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-fn")
 
 const makeMessage = (functionName: string): string =>
-  `Avoid declaring ${functionName} as a plain function that returns an Effect.`
+  `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`
 
 const makeHint = (functionName: string): string =>
   `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
-  "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
-  "or a function returning an Effect."
+  "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
+  "traced span."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
-  {
-    name: "fetchUser.name",
-    ruleId: "prefer-effect-fn",
-    fileName: "src/cases.ts",
-    line: 3,
-    column: 14,
-    message: makeMessage("fetchUser"),
-    hint: makeHint("fetchUser")
-  },
-  {
-    name: "getCount.name",
-    ruleId: "prefer-effect-fn",
-    fileName: "src/cases.ts",
-    line: 4,
-    column: 14,
-    message: makeMessage("getCount"),
-    hint: makeHint("getCount")
-  },
   {
     name: "compute.name",
     ruleId: "prefer-effect-fn",
@@ -51,28 +33,36 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     column: 14,
     message: makeMessage("compute"),
     hint: makeHint("compute")
-  },
-  {
-    name: "load.name",
-    ruleId: "prefer-effect-fn",
-    fileName: "src/cases.ts",
-    line: 10,
-    column: 14,
-    message: makeMessage("load"),
-    hint: makeHint("load")
-  },
-  {
-    name: "failWith.name",
-    ruleId: "prefer-effect-fn",
-    fileName: "src/cases.ts",
-    line: 13,
-    column: 14,
-    message: makeMessage("failWith"),
-    hint: makeHint("failWith")
   }
 ]
 
+// fetchUser/getCount/load/failWith build Effects with plain combinators (no
+// Effect.gen wrapper), so the narrowed rule leaves them alone.
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
+  {
+    name: "cases.fetchUser.name",
+    fileName: "src/cases.ts",
+    line: 3,
+    column: 14
+  },
+  {
+    name: "cases.getCount.name",
+    fileName: "src/cases.ts",
+    line: 4,
+    column: 14
+  },
+  {
+    name: "cases.load.name",
+    fileName: "src/cases.ts",
+    line: 10,
+    column: 14
+  },
+  {
+    name: "cases.failWith.name",
+    fileName: "src/cases.ts",
+    line: 13,
+    column: 14
+  },
   {
     name: "effectFn.fetchUser.name",
     fileName: "src/allowed.ts",

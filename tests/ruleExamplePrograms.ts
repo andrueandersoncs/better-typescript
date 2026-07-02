@@ -2,6 +2,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import * as ts from "typescript"
 import { LoadedProject } from "../src/project/loadProject.js"
+import { rules } from "../src/rules/index.js"
 import type { ExampleSnippet, Rule, RuleMatch } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
 
@@ -172,9 +173,9 @@ export const compileExampleSet = (
   const compileProblems = [...virtualFiles.keys()].flatMap(
     snippetProblems(program, setRoot)
   )
-  const ruleMatches = runRules([rule])(loadedProject).filter(
-    (match) => match.ruleId === rule.id
-  )
+  // Every registered rule runs so the test can also assert cross-rule coherence:
+  // a Good example must satisfy the whole guide, not only its own rule.
+  const ruleMatches = runRules([...rules])(loadedProject)
 
   return { compileProblems, ruleMatches }
 }

@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
@@ -44,12 +44,28 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
     return ownCount
   }
 
-  const childCount = astChildren(unwrapped)
+  // A ternary's condition is its own counting root: prefer-conditional-return mandates `cond ? x : y`, so condition operators are counted at the condition, not the ternary.
+  const countedChildren = ts.isConditionalExpression(unwrapped)
+    ? [unwrapped.whenTrue, unwrapped.whenFalse]
+    : astChildren(unwrapped)
+  const childCount = countedChildren
     .filter(ts.isExpression)
     .reduce(addBooleanOperatorCount, 0)
 
   return ownCount + childCount
 }
+
+const isConditionOf =
+  (node: ts.Node) =>
+  (parent: ts.ConditionalExpression): boolean =>
+    parent.condition === node
+
+const isConditionEdge = (node: ts.Node): boolean =>
+  pipe(
+    Option.fromNullable<ts.Node>(node.parent),
+    Option.filter(ts.isConditionalExpression),
+    Option.exists(isConditionOf(node))
+  )
 
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean =>
   [
@@ -59,8 +75,17 @@ const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean =>
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   const parent = Option.fromNullable(node.parent)
+  const isConditionEdge = pipe(
+    parent,
+    Option.filter(ts.isConditionalExpression),
+    Option.exists(isConditionOf(node))
+  )
+  const hasCountedAncestor = Option.exists(
+    parent,
+    isOrHasBooleanOperatorAncestor
+  )
 
-  return Option.exists(parent, isOrHasBooleanOperatorAncestor)
+  return [!isConditionEdge, hasCountedAncestor].every(Boolean)
 }
 
 const booleanBinaryOperatorKinds = HashSet.make(
@@ -137,7 +162,9 @@ const example = new RuleExample({
 export const noMultipleBooleanOperators = new Rule({
   id: ruleId,
   description:
-    "Disallow combining multiple boolean operators in a single expression.",
+    "Disallow combining multiple boolean operators in a single expression. A ternary's " +
+    "condition counts as its own expression, so `a === b ? x : y` is a single choice over " +
+    "a single comparison.",
   example,
   check
 })

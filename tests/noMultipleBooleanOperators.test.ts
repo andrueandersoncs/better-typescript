@@ -70,6 +70,24 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     column: 12,
     message: expectedMessage,
     hint: expectedHint
+  },
+  {
+    name: "two ands inside ternary condition",
+    ruleId: "no-multiple-boolean-operators",
+    fileName: "src/ternaryConditions.ts",
+    line: 19,
+    column: 12,
+    message: expectedMessage,
+    hint: expectedHint
+  },
+  {
+    name: "nested ternary in branch",
+    ruleId: "no-multiple-boolean-operators",
+    fileName: "src/ternaryConditions.ts",
+    line: 22,
+    column: 12,
+    message: expectedMessage,
+    hint: expectedHint
   }
 ]
 
@@ -103,6 +121,18 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 25,
     column: 12
+  },
+  {
+    name: "ternary with one comparison in condition",
+    fileName: "src/ternaryConditions.ts",
+    line: 13,
+    column: 12
+  },
+  {
+    name: "ternary with single-operator condition",
+    fileName: "src/ternaryConditions.ts",
+    line: 16,
+    column: 12
   }
 ]
 
@@ -115,6 +145,6 @@ const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
 
 test("no-multiple-boolean-operators reports disallowed and permits allowed fixture items", async () => {
   const matches = await runFixture()
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
+  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
   assertAllowedFixtureItems(matches, allowedFixtureItems)
 })

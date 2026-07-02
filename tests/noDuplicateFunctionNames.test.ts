@@ -21,13 +21,15 @@ const fixturePath = path.join(
 )
 
 const messageFor = (functionName: string): string =>
-  `Avoid declaring the top-level function ${functionName} in multiple files.`
+  `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`
 
 const hintFor = (functionName: string, otherFiles: string): string =>
-  `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-  "into a module scoped to its domain and import it from every file that uses it. Name " +
-  "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-  "generic lib.ts or utils.ts."
+  `${functionName} is declared with the same signature in ${otherFiles}, which makes ` +
+  "the copies semantic duplicates. Extract one shared implementation into a module " +
+  "scoped to its domain and import it from every file that uses it. Name the module " +
+  "after the concept it serves (ts.Node helpers belong in ts-node.ts), not a generic " +
+  "lib.ts or utils.ts. Same-name functions over different signatures (user.ts#make, " +
+  "account.ts#make) are module vocabulary, not duplicates."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
@@ -143,10 +145,52 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
       "crowded",
       "src/alpha.ts, src/beta.ts, src/gamma.ts and 1 more file"
     )
+  },
+  {
+    name: "vocabularyAccount.slugify",
+    ruleId: "no-duplicate-function-names",
+    fileName: "src/vocabulary-account.ts",
+    line: 11,
+    column: 14,
+    message: messageFor("slugify"),
+    hint: hintFor("slugify", "src/vocabulary-user.ts")
+  },
+  {
+    name: "vocabularyUser.slugify",
+    ruleId: "no-duplicate-function-names",
+    fileName: "src/vocabulary-user.ts",
+    line: 11,
+    column: 14,
+    message: messageFor("slugify"),
+    hint: hintFor("slugify", "src/vocabulary-account.ts")
   }
 ]
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
+  {
+    name: "vocabularyUser.make.differentSignature",
+    fileName: "src/vocabulary-user.ts",
+    line: 8,
+    column: 14
+  },
+  {
+    name: "vocabularyAccount.make.differentSignature",
+    fileName: "src/vocabulary-account.ts",
+    line: 8,
+    column: 14
+  },
+  {
+    name: "vocabularyUser.describe.differentArity",
+    fileName: "src/vocabulary-user.ts",
+    line: 14,
+    column: 14
+  },
+  {
+    name: "vocabularyAccount.describe.differentArity",
+    fileName: "src/vocabulary-account.ts",
+    line: 14,
+    column: 14
+  },
   {
     name: "alpha.localOverload.stringSignature",
     fileName: "src/allowed-alpha.ts",

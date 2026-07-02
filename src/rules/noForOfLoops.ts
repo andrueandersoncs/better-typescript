@@ -36,11 +36,11 @@ for (const user of users) {
 
 const goodExample = new ExampleSnippet({
   filePath: "src/users.ts",
-  code: `import { Array } from "effect"
+  code: `import { Array, Struct } from "effect"
 
 declare const users: ReadonlyArray<{ readonly name: string }>
 
-export const names = Array.map(users, (user) => user.name)`
+export const names = Array.map(users, Struct.get("name"))`
 })
 
 const example = new RuleExample({

@@ -190,8 +190,11 @@ const goodConditionalFalseExample = new ExampleSnippet({
 declare const parse: (input: string) => unknown
 declare const hasRequiredFields: (parsed: unknown) => boolean
 
-export const isUsable = (input: string): boolean =>
-  isValid(input) && hasRequiredFields(parse(input))`
+export const isUsable = (input: string): boolean => {
+  const parsed = parse(input)
+
+  return isValid(input) && hasRequiredFields(parsed)
+}`
 })
 
 const example = new RuleExample({

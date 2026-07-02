@@ -56,6 +56,10 @@ export const conciseArrowBody = (
     ? Option.none()
     : Option.some(arrowFunction.body)
 
+export const returnedExpression = (
+  statement: ts.ReturnStatement
+): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
+
 export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
   ts.isParenthesizedExpression(expression)
     ? unwrapExpression(expression.expression)
@@ -140,12 +144,13 @@ export const isExtendsClause = (clause: ts.HeritageClause): boolean =>
 export const isProjectFile = (sourceFile: ts.SourceFile): boolean =>
   !sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
 
-const declarationFile = (declaration: ts.Declaration): ts.SourceFile =>
-  declaration.getSourceFile()
+export const declarationSourceFile = (
+  declaration: ts.Declaration
+): ts.SourceFile => declaration.getSourceFile()
 
 export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? []
-  const sourceFiles = declarations.map(declarationFile)
+  const sourceFiles = declarations.map(declarationSourceFile)
 
   return sourceFiles.some(isProjectFile)
 }
@@ -154,3 +159,37 @@ export const typeNameIdentifier = (
   ref: ts.TypeReferenceNode
 ): Option.Option<ts.Identifier> =>
   Option.liftPredicate(ts.isIdentifier)(ref.typeName)
+
+export const isSameNode =
+  (node: ts.Node) =>
+  (candidate: ts.Node): boolean =>
+    candidate === node
+
+const isExportKeyword = (modifier: ts.Modifier): boolean =>
+  modifier.kind === ts.SyntaxKind.ExportKeyword
+
+export const hasExportModifier = (statement: ts.Statement): boolean =>
+  (ts.canHaveModifiers(statement)
+    ? (ts.getModifiers(statement) ?? [])
+    : []
+  ).some(isExportKeyword)
+
+const isDeclareKeyword = (modifier: ts.ModifierLike): boolean =>
+  modifier.kind === ts.SyntaxKind.DeclareKeyword
+
+// Ambient declarations (declare statements, .d.ts files) mirror external reality rather than author choices.
+export const isInAmbientContext = (node: ts.Node): boolean => {
+  const sourceFile = node.getSourceFile()
+  const modifiers = ts.canHaveModifiers(node)
+    ? (ts.getModifiers(node) ?? [])
+    : []
+  const hasDeclareModifier = modifiers.some(isDeclareKeyword)
+  const parent = Option.fromNullable<ts.Node>(node.parent)
+  const parentIsAmbient = Option.exists(parent, isInAmbientContext)
+
+  return [
+    sourceFile.isDeclarationFile,
+    hasDeclareModifier,
+    parentIsAmbient
+  ].some(Boolean)
+}

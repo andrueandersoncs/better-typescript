@@ -75,6 +75,30 @@ const isContextuallyVoidCallback =
     )
   }
 
+const objectLiteralParent = (
+  declaration: ts.MethodDeclaration
+): Option.Option<ts.ObjectLiteralExpression> =>
+  Option.liftPredicate(ts.isObjectLiteralExpression)(declaration.parent)
+
+const literalHasContextualType =
+  (context: RuleContext) =>
+  (literal: ts.ObjectLiteralExpression): boolean => {
+    const contextualTypeNode = context.checker.getContextualType(literal)
+    const contextualType = Option.fromNullable(contextualTypeNode)
+
+    return Option.isSome(contextualType)
+  }
+
+// A method inside a contextually typed object literal (`const l: Logger = { log() {} }`) implements the annotated interface's contract, not an author-chosen signature.
+const isContextuallyTypedObjectMethod =
+  (context: RuleContext) =>
+  (declaration: VoidableFunction): boolean =>
+    pipe(
+      Option.liftPredicate(ts.isMethodDeclaration)(declaration),
+      Option.flatMap(objectLiteralParent),
+      Option.exists(literalHasContextualType(context))
+    )
+
 const voidFunctionMatch =
   (context: RuleContext) =>
   (declaration: VoidableFunction): RuleMatch => {
@@ -87,7 +111,9 @@ const voidFunctionMatch =
       hint:
         "A void function either does nothing or performs a side-effect. If it does nothing, " +
         "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
-        "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not run."
+        "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not " +
+        "run. When a third-party API requires a void callback, annotate the value with that " +
+        "API's callback type so the void contract is the consumer's, not yours."
     })
   }
 
@@ -97,8 +123,11 @@ const voidFunctionMatches =
     const isContextualVoid =
       isFunctionInitializer(declaration) &&
       isContextuallyVoidCallback(context)(declaration)
+    const isContextualMethod =
+      isContextuallyTypedObjectMethod(context)(declaration)
+    const isConsumerContract = isContextualVoid || isContextualMethod
 
-    return isContextualVoid
+    return isConsumerContract
       ? []
       : pipe(
           Option.liftPredicate(returnsVoid(context))(declaration),

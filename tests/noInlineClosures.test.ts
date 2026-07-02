@@ -16,11 +16,13 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-inline-closures")
 const expectedMessage =
-  "Avoid arrow functions outside naming and currying positions."
+  "Avoid arrow functions outside naming, currying, and third-party callback positions."
 const expectedHint =
   "Name this function as a top-level const and pass it by reference, currying it when it " +
-  "needs values from the enclosing scope. When the expression sequences several steps, " +
-  "prefer a generator (Option.gen or Effect.gen) over nesting functions."
+  "needs values from the enclosing scope. Inline arrows are permitted only as arguments " +
+  "to third-party functions (effect combinators, node_modules callbacks). When the " +
+  "expression sequences several steps, prefer a generator (Option.gen or Effect.gen) " +
+  "over nesting functions."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
@@ -76,6 +78,24 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     column: 49,
     message: expectedMessage,
     hint: expectedHint
+  },
+  {
+    name: "externalArgs.defaultLibMap",
+    ruleId: "no-inline-closures",
+    fileName: "src/externalArgs.ts",
+    line: 23,
+    column: 34,
+    message: expectedMessage,
+    hint: expectedHint
+  },
+  {
+    name: "externalArgs.firstPartyRun",
+    ruleId: "no-inline-closures",
+    fileName: "src/externalArgs.ts",
+    line: 27,
+    column: 38,
+    message: expectedMessage,
+    hint: expectedHint
   }
 ]
 
@@ -109,6 +129,30 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 13,
     column: 24
+  },
+  {
+    name: "externalArgs.effectArrayMap",
+    fileName: "src/externalArgs.ts",
+    line: 7,
+    column: 34
+  },
+  {
+    name: "externalArgs.optionMatchOnNone",
+    fileName: "src/externalArgs.ts",
+    line: 12,
+    column: 14
+  },
+  {
+    name: "externalArgs.optionMatchOnSome",
+    fileName: "src/externalArgs.ts",
+    line: 13,
+    column: 15
+  },
+  {
+    name: "externalArgs.pipeStageArrayMap",
+    fileName: "src/externalArgs.ts",
+    line: 19,
+    column: 17
   }
 ]
 

@@ -1,9 +1,14 @@
 import * as path from "node:path"
-import { HashSet, Option, pipe } from "effect"
+import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
-import { functionInitializer } from "./tsNode.js"
+import {
+  functionInitializer,
+  returnedExpression,
+  unwrapExpression
+} from "./tsNode.js"
+import { symbolDeclaredInEffectPackage } from "./tsSignature.js"
 import type { FunctionInitializer } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
@@ -52,6 +57,55 @@ const returnsEffect =
     return Option.exists(signature, signatureReturnsEffect(context))
   }
 
+const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
+  block.statements.length === 1
+    ? Option.fromNullable(block.statements[0])
+    : Option.none()
+
+const isGenPropertyName = (access: ts.PropertyAccessExpression): boolean =>
+  access.name.text === "gen"
+
+const isEffectGenAccess =
+  (checker: ts.TypeChecker) =>
+  (access: ts.PropertyAccessExpression): boolean => {
+    const symbol = checker.getSymbolAtLocation(access.name)
+
+    return pipe(
+      Option.fromNullable(symbol),
+      Option.exists(symbolDeclaredInEffectPackage)
+    )
+  }
+
+// Only Effect.gen wrappers are rewritable as Effect.fn without changing what the function builds; plain combinator bodies (Effect.sync, pipe chains) stay as-is.
+const bodyIsEffectGenCall =
+  (checker: ts.TypeChecker) =>
+  (initializer: FunctionInitializer): boolean => {
+    const body = initializer.body
+    const blockResult = pipe(
+      Option.liftPredicate(ts.isBlock)(body),
+      Option.flatMap(singleBlockStatement),
+      Option.filter(ts.isReturnStatement),
+      Option.flatMap(returnedExpression)
+    )
+    const conciseResult = ts.isBlock(body)
+      ? Option.none<ts.Expression>()
+      : Option.some(body)
+    const resultExpression = Option.orElse(
+      blockResult,
+      Function.constant(conciseResult)
+    )
+    const unwrapped = Option.map(resultExpression, unwrapExpression)
+
+    return pipe(
+      unwrapped,
+      Option.filter(ts.isCallExpression),
+      Option.map(Struct.get("expression")),
+      Option.filter(ts.isPropertyAccessExpression),
+      Option.filter(isGenPropertyName),
+      Option.exists(isEffectGenAccess(checker))
+    )
+  }
+
 const effectFnRuleMatch =
   (context: RuleContext) =>
   (declaration: ts.VariableDeclaration): RuleMatch => {
@@ -60,11 +114,11 @@ const effectFnRuleMatch =
     return createRuleMatch(context)({
       ruleId,
       node: declaration.name,
-      message: `Avoid declaring ${functionName} as a plain function that returns an Effect.`,
+      message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
       hint:
         `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
-        "{ ... }) so every call runs inside a traced span. Effect.fn accepts a generator body " +
-        "or a function returning an Effect."
+        "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
+        "traced span."
     })
   }
 
@@ -75,6 +129,7 @@ const effectFnMatches =
       functionInitializer(declaration),
       Option.filter(hasParameters),
       Option.filter(returnsEffect(context)),
+      Option.filter(bodyIsEffectGenCall(context.checker)),
       Option.as(declaration),
       Option.map(effectFnRuleMatch(context)),
       Option.toArray
@@ -115,7 +170,7 @@ const example = new RuleExample({
 export const preferEffectFn = new Rule({
   id: ruleId,
   description:
-    "Require Effect.fn for functions with parameters that return an Effect.",
+    "Require Effect.fn instead of wrapping a parameterized function's body in Effect.gen.",
   example,
   check
 })

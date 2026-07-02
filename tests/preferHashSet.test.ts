@@ -20,16 +20,38 @@ const constructorMessage = "Avoid constructing a built-in Set."
 
 const constructorHint =
   "Use Effect's HashSet instead — for example HashSet.fromIterable([1, 2, 3]) or " +
-  "HashSet.empty(). HashSet integrates with Equal and Hash traits for structural equality."
+  "HashSet.empty(). HashSet integrates with Equal and Hash traits for structural equality. " +
+  "Constructing a Set is permitted only when it is handed to a third-party API that " +
+  "requires one."
 
 const setTypeMessage = "Avoid the built-in Set type."
 const readonlySetTypeMessage = "Avoid the built-in ReadonlySet type."
 
 const typeHint =
   "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
-  "traits for structural equality."
+  "traits for structural equality. Writing the built-in Set type is permitted only where " +
+  "it mirrors a third-party contract: ambient declarations and values that cross into a " +
+  "third-party call."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+  {
+    name: "new Set only used locally in boundary file",
+    ruleId: "prefer-hash-set",
+    fileName: "src/boundary.ts",
+    line: 14,
+    column: 15,
+    message: constructorMessage,
+    hint: constructorHint
+  },
+  {
+    name: "non-ambient Set type annotation in boundary file",
+    ruleId: "prefer-hash-set",
+    fileName: "src/boundary.ts",
+    line: 18,
+    column: 18,
+    message: setTypeMessage,
+    hint: typeHint
+  },
   {
     name: "new Set with array literal",
     ruleId: "prefer-hash-set",
@@ -128,6 +150,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 10,
     column: 17
+  },
+  {
+    name: "new Set escaping via variable to JSON.stringify",
+    fileName: "src/boundary.ts",
+    line: 4,
+    column: 17
+  },
+  {
+    name: "new Set as direct argument to JSON.stringify",
+    fileName: "src/boundary.ts",
+    line: 8,
+    column: 31
+  },
+  {
+    name: "ambient Set type reference",
+    fileName: "src/boundary.ts",
+    line: 11,
+    column: 32
   }
 ]
 

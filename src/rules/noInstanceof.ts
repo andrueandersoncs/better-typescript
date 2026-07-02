@@ -62,11 +62,13 @@ const badExample = new ExampleSnippet({
 
 class NotFoundError extends Schema.TaggedError<NotFoundError>("NotFoundError")("NotFoundError", {}) {}
 
-export const recover = (error: unknown, fallback: string) => {
-  if (error instanceof NotFoundError) {
-    return fallback
-  }
-}`
+export const recover =
+  (fallback: string) =>
+  (error: unknown) => {
+    if (error instanceof NotFoundError) {
+      return fallback
+    }
+  }`
 })
 
 const goodExample = new ExampleSnippet({
@@ -75,11 +77,13 @@ const goodExample = new ExampleSnippet({
 
 class NotFoundError extends Schema.TaggedError<NotFoundError>("NotFoundError")("NotFoundError", {}) {}
 
-export const recover = (error: unknown, fallback: string) => {
-  if (Schema.is(NotFoundError)(error)) {
-    return fallback
-  }
-}`
+export const recover =
+  (fallback: string) =>
+  (error: unknown) => {
+    if (Schema.is(NotFoundError)(error)) {
+      return fallback
+    }
+  }`
 })
 
 const example = new RuleExample({

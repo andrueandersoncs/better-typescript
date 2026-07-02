@@ -2,6 +2,7 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
+import { returnedExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { RuleContext, RuleMatch } from "./types.js"
 
@@ -10,10 +11,6 @@ const ruleId = "prefer-implicit-return"
 type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
 }
-
-const returnedExpression = (
-  statement: ts.ReturnStatement
-): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
 const implicitReturnMatches =
   (context: RuleContext) =>
@@ -28,7 +25,7 @@ const implicitReturnMatches =
         Option.flatMap(returnedExpression),
         Option.isSome
       )
-  
+
     return hasSingleValueReturn
       ? [
           createRuleMatch(context)({
@@ -44,7 +41,9 @@ const implicitReturnMatches =
       : []
   }
 
-const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(implicitReturnMatches)
+const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
+  implicitReturnMatches
+)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",

@@ -85,6 +85,19 @@ const isOtherFileName =
   (fileName: string): boolean =>
     fileName !== candidateFileName
 
+// Mutual assignability is signature equality up to parameter names: a renamed copy-paste still matches, while a same-name function over different data (user.ts#make vs account.ts#make) does not.
+const hasIdenticalSignature =
+  (checker: ts.TypeChecker) =>
+  (candidate: ts.Identifier) =>
+  (other: ts.Identifier): boolean => {
+    const candidateType = checker.getTypeAtLocation(candidate)
+    const otherType = checker.getTypeAtLocation(other)
+    const forward = checker.isTypeAssignableTo(candidateType, otherType)
+    const backward = checker.isTypeAssignableTo(otherType, candidateType)
+
+    return [forward, backward].every(Boolean)
+  }
+
 const maxListedFileNames = 3
 
 const candidateRuleMatch =
@@ -96,7 +109,10 @@ const candidateRuleMatch =
       Option.getOrElse(orBuildFunctionNameIndex(context.program))
     )
     const declarations = declarationsForName(index)(candidate.text)
-    const declaredFileNames = declarations.map(declaredFileName)
+    const identicalDeclarations = declarations.filter(
+      hasIdenticalSignature(context.checker)(candidate)
+    )
+    const declaredFileNames = identicalDeclarations.map(declaredFileName)
     const otherFileNames = Array.dedupe(declaredFileNames).filter(
       isOtherFileName(context.sourceFile.fileName)
     )
@@ -121,12 +137,14 @@ const candidateRuleMatch =
     const match = createRuleMatch(context)({
       ruleId,
       node: candidate,
-      message: `Avoid declaring the top-level function ${functionName} in multiple files.`,
+      message: `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,
       hint:
-        `${functionName} is also declared in ${otherFiles}. Extract one shared implementation ` +
-        "into a module scoped to its domain and import it from every file that uses it. Name " +
-        "the module after the concept it serves (ts.Node helpers belong in ts-node.ts), not a " +
-        "generic lib.ts or utils.ts."
+        `${functionName} is declared with the same signature in ${otherFiles}, which makes ` +
+        "the copies semantic duplicates. Extract one shared implementation into a module " +
+        "scoped to its domain and import it from every file that uses it. Name the module " +
+        "after the concept it serves (ts.Node helpers belong in ts-node.ts), not a generic " +
+        "lib.ts or utils.ts. Same-name functions over different signatures (user.ts#make, " +
+        "account.ts#make) are module vocabulary, not duplicates."
     })
 
     return Option.some(match)
@@ -161,25 +179,59 @@ const goodExample2 = new ExampleSnippet({
   filePath: "src/routes/fileA.ts",
   code: `import { formatDate } from "../dateFormat.js"
 
-export const startedAt = formatDate(new Date())`
+const startTime = new Date()
+
+export const startedAt = formatDate(startTime)`
 })
 
 const goodExample3 = new ExampleSnippet({
   filePath: "src/routes/fileB.ts",
   code: `import { formatDate } from "../dateFormat.js"
 
-export const finishedAt = formatDate(new Date())`
+const finishTime = new Date()
+
+export const finishedAt = formatDate(finishTime)`
+})
+
+const goodVocabularyUser = new ExampleSnippet({
+  filePath: "src/modules/user.ts",
+  code: `import { Schema } from "effect"
+
+export class User extends Schema.Class<User>("User")({
+  name: Schema.String
+}) {}
+
+export const make = (name: string): User => new User({ name })`
+})
+
+const goodVocabularyAccount = new ExampleSnippet({
+  filePath: "src/modules/account.ts",
+  code: `import { Schema } from "effect"
+
+export class Account extends Schema.Class<Account>("Account")({
+  id: Schema.Number
+}) {}
+
+export const make = (id: number): Account => new Account({ id })`
 })
 
 const example = new RuleExample({
   bad: [badExample1, badExample2],
-  good: [goodExample1, goodExample2, goodExample3]
+  good: [
+    goodExample1,
+    goodExample2,
+    goodExample3,
+    goodVocabularyUser,
+    goodVocabularyAccount
+  ]
 })
 
 export const noDuplicateFunctionNames = new Rule({
   id: ruleId,
   description:
-    "Disallow top-level functions that duplicate a function name declared in another file.",
+    "Disallow top-level functions that duplicate both the name and the signature of a " +
+    "function declared in another file; same-name functions over different signatures " +
+    "(each data module's make, get, ...) are module vocabulary, not duplicates.",
   example,
   check
 })

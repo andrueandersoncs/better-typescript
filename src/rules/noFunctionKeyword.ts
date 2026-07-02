@@ -62,16 +62,16 @@ const functionKeywordMatches =
     const isDisallowedKind =
       ts.isFunctionExpression(node) ||
       Option.exists(declarationWithBody, lacksOverloadSignature(context))
-  
+
     const shouldFlag = isNotGenerator && isDisallowedKind
-  
+
     if (!shouldFlag) {
       return []
     }
-  
+
     const keywordToken =
       node.getChildren(context.sourceFile).find(isFunctionKeywordToken) ?? node
-  
+
     return [
       createRuleMatch(context)({
         ruleId,
@@ -85,7 +85,10 @@ const functionKeywordMatches =
     ]
   }
 
-const check = onNode([ts.SyntaxKind.FunctionDeclaration, ts.SyntaxKind.FunctionExpression])(isFunctionKeywordNode)(functionKeywordMatches)
+const check = onNode([
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression
+])(isFunctionKeywordNode)(functionKeywordMatches)
 
 const badExample = new ExampleSnippet({
   filePath: "src/math.ts",
@@ -96,8 +99,10 @@ const badExample = new ExampleSnippet({
 
 const goodExample = new ExampleSnippet({
   filePath: "src/math.ts",
-  code: `const add = (a: number, b: number): number =>
-  a + b`
+  code: `const add =
+  (a: number) =>
+  (b: number): number =>
+    a + b`
 })
 
 const example = new RuleExample({

@@ -11,9 +11,9 @@ const message = "Avoid multi-line comments."
 
 const hint =
   "Code should be self-documenting. Use single-line comments only to explain WHY " +
-  "something is done, never HOW. For architectural decisions that require longer " +
-  "explanation, create an Architectural Decision Record (ADR) as a markdown file in " +
-  "the adrs/ directory instead."
+  "something is done, never HOW. JSDoc (/** ... */) documenting an exported API is " +
+  "permitted. For architectural decisions that require longer explanation, create an " +
+  "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
 
 class ScannedToken extends Schema.Class<ScannedToken>("ScannedToken")({
   kind: Schema.Number,
@@ -40,7 +40,7 @@ type RunStartPosition = (
   index: number
 ) => Option.Option<number>
 
-
+// JSDoc (`/** ... */`) is API documentation surfaced by editors and doc tooling, not prose comments.
 const isMultiLineBlock =
   (text: string) =>
   (token: ScannedToken): boolean => {
@@ -50,8 +50,9 @@ const isMultiLineBlock =
     const end = notFound ? text.length : closeIndex + 2
     const commentText = text.slice(token.pos, end)
     const hasNewline = commentText.indexOf("\n") !== -1
+    const isJsDoc = commentText.startsWith("/**")
 
-    return isBlock && hasNewline
+    return [isBlock, hasNewline, !isJsDoc].every(Boolean)
   }
 
 const isSingleLineComment = (token: ScannedToken): boolean =>
@@ -83,9 +84,8 @@ const runStartPosition =
     }
 
     const previousToken = singles[index - 1]
-    const isNotAdjacentToPrevious = !isAdjacentLine(sourceFile)(previousToken)(
-      current
-    )
+    const isNotAdjacentToPrevious =
+      !isAdjacentLine(sourceFile)(previousToken)(current)
     const previousIsNotSingleLine = !isSingleLineComment(previousToken)
     const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
     const shouldFlag = isRunStart && hasNextAdjacent
@@ -153,15 +153,25 @@ const validate = (input: string): string =>
   input.trim()`
 })
 
+const goodJsDocExample = new ExampleSnippet({
+  filePath: "src/sanitize.ts",
+  code: `/**
+ * Strips leading and trailing whitespace before persistence.
+ */
+export const sanitize = (input: string): string =>
+  input.trim()`
+})
+
 const example = new RuleExample({
   bad: [badExample],
-  good: [goodExample]
+  good: [goodExample, goodJsDocExample]
 })
 
 export const noMultiLineComments = new Rule({
   id: ruleId,
   description:
-    "Disallow multi-line comments in favor of self-documenting code and ADRs for architectural decisions.",
+    "Disallow multi-line comments in favor of self-documenting code and ADRs for " +
+    "architectural decisions; JSDoc documenting an exported API is permitted.",
   example,
   check
 })
