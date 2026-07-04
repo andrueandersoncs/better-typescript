@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { alwaysExitsScope, hasNoElseBranch } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-manual-type-dispatch"
 
@@ -105,7 +105,7 @@ const isLongEnough = (head: ts.IfStatement): boolean =>
 
 const manualTypeDispatchMatch =
   (match: CreateMatch) =>
-  (ifStatement: ts.IfStatement): RuleMatch =>
+  (ifStatement: ts.IfStatement): Finding =>
     match({
       ruleId,
       node: ifStatement,
@@ -121,7 +121,7 @@ const manualTypeDispatchMatch =
 const manualTypeDispatchMatches = (context: RuleContext) => {
   const ruleMatch = manualTypeDispatchMatch(createRuleMatch(context))
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> =>
     pipe(
       Option.liftPredicate(isDispatchGuard)(ifStatement),
       Option.filter(isChainHead),

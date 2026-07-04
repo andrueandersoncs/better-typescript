@@ -2,7 +2,7 @@ import * as path from "node:path"
 import { Array as Arr, Option, Schema, Struct } from "effect"
 import * as ts from "typescript"
 import { onFile } from "./ruleCheck.js"
-import { ExampleSnippet, Rule, RuleExample, RuleMatch } from "./types.js"
+import { ExampleSnippet, Rule, RuleExample, Finding } from "./types.js"
 import type { RuleContext } from "./types.js"
 
 const ruleId = "no-multi-line-comments"
@@ -96,12 +96,12 @@ const runStartPosition =
 const positionToMatch =
   (sourceFile: ts.SourceFile) =>
   (fileName: string) =>
-  (pos: number): RuleMatch => {
+  (pos: number): Finding => {
     const location = sourceFile.getLineAndCharacterOfPosition(pos)
 
-    return new RuleMatch({
-      ruleId,
-      fileName,
+    return new Finding({
+      detectorId: ruleId,
+      path: fileName,
       line: location.line + 1,
       column: location.character + 1,
       message,
@@ -110,7 +110,7 @@ const positionToMatch =
   }
 
 // filterMap stays bounded by the comment array; per-comment recursion overflows large files.
-const fileMatches = (context: RuleContext): ReadonlyArray<RuleMatch> => {
+const fileMatches = (context: RuleContext): ReadonlyArray<Finding> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
   const fileName =

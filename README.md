@@ -4,7 +4,16 @@ Better TypeScript is a simple command-line linter for TypeScript projects. It us
 
 ## Goal
 
-The goal is to build a focused TypeScript analysis tool that:
+Better TypeScript's end users are **coding agents**. The tool's purpose is
+not the per-match list: it is **high-level refactoring advice, computed by
+matching over violations of the rules themselves**. Rules produce findings;
+higher-order matchers recognize when findings combine into an architectural
+shape; the CLI then leads with the one instruction that dissolves the whole
+cluster instead of forty local edits. The unified detector architecture
+behind this is recorded in
+`adrs/0003-detectors-over-a-stratified-containment-tree.md`.
+
+Concretely, the tool:
 
 - Loads a TypeScript project from its `tsconfig.json`
 - Uses the TypeScript compiler API to inspect source files and type information
@@ -12,11 +21,14 @@ The goal is to build a focused TypeScript analysis tool that:
 - Checks project code against a fixed set of built-in rules
 - Works as a straightforward CLI without a plugin architecture
 
-## Rules
+## Rules and advice
 
-Better TypeScript will include a specific set of built-in rules. Each rule scans the target project for a particular pattern or type-safety concern.
+Every check is a **detector** producing **findings** at some level of the containment hierarchy (see `adrs/0003-detectors-over-a-stratified-containment-tree.md`; the layered interpretation model is `adrs/0001-layered-match-interpretation.md`):
 
-When a rule finds a match, the CLI should report:
+- **Rule matches** are the base measurements: node-level findings. Each built-in rule scans the project for a particular pattern or type-safety concern. Rules carry a role: **finding** rules gate the exit code and appear in the style guide; **signal** rules are measurements consumed only by higher-order detectors and are never reported directly.
+- **Advice** findings are higher-order matches: detectors whose sentences quantify over other detectors' findings, folded over project ▸ directory ▸ file. When findings combine into a recognized shape — an imperative state manager, a pipeline-hostile module, a hot subsystem, systemic hotspots across the codebase — the CLI leads with the advice, its evidence, and an architectural remediation, and collapses the consumed matches beneath it. Advice can consume advice: strata are computed from what each sentence mentions, so a detector like `systemic-hotspots` evaluates one layer above the subsystem and density advice it reads.
+
+When a rule finds a match, the CLI reports:
 
 - The rule name
 - The file and location of the match
@@ -24,7 +36,7 @@ When a rule finds a match, the CLI should report:
 - A remediation hint explaining how to improve the code
 - A passing example of the preferred pattern
 
-Rules are part of the core CLI and are not intended to be loaded through plugins or third-party extensions.
+Rules and syndromes are part of the core CLI and are not intended to be loaded through plugins or third-party extensions. There are no suppressions: findings must be fixed, signals are measurements, advice is interpretation.
 
 ## Non-goals
 
@@ -59,7 +71,8 @@ By default, the CLI analyzes the current working directory and prints every matc
 - `--project <directory>`: Analyze a specific project directory instead of the current working directory.
 - `--limit <integer>`: Maximum number of rule matches to display.
 - `--offset <integer>`: Number of rule matches to skip before displaying.
-- `--format <text|json>`: Output format. `text` (default) groups matches by rule with a remediation hint and a passing example; `json` emits the same report as machine-readable JSON for tooling and agents.
+- `--format <text|json>`: Output format. `text` (default) leads with diagnoses, then groups matches by rule with a remediation hint and a passing example; `json` emits the same report — diagnoses included — as machine-readable JSON for tooling and agents.
+- `--detail`: List every match location, including matches collapsed under a diagnosis.
 
 ### Subcommands
 
@@ -72,8 +85,14 @@ better-typescript --limit 20             # matches 1-20
 better-typescript --limit 20 --offset 20 # matches 21-40
 ```
 
-When the output is truncated, the CLI prints the visible range and the `--offset` value for the next page. The exit code reflects the full result set: it is `1` whenever any matches exist, even if the current page is empty.
+When the output is truncated, the CLI prints the visible range and the `--offset` value for the next page.
+
+### Exit codes
+
+- `0`: no finding-rule matches.
+- `1`: finding-rule matches exist anywhere in the result set, even if the current page is empty.
+- `2`: the tool could not run (missing or invalid `tsconfig.json`, configuration errors).
 
 ## Project status
 
-This project is in the initial planning stage.
+The core linter, the style guide subcommand, the matcher language, and the layered match interpreter are implemented and self-hosting: the codebase passes every one of its own finding rules. Twelve rules are defined as matcher-language sentences compiled by the same listener machinery hand-written rules use; the rest are host primitives behind the identical `Rule` interface (see `adrs/0002-rule-bodies-in-the-matcher-language.md` for the boundary).

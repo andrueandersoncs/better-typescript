@@ -1,33 +1,16 @@
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { And, Kind, Parent } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-array-spread"
+const spreadElement = new Kind({ kind: ts.SyntaxKind.SpreadElement })
 
-const message = "Avoid the array-spread operator when constructing arrays."
+const arrayLiteral = new Kind({ kind: ts.SyntaxKind.ArrayLiteralExpression })
 
-const hint =
-  "Use Effect's Array module instead: Array.append or Array.prepend to add a " +
-  "single element, Array.appendAll or Array.prependAll to combine two arrays, " +
-  "and Array.fromIterable to materialize an iterable."
+const inArrayLiteral = new Parent({ term: arrayLiteral })
 
-// The context stage runs once per file, so match is shared by every SpreadElement the dispatcher feeds to matches.
-const arraySpreadMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-
-  const matches = (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> =>
-    ts.isArrayLiteralExpression(spread.parent)
-      ? [match({ ruleId, node: spread, message, hint })]
-      : []
-
-  return matches
-}
-
-const check = onNode([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(
-  arraySpreadMatches
-)
+// Spread in call arguments keeps its CallExpression parent and stays exempt; only array construction is flagged.
+const arraySpread = new And({ terms: [spreadElement, inArrayLiteral] })
 
 const badExample = new ExampleSnippet({
   filePath: "src/items.ts",
@@ -62,12 +45,19 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noArraySpread = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-array-spread",
   description:
     "Disallow the array-spread operator for constructing arrays in favor of " +
     "Effect Array module functions such as Array.append, Array.prepend, " +
     "Array.appendAll, Array.prependAll, and Array.fromIterable.",
-  example,
-  check
+  matcher: arraySpread,
+  message: "Avoid the array-spread operator when constructing arrays.",
+  hint:
+    "Use Effect's Array module instead: Array.append or Array.prepend to add a " +
+    "single element, Array.appendAll or Array.prependAll to combine two arrays, " +
+    "and Array.fromIterable to materialize an iterable.",
+  example
 })
+
+export const noArraySpread = matcherRule(spec)

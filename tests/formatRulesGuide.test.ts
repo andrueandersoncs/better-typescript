@@ -4,8 +4,10 @@ import {
   formatRulesGuide,
   formatRulesJson
 } from "../src/output/formatRulesGuide.js"
-import { rules } from "../src/rules/index.js"
+import { isFindingRule, rules } from "../src/rules/index.js"
 import { noThrow } from "../src/rules/noThrow.js"
+
+const findingRules = rules.filter(isFindingRule)
 
 const plainSnippet = (snippet: {
   readonly filePath: string
@@ -15,20 +17,25 @@ const plainSnippet = (snippet: {
   code: snippet.code
 })
 
-test("formatRulesGuide opens with the guide heading and rule count", () => {
+test("formatRulesGuide opens with the guide heading and finding rule count", () => {
   const guide = formatRulesGuide(rules)
 
   assert.ok(guide.startsWith("# Better TypeScript style guide"))
-  assert.ok(guide.includes(`enforces ${rules.length} rules`))
+  assert.ok(guide.includes(`enforces ${findingRules.length} rules`))
 })
 
-test("formatRulesGuide has a section for every registered rule", () => {
+test("formatRulesGuide has a section for every finding rule and none for signals", () => {
   const guide = formatRulesGuide(rules)
-  const missingRuleIds = rules
+  const missingRuleIds = findingRules
     .map((rule) => rule.id)
     .filter((ruleId) => !guide.includes(`## ${ruleId}`))
+  const signalSections = rules
+    .filter((rule) => !isFindingRule(rule))
+    .map((rule) => rule.id)
+    .filter((ruleId) => guide.includes(`## ${ruleId}`))
 
   assert.deepEqual(missingRuleIds, [])
+  assert.deepEqual(signalSections, [])
 })
 
 test("formatRulesGuide renders descriptions and labeled example snippets", () => {
@@ -49,7 +56,7 @@ test("formatRulesGuide renders descriptions and labeled example snippets", () =>
   )
 })
 
-test("formatRulesJson documents every rule with its examples", () => {
+test("formatRulesJson documents every finding rule with its examples", () => {
   const document = JSON.parse(formatRulesJson(rules))
   const documentedIds = document.rules.map(
     (ruleDoc: { readonly id: string }) => ruleDoc.id
@@ -57,7 +64,7 @@ test("formatRulesJson documents every rule with its examples", () => {
 
   assert.deepEqual(
     documentedIds,
-    rules.map((rule) => rule.id)
+    findingRules.map((rule) => rule.id)
   )
 })
 

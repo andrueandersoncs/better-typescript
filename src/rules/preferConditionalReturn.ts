@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
@@ -52,7 +52,7 @@ const returnExpressionFromStatement =
 type StatementConditionalMatch = (
   statement: ts.Statement,
   index: number
-) => Option.Option<RuleMatch>
+) => Option.Option<Finding>
 
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
@@ -108,7 +108,7 @@ const conditionalReturnMatch =
   (flippedTernary: FlippedTernary) =>
   (match: CreateMatch) =>
   (nextStatement: Option.Option<ts.Statement>) =>
-  (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
+  (ifStatement: ts.IfStatement): Option.Option<Finding> =>
     Option.gen(function* () {
       const thenExpression = yield* returnExpression(ifStatement.thenStatement)
       const elseStatement = Option.fromNullable(ifStatement.elseStatement)
@@ -142,7 +142,7 @@ const conditionalReturnMatch =
 
 type IfConditionalMatch = (
   nextStatement: Option.Option<ts.Statement>
-) => (ifStatement: ts.IfStatement) => Option.Option<RuleMatch>
+) => (ifStatement: ts.IfStatement) => Option.Option<Finding>
 
 const statementConditionalMatch =
   (ifMatch: IfConditionalMatch) =>
@@ -168,7 +168,7 @@ const conditionalReturnRuleMatches = (context: RuleContext) => {
     )
   const conditionalMatch = statementConditionalMatch(ifMatch)
 
-  const matches = (block: ts.Block): ReadonlyArray<RuleMatch> =>
+  const matches = (block: ts.Block): ReadonlyArray<Finding> =>
     Array.filterMap(block.statements, conditionalMatch(block))
 
   return matches

@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-function-keyword"
 
@@ -54,7 +54,7 @@ const functionKeywordMatches = (context: RuleContext) => {
   const lacksOverloads = lacksOverloadSignature(context.checker)
   const match = createRuleMatch(context)
 
-  const matches = (node: FunctionKeywordNode): ReadonlyArray<RuleMatch> => {
+  const matches = (node: FunctionKeywordNode): ReadonlyArray<Finding> => {
     const asteriskToken = Option.fromNullable(node.asteriskToken)
     const isNotGenerator = !Option.isSome(asteriskToken)
     const declarationWithBody = ts.isFunctionDeclaration(node)

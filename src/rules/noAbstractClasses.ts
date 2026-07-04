@@ -1,65 +1,18 @@
-import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { And, Kind, Parent } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-abstract-classes"
+const abstractKeyword = new Kind({ kind: ts.SyntaxKind.AbstractKeyword })
 
-const classDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
-  ts.SyntaxKind.ClassDeclaration
-]
+const classDeclaration = new Kind({ kind: ts.SyntaxKind.ClassDeclaration })
 
-const isClassDeclaration = (node: ts.Node): node is ts.ClassDeclaration =>
-  ts.isClassDeclaration(node)
+const onClassDeclaration = new Parent({ term: classDeclaration })
 
-const isAbstractModifier = (modifier: ts.ModifierLike): boolean =>
-  modifier.kind === ts.SyntaxKind.AbstractKeyword
-
-const findAbstractModifier = (
-  modifiers: ReadonlyArray<ts.ModifierLike>
-): Option.Option<ts.ModifierLike> => {
-  const modifier = modifiers.find(isAbstractModifier)
-
-  return Option.fromNullable(modifier)
-}
-
-const abstractClassMatch =
-  (match: CreateMatch) =>
-  (keyword: ts.ModifierLike): RuleMatch =>
-    match({
-      ruleId,
-      node: keyword,
-      message: "Avoid declaring classes as abstract.",
-      hint:
-        "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
-        "functionality, extract it into reusable functions and export those functions." +
-        " To model a union of types, use a type union instead of an abstract class."
-    })
-
-// The context stage runs once per file, so the specialized match is shared by every ClassDeclaration the dispatcher feeds to matches.
-const abstractClassMatches = (context: RuleContext) => {
-  const keywordMatch = abstractClassMatch(createRuleMatch(context))
-
-  const matches = (node: ts.ClassDeclaration): ReadonlyArray<RuleMatch> => {
-    const modifiers = ts.getModifiers(node)
-
-    return pipe(
-      Option.fromNullable(modifiers),
-      Option.flatMap(findAbstractModifier),
-      Option.map(keywordMatch),
-      Option.toArray
-    )
-  }
-
-  return matches
-}
-
-const check = onNode(classDeclarationKinds)(isClassDeclaration)(
-  abstractClassMatches
-)
+// Matches the abstract keyword token on a class declaration; abstract members and constructor types keep their own parents and never satisfy the guard.
+const abstractClassModifier = new And({
+  terms: [abstractKeyword, onClassDeclaration]
+})
 
 const badExample = new ExampleSnippet({
   filePath: "src/shape.ts",
@@ -87,10 +40,17 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noAbstractClasses = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-abstract-classes",
   description:
     "Disallow abstract classes in favor of reusable functions and Effect.",
-  example,
-  check
+  matcher: abstractClassModifier,
+  message: "Avoid declaring classes as abstract.",
+  hint:
+    "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
+    "functionality, extract it into reusable functions and export those functions." +
+    " To model a union of types, use a type union instead of an abstract class.",
+  example
 })
+
+export const noAbstractClasses = matcherRule(spec)

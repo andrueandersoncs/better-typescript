@@ -9,7 +9,7 @@ import {
   isUnseenType
 } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-mutable-array-methods"
 
@@ -105,7 +105,7 @@ const isArrayType =
 const mutableArrayRuleMatch =
   (match: CreateMatch) =>
   (callExpression: ts.CallExpression) =>
-  (methodName: MutableArrayMethod): RuleMatch =>
+  (methodName: MutableArrayMethod): Finding =>
     match({
       ruleId,
       node: callExpression,
@@ -125,7 +125,7 @@ const mutableArrayMatches = (context: RuleContext) => {
 
   const matches = (
     callExpression: ts.CallExpression
-  ): ReadonlyArray<RuleMatch> => {
+  ): ReadonlyArray<Finding> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return []
     }

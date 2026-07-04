@@ -10,7 +10,7 @@ import {
 } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-raw-object-types"
 
@@ -32,7 +32,7 @@ type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
 const rawObjectParameterMatch =
   (match: CreateMatch) =>
-  (node: ts.ParameterDeclaration): RuleMatch =>
+  (node: ts.ParameterDeclaration): Finding =>
     match({
       ruleId,
       node,
@@ -47,7 +47,7 @@ const rawObjectParameterMatch =
 
 const rawObjectReturnTypeMatch =
   (match: CreateMatch) =>
-  (node: ReturnTypeDeclaration): RuleMatch => {
+  (node: ReturnTypeDeclaration): Finding => {
     const reportNode = namedNodeReportTarget(node)
 
     return match({
@@ -93,7 +93,7 @@ const rawObjectTypeMatches = (context: RuleContext) => {
   const parameterMatch = rawObjectParameterMatch(match)
   const returnTypeMatch = rawObjectReturnTypeMatch(match)
 
-  const matches = (node: RawObjectTarget): ReadonlyArray<RuleMatch> =>
+  const matches = (node: RawObjectTarget): ReadonlyArray<Finding> =>
     ts.isParameter(node) ? [parameterMatch(node)] : [returnTypeMatch(node)]
 
   return matches

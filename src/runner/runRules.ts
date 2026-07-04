@@ -1,7 +1,7 @@
 import type * as ts from "typescript"
 import type { LoadedProject } from "../project/loadProject.js"
 import { ProgramContext, RuleContext } from "../rules/index.js"
-import type { Rule, RuleMatch } from "../rules/index.js"
+import type { Rule, Finding } from "../rules/index.js"
 import { compileRules } from "./compileRules.js"
 
 const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean =>
@@ -19,7 +19,7 @@ const contextForSourceFile =
 
 export const runRules =
   (rules: ReadonlyArray<Rule>) =>
-  (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> => {
+  (loadedProject: LoadedProject): ReadonlyArray<Finding> => {
     const checker = loadedProject.program.getTypeChecker()
     const programContext = new ProgramContext({
       program: loadedProject.program,
@@ -38,4 +38,5 @@ export const runRules =
 export const shouldSkipSourceFile =
   (isDeclarationFile: boolean) =>
   (fileName: string): boolean =>
-    isDeclarationFile || fileName.replaceAll("\\", "/").includes("/node_modules/")
+    isDeclarationFile ||
+    fileName.replaceAll("\\", "/").includes("/node_modules/")

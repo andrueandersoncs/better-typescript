@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-multiple-boolean-operators"
 
@@ -107,7 +107,7 @@ const multipleBooleanOperatorMatches = (context: RuleContext) => {
 
   const matches = (
     expression: BooleanOperatorExpression
-  ): ReadonlyArray<RuleMatch> => {
+  ): ReadonlyArray<Finding> => {
     const expressionUsesBooleanOperator =
       isBooleanOperatorExpression(expression)
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)

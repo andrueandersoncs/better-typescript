@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import type { RuleMatch } from "../src/rules/index.js"
+import type { Finding } from "../src/rules/index.js"
 
 interface SourceLocation {
   readonly fileName: string
@@ -30,6 +30,9 @@ interface AssertDisallowedOptions {
 const locationKey = (location: SourceLocation): string =>
   [location.fileName, location.line, location.column].join(":")
 
+const findingLocationKey = (match: Finding): string =>
+  [match.path, match.line, match.column].join(":")
+
 const compareLocations = (
   left: SourceLocation,
   right: SourceLocation
@@ -47,9 +50,9 @@ const maybeSorted = <T extends SourceLocation>(
   shouldSort: boolean
 ): ReadonlyArray<T> => (shouldSort ? sortByLocation(items) : items)
 
-const matchDetails = (match: RuleMatch): MatchDetails => ({
-  ruleId: match.ruleId,
-  fileName: match.fileName,
+const matchDetails = (match: Finding): MatchDetails => ({
+  ruleId: match.detectorId,
+  fileName: match.path,
   line: match.line,
   column: match.column,
   message: match.message,
@@ -66,7 +69,7 @@ const expectedMatchDetails = (match: ExpectedRuleMatch): MatchDetails => ({
 })
 
 export const assertDisallowedFixtureItems = (
-  matches: ReadonlyArray<RuleMatch>,
+  matches: ReadonlyArray<Finding>,
   disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch>,
   options: AssertDisallowedOptions = {}
 ): void => {
@@ -85,10 +88,10 @@ export const assertDisallowedFixtureItems = (
 }
 
 export const assertAllowedFixtureItems = (
-  matches: ReadonlyArray<RuleMatch>,
+  matches: ReadonlyArray<Finding>,
   allowedFixtureItems: ReadonlyArray<FixtureItem>
 ): void => {
-  const reportedLocations = new Set(matches.map(locationKey))
+  const reportedLocations = new Set(matches.map(findingLocationKey))
   const reportedAllowedFixtureItems = allowedFixtureItems.filter((item) =>
     reportedLocations.has(locationKey(item))
   )

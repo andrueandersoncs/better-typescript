@@ -1,33 +1,9 @@
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { Kind } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-try-catch"
-
-// The context stage runs once per file, so match is shared by every TryStatement the dispatcher feeds to matches.
-const tryStatementMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-
-  const matches = (tryStatement: ts.TryStatement): ReadonlyArray<RuleMatch> => [
-    match({
-      ruleId,
-      node: tryStatement,
-      message: "Avoid try/catch for error handling.",
-      hint:
-        "Model effectful code that can fail as an Effect and declare its failures as explicit " +
-        'Schema.TaggedError classes, for example: class FetchError extends Schema.TaggedError<FetchError>("FetchError")("FetchError", {}) {}. ' +
-        "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block."
-    })
-  ]
-
-  return matches
-}
-
-const check = onNode([ts.SyntaxKind.TryStatement])(ts.isTryStatement)(
-  tryStatementMatches
-)
+const tryStatement = new Kind({ kind: ts.SyntaxKind.TryStatement })
 
 const badExample = new ExampleSnippet({
   filePath: "src/file.ts",
@@ -76,10 +52,17 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noTryCatch = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-try-catch",
   description:
     "Disallow try/catch in favor of Effect with Schema.TaggedError and Effect.catchTag.",
-  example,
-  check
+  matcher: tryStatement,
+  message: "Avoid try/catch for error handling.",
+  hint:
+    "Model effectful code that can fail as an Effect and declare its failures as explicit " +
+    'Schema.TaggedError classes, for example: class FetchError extends Schema.TaggedError<FetchError>("FetchError")("FetchError", {}) {}. ' +
+    "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block.",
+  example
 })
+
+export const noTryCatch = matcherRule(spec)

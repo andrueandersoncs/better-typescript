@@ -1,61 +1,51 @@
-import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { isReturnTypeDeclaration, returnTypeNode } from "./tsNode.js"
-import type { ReturnTypeDeclaration } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { And, AtLeast, Kind, Or, Property } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-explicit-any-return"
+const anyKeyword = new Kind({ kind: ts.SyntaxKind.AnyKeyword })
 
-const containsAnyKeyword = (node: ts.Node): boolean => {
-  const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
-  const childContainsAnyKeyword =
-    ts.forEachChild(node, containsAnyKeyword) === true
+// Counts the return type node itself and every nested type, so `: any` and `: Promise<any>` both satisfy.
+const containsAny = new AtLeast({ minimum: 1, term: anyKeyword })
 
-  return [isAnyKeyword, childContainsAnyKeyword].some(Boolean)
-}
+const anyReturnType = new Property({ name: "type", term: containsAny })
 
-const isAnyReturnTypeDeclaration = (
-  node: ts.Node
-): node is ReturnTypeDeclaration =>
-  pipe(
-    Option.liftPredicate(isReturnTypeDeclaration)(node),
-    Option.flatMap(returnTypeNode),
-    Option.exists(containsAnyKeyword)
-  )
+const functionDeclaration = new Kind({
+  kind: ts.SyntaxKind.FunctionDeclaration
+})
 
-// The context stage runs once per file, so match is shared by every ReturnTypeDeclaration the dispatcher feeds to matches.
-const anyReturnTypeMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+const functionExpression = new Kind({
+  kind: ts.SyntaxKind.FunctionExpression
+})
 
-  const matches = (node: ReturnTypeDeclaration): ReadonlyArray<RuleMatch> => [
-    match({
-      ruleId,
-      node,
-      message: "Avoid function return types that include any.",
-      hint:
-        "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
-        "use unknown and narrow before use."
-    })
+const arrowFunction = new Kind({ kind: ts.SyntaxKind.ArrowFunction })
+
+const methodDeclaration = new Kind({ kind: ts.SyntaxKind.MethodDeclaration })
+
+const methodSignature = new Kind({ kind: ts.SyntaxKind.MethodSignature })
+
+const callSignature = new Kind({ kind: ts.SyntaxKind.CallSignature })
+
+const functionType = new Kind({ kind: ts.SyntaxKind.FunctionType })
+
+const getAccessor = new Kind({ kind: ts.SyntaxKind.GetAccessor })
+
+const returnTypeDeclaration = new Or({
+  terms: [
+    functionDeclaration,
+    functionExpression,
+    arrowFunction,
+    methodDeclaration,
+    methodSignature,
+    callSignature,
+    functionType,
+    getAccessor
   ]
+})
 
-  return matches
-}
-
-const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.MethodDeclaration,
-  ts.SyntaxKind.MethodSignature,
-  ts.SyntaxKind.CallSignature,
-  ts.SyntaxKind.FunctionType,
-  ts.SyntaxKind.GetAccessor
-]
-
-const check = onNode(returnTypeDeclarationKinds)(isAnyReturnTypeDeclaration)(anyReturnTypeMatches)
+const anyReturnDeclaration = new And({
+  terms: [returnTypeDeclaration, anyReturnType]
+})
 
 const badExample = new ExampleSnippet({
   filePath: "src/config.ts",
@@ -74,9 +64,15 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noExplicitAnyReturn = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-explicit-any-return",
   description: "Disallow explicit any in function return types.",
-  example,
-  check
+  matcher: anyReturnDeclaration,
+  message: "Avoid function return types that include any.",
+  hint:
+    "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
+    "use unknown and narrow before use.",
+  example
 })
+
+export const noExplicitAnyReturn = matcherRule(spec)

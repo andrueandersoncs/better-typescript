@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import { isReturnTypeDeclaration, unwrapExpression } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-undefined"
 
@@ -188,7 +188,7 @@ const undefinedUsageMatches =
     const match = createRuleMatch(context)
     const message = undefinedMessages[kind]
 
-    const matches = (node: ts.Node): ReadonlyArray<RuleMatch> => [
+    const matches = (node: ts.Node): ReadonlyArray<Finding> => [
       match({ ruleId, node, message, hint: optionHint })
     ]
 

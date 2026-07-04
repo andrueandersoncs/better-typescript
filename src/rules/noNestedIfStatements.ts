@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-nested-if-statements"
 
@@ -47,7 +47,7 @@ const containingIfStatementFrom =
 const nestedIfMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> => {
     const parentOption = Option.fromNullable(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
 

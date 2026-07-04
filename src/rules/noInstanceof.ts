@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { isFirstPartySymbol } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-instanceof"
 
@@ -23,7 +23,7 @@ const className: (symbol: ts.Symbol) => string = Struct.get("name")
 const instanceofRuleMatch =
   (match: CreateMatch) =>
   (expression: ts.BinaryExpression) =>
-  (symbol: ts.Symbol): RuleMatch => {
+  (symbol: ts.Symbol): Finding => {
     const name = className(symbol)
 
     return match({
@@ -42,9 +42,7 @@ const instanceofMatches = (context: RuleContext) => {
   const checker = context.checker
   const ruleMatch = instanceofRuleMatch(createRuleMatch(context))
 
-  const matches = (
-    expression: ts.BinaryExpression
-  ): ReadonlyArray<RuleMatch> => {
+  const matches = (expression: ts.BinaryExpression): ReadonlyArray<Finding> => {
     const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
     const symbol = Option.fromNullable(symbolAtLocation)
 

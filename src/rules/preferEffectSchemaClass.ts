@@ -11,7 +11,7 @@ import type {
   ProgramContext,
   RuleContext,
   RuleListener,
-  RuleMatch
+  Finding
 } from "./types.js"
 
 const ruleId = "prefer-effect-schema-class"
@@ -288,7 +288,7 @@ const schemaClassRuleMatch =
   (toRelative: RelativeFileName) =>
   (match: CreateMatch) =>
   (declaration: ObjectTypeDeclaration) =>
-  (constructionFileName: string): RuleMatch => {
+  (constructionFileName: string): Finding => {
     const typeName = declaration.name.text
     const exampleFile = toRelative(constructionFileName)
     const kindLabel = ts.isInterfaceDeclaration(declaration)
@@ -323,7 +323,7 @@ const objectTypeDeclarationMatches =
 
     const matches = (
       declaration: ObjectTypeDeclaration
-    ): ReadonlyArray<RuleMatch> => {
+    ): ReadonlyArray<Finding> => {
       const declarationSymbol = checker.getSymbolAtLocation(declaration.name)
 
       return pipe(

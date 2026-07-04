@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-inline-boolean-expressions"
 
@@ -20,7 +20,7 @@ const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
 const inlineBooleanConditionMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> => {
     const expression = unwrapExpression(ifStatement.expression)
     const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
       expression

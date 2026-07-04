@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-mutable-variable-declarations"
 
@@ -26,14 +26,16 @@ const tokenMutableKind = (
 const mutableDeclarationRuleMatch =
   (match: CreateMatch) =>
   (declarationList: ts.VariableDeclarationList) =>
-  (kind: MutableVariableDeclarationKind): RuleMatch =>
+  (kind: MutableVariableDeclarationKind): Finding =>
     match({
       ruleId,
       node: declarationList,
       message: `Avoid declaring mutable variables with ${kind}.`,
       hint:
         "Declare multiple const values to represent each state instead of mutating a single " +
-        "variable, and use immutable values that are not reassigned."
+        "variable, and use immutable values that are not reassigned. When the value must " +
+        "genuinely evolve over time (a module-level counter, a cell shared across " +
+        "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
     })
 
 // The context stage runs once per file, so both partials below are shared by every VariableDeclarationList the dispatcher feeds to matches.
@@ -43,7 +45,7 @@ const mutableDeclarationMatches = (context: RuleContext) => {
 
   const matches = (
     declarationList: ts.VariableDeclarationList
-  ): ReadonlyArray<RuleMatch> => {
+  ): ReadonlyArray<Finding> => {
     const firstToken = declarationList.getFirstToken(sourceFile)
 
     return pipe(

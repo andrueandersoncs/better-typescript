@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import { isInAmbientContext } from "./tsNode.js"
 import { callSignatureCheck, hasCallSignature, isVoidType } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-callbacks"
 
@@ -136,7 +136,7 @@ const callbackStyleMatches = (context: RuleContext) => {
 
   const matches = (
     declaration: CallbackStyleDeclaration
-  ): ReadonlyArray<RuleMatch> => {
+  ): ReadonlyArray<Finding> => {
     // A declare statement mirrors a third-party API's existing shape; there is no Effect-returning alternative to describe.
     if (isInAmbientContext(declaration)) {
       return []

@@ -12,7 +12,7 @@ import {
 import { symbolDeclaredInEffectPackage } from "./tsSignature.js"
 import type { FunctionInitializer } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-fn"
 
@@ -109,7 +109,7 @@ const bodyIsEffectGenCall =
 const effectFnRuleMatch =
   (sourceFile: ts.SourceFile) =>
   (match: CreateMatch) =>
-  (declaration: ts.VariableDeclaration): RuleMatch => {
+  (declaration: ts.VariableDeclaration): Finding => {
     const functionName = declaration.name.getText(sourceFile)
 
     return match({
@@ -133,7 +133,7 @@ const effectFnMatches = (context: RuleContext) => {
 
   const matches = (
     declaration: ts.VariableDeclaration
-  ): ReadonlyArray<RuleMatch> =>
+  ): ReadonlyArray<Finding> =>
     pipe(
       functionInitializer(declaration),
       Option.filter(hasParameters),

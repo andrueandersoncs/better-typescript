@@ -1,43 +1,60 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
 import { Option } from "effect"
+import { interpretMatches } from "../src/runner/interpretMatches.js"
+import { syndromeRegistry } from "../src/syndromes/index.js"
 import {
   formatMatchesPage,
   formatMatchesPageJson
 } from "../src/output/formatMatches.js"
 import { paginateMatches } from "../src/output/paginateMatches.js"
-import { RuleMatch, rules } from "../src/rules/index.js"
+import { Finding, rules } from "../src/rules/index.js"
 import { noThrow } from "../src/rules/noThrow.js"
+
+const interpret = interpretMatches(syndromeRegistry)(rules)
 
 const noThrowMessage = "Avoid throwing errors with throw."
 const noThrowHint = "Use Effect errors instead."
 
-const firstThrowMatch = new RuleMatch({
-  ruleId: "no-throw",
-  fileName: "src/user.ts",
+const firstThrowMatch = new Finding({
+  detectorId: "no-throw",
+  path: "src/user.ts",
   line: 3,
   column: 5,
   message: noThrowMessage,
   hint: noThrowHint
 })
 
-const secondThrowMatch = new RuleMatch({
-  ruleId: "no-throw",
-  fileName: "src/order.ts",
+const secondThrowMatch = new Finding({
+  detectorId: "no-throw",
+  path: "src/order.ts",
   line: 9,
   column: 1,
   message: noThrowMessage,
   hint: noThrowHint
 })
 
-const unknownRuleMatch = new RuleMatch({
-  ruleId: "not-a-real-rule",
-  fileName: "src/other.ts",
+const unknownRuleMatch = new Finding({
+  detectorId: "not-a-real-rule",
+  path: "src/other.ts",
   line: 1,
   column: 1,
   message: "Unknown rule message.",
   hint: "Unknown rule hint."
 })
+
+const denseFileMatches = Array.from(
+  { length: 10 },
+  (_, index) =>
+    new Finding({
+      detectorId: "no-throw",
+      path: "src/hot.ts",
+      line: index + 1,
+      column: 1,
+      message: noThrowMessage,
+      hint: noThrowHint
+    })
+)
 
 const indentSnippetLine = (line: string): string => `    ${line}`
 
@@ -53,11 +70,9 @@ const plainSnippet = (snippet: {
 })
 
 test("formatMatchesPage renders one group with the rule's good example", () => {
-  const page = paginateMatches(0)(Option.none())([
-    firstThrowMatch,
-    secondThrowMatch
-  ])
-  const output = formatMatchesPage(rules)(page)
+  const matches = [firstThrowMatch, secondThrowMatch]
+  const page = paginateMatches(0)(Option.none())(matches)
+  const output = formatMatchesPage(rules)(interpret(matches))(false)(page)
   const goodSnippet = noThrow.example.good[0]
   const expectedLabel = `  Good (${goodSnippet.filePath}):`
   const expectedCode = indentedGoodExample(goodSnippet.code)
@@ -71,7 +86,9 @@ test("formatMatchesPage renders one group with the rule's good example", () => {
 
 test("formatMatchesPage omits examples for unknown rule ids", () => {
   const page = paginateMatches(0)(Option.none())([unknownRuleMatch])
-  const output = formatMatchesPage(rules)(page)
+  const output = formatMatchesPage(rules)(interpret([unknownRuleMatch]))(false)(
+    page
+  )
 
   assert.ok(output.startsWith("not-a-real-rule\n  Hint: Unknown rule hint."))
   assert.ok(!output.includes("Good ("))
@@ -79,11 +96,9 @@ test("formatMatchesPage omits examples for unknown rule ids", () => {
 })
 
 test("formatMatchesPage keeps the pagination summary on truncated pages", () => {
-  const page = paginateMatches(0)(Option.some(1))([
-    firstThrowMatch,
-    secondThrowMatch
-  ])
-  const output = formatMatchesPage(rules)(page)
+  const matches = [firstThrowMatch, secondThrowMatch]
+  const page = paginateMatches(0)(Option.some(1))(matches)
+  const output = formatMatchesPage(rules)(interpret(matches))(false)(page)
 
   assert.ok(
     output.endsWith(
@@ -92,18 +107,44 @@ test("formatMatchesPage keeps the pagination summary on truncated pages", () => 
   )
 })
 
+test("formatMatchesPage leads with diagnoses and collapses consumed matches", () => {
+  const page = paginateMatches(0)(Option.none())(denseFileMatches)
+  const output = formatMatchesPage(rules)(interpret(denseFileMatches))(false)(
+    page
+  )
+
+  assert.ok(output.startsWith("Advice"))
+  assert.ok(output.includes("  src/hot.ts [file] — high match density"))
+  assert.ok(output.includes("    evidence: findings: 10, no-throw: 10"))
+  assert.ok(output.includes("  src/hot.ts: 10 matches -> high-match-density"))
+  assert.ok(!output.includes("  src/hot.ts:3:1"))
+  assert.ok(!output.includes("Good ("))
+})
+
+test("formatMatchesPage --detail restores collapsed locations", () => {
+  const page = paginateMatches(0)(Option.none())(denseFileMatches)
+  const output = formatMatchesPage(rules)(interpret(denseFileMatches))(true)(
+    page
+  )
+
+  assert.ok(output.startsWith("Advice"))
+  assert.ok(output.includes("  src/hot.ts:3:1"))
+  assert.ok(!output.includes("matches -> high-match-density"))
+})
+
 test("formatMatchesPageJson reports groups with rule metadata", () => {
-  const page = paginateMatches(0)(Option.none())([
-    firstThrowMatch,
-    secondThrowMatch
-  ])
-  const report = JSON.parse(formatMatchesPageJson(rules)(page))
+  const matches = [firstThrowMatch, secondThrowMatch]
+  const page = paginateMatches(0)(Option.none())(matches)
+  const report = JSON.parse(
+    formatMatchesPageJson(rules)(interpret(matches))(page)
+  )
   const expectedGood = noThrow.example.good.map(plainSnippet)
 
   assert.deepEqual(report, {
     totalCount: 2,
     startIndex: 1,
     endIndex: 2,
+    advice: [],
     groups: [
       {
         ruleId: "no-throw",
@@ -112,13 +153,13 @@ test("formatMatchesPageJson reports groups with rule metadata", () => {
         good: expectedGood,
         matches: [
           {
-            fileName: "src/user.ts",
+            path: "src/user.ts",
             line: 3,
             column: 5,
             message: noThrowMessage
           },
           {
-            fileName: "src/order.ts",
+            path: "src/order.ts",
             line: 9,
             column: 1,
             message: noThrowMessage
@@ -129,36 +170,33 @@ test("formatMatchesPageJson reports groups with rule metadata", () => {
   })
 })
 
-test("formatMatchesPageJson reports unknown rules with empty metadata", () => {
-  const page = paginateMatches(0)(Option.none())([unknownRuleMatch])
-  const report = JSON.parse(formatMatchesPageJson(rules)(page))
+test("formatMatchesPageJson carries diagnoses with evidence and full groups", () => {
+  const page = paginateMatches(0)(Option.none())(denseFileMatches)
+  const report = JSON.parse(
+    formatMatchesPageJson(rules)(interpret(denseFileMatches))(page)
+  )
 
-  assert.deepEqual(report.groups, [
-    {
-      ruleId: "not-a-real-rule",
-      description: "",
-      hint: "Unknown rule hint.",
-      good: [],
-      matches: [
-        {
-          fileName: "src/other.ts",
-          line: 1,
-          column: 1,
-          message: "Unknown rule message."
-        }
-      ]
-    }
+  assert.equal(report.advice.length, 1)
+  assert.equal(report.advice[0].detectorId, "high-match-density")
+  assert.equal(report.advice[0].level, "file")
+  assert.equal(report.advice[0].path, "src/hot.ts")
+  assert.deepEqual(report.advice[0].evidence, [
+    { measure: "findings", count: 10 },
+    { measure: "no-throw", count: 10 }
   ])
+  assert.equal(report.groups.length, 1)
+  assert.equal(report.groups[0].matches.length, 10)
 })
 
 test("formatMatchesPageJson reports an empty result set", () => {
   const page = paginateMatches(0)(Option.none())([])
-  const report = JSON.parse(formatMatchesPageJson(rules)(page))
+  const report = JSON.parse(formatMatchesPageJson(rules)(interpret([]))(page))
 
   assert.deepEqual(report, {
     totalCount: 0,
     startIndex: 1,
     endIndex: 0,
+    advice: [],
     groups: []
   })
 })

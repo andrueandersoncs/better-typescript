@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { symbolDeclaredInEffectPackage } from "./tsSignature.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-pipe-function"
 
@@ -28,9 +28,7 @@ const pipeMethodCallMatches = (context: RuleContext) => {
   const isEffectPipe = isEffectPipeAccess(context.checker)
   const match = createRuleMatch(context)
 
-  const matches = (
-    callExpression: ts.CallExpression
-  ): ReadonlyArray<RuleMatch> =>
+  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Finding> =>
     pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(
         callExpression.expression

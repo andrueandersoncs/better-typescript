@@ -1,34 +1,9 @@
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { Kind } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-for-in-loops"
-
-// The context stage runs once per file, so match is shared by every ForInStatement the dispatcher feeds to matches.
-const forInMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-
-  const matches = (
-    forInStatement: ts.ForInStatement
-  ): ReadonlyArray<RuleMatch> => [
-    match({
-      ruleId,
-      node: forInStatement,
-      message: "Avoid imperative logic in for..in loops.",
-      hint:
-        "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
-        "or Record.toEntries(), instead."
-    })
-  ]
-
-  return matches
-}
-
-const check = onNode([ts.SyntaxKind.ForInStatement])(ts.isForInStatement)(
-  forInMatches
-)
+const forInStatement = new Kind({ kind: ts.SyntaxKind.ForInStatement })
 
 const badExample = new ExampleSnippet({
   filePath: "src/config.ts",
@@ -55,9 +30,15 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noForInLoops = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-for-in-loops",
   description: "Disallow for..in loops in favor of Effect Record operations.",
-  example,
-  check
+  matcher: forInStatement,
+  message: "Avoid imperative logic in for..in loops.",
+  hint:
+    "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
+    "or Record.toEntries(), instead.",
+  example
 })
+
+export const noForInLoops = matcherRule(spec)

@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, HashMap, Option, Schema, flow, pipe } from "effect"
+import {
+  Console,
+  Effect,
+  HashMap,
+  HashSet,
+  Option,
+  Schema,
+  Struct,
+  flow,
+  pipe
+} from "effect"
+import { interpretMatches } from "./runner/interpretMatches.js"
+import { syndromeRegistry } from "./syndromes/index.js"
 import {
   formatMatchesPage,
   formatMatchesPageJson
@@ -10,8 +22,8 @@ import { formatRulesGuide, formatRulesJson } from "./output/formatRulesGuide.js"
 import { paginateMatches } from "./output/paginateMatches.js"
 import { loadProject } from "./project/loadProject.js"
 import type { LoadedProject } from "./project/loadProject.js"
-import { rules } from "./rules/index.js"
-import type { RuleMatch } from "./rules/index.js"
+import { isFindingRule, rules } from "./rules/index.js"
+import type { Rule, Finding } from "./rules/index.js"
 import { runRules } from "./runner/runRules.js"
 
 const workingDirectory = process.cwd()
@@ -45,14 +57,23 @@ const format = pipe(
   Options.withDefault("text")
 )
 
+const detail = pipe(
+  Options.boolean("detail"),
+  Options.withDescription(
+    "List every match location, including matches collapsed under a diagnosis."
+  ),
+  Options.withDefault(false)
+)
+
 interface AnalyzeOptions {
   readonly project: string
   readonly limit: Option.Option<number>
   readonly offset: number
   readonly format: OutputFormat
+  readonly detail: boolean
 }
 
-const checkProject = (loadedProject: LoadedProject): ReadonlyArray<RuleMatch> =>
+const checkProject = (loadedProject: LoadedProject): ReadonlyArray<Finding> =>
   runRules(rules)(loadedProject)
 
 const setFailureExitCode = (): number => {
@@ -61,13 +82,35 @@ const setFailureExitCode = (): number => {
   return process.exitCode
 }
 
+// Exit 2 separates "the tool could not run" from "the tool found findings", so CI can tell a misconfiguration from a lint failure.
+const setErrorExitCode = (): number => {
+  process.exitCode = 2
+
+  return process.exitCode
+}
+
+const ruleIdOf: (rule: Rule) => string = Struct.get("id")
+
+const findingRules = rules.filter(isFindingRule)
+
+const findingRuleIdList = findingRules.map(ruleIdOf)
+
+const findingRuleIds = HashSet.fromIterable(findingRuleIdList)
+
+const isFindingMatch = (match: Finding): boolean =>
+  HashSet.has(findingRuleIds, match.detectorId)
+
+const interpret = interpretMatches(syndromeRegistry)(rules)
+
 const analyzeProject = Effect.fn("analyzeProject")(function* (
   options: AnalyzeOptions
 ) {
   const workspace = yield* loadProject(options.project)
   const projectMatches = workspace.projects.flatMap(checkProject)
   const entries = projectMatches.map(matchEntry)
-  const matches = pipe(HashMap.fromIterable(entries), HashMap.toValues)
+  const allMatches = pipe(HashMap.fromIterable(entries), HashMap.toValues)
+  const interpretation = interpret(allMatches)
+  const matches = allMatches.filter(isFindingMatch)
   const isJsonFormat = options.format === "json"
 
   if (matches.length === 0) {
@@ -75,7 +118,7 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
     const emptyPage = paginateMatches(0)(noLimit)([])
 
     return isJsonFormat
-      ? formatMatchesPageJson(rules)(emptyPage)
+      ? formatMatchesPageJson(rules)(interpretation)(emptyPage)
       : `No rule matches found in ${workspace.rootPath}.`
   }
 
@@ -83,20 +126,19 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   const page = paginateMatches(options.offset)(options.limit)(matches)
 
   return isJsonFormat
-    ? formatMatchesPageJson(rules)(page)
-    : formatMatchesPage(rules)(page)
+    ? formatMatchesPageJson(rules)(interpretation)(page)
+    : formatMatchesPage(rules)(interpretation)(options.detail)(page)
 })
 
-const matchEntry = (match: RuleMatch): readonly [string, RuleMatch] => [
-  [match.ruleId, match.fileName, match.line, match.column, match.message].join(
-    ":"
-  ),
+// Finding identity carries no presentation text: the same detector at the same position is the same finding, whichever project of a solution workspace produced it (adrs/0003, stage one).
+const matchEntry = (match: Finding): readonly [string, Finding] => [
+  [match.detectorId, match.path, match.line, match.column].join(":"),
   match
 ]
 
 const reportError = Effect.fn("reportError")(function* (error: Error) {
   yield* Console.error(`Error: ${error.message}`)
-  yield* Effect.sync(setFailureExitCode)
+  yield* Effect.sync(setErrorExitCode)
 })
 
 const runCommand = Effect.fn("runCommand")(function* (options: AnalyzeOptions) {
@@ -124,7 +166,7 @@ const rulesGuideCommand = Command.make(
 
 const rootCommand = Command.make(
   "better-typescript",
-  { project, limit, offset, format },
+  { project, limit, offset, format, detail },
   flow(runCommand, Effect.catchAll(reportError))
 )
 

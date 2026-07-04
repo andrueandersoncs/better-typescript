@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import { transparentWrapperKinds } from "./tsNode.js"
 import { isExternalPackageArgument } from "./tsSignature.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-inline-closures"
 
@@ -26,9 +26,7 @@ const arrowFunctionMatches = (context: RuleContext) => {
   )
   const match = createRuleMatch(context)
 
-  const matches = (
-    arrowFunction: ts.ArrowFunction
-  ): ReadonlyArray<RuleMatch> => {
+  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Finding> => {
     const parent = effectiveParent(arrowFunction)
     const hasSanctionedParent = HashSet.has(sanctionedParentKinds, parent.kind)
     const isExternalCallback = isExternalArgument(arrowFunction)

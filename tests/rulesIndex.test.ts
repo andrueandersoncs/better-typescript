@@ -25,7 +25,10 @@ const moduleFileNames = fs
 
 const discoveredRuleEntry =
   (fileName: string) =>
-  ([exportName, value]: readonly [string, unknown]): ReadonlyArray<DiscoveredRule> =>
+  ([exportName, value]: readonly [
+    string,
+    unknown
+  ]): ReadonlyArray<DiscoveredRule> =>
     isRule(value) ? [{ fileName, exportName, rule: value }] : []
 
 const discoverRules = async (
@@ -55,7 +58,10 @@ test("every rule module in src/rules is registered in the rules array", async ()
 
   const unregistered = discovered
     .filter((entry) => !registeredIdSet.has(entry.rule.id))
-    .map((entry) => `${entry.fileName} exports ${entry.exportName} (${entry.rule.id})`)
+    .map(
+      (entry) =>
+        `${entry.fileName} exports ${entry.exportName} (${entry.rule.id})`
+    )
 
   assert.deepEqual(
     unregistered,

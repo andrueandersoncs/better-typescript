@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { conciseArrowBody, unwrapTransparentExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-property-accessors"
 
@@ -147,7 +147,7 @@ const propertyAccessorMatches = (context: RuleContext) => {
 
   const ruleMatch =
     (node: PropertyAccessorFunction) =>
-    (access: ts.PropertyAccessExpression): RuleMatch => {
+    (access: ts.PropertyAccessExpression): Finding => {
       const name = pipe(
         Option.fromNullable(node.name),
         Option.map(propertyNameText),
@@ -170,9 +170,7 @@ const propertyAccessorMatches = (context: RuleContext) => {
       })
     }
 
-  const matches = (
-    node: PropertyAccessorFunction
-  ): ReadonlyArray<RuleMatch> => {
+  const matches = (node: PropertyAccessorFunction): ReadonlyArray<Finding> => {
     const hasSingleParam = node.parameters.length === 1
     const singleParam = hasSingleParam
       ? Option.fromNullable(node.parameters[0])

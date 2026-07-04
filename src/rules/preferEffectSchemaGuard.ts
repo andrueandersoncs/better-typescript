@@ -6,7 +6,7 @@ import type { CreateMatch } from "./ruleMatch.js"
 import { astChildren } from "./traverse.js"
 import { unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-schema-guard"
 
@@ -46,7 +46,7 @@ const isStringKeyInExpression = (
 const schemaGuardMatch =
   (sourceFile: ts.SourceFile) =>
   (match: CreateMatch) =>
-  (expression: ts.BinaryExpression): RuleMatch => {
+  (expression: ts.BinaryExpression): Finding => {
     const propertyName = unwrapExpression(expression.left).getText(sourceFile)
     const objectText = expression.right.getText(sourceFile)
 
@@ -63,7 +63,7 @@ const inOperatorGuardMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
   const guardMatch = schemaGuardMatch(context.sourceFile)(match)
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> =>
     conditionExpressions(ifStatement.expression)
       .filter(isStringKeyInExpression)
       .map(guardMatch)

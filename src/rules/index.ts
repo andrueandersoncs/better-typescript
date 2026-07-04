@@ -22,6 +22,7 @@ import { noMultiLineComments } from "./noMultiLineComments.js"
 import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
 import { noMutation } from "./noMutation.js"
 import { noNestedCalls } from "./noNestedCalls.js"
+import { noNonNullAssertion } from "./noNonNullAssertion.js"
 import { noNestedIfStatements } from "./noNestedIfStatements.js"
 import { noNewError } from "./noNewError.js"
 import { noRawObjectTypes } from "./noRawObjectTypes.js"
@@ -78,6 +79,7 @@ export const rules: ReadonlyArray<Rule> = [
   noMutableVariableDeclarations,
   noMutation,
   noNestedIfStatements,
+  noNonNullAssertion,
   noDuplicateIfBodies,
   noDuplicateFunctionNames,
   noCallbacks,
@@ -110,6 +112,7 @@ export {
   ProgramContext,
   RuleContext,
   RuleExample,
-  RuleMatch
+  Finding,
+  isFindingRule
 } from "./types.js"
 export type { Rule } from "./types.js"

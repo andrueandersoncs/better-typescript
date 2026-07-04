@@ -9,7 +9,7 @@ import {
   unwrapSingleStatementBlock
 } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-duplicate-if-bodies"
 
@@ -107,7 +107,7 @@ const parentBodyDuplicate =
 const duplicateIfRuleMatch =
   (match: CreateMatch) =>
   (ifStatement: ts.IfStatement) =>
-  (combinedCondition: string): RuleMatch =>
+  (combinedCondition: string): Finding =>
     match({
       ruleId,
       node: ifStatement,
@@ -130,7 +130,7 @@ const duplicateIfMatches = (context: RuleContext) => {
   const parentDup = parentBodyDuplicate(sameBody)(combineConditions)
   const ruleMatch = duplicateIfRuleMatch(createRuleMatch(context))
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> => {
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> => {
     const guardDuplicateMatch = isGuardIfStatement(ifStatement)
       ? pipe(
           Option.liftPredicate(ts.isBlock)(ifStatement.parent),

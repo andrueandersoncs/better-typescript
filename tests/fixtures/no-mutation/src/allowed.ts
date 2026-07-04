@@ -21,8 +21,16 @@ export const negated = !flag
 
 export const negative = -1
 
-// Mutating a third-party object whose API contract requires it: a lib global.
-export const renameErrors = (): string => (Error.prototype.name = "Failure")
+// A host-environment handler slot (lib.dom): assignment is the API contract.
+declare const socket: WebSocket
 
-// Mutating a third-party object reached through an import alias.
+socket.onmessage = null
+
+// A third-party object reached through an import alias.
 export const resetArgs = (): ReadonlyArray<string> => (ts.sys.args = [])
+
+// A third-party-produced value held in a first-party binding: the data structure
+// is still the package's, so its mutable fields follow the package's contract.
+declare const range: ts.TextRange
+
+export const rewindRange = (): number => (range.pos = 0)

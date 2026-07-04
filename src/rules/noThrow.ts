@@ -1,34 +1,9 @@
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { Kind } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-throw"
-
-// The context stage runs once per file, so match is shared by every ThrowStatement the dispatcher feeds to matches.
-const throwMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-
-  const matches = (
-    throwStatement: ts.ThrowStatement
-  ): ReadonlyArray<RuleMatch> => [
-    match({
-      ruleId,
-      node: throwStatement,
-      message: "Avoid throwing errors with throw.",
-      hint:
-        "Create a custom error with Schema.TaggedError, then yield it instead, for example: " +
-        'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().'
-    })
-  ]
-
-  return matches
-}
-
-const check = onNode([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
-  throwMatches
-)
+const throwStatement = new Kind({ kind: ts.SyntaxKind.ThrowStatement })
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",
@@ -61,9 +36,15 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noThrow = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-throw",
   description: "Disallow throw statements in favor of Effect errors.",
-  example,
-  check
+  matcher: throwStatement,
+  message: "Avoid throwing errors with throw.",
+  hint:
+    "Create a custom error with Schema.TaggedError, then yield it instead, for example: " +
+    'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().',
+  example
 })
+
+export const noThrow = matcherRule(spec)

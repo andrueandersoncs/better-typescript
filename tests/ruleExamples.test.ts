@@ -1,11 +1,15 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { rules } from "../src/rules/index.js"
-import type { Rule, RuleMatch } from "../src/rules/index.js"
+import { isFindingRule, rules } from "../src/rules/index.js"
+import type { Rule, Finding } from "../src/rules/index.js"
 import { compileExampleSet } from "./ruleExamplePrograms.js"
 
-const matchLocation = (match: RuleMatch): string =>
-  `[${match.ruleId}] ${match.fileName}:${match.line}:${match.column}`
+const findingRuleIds = new Set(
+  rules.filter(isFindingRule).map((rule) => rule.id)
+)
+
+const matchLocation = (match: Finding): string =>
+  `[${match.detectorId}] ${match.path}:${match.line}:${match.column}`
 
 const registerRuleExampleTest = (rule: Rule): void => {
   test(`rule examples: ${rule.id}`, () => {
@@ -33,10 +37,10 @@ const registerRuleExampleTest = (rule: Rule): void => {
     )
 
     const ownRuleBadMatches = bad.ruleMatches.filter(
-      (match) => match.ruleId === rule.id
+      (match) => match.detectorId === rule.id
     )
     const matchedBadFiles = new Set(
-      ownRuleBadMatches.map((match) => match.fileName)
+      ownRuleBadMatches.map((match) => match.path)
     )
     const silentBadSnippets = rule.example.bad
       .map((snippet) => snippet.filePath)
@@ -48,13 +52,18 @@ const registerRuleExampleTest = (rule: Rule): void => {
       "expected every bad example snippet to trigger its own rule"
     )
 
-    // Good examples are the style guide's prose: they must satisfy every rule in
-    // the guide, not merely the rule they illustrate. A Good example that trips a
-    // sibling rule teaches a pattern the linter then rejects.
+    // Good examples are the style guide's prose: they must satisfy every FINDING
+    // rule in the guide, not merely the rule they illustrate. Signal rules are
+    // measurements consumed by the interpreter, never commands, so they do not
+    // constrain documentation.
+    const goodFindingMatches = good.ruleMatches.filter((match) =>
+      findingRuleIds.has(match.detectorId)
+    )
+
     assert.deepEqual(
-      good.ruleMatches.map(matchLocation),
+      goodFindingMatches.map(matchLocation),
       [],
-      "expected good example snippets to satisfy every rule in the guide"
+      "expected good example snippets to satisfy every finding rule in the guide"
     )
   })
 }

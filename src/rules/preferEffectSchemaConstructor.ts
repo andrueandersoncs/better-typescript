@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-schema-constructor"
 
@@ -100,7 +100,7 @@ const untaggedHint =
 
 const objectLiteralRuleMatch =
   (match: CreateMatch) =>
-  (literal: ts.ObjectLiteralExpression): RuleMatch => {
+  (literal: ts.ObjectLiteralExpression): Finding => {
     const tag = pipe(
       Array.findFirst(literal.properties, isTagAssignment),
       Option.flatMap(tagValueText)
@@ -119,7 +119,7 @@ const objectLiteralRuleMatch =
 
 const expressionRuleMatches =
   (match: CreateMatch) =>
-  (expression: ts.Expression): ReadonlyArray<RuleMatch> =>
+  (expression: ts.Expression): ReadonlyArray<Finding> =>
     branchExpressions(expression)
       .filter(ts.isObjectLiteralExpression)
       .filter(hasProperties)
@@ -135,7 +135,7 @@ const objectLiteralReturnMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
   const expressionMatches = expressionRuleMatches(match)
 
-  const matches = (node: ReturnCandidate): ReadonlyArray<RuleMatch> => {
+  const matches = (node: ReturnCandidate): ReadonlyArray<Finding> => {
     const expression = ts.isReturnStatement(node)
       ? Option.fromNullable(node.expression)
       : Option.liftPredicate(ts.isExpression)(node.body)

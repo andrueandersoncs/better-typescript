@@ -9,7 +9,7 @@ import type {
   ProgramContext,
   RuleContext,
   RuleListener,
-  RuleMatch
+  Finding
 } from "./types.js"
 
 const ruleId = "no-duplicate-function-names"
@@ -101,7 +101,7 @@ const candidateRuleMatch =
   (toRelative: RelativeFileName) =>
   (match: CreateMatch) =>
   (candidateFileName: string) =>
-  (candidate: ts.Identifier): Option.Option<RuleMatch> => {
+  (candidate: ts.Identifier): Option.Option<Finding> => {
     const declarations = declarationsForName(index)(candidate.text)
     const identicalDeclarations = declarations.filter(identicalTo(candidate))
     const declaredFileNames = identicalDeclarations.map(declaredFileName)
@@ -143,7 +143,7 @@ const candidateRuleMatch =
 // The file handler runs once per file, so every partial below is shared by all its top-level functions.
 const duplicateFunctionMatches =
   (index: FunctionNameIndex) =>
-  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+  (context: RuleContext): ReadonlyArray<Finding> => {
     const fileFunctions = topLevelFunctions(context.sourceFile)
     const identicalTo = hasIdenticalSignature(context.checker)
     const toRelative = toRelativeFileName(context.projectRoot)
@@ -155,9 +155,7 @@ const duplicateFunctionMatches =
     return Array.filterMap(fileFunctions, candidateMatch)
   }
 
-const buildFunctionNameIndex = (
-  context: ProgramContext
-): FunctionNameIndex => {
+const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
   const projectFunctions = context.program
     .getSourceFiles()
     .filter(isProjectSourceFile)

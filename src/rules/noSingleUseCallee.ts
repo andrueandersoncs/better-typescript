@@ -21,7 +21,7 @@ import type {
   ProgramContext,
   RuleContext,
   RuleListener,
-  RuleMatch
+  Finding
 } from "./types.js"
 
 const ruleId = "no-single-use-callee"
@@ -360,7 +360,7 @@ const symbolIsFlaggable =
 
 const singleUseCalleeMatch =
   (match: CreateMatch) =>
-  (entry: FunctionEntry): RuleMatch =>
+  (entry: FunctionEntry): Finding =>
     match({
       ruleId,
       node: entry.nameNode,
@@ -380,7 +380,7 @@ const isInFile =
 // The file handler runs once per file, so every partial below is shared by all its entries.
 const singleUseCalleeMatches =
   (index: ReferenceIndex) =>
-  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+  (context: RuleContext): ReadonlyArray<Finding> => {
     const flaggable = symbolIsFlaggable(index.calleeOnlySymbols)(
       context.checker
     )

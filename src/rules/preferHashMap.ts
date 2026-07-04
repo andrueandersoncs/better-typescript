@@ -9,7 +9,7 @@ import {
 import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-hash-map"
 
@@ -29,9 +29,7 @@ const constructorHint =
 const newMapMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
   const constructionEscapes = constructionEscapesExternally(checker)
 
-  const matches = (
-    newExpression: ts.NewExpression
-  ): ReadonlyArray<RuleMatch> => {
+  const matches = (newExpression: ts.NewExpression): ReadonlyArray<Finding> => {
     const expressionOption = Option.liftPredicate(ts.isIdentifier)(
       newExpression.expression
     )
@@ -71,7 +69,7 @@ const typeRefHint =
 const mapTypeRefMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
   const typeRefEscapes = typeReferenceEscapesExternally(checker)
 
-  const matches = (typeRef: ts.TypeReferenceNode): ReadonlyArray<RuleMatch> => {
+  const matches = (typeRef: ts.TypeReferenceNode): ReadonlyArray<Finding> => {
     const isAmbient = isInAmbientContext(typeRef)
     const escapesExternally = typeRefEscapes(typeRef)
     const isBoundaryMirror = isAmbient || escapesExternally
@@ -114,7 +112,7 @@ const mapMatches = (context: RuleContext) => {
   const constructionMatches = newMapMatches(context.checker)(match)
   const typeRefMatches = mapTypeRefMatches(context.checker)(match)
 
-  const matches = (node: MapRuleNode): ReadonlyArray<RuleMatch> =>
+  const matches = (node: MapRuleNode): ReadonlyArray<Finding> =>
     ts.isNewExpression(node) ? constructionMatches(node) : typeRefMatches(node)
 
   return matches

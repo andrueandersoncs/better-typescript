@@ -7,18 +7,18 @@ import type {
   RuleCheck,
   RuleContext,
   RuleListener,
-  RuleMatch
+  Finding
 } from "./types.js"
 
 // Applying handler(context) outside the per-node lambda lets the dispatcher's once-per-file specialization reach the rule's context stage.
 const refinedHandler =
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
-    handler: (context: RuleContext) => (node: N) => ReadonlyArray<RuleMatch>
+    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Finding>
   ): NodeHandler =>
   (context) => {
     const matches = handler(context)
-    const refined = (node: ts.Node): ReadonlyArray<RuleMatch> =>
+    const refined = (node: ts.Node): ReadonlyArray<Finding> =>
       refine(node) ? matches(node) : []
 
     return refined
@@ -28,20 +28,20 @@ export const nodeListeners =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
-    handler: (context: RuleContext) => (node: N) => ReadonlyArray<RuleMatch>
+    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Finding>
   ): ReadonlyArray<RuleListener> => [
     new NodeListener({ kinds, handler: refinedHandler(refine)(handler) })
   ]
 
 export const fileListeners = (
-  handler: (context: RuleContext) => ReadonlyArray<RuleMatch>
+  handler: (context: RuleContext) => ReadonlyArray<Finding>
 ): ReadonlyArray<RuleListener> => [new FileListener({ handler })]
 
 export const onNode =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
-    handler: (context: RuleContext) => (node: N) => ReadonlyArray<RuleMatch>
+    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Finding>
   ): RuleCheck => {
     const listeners = nodeListeners(kinds)(refine)(handler)
 
@@ -49,7 +49,7 @@ export const onNode =
   }
 
 export const onFile = (
-  handler: (context: RuleContext) => ReadonlyArray<RuleMatch>
+  handler: (context: RuleContext) => ReadonlyArray<Finding>
 ): RuleCheck => {
   const listeners = fileListeners(handler)
 
@@ -68,9 +68,7 @@ export const combineAll =
 
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
-  (
-    listeners: (index: Index) => ReadonlyArray<RuleListener>
-  ): RuleCheck =>
+  (listeners: (index: Index) => ReadonlyArray<RuleListener>): RuleCheck =>
   (context: ProgramContext): ReadonlyArray<RuleListener> => {
     const index = build(context)
 

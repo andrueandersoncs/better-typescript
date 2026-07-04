@@ -11,7 +11,7 @@ import {
 } from "./tsNode.js"
 import { hasCallSignature } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-data-last-module"
 
@@ -328,7 +328,7 @@ const dataLastModuleMatchForDataStructure =
   (isExpectedModule: ModulePathPredicate) =>
   (fileName: string) =>
   (definition: FunctionDefinition) =>
-  (dataStructure: DataStructureModule): Option.Option<RuleMatch> => {
+  (dataStructure: DataStructureModule): Option.Option<Finding> => {
     const ruleMatch = match({
       ruleId,
       node: definition[1],
@@ -350,13 +350,13 @@ type ParameterDataStructure = (
 ) => Option.Option<DataStructureModule>
 type DataStructureMatch = (
   definition: FunctionDefinition
-) => (dataStructure: DataStructureModule) => Option.Option<RuleMatch>
+) => (dataStructure: DataStructureModule) => Option.Option<Finding>
 
 const dataLastModuleMatchForDefinition =
   (parameterStructure: ParameterDataStructure) =>
   (structureMatch: DataStructureMatch) =>
   (node: CheckedFunction) =>
-  (definition: FunctionDefinition): Option.Option<RuleMatch> =>
+  (definition: FunctionDefinition): Option.Option<Finding> =>
     pipe(
       Option.fromNullable(node.parameters[node.parameters.length - 1]),
       Option.flatMap(parameterStructure),
@@ -395,7 +395,7 @@ const dataLastModuleMatches = (context: RuleContext) => {
   const matchForDefinition =
     dataLastModuleMatchForDefinition(parameterStructure)(structureMatch)
 
-  const matches = (node: CheckedFunction): ReadonlyArray<RuleMatch> => {
+  const matches = (node: CheckedFunction): ReadonlyArray<Finding> => {
     const isFunctionOrMethodDeclaration =
       ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
     if (isFunctionOrMethodDeclaration) {

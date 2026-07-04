@@ -3,16 +3,14 @@ export const combineValues = (left: number, right: number): number =>
 
 export const collectValues = (...values: number[]): number => values.length
 
-export const multiplyValues = function (
-  left: number,
-  right: number
-): number {
+export const multiplyValues = function (left: number, right: number): number {
   return left * right
 }
 
-export const clampRange = (min: number, max: number) => (
-  value: number
-): number => Math.min(max, Math.max(min, value))
+export const clampRange =
+  (min: number, max: number) =>
+  (value: number): number =>
+    Math.min(max, Math.max(min, value))
 
 type RuleMatch = { readonly ok: true }
 type RuleContext = { readonly sourceFile: string }

@@ -3,7 +3,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-array-append-all"
 
@@ -29,7 +29,7 @@ const isNonEmptyArrayBranch = (expression: ts.Expression): boolean =>
 const conditionalArraySpreadMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
 
-  const matches = (spread: ts.SpreadElement): ReadonlyArray<RuleMatch> => {
+  const matches = (spread: ts.SpreadElement): ReadonlyArray<Finding> => {
     if (!ts.isArrayLiteralExpression(spread.parent)) return []
 
     const expression = unwrapExpression(spread.expression)

@@ -1,34 +1,9 @@
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { Kind } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-for-of-loops"
-
-// The context stage runs once per file, so match is shared by every ForOfStatement the dispatcher feeds to matches.
-const forOfMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-
-  const matches = (
-    forOfStatement: ts.ForOfStatement
-  ): ReadonlyArray<RuleMatch> => [
-    match({
-      ruleId,
-      node: forOfStatement,
-      message: "Avoid imperative logic in for..of loops.",
-      hint:
-        "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-        "Array.filter(), or Array.flatMap(), instead."
-    })
-  ]
-
-  return matches
-}
-
-const check = onNode([ts.SyntaxKind.ForOfStatement])(ts.isForOfStatement)(
-  forOfMatches
-)
+const forOfStatement = new Kind({ kind: ts.SyntaxKind.ForOfStatement })
 
 const badExample = new ExampleSnippet({
   filePath: "src/users.ts",
@@ -55,10 +30,16 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noForOfLoops = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-for-of-loops",
   description:
     "Disallow for..of loops in favor of Effect collection operations.",
-  example,
-  check
+  matcher: forOfStatement,
+  message: "Avoid imperative logic in for..of loops.",
+  hint:
+    "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+    "Array.filter(), or Array.flatMap(), instead.",
+  example
 })
+
+export const noForOfLoops = matcherRule(spec)

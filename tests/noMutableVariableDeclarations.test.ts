@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noMutableVariableDeclarations } from "../src/rules/noMutableVariableDeclarations.js"
-import type { RuleMatch } from "../src/rules/index.js"
+import type { Finding } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
 import {
   assertAllowedFixtureItems,
@@ -22,7 +22,9 @@ const fixturePath = path.join(
 
 const expectedHint =
   "Declare multiple const values to represent each state instead of mutating a single " +
-  "variable, and use immutable values that are not reassigned."
+  "variable, and use immutable values that are not reassigned. When the value must " +
+  "genuinely evolve over time (a module-level counter, a cell shared across " +
+  "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   {
@@ -111,7 +113,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>

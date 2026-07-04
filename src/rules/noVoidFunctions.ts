@@ -7,7 +7,7 @@ import { isFunctionInitializer, namedNodeReportTarget } from "./tsNode.js"
 import { isVoidType, permitsVoid } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { FunctionInitializer } from "./tsNode.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-void-functions"
 
@@ -57,10 +57,14 @@ const signaturePermitsVoid =
     return permitsVoid(returnType)
   }
 
+// DOM handler slots are typed `((ev) => any) | null`: the author's function is never the null constituent, so judge the callable part of the contextual type.
 const contextualSignaturePermitsVoid =
   (checker: ts.TypeChecker) =>
-  (contextualType: ts.Type): boolean =>
-    contextualType.getCallSignatures().some(signaturePermitsVoid(checker))
+  (contextualType: ts.Type): boolean => {
+    const callableType = checker.getNonNullableType(contextualType)
+
+    return callableType.getCallSignatures().some(signaturePermitsVoid(checker))
+  }
 
 // Void imposed by a callback's contextual type (e.g. React's EffectCallback) is the consumer's contract, not the author's choice, so no Effect-returning alternative exists.
 const isContextuallyVoidCallback =
@@ -101,7 +105,7 @@ const isContextuallyTypedObjectMethod =
 
 const voidFunctionMatch =
   (match: CreateMatch) =>
-  (declaration: VoidableFunction): RuleMatch => {
+  (declaration: VoidableFunction): Finding => {
     const node = namedNodeReportTarget(declaration)
 
     return match({
@@ -126,7 +130,7 @@ const voidFunctionMatches = (context: RuleContext) => {
   const declarationReturnsVoid = returnsVoid(context.checker)
   const ruleMatch = voidFunctionMatch(createRuleMatch(context))
 
-  const matches = (declaration: VoidableFunction): ReadonlyArray<RuleMatch> => {
+  const matches = (declaration: VoidableFunction): ReadonlyArray<Finding> => {
     const isContextualVoid =
       isFunctionInitializer(declaration) &&
       isContextualVoidCallback(declaration)

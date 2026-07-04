@@ -3,7 +3,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-record-filter-map"
 
@@ -31,7 +31,7 @@ const hasSomeProperties = (expression: ts.Expression): boolean =>
 const conditionalObjectSpreadMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
 
-  const matches = (spread: ts.SpreadAssignment): ReadonlyArray<RuleMatch> => {
+  const matches = (spread: ts.SpreadAssignment): ReadonlyArray<Finding> => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
 

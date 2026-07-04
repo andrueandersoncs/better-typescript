@@ -1,7 +1,7 @@
 import { Function, Option, Schema } from "effect"
-import { RuleMatch } from "../rules/index.js"
+import { Finding } from "../rules/index.js"
 
-const pageMatchesSchema = Schema.Array(RuleMatch)
+const pageMatchesSchema = Schema.Array(Finding)
 
 export class MatchesPage extends Schema.Class<MatchesPage>("MatchesPage")({
   matches: pageMatchesSchema,
@@ -13,14 +13,14 @@ export class MatchesPage extends Schema.Class<MatchesPage>("MatchesPage")({
 export const paginateMatches =
   (offset: number) =>
   (limit: Option.Option<number>) =>
-  (matches: ReadonlyArray<RuleMatch>): MatchesPage => {
-  const pageSize = Option.getOrElse(limit, Function.constant(matches.length))
-  const pageMatches = matches.slice(offset, offset + pageSize)
+  (matches: ReadonlyArray<Finding>): MatchesPage => {
+    const pageSize = Option.getOrElse(limit, Function.constant(matches.length))
+    const pageMatches = matches.slice(offset, offset + pageSize)
 
-  return new MatchesPage({
-    matches: pageMatches,
-    totalCount: matches.length,
-    startIndex: offset + 1,
-    endIndex: offset + pageMatches.length
-  })
-}
+    return new MatchesPage({
+      matches: pageMatches,
+      totalCount: matches.length,
+      startIndex: offset + 1,
+      endIndex: offset + pageMatches.length
+    })
+  }

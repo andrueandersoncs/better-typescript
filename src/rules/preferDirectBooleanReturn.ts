@@ -10,7 +10,7 @@ import {
   unwrapSingleStatementBlock
 } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-direct-boolean-return"
 
@@ -40,13 +40,13 @@ const returnStatementExpression = (
 type StatementConditionalFalseMatch = (
   statement: ts.Statement,
   index: number
-) => Option.Option<RuleMatch>
+) => Option.Option<Finding>
 
 const directBooleanRuleMatch =
   (sourceFile: ts.SourceFile) =>
   (match: CreateMatch) =>
   (ifStatement: ts.IfStatement) =>
-  (literalValue: boolean): RuleMatch => {
+  (literalValue: boolean): Finding => {
     const conditionText = ifStatement.expression.getText(sourceFile)
     const returnExpression = literalValue
       ? `(${conditionText})`
@@ -63,11 +63,11 @@ const directBooleanRuleMatch =
 
 type DirectBooleanRuleMatch = (
   ifStatement: ts.IfStatement
-) => (literalValue: boolean) => RuleMatch
+) => (literalValue: boolean) => Finding
 
 const directBooleanMatches =
   (ruleMatch: DirectBooleanRuleMatch) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<RuleMatch> =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<Finding> =>
     pipe(
       Option.gen(function* () {
         const unwrappedStatement = unwrapSingleStatementBlock(
@@ -102,7 +102,7 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
 const conditionalFalseReturnMatch =
   (match: CreateMatch) =>
   (nextStatement: Option.Option<ts.Statement>) =>
-  (ifStatement: ts.IfStatement): Option.Option<RuleMatch> =>
+  (ifStatement: ts.IfStatement): Option.Option<Finding> =>
     Option.gen(function* () {
       yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
       const thenBranchExpr = ts.isBlock(ifStatement.thenStatement)
@@ -142,7 +142,7 @@ const statementConditionalFalseMatch =
 
 const conditionalFalseReturnMatches =
   (match: CreateMatch) =>
-  (block: ts.Block): ReadonlyArray<RuleMatch> =>
+  (block: ts.Block): ReadonlyArray<Finding> =>
     Array.filterMap(
       block.statements,
       statementConditionalFalseMatch(match)(block)
@@ -168,7 +168,7 @@ const booleanReturnMatches = (context: RuleContext) => {
   )
   const falseMatches = conditionalFalseReturnMatches(match)
 
-  const matches = (node: BooleanReturnTarget): ReadonlyArray<RuleMatch> =>
+  const matches = (node: BooleanReturnTarget): ReadonlyArray<Finding> =>
     ts.isIfStatement(node) ? literalMatches(node) : falseMatches(node)
 
   return matches

@@ -20,6 +20,12 @@ const isMyHandler = (input: unknown): input is MyHandler =>
 
 const MyHandlerSchema = Schema.declare(isMyHandler)
 
+// Allowed: Schema.declare guarding a generic type parameter — the placeholder stands
+// for a caller-supplied type, not a first-party data structure.
+const isParameterValue = <F>(input: unknown): input is F => input !== null
+
+const parameterField = <F>() => Schema.declare(isParameterValue<F>)
+
 // Allowed: normal Schema class definition (not Schema.declare)
 class MyData extends Schema.Class<MyData>("MyData")({
   name: Schema.String,
@@ -29,4 +35,5 @@ class MyData extends Schema.Class<MyData>("MyData")({
 void TsNodeSchema
 void TsProgramSchema
 void MyHandlerSchema
+void parameterField
 void MyData

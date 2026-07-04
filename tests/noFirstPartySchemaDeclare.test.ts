@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noFirstPartySchemaDeclare } from "../src/rules/noFirstPartySchemaDeclare.js"
-import type { RuleMatch } from "../src/rules/index.js"
+import type { Finding } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
 import {
   assertAllowedFixtureItems,
@@ -74,10 +74,16 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 21,
     column: 25
+  },
+  {
+    name: "Schema.declare guarding a generic type parameter",
+    fileName: "src/allowed.ts",
+    line: 27,
+    column: 33
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>

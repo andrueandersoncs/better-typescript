@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { isExtendsClause, namedNodeReportTarget } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-root-level-classes"
 
@@ -24,7 +24,7 @@ const lacksExtendsClause = (declaration: ClassNode): boolean =>
 
 const rootLevelClassMatch =
   (match: CreateMatch) =>
-  (declaration: ClassNode): RuleMatch => {
+  (declaration: ClassNode): Finding => {
     const node = namedNodeReportTarget(declaration)
 
     return match({
@@ -45,7 +45,7 @@ const rootLevelClassMatch =
 const rootLevelClassMatches = (context: RuleContext) => {
   const ruleMatch = rootLevelClassMatch(createRuleMatch(context))
 
-  const matches = (declaration: ClassNode): ReadonlyArray<RuleMatch> =>
+  const matches = (declaration: ClassNode): ReadonlyArray<Finding> =>
     pipe(
       Option.liftPredicate(lacksExtendsClause)(declaration),
       Option.map(ruleMatch),

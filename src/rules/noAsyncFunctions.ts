@@ -1,80 +1,37 @@
-import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { And, Kind, Or, Parent } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-async-functions"
+const asyncKeyword = new Kind({ kind: ts.SyntaxKind.AsyncKeyword })
 
-type AsyncCapableFunction =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration
+const functionDeclaration = new Kind({
+  kind: ts.SyntaxKind.FunctionDeclaration
+})
 
-const asyncCapableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.MethodDeclaration
-]
+const functionExpression = new Kind({
+  kind: ts.SyntaxKind.FunctionExpression
+})
 
-const isAsyncCapableFunction = (node: ts.Node): node is AsyncCapableFunction =>
-  [
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node)
-  ].some(Boolean)
+const arrowFunction = new Kind({ kind: ts.SyntaxKind.ArrowFunction })
 
-const isAsyncModifier = (modifier: ts.ModifierLike): boolean =>
-  modifier.kind === ts.SyntaxKind.AsyncKeyword
+const methodDeclaration = new Kind({ kind: ts.SyntaxKind.MethodDeclaration })
 
-const findAsyncModifier = (
-  modifiers: ReadonlyArray<ts.ModifierLike>
-): Option.Option<ts.ModifierLike> => {
-  const modifier = modifiers.find(isAsyncModifier)
+const asyncCapableFunction = new Or({
+  terms: [
+    functionDeclaration,
+    functionExpression,
+    arrowFunction,
+    methodDeclaration
+  ]
+})
 
-  return Option.fromNullable(modifier)
-}
+const onAsyncCapableFunction = new Parent({ term: asyncCapableFunction })
 
-const asyncFunctionMatch =
-  (match: CreateMatch) =>
-  (keyword: ts.ModifierLike): RuleMatch =>
-    match({
-      ruleId,
-      node: keyword,
-      message: "Avoid declaring functions as async.",
-      hint:
-        "Model asynchronous work with Effect instead of async/await. To integrate with a " +
-        "third-party library: wrap incoming promises with Effect.tryPromise; satisfy an " +
-        "outgoing Promise-returning callback contract with a non-async function that " +
-        "returns Effect.runPromise(effect)."
-    })
-
-// The context stage runs once per file, so the specialized rule match is shared by every async-capable function the dispatcher feeds to matches.
-const asyncFunctionMatches = (context: RuleContext) => {
-  const ruleMatch = asyncFunctionMatch(createRuleMatch(context))
-
-  const matches = (node: AsyncCapableFunction): ReadonlyArray<RuleMatch> => {
-    const modifiers = ts.getModifiers(node)
-
-    return pipe(
-      Option.fromNullable(modifiers),
-      Option.flatMap(findAsyncModifier),
-      Option.map(ruleMatch),
-      Option.toArray
-    )
-  }
-
-  return matches
-}
-
-const check = onNode(asyncCapableFunctionKinds)(isAsyncCapableFunction)(
-  asyncFunctionMatches
-)
+// Matches the async keyword token itself so the report lands on the modifier, guarded to the function-like parents that can legally carry it.
+const asyncModifier = new And({
+  terms: [asyncKeyword, onAsyncCapableFunction]
+})
 
 const badExample = new ExampleSnippet({
   filePath: "src/user.ts",
@@ -100,10 +57,18 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noAsyncFunctions = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-async-functions",
   description:
     "Disallow async functions in favor of Effect-returning functions.",
-  example,
-  check
+  matcher: asyncModifier,
+  message: "Avoid declaring functions as async.",
+  hint:
+    "Model asynchronous work with Effect instead of async/await. To integrate with a " +
+    "third-party library: wrap incoming promises with Effect.tryPromise; satisfy an " +
+    "outgoing Promise-returning callback contract with a non-async function that " +
+    "returns Effect.runPromise(effect).",
+  example
 })
+
+export const noAsyncFunctions = matcherRule(spec)

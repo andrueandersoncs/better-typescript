@@ -1,34 +1,9 @@
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { Kind } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-switch-statements"
-
-// The context stage runs once per file, so match is shared by every SwitchStatement the dispatcher feeds to matches.
-const switchStatementMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-
-  const matches = (
-    switchStatement: ts.SwitchStatement
-  ): ReadonlyArray<RuleMatch> => [
-    match({
-      ruleId,
-      node: switchStatement,
-      message: "Avoid switch statements.",
-      hint:
-        "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
-        "so every case is handled explicitly."
-    })
-  ]
-
-  return matches
-}
-
-const check = onNode([ts.SyntaxKind.SwitchStatement])(ts.isSwitchStatement)(
-  switchStatementMatches
-)
+const switchStatement = new Kind({ kind: ts.SyntaxKind.SwitchStatement })
 
 const badExample = new ExampleSnippet({
   filePath: "src/status.ts",
@@ -70,9 +45,15 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noSwitchStatements = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-switch-statements",
   description: "Disallow switch statements in favor of Effect Match.",
-  example,
-  check
+  matcher: switchStatement,
+  message: "Avoid switch statements.",
+  hint:
+    "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
+    "so every case is handled explicitly.",
+  example
 })
+
+export const noSwitchStatements = matcherRule(spec)

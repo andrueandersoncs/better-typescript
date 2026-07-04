@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { isFirstPartySymbol } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-first-party-schema-declare"
 
@@ -65,9 +65,11 @@ const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
 const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   const symbol = typeSymbol(type)
   const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
-  const isDataStructure = !(type.getCallSignatures().length > 0)
+  const isDataStructure = type.getCallSignatures().length === 0
+  // A generic type parameter is a placeholder for a caller-supplied type, not a first-party data structure, even though its declaration sits in a project file.
+  const isConcreteType = !type.isTypeParameter()
 
-  return isFirstParty && isDataStructure
+  return [isFirstParty, isDataStructure, isConcreteType].every(Boolean)
 }
 
 const symbolName: (symbol: ts.Symbol) => string = Struct.get("name")
@@ -85,7 +87,7 @@ const schemaDeclareHint =
 const schemaDeclareMatchSource =
   (match: CreateMatch) =>
   (call: ts.CallExpression) =>
-  (assertedType: ts.Type): RuleMatch => {
+  (assertedType: ts.Type): Finding => {
     const name = pipe(
       typeSymbol(assertedType),
       Option.map(symbolName),
@@ -101,7 +103,7 @@ type AssertedType = (predicate: ts.Expression) => Option.Option<ts.Type>
 const schemaDeclareMatchOption =
   (assertedType: AssertedType) =>
   (match: CreateMatch) =>
-  (call: ts.CallExpression): Option.Option<RuleMatch> =>
+  (call: ts.CallExpression): Option.Option<Finding> =>
     pipe(
       Option.fromNullable(call.arguments[0]),
       Option.flatMap(assertedType),
@@ -115,7 +117,7 @@ const schemaDeclareMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
   const matchOption = schemaDeclareMatchOption(assertedType)(match)
 
-  const matches = (call: ts.CallExpression): ReadonlyArray<RuleMatch> => {
+  const matches = (call: ts.CallExpression): ReadonlyArray<Finding> => {
     const access = call.expression as ts.PropertyAccessExpression
     const object = accessExpression(access)
     if (!ts.isIdentifier(object)) return []

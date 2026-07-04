@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import * as ts from "typescript"
 import { LoadedProject } from "../src/project/loadProject.js"
 import { rules } from "../src/rules/index.js"
-import type { ExampleSnippet, Rule, RuleMatch } from "../src/rules/index.js"
+import type { ExampleSnippet, Rule, Finding } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -92,7 +92,7 @@ export type ExampleSetLabel = "bad" | "good"
 
 export interface CompiledExampleSet {
   readonly compileProblems: ReadonlyArray<string>
-  readonly ruleMatches: ReadonlyArray<RuleMatch>
+  readonly ruleMatches: ReadonlyArray<Finding>
 }
 
 const duplicateProblems = (

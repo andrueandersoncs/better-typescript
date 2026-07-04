@@ -1,48 +1,24 @@
-import { Option } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import { And, Anything, Kind, Or, Property } from "../matcher/language.js"
+import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
+import { ExampleSnippet, RuleExample } from "./types.js"
 
-const ruleId = "no-for-loops"
+const anything = new Anything()
 
-// The context stage runs once per file, so match is shared by every ForStatement the dispatcher feeds to matches.
-const forMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+const hasStopCondition = new Property({ name: "condition", term: anything })
 
-  const matches = (forStatement: ts.ForStatement): ReadonlyArray<RuleMatch> => {
-    const condition = Option.fromNullable(forStatement.condition)
-    const initializer = Option.fromNullable(forStatement.initializer)
-    const incrementor = Option.fromNullable(forStatement.incrementor)
-    const hasStopCondition = Option.isSome(condition)
-    const hasInitializer = Option.isSome(initializer)
-    const hasIncrementor = Option.isSome(incrementor)
-    const hasIterator = [hasInitializer, hasIncrementor].some(Boolean)
-    const hasIteratorAndStopCondition = [hasStopCondition, hasIterator].every(
-      Boolean
-    )
+const hasInitializer = new Property({ name: "initializer", term: anything })
 
-    return hasIteratorAndStopCondition
-      ? [
-          match({
-            ruleId,
-            node: forStatement,
-            message: "Avoid imperative logic in iterator-based for loops.",
-            hint:
-              "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-              "Array.filter(), or Array.flatMap(), instead."
-          })
-        ]
-      : []
-  }
+const hasIncrementor = new Property({ name: "incrementor", term: anything })
 
-  return matches
-}
+const hasIterator = new Or({ terms: [hasInitializer, hasIncrementor] })
 
-const check = onNode([ts.SyntaxKind.ForStatement])(ts.isForStatement)(
-  forMatches
-)
+const forStatement = new Kind({ kind: ts.SyntaxKind.ForStatement })
+
+// A for(;;) loop without a stop condition or without any iterator clause is an intentional infinite/manual loop, not an iteration the Array module replaces.
+const iteratorForLoop = new And({
+  terms: [forStatement, hasStopCondition, hasIterator]
+})
 
 const badExample = new ExampleSnippet({
   filePath: "src/transform.ts",
@@ -69,10 +45,16 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
-export const noForLoops = new Rule({
-  id: ruleId,
+const spec = new MatcherRuleSpec({
+  id: "no-for-loops",
   description:
     "Disallow iterator-based for loops in favor of Effect collection operations.",
-  example,
-  check
+  matcher: iteratorForLoop,
+  message: "Avoid imperative logic in iterator-based for loops.",
+  hint:
+    "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+    "Array.filter(), or Array.flatMap(), instead.",
+  example
 })
+
+export const noForLoops = matcherRule(spec)

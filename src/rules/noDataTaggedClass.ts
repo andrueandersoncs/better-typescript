@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { isExtendsClause, namedNodeReportTarget } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-data-tagged-class"
 
@@ -71,7 +71,7 @@ const dataTaggedClassMatches = (context: RuleContext) => {
 
   const matches = (
     declaration: ts.ClassDeclaration
-  ): ReadonlyArray<RuleMatch> => {
+  ): ReadonlyArray<Finding> => {
     const node = namedNodeReportTarget(declaration)
 
     return [

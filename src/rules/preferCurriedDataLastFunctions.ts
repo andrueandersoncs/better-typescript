@@ -20,7 +20,7 @@ import type {
   ProgramContext,
   RuleContext,
   RuleListener,
-  RuleMatch
+  Finding
 } from "./types.js"
 
 const ruleId = "prefer-curried-data-last-functions"
@@ -513,7 +513,7 @@ const hasOnlyContextualReferences =
 
 const curriedDataLastMatch =
   (match: CreateMatch) =>
-  (declaration: CurriedDataLastCandidate): RuleMatch => {
+  (declaration: CurriedDataLastCandidate): Finding => {
     const functionTarget = pipe(
       Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
       Option.map(namedNodeReportTarget)
@@ -551,7 +551,7 @@ const curriedDataLastMatches =
 
     const matches = (
       declaration: CurriedDataLastCandidate
-    ): ReadonlyArray<RuleMatch> => {
+    ): ReadonlyArray<Finding> => {
       const hasDisallowedParameters = hasDisallowedParameterList(declaration)
       const hasCurriedBody = hasCurriedArrowBody(declaration)
       const isContextual = isContextuallyTyped(declaration)
@@ -597,10 +597,13 @@ const example = new RuleExample({
   good: [goodExample]
 })
 
+// A signal, not a finding: currying every first-party function proved wrong as a command (reducers, Proxy handlers), but the measurement powers the pipeline-hostile diagnosis (see adrs/0001-layered-match-interpretation.md).
 export const preferCurriedDataLastFunctions = new Rule({
   id: ruleId,
   description:
-    "Require author-controlled functions to be curried with the data argument last.",
+    "Measure author-controlled functions that are not curried data-last; consumed by " +
+    "the match interpreter as a signal, never reported directly.",
   example,
-  check
+  check,
+  role: "signal"
 })

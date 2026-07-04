@@ -77,3 +77,17 @@ export const countViaForEach = (items: ReadonlyArray<number>): number => {
 
   return items.length
 }
+
+// A handler slot in the shape lib.dom uses: the contextual return type is any and the
+// slot is nullable. A void-returning implementation satisfies that consumer contract.
+interface MessageSource {
+  onmessage: ((data: string) => any) | null
+}
+
+declare const source: MessageSource
+
+const handleMessage: NonNullable<MessageSource["onmessage"]> = (data) => {
+  void data
+}
+
+source.onmessage = handleMessage

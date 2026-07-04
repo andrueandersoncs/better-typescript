@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferCurriedDataLastFunctions } from "../src/rules/preferCurriedDataLastFunctions.js"
-import type { RuleMatch } from "../src/rules/index.js"
+import type { Finding } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
 import {
   assertAllowedFixtureItems,
@@ -59,8 +59,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "clampRange multi-parameter outer arrow returning another arrow",
     ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
-    line: 13,
-    column: 27,
+    line: 11,
+    column: 3,
     message,
     hint
   },
@@ -68,7 +68,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     name: "ruleStyleMatches first-party handler reference",
     ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
-    line: 25,
+    line: 23,
     column: 26,
     message,
     hint
@@ -115,7 +115,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runPreferCurriedDataLastFunctionsFixture = async (): Promise<
-  ReadonlyArray<RuleMatch>
+  ReadonlyArray<Finding>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 

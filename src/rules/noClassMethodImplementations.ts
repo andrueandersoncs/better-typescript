@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { namedNodeReportTarget } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-class-method-implementations"
 
@@ -44,7 +44,7 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
 
 const methodImplementationMatch =
   (match: CreateMatch) =>
-  (node: ts.MethodDeclaration): RuleMatch => {
+  (node: ts.MethodDeclaration): Finding => {
     const reportTarget = namedNodeReportTarget(node)
 
     return match({
@@ -63,7 +63,7 @@ const methodImplementationMatch =
 const methodImplementationMatches = (context: RuleContext) => {
   const ruleMatch = methodImplementationMatch(createRuleMatch(context))
 
-  const matches = (node: ts.MethodDeclaration): ReadonlyArray<RuleMatch> => {
+  const matches = (node: ts.MethodDeclaration): ReadonlyArray<Finding> => {
     const reportable = Option.liftPredicate(isReportableMethod)(node)
 
     return pipe(reportable, Option.map(ruleMatch), Option.toArray)

@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { isFirstPartySymbol, unwrapExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-effect-schema-is"
 
@@ -102,9 +102,7 @@ const schemaIsMatches = (context: RuleContext) => {
   const isFirstPartyAccess = isFirstPartyTagAccess(context.checker)
   const valueTextOf = checkedValueText(sourceFile)
 
-  const matches = (
-    expression: ts.BinaryExpression
-  ): ReadonlyArray<RuleMatch> => {
+  const matches = (expression: ts.BinaryExpression): ReadonlyArray<Finding> => {
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = [leftAccess, rightAccess]

@@ -15,7 +15,7 @@ import type {
   Rule,
   RuleContext,
   RuleListener,
-  RuleMatch
+  Finding
 } from "../rules/types.js"
 
 type NodeHandler = NodeListener["handler"]
@@ -23,12 +23,12 @@ type FileHandler = FileListener["handler"]
 type HandlerTable = HashMap.HashMap<ts.SyntaxKind, ReadonlyArray<NodeHandler>>
 type AddKindHandler = (table: HandlerTable, kind: ts.SyntaxKind) => HandlerTable
 
-type SpecializedNodeHandler = (node: ts.Node) => ReadonlyArray<RuleMatch>
+type SpecializedNodeHandler = (node: ts.Node) => ReadonlyArray<Finding>
 // SyntaxKind is a dense small-int enum, so a flat row-per-kind table beats a HashMap on the per-node hot path.
 type DenseTable = ReadonlyArray<ReadonlyArray<NodeHandler>>
 type SpecializedTable = ReadonlyArray<ReadonlyArray<SpecializedNodeHandler>>
 
-type CheckSourceFile = (context: RuleContext) => ReadonlyArray<RuleMatch>
+type CheckSourceFile = (context: RuleContext) => ReadonlyArray<Finding>
 
 export const compileRules =
   (rules: ReadonlyArray<Rule>) =>
@@ -69,22 +69,22 @@ const specializeRow =
 
 const applyFileHandler =
   (context: RuleContext) =>
-  (handle: FileHandler): ReadonlyArray<RuleMatch> =>
+  (handle: FileHandler): ReadonlyArray<Finding> =>
     handle(context)
 
 const appendMatch =
-  (collected: MutableList.MutableList<RuleMatch>) =>
-  (match: RuleMatch): MutableList.MutableList<RuleMatch> =>
+  (collected: MutableList.MutableList<Finding>) =>
+  (match: Finding): MutableList.MutableList<Finding> =>
     MutableList.append(collected, match)
 
 const checkSourceFile =
   (dense: DenseTable) =>
   (fileHandlers: ReadonlyArray<FileHandler>) =>
-  (context: RuleContext): ReadonlyArray<RuleMatch> => {
+  (context: RuleContext): ReadonlyArray<Finding> => {
     const fileMatches = fileHandlers.flatMap(applyFileHandler(context))
     const specialized: SpecializedTable = dense.map(specializeRow(context))
     // ts.forEachChild is callback-only, so match accumulation needs a mutable seam; MutableList keeps it bounded to this file's pass. The callback returns false so traversal never stops early.
-    const collected = MutableList.empty<RuleMatch>()
+    const collected = MutableList.empty<Finding>()
     const collect = appendMatch(collected)
     const visit = (node: ts.Node): false => {
       const row = specialized[node.kind]
@@ -106,7 +106,7 @@ const checkSourceFile =
 // Function.apply would also work here, but its variadic rest/spread sits on the per-node hot path; a direct curried call keeps the loop monomorphic.
 const applyToNode =
   (node: ts.Node) =>
-  (handle: SpecializedNodeHandler): ReadonlyArray<RuleMatch> =>
+  (handle: SpecializedNodeHandler): ReadonlyArray<Finding> =>
     handle(node)
 
 const nodeListenerSchema = Schema.is(NodeListener)

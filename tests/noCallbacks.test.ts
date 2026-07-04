@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noCallbacks } from "../src/rules/noCallbacks.js"
-import type { RuleMatch } from "../src/rules/index.js"
+import type { Finding } from "../src/rules/index.js"
 import { runRules } from "../src/runner/runRules.js"
 import {
   assertAllowedFixtureItems,
@@ -148,7 +148,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoCallbacksFixture = async (): Promise<ReadonlyArray<RuleMatch>> => {
+const runNoCallbacksFixture = async (): Promise<ReadonlyArray<Finding>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return workspace.projects.flatMap((project) =>

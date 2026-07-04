@@ -4,7 +4,7 @@ import { onNode } from "./ruleCheck.js"
 import { createRuleMatch } from "./ruleMatch.js"
 import { returnedExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-implicit-return"
 
@@ -16,9 +16,7 @@ type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
 const implicitReturnMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
 
-  const matches = (
-    arrowFunction: ts.ArrowFunction
-  ): ReadonlyArray<RuleMatch> => {
+  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Finding> => {
     if (!ts.isBlock(arrowFunction.body)) return []
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]

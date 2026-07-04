@@ -4,8 +4,17 @@ import * as ts from "typescript"
 export const isVoidType = (type: ts.Type): boolean =>
   (type.flags & ts.TypeFlags.Void) !== 0
 
+// A contextual return of any/unknown accepts a void-returning implementation, so a consumer contract typed that way (lib.dom handler slots) still permits void.
+const voidCompatibleFlags =
+  ts.TypeFlags.Void | ts.TypeFlags.Any | ts.TypeFlags.Unknown
+
+const isVoidCompatibleType = (type: ts.Type): boolean =>
+  (type.flags & voidCompatibleFlags) !== 0
+
 export const permitsVoid = (type: ts.Type): boolean =>
-  type.isUnion() ? type.types.some(isVoidType) : isVoidType(type)
+  type.isUnion()
+    ? type.types.some(isVoidCompatibleType)
+    : isVoidCompatibleType(type)
 
 export const isDifferentType =
   (type: ts.Type) =>

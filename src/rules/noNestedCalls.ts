@@ -8,7 +8,7 @@ import { callArguments, isCallLikeExpression } from "./tsSignature.js"
 import type { CallLikeExpression } from "./tsSignature.js"
 import { hasCallSignature } from "./tsType.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "no-nested-calls"
 
@@ -78,7 +78,7 @@ const consumerRuleMatch =
   (calleeText: CalleeText) =>
   (match: CreateMatch) =>
   (call: CallLikeExpression) =>
-  (consumer: CallLikeExpression): Option.Option<RuleMatch> => {
+  (consumer: CallLikeExpression): Option.Option<Finding> => {
     if (producesCallable(call)) {
       return Option.none()
     }
@@ -120,7 +120,7 @@ const nestedCallMatches = (context: RuleContext) => {
   const match = createRuleMatch(context)
   const consumerMatch = consumerRuleMatch(producesCallable)(calleeText)(match)
 
-  const matches = (call: CallLikeExpression): ReadonlyArray<RuleMatch> =>
+  const matches = (call: CallLikeExpression): ReadonlyArray<Finding> =>
     pipe(
       consumingCall(call),
       Option.flatMap(consumerMatch(call)),

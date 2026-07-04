@@ -5,7 +5,7 @@ import { createRuleMatch } from "./ruleMatch.js"
 import type { CreateMatch } from "./ruleMatch.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
 import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, RuleMatch } from "./types.js"
+import type { RuleContext, Finding } from "./types.js"
 
 const ruleId = "prefer-option-match"
 
@@ -68,7 +68,7 @@ const branchToCheck =
 const optionMatchRuleMatch =
   (match: CreateMatch) =>
   (conditional: ts.ConditionalExpression) =>
-  (_guard: readonly [OptionGuardKind, string]): RuleMatch =>
+  (_guard: readonly [OptionGuardKind, string]): Finding =>
     match({
       ruleId,
       node: conditional,
@@ -93,7 +93,7 @@ const optionMatchMatches = (context: RuleContext) => {
 
   const matches = (
     conditional: ts.ConditionalExpression
-  ): ReadonlyArray<RuleMatch> =>
+  ): ReadonlyArray<Finding> =>
     pipe(
       Option.gen(function* () {
         const unwrapped = unwrapTransparentExpression(conditional.condition)

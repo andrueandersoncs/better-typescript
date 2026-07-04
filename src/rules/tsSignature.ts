@@ -26,7 +26,7 @@ export const resolvedCallSignature =
     return Option.fromNullable(signature)
   }
 
-export const signatureDeclarationIsExternal = (
+const signatureDeclarationIsExternal = (
   declaration: ts.Declaration
 ): boolean => {
   const sourceFile = declaration.getSourceFile()

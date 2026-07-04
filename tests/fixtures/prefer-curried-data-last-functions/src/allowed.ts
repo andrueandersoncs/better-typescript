@@ -1,7 +1,9 @@
 type Reducer = (total: number, value: number) => number
 
-export const appendSuffix = (suffix: string) => (value: string): string =>
-  `${value}${suffix}`
+export const appendSuffix =
+  (suffix: string) =>
+  (value: string): string =>
+    `${value}${suffix}`
 
 export const doubleValue = (value: number): number => value * 2
 
