@@ -7,6 +7,7 @@ import {
   HashMap,
   HashSet,
   Option,
+  Predicate,
   Schema,
   Struct,
   flow,
@@ -65,12 +66,22 @@ const detail = pipe(
   Options.withDefault(false)
 )
 
+// Off by default: the JSON consumer is a coding agent, and signal matches are measurements for the interpreter, not actionable findings (see adrs/0004-opt-in-signal-visibility.md).
+const signals = pipe(
+  Options.boolean("signals"),
+  Options.withDescription(
+    "Include signal-rule matches in the JSON report's signals section. Signals are measurements consumed by advice, never violations: they never affect the exit code and never render in text output."
+  ),
+  Options.withDefault(false)
+)
+
 interface AnalyzeOptions {
   readonly project: string
   readonly limit: Option.Option<number>
   readonly offset: number
   readonly format: OutputFormat
   readonly detail: boolean
+  readonly signals: boolean
 }
 
 const checkProject = (loadedProject: LoadedProject): ReadonlyArray<Finding> =>
@@ -100,6 +111,9 @@ const findingRuleIds = HashSet.fromIterable(findingRuleIdList)
 const isFindingMatch = (match: Finding): boolean =>
   HashSet.has(findingRuleIds, match.detectorId)
 
+// Every match the runner emits comes from a rule, so the complement of finding matches is exactly the signal-role matches.
+const isSignalMatch = Predicate.not(isFindingMatch)
+
 const interpret = interpretMatches(syndromeRegistry)(rules)
 
 const analyzeProject = Effect.fn("analyzeProject")(function* (
@@ -111,6 +125,7 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   const allMatches = pipe(HashMap.fromIterable(entries), HashMap.toValues)
   const interpretation = interpret(allMatches)
   const matches = allMatches.filter(isFindingMatch)
+  const signalMatches = options.signals ? allMatches.filter(isSignalMatch) : []
   const isJsonFormat = options.format === "json"
 
   if (matches.length === 0) {
@@ -118,7 +133,7 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
     const emptyPage = paginateMatches(0)(noLimit)([])
 
     return isJsonFormat
-      ? formatMatchesPageJson(rules)(interpretation)(emptyPage)
+      ? formatMatchesPageJson(rules)(interpretation)(signalMatches)(emptyPage)
       : `No rule matches found in ${workspace.rootPath}.`
   }
 
@@ -126,7 +141,7 @@ const analyzeProject = Effect.fn("analyzeProject")(function* (
   const page = paginateMatches(options.offset)(options.limit)(matches)
 
   return isJsonFormat
-    ? formatMatchesPageJson(rules)(interpretation)(page)
+    ? formatMatchesPageJson(rules)(interpretation)(signalMatches)(page)
     : formatMatchesPage(rules)(interpretation)(options.detail)(page)
 })
 
@@ -166,7 +181,7 @@ const rulesGuideCommand = Command.make(
 
 const rootCommand = Command.make(
   "better-typescript",
-  { project, limit, offset, format, detail },
+  { project, limit, offset, format, detail, signals },
   flow(runCommand, Effect.catchAll(reportError))
 )
 

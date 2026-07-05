@@ -43,12 +43,14 @@ class RuleReport extends Schema.Class<RuleReport>("RuleReport")({
 const ruleReportsSchema = Schema.Array(RuleReport)
 const adviceSchema = Schema.Array(Finding)
 
+// signals stays empty unless --signals opts in: signal-role matches are measurements for the interpreter, and an agent reading the default report should see only actionable findings and advice (see adrs/0004-opt-in-signal-visibility.md).
 class MatchesReport extends Schema.Class<MatchesReport>("MatchesReport")({
   totalCount: Schema.Int,
   startIndex: Schema.Int,
   endIndex: Schema.Int,
   advice: adviceSchema,
-  groups: ruleReportsSchema
+  groups: ruleReportsSchema,
+  signals: ruleReportsSchema
 }) {}
 
 type RulesById = HashMap.HashMap<string, Rule>
@@ -338,16 +340,20 @@ export const formatMatchesPage =
 export const formatMatchesPageJson =
   (rules: ReadonlyArray<Rule>) =>
   (interpretation: Interpretation) =>
+  (signalMatches: ReadonlyArray<Finding>) =>
   (page: MatchesPage): string => {
     const groups = matchGroups(page.matches)
     const rulesLookup = rulesById(rules)
     const reportGroups = Array.map(groups, ruleReport(rulesLookup))
+    const signalGroups = matchGroups(signalMatches)
+    const reportSignals = Array.map(signalGroups, ruleReport(rulesLookup))
     const report = new MatchesReport({
       totalCount: page.totalCount,
       startIndex: page.startIndex,
       endIndex: page.endIndex,
       advice: interpretation.advice,
-      groups: reportGroups
+      groups: reportGroups,
+      signals: reportSignals
     })
 
     return JSON.stringify(report, null, 2)

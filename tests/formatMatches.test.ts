@@ -10,11 +10,17 @@ import {
 import { paginateMatches } from "../src/output/paginateMatches.js"
 import { Finding, rules } from "../src/rules/index.js"
 import { noThrow } from "../src/rules/noThrow.js"
+import { preferCurriedDataLastFunctions } from "../src/rules/preferCurriedDataLastFunctions.js"
 
 const interpret = interpretMatches(syndromeRegistry)(rules)
 
 const noThrowMessage = "Avoid throwing errors with throw."
 const noThrowHint = "Use Effect errors instead."
+const curriedDataLastMessage = "Prefer curried, data-last functions."
+const curriedDataLastHint =
+  "Split this function into one parameter per arrow, applying configuration first and " +
+  "the data argument last. If a third-party callback dictates this shape, keep it " +
+  "behind the typed callback boundary."
 
 const firstThrowMatch = new Finding({
   detectorId: "no-throw",
@@ -32,6 +38,23 @@ const secondThrowMatch = new Finding({
   column: 1,
   message: noThrowMessage,
   hint: noThrowHint
+})
+const firstCurriedDataLastSignal = new Finding({
+  detectorId: "prefer-curried-data-last-functions",
+  path: "src/pipeline.ts",
+  line: 11,
+  column: 17,
+  message: curriedDataLastMessage,
+  hint: curriedDataLastHint
+})
+
+const secondCurriedDataLastSignal = new Finding({
+  detectorId: "prefer-curried-data-last-functions",
+  path: "src/compose.ts",
+  line: 29,
+  column: 3,
+  message: curriedDataLastMessage,
+  hint: curriedDataLastHint
 })
 
 const unknownRuleMatch = new Finding({
@@ -136,7 +159,7 @@ test("formatMatchesPageJson reports groups with rule metadata", () => {
   const matches = [firstThrowMatch, secondThrowMatch]
   const page = paginateMatches(0)(Option.none())(matches)
   const report = JSON.parse(
-    formatMatchesPageJson(rules)(interpret(matches))(page)
+    formatMatchesPageJson(rules)(interpret(matches))([])(page)
   )
   const expectedGood = noThrow.example.good.map(plainSnippet)
 
@@ -166,6 +189,67 @@ test("formatMatchesPageJson reports groups with rule metadata", () => {
           }
         ]
       }
+    ],
+    signals: []
+  })
+})
+
+test("formatMatchesPageJson reports opted-in signals separately from findings", () => {
+  const matches = [firstThrowMatch]
+  const signalMatches = [
+    firstCurriedDataLastSignal,
+    secondCurriedDataLastSignal
+  ]
+  const page = paginateMatches(0)(Option.none())(matches)
+  const report = JSON.parse(
+    formatMatchesPageJson(rules)(interpret(matches))(signalMatches)(page)
+  )
+  const expectedThrowGood = noThrow.example.good.map(plainSnippet)
+  const expectedSignalGood =
+    preferCurriedDataLastFunctions.example.good.map(plainSnippet)
+
+  assert.deepEqual(report, {
+    totalCount: 1,
+    startIndex: 1,
+    endIndex: 1,
+    advice: [],
+    groups: [
+      {
+        ruleId: "no-throw",
+        description: noThrow.description,
+        hint: noThrowHint,
+        good: expectedThrowGood,
+        matches: [
+          {
+            path: "src/user.ts",
+            line: 3,
+            column: 5,
+            message: noThrowMessage
+          }
+        ]
+      }
+    ],
+    signals: [
+      {
+        ruleId: "prefer-curried-data-last-functions",
+        description: preferCurriedDataLastFunctions.description,
+        hint: curriedDataLastHint,
+        good: expectedSignalGood,
+        matches: [
+          {
+            path: "src/pipeline.ts",
+            line: 11,
+            column: 17,
+            message: curriedDataLastMessage
+          },
+          {
+            path: "src/compose.ts",
+            line: 29,
+            column: 3,
+            message: curriedDataLastMessage
+          }
+        ]
+      }
     ]
   })
 })
@@ -173,7 +257,7 @@ test("formatMatchesPageJson reports groups with rule metadata", () => {
 test("formatMatchesPageJson carries diagnoses with evidence and full groups", () => {
   const page = paginateMatches(0)(Option.none())(denseFileMatches)
   const report = JSON.parse(
-    formatMatchesPageJson(rules)(interpret(denseFileMatches))(page)
+    formatMatchesPageJson(rules)(interpret(denseFileMatches))([])(page)
   )
 
   assert.equal(report.advice.length, 1)
@@ -190,13 +274,16 @@ test("formatMatchesPageJson carries diagnoses with evidence and full groups", ()
 
 test("formatMatchesPageJson reports an empty result set", () => {
   const page = paginateMatches(0)(Option.none())([])
-  const report = JSON.parse(formatMatchesPageJson(rules)(interpret([]))(page))
+  const report = JSON.parse(
+    formatMatchesPageJson(rules)(interpret([]))([])(page)
+  )
 
   assert.deepEqual(report, {
     totalCount: 0,
     startIndex: 1,
     endIndex: 0,
     advice: [],
-    groups: []
+    groups: [],
+    signals: []
   })
 })

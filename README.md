@@ -73,6 +73,7 @@ By default, the CLI analyzes the current working directory and prints every matc
 - `--offset <integer>`: Number of rule matches to skip before displaying.
 - `--format <text|json>`: Output format. `text` (default) leads with diagnoses, then groups matches by rule with a remediation hint and a passing example; `json` emits the same report — diagnoses included — as machine-readable JSON for tooling and agents.
 - `--detail`: List every match location, including matches collapsed under a diagnosis.
+- `--signals`: Include signal-rule matches in the JSON report's `signals` section. Signals are measurements consumed by the match interpreter — never violations — so they stay out of every report by default, never affect the exit code, and never render in text output.
 
 ### Subcommands
 
