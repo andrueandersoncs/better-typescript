@@ -1,13 +1,10 @@
 import { HashSet, Option } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { isInAmbientContext } from "./tsNode.js"
 import { callSignatureCheck, hasCallSignature, isVoidType } from "./tsType.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-callbacks"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type CallbackStyleDeclaration =
   | ts.FunctionDeclaration
@@ -128,15 +125,15 @@ const isCallbackSignature =
     return returnsVoid && hasFunctionArgument
   }
 
-// The context stage runs once per file, so every partial below is shared by all callback-style declarations the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all callback-style declarations the report wiring feeds to matches.
 const callbackStyleMatches = (context: RuleContext) => {
   const checker = context.checker
   const declarationIsCallbackSignature = isCallbackSignature(checker)
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
   const matches = (
     declaration: CallbackStyleDeclaration
-  ): ReadonlyArray<Finding> => {
+  ): ReadonlyArray<Detection> => {
     // A declare statement mirrors a third-party API's existing shape; there is no Effect-returning alternative to describe.
     if (isInAmbientContext(declaration)) {
       return []
@@ -152,7 +149,6 @@ const callbackStyleMatches = (context: RuleContext) => {
     return isCallback
       ? [
           match({
-            ruleId,
             node: declaration,
             message:
               "Avoid callback-style functions that accept a function argument and return void.",
@@ -168,7 +164,7 @@ const callbackStyleMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([
+const check = nodeCheck([
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
@@ -178,97 +174,4 @@ const check = onNode([
   ts.SyntaxKind.FunctionType
 ])(isCallbackStyleCandidate)(callbackStyleMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/events.ts",
-  code: `interface Message {
-  readonly data: string
-}
-
-interface MessageSocket {
-  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
-}
-
-declare const socket: MessageSocket
-
-export const onMessage = (handler: (msg: Message) => void): void => {
-  socket.addEventListener("message", handler)
-}`
-})
-
-const goodOneShot = new ExampleSnippet({
-  filePath: "src/events.ts",
-  code: `import { Effect } from "effect"
-
-interface Message {
-  readonly data: string
-}
-
-interface MessageSocket {
-  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
-}
-
-declare const socket: MessageSocket
-
-type MessageListener = (msg: Message) => void
-
-type MessageResume = (effect: Effect.Effect<Message>) => void
-
-const resumeWithMessage =
-  (resume: MessageResume): MessageListener =>
-  (msg) => {
-    const succeeded = Effect.succeed(msg)
-    resume(succeeded)
-  }
-
-// One-shot: resolves on the first event, then the Effect completes.
-export const onMessage = Effect.async<Message>((resume) => {
-  socket.addEventListener("message", resumeWithMessage(resume))
-
-  return Effect.void
-})`
-})
-
-const goodStream = new ExampleSnippet({
-  filePath: "src/messages.ts",
-  code: `import { Effect, Stream, StreamEmit } from "effect"
-
-interface Message {
-  readonly data: string
-}
-
-interface MessageSocket {
-  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
-}
-
-declare const socket: MessageSocket
-
-type MessageListener = (msg: Message) => void
-
-type MessageEmit = StreamEmit.Emit<never, never, Message, void>
-
-const emitMessage =
-  (emit: MessageEmit): MessageListener =>
-  (msg) => {
-    void emit.single(msg)
-  }
-
-// Streaming: emits every event until the scope is closed.
-export const messages = Stream.async<Message>((emit) => {
-  socket.addEventListener("message", emitMessage(emit))
-
-  return Effect.void
-})`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodOneShot, goodStream]
-})
-
-export const noCallbacks = new Rule({
-  id: ruleId,
-  description:
-    "Disallow callback-style functions returning void in favor of Effect.",
-  example,
-  check
-})
+export const noCallbacks: RuleCheck = check

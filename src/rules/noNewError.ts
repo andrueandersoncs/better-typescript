@@ -1,52 +1,36 @@
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { And, Kind, Property, TextEquals } from "../matcher/language.js"
-import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
-import { ExampleSnippet, RuleExample } from "./types.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
-const identifier = new Kind({ kind: ts.SyntaxKind.Identifier })
+const newExpressionKind = ts.SyntaxKind.NewExpression
 
-const errorText = new TextEquals({ value: "Error" })
+const newErrorElements = (context: RuleContext) => {
+  const element = detection(context)
 
-const errorIdentifier = new And({ terms: [identifier, errorText] })
+  const matches = (node: ts.NewExpression): ReadonlyArray<Detection> => {
+    const isBareError = pipe(
+      Option.liftPredicate(ts.isIdentifier)(node.expression),
+      Option.exists((expression) => expression.text === "Error")
+    )
 
-const errorCallee = new Property({ name: "expression", term: errorIdentifier })
+    return isBareError
+      ? [
+          element({
+            node,
+            message: "Avoid using new Error() directly.",
+            hint:
+              "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+              "instead of bare new Error()."
+          })
+        ]
+      : []
+  }
 
-const newExpression = new Kind({ kind: ts.SyntaxKind.NewExpression })
+  return matches
+}
 
-// Only bare `new Error(...)` counts: a qualified constructor such as lib.Error keeps its identifier nested and never satisfies the callee property.
-const bareErrorConstruction = new And({
-  terms: [newExpression, errorCallee]
-})
-
-const badExample = new ExampleSnippet({
-  filePath: "src/errors.ts",
-  code: `export const err = new Error("Not found")`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/errors.ts",
-  code: `import { Schema } from "effect"
-
-class NotFound extends Schema.TaggedError<NotFound>("NotFound")("NotFound", {}) {}
-
-export const err = new NotFound()`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-const spec = new MatcherRuleSpec({
-  id: "no-new-error",
-  description:
-    "Disallow direct Error construction in favor of Effect Schema tagged errors.",
-  matcher: bareErrorConstruction,
-  message: "Avoid using new Error() directly.",
-  hint:
-    "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
-    "instead of bare new Error().",
-  example
-})
-
-export const noNewError = matcherRule(spec)
+export const noNewError: RuleCheck = nodeCheck([newExpressionKind])(
+  ts.isNewExpression
+)(newErrorElements)

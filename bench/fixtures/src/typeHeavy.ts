@@ -112,5 +112,5 @@ export const traverseResults = <T extends Primitive>(
   return collected
 }
 
-// no-duplicate-function-names: `formatValue` is also declared in violations.ts.
+// no-duplicate-function-names: `formatValue` is also declared in disallowed cases.ts.
 export const formatValue = (value: number): string => `${value}`

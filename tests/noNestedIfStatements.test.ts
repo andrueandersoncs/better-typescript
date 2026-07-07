@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noNestedIfStatements } from "../src/rules/noNestedIfStatements.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const expectedHint =
   "Combine related conditions with boolean operators, or use an early return so this " +
   "condition can remain a single-level if statement."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "blockThenNesting inner if",
-    ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
     line: 3,
     column: 5,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "bracelessThenNesting inner if",
-    ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
     line: 11,
     column: 10,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "tripleThenNest first inner if (b)",
-    ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
     line: 17,
     column: 5,
@@ -54,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "tripleThenNest deepest inner if (c)",
-    ruleId: "no-nested-if-statements",
     fileName: "src/cases.ts",
     line: 18,
     column: 7,
@@ -91,18 +87,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoNestedIfStatementsFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noNestedIfStatements])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noNestedIfStatements)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-nested-if-statements reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoNestedIfStatementsFixture()
+  const signals = await runNoNestedIfStatementsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noFunctionKeyword } from "../src/rules/noFunctionKeyword.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -21,10 +21,9 @@ const expectedHint =
   "declarations only when overload signatures are required, and keep function* when " +
   "generator semantics are required."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "plainDeclaration",
-    ruleId: "no-function-keyword",
     fileName: "src/cases.ts",
     line: 3,
     column: 1,
@@ -33,7 +32,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "expression",
-    ruleId: "no-function-keyword",
     fileName: "src/cases.ts",
     line: 7,
     column: 20,
@@ -42,7 +40,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "namedExpression",
-    ruleId: "no-function-keyword",
     fileName: "src/cases.ts",
     line: 11,
     column: 25,
@@ -51,7 +48,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nestedExpression.value",
-    ruleId: "no-function-keyword",
     fileName: "src/cases.ts",
     line: 16,
     column: 17,
@@ -112,18 +108,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoFunctionKeywordFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noFunctionKeyword])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noFunctionKeyword)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-function-keyword reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoFunctionKeywordFixture()
+  const signals = await runNoFunctionKeywordFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

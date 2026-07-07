@@ -1,18 +1,16 @@
 import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { fileListeners, withProgramIndex } from "./ruleCheck.js"
-import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { fileSubscriptions, withProgramIndex } from "./ruleCheck.js"
 import { functionInitializer, isProjectSourceFile } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
+import { detection, toRelativeFileName } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
 import type {
   ProgramContext,
+  RuleCheck,
   RuleContext,
-  RuleListener,
-  Finding
-} from "./types.js"
-
-const ruleId = "no-duplicate-function-names"
+  Detection,
+  Subscription
+} from "../detectors/rule.js"
 
 type FunctionNameIndex = HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
 
@@ -95,13 +93,13 @@ type IdenticalSignature = (
 ) => (other: ts.Identifier) => boolean
 type RelativeFileName = (fileName: string) => string
 
-const candidateRuleMatch =
+const candidateDetection =
   (index: FunctionNameIndex) =>
   (identicalTo: IdenticalSignature) =>
   (toRelative: RelativeFileName) =>
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (candidateFileName: string) =>
-  (candidate: ts.Identifier): Option.Option<Finding> => {
+  (candidate: ts.Identifier): Option.Option<Detection> => {
     const declarations = declarationsForName(index)(candidate.text)
     const identicalDeclarations = declarations.filter(identicalTo(candidate))
     const declaredFileNames = identicalDeclarations.map(declaredFileName)
@@ -125,7 +123,6 @@ const candidateRuleMatch =
         ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
         : listedFileNames
     const duplicateMatch = match({
-      ruleId,
       node: candidate,
       message: `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,
       hint:
@@ -143,12 +140,12 @@ const candidateRuleMatch =
 // The file handler runs once per file, so every partial below is shared by all its top-level functions.
 const duplicateFunctionMatches =
   (index: FunctionNameIndex) =>
-  (context: RuleContext): ReadonlyArray<Finding> => {
+  (context: RuleContext): ReadonlyArray<Detection> => {
     const fileFunctions = topLevelFunctions(context.sourceFile)
     const identicalTo = hasIdenticalSignature(context.checker)
     const toRelative = toRelativeFileName(context.projectRoot)
-    const match = createRuleMatch(context)
-    const candidateMatch = candidateRuleMatch(index)(identicalTo)(toRelative)(
+    const match = detection(context)
+    const candidateMatch = candidateDetection(index)(identicalTo)(toRelative)(
       match
     )(context.sourceFile.fileName)
 
@@ -167,82 +164,9 @@ const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
 
 const duplicateNameListeners = (
   index: FunctionNameIndex
-): ReadonlyArray<RuleListener> => fileListeners(duplicateFunctionMatches(index))
+): ReadonlyArray<Subscription> =>
+  fileSubscriptions(duplicateFunctionMatches(index))
 
 const check = withProgramIndex(buildFunctionNameIndex)(duplicateNameListeners)
 
-const badExample1 = new ExampleSnippet({
-  filePath: "src/routes/fileA.ts",
-  code: `export const formatDate = (d: Date): string => d.toISOString()`
-})
-
-const badExample2 = new ExampleSnippet({
-  filePath: "src/routes/fileB.ts",
-  code: `export const formatDate = (d: Date): string => d.toISOString()`
-})
-
-const goodExample1 = new ExampleSnippet({
-  filePath: "src/dateFormat.ts",
-  code: `export const formatDate = (d: Date): string => d.toISOString()`
-})
-
-const goodExample2 = new ExampleSnippet({
-  filePath: "src/routes/fileA.ts",
-  code: `import { formatDate } from "../dateFormat.js"
-
-const startTime = new Date()
-
-export const startedAt = formatDate(startTime)`
-})
-
-const goodExample3 = new ExampleSnippet({
-  filePath: "src/routes/fileB.ts",
-  code: `import { formatDate } from "../dateFormat.js"
-
-const finishTime = new Date()
-
-export const finishedAt = formatDate(finishTime)`
-})
-
-const goodVocabularyUser = new ExampleSnippet({
-  filePath: "src/modules/user.ts",
-  code: `import { Schema } from "effect"
-
-export class User extends Schema.Class<User>("User")({
-  name: Schema.String
-}) {}
-
-export const make = (name: string): User => new User({ name })`
-})
-
-const goodVocabularyAccount = new ExampleSnippet({
-  filePath: "src/modules/account.ts",
-  code: `import { Schema } from "effect"
-
-export class Account extends Schema.Class<Account>("Account")({
-  id: Schema.Number
-}) {}
-
-export const make = (id: number): Account => new Account({ id })`
-})
-
-const example = new RuleExample({
-  bad: [badExample1, badExample2],
-  good: [
-    goodExample1,
-    goodExample2,
-    goodExample3,
-    goodVocabularyUser,
-    goodVocabularyAccount
-  ]
-})
-
-export const noDuplicateFunctionNames = new Rule({
-  id: ruleId,
-  description:
-    "Disallow top-level functions that duplicate both the name and the signature of a " +
-    "function declared in another file; same-name functions over different signatures " +
-    "(each data module's make, get, ...) are module vocabulary, not duplicates.",
-  example,
-  check
-})
+export const noDuplicateFunctionNames: RuleCheck = check

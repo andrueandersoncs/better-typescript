@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noTryCatch } from "../src/rules/noTryCatch.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -22,10 +22,9 @@ const expectedHint =
   'Schema.TaggedError classes, for example: class FetchError extends Schema.TaggedError<FetchError>("FetchError")("FetchError", {}) {}. ' +
   "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "tryCatch",
-    ruleId: "no-try-catch",
     fileName: "src/cases.ts",
     line: 4,
     column: 3,
@@ -34,7 +33,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "tryFinally",
-    ruleId: "no-try-catch",
     fileName: "src/cases.ts",
     line: 12,
     column: 3,
@@ -43,7 +41,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "tryCatchFinally",
-    ruleId: "no-try-catch",
     fileName: "src/cases.ts",
     line: 20,
     column: 3,
@@ -52,7 +49,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "tryInArrow",
-    ruleId: "no-try-catch",
     fileName: "src/cases.ts",
     line: 30,
     column: 3,
@@ -61,7 +57,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nestedTry outer",
-    ruleId: "no-try-catch",
     fileName: "src/cases.ts",
     line: 38,
     column: 3,
@@ -70,7 +65,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nestedTry inner",
-    ruleId: "no-try-catch",
     fileName: "src/cases.ts",
     line: 39,
     column: 5,
@@ -112,17 +106,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoTryCatchFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoTryCatchFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noTryCatch])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noTryCatch)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-try-catch reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoTryCatchFixture()
+  const signals = await runNoTryCatchFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

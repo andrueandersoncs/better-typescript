@@ -1,19 +1,16 @@
 import * as path from "node:path"
 import { Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   isProjectSourceFile,
-  namedNodeReportTarget,
+  namedDetectionTarget,
   outermostTransparentWrapper
 } from "./tsNode.js"
 import { hasCallSignature } from "./tsType.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-data-last-module"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type CheckedFunction =
   | ts.FunctionDeclaration
@@ -324,13 +321,12 @@ const nameText =
     nameNode.getText(sourceFile)
 
 const dataLastModuleMatchForDataStructure =
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (isExpectedModule: ModulePathPredicate) =>
   (fileName: string) =>
   (definition: FunctionDefinition) =>
-  (dataStructure: DataStructureModule): Option.Option<Finding> => {
+  (dataStructure: DataStructureModule): Option.Option<Detection> => {
     const ruleMatch = match({
-      ruleId,
       node: definition[1],
       message:
         `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
@@ -350,22 +346,22 @@ type ParameterDataStructure = (
 ) => Option.Option<DataStructureModule>
 type DataStructureMatch = (
   definition: FunctionDefinition
-) => (dataStructure: DataStructureModule) => Option.Option<Finding>
+) => (dataStructure: DataStructureModule) => Option.Option<Detection>
 
 const dataLastModuleMatchForDefinition =
   (parameterStructure: ParameterDataStructure) =>
   (structureMatch: DataStructureMatch) =>
   (node: CheckedFunction) =>
-  (definition: FunctionDefinition): Option.Option<Finding> =>
+  (definition: FunctionDefinition): Option.Option<Detection> =>
     pipe(
       Option.fromNullable(node.parameters[node.parameters.length - 1]),
       Option.flatMap(parameterStructure),
       Option.flatMap(structureMatch(definition))
     )
 
-// The context stage runs once per file, so every partial below is shared by all checked functions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all checked functions the report wiring feeds to matches.
 const dataLastModuleMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const isMember = isDataStructureMember(context.checker)
   const isExpectedModule = isExpectedModulePath(context.projectRoot)
   const isModuleDeclaration = isDataStructureModuleDeclaration(isExpectedModule)
@@ -395,7 +391,7 @@ const dataLastModuleMatches = (context: RuleContext) => {
   const matchForDefinition =
     dataLastModuleMatchForDefinition(parameterStructure)(structureMatch)
 
-  const matches = (node: CheckedFunction): ReadonlyArray<Finding> => {
+  const matches = (node: CheckedFunction): ReadonlyArray<Detection> => {
     const isFunctionOrMethodDeclaration =
       ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
     if (isFunctionOrMethodDeclaration) {
@@ -404,7 +400,7 @@ const dataLastModuleMatches = (context: RuleContext) => {
         Option.map(definitionName),
         Option.getOrElse(Function.constant("this function"))
       )
-      const reportNode = namedNodeReportTarget(node)
+      const reportNode = namedDetectionTarget(node)
       const definition: FunctionDefinition = [name, reportNode]
 
       return pipe(
@@ -429,49 +425,8 @@ const dataLastModuleMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode(checkedFunctionKinds)(isCheckedFunction)(
+const check = nodeCheck(checkedFunctionKinds)(isCheckedFunction)(
   dataLastModuleMatches
 )
 
-const contextExample = new ExampleSnippet({
-  filePath: "src/modules/user.ts",
-  code: `export interface User {
-  readonly name: string
-}`
-})
-
-const badExample = new ExampleSnippet({
-  filePath: "src/cases.ts",
-  code: `import type { User } from "./modules/user.js"
-
-export const updateUser =
-  (id: string) =>
-  (newData: User): User =>
-    newData`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/modules/user.ts",
-  code: `export interface User {
-  readonly name: string
-}
-
-export const updateUser =
-  (id: string) =>
-  (newData: User): User =>
-    newData`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample],
-  context: [contextExample]
-})
-
-export const preferDataLastModule = new Rule({
-  id: ruleId,
-  description:
-    "Require functions whose last parameter is a first-party data structure to live in that data structure's module.",
-  example,
-  check
-})
+export const preferDataLastModule: RuleCheck = check

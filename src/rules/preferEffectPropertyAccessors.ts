@@ -1,12 +1,9 @@
 import { Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { conciseArrowBody, unwrapTransparentExpression } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-effect-property-accessors"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type PropertyAccessorFunction =
   | ts.ArrowFunction
@@ -136,18 +133,18 @@ const variableDeclarationName =
       Option.flatMap(identifierBindingNameText)
     )
 
-// The context stage runs once per file, so every partial below is shared by all accessor functions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all accessor functions the report wiring feeds to matches.
 const propertyAccessorMatches = (context: RuleContext) => {
   const checker = context.checker
   const sourceFile = context.sourceFile
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const isRecord = isRecordType(checker)
   const propertyNameText = (name: ts.PropertyName): string =>
     name.getText(sourceFile)
 
   const ruleMatch =
     (node: PropertyAccessorFunction) =>
-    (access: ts.PropertyAccessExpression): Finding => {
+    (access: ts.PropertyAccessExpression): Detection => {
       const name = pipe(
         Option.fromNullable(node.name),
         Option.map(propertyNameText),
@@ -161,7 +158,6 @@ const propertyAccessorMatches = (context: RuleContext) => {
       const suggestion = `${moduleName}.get(${propertyKey})`
 
       return match({
-        ruleId,
         node: access,
         message: `Avoid defining ${name} only to read ${accessedText}.`,
         hint:
@@ -170,7 +166,9 @@ const propertyAccessorMatches = (context: RuleContext) => {
       })
     }
 
-  const matches = (node: PropertyAccessorFunction): ReadonlyArray<Finding> => {
+  const matches = (
+    node: PropertyAccessorFunction
+  ): ReadonlyArray<Detection> => {
     const hasSingleParam = node.parameters.length === 1
     const singleParam = hasSingleParam
       ? Option.fromNullable(node.parameters[0])
@@ -188,36 +186,8 @@ const propertyAccessorMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode(propertyAccessorFunctionKinds)(isPropertyAccessorFunction)(
-  propertyAccessorMatches
-)
+const check = nodeCheck(propertyAccessorFunctionKinds)(
+  isPropertyAccessorFunction
+)(propertyAccessorMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `interface User {
-  readonly name: string
-}
-
-export const getName = (user: User): string =>
-  user.name`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `import { Struct } from "effect"
-
-export const getName = Struct.get("name")`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferEffectPropertyAccessors = new Rule({
-  id: ruleId,
-  description:
-    "Prefer Effect Struct (`Struct.get`) and Record (`Record.has` -> `Record.get`) accessors over property-access-only functions.",
-  example,
-  check
-})
+export const preferEffectPropertyAccessors: RuleCheck = check

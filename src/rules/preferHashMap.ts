@@ -1,17 +1,14 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { isInAmbientContext, typeNameIdentifier } from "./tsNode.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
 } from "./tsSignature.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-hash-map"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 // --- new Map(...) detection ---
 
@@ -26,10 +23,12 @@ const constructorHint =
   "Constructing a Map is permitted only when it is handed to a third-party API that " +
   "requires one."
 
-const newMapMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
+const newMapMatches = (checker: ts.TypeChecker) => (match: MakeDetection) => {
   const constructionEscapes = constructionEscapesExternally(checker)
 
-  const matches = (newExpression: ts.NewExpression): ReadonlyArray<Finding> => {
+  const matches = (
+    newExpression: ts.NewExpression
+  ): ReadonlyArray<Detection> => {
     const expressionOption = Option.liftPredicate(ts.isIdentifier)(
       newExpression.expression
     )
@@ -41,7 +40,6 @@ const newMapMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
     return isReportable
       ? [
           match({
-            ruleId,
             node: newExpression,
             message: constructorMessage,
             hint: constructorHint
@@ -66,35 +64,37 @@ const typeRefHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
-const mapTypeRefMatches = (checker: ts.TypeChecker) => (match: CreateMatch) => {
-  const typeRefEscapes = typeReferenceEscapesExternally(checker)
+const mapTypeRefMatches =
+  (checker: ts.TypeChecker) => (match: MakeDetection) => {
+    const typeRefEscapes = typeReferenceEscapesExternally(checker)
 
-  const matches = (typeRef: ts.TypeReferenceNode): ReadonlyArray<Finding> => {
-    const isAmbient = isInAmbientContext(typeRef)
-    const escapesExternally = typeRefEscapes(typeRef)
-    const isBoundaryMirror = isAmbient || escapesExternally
+    const matches = (
+      typeRef: ts.TypeReferenceNode
+    ): ReadonlyArray<Detection> => {
+      const isAmbient = isInAmbientContext(typeRef)
+      const escapesExternally = typeRefEscapes(typeRef)
+      const isBoundaryMirror = isAmbient || escapesExternally
 
-    if (isBoundaryMirror) {
-      return []
+      if (isBoundaryMirror) {
+        return []
+      }
+
+      const name = (typeRef.typeName as ts.Identifier).text
+      const message = `Avoid the built-in ${name} type.`
+
+      return [
+        match({
+          node: typeRef,
+          message,
+          hint: typeRefHint
+        })
+      ]
     }
 
-    const name = (typeRef.typeName as ts.Identifier).text
-    const message = `Avoid the built-in ${name} type.`
-
-    return [
-      match({
-        ruleId,
-        node: typeRef,
-        message,
-        hint: typeRefHint
-      })
-    ]
+    return matches
   }
 
-  return matches
-}
-
-// --- listener ---
+// --- subscription ---
 
 type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
@@ -106,60 +106,23 @@ const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
     Option.exists(isMapTypeName)
   )
 
-// The context stage runs once per file, so both specialized handlers are shared by every node the dispatcher feeds to matches.
+// The context stage runs once per file, so both specialized handlers are shared by every node the report wiring feeds to matches.
 const mapMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const constructionMatches = newMapMatches(context.checker)(match)
   const typeRefMatches = mapTypeRefMatches(context.checker)(match)
 
-  const matches = (node: MapRuleNode): ReadonlyArray<Finding> =>
+  const matches = (node: MapRuleNode): ReadonlyArray<Detection> =>
     ts.isNewExpression(node) ? constructionMatches(node) : typeRefMatches(node)
 
   return matches
 }
 
-const check = onNode([
+const check = nodeCheck([
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
 ])(isMapRuleNode)(mapMatches)
 
 // --- examples ---
 
-const badExample = new ExampleSnippet({
-  filePath: "src/lookup.ts",
-  code: `const lookup = new Map<string, number>([["a", 1], ["b", 2]])
-const value = lookup.get("a")`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/lookup.ts",
-  code: `import { HashMap } from "effect"
-
-const lookup = HashMap.make(["a", 1], ["b", 2])
-const value = HashMap.get(lookup, "a")`
-})
-
-const goodBoundaryExample = new ExampleSnippet({
-  filePath: "src/boundary.ts",
-  code: `import { HashMap } from "effect"
-
-declare const loadHeaders: () => Map<string, string>
-
-const headers = loadHeaders()
-
-export const lookup = HashMap.fromIterable(headers)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample, goodBoundaryExample]
-})
-
-export const preferHashMap = new Rule({
-  id: ruleId,
-  description:
-    "Disallow built-in Map in favor of Effect's HashMap for structural equality; " +
-    "Map stays legal where a third-party contract requires it.",
-  example,
-  check
-})
+export const preferHashMap: RuleCheck = check

@@ -1,11 +1,9 @@
-import * as path from "node:path"
 import { Array as Arr, Option, Schema, Struct } from "effect"
 import * as ts from "typescript"
-import { onFile } from "./ruleCheck.js"
-import { ExampleSnippet, Rule, RuleExample, Finding } from "./types.js"
-import type { RuleContext } from "./types.js"
-
-const ruleId = "no-multi-line-comments"
+import { fileCheck } from "./ruleCheck.js"
+import { Location, toRelativeFileName } from "../detectors/location.js"
+import { Detection } from "../detectors/rule.js"
+import type { RuleCheck, RuleContext } from "../detectors/rule.js"
 
 const message = "Avoid multi-line comments."
 
@@ -96,26 +94,22 @@ const runStartPosition =
 const positionToMatch =
   (sourceFile: ts.SourceFile) =>
   (fileName: string) =>
-  (pos: number): Finding => {
-    const location = sourceFile.getLineAndCharacterOfPosition(pos)
-
-    return new Finding({
-      detectorId: ruleId,
+  (pos: number): Detection => {
+    const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(pos)
+    const location = new Location({
       path: fileName,
-      line: location.line + 1,
-      column: location.character + 1,
-      message,
-      hint
+      line: lineAndCharacter.line + 1,
+      column: lineAndCharacter.character + 1
     })
+
+    return new Detection({ location, message, hint })
   }
 
 // filterMap stays bounded by the comment array; per-comment recursion overflows large files.
-const fileMatches = (context: RuleContext): ReadonlyArray<Finding> => {
+const fileMatches = (context: RuleContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
-  const fileName =
-    path.relative(context.projectRoot, sourceFile.fileName) ||
-    sourceFile.fileName
+  const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const scanner = ts.createScanner(
     ts.ScriptTarget.Latest,
     false,
@@ -134,44 +128,6 @@ const fileMatches = (context: RuleContext): ReadonlyArray<Finding> => {
   return positions.map(positionToMatch(sourceFile)(fileName))
 }
 
-const check = onFile(fileMatches)
+const check = fileCheck(fileMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/validate.ts",
-  code: `/*
- * Validates the user input and
- * returns the sanitized result.
- */
-const validate = (input: string): string =>
-  input.trim()`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/validate.ts",
-  code: `// Strips whitespace to prevent injection via padded strings.
-const validate = (input: string): string =>
-  input.trim()`
-})
-
-const goodJsDocExample = new ExampleSnippet({
-  filePath: "src/sanitize.ts",
-  code: `/**
- * Strips leading and trailing whitespace before persistence.
- */
-export const sanitize = (input: string): string =>
-  input.trim()`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample, goodJsDocExample]
-})
-
-export const noMultiLineComments = new Rule({
-  id: ruleId,
-  description:
-    "Disallow multi-line comments in favor of self-documenting code and ADRs for " +
-    "architectural decisions; JSDoc documenting an exported API is permitted.",
-  example,
-  check
-})
+export const noMultiLineComments: RuleCheck = check

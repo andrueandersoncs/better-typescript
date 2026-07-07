@@ -1,18 +1,15 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   isReturnTypeDeclaration,
-  namedNodeReportTarget,
+  namedDetectionTarget,
   returnTypeNode
 } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-raw-object-types"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean =>
   [
@@ -31,10 +28,9 @@ const parameterTypeNode = (
 type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
 const rawObjectParameterMatch =
-  (match: CreateMatch) =>
-  (node: ts.ParameterDeclaration): Finding =>
+  (match: MakeDetection) =>
+  (node: ts.ParameterDeclaration): Detection =>
     match({
-      ruleId,
       node,
       message:
         "Parameter uses an anonymous object type instead of a named type.",
@@ -46,12 +42,11 @@ const rawObjectParameterMatch =
     })
 
 const rawObjectReturnTypeMatch =
-  (match: CreateMatch) =>
-  (node: ReturnTypeDeclaration): Finding => {
-    const reportNode = namedNodeReportTarget(node)
+  (match: MakeDetection) =>
+  (node: ReturnTypeDeclaration): Detection => {
+    const reportNode = namedDetectionTarget(node)
 
     return match({
-      ruleId,
       node: reportNode,
       message:
         "Return type uses an anonymous object type instead of a named type.",
@@ -87,55 +82,19 @@ const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-// The context stage runs once per file, so both rule-match partials are shared by every raw-object target the dispatcher feeds to matches.
+// The context stage runs once per file, so both rule-match partials are shared by every raw-object target the report wiring feeds to matches.
 const rawObjectTypeMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const parameterMatch = rawObjectParameterMatch(match)
   const returnTypeMatch = rawObjectReturnTypeMatch(match)
 
-  const matches = (node: RawObjectTarget): ReadonlyArray<Finding> =>
+  const matches = (node: RawObjectTarget): ReadonlyArray<Detection> =>
     ts.isParameter(node) ? [parameterMatch(node)] : [returnTypeMatch(node)]
 
   return matches
 }
 
 const check =
-  onNode(rawObjectTargetKinds)(isRawObjectTarget)(rawObjectTypeMatches)
+  nodeCheck(rawObjectTargetKinds)(isRawObjectTarget)(rawObjectTypeMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/server.ts",
-  code: `import { Effect } from "effect"
-
-declare const listen: (config: { host: string, port: number }) => void
-
-export const startServer = (config: { host: string, port: number }) =>
-  Effect.sync(() => listen(config))`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/server.ts",
-  code: `import { Effect } from "effect"
-
-interface ServerAddress {
-  readonly host: string
-  readonly port: number
-}
-
-declare const listen: (address: ServerAddress) => void
-
-export const startServer = (address: ServerAddress) =>
-  Effect.sync(() => listen(address))`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noRawObjectTypes = new Rule({
-  id: ruleId,
-  description:
-    "Disallow anonymous object types in function parameters and return types in favor of named types.",
-  example,
-  check
-})
+export const noRawObjectTypes: RuleCheck = check

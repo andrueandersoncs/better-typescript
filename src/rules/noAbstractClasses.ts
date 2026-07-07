@@ -1,56 +1,30 @@
 import * as ts from "typescript"
-import { And, Kind, Parent } from "../matcher/language.js"
-import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
-import { ExampleSnippet, RuleExample } from "./types.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
-const abstractKeyword = new Kind({ kind: ts.SyntaxKind.AbstractKeyword })
+const abstractKeywordKind = ts.SyntaxKind.AbstractKeyword
 
-const classDeclaration = new Kind({ kind: ts.SyntaxKind.ClassDeclaration })
+const isAbstractClassModifier = (node: ts.Node): node is ts.Node =>
+  ts.isClassDeclaration(node.parent)
 
-const onClassDeclaration = new Parent({ term: classDeclaration })
+const abstractClassElements = (context: RuleContext) => {
+  const element = detection(context)
 
-// Matches the abstract keyword token on a class declaration; abstract members and constructor types keep their own parents and never satisfy the guard.
-const abstractClassModifier = new And({
-  terms: [abstractKeyword, onClassDeclaration]
-})
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => [
+    element({
+      node,
+      message: "Avoid declaring classes as abstract.",
+      hint:
+        "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
+        "functionality, extract it into reusable functions and export those functions." +
+        " To model a union of types, use a type union instead of an abstract class."
+    })
+  ]
 
-const badExample = new ExampleSnippet({
-  filePath: "src/shape.ts",
-  code: `export abstract class Shape {
-  abstract area(): number
+  return matches
 }
 
-export class Circle extends Shape {
-  constructor(readonly radius: number) {
-    super()
-  }
-
-  area(): number { return Math.PI * this.radius ** 2 }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/shape.ts",
-  code: `export const circleArea = (radius: number): number =>
-  Math.PI * radius ** 2`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-const spec = new MatcherRuleSpec({
-  id: "no-abstract-classes",
-  description:
-    "Disallow abstract classes in favor of reusable functions and Effect.",
-  matcher: abstractClassModifier,
-  message: "Avoid declaring classes as abstract.",
-  hint:
-    "Declaring an abstract class in first-party code implies object-oriented programming, which is not allowed. To share " +
-    "functionality, extract it into reusable functions and export those functions." +
-    " To model a union of types, use a type union instead of an abstract class.",
-  example
-})
-
-export const noAbstractClasses = matcherRule(spec)
+export const noAbstractClasses: RuleCheck = nodeCheck([abstractKeywordKind])(
+  isAbstractClassModifier
+)(abstractClassElements)

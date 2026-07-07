@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferEffectRecordFilterMap } from "../src/rules/preferEffectRecordFilterMap.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const expectedHint =
   "Build a record of candidate properties and use Record.filterMap from Effect " +
   "with Option.some/Option.none (or Option.fromNullable) to keep only present entries."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "truthy value adds field",
-    ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
     line: 12,
     column: 3,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "empty object in true branch",
-    ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
     line: 18,
     column: 3,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "parenthesized conditional",
-    ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
     line: 26,
     column: 3,
@@ -54,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "multi-property branch",
-    ruleId: "prefer-effect-record-filter-map",
     fileName: "src/cases.ts",
     line: 32,
     column: 3,
@@ -90,15 +86,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) =>
-    runRules([preferEffectRecordFilterMap])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(preferEffectRecordFilterMap)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-effect-record-filter-map reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  const signals = await runFixture()
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noForOfLoops } from "../src/rules/noForOfLoops.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,10 +20,9 @@ const expectedHint =
   "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
   "Array.filter(), or Array.flatMap(), instead."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "collectValues.forOfLoop",
-    ruleId: "no-for-of-loops",
     fileName: "src/cases.ts",
     line: 6,
     column: 3,
@@ -32,7 +31,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "collectAsyncValues.forAwaitOfLoop",
-    ruleId: "no-for-of-loops",
     fileName: "src/cases.ts",
     line: 18,
     column: 3,
@@ -50,17 +48,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoForOfLoopsFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoForOfLoopsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noForOfLoops])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noForOfLoops)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-for-of-loops reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoForOfLoopsFixture()
+  const signals = await runNoForOfLoopsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

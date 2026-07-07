@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferDirectBooleanReturn } from "../src/rules/preferDirectBooleanReturn.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,10 +20,9 @@ const fixturePath = path.join(
   "prefer-direct-boolean-return"
 )
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "passesThrough.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/allowed.ts",
     line: 4,
     column: 3,
@@ -32,7 +31,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "compareReturned.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/allowed.ts",
     line: 19,
     column: 3,
@@ -41,7 +39,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "returnTrue.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/cases.ts",
     line: 4,
     column: 3,
@@ -50,7 +47,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "returnFalse.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/cases.ts",
     line: 11,
     column: 3,
@@ -59,7 +55,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "ifElseBooleanThen.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/cases.ts",
     line: 18,
     column: 3,
@@ -68,7 +63,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "parenthesizedTrue.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/cases.ts",
     line: 26,
     column: 3,
@@ -77,7 +71,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "bracelessTrue.if",
-    ruleId: "prefer-direct-boolean-return",
     fileName: "src/cases.ts",
     line: 33,
     column: 3,
@@ -108,18 +101,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runPreferDirectBooleanReturnFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferDirectBooleanReturn])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(preferDirectBooleanReturn)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-direct-boolean-return reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferDirectBooleanReturnFixture()
+  const signals = await runPreferDirectBooleanReturnFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

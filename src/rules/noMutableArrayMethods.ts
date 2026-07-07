@@ -1,17 +1,14 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   differentApparentType,
   differentBaseConstraint,
   isUnseenType
 } from "./tsType.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-mutable-array-methods"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type MutableArrayMethod =
   | "copyWithin"
@@ -102,12 +99,11 @@ const isArrayType =
     return isArrayTypeWithSeen(checker)(seen)(type)
   }
 
-const mutableArrayRuleMatch =
-  (match: CreateMatch) =>
+const mutableArrayDetection =
+  (match: MakeDetection) =>
   (callExpression: ts.CallExpression) =>
-  (methodName: MutableArrayMethod): Finding =>
+  (methodName: MutableArrayMethod): Detection =>
     match({
-      ruleId,
       node: callExpression,
       message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
       hint:
@@ -117,15 +113,15 @@ const mutableArrayRuleMatch =
         "instead of manipulating an array in place."
     })
 
-// The context stage runs once per file, so every partial below is shared by all CallExpressions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all CallExpressions the report wiring feeds to matches.
 const mutableArrayMatches = (context: RuleContext) => {
   const checker = context.checker
   const isReceiverArrayType = isArrayType(checker)
-  const ruleMatch = mutableArrayRuleMatch(createRuleMatch(context))
+  const ruleMatch = mutableArrayDetection(detection(context))
 
   const matches = (
     callExpression: ts.CallExpression
-  ): ReadonlyArray<Finding> => {
+  ): ReadonlyArray<Detection> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return []
     }
@@ -158,35 +154,8 @@ const mutableArrayMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
   mutableArrayMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/items.ts",
-  code: `const items: Array<string> = []
-items.push("a")
-items.push("b")
-items.sort()`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/items.ts",
-  code: `import { Array, Order } from "effect"
-
-const items = ["b", "a"]
-const sorted = Array.sort(items, Order.string)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noMutableArrayMethods = new Rule({
-  id: ruleId,
-  description:
-    "Disallow mutable array methods in favor of immutable array operations.",
-  example,
-  check
-})
+export const noMutableArrayMethods: RuleCheck = check

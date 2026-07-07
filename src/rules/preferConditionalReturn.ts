@@ -1,13 +1,11 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
-const ruleId = "prefer-conditional-return"
 const maximumReturnExpressionLength = 100
 
 const containsYieldExpression = (node: ts.Node): boolean => {
@@ -52,7 +50,7 @@ const returnExpressionFromStatement =
 type StatementConditionalMatch = (
   statement: ts.Statement,
   index: number
-) => Option.Option<Finding>
+) => Option.Option<Detection>
 
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
@@ -106,9 +104,9 @@ const conditionalReturnMatch =
   (returnExpression: ReturnExpression) =>
   (standardTernary: StandardTernary) =>
   (flippedTernary: FlippedTernary) =>
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (nextStatement: Option.Option<ts.Statement>) =>
-  (ifStatement: ts.IfStatement): Option.Option<Finding> =>
+  (ifStatement: ts.IfStatement): Option.Option<Detection> =>
     Option.gen(function* () {
       const thenExpression = yield* returnExpression(ifStatement.thenStatement)
       const elseStatement = Option.fromNullable(ifStatement.elseStatement)
@@ -132,7 +130,6 @@ const conditionalReturnMatch =
       })
 
       return match({
-        ruleId,
         node: ifStatement,
         message:
           "Avoid if statements that only choose between two return values.",
@@ -142,7 +139,7 @@ const conditionalReturnMatch =
 
 type IfConditionalMatch = (
   nextStatement: Option.Option<ts.Statement>
-) => (ifStatement: ts.IfStatement) => Option.Option<Finding>
+) => (ifStatement: ts.IfStatement) => Option.Option<Detection>
 
 const statementConditionalMatch =
   (ifMatch: IfConditionalMatch) =>
@@ -156,58 +153,26 @@ const statementConditionalMatch =
     )
   }
 
-// The context stage runs once per file, so every partial below is shared by all Blocks the dispatcher feeds to matches.
-const conditionalReturnRuleMatches = (context: RuleContext) => {
+// The context stage runs once per file, so every partial below is shared by all Blocks the report wiring feeds to matches.
+const conditionalReturnDetections = (context: RuleContext) => {
   const returnExpression = returnExpressionFromStatement(context.sourceFile)
   const standardTernary = standardTernaryText(context.sourceFile)
   const flippedTernary = flippedTernaryText(context.sourceFile)
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const ifMatch =
     conditionalReturnMatch(returnExpression)(standardTernary)(flippedTernary)(
       match
     )
   const conditionalMatch = statementConditionalMatch(ifMatch)
 
-  const matches = (block: ts.Block): ReadonlyArray<Finding> =>
+  const matches = (block: ts.Block): ReadonlyArray<Detection> =>
     Array.filterMap(block.statements, conditionalMatch(block))
 
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.Block])(ts.isBlock)(
-  conditionalReturnRuleMatches
+const check = nodeCheck([ts.SyntaxKind.Block])(ts.isBlock)(
+  conditionalReturnDetections
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/parity.ts",
-  code: `declare const isEven: (n: number) => boolean
-
-export const parityLabel = (n: number): string => {
-  if (isEven(n)) {
-    return "even"
-  } else {
-    return "odd"
-  }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/parity.ts",
-  code: `declare const isEven: (n: number) => boolean
-
-export const parityLabel = (n: number): string =>
-  isEven(n) ? "even" : "odd"`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferConditionalReturn = new Rule({
-  id: ruleId,
-  description:
-    "Prefer conditional return expressions over if statements that choose between two values.",
-  example,
-  check
-})
+export const preferConditionalReturn: RuleCheck = check

@@ -3,11 +3,11 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
+import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
 import { loadProject } from "../src/project/loadProject.js"
 import type { LoadedProject } from "../src/project/loadProject.js"
-import { shouldSkipSourceFile } from "../src/runner/runRules.js"
+import { checkableSourceFiles } from "../src/detectors/sources.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturesRoot = path.join(testDirectory, "fixtures")
@@ -23,9 +23,6 @@ const diagnosticsFormatHost: ts.FormatDiagnosticsHost = {
   getCurrentDirectory: () => fixturesRoot,
   getNewLine: () => "\n"
 }
-
-const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean =>
-  !shouldSkipSourceFile(sourceFile.isDeclarationFile)(sourceFile.fileName)
 
 const sourceFileProblems =
   (program: ts.Program) =>
@@ -43,17 +40,25 @@ const sourceFileProblems =
     )
   }
 
-const projectProblems = (project: LoadedProject): ReadonlyArray<string> =>
-  project.program
-    .getSourceFiles()
-    .filter(isProjectSourceFile)
-    .flatMap(sourceFileProblems(project.program))
+const projectProblems = async (
+  project: LoadedProject
+): Promise<ReadonlyArray<string>> => {
+  const sourceFiles = await Effect.runPromise(
+    Stream.runCollect(checkableSourceFiles(project))
+  )
+
+  return Chunk.toReadonlyArray(sourceFiles).flatMap(
+    sourceFileProblems(project.program)
+  )
+}
 
 const registerFixtureTest = (fixtureName: string): void => {
   test(`fixture compiles: ${fixtureName}`, async () => {
     const fixturePath = path.join(fixturesRoot, fixtureName)
     const workspace = await Effect.runPromise(loadProject(fixturePath))
-    const problems = workspace.projects.flatMap(projectProblems)
+    const problems = (
+      await Promise.all(workspace.projects.map(projectProblems))
+    ).flat()
 
     assert.deepEqual(
       problems,

@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferDataLastModule } from "../src/rules/preferDataLastModule.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -38,10 +38,9 @@ const hintFor = (
 const userModulePath = "modules/user.ts"
 const organizationModulePath = "modules/organization.ts"
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "updateUser",
-    ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
     line: 13,
     column: 7,
@@ -50,7 +49,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "archiveUser",
-    ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
     line: 18,
     column: 10,
@@ -59,7 +57,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "saveUser",
-    ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
     line: 22,
     column: 7,
@@ -68,7 +65,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "renameUser",
-    ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
     line: 24,
     column: 7,
@@ -77,7 +73,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "updateOrganization",
-    ruleId: "prefer-data-last-module",
     fileName: "src/cases.ts",
     line: 31,
     column: 7,
@@ -135,17 +130,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferDataLastModule])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(preferDataLastModule)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-data-last-module reports misplaced data-last functions", async () => {
-  const matches = await runFixture()
+  const signals = await runFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems, { sort: true })
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

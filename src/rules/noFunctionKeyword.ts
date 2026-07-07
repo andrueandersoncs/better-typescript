@@ -1,11 +1,8 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-function-keyword"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
@@ -48,13 +45,13 @@ const lacksOverloadSignature =
 const isFunctionKeywordToken = (child: ts.Node): boolean =>
   child.kind === ts.SyntaxKind.FunctionKeyword
 
-// The context stage runs once per file, so every partial below is shared by all function-keyword nodes the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all function-keyword nodes the report wiring feeds to matches.
 const functionKeywordMatches = (context: RuleContext) => {
   const sourceFile = context.sourceFile
   const lacksOverloads = lacksOverloadSignature(context.checker)
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
-  const matches = (node: FunctionKeywordNode): ReadonlyArray<Finding> => {
+  const matches = (node: FunctionKeywordNode): ReadonlyArray<Detection> => {
     const asteriskToken = Option.fromNullable(node.asteriskToken)
     const isNotGenerator = !Option.isSome(asteriskToken)
     const declarationWithBody = ts.isFunctionDeclaration(node)
@@ -78,7 +75,6 @@ const functionKeywordMatches = (context: RuleContext) => {
 
     return [
       match({
-        ruleId,
         node: keywordToken,
         message: "Avoid using the function keyword.",
         hint:
@@ -92,35 +88,9 @@ const functionKeywordMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([
+const check = nodeCheck([
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression
 ])(isFunctionKeywordNode)(functionKeywordMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/math.ts",
-  code: `function add(a: number, b: number): number {
-  return a + b
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/math.ts",
-  code: `const add =
-  (a: number) =>
-  (b: number): number =>
-    a + b`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noFunctionKeyword = new Rule({
-  id: ruleId,
-  description:
-    "Disallow non-generator function declarations in favor of const arrow functions.",
-  example,
-  check
-})
+export const noFunctionKeyword: RuleCheck = check

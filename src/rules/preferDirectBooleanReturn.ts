@@ -1,18 +1,15 @@
 import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   hasNoElseBranch,
   lastStatement,
   unwrapExpression,
   unwrapSingleStatementBlock
 } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-direct-boolean-return"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 // --- Shared helpers ---
 
@@ -40,13 +37,13 @@ const returnStatementExpression = (
 type StatementConditionalFalseMatch = (
   statement: ts.Statement,
   index: number
-) => Option.Option<Finding>
+) => Option.Option<Detection>
 
-const directBooleanRuleMatch =
+const directBooleanDetection =
   (sourceFile: ts.SourceFile) =>
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (ifStatement: ts.IfStatement) =>
-  (literalValue: boolean): Finding => {
+  (literalValue: boolean): Detection => {
     const conditionText = ifStatement.expression.getText(sourceFile)
     const returnExpression = literalValue
       ? `(${conditionText})`
@@ -54,20 +51,19 @@ const directBooleanRuleMatch =
     const literalText = String(literalValue)
 
     return match({
-      ruleId,
       node: ifStatement,
       message: `Avoid returning ${literalText} from a conditional branch.`,
       hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
     })
   }
 
-type DirectBooleanRuleMatch = (
+type DirectBooleanDetection = (
   ifStatement: ts.IfStatement
-) => (literalValue: boolean) => Finding
+) => (literalValue: boolean) => Detection
 
 const directBooleanMatches =
-  (ruleMatch: DirectBooleanRuleMatch) =>
-  (ifStatement: ts.IfStatement): ReadonlyArray<Finding> =>
+  (ruleMatch: DirectBooleanDetection) =>
+  (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
         const unwrappedStatement = unwrapSingleStatementBlock(
@@ -100,9 +96,9 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
   )
 
 const conditionalFalseReturnMatch =
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (nextStatement: Option.Option<ts.Statement>) =>
-  (ifStatement: ts.IfStatement): Option.Option<Finding> =>
+  (ifStatement: ts.IfStatement): Option.Option<Detection> =>
     Option.gen(function* () {
       yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
       const thenBranchExpr = ts.isBlock(ifStatement.thenStatement)
@@ -121,7 +117,6 @@ const conditionalFalseReturnMatch =
       yield* Option.filter(nextStatement, isFalseLiteralReturn)
 
       return match({
-        ruleId,
         node: ifStatement,
         message: "Avoid conditional return followed by return false.",
         hint: "Return a boolean expression using && instead of branching to return false."
@@ -129,7 +124,7 @@ const conditionalFalseReturnMatch =
     })
 
 const statementConditionalFalseMatch =
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (block: ts.Block): StatementConditionalFalseMatch =>
   (statement, index) => {
     const nextStatement = Option.fromNullable(block.statements[index + 1])
@@ -141,8 +136,8 @@ const statementConditionalFalseMatch =
   }
 
 const conditionalFalseReturnMatches =
-  (match: CreateMatch) =>
-  (block: ts.Block): ReadonlyArray<Finding> =>
+  (match: MakeDetection) =>
+  (block: ts.Block): ReadonlyArray<Detection> =>
     Array.filterMap(
       block.statements,
       statementConditionalFalseMatch(match)(block)
@@ -160,76 +155,22 @@ const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.Block
 ]
 
-// The context stage runs once per file, so every partial below is shared by all IfStatements and Blocks the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all IfStatements and Blocks the report wiring feeds to matches.
 const booleanReturnMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const literalMatches = directBooleanMatches(
-    directBooleanRuleMatch(context.sourceFile)(match)
+    directBooleanDetection(context.sourceFile)(match)
   )
   const falseMatches = conditionalFalseReturnMatches(match)
 
-  const matches = (node: BooleanReturnTarget): ReadonlyArray<Finding> =>
+  const matches = (node: BooleanReturnTarget): ReadonlyArray<Detection> =>
     ts.isIfStatement(node) ? literalMatches(node) : falseMatches(node)
 
   return matches
 }
 
-const check = onNode(booleanReturnTargetKinds)(isBooleanReturnTarget)(
+const check = nodeCheck(booleanReturnTargetKinds)(isBooleanReturnTarget)(
   booleanReturnMatches
 )
 
-const badLiteralExample = new ExampleSnippet({
-  filePath: "src/age.ts",
-  code: `export const isAdult = (age: number): boolean => {
-  if (age >= 18) {
-    return true
-  }
-  return false
-}`
-})
-
-const goodLiteralExample = new ExampleSnippet({
-  filePath: "src/age.ts",
-  code: `export const isAdult = (age: number): boolean => age >= 18`
-})
-
-const badConditionalFalseExample = new ExampleSnippet({
-  filePath: "src/validate.ts",
-  code: `declare const isValid: (input: string) => boolean
-declare const parse: (input: string) => unknown
-declare const hasRequiredFields: (parsed: unknown) => boolean
-
-export const isUsable = (input: string): boolean => {
-  if (isValid(input)) {
-    const parsed = parse(input)
-    return hasRequiredFields(parsed)
-  }
-  return false
-}`
-})
-
-const goodConditionalFalseExample = new ExampleSnippet({
-  filePath: "src/validate.ts",
-  code: `declare const isValid: (input: string) => boolean
-declare const parse: (input: string) => unknown
-declare const hasRequiredFields: (parsed: unknown) => boolean
-
-export const isUsable = (input: string): boolean => {
-  const parsed = parse(input)
-
-  return isValid(input) && hasRequiredFields(parsed)
-}`
-})
-
-const example = new RuleExample({
-  bad: [badLiteralExample, badConditionalFalseExample],
-  good: [goodLiteralExample, goodConditionalFalseExample]
-})
-
-export const preferDirectBooleanReturn = new Rule({
-  id: ruleId,
-  description:
-    "Prefer returning boolean expressions directly instead of conditional boolean literals.",
-  example,
-  check
-})
+export const preferDirectBooleanReturn: RuleCheck = check

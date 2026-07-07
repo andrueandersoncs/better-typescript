@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noAbstractClasses } from "../src/rules/noAbstractClasses.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const hint =
   "export those functions. To model a union of types, use a type union instead of an " +
   "abstract class."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "Shape abstract class declaration",
-    ruleId: "no-abstract-classes",
     fileName: "src/cases.ts",
     line: 3,
     column: 1,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Repository exported abstract class declaration",
-    ruleId: "no-abstract-classes",
     fileName: "src/cases.ts",
     line: 7,
     column: 8,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "BaseError abstract class extending Error",
-    ruleId: "no-abstract-classes",
     fileName: "src/cases.ts",
     line: 11,
     column: 1,
@@ -54,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Handler abstract class nested in function",
-    ruleId: "no-abstract-classes",
     fileName: "src/cases.ts",
     line: 16,
     column: 3,
@@ -97,18 +93,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoAbstractClassesFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noAbstractClasses])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noAbstractClasses)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-abstract-classes reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoAbstractClassesFixture()
+  const signals = await runNoAbstractClassesFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

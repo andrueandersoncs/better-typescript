@@ -1,13 +1,10 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { combineAll, nodeSubscriptions } from "./ruleCheck.js"
 import { isReturnTypeDeclaration, unwrapExpression } from "./tsNode.js"
 import type { ReturnTypeDeclaration } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-undefined"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
@@ -182,14 +179,14 @@ const undefinedMessages: Record<UndefinedUsageKind, string> = {
   comparison: "Avoid comparing values against undefined."
 }
 
-// Each listener applies this factory with its kind; the resulting context stage runs once per file, so match and message are shared by every node that listener feeds to matches.
+// Each subscription applies this factory with its kind; the resulting context stage runs once per file, so match and message are shared by every node that subscription feeds to matches.
 const undefinedUsageMatches =
   (kind: UndefinedUsageKind) => (context: RuleContext) => {
-    const match = createRuleMatch(context)
+    const match = detection(context)
     const message = undefinedMessages[kind]
 
-    const matches = (node: ts.Node): ReadonlyArray<Finding> => [
-      match({ ruleId, node, message, hint: optionHint })
+    const matches = (node: ts.Node): ReadonlyArray<Detection> => [
+      match({ node, message, hint: optionHint })
     ]
 
     return matches
@@ -206,72 +203,34 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-const parameterListener = onNode([ts.SyntaxKind.Parameter])(
+const parameterListeners = nodeSubscriptions([ts.SyntaxKind.Parameter])(
   isParameterAcceptingUndefined
 )(undefinedUsageMatches("parameter"))
 
-const returnTypeListener = onNode(returnTypeDeclarationKinds)(
+const returnTypeListeners = nodeSubscriptions(returnTypeDeclarationKinds)(
   isUndefinedReturnTypeDeclaration
 )(undefinedUsageMatches("return-type"))
 
-const returnExpressionListener = onNode([
+const returnExpressionListeners = nodeSubscriptions([
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ArrowFunction
 ])(isUndefinedReturnExpression)(undefinedUsageMatches("return-expression"))
 
-const typeDeclarationListener = onNode([
+const typeDeclarationListeners = nodeSubscriptions([
   ts.SyntaxKind.PropertySignature,
   ts.SyntaxKind.MappedType
 ])(isUndefinedTypeDeclaration)(undefinedUsageMatches("type-declaration"))
 
-const comparisonListener = onNode([ts.SyntaxKind.BinaryExpression])(
+const comparisonListeners = nodeSubscriptions([ts.SyntaxKind.BinaryExpression])(
   isUndefinedComparison
 )(undefinedUsageMatches("comparison"))
 
 const check = combineAll([
-  parameterListener,
-  returnTypeListener,
-  returnExpressionListener,
-  typeDeclarationListener,
-  comparisonListener
+  parameterListeners,
+  returnTypeListeners,
+  returnExpressionListeners,
+  typeDeclarationListeners,
+  comparisonListeners
 ])
 
-const badExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `interface User {
-  readonly id: string
-  readonly name: string
-}
-
-declare const users: ReadonlyArray<User>
-
-export const findUser = (id: string): User | undefined =>
-  users.find((u) => u.id === id)`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `import { Array, Option } from "effect"
-
-interface User {
-  readonly id: string
-  readonly name: string
-}
-
-declare const users: ReadonlyArray<User>
-
-export const findUser = (id: string): Option.Option<User> =>
-  Array.findFirst(users, (user) => user.id === id)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noUndefined = new Rule({
-  id: ruleId,
-  description: "Disallow undefined usage in favor of Effect Option.",
-  example,
-  check
-})
+export const noUndefined: RuleCheck = check

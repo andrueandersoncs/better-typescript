@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noRawObjectTypes } from "../src/rules/noRawObjectTypes.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -32,12 +32,9 @@ const returnHint =
   "Name the type after what the data represents, not its structural role " +
   "(avoid names like FooResult or BarResponse)."
 
-const ruleId = "no-raw-object-types"
-
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "startServer inline object parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 4,
     column: 29,
@@ -46,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "sendEmail inline object parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 8,
     column: 27,
@@ -55,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "processData object keyword parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 13,
     column: 29,
@@ -64,7 +59,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "formatUser destructured inline object parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 16,
     column: 28,
@@ -73,7 +67,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "handleInput union containing inline object parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 25,
     column: 29,
@@ -82,7 +75,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "identify intersection containing inline object parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 29,
     column: 26,
@@ -91,7 +83,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "createPair inline object return type",
-    ruleId,
     fileName: "src/cases.ts",
     line: 35,
     column: 27,
@@ -100,7 +91,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "toObject object keyword return type",
-    ruleId,
     fileName: "src/cases.ts",
     line: 44,
     column: 25,
@@ -109,7 +99,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "tryParse union containing inline object return type",
-    ruleId,
     fileName: "src/cases.ts",
     line: 47,
     column: 25,
@@ -118,7 +107,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Connector.connect inline object parameter",
-    ruleId,
     fileName: "src/cases.ts",
     line: 52,
     column: 11,
@@ -185,18 +173,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoRawObjectTypesFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noRawObjectTypes])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noRawObjectTypes)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-raw-object-types reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoRawObjectTypesFixture()
+  const signals = await runNoRawObjectTypesFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems, { sort: true })
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

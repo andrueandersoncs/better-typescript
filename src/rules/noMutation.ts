@@ -1,17 +1,14 @@
 import { HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   declarationSourceFile,
   isProjectFile,
   unwrapExpression
 } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-mutation"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const message = "Avoid mutating first-party data."
 
@@ -235,13 +232,13 @@ const mutationScope =
     )
   }
 
-const mutationRuleMatch =
-  (match: CreateMatch) =>
+const mutationDetection =
+  (match: MakeDetection) =>
   (scopeOf: (target: ts.Expression) => MutationScope) =>
-  (target: ts.Expression): Finding => {
+  (target: ts.Expression): Detection => {
     const scope = scopeOf(target)
 
-    return match({ ruleId, node: target, message, hint, facets: [scope] })
+    return match({ node: target, message, hint, data: { target: scope } })
   }
 
 const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
@@ -259,13 +256,13 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode =>
     ts.isDeleteExpression(node)
   ].some(Boolean)
 
-// The context stage runs once per file, so the exemption check and match partial are shared by every candidate the dispatcher feeds to matches.
+// The context stage runs once per file, so the exemption check and match partial are shared by every candidate the report wiring feeds to matches.
 const mutationMatches = (context: RuleContext) => {
   const isExemptTarget = isUncontrolledTarget(context.checker)
   const scopeOf = mutationScope(context.checker)
-  const ruleMatch = mutationRuleMatch(createRuleMatch(context))(scopeOf)
+  const ruleMatch = mutationDetection(detection(context))(scopeOf)
 
-  const matches = (node: MutationNode): ReadonlyArray<Finding> =>
+  const matches = (node: MutationNode): ReadonlyArray<Detection> =>
     pipe(
       Match.value(node),
       Match.when(ts.isBinaryExpression, binaryAssignmentTarget),
@@ -279,62 +276,6 @@ const mutationMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode(mutationNodeKinds)(isMutationCandidate)(mutationMatches)
+const check = nodeCheck(mutationNodeKinds)(isMutationCandidate)(mutationMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/counter.ts",
-  code: `interface Counter {
-  count: number
-}
-
-declare const counter: Counter
-declare const scores: Array<number>
-
-counter.count = counter.count + 1
-scores[0] = 100`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/counter.ts",
-  code: `import { Array } from "effect"
-
-declare const scores: ReadonlyArray<number>
-
-export const raised = Array.replace(scores, 0, 100)
-export const doubled = Array.modify(scores, 0, (score) => score * 2)`
-})
-
-const goodThirdPartyExample = new ExampleSnippet({
-  filePath: "src/exit.ts",
-  code: `export const reportFailure = (): number => (process.exitCode = 1)`
-})
-
-const goodSharedStateExample = new ExampleSnippet({
-  filePath: "src/counterRef.ts",
-  code: `import { Effect, Ref } from "effect"
-
-export const makeCounter: Effect.Effect<Ref.Ref<number>> = Ref.make(0)
-
-export const incrementAndGet = (
-  counter: Ref.Ref<number>
-): Effect.Effect<number> =>
-  Ref.updateAndGet(counter, (current) => current + 1)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample, goodSharedStateExample, goodThirdPartyExample]
-})
-
-export const noMutation = new Rule({
-  id: ruleId,
-  description:
-    "Disallow mutating first-party data: assignment to any project-declared binding, " +
-    "property, or element, increment/decrement, and delete, including every built-in " +
-    "JavaScript value (arrays, objects, prototypes). Shared long-lived state belongs " +
-    "in Ref, SynchronizedRef, or PubSub inside the Effect runtime rather than in " +
-    "mutable cells. Mutating a third-party data structure whose API contract requires " +
-    "it (a WebSocket handler slot, a React ref, process.exitCode) is permitted.",
-  example,
-  check
-})
+export const noMutation: RuleCheck = check

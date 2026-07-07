@@ -1,17 +1,14 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   alwaysExitsScope,
   hasNoElseBranch,
   unwrapSingleStatementBlock
 } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-duplicate-if-bodies"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const isGuardIfStatement = (
   statement: ts.Statement
@@ -104,12 +101,11 @@ const parentBodyDuplicate =
     return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
   }
 
-const duplicateIfRuleMatch =
-  (match: CreateMatch) =>
+const duplicateIfDetection =
+  (match: MakeDetection) =>
   (ifStatement: ts.IfStatement) =>
-  (combinedCondition: string): Finding =>
+  (combinedCondition: string): Detection =>
     match({
-      ruleId,
       node: ifStatement,
       message:
         "Avoid if branches that repeat the body of the branch before them.",
@@ -119,7 +115,7 @@ const duplicateIfRuleMatch =
         `if (${combinedCondition}) { ... }.`
     })
 
-// The context stage runs once per file, so every partial below is shared by all IfStatements the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all IfStatements the report wiring feeds to matches.
 const duplicateIfMatches = (context: RuleContext) => {
   const fingerprint = bodyFingerprint(context.sourceFile)
   const conditionText = (ifStatement: ts.IfStatement): string =>
@@ -128,9 +124,9 @@ const duplicateIfMatches = (context: RuleContext) => {
   const combineConditions = combinedConditionText(conditionText)
   const guardDup = guardDuplicate(sameBody)(combineConditions)
   const parentDup = parentBodyDuplicate(sameBody)(combineConditions)
-  const ruleMatch = duplicateIfRuleMatch(createRuleMatch(context))
+  const ruleMatch = duplicateIfDetection(detection(context))
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> => {
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const guardDuplicateMatch = isGuardIfStatement(ifStatement)
       ? pipe(
           Option.liftPredicate(ts.isBlock)(ifStatement.parent),
@@ -154,56 +150,8 @@ const duplicateIfMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   duplicateIfMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/auth.ts",
-  code: `declare const isAdmin: boolean
-declare const isModerator: boolean
-declare const redirect: (path: string) => Response
-
-export const routeUser = (): Response | undefined => {
-  if (isAdmin) {
-    return redirect("/dashboard")
-  }
-  if (isModerator) {
-    return redirect("/dashboard")
-  }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/auth.ts",
-  code: `import { Option } from "effect"
-
-declare const isAdmin: boolean
-declare const isModerator: boolean
-declare const redirect: (path: string) => Response
-
-export const routeUser = (): Option.Option<Response> => {
-  const canSeeDashboard = isAdmin || isModerator
-
-  if (canSeeDashboard) {
-    const response = redirect("/dashboard")
-
-    return Option.some(response)
-  }
-
-  return Option.none()
-}`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noDuplicateIfBodies = new Rule({
-  id: ruleId,
-  description:
-    "Disallow if branches that duplicate the body of the branch directly before them.",
-  example,
-  check
-})
+export const noDuplicateIfBodies: RuleCheck = check

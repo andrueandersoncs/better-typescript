@@ -1,76 +1,80 @@
-import { Function } from "effect"
+import { Array, Function } from "effect"
 import type * as ts from "typescript"
-import { FileListener, NodeListener } from "./types.js"
+import {
+  checkFromSubscriptions,
+  fileSubscription,
+  nodeSubscription
+} from "../detectors/rule.js"
 import type {
   NodeHandler,
   ProgramContext,
   RuleCheck,
   RuleContext,
-  RuleListener,
-  Finding
-} from "./types.js"
+  Detection,
+  Subscription
+} from "../detectors/rule.js"
 
-// Applying handler(context) outside the per-node lambda lets the dispatcher's once-per-file specialization reach the rule's context stage.
 const refinedHandler =
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
-    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Finding>
+    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Detection>
   ): NodeHandler =>
   (context) => {
-    const matches = handler(context)
-    const refined = (node: ts.Node): ReadonlyArray<Finding> =>
-      refine(node) ? matches(node) : []
+    const elements = handler(context)
+    const refined = (node: ts.Node): ReadonlyArray<Detection> =>
+      refine(node) ? elements(node) : []
 
     return refined
   }
 
-export const nodeListeners =
+export const nodeSubscriptions =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
-    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Finding>
-  ): ReadonlyArray<RuleListener> => [
-    new NodeListener({ kinds, handler: refinedHandler(refine)(handler) })
+    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Detection>
+  ): ReadonlyArray<Subscription> => [
+    nodeSubscription(kinds)(refinedHandler(refine)(handler))
   ]
 
-export const fileListeners = (
-  handler: (context: RuleContext) => ReadonlyArray<Finding>
-): ReadonlyArray<RuleListener> => [new FileListener({ handler })]
+export const fileSubscriptions = (
+  handler: (context: RuleContext) => ReadonlyArray<Detection>
+): ReadonlyArray<Subscription> => [fileSubscription(handler)]
 
-export const onNode =
+export const nodeCheck =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
-    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Finding>
+    handler: (context: RuleContext) => (node: N) => ReadonlyArray<Detection>
   ): RuleCheck => {
-    const listeners = nodeListeners(kinds)(refine)(handler)
+    const subscriptions = nodeSubscriptions(kinds)(refine)(handler)
 
-    return Function.constant(listeners)
+    return checkFromSubscriptions(Function.constant(subscriptions))
   }
 
-export const onFile = (
-  handler: (context: RuleContext) => ReadonlyArray<Finding>
+export const fileCheck = (
+  handler: (context: RuleContext) => ReadonlyArray<Detection>
 ): RuleCheck => {
-  const listeners = fileListeners(handler)
+  const subscriptions = fileSubscriptions(handler)
 
-  return Function.constant(listeners)
+  return checkFromSubscriptions(Function.constant(subscriptions))
 }
 
-const applyCheck =
-  (context: ProgramContext) =>
-  (check: RuleCheck): ReadonlyArray<RuleListener> =>
-    check(context)
+export const combineAll = (
+  subscriptionGroups: ReadonlyArray<ReadonlyArray<Subscription>>
+): RuleCheck => {
+  const subscriptions = Array.flatten(subscriptionGroups)
 
-export const combineAll =
-  (checks: ReadonlyArray<RuleCheck>): RuleCheck =>
-  (context: ProgramContext): ReadonlyArray<RuleListener> =>
-    checks.flatMap(applyCheck(context))
+  return checkFromSubscriptions(Function.constant(subscriptions))
+}
 
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
-  (listeners: (index: Index) => ReadonlyArray<RuleListener>): RuleCheck =>
-  (context: ProgramContext): ReadonlyArray<RuleListener> => {
-    const index = build(context)
+  (subscriptions: (index: Index) => ReadonlyArray<Subscription>): RuleCheck => {
+    const plan = (context: ProgramContext): ReadonlyArray<Subscription> => {
+      const index = build(context)
 
-    return listeners(index)
+      return subscriptions(index)
+    }
+
+    return checkFromSubscriptions(plan)
   }

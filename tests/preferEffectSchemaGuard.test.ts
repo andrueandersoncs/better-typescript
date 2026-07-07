@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferEffectSchemaGuard } from "../src/rules/preferEffectSchemaGuard.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -26,10 +26,9 @@ const message = (key: string, obj: string): string =>
 const hint = (obj: string): string =>
   `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${obj}).`
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "hasRole.roleInValue",
-    ruleId: "prefer-effect-schema-guard",
     fileName: "src/cases.ts",
     line: 5,
     column: 7,
@@ -38,7 +37,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "hasBoth.idInValue",
-    ruleId: "prefer-effect-schema-guard",
     fileName: "src/cases.ts",
     line: 13,
     column: 7,
@@ -47,7 +45,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "hasBoth.nameInValue",
-    ruleId: "prefer-effect-schema-guard",
     fileName: "src/cases.ts",
     line: 13,
     column: 24,
@@ -56,7 +53,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "hasTag.tagInValue",
-    ruleId: "prefer-effect-schema-guard",
     fileName: "src/cases.ts",
     line: 21,
     column: 7,
@@ -65,7 +61,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "hasKind.kindInValue",
-    ruleId: "prefer-effect-schema-guard",
     fileName: "src/cases.ts",
     line: 29,
     column: 7,
@@ -74,7 +69,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "guarded.statusInValue",
-    ruleId: "prefer-effect-schema-guard",
     fileName: "src/cases.ts",
     line: 37,
     column: 15,
@@ -116,17 +110,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferEffectSchemaGuard])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(preferEffectSchemaGuard)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-effect-schema-guard reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
+  const signals = await runFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

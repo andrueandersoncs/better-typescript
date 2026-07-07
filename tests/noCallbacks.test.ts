@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noCallbacks } from "../src/rules/noCallbacks.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -22,10 +22,9 @@ const expectedHint =
   "own API as an Effect-returning function from the start. Ambient declarations " +
   "(declare statements) describing a third-party API are permitted."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "functionDeclaration",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 3,
     column: 1,
@@ -34,7 +33,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "functionExpression",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 7,
     column: 28,
@@ -43,7 +41,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "arrowFunction",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 11,
     column: 23,
@@ -52,7 +49,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Service.methodDeclaration",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 16,
     column: 3,
@@ -61,7 +57,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "ServiceContract.methodSignature",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 22,
     column: 3,
@@ -70,7 +65,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "CallableContract.callSignature",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 26,
     column: 3,
@@ -79,7 +73,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "FunctionTypeAlias",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 29,
     column: 26,
@@ -88,7 +81,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "functionTypeValue",
-    ruleId: "no-callbacks",
     fileName: "src/cases.ts",
     line: 32,
     column: 26,
@@ -148,17 +140,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoCallbacksFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoCallbacksFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noCallbacks])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noCallbacks)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-callbacks reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoCallbacksFixture()
+  const signals = await runNoCallbacksFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

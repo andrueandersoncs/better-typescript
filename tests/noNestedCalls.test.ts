@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noNestedCalls } from "../src/rules/noNestedCalls.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -25,10 +25,9 @@ const expectedHint =
 
 // Messages are dynamic (interpolated callee/consumer text), so each is inlined.
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "direct nesting outer(inner())",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 30,
     column: 22,
@@ -37,7 +36,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "deep chain wrap consumed by outer",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 34,
     column: 21,
@@ -46,7 +44,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "deep chain inner consumed by wrap",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 34,
     column: 26,
@@ -55,7 +52,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "forwarded through arithmetic outer(inner() + 1)",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 37,
     column: 26,
@@ -64,7 +60,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "forwarded through array literal collect([inner()])",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 40,
     column: 27,
@@ -73,7 +68,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "forwarded through object literal build({ value: inner() })",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 43,
     column: 31,
@@ -82,7 +76,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "forwarded through as outer(inner() as number)",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 46,
     column: 22,
@@ -91,7 +84,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "NewExpression as inner register(new Service())",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 49,
     column: 27,
@@ -100,7 +92,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "NewExpression as consumer new Outer(inner())",
-    ruleId: "no-nested-calls",
     fileName: "src/cases.ts",
     line: 57,
     column: 31,
@@ -148,15 +139,19 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) =>
-    runRules([noNestedCalls])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noNestedCalls)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-nested-calls reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  const signals = await runFixture()
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -1,12 +1,9 @@
 import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { isFirstPartySymbol, unwrapExpression } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-effect-schema-is"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const tagPropertyName = "_tag"
 
@@ -95,14 +92,16 @@ const isFirstPartyTagAccess =
     return constituents.every(constituentIsFirstParty)
   }
 
-// The context stage runs once per file, so every partial below is shared by all BinaryExpressions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all BinaryExpressions the report wiring feeds to matches.
 const schemaIsMatches = (context: RuleContext) => {
   const sourceFile = context.sourceFile
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const isFirstPartyAccess = isFirstPartyTagAccess(context.checker)
   const valueTextOf = checkedValueText(sourceFile)
 
-  const matches = (expression: ts.BinaryExpression): ReadonlyArray<Finding> => {
+  const matches = (
+    expression: ts.BinaryExpression
+  ): ReadonlyArray<Detection> => {
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = [leftAccess, rightAccess]
@@ -134,7 +133,6 @@ const schemaIsMatches = (context: RuleContext) => {
 
     return [
       match({
-        ruleId,
         node: expression,
         message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
         hint:
@@ -147,62 +145,8 @@ const schemaIsMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.BinaryExpression])(isSchemaTagComparison)(
-  schemaIsMatches
-)
+const check = nodeCheck([ts.SyntaxKind.BinaryExpression])(
+  isSchemaTagComparison
+)(schemaIsMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/shape.ts",
-  code: `interface Circle {
-  readonly _tag: "Circle"
-  readonly radius: number
-}
-
-interface Square {
-  readonly _tag: "Square"
-  readonly side: number
-}
-
-declare const circleArea: (circle: Circle) => number
-
-export const area = (shape: Circle | Square) => {
-  if (shape._tag === "Circle") {
-    return circleArea(shape)
-  }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/shape.ts",
-  code: `import { Schema } from "effect"
-
-class Circle extends Schema.TaggedClass<Circle>()("Circle", {
-  radius: Schema.Number
-}) {}
-
-class Square extends Schema.TaggedClass<Square>()("Square", {
-  side: Schema.Number
-}) {}
-
-declare const circleArea: (circle: Circle) => number
-
-export const area = (shape: Circle | Square) => {
-  if (Schema.is(Circle)(shape)) {
-    return circleArea(shape)
-  }
-}`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferEffectSchemaIs = new Rule({
-  id: ruleId,
-  description:
-    "Prefer Schema.is over direct _tag comparisons on first-party types; tags on " +
-    "third-party unions (where no Schema class exists) are left alone.",
-  example,
-  check
-})
+export const preferEffectSchemaIs: RuleCheck = check

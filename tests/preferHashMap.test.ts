@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferHashMap } from "../src/rules/preferHashMap.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -33,10 +33,9 @@ const typeHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "new Map only used locally in boundary file",
-    ruleId: "prefer-hash-map",
     fileName: "src/boundary.ts",
     line: 14,
     column: 15,
@@ -45,7 +44,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "non-ambient Map type annotation in boundary file",
-    ruleId: "prefer-hash-map",
     fileName: "src/boundary.ts",
     line: 18,
     column: 18,
@@ -54,7 +52,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "new Map with array literal",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 3,
     column: 16,
@@ -63,7 +60,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "new Map empty with type parameters",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 8,
     column: 15,
@@ -72,7 +68,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Map<string, number> type annotation",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 10,
     column: 14,
@@ -81,7 +76,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "new Map with type annotation",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 10,
     column: 36,
@@ -90,7 +84,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "ReadonlyMap<string, number> type annotation",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 12,
     column: 15,
@@ -99,7 +92,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "new Map for ReadonlyMap variable",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 12,
     column: 45,
@@ -108,7 +100,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Map<string, number> parameter type",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 15,
     column: 10,
@@ -117,7 +108,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "ReadonlyMap<string, number> parameter type",
-    ruleId: "prefer-hash-map",
     fileName: "src/cases.ts",
     line: 19,
     column: 24,
@@ -171,17 +161,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferHashMapFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runPreferHashMapFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferHashMap])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(preferHashMap)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-hash-map reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferHashMapFixture()
+  const signals = await runPreferHashMapFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -1,78 +1,57 @@
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { And, AtLeast, Kind, Or, Property } from "../matcher/language.js"
-import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
-import { ExampleSnippet, RuleExample } from "./types.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { isReturnTypeDeclaration, returnTypeNode } from "./tsNode.js"
+import type { ReturnTypeDeclaration } from "./tsNode.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
-const anyKeyword = new Kind({ kind: ts.SyntaxKind.AnyKeyword })
+const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.ArrowFunction,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.MethodSignature,
+  ts.SyntaxKind.CallSignature,
+  ts.SyntaxKind.FunctionType,
+  ts.SyntaxKind.GetAccessor
+]
 
-// Counts the return type node itself and every nested type, so `: any` and `: Promise<any>` both satisfy.
-const containsAny = new AtLeast({ minimum: 1, term: anyKeyword })
+const containsAnyKeyword = (node: ts.Node): boolean => {
+  const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
+  const anyChild = ts.forEachChild(node, (child) =>
+    containsAnyKeyword(child) ? child : void 0
+  )
+  const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
 
-const anyReturnType = new Property({ name: "type", term: containsAny })
+  return [isAnyKeyword, hasAnyDescendant].some(Boolean)
+}
 
-const functionDeclaration = new Kind({
-  kind: ts.SyntaxKind.FunctionDeclaration
-})
+const explicitAnyReturnElements = (context: RuleContext) => {
+  const element = detection(context)
 
-const functionExpression = new Kind({
-  kind: ts.SyntaxKind.FunctionExpression
-})
+  const matches = (node: ReturnTypeDeclaration): ReadonlyArray<Detection> => {
+    const hasAnyReturnType = pipe(
+      returnTypeNode(node),
+      Option.exists(containsAnyKeyword)
+    )
 
-const arrowFunction = new Kind({ kind: ts.SyntaxKind.ArrowFunction })
+    return hasAnyReturnType
+      ? [
+          element({
+            node,
+            message: "Avoid function return types that include any.",
+            hint:
+              "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
+              "use unknown and narrow before use."
+          })
+        ]
+      : []
+  }
 
-const methodDeclaration = new Kind({ kind: ts.SyntaxKind.MethodDeclaration })
+  return matches
+}
 
-const methodSignature = new Kind({ kind: ts.SyntaxKind.MethodSignature })
-
-const callSignature = new Kind({ kind: ts.SyntaxKind.CallSignature })
-
-const functionType = new Kind({ kind: ts.SyntaxKind.FunctionType })
-
-const getAccessor = new Kind({ kind: ts.SyntaxKind.GetAccessor })
-
-const returnTypeDeclaration = new Or({
-  terms: [
-    functionDeclaration,
-    functionExpression,
-    arrowFunction,
-    methodDeclaration,
-    methodSignature,
-    callSignature,
-    functionType,
-    getAccessor
-  ]
-})
-
-const anyReturnDeclaration = new And({
-  terms: [returnTypeDeclaration, anyReturnType]
-})
-
-const badExample = new ExampleSnippet({
-  filePath: "src/config.ts",
-  code: `const parseConfig = (raw: string): any =>
-  JSON.parse(raw)`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/config.ts",
-  code: `const parseConfig = (raw: string): unknown =>
-  JSON.parse(raw)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-const spec = new MatcherRuleSpec({
-  id: "no-explicit-any-return",
-  description: "Disallow explicit any in function return types.",
-  matcher: anyReturnDeclaration,
-  message: "Avoid function return types that include any.",
-  hint:
-    "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
-    "use unknown and narrow before use.",
-  example
-})
-
-export const noExplicitAnyReturn = matcherRule(spec)
+export const noExplicitAnyReturn: RuleCheck = nodeCheck(
+  returnTypeDeclarationKinds
+)(isReturnTypeDeclaration)(explicitAnyReturnElements)

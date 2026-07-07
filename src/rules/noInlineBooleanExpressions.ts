@@ -1,12 +1,9 @@
 import { HashSet, Option } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { unwrapExpression } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-inline-boolean-expressions"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const logicalOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken,
@@ -16,11 +13,11 @@ const logicalOperatorKinds = HashSet.make(
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
-// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the dispatcher feeds to matches.
+// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the report wiring feeds to matches.
 const inlineBooleanConditionMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> => {
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const expression = unwrapExpression(ifStatement.expression)
     const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
       expression
@@ -33,7 +30,6 @@ const inlineBooleanConditionMatches = (context: RuleContext) => {
     return isLogicalOperatorExpression
       ? [
           match({
-            ruleId,
             node: expression,
             message:
               "Avoid boolean operators inline in an if statement condition.",
@@ -48,47 +44,8 @@ const inlineBooleanConditionMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   inlineBooleanConditionMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/access.ts",
-  code: `declare const user: { readonly isActive: boolean; readonly hasPermission: boolean }
-declare const grantAccess: () => Promise<void>
-
-export const ensureAccess = async (): Promise<void> => {
-  if (user.isActive && user.hasPermission) {
-    await grantAccess()
-  }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/access.ts",
-  code: `import { Effect } from "effect"
-
-declare const user: { readonly isActive: boolean; readonly hasPermission: boolean }
-declare const grantAccess: () => Effect.Effect<void>
-
-export const ensureAccess = Effect.fn(function* () {
-  const canAccess = user.isActive && user.hasPermission
-
-  if (canAccess) {
-    yield* grantAccess()
-  }
-})`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noInlineBooleanExpressions = new Rule({
-  id: ruleId,
-  description:
-    "Disallow boolean operators inline in an if statement condition.",
-  example,
-  check
-})
+export const noInlineBooleanExpressions: RuleCheck = check

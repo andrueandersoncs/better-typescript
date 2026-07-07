@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noRootLevelClasses } from "../src/rules/noRootLevelClasses.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,9 +20,9 @@ const fixturePath = path.join(
   "no-root-level-classes"
 )
 
-const message = "Avoid classes that do not extend another class."
+const expectedMessage = "Avoid classes that do not extend another class."
 
-const hint =
+const expectedHint =
   "Classes should never implement data structures, algorithms, or modules — model those " +
   "with a functional approach (plain functions over Effect data types). The only sanctioned " +
   "use of a class is integrating with a third-party library that requires subclassing, so " +
@@ -30,42 +30,38 @@ const hint =
   "extending Effect's Schema.Class, Schema.TaggedError, Data.TaggedClass, or a base class " +
   "from the library you are integrating with."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "Container class declaration without heritage",
-    ruleId: "no-root-level-classes",
     fileName: "src/cases.ts",
     line: 7,
     column: 14,
-    message,
-    hint
+    message: expectedMessage,
+    hint: expectedHint
   },
   {
     name: "Person class declaration that only implements an interface",
-    ruleId: "no-root-level-classes",
     fileName: "src/cases.ts",
     line: 11,
     column: 14,
-    message,
-    hint
+    message: expectedMessage,
+    hint: expectedHint
   },
   {
     name: "Widget class declaration nested inside a function",
-    ruleId: "no-root-level-classes",
     fileName: "src/cases.ts",
     line: 16,
     column: 9,
-    message,
-    hint
+    message: expectedMessage,
+    hint: expectedHint
   },
   {
     name: "Anonymous class expression without heritage",
-    ruleId: "no-root-level-classes",
     fileName: "src/cases.ts",
     line: 23,
     column: 26,
-    message,
-    hint
+    message: expectedMessage,
+    hint: expectedHint
   }
 ]
 
@@ -97,18 +93,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoRootLevelClassesFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noRootLevelClasses])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noRootLevelClasses)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-root-level-classes reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoRootLevelClassesFixture()
+  const signals = await runNoRootLevelClassesFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -1,13 +1,10 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-option-match"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type OptionGuardKind = "isSome" | "isNone"
 
@@ -65,12 +62,11 @@ const branchToCheck =
     return isSomeGuard ? conditional.whenTrue : conditional.whenFalse
   }
 
-const optionMatchRuleMatch =
-  (match: CreateMatch) =>
+const optionMatchDetection =
+  (match: MakeDetection) =>
   (conditional: ts.ConditionalExpression) =>
-  (_guard: readonly [OptionGuardKind, string]): Finding =>
+  (_guard: readonly [OptionGuardKind, string]): Detection =>
     match({
-      ruleId,
       node: conditional,
       message:
         "Avoid using Option.isSome/isNone in a ternary to unwrap an Option.",
@@ -87,13 +83,13 @@ const hasDotValueInBranch =
     return containsDotValue(argumentName)(branch)
   }
 
-// The context stage runs once per file, so the specialized rule match is shared by every ConditionalExpression the dispatcher feeds to matches.
+// The context stage runs once per file, so the specialized rule match is shared by every ConditionalExpression the report wiring feeds to matches.
 const optionMatchMatches = (context: RuleContext) => {
-  const ruleMatch = optionMatchRuleMatch(createRuleMatch(context))
+  const ruleMatch = optionMatchDetection(detection(context))
 
   const matches = (
     conditional: ts.ConditionalExpression
-  ): ReadonlyArray<Finding> =>
+  ): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
         const unwrapped = unwrapTransparentExpression(conditional.condition)
@@ -122,48 +118,8 @@ const optionMatchMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.ConditionalExpression])(
+const check = nodeCheck([ts.SyntaxKind.ConditionalExpression])(
   ts.isConditionalExpression
 )(optionMatchMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/resolve.ts",
-  code: `import { Option } from "effect"
-import type * as ts from "typescript"
-
-declare const typeNode: Option.Option<ts.TypeNode>
-declare const checker: ts.TypeChecker
-declare const parameter: ts.ParameterDeclaration
-
-export const resolved = Option.isSome(typeNode)
-  ? checker.getTypeFromTypeNode(typeNode.value)
-  : checker.getTypeAtLocation(parameter)`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/resolve.ts",
-  code: `import { Option } from "effect"
-import type * as ts from "typescript"
-
-declare const typeNode: Option.Option<ts.TypeNode>
-declare const checker: ts.TypeChecker
-declare const parameter: ts.ParameterDeclaration
-
-export const resolved = Option.match(typeNode, {
-  onNone: () => checker.getTypeAtLocation(parameter),
-  onSome: (node) => checker.getTypeFromTypeNode(node)
-})`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferOptionMatch = new Rule({
-  id: ruleId,
-  description:
-    "Disallow Option.isSome/isNone ternaries in favor of Option.match.",
-  example,
-  check
-})
+export const preferOptionMatch: RuleCheck = check

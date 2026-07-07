@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noNewError } from "../src/rules/noNewError.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,10 +20,9 @@ const expectedHint =
   "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
   "instead of bare new Error()."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "withMessage",
-    ruleId: "no-new-error",
     fileName: "src/cases.ts",
     line: 3,
     column: 21,
@@ -32,7 +31,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "noArgs",
-    ruleId: "no-new-error",
     fileName: "src/cases.ts",
     line: 5,
     column: 16,
@@ -41,7 +39,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "returnsErrorInline",
-    ruleId: "no-new-error",
     fileName: "src/cases.ts",
     line: 8,
     column: 10,
@@ -89,17 +86,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoNewErrorFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoNewErrorFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noNewError])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noNewError)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-new-error reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoNewErrorFixture()
+  const signals = await runNoNewErrorFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

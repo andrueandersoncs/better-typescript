@@ -1,11 +1,8 @@
 import { HashSet, Option } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-nested-if-statements"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
@@ -43,18 +40,17 @@ const containingIfStatementFrom =
       : Option.some(parentNode)
   }
 
-// The context stage runs once per file, so match is shared by every IfStatement the dispatcher feeds to matches.
+// The context stage runs once per file, so match is shared by every IfStatement the report wiring feeds to matches.
 const nestedIfMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> => {
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const parentOption = Option.fromNullable(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
 
     return Option.isSome(containingIf)
       ? [
           match({
-            ruleId,
             node: ifStatement,
             message: "Avoid nesting if statements.",
             hint:
@@ -68,51 +64,8 @@ const nestedIfMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   nestedIfMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/access.ts",
-  code: `declare const user: { readonly isActive: boolean } | null
-declare const grantAccess: () => void
-
-export const ensureAccess = (): void => {
-  if (user) {
-    if (user.isActive) {
-      grantAccess()
-    }
-  }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/access.ts",
-  code: `import { Option, Struct, pipe } from "effect"
-
-interface User {
-  readonly isActive: boolean
-}
-
-declare const user: User | null
-declare const grantAccess: () => string
-
-export const accessToken = pipe(
-  Option.fromNullable(user),
-  Option.filter(Struct.get("isActive")),
-  Option.map(grantAccess)
-)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noNestedIfStatements = new Rule({
-  id: ruleId,
-  description:
-    "Disallow nested if statements in favor of boolean operators or early returns.",
-  example,
-  check
-})
+export const noNestedIfStatements: RuleCheck = check

@@ -5,12 +5,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noMutation } from "../src/rules/noMutation.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -31,32 +31,31 @@ const hint =
   "structure whose API contract requires assignment (process.exitCode, a WebSocket " +
   "handler slot, a React ref cell) is permitted."
 
-const expectedMatch = (
+const expectedSignal = (
   name: string,
   line: number,
   column: number
-): ExpectedRuleMatch => ({
+): ExpectedDetection => ({
   name,
   fileName: "src/cases.ts",
   line,
   column,
-  ruleId: "no-mutation",
   message,
   hint
 })
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
-  expectedMatch("property assignment", 14, 1),
-  expectedMatch("compound property assignment", 15, 1),
-  expectedMatch("element assignment", 16, 1),
-  expectedMatch("nested element assignment", 17, 1),
-  expectedMatch("postfix increment", 18, 1),
-  expectedMatch("prefix decrement", 19, 3),
-  expectedMatch("delete property", 20, 8),
-  expectedMatch("logical assignment", 21, 1),
-  expectedMatch("rebinding a project-declared let", 25, 1),
-  expectedMatch("rebinding a parameter", 28, 63),
-  expectedMatch("mutating a built-in prototype", 31, 1)
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
+  expectedSignal("property assignment", 14, 1),
+  expectedSignal("compound property assignment", 15, 1),
+  expectedSignal("element assignment", 16, 1),
+  expectedSignal("nested element assignment", 17, 1),
+  expectedSignal("postfix increment", 18, 1),
+  expectedSignal("prefix decrement", 19, 3),
+  expectedSignal("delete property", 20, 8),
+  expectedSignal("logical assignment", 21, 1),
+  expectedSignal("rebinding a project-declared let", 25, 1),
+  expectedSignal("rebinding a parameter", 28, 63),
+  expectedSignal("mutating a built-in prototype", 31, 1)
 ]
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
@@ -116,33 +115,40 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoMutationFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoMutationFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noMutation])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noMutation)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-mutation reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoMutationFixture()
+  const signals = await runNoMutationFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })
 
-test("no-mutation classifies each match with a scope facet", async () => {
-  const matches = await runNoMutationFixture()
-  const facetsByLine = new Map(
-    matches
-      .filter((match) => match.path === "src/cases.ts")
-      .map((match) => [match.line, match.facets])
+test("no-mutation classifies each signal with a mutation target", async () => {
+  const signals = await runNoMutationFixture()
+  const targetsByLine = new Map(
+    signals
+      .filter((signal) => signal.location.path === "src/cases.ts")
+      .map((signal) => [
+        signal.location.line,
+        (signal.data as { readonly target?: string } | undefined)?.target
+      ])
   )
 
-  assert.deepEqual(facetsByLine.get(14), ["shared-state"])
-  assert.deepEqual(facetsByLine.get(16), ["shared-state"])
-  assert.deepEqual(facetsByLine.get(20), ["shared-state"])
-  assert.deepEqual(facetsByLine.get(25), ["shared-state"])
-  assert.deepEqual(facetsByLine.get(28), ["local"])
-  assert.deepEqual(facetsByLine.get(31), ["builtin"])
+  assert.equal(targetsByLine.get(14), "shared-state")
+  assert.equal(targetsByLine.get(16), "shared-state")
+  assert.equal(targetsByLine.get(20), "shared-state")
+  assert.equal(targetsByLine.get(25), "shared-state")
+  assert.equal(targetsByLine.get(28), "local")
+  assert.equal(targetsByLine.get(31), "builtin")
 })

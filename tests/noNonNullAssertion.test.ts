@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noNonNullAssertion } from "../src/rules/noNonNullAssertion.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,32 +20,30 @@ const fixturePath = path.join(
   "no-non-null-assertion"
 )
 
-const message = "Avoid non-null assertions."
+const expectedMessage = "Avoid non-null assertions."
 
-const hint =
+const expectedHint =
   "The ! operator silences the type checker instead of handling the absent case, " +
   "trading a compile-time proof for a runtime crash. Convert the nullable value " +
   "with Option.fromNullable and handle both branches (Option.match, " +
   "Option.getOrElse), or narrow it with a type guard the checker verifies."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "bare non-null assertion",
-    ruleId: "no-non-null-assertion",
     fileName: "src/cases.ts",
     line: 7,
     column: 25,
-    message,
-    hint
+    message: expectedMessage,
+    hint: expectedHint
   },
   {
     name: "non-null assertion feeding a call",
-    ruleId: "no-non-null-assertion",
     fileName: "src/cases.ts",
     line: 9,
     column: 26,
-    message,
-    hint
+    message: expectedMessage,
+    hint: expectedHint
   }
 ]
 
@@ -64,17 +62,23 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoNonNullAssertionFixture = async (): Promise<
+  ReadonlyArray<Detection>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noNonNullAssertion])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noNonNullAssertion)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-non-null-assertion reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
+  const signals = await runNoNonNullAssertionFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

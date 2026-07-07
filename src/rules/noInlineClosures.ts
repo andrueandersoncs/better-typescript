@@ -1,13 +1,10 @@
 import { HashSet } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { transparentWrapperKinds } from "./tsNode.js"
 import { isExternalPackageArgument } from "./tsSignature.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-inline-closures"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const sanctionedParentKinds = HashSet.make(
   ts.SyntaxKind.VariableDeclaration,
@@ -19,14 +16,16 @@ const effectiveParent = (node: ts.Node): ts.Node =>
     ? effectiveParent(node.parent)
     : node.parent
 
-// The context stage runs once per file, so every partial below is shared by all ArrowFunctions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all ArrowFunctions the report wiring feeds to matches.
 const arrowFunctionMatches = (context: RuleContext) => {
   const isExternalArgument = isExternalPackageArgument(context.checker)(
     context.program
   )
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
-  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Finding> => {
+  const matches = (
+    arrowFunction: ts.ArrowFunction
+  ): ReadonlyArray<Detection> => {
     const parent = effectiveParent(arrowFunction)
     const hasSanctionedParent = HashSet.has(sanctionedParentKinds, parent.kind)
     const isExternalCallback = isExternalArgument(arrowFunction)
@@ -36,7 +35,6 @@ const arrowFunctionMatches = (context: RuleContext) => {
       ? []
       : [
           match({
-            ruleId,
             node: arrowFunction.equalsGreaterThanToken,
             message:
               "Avoid arrow functions outside naming, currying, and third-party callback positions.",
@@ -53,57 +51,8 @@ const arrowFunctionMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
+const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
   arrowFunctionMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `declare const users: ReadonlyArray<{ readonly name: string }>
-
-export const names = users.map((user) => user.name.toUpperCase())`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `import { Array } from "effect"
-
-interface User {
-  readonly name: string
-}
-
-declare const users: ReadonlyArray<User>
-
-const upperName = (user: User): string =>
-  user.name.toUpperCase()
-
-export const names = Array.map(users, upperName)`
-})
-
-const goodInlineAtBoundary = new ExampleSnippet({
-  filePath: "src/labels.ts",
-  code: `import { Array } from "effect"
-
-interface User {
-  readonly name: string
-}
-
-declare const users: ReadonlyArray<User>
-
-export const labels = Array.map(users, (user) => user.name.toUpperCase())`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample, goodInlineAtBoundary]
-})
-
-export const noInlineClosures = new Rule({
-  id: ruleId,
-  description:
-    "Disallow arrow functions outside naming positions (const initializers), currying " +
-    "positions (arrow function bodies), and third-party callback positions (arguments to " +
-    "functions declared in node_modules).",
-  example,
-  check
-})
+export const noInlineClosures: RuleCheck = check

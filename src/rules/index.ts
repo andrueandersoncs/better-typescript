@@ -1,118 +1,51 @@
-import { noAbstractClasses } from "./noAbstractClasses.js"
-import { noArraySpread } from "./noArraySpread.js"
-import { noAsyncFunctions } from "./noAsyncFunctions.js"
-import { noCallbacks } from "./noCallbacks.js"
-import { noClassMethodImplementations } from "./noClassMethodImplementations.js"
-import { noDataTaggedClass } from "./noDataTaggedClass.js"
-import { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
-import { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
-import { noExplicitAnyReturn } from "./noExplicitAnyReturn.js"
-import { noForInLoops } from "./noForInLoops.js"
-import { noFirstPartySchemaDeclare } from "./noFirstPartySchemaDeclare.js"
-import { noForLoops } from "./noForLoops.js"
-import { noInstanceof } from "./noInstanceof.js"
-import { noForOfLoops } from "./noForOfLoops.js"
-import { noFunctionKeyword } from "./noFunctionKeyword.js"
-import { noInlineBooleanExpressions } from "./noInlineBooleanExpressions.js"
-import { noInlineClosures } from "./noInlineClosures.js"
-import { noManualTypeDispatch } from "./noManualTypeDispatch.js"
-import { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
-import { noMutableArrayMethods } from "./noMutableArrayMethods.js"
-import { noMultiLineComments } from "./noMultiLineComments.js"
-import { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
-import { noMutation } from "./noMutation.js"
-import { noNestedCalls } from "./noNestedCalls.js"
-import { noNonNullAssertion } from "./noNonNullAssertion.js"
-import { noNestedIfStatements } from "./noNestedIfStatements.js"
-import { noNewError } from "./noNewError.js"
-import { noRawObjectTypes } from "./noRawObjectTypes.js"
-import { noRootLevelClasses } from "./noRootLevelClasses.js"
-import { noSwitchStatements } from "./noSwitchStatements.js"
-import { noSingleUseCallee } from "./noSingleUseCallee.js"
-import { noThrow } from "./noThrow.js"
-import { noTryCatch } from "./noTryCatch.js"
-import { noUndefined } from "./noUndefined.js"
-import { noVoidFunctions } from "./noVoidFunctions.js"
-import { preferConditionalReturn } from "./preferConditionalReturn.js"
-import { preferCurriedDataLastFunctions } from "./preferCurriedDataLastFunctions.js"
-import { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
-import { preferHashMap } from "./preferHashMap.js"
-import { preferHashSet } from "./preferHashSet.js"
-import { preferEffectFn } from "./preferEffectFn.js"
-import { preferEffectPropertyAccessors } from "./preferEffectPropertyAccessors.js"
-import { preferEffectRecordFilterMap } from "./preferEffectRecordFilterMap.js"
-import { preferEffectArrayAppendAll } from "./preferEffectArrayAppendAll.js"
-import { preferDataLastModule } from "./preferDataLastModule.js"
-import { preferEffectSchemaClass } from "./preferEffectSchemaClass.js"
-import { preferEffectSchemaConstructor } from "./preferEffectSchemaConstructor.js"
-import { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
-import { preferEffectSchemaIs } from "./preferEffectSchemaIs.js"
-import { preferImplicitReturn } from "./preferImplicitReturn.js"
-import { preferPipeFunction } from "./preferPipeFunction.js"
-import { preferOptionMatch } from "./preferOptionMatch.js"
-import type { Rule } from "./types.js"
-
-export const rules: ReadonlyArray<Rule> = [
-  preferEffectSchemaGuard,
-  preferEffectSchemaIs,
-  preferEffectSchemaConstructor,
-  preferEffectSchemaClass,
-  preferEffectFn,
-  preferEffectPropertyAccessors,
-  preferEffectRecordFilterMap,
-  preferEffectArrayAppendAll,
-  preferDataLastModule,
-  preferConditionalReturn,
-  preferDirectBooleanReturn,
-  preferImplicitReturn,
-  noThrow,
-  noNewError,
-  noTryCatch,
-  noUndefined,
-  noVoidFunctions,
-  noRootLevelClasses,
-  noMultiLineComments,
-  noExplicitAnyReturn,
-  noMultipleBooleanOperators,
-  noInlineBooleanExpressions,
-  noMutableArrayMethods,
-  noMutableVariableDeclarations,
-  noMutation,
-  noNestedIfStatements,
-  noNonNullAssertion,
-  noDuplicateIfBodies,
-  noDuplicateFunctionNames,
-  noCallbacks,
-  noAsyncFunctions,
-  noArraySpread,
-  noForInLoops,
-  noForLoops,
-  noForOfLoops,
-  noSwitchStatements,
-  noFunctionKeyword,
-  noInlineClosures,
-  noNestedCalls,
-  noManualTypeDispatch,
-  noAbstractClasses,
-  noClassMethodImplementations,
-  noRawObjectTypes,
-  noFirstPartySchemaDeclare,
-  noDataTaggedClass,
-  noInstanceof,
-  noSingleUseCallee,
-  preferHashSet,
-  preferHashMap,
-  preferOptionMatch,
-  preferPipeFunction,
-  preferCurriedDataLastFunctions
-]
-
-export {
-  ExampleSnippet,
-  ProgramContext,
-  RuleContext,
-  RuleExample,
-  Finding,
-  isFindingRule
-} from "./types.js"
-export type { Rule } from "./types.js"
+export { preferEffectSchemaGuard } from "./preferEffectSchemaGuard.js"
+export { preferEffectSchemaIs } from "./preferEffectSchemaIs.js"
+export { preferEffectSchemaConstructor } from "./preferEffectSchemaConstructor.js"
+export { preferEffectSchemaClass } from "./preferEffectSchemaClass.js"
+export { preferEffectFn } from "./preferEffectFn.js"
+export { preferEffectPropertyAccessors } from "./preferEffectPropertyAccessors.js"
+export { preferEffectRecordFilterMap } from "./preferEffectRecordFilterMap.js"
+export { preferEffectArrayAppendAll } from "./preferEffectArrayAppendAll.js"
+export { preferDataLastModule } from "./preferDataLastModule.js"
+export { preferConditionalReturn } from "./preferConditionalReturn.js"
+export { preferDirectBooleanReturn } from "./preferDirectBooleanReturn.js"
+export { preferImplicitReturn } from "./preferImplicitReturn.js"
+export { noThrow } from "./noThrow.js"
+export { noNewError } from "./noNewError.js"
+export { noTryCatch } from "./noTryCatch.js"
+export { noUndefined } from "./noUndefined.js"
+export { noVoidFunctions } from "./noVoidFunctions.js"
+export { noRootLevelClasses } from "./noRootLevelClasses.js"
+export { noMultiLineComments } from "./noMultiLineComments.js"
+export { noExplicitAnyReturn } from "./noExplicitAnyReturn.js"
+export { noMultipleBooleanOperators } from "./noMultipleBooleanOperators.js"
+export { noInlineBooleanExpressions } from "./noInlineBooleanExpressions.js"
+export { noMutableArrayMethods } from "./noMutableArrayMethods.js"
+export { noMutableVariableDeclarations } from "./noMutableVariableDeclarations.js"
+export { noMutation } from "./noMutation.js"
+export { noNestedIfStatements } from "./noNestedIfStatements.js"
+export { noNonNullAssertion } from "./noNonNullAssertion.js"
+export { noDuplicateIfBodies } from "./noDuplicateIfBodies.js"
+export { noDuplicateFunctionNames } from "./noDuplicateFunctionNames.js"
+export { noCallbacks } from "./noCallbacks.js"
+export { noAsyncFunctions } from "./noAsyncFunctions.js"
+export { noArraySpread } from "./noArraySpread.js"
+export { noForInLoops } from "./noForInLoops.js"
+export { noForLoops } from "./noForLoops.js"
+export { noForOfLoops } from "./noForOfLoops.js"
+export { noSwitchStatements } from "./noSwitchStatements.js"
+export { noFunctionKeyword } from "./noFunctionKeyword.js"
+export { noInlineClosures } from "./noInlineClosures.js"
+export { noNestedCalls } from "./noNestedCalls.js"
+export { noManualTypeDispatch } from "./noManualTypeDispatch.js"
+export { noAbstractClasses } from "./noAbstractClasses.js"
+export { noClassMethodImplementations } from "./noClassMethodImplementations.js"
+export { noRawObjectTypes } from "./noRawObjectTypes.js"
+export { noFirstPartySchemaDeclare } from "./noFirstPartySchemaDeclare.js"
+export { noDataTaggedClass } from "./noDataTaggedClass.js"
+export { noInstanceof } from "./noInstanceof.js"
+export { noSingleUseCallee } from "./noSingleUseCallee.js"
+export { preferHashSet } from "./preferHashSet.js"
+export { preferHashMap } from "./preferHashMap.js"
+export { preferOptionMatch } from "./preferOptionMatch.js"
+export { preferPipeFunction } from "./preferPipeFunction.js"

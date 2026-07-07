@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noThrow } from "../src/rules/noThrow.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,10 +20,9 @@ const expectedHint =
   "Create a custom error with Schema.TaggedError, then yield it instead, for example: " +
   'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().'
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "topLevelThrow",
-    ruleId: "no-throw",
     fileName: "src/cases.ts",
     line: 4,
     column: 3,
@@ -32,7 +31,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "throwInIfBlock",
-    ruleId: "no-throw",
     fileName: "src/cases.ts",
     line: 9,
     column: 5,
@@ -41,7 +39,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "throwInCatch",
-    ruleId: "no-throw",
     fileName: "src/cases.ts",
     line: 19,
     column: 5,
@@ -50,7 +47,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "throwInArrowBody",
-    ruleId: "no-throw",
     fileName: "src/cases.ts",
     line: 26,
     column: 3,
@@ -86,15 +82,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoThrowFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoThrowFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) => runRules([noThrow])(project))
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noThrow)(project))
+    )
+  )
+
+  return projectElements.flat()
 }
 
 test("no-throw reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoThrowFixture()
+  const signals = await runNoThrowFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

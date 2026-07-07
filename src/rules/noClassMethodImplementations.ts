@@ -1,13 +1,10 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { namedNodeReportTarget } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-class-method-implementations"
+import { nodeCheck } from "./ruleCheck.js"
+import { namedDetectionTarget } from "./tsNode.js"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const methodDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.MethodDeclaration
@@ -43,12 +40,11 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
 }
 
 const methodImplementationMatch =
-  (match: CreateMatch) =>
-  (node: ts.MethodDeclaration): Finding => {
-    const reportTarget = namedNodeReportTarget(node)
+  (match: MakeDetection) =>
+  (node: ts.MethodDeclaration): Detection => {
+    const reportTarget = namedDetectionTarget(node)
 
     return match({
-      ruleId,
       node: reportTarget,
       message: "Avoid implementing methods on a class.",
       hint:
@@ -59,11 +55,11 @@ const methodImplementationMatch =
     })
   }
 
-// The context stage runs once per file, so the hoisted match partial is shared by all MethodDeclarations the dispatcher feeds to matches.
+// The context stage runs once per file, so the hoisted match partial is shared by all MethodDeclarations the report wiring feeds to matches.
 const methodImplementationMatches = (context: RuleContext) => {
-  const ruleMatch = methodImplementationMatch(createRuleMatch(context))
+  const ruleMatch = methodImplementationMatch(detection(context))
 
-  const matches = (node: ts.MethodDeclaration): ReadonlyArray<Finding> => {
+  const matches = (node: ts.MethodDeclaration): ReadonlyArray<Detection> => {
     const reportable = Option.liftPredicate(isReportableMethod)(node)
 
     return pipe(reportable, Option.map(ruleMatch), Option.toArray)
@@ -72,43 +68,8 @@ const methodImplementationMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode(methodDeclarationKinds)(isMethodDeclaration)(
+const check = nodeCheck(methodDeclarationKinds)(isMethodDeclaration)(
   methodImplementationMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `import { Schema } from "effect"
-
-export class User extends Schema.Class<User>("User")({
-  name: Schema.String
-}) {
-  greet(): string { return \`Hello, \${this.name}\` }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `import { Schema } from "effect"
-
-export class User extends Schema.Class<User>("User")({
-  name: Schema.String
-}) {}
-
-export const greet = (user: User): string => \`Hello, \${user.name}\``
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noClassMethodImplementations = new Rule({
-  id: ruleId,
-  description:
-    "Disallow implementing methods on a class, except methods that override a base-class " +
-    "method; object-literal methods (e.g. implementing a third-party interface) are not " +
-    "class methods.",
-  example,
-  check
-})
+export const noClassMethodImplementations: RuleCheck = check

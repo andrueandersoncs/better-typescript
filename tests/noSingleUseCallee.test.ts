@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noSingleUseCallee } from "../src/rules/noSingleUseCallee.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const expectedHint =
   "for documentation, a comment at the call site conveys the same intent without " +
   "the abstraction cost."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "singleUseNonCurriedArrow",
-    ruleId: "no-single-use-callee",
     fileName: "src/cases.ts",
     line: 4,
     column: 7,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "singleUseMultiLineArrow",
-    ruleId: "no-single-use-callee",
     fileName: "src/cases.ts",
     line: 9,
     column: 7,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "singleUseFunctionDeclaration",
-    ruleId: "no-single-use-callee",
     fileName: "src/cases.ts",
     line: 19,
     column: 10,
@@ -100,18 +97,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoSingleUseCalleeFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noSingleUseCallee])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noSingleUseCallee)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-single-use-callee reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoSingleUseCalleeFixture()
+  const signals = await runNoSingleUseCalleeFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

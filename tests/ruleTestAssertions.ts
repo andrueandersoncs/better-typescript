@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import type { Finding } from "../src/rules/index.js"
+import type { Detection } from "../src/detectors/rule.js"
 
 interface SourceLocation {
   readonly fileName: string
@@ -11,14 +11,12 @@ export interface FixtureItem extends SourceLocation {
   readonly name: string
 }
 
-export interface MatchDetails extends SourceLocation {
-  readonly ruleId: string
+export interface DetectionDetails extends SourceLocation {
   readonly message: string
   readonly hint: string
 }
 
-export interface ExpectedRuleMatch extends FixtureItem {
-  readonly ruleId: string
+export interface ExpectedDetection extends FixtureItem {
   readonly message: string
   readonly hint: string
 }
@@ -30,8 +28,10 @@ interface AssertDisallowedOptions {
 const locationKey = (location: SourceLocation): string =>
   [location.fileName, location.line, location.column].join(":")
 
-const findingLocationKey = (match: Finding): string =>
-  [match.path, match.line, match.column].join(":")
+const detectionLocationKey = (element: Detection): string =>
+  [element.location.path, element.location.line, element.location.column].join(
+    ":"
+  )
 
 const compareLocations = (
   left: SourceLocation,
@@ -50,33 +50,33 @@ const maybeSorted = <T extends SourceLocation>(
   shouldSort: boolean
 ): ReadonlyArray<T> => (shouldSort ? sortByLocation(items) : items)
 
-const matchDetails = (match: Finding): MatchDetails => ({
-  ruleId: match.detectorId,
-  fileName: match.path,
-  line: match.line,
-  column: match.column,
-  message: match.message,
-  hint: match.hint
+const detectionDetails = (element: Detection): DetectionDetails => ({
+  fileName: element.location.path,
+  line: element.location.line,
+  column: element.location.column,
+  message: element.message,
+  hint: element.hint
 })
 
-const expectedMatchDetails = (match: ExpectedRuleMatch): MatchDetails => ({
-  ruleId: match.ruleId,
-  fileName: match.fileName,
-  line: match.line,
-  column: match.column,
-  message: match.message,
-  hint: match.hint
+const expectedDetectionDetails = (
+  expectedElement: ExpectedDetection
+): DetectionDetails => ({
+  fileName: expectedElement.fileName,
+  line: expectedElement.line,
+  column: expectedElement.column,
+  message: expectedElement.message,
+  hint: expectedElement.hint
 })
 
 export const assertDisallowedFixtureItems = (
-  matches: ReadonlyArray<Finding>,
-  disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch>,
+  elements: ReadonlyArray<Detection>,
+  disallowedFixtureItems: ReadonlyArray<ExpectedDetection>,
   options: AssertDisallowedOptions = {}
 ): void => {
   const shouldSort = options.sort === true
-  const actual = maybeSorted(matches.map(matchDetails), shouldSort)
+  const actual = maybeSorted(elements.map(detectionDetails), shouldSort)
   const expected = maybeSorted(
-    disallowedFixtureItems.map(expectedMatchDetails),
+    disallowedFixtureItems.map(expectedDetectionDetails),
     shouldSort
   )
 
@@ -88,10 +88,10 @@ export const assertDisallowedFixtureItems = (
 }
 
 export const assertAllowedFixtureItems = (
-  matches: ReadonlyArray<Finding>,
+  elements: ReadonlyArray<Detection>,
   allowedFixtureItems: ReadonlyArray<FixtureItem>
 ): void => {
-  const reportedLocations = new Set(matches.map(findingLocationKey))
+  const reportedLocations = new Set(elements.map(detectionLocationKey))
   const reportedAllowedFixtureItems = allowedFixtureItems.filter((item) =>
     reportedLocations.has(locationKey(item))
   )

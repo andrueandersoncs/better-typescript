@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noManualTypeDispatch } from "../src/rules/noManualTypeDispatch.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -28,10 +28,9 @@ const hint =
   "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
   "error rather than a silent fall-through."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "foldNode Schema.is dispatch chain",
-    ruleId: "no-manual-type-dispatch",
     fileName: "src/cases.ts",
     line: 18,
     column: 3,
@@ -40,7 +39,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "area discriminant property dispatch chain",
-    ruleId: "no-manual-type-dispatch",
     fileName: "src/cases.ts",
     line: 27,
     column: 3,
@@ -49,7 +47,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "classify predicate dispatch chain",
-    ruleId: "no-manual-type-dispatch",
     fileName: "src/cases.ts",
     line: 39,
     column: 3,
@@ -86,18 +83,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoManualTypeDispatchFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noManualTypeDispatch])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noManualTypeDispatch)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-manual-type-dispatch reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoManualTypeDispatchFixture()
+  const signals = await runNoManualTypeDispatchFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

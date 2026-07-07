@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noForInLoops } from "../src/rules/noForInLoops.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,10 +20,9 @@ const expectedHint =
   "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
   "or Record.toEntries(), instead."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "sumRecord.forInLoop",
-    ruleId: "no-for-in-loops",
     fileName: "src/cases.ts",
     line: 6,
     column: 3,
@@ -32,7 +31,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "copyRecord.forInLoop",
-    ruleId: "no-for-in-loops",
     fileName: "src/cases.ts",
     line: 16,
     column: 3,
@@ -50,17 +48,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoForInLoopsFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoForInLoopsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noForInLoops])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noForInLoops)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-for-in-loops reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoForInLoopsFixture()
+  const signals = await runNoForInLoopsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

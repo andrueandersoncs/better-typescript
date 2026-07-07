@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferEffectArrayAppendAll } from "../src/rules/preferEffectArrayAppendAll.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const expectedHint =
   "Use Array.appendAll from Effect to combine arrays instead of spreading a " +
   "conditional expression that chooses between an array and an empty array literal."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "empty array in false branch",
-    ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
     line: 7,
     column: 29,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "empty array in true branch",
-    ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
     line: 9,
     column: 28,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "parenthesized conditional",
-    ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
     line: 11,
     column: 35,
@@ -54,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "non-literal true branch with empty false branch",
-    ruleId: "prefer-effect-array-append-all",
     fileName: "src/cases.ts",
     line: 13,
     column: 31,
@@ -96,15 +92,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) =>
-    runRules([preferEffectArrayAppendAll])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(preferEffectArrayAppendAll)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-effect-array-append-all reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  const signals = await runFixture()
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

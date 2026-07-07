@@ -1,16 +1,13 @@
 import { HashSet, Option, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { isSameNode } from "./tsNode.js"
 import { callArguments, isCallLikeExpression } from "./tsSignature.js"
 import type { CallLikeExpression } from "./tsSignature.js"
 import { hasCallSignature } from "./tsType.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-nested-calls"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
@@ -73,12 +70,12 @@ const ruleHint =
 type ProducesCallable = (call: CallLikeExpression) => boolean
 type CalleeText = (call: CallLikeExpression) => string
 
-const consumerRuleMatch =
+const consumerDetection =
   (producesCallable: ProducesCallable) =>
   (calleeText: CalleeText) =>
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (call: CallLikeExpression) =>
-  (consumer: CallLikeExpression): Option.Option<Finding> => {
+  (consumer: CallLikeExpression): Option.Option<Detection> => {
     if (producesCallable(call)) {
       return Option.none()
     }
@@ -100,7 +97,6 @@ const consumerRuleMatch =
     const callText = calleeText(call)
     const consumerText = calleeText(consumer)
     const ruleMatch = match({
-      ruleId,
       node: call,
       message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
       hint: ruleHint
@@ -109,7 +105,7 @@ const consumerRuleMatch =
     return Option.some(ruleMatch)
   }
 
-// The context stage runs once per file, so every partial below is shared by all call-like expressions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all call-like expressions the report wiring feeds to matches.
 const nestedCallMatches = (context: RuleContext) => {
   const checker = context.checker
   const producesCallable = flow(
@@ -117,10 +113,10 @@ const nestedCallMatches = (context: RuleContext) => {
     hasCallSignature(checker)
   )
   const calleeText = calleeDisplayText(context.sourceFile)
-  const match = createRuleMatch(context)
-  const consumerMatch = consumerRuleMatch(producesCallable)(calleeText)(match)
+  const match = detection(context)
+  const consumerMatch = consumerDetection(producesCallable)(calleeText)(match)
 
-  const matches = (call: CallLikeExpression): ReadonlyArray<Finding> =>
+  const matches = (call: CallLikeExpression): ReadonlyArray<Detection> =>
     pipe(
       consumingCall(call),
       Option.flatMap(consumerMatch(call)),
@@ -130,93 +126,9 @@ const nestedCallMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([
+const check = nodeCheck([
   ts.SyntaxKind.CallExpression,
   ts.SyntaxKind.NewExpression
 ])(isCallLikeExpression)(nestedCallMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/log.ts",
-  code: `declare const parseTimestamp: (raw: string) => Date
-declare const formatDate: (date: Date) => string
-
-export const logTimestamp = (raw: string): void => {
-  console.log(formatDate(parseTimestamp(raw)))
-}`
-})
-
-const goodExtractedValues = new ExampleSnippet({
-  filePath: "src/log.ts",
-  code: `declare const parseTimestamp: (raw: string) => Date
-declare const formatDate: (date: Date) => string
-
-export const formatTimestamp = (raw: string): string => {
-  const timestamp = parseTimestamp(raw)
-
-  return formatDate(timestamp)
-}`
-})
-
-const goodEffectPipe = new ExampleSnippet({
-  filePath: "src/loadUserPipe.ts",
-  code: `import { Effect, Struct, pipe } from "effect"
-
-interface User {
-  readonly id: string
-}
-
-interface Profile {
-  readonly displayName: string
-}
-
-declare const userId: string
-declare const fetchUser: (id: string) => Effect.Effect<User>
-declare const loadProfile: (id: string) => Effect.Effect<Profile>
-declare const renderProfile: (profile: Profile) => string
-
-export const program = pipe(
-  fetchUser(userId),
-  Effect.map(Struct.get("id")),
-  Effect.flatMap(loadProfile),
-  Effect.map(renderProfile)
-)`
-})
-
-const goodEffectGen = new ExampleSnippet({
-  filePath: "src/loadUserGen.ts",
-  code: `import { Effect } from "effect"
-
-interface User {
-  readonly id: string
-}
-
-interface Profile {
-  readonly displayName: string
-}
-
-declare const userId: string
-declare const fetchUser: (id: string) => Effect.Effect<User>
-declare const loadProfile: (id: string) => Effect.Effect<Profile>
-declare const renderProfile: (profile: Profile) => string
-
-export const program = Effect.gen(function* () {
-  const user = yield* fetchUser(userId)
-  const profile = yield* loadProfile(user.id)
-
-  return renderProfile(profile)
-})`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExtractedValues, goodEffectPipe, goodEffectGen]
-})
-
-export const noNestedCalls = new Rule({
-  id: ruleId,
-  description:
-    "Disallow value-producing calls in the arguments of other calls; function-returning " +
-    "calls (currying, pipe stages) stay inline.",
-  example,
-  check
-})
+export const noNestedCalls: RuleCheck = check

@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noFirstPartySchemaDeclare } from "../src/rules/noFirstPartySchemaDeclare.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -26,10 +26,9 @@ const hint =
   'Schema.Class<MyType>("MyType")({ ... }) {} — which gives you validation, ' +
   "encoding, and decoding for free."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "Schema.declare with first-party type alias MyData",
-    ruleId: "no-first-party-schema-declare",
     fileName: "src/cases.ts",
     line: 9,
     column: 22,
@@ -38,7 +37,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Schema.declare with first-party interface AppConfig",
-    ruleId: "no-first-party-schema-declare",
     fileName: "src/cases.ts",
     line: 20,
     column: 25,
@@ -47,7 +45,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Schema.declare with inline predicate for first-party type MyData",
-    ruleId: "no-first-party-schema-declare",
     fileName: "src/cases.ts",
     line: 23,
     column: 22,
@@ -83,17 +80,23 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noFirstPartySchemaDeclare])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(noFirstPartySchemaDeclare)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-first-party-schema-declare reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
+  const signals = await runFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

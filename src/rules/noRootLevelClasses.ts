@@ -1,13 +1,10 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { isExtendsClause, namedNodeReportTarget } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-root-level-classes"
+import { nodeCheck } from "./ruleCheck.js"
+import { isExtendsClause, namedDetectionTarget } from "./tsNode.js"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type ClassNode = ts.ClassDeclaration | ts.ClassExpression
 
@@ -23,12 +20,11 @@ const lacksExtendsClause = (declaration: ClassNode): boolean =>
   !(declaration.heritageClauses ?? []).some(isExtendsClause)
 
 const rootLevelClassMatch =
-  (match: CreateMatch) =>
-  (declaration: ClassNode): Finding => {
-    const node = namedNodeReportTarget(declaration)
+  (match: MakeDetection) =>
+  (declaration: ClassNode): Detection => {
+    const node = namedDetectionTarget(declaration)
 
     return match({
-      ruleId,
       node,
       message: "Avoid classes that do not extend another class.",
       hint:
@@ -41,11 +37,11 @@ const rootLevelClassMatch =
     })
   }
 
-// The context stage runs once per file, so ruleMatch is shared by every class node the dispatcher feeds to matches.
+// The context stage runs once per file, so ruleMatch is shared by every class node the report wiring feeds to matches.
 const rootLevelClassMatches = (context: RuleContext) => {
-  const ruleMatch = rootLevelClassMatch(createRuleMatch(context))
+  const ruleMatch = rootLevelClassMatch(detection(context))
 
-  const matches = (declaration: ClassNode): ReadonlyArray<Finding> =>
+  const matches = (declaration: ClassNode): ReadonlyArray<Detection> =>
     pipe(
       Option.liftPredicate(lacksExtendsClause)(declaration),
       Option.map(ruleMatch),
@@ -55,50 +51,6 @@ const rootLevelClassMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode(classNodeKinds)(isClassNode)(rootLevelClassMatches)
+const check = nodeCheck(classNodeKinds)(isClassNode)(rootLevelClassMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `export class UserService {
-  getUser(id: string) { /* ... */ }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `import { Schema } from "effect"
-
-export class User extends Schema.Class<User>("User")({
-  id: Schema.String,
-  name: Schema.String
-}) {}`
-})
-
-const moduleGoodExample = new ExampleSnippet({
-  filePath: "src/model/account.ts",
-  code: `import { Effect, Schema, pipe } from "effect"
-
-const AccountId = pipe(Schema.String, Schema.brand("AccountId"))
-type AccountId = typeof AccountId.Type
-
-export const Account = Schema.Struct({
-  id: AccountId,
-  name: Schema.String
-})
-export type Account = typeof Account.Type
-
-export const getById = Effect.fn("account/getById")(function* (id: AccountId) {})`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample, moduleGoodExample]
-})
-
-export const noRootLevelClasses = new Rule({
-  id: ruleId,
-  description:
-    "Disallow classes that do not extend another class in favor of a functional approach.",
-  example,
-  check
-})
+export const noRootLevelClasses: RuleCheck = check

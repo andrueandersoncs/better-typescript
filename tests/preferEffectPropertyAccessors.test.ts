@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferEffectPropertyAccessors } from "../src/rules/preferEffectPropertyAccessors.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,7 +20,7 @@ const fixturePath = path.join(
   "prefer-effect-property-accessors"
 )
 
-// The hint suffix is the same for all matches
+// The hint suffix is the same for all signals
 const hintSuffix =
   " from Effect. Use Struct.get for non-record data types, and Record.get or Record.has for records."
 
@@ -30,10 +30,9 @@ const makeMessage = (functionName: string, accessedText: string): string =>
 const makeHint = (suggestion: string): string =>
   `Replace this property-access-only function with ${suggestion}${hintSuffix}`
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "getName.user.name",
-    ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
     line: 1,
     column: 52,
@@ -42,7 +41,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "getAge.user.age",
-    ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
     line: 3,
     column: 10,
@@ -51,7 +49,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "getId.user.id",
-    ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
     line: 6,
     column: 10,
@@ -60,7 +57,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "getLabel.item.label",
-    ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
     line: 10,
     column: 12,
@@ -69,7 +65,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "lookup.dict.value",
-    ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
     line: 13,
     column: 57,
@@ -78,7 +73,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "getKind.shape.kind",
-    ruleId: "prefer-effect-property-accessors",
     fileName: "src/cases.ts",
     line: 15,
     column: 10,
@@ -121,18 +115,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runPreferEffectPropertyAccessorsFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferEffectPropertyAccessors])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(preferEffectPropertyAccessors)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-effect-property-accessors reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferEffectPropertyAccessorsFixture()
+  const signals = await runPreferEffectPropertyAccessorsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -1,8 +1,7 @@
-import { Array, HashMap, HashSet, Option, pipe, Schema } from "effect"
+import { Array, HashMap, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { fileListeners, withProgramIndex } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { foldAst } from "../detectors/sources.js"
+import { fileSubscriptions, withProgramIndex } from "./ruleCheck.js"
 import {
   conciseArrowBody,
   functionInitializer,
@@ -10,28 +9,26 @@ import {
   isFunctionInitializer,
   isProjectSourceFile
 } from "./tsNode.js"
-import { foldAst } from "./traverse.js"
-import {
-  TsIdentifier,
-  TsFunctionDeclarationNode,
-  TsSymbol
-} from "./tsSchema.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
 import type {
   ProgramContext,
+  RuleCheck,
   RuleContext,
-  RuleListener,
-  Finding
-} from "./types.js"
-
-const ruleId = "no-single-use-callee"
+  Detection,
+  Subscription
+} from "../detectors/rule.js"
 
 class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")({
-  nameNode: TsIdentifier,
-  declarationNode: TsFunctionDeclarationNode,
+  nameNode: Schema.Any,
+  declarationNode: Schema.Any,
   isCurried: Schema.Boolean,
   isExported: Schema.Boolean
-}) {}
+}) {
+  declare readonly nameNode: ts.Identifier
+  declare readonly declarationNode:
+    ts.FunctionDeclaration | ts.VariableDeclaration
+}
 
 // Currying detection
 
@@ -300,13 +297,13 @@ const entryToSymbolPair =
 
 // Index construction
 
-const functionEntryArraySchema = Schema.Array(FunctionEntry)
-const symbolHashSetSchema = Schema.HashSetFromSelf(TsSymbol)
-
 class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
-  entries: functionEntryArraySchema,
-  calleeOnlySymbols: symbolHashSetSchema
-}) {}
+  entries: Schema.Any,
+  calleeOnlySymbols: Schema.Any
+}) {
+  declare readonly entries: ReadonlyArray<FunctionEntry>
+  declare readonly calleeOnlySymbols: HashSet.HashSet<ts.Symbol>
+}
 
 const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
   const program = context.program
@@ -359,10 +356,9 @@ const symbolIsFlaggable =
     )
 
 const singleUseCalleeMatch =
-  (match: CreateMatch) =>
-  (entry: FunctionEntry): Finding =>
+  (match: MakeDetection) =>
+  (entry: FunctionEntry): Detection =>
     match({
-      ruleId,
       node: entry.nameNode,
       message: "Avoid naming a function that is only called in one place.",
       hint:
@@ -380,11 +376,11 @@ const isInFile =
 // The file handler runs once per file, so every partial below is shared by all its entries.
 const singleUseCalleeMatches =
   (index: ReferenceIndex) =>
-  (context: RuleContext): ReadonlyArray<Finding> => {
+  (context: RuleContext): ReadonlyArray<Detection> => {
     const flaggable = symbolIsFlaggable(index.calleeOnlySymbols)(
       context.checker
     )
-    const match = createRuleMatch(context)
+    const match = detection(context)
     const calleeMatch = singleUseCalleeMatch(match)
 
     return pipe(
@@ -397,35 +393,9 @@ const singleUseCalleeMatches =
 
 const singleUseCalleeListeners = (
   index: ReferenceIndex
-): ReadonlyArray<RuleListener> => fileListeners(singleUseCalleeMatches(index))
+): ReadonlyArray<Subscription> =>
+  fileSubscriptions(singleUseCalleeMatches(index))
 
 const check = withProgramIndex(buildReferenceIndex)(singleUseCalleeListeners)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/validate.ts",
-  code: `const isPositive = (n: number): boolean =>
-  n > 0
-
-const validateAge = (age: number): boolean =>
-  isPositive(age) // isPositive is only called here`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/validate.ts",
-  code: `const validateAge = (age: number): boolean =>
-  age > 0`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noSingleUseCallee = new Rule({
-  id: ruleId,
-  description:
-    "Disallow non-curried, non-exported functions that are only called in one place " +
-    "and never passed by reference.",
-  example,
-  check
-})
+export const noSingleUseCallee: RuleCheck = check

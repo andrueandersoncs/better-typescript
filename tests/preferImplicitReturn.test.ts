@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferImplicitReturn } from "../src/rules/preferImplicitReturn.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -25,10 +25,9 @@ const expectedHint =
   "Replace this with an implicit return by removing the return statement and function " +
   "body braces. Wrap object literals in parentheses when needed."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "double.body",
-    ruleId: "prefer-implicit-return",
     fileName: "src/cases.ts",
     line: 3,
     column: 39,
@@ -37,7 +36,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "greet.body",
-    ruleId: "prefer-implicit-return",
     fileName: "src/cases.ts",
     line: 7,
     column: 41,
@@ -46,7 +44,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "makeUser.body",
-    ruleId: "prefer-implicit-return",
     fileName: "src/cases.ts",
     line: 11,
     column: 59,
@@ -55,7 +52,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "toText.body",
-    ruleId: "prefer-implicit-return",
     fileName: "src/cases.ts",
     line: 15,
     column: 43,
@@ -64,7 +60,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "sign.body",
-    ruleId: "prefer-implicit-return",
     fileName: "src/cases.ts",
     line: 19,
     column: 37,
@@ -113,18 +108,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runPreferImplicitReturnFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferImplicitReturn])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(preferImplicitReturn)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-implicit-return reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferImplicitReturnFixture()
+  const signals = await runPreferImplicitReturnFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

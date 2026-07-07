@@ -1,9 +1,7 @@
 import * as path from "node:path"
 import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import {
   functionInitializer,
   returnedExpression,
@@ -11,10 +9,9 @@ import {
 } from "./tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./tsSignature.js"
 import type { FunctionInitializer } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-effect-fn"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const hasParameters = (initializer: FunctionInitializer): boolean =>
   initializer.parameters.length > 0
@@ -106,14 +103,13 @@ const bodyIsEffectGenCall =
     )
   }
 
-const effectFnRuleMatch =
+const effectFnDetection =
   (sourceFile: ts.SourceFile) =>
-  (match: CreateMatch) =>
-  (declaration: ts.VariableDeclaration): Finding => {
+  (match: MakeDetection) =>
+  (declaration: ts.VariableDeclaration): Detection => {
     const functionName = declaration.name.getText(sourceFile)
 
     return match({
-      ruleId,
       node: declaration.name,
       message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
       hint:
@@ -123,17 +119,15 @@ const effectFnRuleMatch =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all VariableDeclarations the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all VariableDeclarations the report wiring feeds to matches.
 const effectFnMatches = (context: RuleContext) => {
   const returnsEffectType = returnsEffect(context.checker)
   const bodyIsGenCall = bodyIsEffectGenCall(context.checker)
-  const ruleMatch = effectFnRuleMatch(context.sourceFile)(
-    createRuleMatch(context)
-  )
+  const ruleMatch = effectFnDetection(context.sourceFile)(detection(context))
 
   const matches = (
     declaration: ts.VariableDeclaration
-  ): ReadonlyArray<Finding> =>
+  ): ReadonlyArray<Detection> =>
     pipe(
       functionInitializer(declaration),
       Option.filter(hasParameters),
@@ -147,42 +141,8 @@ const effectFnMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.VariableDeclaration])(
+const check = nodeCheck([ts.SyntaxKind.VariableDeclaration])(
   ts.isVariableDeclaration
 )(effectFnMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `import { Effect } from "effect"
-
-declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
-
-export const getUser = (id: string) =>
-  Effect.gen(function* () {
-    return yield* fetchUser(id)
-  })`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/users.ts",
-  code: `import { Effect } from "effect"
-
-declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
-
-export const getUser = Effect.fn("getUser")(function* (id: string) {
-  return yield* fetchUser(id)
-})`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferEffectFn = new Rule({
-  id: ruleId,
-  description:
-    "Require Effect.fn instead of wrapping a parameterized function's body in Effect.gen.",
-  example,
-  check
-})
+export const preferEffectFn: RuleCheck = check

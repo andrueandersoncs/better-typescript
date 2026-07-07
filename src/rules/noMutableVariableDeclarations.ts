@@ -1,12 +1,9 @@
 import { HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-mutable-variable-declarations"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type MutableVariableDeclarationKind = "let" | "var"
 
@@ -23,12 +20,11 @@ const tokenMutableKind = (
 ): Option.Option<MutableVariableDeclarationKind> =>
   HashMap.get(mutableKeywordKinds, firstToken.kind)
 
-const mutableDeclarationRuleMatch =
-  (match: CreateMatch) =>
+const mutableDeclarationDetection =
+  (match: MakeDetection) =>
   (declarationList: ts.VariableDeclarationList) =>
-  (kind: MutableVariableDeclarationKind): Finding =>
+  (kind: MutableVariableDeclarationKind): Detection =>
     match({
-      ruleId,
       node: declarationList,
       message: `Avoid declaring mutable variables with ${kind}.`,
       hint:
@@ -38,14 +34,14 @@ const mutableDeclarationRuleMatch =
         "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
     })
 
-// The context stage runs once per file, so both partials below are shared by every VariableDeclarationList the dispatcher feeds to matches.
+// The context stage runs once per file, so both partials below are shared by every VariableDeclarationList the report wiring feeds to matches.
 const mutableDeclarationMatches = (context: RuleContext) => {
   const sourceFile = context.sourceFile
-  const ruleMatch = mutableDeclarationRuleMatch(createRuleMatch(context))
+  const ruleMatch = mutableDeclarationDetection(detection(context))
 
   const matches = (
     declarationList: ts.VariableDeclarationList
-  ): ReadonlyArray<Finding> => {
+  ): ReadonlyArray<Detection> => {
     const firstToken = declarationList.getFirstToken(sourceFile)
 
     return pipe(
@@ -59,43 +55,8 @@ const mutableDeclarationMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.VariableDeclarationList])(
+const check = nodeCheck([ts.SyntaxKind.VariableDeclarationList])(
   ts.isVariableDeclarationList
 )(mutableDeclarationMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/cart.ts",
-  code: `declare const items: ReadonlyArray<{ readonly price: number }>
-
-export let total = 0
-
-for (const item of items) {
-  total += item.price
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/cart.ts",
-  code: `import { Array } from "effect"
-
-declare const items: ReadonlyArray<{ readonly price: number }>
-
-export const total = Array.reduce(
-  items,
-  0,
-  (sum, item) => sum + item.price
-)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noMutableVariableDeclarations = new Rule({
-  id: ruleId,
-  description:
-    "Disallow let and var declarations in favor of immutable const bindings.",
-  example,
-  check
-})
+export const noMutableVariableDeclarations: RuleCheck = check

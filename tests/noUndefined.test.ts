@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noUndefined } from "../src/rules/noUndefined.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -29,10 +29,9 @@ const typeDeclarationMessage =
   "Avoid optional or undefined properties in type declarations."
 const comparisonMessage = "Avoid comparing values against undefined."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "parameter optional",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 4,
     column: 15,
@@ -41,7 +40,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "parameter union undefined",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 9,
     column: 17,
@@ -50,7 +48,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "return-type undefined",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 14,
     column: 1,
@@ -59,7 +56,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "return-expression undefined",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 20,
     column: 3,
@@ -68,7 +64,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "type-declaration optional property",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 25,
     column: 3,
@@ -77,7 +72,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "type-declaration union property",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 30,
     column: 3,
@@ -86,7 +80,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "type-declaration optional mapped type",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 34,
     column: 36,
@@ -95,7 +88,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "comparison eq undefined",
-    ruleId: "no-undefined",
     fileName: "src/cases.ts",
     line: 38,
     column: 13,
@@ -167,15 +159,19 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) =>
-    runRules([noUndefined])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noUndefined)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-undefined reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  const signals = await runFixture()
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems, { sort: true })
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

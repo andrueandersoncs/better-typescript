@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noExplicitAnyReturn } from "../src/rules/noExplicitAnyReturn.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const expectedHint =
   "Declare a precise return type instead of any. If the value is unknown at a boundary, " +
   "use unknown and narrow before use."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "functionDeclaration",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 3,
     column: 1,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "functionExpression",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 7,
     column: 28,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "arrowFunction",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 11,
     column: 23,
@@ -54,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Service.methodDeclaration",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 14,
     column: 3,
@@ -63,7 +59,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Service.value.get",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 18,
     column: 3,
@@ -72,7 +67,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "ServiceContract.methodSignature",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 24,
     column: 3,
@@ -81,7 +75,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "CallableContract.callSignature",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 28,
     column: 3,
@@ -90,7 +83,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "FunctionTypeAlias",
-    ruleId: "no-explicit-any-return",
     fileName: "src/cases.ts",
     line: 31,
     column: 26,
@@ -145,18 +137,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoExplicitAnyReturnFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noExplicitAnyReturn])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noExplicitAnyReturn)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-explicit-any-return reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoExplicitAnyReturnFixture()
+  const signals = await runNoExplicitAnyReturnFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

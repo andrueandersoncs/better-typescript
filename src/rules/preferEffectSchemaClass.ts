@@ -1,20 +1,18 @@
 import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeListeners, withProgramIndex } from "./ruleCheck.js"
-import { createRuleMatch, toRelativeFileName } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { foldAst } from "./traverse.js"
-import type { AstFold } from "./traverse.js"
+import { nodeSubscriptions, withProgramIndex } from "./ruleCheck.js"
+import { foldAst } from "../detectors/sources.js"
+import type { AstFold } from "../detectors/sources.js"
 import { isProjectSourceFile, outermostTransparentWrapper } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
+import { detection, toRelativeFileName } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
 import type {
   ProgramContext,
+  RuleCheck,
   RuleContext,
-  RuleListener,
-  Finding
-} from "./types.js"
-
-const ruleId = "prefer-effect-schema-class"
+  Detection,
+  Subscription
+} from "../detectors/rule.js"
 
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 
@@ -284,11 +282,11 @@ const constructionSymbolFile =
 
 type RelativeFileName = (fileName: string) => string
 
-const schemaClassRuleMatch =
+const schemaClassDetection =
   (toRelative: RelativeFileName) =>
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (declaration: ObjectTypeDeclaration) =>
-  (constructionFileName: string): Finding => {
+  (constructionFileName: string): Detection => {
     const typeName = declaration.name.text
     const exampleFile = toRelative(constructionFileName)
     const kindLabel = ts.isInterfaceDeclaration(declaration)
@@ -296,7 +294,6 @@ const schemaClassRuleMatch =
       : "a type alias"
 
     return match({
-      ruleId,
       node: declaration.name,
       message:
         `Avoid declaring ${typeName} as ${kindLabel} when this project constructs ` +
@@ -312,18 +309,18 @@ const schemaClassRuleMatch =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all declarations the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all declarations the report wiring feeds to matches.
 const objectTypeDeclarationMatches =
   (index: ConstructionIndex) => (context: RuleContext) => {
     const checker = context.checker
     const symbolFile = constructionSymbolFile(index)
-    const ruleMatch = schemaClassRuleMatch(
+    const ruleMatch = schemaClassDetection(
       toRelativeFileName(context.projectRoot)
-    )(createRuleMatch(context))
+    )(detection(context))
 
     const matches = (
       declaration: ObjectTypeDeclaration
-    ): ReadonlyArray<Finding> => {
+    ): ReadonlyArray<Detection> => {
       const declarationSymbol = checker.getSymbolAtLocation(declaration.name)
 
       return pipe(
@@ -344,11 +341,11 @@ const isObjectTypeAliasDeclaration = (
 
 const schemaClassListeners = (
   index: ConstructionIndex
-): ReadonlyArray<RuleListener> => {
-  const interfaceListeners = nodeListeners([
+): ReadonlyArray<Subscription> => {
+  const interfaceListeners = nodeSubscriptions([
     ts.SyntaxKind.InterfaceDeclaration
   ])(ts.isInterfaceDeclaration)(objectTypeDeclarationMatches(index))
-  const typeAliasListeners = nodeListeners([
+  const typeAliasListeners = nodeSubscriptions([
     ts.SyntaxKind.TypeAliasDeclaration
   ])(isObjectTypeAliasDeclaration)(objectTypeDeclarationMatches(index))
 
@@ -357,49 +354,4 @@ const schemaClassListeners = (
 
 const check = withProgramIndex(buildConstructionIndex)(schemaClassListeners)
 
-const contextExample = new ExampleSnippet({
-  filePath: "src/service/userService.ts",
-  code: `import type { User } from "../model/user.js"
-
-export const user: User = { name: "Alice", age: 30 }`
-})
-
-const badExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `export interface User {
-  readonly name: string
-  readonly age: number
-}`
-})
-
-const goodExample1 = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `import { Schema } from "effect"
-
-export class User extends Schema.Class<User>("User")({
-  name: Schema.String,
-  age: Schema.Number
-}) {}`
-})
-
-const goodExample2 = new ExampleSnippet({
-  filePath: "src/service/userService.ts",
-  code: `import { User } from "../model/user.js"
-
-export const user = new User({ name: "Alice", age: 30 })`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample1, goodExample2],
-  context: [contextExample]
-})
-
-export const preferEffectSchemaClass = new Rule({
-  id: ruleId,
-  description:
-    "Disallow interface and type alias declarations for data the project constructs in " +
-    "favor of Effect Schema classes.",
-  example,
-  check
-})
+export const preferEffectSchemaClass: RuleCheck = check

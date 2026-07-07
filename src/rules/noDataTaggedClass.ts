@@ -1,12 +1,9 @@
 import { Option, Struct } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { isExtendsClause, namedNodeReportTarget } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-data-tagged-class"
+import { nodeCheck } from "./ruleCheck.js"
+import { isExtendsClause, namedDetectionTarget } from "./tsNode.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const hasTaggedClassName = (name: ts.MemberName): boolean =>
   name.text === "TaggedClass"
@@ -65,18 +62,17 @@ const isDataTaggedClassDeclaration = (
   return Option.exists(classOption, hasDataTaggedClassHeritage)
 }
 
-// The context stage runs once per file, so match is shared by every ClassDeclaration the dispatcher feeds to matches.
+// The context stage runs once per file, so match is shared by every ClassDeclaration the report wiring feeds to matches.
 const dataTaggedClassMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
   const matches = (
     declaration: ts.ClassDeclaration
-  ): ReadonlyArray<Finding> => {
-    const node = namedNodeReportTarget(declaration)
+  ): ReadonlyArray<Detection> => {
+    const node = namedDetectionTarget(declaration)
 
     return [
       match({
-        ruleId,
         node,
         message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
         hint:
@@ -89,37 +85,8 @@ const dataTaggedClassMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.ClassDeclaration])(
+const check = nodeCheck([ts.SyntaxKind.ClassDeclaration])(
   isDataTaggedClassDeclaration
 )(dataTaggedClassMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/model.ts",
-  code: `import { Data } from "effect"
-
-export class MyEvent extends Data.TaggedClass("MyEvent")<{
-  readonly payload: string
-}> {}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/model.ts",
-  code: `import { Schema } from "effect"
-
-export class MyEvent extends Schema.TaggedClass<MyEvent>()("MyEvent", {
-  payload: Schema.String
-}) {}`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noDataTaggedClass = new Rule({
-  id: ruleId,
-  description:
-    "Disallow Data.TaggedClass in favor of Schema.TaggedClass for tagged data types.",
-  example,
-  check
-})
+export const noDataTaggedClass: RuleCheck = check

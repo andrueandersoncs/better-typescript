@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noInlineClosures } from "../src/rules/noInlineClosures.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const expectedHint =
   "expression sequences several steps, prefer a generator (Option.gen or Effect.gen) " +
   "over nesting functions."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "callArgument",
-    ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
     line: 5,
     column: 26,
@@ -36,7 +35,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "objectPropertyValue",
-    ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
     line: 8,
     column: 30,
@@ -45,7 +43,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "arrayElement",
-    ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
     line: 11,
     column: 26,
@@ -54,7 +51,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "returnedArrow",
-    ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
     line: 15,
     column: 22,
@@ -63,7 +59,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "conditionalBranch.true",
-    ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
     line: 20,
     column: 30,
@@ -72,7 +67,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "conditionalBranch.false",
-    ruleId: "no-inline-closures",
     fileName: "src/cases.ts",
     line: 20,
     column: 49,
@@ -81,7 +75,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "externalArgs.defaultLibMap",
-    ruleId: "no-inline-closures",
     fileName: "src/externalArgs.ts",
     line: 23,
     column: 34,
@@ -90,7 +83,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "externalArgs.firstPartyRun",
-    ruleId: "no-inline-closures",
     fileName: "src/externalArgs.ts",
     line: 27,
     column: 38,
@@ -157,18 +149,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoInlineClosuresFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noInlineClosures])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noInlineClosures)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-inline-closures reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoInlineClosuresFixture()
+  const signals = await runNoInlineClosuresFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

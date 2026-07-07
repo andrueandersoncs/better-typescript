@@ -1,7 +1,7 @@
-// Benchmark fixture: dense rule violations.
+// Benchmark fixture: dense rule disallowed cases.
 // Every rule should report at least one match in this file, so each rule's full
 // match-construction path is exercised — not just its traversal/filter path.
-// This file must stay valid TypeScript under strict mode; violations are lint-level only.
+// This file must stay valid TypeScript under strict mode; disallowed cases are lint-level only.
 
 // prefer-effect-fn requires the `Effect` symbol to be declared in a file named
 // Effect.ts (or Effect.d.ts), so the phantom lives in the sibling ./Effect.ts module.
@@ -120,7 +120,7 @@ export function forEachChar(
 }
 
 export interface Emitter {
-  on(event: string, listener: (payload: string) => void): void
+  on(event: string, handler: (payload: string) => void): void
 }
 
 // no-duplicate-if-bodies: two if statements with identical bodies.

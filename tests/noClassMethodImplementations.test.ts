@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noClassMethodImplementations } from "../src/rules/noClassMethodImplementations.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -29,10 +29,9 @@ const hint =
   "implementation is one that overrides a base-class method (marked with `override`) " +
   "for the purposes of integrating with a third-party library."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "Calculator.add implemented method",
-    ruleId: "no-class-method-implementations",
     fileName: "src/cases.ts",
     line: 4,
     column: 3,
@@ -41,7 +40,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Greeter.greet implemented method",
-    ruleId: "no-class-method-implementations",
     fileName: "src/cases.ts",
     line: 10,
     column: 3,
@@ -50,7 +48,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Greeter.prefix private implemented method",
-    ruleId: "no-class-method-implementations",
     fileName: "src/cases.ts",
     line: 14,
     column: 11,
@@ -59,7 +56,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Counter.zero static implemented method",
-    ruleId: "no-class-method-implementations",
     fileName: "src/cases.ts",
     line: 22,
     column: 10,
@@ -68,7 +64,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Recorder.record non-override class method",
-    ruleId: "no-class-method-implementations",
     fileName: "src/objectLiteral.ts",
     line: 12,
     column: 3,
@@ -123,18 +118,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoClassMethodImplementationsFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noClassMethodImplementations])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(noClassMethodImplementations)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-class-method-implementations reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoClassMethodImplementationsFixture()
+  const signals = await runNoClassMethodImplementationsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

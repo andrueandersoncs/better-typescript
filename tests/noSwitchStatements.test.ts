@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noSwitchStatements } from "../src/rules/noSwitchStatements.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,10 +20,9 @@ const expectedHint =
   "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
   "so every case is handled explicitly."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "switch over a string union",
-    ruleId: "no-switch-statements",
     fileName: "src/cases.ts",
     line: 5,
     column: 3,
@@ -32,7 +31,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "switch over a number",
-    ruleId: "no-switch-statements",
     fileName: "src/cases.ts",
     line: 19,
     column: 3,
@@ -41,7 +39,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nested outer switch",
-    ruleId: "no-switch-statements",
     fileName: "src/cases.ts",
     line: 31,
     column: 3,
@@ -50,7 +47,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nested inner switch",
-    ruleId: "no-switch-statements",
     fileName: "src/cases.ts",
     line: 33,
     column: 7,
@@ -81,18 +77,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoSwitchStatementsFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noSwitchStatements])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noSwitchStatements)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-switch-statements reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoSwitchStatementsFixture()
+  const signals = await runNoSwitchStatementsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

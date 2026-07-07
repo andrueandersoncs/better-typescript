@@ -1,13 +1,10 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import { astChildren } from "./traverse.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { astChildren } from "../detectors/sources.js"
 import { unwrapExpression } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-multiple-boolean-operators"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type BooleanOperatorExpression =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
@@ -101,13 +98,13 @@ const nestedExpressionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ClassExpression
 )
 
-// The context stage runs once per file, so match is shared by every boolean expression the dispatcher feeds to matches.
+// The context stage runs once per file, so match is shared by every boolean expression the report wiring feeds to matches.
 const multipleBooleanOperatorMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
   const matches = (
     expression: BooleanOperatorExpression
-  ): ReadonlyArray<Finding> => {
+  ): ReadonlyArray<Detection> => {
     const expressionUsesBooleanOperator =
       isBooleanOperatorExpression(expression)
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
@@ -121,7 +118,6 @@ const multipleBooleanOperatorMatches = (context: RuleContext) => {
     return isReportableRoot
       ? [
           match({
-            ruleId,
             node: expression,
             message:
               "Avoid combining more than one boolean operator in a single expression.",
@@ -136,42 +132,10 @@ const multipleBooleanOperatorMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([
+const check = nodeCheck([
   ts.SyntaxKind.BinaryExpression,
   ts.SyntaxKind.PrefixUnaryExpression,
   ts.SyntaxKind.ConditionalExpression
 ])(isBooleanOperatorExpression)(multipleBooleanOperatorMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/access.ts",
-  code: `declare const isAdmin: boolean
-declare const isActive: boolean
-declare const isOwner: boolean
-
-export const canEdit = isAdmin && isActive || isOwner`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/access.ts",
-  code: `declare const isAdmin: boolean
-declare const isActive: boolean
-declare const isOwner: boolean
-
-const hasAdminAccess = isAdmin && isActive
-export const canEdit = hasAdminAccess || isOwner`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noMultipleBooleanOperators = new Rule({
-  id: ruleId,
-  description:
-    "Disallow combining multiple boolean operators in a single expression. A ternary's " +
-    "condition counts as its own expression, so `a === b ? x : y` is a single choice over " +
-    "a single comparison.",
-  example,
-  check
-})
+export const noMultipleBooleanOperators: RuleCheck = check

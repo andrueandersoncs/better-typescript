@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noMutableVariableDeclarations } from "../src/rules/noMutableVariableDeclarations.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -26,10 +26,9 @@ const expectedHint =
   "genuinely evolve over time (a module-level counter, a cell shared across " +
   "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "let single declarator",
-    ruleId: "no-mutable-variable-declarations",
     fileName: "src/cases.ts",
     line: 3,
     column: 1,
@@ -38,7 +37,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "var single declarator",
-    ruleId: "no-mutable-variable-declarations",
     fileName: "src/cases.ts",
     line: 5,
     column: 1,
@@ -46,8 +44,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
     hint: expectedHint
   },
   {
-    name: "let multi-declarator (one match)",
-    ruleId: "no-mutable-variable-declarations",
+    name: "let multi-declarator (one signal)",
     fileName: "src/cases.ts",
     line: 7,
     column: 1,
@@ -56,7 +53,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "let uninitialized with type annotation",
-    ruleId: "no-mutable-variable-declarations",
     fileName: "src/cases.ts",
     line: 10,
     column: 1,
@@ -65,7 +61,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "let in for-loop initializer",
-    ruleId: "no-mutable-variable-declarations",
     fileName: "src/cases.ts",
     line: 12,
     column: 6,
@@ -113,17 +108,23 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noMutableVariableDeclarations])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(noMutableVariableDeclarations)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-mutable-variable-declarations reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
+  const signals = await runFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

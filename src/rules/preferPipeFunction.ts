@@ -1,12 +1,9 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { symbolDeclaredInEffectPackage } from "./tsSignature.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-pipe-function"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const isPipeName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "pipe"
@@ -23,12 +20,14 @@ const isEffectPipeAccess =
     )
   }
 
-// The context stage runs once per file, so both partials are shared by every CallExpression the dispatcher feeds to matches.
+// The context stage runs once per file, so both partials are shared by every CallExpression the report wiring feeds to matches.
 const pipeMethodCallMatches = (context: RuleContext) => {
   const isEffectPipe = isEffectPipeAccess(context.checker)
-  const match = createRuleMatch(context)
+  const match = detection(context)
 
-  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Finding> =>
+  const matches = (
+    callExpression: ts.CallExpression
+  ): ReadonlyArray<Detection> =>
     pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(
         callExpression.expression
@@ -37,7 +36,6 @@ const pipeMethodCallMatches = (context: RuleContext) => {
       Option.filter(isEffectPipe),
       Option.map((access) =>
         match({
-          ruleId,
           node: access.name,
           message: "Avoid calling .pipe() as a method.",
           hint:
@@ -51,49 +49,8 @@ const pipeMethodCallMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
   pipeMethodCallMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/user.ts",
-  code: `import { Effect, Struct } from "effect"
-
-declare const userId: string
-declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
-declare const loadProfile: (id: string) => Effect.Effect<{ readonly bio: string }>
-
-export const program = fetchUser(userId).pipe(
-  Effect.map(Struct.get("id")),
-  Effect.flatMap(loadProfile)
-)`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/user.ts",
-  code: `import { Effect, Struct, pipe } from "effect"
-
-declare const userId: string
-declare const fetchUser: (id: string) => Effect.Effect<{ readonly id: string }>
-declare const loadProfile: (id: string) => Effect.Effect<{ readonly bio: string }>
-
-export const program = pipe(
-  fetchUser(userId),
-  Effect.map(Struct.get("id")),
-  Effect.flatMap(loadProfile)
-)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferPipeFunction = new Rule({
-  id: ruleId,
-  description:
-    "Prefer standalone pipe() function over effect's .pipe() method; third-party .pipe() " +
-    "methods (Node streams, RxJS) are not effect pipelines and are left alone.",
-  example,
-  check
-})
+export const preferPipeFunction: RuleCheck = check

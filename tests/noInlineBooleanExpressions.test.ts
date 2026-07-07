@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noInlineBooleanExpressions } from "../src/rules/noInlineBooleanExpressions.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -25,10 +25,9 @@ const expectedHint =
   "Extract the expression into a well-named const variable declaration above the if " +
   "statement and use that variable in the if condition."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "requiresBoth.condition",
-    ruleId: "no-inline-boolean-expressions",
     fileName: "src/cases.ts",
     line: 4,
     column: 7,
@@ -37,7 +36,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "allowsEither.condition",
-    ruleId: "no-inline-boolean-expressions",
     fileName: "src/cases.ts",
     line: 12,
     column: 7,
@@ -46,7 +44,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "unwrapsParenthesized.condition",
-    ruleId: "no-inline-boolean-expressions",
     fileName: "src/cases.ts",
     line: 20,
     column: 7,
@@ -77,18 +74,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoInlineBooleanExpressionsFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noInlineBooleanExpressions])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(noInlineBooleanExpressions)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-inline-boolean-expressions reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoInlineBooleanExpressionsFixture()
+  const signals = await runNoInlineBooleanExpressionsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

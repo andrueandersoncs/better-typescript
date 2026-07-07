@@ -15,7 +15,7 @@ export type ReturnTypeDeclaration =
 
 const fallbackToNode = (node: ts.Node) => (): ts.Node => node
 
-export const namedNodeReportTarget = (node: ts.NamedDeclaration): ts.Node =>
+export const namedDetectionTarget = (node: ts.NamedDeclaration): ts.Node =>
   pipe(Option.fromNullable(node.name), Option.getOrElse(fallbackToNode(node)))
 
 export const isFunctionInitializer = (

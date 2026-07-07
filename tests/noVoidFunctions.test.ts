@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noVoidFunctions } from "../src/rules/noVoidFunctions.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -25,10 +25,9 @@ const hint =
   "run. When a third-party API requires a void callback, annotate the value with that " +
   "API's callback type so the void contract is the consumer's, not yours."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "logMessage explicit void arrow",
-    ruleId: "no-void-functions",
     fileName: "src/cases.ts",
     line: 4,
     column: 27,
@@ -37,7 +36,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "resetTotal explicit void function declaration",
-    ruleId: "no-void-functions",
     fileName: "src/cases.ts",
     line: 8,
     column: 17,
@@ -46,7 +44,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "addToTotal inferred void arrow",
-    ruleId: "no-void-functions",
     fileName: "src/cases.ts",
     line: 12,
     column: 27,
@@ -55,7 +52,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "noop anonymous void function expression",
-    ruleId: "no-void-functions",
     fileName: "src/cases.ts",
     line: 16,
     column: 21,
@@ -64,7 +60,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "Counter.increment void method",
-    ruleId: "no-void-functions",
     fileName: "src/cases.ts",
     line: 21,
     column: 3,
@@ -73,7 +68,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "bare.ping void method without contextual type",
-    ruleId: "no-void-functions",
     fileName: "src/contextualMethod.ts",
     line: 18,
     column: 3,
@@ -145,17 +139,23 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoVoidFunctionsFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runNoVoidFunctionsFixture = async (): Promise<
+  ReadonlyArray<Detection>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noVoidFunctions])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noVoidFunctions)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-void-functions reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoVoidFunctionsFixture()
+  const signals = await runNoVoidFunctionsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

@@ -1,13 +1,10 @@
 import { Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { isFirstPartySymbol } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-instanceof"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const isInstanceofOperator = (expr: ts.BinaryExpression): boolean =>
   expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
@@ -20,14 +17,13 @@ const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
 
 const className: (symbol: ts.Symbol) => string = Struct.get("name")
 
-const instanceofRuleMatch =
-  (match: CreateMatch) =>
+const instanceofDetection =
+  (match: MakeDetection) =>
   (expression: ts.BinaryExpression) =>
-  (symbol: ts.Symbol): Finding => {
+  (symbol: ts.Symbol): Detection => {
     const name = className(symbol)
 
     return match({
-      ruleId,
       node: expression,
       message: `Avoid instanceof for the first-party class "${name}".`,
       hint:
@@ -37,12 +33,14 @@ const instanceofRuleMatch =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all instanceof expressions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all instanceof expressions the report wiring feeds to matches.
 const instanceofMatches = (context: RuleContext) => {
   const checker = context.checker
-  const ruleMatch = instanceofRuleMatch(createRuleMatch(context))
+  const ruleMatch = instanceofDetection(detection(context))
 
-  const matches = (expression: ts.BinaryExpression): ReadonlyArray<Finding> => {
+  const matches = (
+    expression: ts.BinaryExpression
+  ): ReadonlyArray<Detection> => {
     const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
     const symbol = Option.fromNullable(symbolAtLocation)
 
@@ -57,49 +55,8 @@ const instanceofMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.BinaryExpression])(isInstanceofExpression)(
-  instanceofMatches
-)
+const check = nodeCheck([ts.SyntaxKind.BinaryExpression])(
+  isInstanceofExpression
+)(instanceofMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/check.ts",
-  code: `import { Schema } from "effect"
-
-class NotFoundError extends Schema.TaggedError<NotFoundError>("NotFoundError")("NotFoundError", {}) {}
-
-export const recover =
-  (fallback: string) =>
-  (error: unknown) => {
-    if (error instanceof NotFoundError) {
-      return fallback
-    }
-  }`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/check.ts",
-  code: `import { Schema } from "effect"
-
-class NotFoundError extends Schema.TaggedError<NotFoundError>("NotFoundError")("NotFoundError", {}) {}
-
-export const recover =
-  (fallback: string) =>
-  (error: unknown) => {
-    if (Schema.is(NotFoundError)(error)) {
-      return fallback
-    }
-  }`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noInstanceof = new Rule({
-  id: ruleId,
-  description:
-    "Disallow instanceof for first-party classes in favor of Schema.is type guards.",
-  example,
-  check
-})
+export const noInstanceof: RuleCheck = check

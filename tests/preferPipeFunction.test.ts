@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferPipeFunction } from "../src/rules/preferPipeFunction.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -22,10 +22,9 @@ const hint =
   'Import pipe from "effect" and call it as a standalone function: ' +
   "pipe(value, fn1, fn2) instead of value.pipe(fn1, fn2)."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "method pipe on Effect",
-    ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
     line: 4,
     column: 35,
@@ -34,7 +33,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "method pipe on Option",
-    ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
     line: 7,
     column: 31,
@@ -43,7 +41,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "chained method pipe",
-    ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
     line: 13,
     column: 46,
@@ -52,7 +49,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "method pipe on a variable",
-    ruleId: "prefer-pipe-function",
     fileName: "src/cases.ts",
     line: 17,
     column: 21,
@@ -101,18 +97,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runPreferPipeFunctionFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferPipeFunction])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(preferPipeFunction)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-pipe-function reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferPipeFunctionFixture()
+  const signals = await runPreferPipeFunctionFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

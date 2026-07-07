@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noDuplicateFunctionNames } from "../src/rules/noDuplicateFunctionNames.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -31,10 +31,9 @@ const hintFor = (functionName: string, otherFiles: string): string =>
   "lib.ts or utils.ts. Same-name functions over different signatures (user.ts#make, " +
   "account.ts#make) are module vocabulary, not duplicates."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "alpha.sharedDeclaration",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/alpha.ts",
     line: 3,
     column: 10,
@@ -43,7 +42,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "alpha.sharedArrow",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/alpha.ts",
     line: 5,
     column: 7,
@@ -52,7 +50,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "alpha.sharedExpression",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/alpha.ts",
     line: 7,
     column: 7,
@@ -61,7 +58,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "alpha.crowded",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/alpha.ts",
     line: 9,
     column: 7,
@@ -73,7 +69,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "beta.sharedDeclaration",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/beta.ts",
     line: 3,
     column: 10,
@@ -82,7 +77,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "beta.sharedArrow",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/beta.ts",
     line: 5,
     column: 7,
@@ -91,7 +85,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "beta.crowded",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/beta.ts",
     line: 7,
     column: 7,
@@ -103,7 +96,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "gamma.sharedExpression",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/gamma.ts",
     line: 3,
     column: 7,
@@ -112,7 +104,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "gamma.crowded",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/gamma.ts",
     line: 5,
     column: 7,
@@ -124,7 +115,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "delta.crowded",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/delta.ts",
     line: 3,
     column: 10,
@@ -136,7 +126,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "epsilon.crowded",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/epsilon.ts",
     line: 3,
     column: 7,
@@ -148,7 +137,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "vocabularyAccount.slugify",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/vocabulary-account.ts",
     line: 11,
     column: 14,
@@ -157,7 +145,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "vocabularyUser.slugify",
-    ruleId: "no-duplicate-function-names",
     fileName: "src/vocabulary-user.ts",
     line: 11,
     column: 14,
@@ -254,18 +241,24 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoDuplicateFunctionNamesFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noDuplicateFunctionNames])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(noDuplicateFunctionNames)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-duplicate-function-names reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoDuplicateFunctionNamesFixture()
+  const signals = await runNoDuplicateFunctionNamesFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems, { sort: true })
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

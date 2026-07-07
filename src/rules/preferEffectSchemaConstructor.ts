@@ -1,13 +1,10 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { unwrapTransparentExpression } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "prefer-effect-schema-constructor"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 const tagPropertyName = "_tag"
 
@@ -98,9 +95,9 @@ const untaggedHint =
   'Schema.Class<TheData>("TheData")({ ... }) {} — and construct it through the schema: ' +
   "return new TheData({ ... }) instead of assembling the object by hand."
 
-const objectLiteralRuleMatch =
-  (match: CreateMatch) =>
-  (literal: ts.ObjectLiteralExpression): Finding => {
+const objectLiteralDetection =
+  (match: MakeDetection) =>
+  (literal: ts.ObjectLiteralExpression): Detection => {
     const tag = pipe(
       Array.findFirst(literal.properties, isTagAssignment),
       Option.flatMap(tagValueText)
@@ -114,28 +111,28 @@ const objectLiteralRuleMatch =
       onSome: taggedHint
     })
 
-    return match({ ruleId, node: literal, message, hint })
+    return match({ node: literal, message, hint })
   }
 
-const expressionRuleMatches =
-  (match: CreateMatch) =>
-  (expression: ts.Expression): ReadonlyArray<Finding> =>
+const expressionDetections =
+  (match: MakeDetection) =>
+  (expression: ts.Expression): ReadonlyArray<Detection> =>
     branchExpressions(expression)
       .filter(ts.isObjectLiteralExpression)
       .filter(hasProperties)
-      .map(objectLiteralRuleMatch(match))
+      .map(objectLiteralDetection(match))
 
 type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 
 const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
   ts.isReturnStatement(node) || ts.isArrowFunction(node)
 
-// The context stage runs once per file, so both partials below are shared by every ReturnStatement and ArrowFunction the dispatcher feeds to matches.
+// The context stage runs once per file, so both partials below are shared by every ReturnStatement and ArrowFunction the report wiring feeds to matches.
 const objectLiteralReturnMatches = (context: RuleContext) => {
-  const match = createRuleMatch(context)
-  const expressionMatches = expressionRuleMatches(match)
+  const match = detection(context)
+  const expressionMatches = expressionDetections(match)
 
-  const matches = (node: ReturnCandidate): ReadonlyArray<Finding> => {
+  const matches = (node: ReturnCandidate): ReadonlyArray<Detection> => {
     const expression = ts.isReturnStatement(node)
       ? Option.fromNullable(node.expression)
       : Option.liftPredicate(ts.isExpression)(node.body)
@@ -146,42 +143,9 @@ const objectLiteralReturnMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([
+const check = nodeCheck([
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ArrowFunction
 ])(isReturnCandidate)(objectLiteralReturnMatches)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `export const createUser = (name: string) =>
-  ({ _tag: "User" as const, name, createdAt: Date.now() })`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/model/user.ts",
-  code: `import { Schema } from "effect"
-
-class User extends Schema.TaggedClass<User>()("User", {
-  name: Schema.String,
-  createdAt: Schema.Number
-}) {}
-
-export const createUser = (name: string) => {
-  const createdAt = Date.now()
-
-  return new User({ name, createdAt })
-}`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const preferEffectSchemaConstructor = new Rule({
-  id: ruleId,
-  description:
-    "Disallow returning raw object literals in favor of Effect Schema constructors.",
-  example,
-  check
-})
+export const preferEffectSchemaConstructor: RuleCheck = check

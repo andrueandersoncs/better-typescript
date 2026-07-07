@@ -1,13 +1,10 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { alwaysExitsScope, hasNoElseBranch } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-manual-type-dispatch"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 // A dispatch chain shorter than this reads as a couple of ordinary early-return guards, not a hand-rolled match.
 const minimumChainLength = 3
@@ -104,10 +101,9 @@ const isLongEnough = (head: ts.IfStatement): boolean =>
   chainLengthFrom(head) >= minimumChainLength
 
 const manualTypeDispatchMatch =
-  (match: CreateMatch) =>
-  (ifStatement: ts.IfStatement): Finding =>
+  (match: MakeDetection) =>
+  (ifStatement: ts.IfStatement): Detection =>
     match({
-      ruleId,
       node: ifStatement,
       message:
         "Avoid dispatching on a value with a chain of if statements that each return.",
@@ -117,11 +113,11 @@ const manualTypeDispatchMatch =
         "error rather than a silent fall-through."
     })
 
-// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the dispatcher feeds to matches.
+// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the report wiring feeds to matches.
 const manualTypeDispatchMatches = (context: RuleContext) => {
-  const ruleMatch = manualTypeDispatchMatch(createRuleMatch(context))
+  const ruleMatch = manualTypeDispatchMatch(detection(context))
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Finding> =>
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
     pipe(
       Option.liftPredicate(isDispatchGuard)(ifStatement),
       Option.filter(isChainHead),
@@ -133,70 +129,8 @@ const manualTypeDispatchMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
   manualTypeDispatchMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/shape.ts",
-  code: `import { Schema } from "effect"
-
-class Circle extends Schema.Class<Circle>("Circle")({ radius: Schema.Number }) {}
-class Square extends Schema.Class<Square>("Square")({ side: Schema.Number }) {}
-class Triangle extends Schema.Class<Triangle>("Triangle")({ base: Schema.Number, height: Schema.Number }) {}
-
-declare const circleArea: (circle: Circle) => number
-declare const squareArea: (square: Square) => number
-declare const triangleArea: (triangle: Triangle) => number
-
-export const area = (shape: Circle | Square | Triangle) => {
-  if (Schema.is(Circle)(shape)) {
-    return circleArea(shape)
-  }
-  if (Schema.is(Square)(shape)) {
-    return squareArea(shape)
-  }
-  if (Schema.is(Triangle)(shape)) {
-    return triangleArea(shape)
-  }
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/shape.ts",
-  code: `import { Match, Schema, pipe } from "effect"
-
-class Circle extends Schema.Class<Circle>("Circle")({ radius: Schema.Number }) {}
-class Square extends Schema.Class<Square>("Square")({ side: Schema.Number }) {}
-class Triangle extends Schema.Class<Triangle>("Triangle")({ base: Schema.Number, height: Schema.Number }) {}
-
-declare const circleArea: (circle: Circle) => number
-declare const squareArea: (square: Square) => number
-declare const triangleArea: (triangle: Triangle) => number
-
-const isCircle = Schema.is(Circle)
-const isSquare = Schema.is(Square)
-const isTriangle = Schema.is(Triangle)
-
-export const area = (shape: Circle | Square | Triangle) =>
-  pipe(
-    Match.value(shape),
-    Match.when(isCircle, circleArea),
-    Match.when(isSquare, squareArea),
-    Match.when(isTriangle, triangleArea),
-    Match.exhaustive
-  )`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noManualTypeDispatch = new Rule({
-  id: ruleId,
-  description:
-    "Disallow dispatching on a value with a chain of returning if statements in favor of Effect Match.",
-  example,
-  check
-})
+export const noManualTypeDispatch: RuleCheck = check

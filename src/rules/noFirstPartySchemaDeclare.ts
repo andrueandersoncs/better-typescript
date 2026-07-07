@@ -1,13 +1,10 @@
 import { Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { nodeCheck } from "./ruleCheck.js"
 import { isFirstPartySymbol } from "./tsNode.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-first-party-schema-declare"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 // --- Detection ---
 
@@ -85,9 +82,9 @@ const schemaDeclareHint =
   "encoding, and decoding for free."
 
 const schemaDeclareMatchSource =
-  (match: CreateMatch) =>
+  (match: MakeDetection) =>
   (call: ts.CallExpression) =>
-  (assertedType: ts.Type): Finding => {
+  (assertedType: ts.Type): Detection => {
     const name = pipe(
       typeSymbol(assertedType),
       Option.map(symbolName),
@@ -95,15 +92,15 @@ const schemaDeclareMatchSource =
     )
     const message = `Avoid Schema.declare for the first-party type "${name}".`
 
-    return match({ ruleId, node: call, message, hint: schemaDeclareHint })
+    return match({ node: call, message, hint: schemaDeclareHint })
   }
 
 type AssertedType = (predicate: ts.Expression) => Option.Option<ts.Type>
 
 const schemaDeclareMatchOption =
   (assertedType: AssertedType) =>
-  (match: CreateMatch) =>
-  (call: ts.CallExpression): Option.Option<Finding> =>
+  (match: MakeDetection) =>
+  (call: ts.CallExpression): Option.Option<Detection> =>
     pipe(
       Option.fromNullable(call.arguments[0]),
       Option.flatMap(assertedType),
@@ -111,13 +108,13 @@ const schemaDeclareMatchOption =
       Option.map(schemaDeclareMatchSource(match)(call))
     )
 
-// The context stage runs once per file, so every partial below is shared by all Schema.declare calls the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all Schema.declare calls the report wiring feeds to matches.
 const schemaDeclareMatches = (context: RuleContext) => {
   const assertedType = predicateAssertedType(context.checker)
-  const match = createRuleMatch(context)
+  const match = detection(context)
   const matchOption = schemaDeclareMatchOption(assertedType)(match)
 
-  const matches = (call: ts.CallExpression): ReadonlyArray<Finding> => {
+  const matches = (call: ts.CallExpression): ReadonlyArray<Detection> => {
     const access = call.expression as ts.PropertyAccessExpression
     const object = accessExpression(access)
     if (!ts.isIdentifier(object)) return []
@@ -131,42 +128,10 @@ const schemaDeclareMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode([ts.SyntaxKind.CallExpression])(isDeclareCall)(
+const check = nodeCheck([ts.SyntaxKind.CallExpression])(isDeclareCall)(
   schemaDeclareMatches
 )
 
 // --- Examples ---
 
-const badExample = new ExampleSnippet({
-  filePath: "src/schema.ts",
-  code: `import { Schema } from "effect"
-
-type MyData = { readonly name: string }
-
-const isMyData = (input: unknown): input is MyData =>
-  typeof input === "object" && input !== null && "name" in input
-
-export const MyDataSchema = Schema.declare(isMyData)`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/schema.ts",
-  code: `import { Schema } from "effect"
-
-export class MyData extends Schema.Class<MyData>("MyData")({
-  name: Schema.String
-}) {}`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noFirstPartySchemaDeclare = new Rule({
-  id: ruleId,
-  description:
-    "Disallow Schema.declare for first-party types — use a proper Schema definition instead.",
-  example,
-  check
-})
+export const noFirstPartySchemaDeclare: RuleCheck = check

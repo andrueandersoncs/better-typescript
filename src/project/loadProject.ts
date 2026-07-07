@@ -1,7 +1,7 @@
 import * as path from "node:path"
 import { Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { TsProgram } from "../rules/tsSchema.js"
+import { TsProgram } from "../detectors/tsSchema.js"
 
 export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
   {

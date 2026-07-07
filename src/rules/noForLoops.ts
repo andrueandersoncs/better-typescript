@@ -1,60 +1,46 @@
+import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { And, Anything, Kind, Or, Property } from "../matcher/language.js"
-import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
-import { ExampleSnippet, RuleExample } from "./types.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
-const anything = new Anything()
+const forStatementKind = ts.SyntaxKind.ForStatement
 
-const hasStopCondition = new Property({ name: "condition", term: anything })
+const forLoopElements = (context: RuleContext) => {
+  const element = detection(context)
 
-const hasInitializer = new Property({ name: "initializer", term: anything })
+  const matches = (node: ts.ForStatement): ReadonlyArray<Detection> => {
+    const hasStopCondition = pipe(
+      Option.fromNullable(node.condition),
+      Option.isSome
+    )
+    const hasInitializer = pipe(
+      Option.fromNullable(node.initializer),
+      Option.isSome
+    )
+    const hasIncrementor = pipe(
+      Option.fromNullable(node.incrementor),
+      Option.isSome
+    )
+    const hasIterator = [hasInitializer, hasIncrementor].some(Boolean)
+    const isIteratorForLoop = [hasStopCondition, hasIterator].every(Boolean)
 
-const hasIncrementor = new Property({ name: "incrementor", term: anything })
+    return isIteratorForLoop
+      ? [
+          element({
+            node,
+            message: "Avoid imperative logic in iterator-based for loops.",
+            hint:
+              "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+              "Array.filter(), or Array.flatMap(), instead."
+          })
+        ]
+      : []
+  }
 
-const hasIterator = new Or({ terms: [hasInitializer, hasIncrementor] })
+  return matches
+}
 
-const forStatement = new Kind({ kind: ts.SyntaxKind.ForStatement })
-
-// A for(;;) loop without a stop condition or without any iterator clause is an intentional infinite/manual loop, not an iteration the Array module replaces.
-const iteratorForLoop = new And({
-  terms: [forStatement, hasStopCondition, hasIterator]
-})
-
-const badExample = new ExampleSnippet({
-  filePath: "src/transform.ts",
-  code: `declare const items: ReadonlyArray<number>
-
-export const doubled: Array<number> = []
-
-for (let i = 0; i < items.length; i++) {
-  doubled.push(items[i] * 2)
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/transform.ts",
-  code: `import { Array } from "effect"
-
-declare const items: ReadonlyArray<number>
-
-export const doubled = Array.map(items, (item) => item * 2)`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-const spec = new MatcherRuleSpec({
-  id: "no-for-loops",
-  description:
-    "Disallow iterator-based for loops in favor of Effect collection operations.",
-  matcher: iteratorForLoop,
-  message: "Avoid imperative logic in iterator-based for loops.",
-  hint:
-    "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-    "Array.filter(), or Array.flatMap(), instead.",
-  example
-})
-
-export const noForLoops = matcherRule(spec)
+export const noForLoops: RuleCheck = nodeCheck([forStatementKind])(
+  ts.isForStatement
+)(forLoopElements)

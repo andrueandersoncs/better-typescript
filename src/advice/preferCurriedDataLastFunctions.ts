@@ -1,29 +1,29 @@
 import { Array, Function, HashMap, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { foldAst } from "./traverse.js"
-import type { AstFold } from "./traverse.js"
-import { nodeListeners, withProgramIndex } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
+import { foldAst, type AstFold } from "../detectors/sources.js"
+import { nodeSubscriptions, withProgramIndex } from "../rules/ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
 import {
   conciseArrowBody,
   isFunctionInitializer,
   isProjectSourceFile,
-  namedNodeReportTarget,
+  namedDetectionTarget,
   outermostTransparentWrapper,
   unwrapTransparentExpression
-} from "./tsNode.js"
-import { resolvedCallSignature, signatureIsExternal } from "./tsSignature.js"
-import { hasCallSignature } from "./tsType.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
+} from "../rules/tsNode.js"
+import {
+  resolvedCallSignature,
+  signatureIsExternal
+} from "../rules/tsSignature.js"
+import { hasCallSignature } from "../rules/tsType.js"
 import type {
   ProgramContext,
+  RuleCheck,
   RuleContext,
-  RuleListener,
-  Finding
-} from "./types.js"
-
-const ruleId = "prefer-curried-data-last-functions"
+  Detection,
+  Subscription
+} from "../detectors/rule.js"
 
 type CurriedDataLastCandidate =
   | ts.FunctionDeclaration
@@ -511,16 +511,16 @@ const hasOnlyContextualReferences =
       Option.exists(isContextualOnlyUse)
     )
 
-const curriedDataLastMatch =
-  (match: CreateMatch) =>
-  (declaration: CurriedDataLastCandidate): Finding => {
+const curriedDataLastElement =
+  (makeElement: MakeDetection) =>
+  (declaration: CurriedDataLastCandidate): Detection => {
     const functionTarget = pipe(
       Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
-      Option.map(namedNodeReportTarget)
+      Option.map(namedDetectionTarget)
     )
     const methodTarget = pipe(
       Option.liftPredicate(ts.isMethodDeclaration)(declaration),
-      Option.map(namedNodeReportTarget)
+      Option.map(namedDetectionTarget)
     )
     const node = pipe(
       functionTarget,
@@ -528,30 +528,26 @@ const curriedDataLastMatch =
       Option.getOrElse(Function.constant(declaration))
     )
 
-    return match({
-      ruleId,
+    return makeElement({
       node,
-      message: "Prefer curried, data-last functions.",
-      hint:
-        "Split this function into one parameter per arrow, applying configuration first and " +
-        "the data argument last. If a third-party callback dictates this shape, keep it " +
-        "behind the typed callback boundary."
+      message: "",
+      hint: ""
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all candidate declarations the dispatcher feeds to matches.
-const curriedDataLastMatches =
+// The context stage runs once per file, so every partial below is shared by all candidate declarations the report wiring feeds to elements.
+const curriedDataLastElements =
   (symbolUses: SymbolUses) => (context: RuleContext) => {
     const isContextuallyTyped = isContextuallyTypedFunction(context.checker)
     const hasOnlyContextualUses = hasOnlyContextualReferences(symbolUses)(
       context.checker
     )
-    const match = createRuleMatch(context)
-    const ruleMatch = curriedDataLastMatch(match)
+    const makeElement = detection(context)
+    const buildElement = curriedDataLastElement(makeElement)
 
-    const matches = (
+    const elements = (
       declaration: CurriedDataLastCandidate
-    ): ReadonlyArray<Finding> => {
+    ): ReadonlyArray<Detection> => {
       const hasDisallowedParameters = hasDisallowedParameterList(declaration)
       const hasCurriedBody = hasCurriedArrowBody(declaration)
       const isContextual = isContextuallyTyped(declaration)
@@ -563,47 +559,19 @@ const curriedDataLastMatches =
         !hasOnlyContextualUse
       ].every(Boolean)
 
-      return shouldReport ? [ruleMatch(declaration)] : []
+      return shouldReport ? [buildElement(declaration)] : []
     }
 
-    return matches
+    return elements
   }
 
 const curriedDataLastListeners = (
   symbolUses: SymbolUses
-): ReadonlyArray<RuleListener> =>
-  nodeListeners(candidateKinds)(isCurriedDataLastCandidate)(
-    curriedDataLastMatches(symbolUses)
+): ReadonlyArray<Subscription> =>
+  nodeSubscriptions(candidateKinds)(isCurriedDataLastCandidate)(
+    curriedDataLastElements(symbolUses)
   )
 
 const check = withProgramIndex(buildSymbolUses)(curriedDataLastListeners)
 
-const badExample = new ExampleSnippet({
-  filePath: "src/math.ts",
-  code: `const add = (left: number, right: number): number =>
-  left + right`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/math.ts",
-  code: `const add =
-  (left: number) =>
-  (right: number): number =>
-    left + right`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-// A signal, not a finding: currying every first-party function proved wrong as a command (reducers, Proxy handlers), but the measurement powers the pipeline-hostile diagnosis (see adrs/0001-layered-match-interpretation.md).
-export const preferCurriedDataLastFunctions = new Rule({
-  id: ruleId,
-  description:
-    "Measure author-controlled functions that are not curried data-last; consumed by " +
-    "the match interpreter as a signal, never reported directly.",
-  example,
-  check,
-  role: "signal"
-})
+export const preferCurriedDataLastFunctions: RuleCheck = check

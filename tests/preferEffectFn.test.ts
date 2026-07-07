@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferEffectFn } from "../src/rules/preferEffectFn.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -24,10 +24,9 @@ const makeHint = (functionName: string): string =>
   "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
   "traced span."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "compute.name",
-    ruleId: "prefer-effect-fn",
     fileName: "src/cases.ts",
     line: 6,
     column: 14,
@@ -95,17 +94,23 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEffectFnFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runPreferEffectFnFixture = async (): Promise<
+  ReadonlyArray<Detection>
+> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferEffectFn])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(preferEffectFn)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-effect-fn reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferEffectFnFixture()
+  const signals = await runPreferEffectFnFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

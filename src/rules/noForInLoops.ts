@@ -1,44 +1,26 @@
 import * as ts from "typescript"
-import { Kind } from "../matcher/language.js"
-import { MatcherRuleSpec, matcherRule } from "./matcherRule.js"
-import { ExampleSnippet, RuleExample } from "./types.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { detection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
-const forInStatement = new Kind({ kind: ts.SyntaxKind.ForInStatement })
+const forInStatementKind = ts.SyntaxKind.ForInStatement
 
-const badExample = new ExampleSnippet({
-  filePath: "src/config.ts",
-  code: `declare const config: Record<string, string>
+const forInLoopElements = (context: RuleContext) => {
+  const element = detection(context)
 
-export const result: Record<string, string> = {}
+  const matches = (node: ts.ForInStatement): ReadonlyArray<Detection> => [
+    element({
+      node,
+      message: "Avoid imperative logic in for..in loops.",
+      hint:
+        "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
+        "or Record.toEntries(), instead."
+    })
+  ]
 
-for (const key in config) {
-  result[key] = config[key].toUpperCase()
-}`
-})
+  return matches
+}
 
-const goodExample = new ExampleSnippet({
-  filePath: "src/config.ts",
-  code: `import { Record } from "effect"
-
-declare const config: Record.ReadonlyRecord<string, string>
-
-export const result = Record.map(config, (value) => value.toUpperCase())`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-const spec = new MatcherRuleSpec({
-  id: "no-for-in-loops",
-  description: "Disallow for..in loops in favor of Effect Record operations.",
-  matcher: forInStatement,
-  message: "Avoid imperative logic in for..in loops.",
-  hint:
-    "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
-    "or Record.toEntries(), instead.",
-  example
-})
-
-export const noForInLoops = matcherRule(spec)
+export const noForInLoops: RuleCheck = nodeCheck([forInStatementKind])(
+  ts.isForInStatement
+)(forInLoopElements)

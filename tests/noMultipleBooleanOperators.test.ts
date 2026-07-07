@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noMultipleBooleanOperators } from "../src/rules/noMultipleBooleanOperators.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -25,10 +25,9 @@ const expectedHint =
   "Declare multiple constant variables instead of combining operators into a " +
   "single expression."
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "two ands",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/cases.ts",
     line: 13,
     column: 12,
@@ -37,7 +36,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "mixed and or",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/cases.ts",
     line: 16,
     column: 12,
@@ -46,7 +44,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "strict equal combined with and",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/cases.ts",
     line: 19,
     column: 12,
@@ -55,7 +52,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "double negation",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/cases.ts",
     line: 22,
     column: 12,
@@ -64,7 +60,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nested ternary",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/cases.ts",
     line: 25,
     column: 12,
@@ -73,7 +68,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "two ands inside ternary condition",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/ternaryConditions.ts",
     line: 19,
     column: 12,
@@ -82,7 +76,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "nested ternary in branch",
-    ruleId: "no-multiple-boolean-operators",
     fileName: "src/ternaryConditions.ts",
     line: 22,
     column: 12,
@@ -136,15 +129,21 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  return workspace.projects.flatMap((project) =>
-    runRules([noMultipleBooleanOperators])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(noMultipleBooleanOperators)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-multiple-boolean-operators reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems, { sort: true })
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  const signals = await runFixture()
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems, { sort: true })
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

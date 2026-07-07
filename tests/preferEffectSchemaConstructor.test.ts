@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { preferEffectSchemaConstructor } from "../src/rules/preferEffectSchemaConstructor.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -35,10 +35,9 @@ const taggedHint = (tag: string): string =>
   `Schema.TaggedClass<${tag}>()("${tag}", { ... }) {} \u2014 and construct it through the ` +
   `schema: return new ${tag}({ ... }) fills in _tag and validates every field.`
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "makePoint.return",
-    ruleId: "prefer-effect-schema-constructor",
     fileName: "src/cases.ts",
     line: 5,
     column: 10,
@@ -47,7 +46,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "circle.return",
-    ruleId: "prefer-effect-schema-constructor",
     fileName: "src/cases.ts",
     line: 10,
     column: 10,
@@ -56,7 +54,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "makeUser.arrowBody",
-    ruleId: "prefer-effect-schema-constructor",
     fileName: "src/cases.ts",
     line: 14,
     column: 42,
@@ -65,7 +62,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "toResult.whenTrue",
-    ruleId: "prefer-effect-schema-constructor",
     fileName: "src/cases.ts",
     line: 18,
     column: 15,
@@ -74,7 +70,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "toResult.whenFalse",
-    ruleId: "prefer-effect-schema-constructor",
     fileName: "src/cases.ts",
     line: 18,
     column: 32,
@@ -83,7 +78,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "withDefault.coalescing",
-    ruleId: "prefer-effect-schema-constructor",
     fileName: "src/cases.ts",
     line: 23,
     column: 19,
@@ -125,17 +119,23 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runFixture = async (): Promise<ReadonlyArray<Finding>> => {
+const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferEffectSchemaConstructor])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(preferEffectSchemaConstructor)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-effect-schema-constructor reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runFixture()
+  const signals = await runFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

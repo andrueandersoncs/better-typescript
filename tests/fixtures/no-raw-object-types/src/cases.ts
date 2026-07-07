@@ -1,4 +1,4 @@
-// --- Parameter violations ---
+// --- Parameter disallowed cases ---
 
 // Inline object type in arrow function parameter
 export const startServer = (config: { host: string; port: number }): boolean =>
@@ -29,7 +29,7 @@ export const handleInput = (input: { value: string } | null): string =>
 export const identify = (entity: { id: number } & { name: string }): number =>
   entity.id
 
-// --- Return type violations ---
+// --- Return type disallowed cases ---
 
 // Inline object type as return type
 export const createPair = (

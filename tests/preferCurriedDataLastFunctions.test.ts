@@ -1,15 +1,14 @@
+import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { preferCurriedDataLastFunctions } from "../src/rules/preferCurriedDataLastFunctions.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import { preferCurriedDataLastFunctions } from "../src/advice/preferCurriedDataLastFunctions.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
-  assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -20,58 +19,36 @@ const fixturePath = path.join(
   "prefer-curried-data-last-functions"
 )
 
-const message = "Prefer curried, data-last functions."
-
-const hint =
-  "Split this function into one parameter per arrow, applying configuration first and " +
-  "the data argument last. If a third-party callback dictates this shape, keep it " +
-  "behind the typed callback boundary."
-
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "combineValues two-parameter arrow",
-    ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
     line: 1,
-    column: 30,
-    message,
-    hint
+    column: 30
   },
   {
     name: "collectValues rest-parameter arrow",
-    ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
     line: 4,
-    column: 30,
-    message,
-    hint
+    column: 30
   },
   {
     name: "multiplyValues two-parameter function expression",
-    ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
     line: 6,
-    column: 31,
-    message,
-    hint
+    column: 31
   },
   {
     name: "clampRange multi-parameter outer arrow returning another arrow",
-    ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
     line: 11,
-    column: 3,
-    message,
-    hint
+    column: 3
   },
   {
     name: "ruleStyleMatches first-party handler reference",
-    ruleId: "prefer-curried-data-last-functions",
     fileName: "src/cases.ts",
     line: 23,
-    column: 26,
-    message,
-    hint
+    column: 26
   }
 ]
 
@@ -114,19 +91,41 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
+const ruleElementLocation = (element: Detection) => ({
+  fileName: element.location.path,
+  line: element.location.line,
+  column: element.location.column
+})
+
+const fixtureItemLocation = (item: FixtureItem) => ({
+  fileName: item.fileName,
+  line: item.line,
+  column: item.column
+})
+
 const runPreferCurriedDataLastFunctionsFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([preferCurriedDataLastFunctions])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(
+        runRuleCheckOnProject(preferCurriedDataLastFunctions)(project)
+      )
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("prefer-curried-data-last-functions reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runPreferCurriedDataLastFunctionsFixture()
+  const signals = await runPreferCurriedDataLastFunctionsFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assert.deepEqual(
+    signals.map(ruleElementLocation),
+    disallowedFixtureItems.map(fixtureItemLocation),
+    "expected the helper to report exactly the disallowed fixture locations"
+  )
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })

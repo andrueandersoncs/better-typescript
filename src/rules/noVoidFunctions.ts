@@ -1,15 +1,12 @@
 import { Option, pipe } from "effect"
 import * as ts from "typescript"
-import { onNode } from "./ruleCheck.js"
-import { createRuleMatch } from "./ruleMatch.js"
-import type { CreateMatch } from "./ruleMatch.js"
-import { isFunctionInitializer, namedNodeReportTarget } from "./tsNode.js"
+import { nodeCheck } from "./ruleCheck.js"
+import { isFunctionInitializer, namedDetectionTarget } from "./tsNode.js"
 import { isVoidType, permitsVoid } from "./tsType.js"
-import { ExampleSnippet, Rule, RuleExample } from "./types.js"
 import type { FunctionInitializer } from "./tsNode.js"
-import type { RuleContext, Finding } from "./types.js"
-
-const ruleId = "no-void-functions"
+import { detection } from "../detectors/location.js"
+import type { MakeDetection } from "../detectors/location.js"
+import type { RuleCheck, RuleContext, Detection } from "../detectors/rule.js"
 
 type VoidableFunction =
   | ts.FunctionDeclaration
@@ -104,12 +101,11 @@ const isContextuallyTypedObjectMethod =
     )
 
 const voidFunctionMatch =
-  (match: CreateMatch) =>
-  (declaration: VoidableFunction): Finding => {
-    const node = namedNodeReportTarget(declaration)
+  (match: MakeDetection) =>
+  (declaration: VoidableFunction): Detection => {
+    const node = namedDetectionTarget(declaration)
 
     return match({
-      ruleId,
       node,
       message: "Avoid functions that return void.",
       hint:
@@ -121,16 +117,16 @@ const voidFunctionMatch =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all voidable functions the dispatcher feeds to matches.
+// The context stage runs once per file, so every partial below is shared by all voidable functions the report wiring feeds to matches.
 const voidFunctionMatches = (context: RuleContext) => {
   const isContextualVoidCallback = isContextuallyVoidCallback(context.checker)
   const isContextualObjectMethod = isContextuallyTypedObjectMethod(
     context.checker
   )
   const declarationReturnsVoid = returnsVoid(context.checker)
-  const ruleMatch = voidFunctionMatch(createRuleMatch(context))
+  const ruleMatch = voidFunctionMatch(detection(context))
 
-  const matches = (declaration: VoidableFunction): ReadonlyArray<Finding> => {
+  const matches = (declaration: VoidableFunction): ReadonlyArray<Detection> => {
     const isContextualVoid =
       isFunctionInitializer(declaration) &&
       isContextualVoidCallback(declaration)
@@ -149,34 +145,8 @@ const voidFunctionMatches = (context: RuleContext) => {
   return matches
 }
 
-const check = onNode(voidableFunctionKinds)(isVoidableFunction)(
+const check = nodeCheck(voidableFunctionKinds)(isVoidableFunction)(
   voidFunctionMatches
 )
 
-const badExample = new ExampleSnippet({
-  filePath: "src/log.ts",
-  code: `export const logMessage = (msg: string): void => {
-  console.log(msg)
-}`
-})
-
-const goodExample = new ExampleSnippet({
-  filePath: "src/log.ts",
-  code: `import { Effect } from "effect"
-
-export const logMessage = (msg: string) =>
-  Effect.sync(() => console.log(msg))`
-})
-
-const example = new RuleExample({
-  bad: [badExample],
-  good: [goodExample]
-})
-
-export const noVoidFunctions = new Rule({
-  id: ruleId,
-  description:
-    "Disallow functions that return void in favor of Effect-returning functions.",
-  example,
-  check
-})
+export const noVoidFunctions: RuleCheck = check

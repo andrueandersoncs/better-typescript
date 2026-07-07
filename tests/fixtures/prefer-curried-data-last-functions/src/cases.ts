@@ -12,17 +12,17 @@ export const clampRange =
   (value: number): number =>
     Math.min(max, Math.max(min, value))
 
-type RuleMatch = { readonly ok: true }
+type RuleOutput = { readonly ok: true }
 type RuleContext = { readonly sourceFile: string }
 type ClassDeclaration = { readonly kind: "class" }
 
-declare const onNode: <N>(
-  handler: (node: N, context: RuleContext) => ReadonlyArray<RuleMatch>
+declare const nodeCheck: <N>(
+  handler: (node: N, context: RuleContext) => ReadonlyArray<RuleOutput>
 ) => void
 
 const ruleStyleMatches = (
   node: ClassDeclaration,
   context: RuleContext
-): ReadonlyArray<RuleMatch> => [{ ok: true }]
+): ReadonlyArray<RuleOutput> => [{ ok: true }]
 
-onNode(ruleStyleMatches)
+nodeCheck(ruleStyleMatches)

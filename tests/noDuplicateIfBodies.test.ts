@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noDuplicateIfBodies } from "../src/rules/noDuplicateIfBodies.js"
-import type { Finding } from "../src/rules/index.js"
-import { runRules } from "../src/runner/runRules.js"
+import type { Detection } from "../src/detectors/rule.js"
+import { runRuleCheckOnProject } from "../src/detectors/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
-  type ExpectedRuleMatch,
+  type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
 
@@ -27,10 +27,9 @@ const hintFor = (combinedCondition: string): string =>
   "conditions differ. Combine them into a single branch: " +
   `if (${combinedCondition}) { ... }.`
 
-const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
+const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "adjacentGuardDuplicate.secondIf",
-    ruleId: "no-duplicate-if-bodies",
     fileName: "src/cases.ts",
     line: 7,
     column: 3,
@@ -39,7 +38,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "unwrappedGuardDuplicate.secondIf",
-    ruleId: "no-duplicate-if-bodies",
     fileName: "src/cases.ts",
     line: 14,
     column: 3,
@@ -48,7 +46,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedRuleMatch> = [
   },
   {
     name: "elseIfDuplicate.elseIf",
-    ruleId: "no-duplicate-if-bodies",
     fileName: "src/cases.ts",
     line: 22,
     column: 10,
@@ -127,18 +124,22 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runNoDuplicateIfBodiesFixture = async (): Promise<
-  ReadonlyArray<Finding>
+  ReadonlyArray<Detection>
 > => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-  return workspace.projects.flatMap((project) =>
-    runRules([noDuplicateIfBodies])(project)
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runRuleCheckOnProject(noDuplicateIfBodies)(project))
+    )
   )
+
+  return projectElements.flat()
 }
 
 test("no-duplicate-if-bodies reports disallowed and permits allowed fixture items", async () => {
-  const matches = await runNoDuplicateIfBodiesFixture()
+  const signals = await runNoDuplicateIfBodiesFixture()
 
-  assertDisallowedFixtureItems(matches, disallowedFixtureItems)
-  assertAllowedFixtureItems(matches, allowedFixtureItems)
+  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
+  assertAllowedFixtureItems(signals, allowedFixtureItems)
 })
