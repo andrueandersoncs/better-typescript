@@ -2,14 +2,12 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Chunk, Effect, Option, Stream, pipe } from "effect"
+import { Chunk, Effect, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { Location, locateNode } from "../src/detectors/location.js"
 import {
   adviceText,
   filterFallbackAdvice,
-  paginateBlocks,
-  renderPage,
   report,
   reportFromWiring,
   reportLeaves,
@@ -505,65 +503,6 @@ test("report collects the exported report stream for a loaded workspace", async 
     false,
     "expected the exported report stream to collect renderable text blocks when it emits"
   )
-})
-
-test("renderPage appends the exact pagination footer while more blocks remain", () => {
-  const blocks = [
-    "signal one",
-    "signal two",
-    "signal three",
-    "signal four",
-    "signal five"
-  ]
-
-  const firstPage = pipe(blocks, paginateBlocks(0)(Option.some(2)))
-  const secondPage = pipe(blocks, paginateBlocks(2)(Option.some(2)))
-
-  assert.equal(
-    renderPage(firstPage),
-    [
-      "signal one",
-      "signal two",
-      "Showing signals 1-2 of 5. Use --offset 2 to see the next page."
-    ].join("\n\n")
-  )
-  assert.equal(
-    renderPage(secondPage),
-    [
-      "signal three",
-      "signal four",
-      "Showing signals 3-4 of 5. Use --offset 4 to see the next page."
-    ].join("\n\n")
-  )
-})
-
-test("renderPage omits the pagination footer on final and unlimited pages", () => {
-  const blocks = [
-    "signal one",
-    "signal two",
-    "signal three",
-    "signal four",
-    "signal five"
-  ]
-
-  const finalPage = pipe(blocks, paginateBlocks(4)(Option.some(2)))
-  const unlimitedPage = pipe(blocks, paginateBlocks(0)(Option.none()))
-
-  assert.equal(renderPage(finalPage), "signal five")
-  assert.equal(renderPage(unlimitedPage), blocks.join("\n\n"))
-})
-
-test("paginateBlocks reports an empty page past the end without a footer", () => {
-  const page = pipe(
-    ["signal one", "signal two"],
-    paginateBlocks(5)(Option.some(2))
-  )
-
-  assert.deepEqual(page.blocks, [])
-  assert.equal(page.total, 2)
-  assert.equal(page.startIndex, 0)
-  assert.equal(page.endIndex, 2)
-  assert.equal(renderPage(page), "")
 })
 
 test("filterFallbackAdvice suppresses same-path file fallback advice only", async () => {

@@ -1,6 +1,19 @@
-import { Array, MutableList, MutableRef, Schema, Stream, pipe } from "effect"
+import {
+  Array,
+  Data,
+  Effect,
+  HashMap,
+  MutableList,
+  MutableRef,
+  Option,
+  Schema,
+  Scope,
+  Stream,
+  StreamEmit,
+  pipe
+} from "effect"
 import * as ts from "typescript"
-import type { LoadedProject } from "../project/loadProject.js"
+import type { LoadedProject, ProjectConfig } from "../project/loadProject.js"
 import { TsNode, TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
 
 // The program context is born with the source stream: every element carries it.
@@ -34,6 +47,14 @@ const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean => {
 
   return !isSkippable
 }
+
+export const contextFor =
+  (projectRoot: string) =>
+  (program: ts.Program): ProgramContext => {
+    const checker = program.getTypeChecker()
+
+    return new ProgramContext({ program, checker, projectRoot })
+  }
 
 export const checkableSourceFiles = (
   project: LoadedProject
@@ -112,18 +133,170 @@ const astNodeStream =
     return Stream.fromIterable(nodes)
   }
 
-export const astNodes = (
-  project: LoadedProject
-): Stream.Stream<AstNodeElement, Error> => {
-  const checker = project.program.getTypeChecker()
-  const context = new ProgramContext({
-    program: project.program,
-    checker,
-    projectRoot: project.rootPath
-  })
-
-  return pipe(
-    checkableSourceFiles(project),
+export const astNodesFromContext = (
+  context: ProgramContext
+): Stream.Stream<AstNodeElement, Error> =>
+  pipe(
+    context.program.getSourceFiles(),
+    Array.filter(isCheckableSourceFile),
+    Stream.fromIterable,
     Stream.flatMap(astNodeStream(context))
   )
-}
+
+export const astNodes = (
+  project: LoadedProject
+): Stream.Stream<AstNodeElement, Error> =>
+  pipe(project.program, contextFor(project.rootPath), astNodesFromContext)
+
+// --- continuous sources: watch-driven program rebuilds and per-rebuild file diffs ---
+
+/**
+ * One rebuild's file-level diff against the previous program: changed carries
+ * the checkable source files whose object identity differs (the abstract
+ * builder reuses unchanged ts.SourceFile instances, so identity is content
+ * equality there), removed carries the absolute fileNames that disappeared.
+ */
+export class SourceUpdate extends Data.Class<{
+  readonly context: ProgramContext
+  readonly changed: ReadonlyArray<ts.SourceFile>
+  readonly removed: ReadonlyArray<string>
+}> {}
+
+// Both reporters are silenced: mid-run config breakage is tolerated and the watcher keeps the last good program.
+const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
+
+const emitProgramContext =
+  (emit: StreamEmit.EmitOpsPush<Error, ProgramContext>) =>
+  (rootPath: string) =>
+  (builder: ts.BuilderProgram): boolean => {
+    const program = builder.getProgram()
+    const context = contextFor(rootPath)(program)
+
+    return emit.single(context)
+  }
+
+const startWatch =
+  (config: ProjectConfig) =>
+  (watchOptions: Option.Option<ts.WatchOptions>) =>
+  (emit: StreamEmit.EmitOpsPush<Error, ProgramContext>) =>
+  (): ts.WatchOfConfigFile<ts.BuilderProgram> => {
+    const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
+    const host = ts.createWatchCompilerHost(
+      config.configPath,
+      undefined,
+      ts.sys,
+      ts.createAbstractBuilder,
+      ignoreDiagnostic,
+      ignoreDiagnostic,
+      watchOptionsToExtend
+    )
+
+    // The host's handler slot is a third-party assignment contract; the initial program fires it synchronously inside createWatchProgram and asyncPush buffers that first emission.
+    host.afterProgramCreate = emitProgramContext(emit)(config.rootPath)
+
+    return ts.createWatchProgram(host)
+  }
+
+const closeWatch =
+  (watch: ts.WatchOfConfigFile<ts.BuilderProgram>) => (): boolean => {
+    watch.close()
+
+    return true
+  }
+
+const stopWatch = (
+  watch: ts.WatchOfConfigFile<ts.BuilderProgram>
+): Effect.Effect<boolean> => Effect.sync(closeWatch(watch))
+
+const acquireWatch =
+  (config: ProjectConfig) =>
+  (watchOptions: Option.Option<ts.WatchOptions>) =>
+  (
+    emit: StreamEmit.EmitOpsPush<Error, ProgramContext>
+  ): Effect.Effect<
+    ts.WatchOfConfigFile<ts.BuilderProgram>,
+    never,
+    Scope.Scope
+  > => {
+    const acquire = Effect.sync(startWatch(config)(watchOptions)(emit))
+
+    return Effect.acquireRelease(acquire, stopWatch)
+  }
+
+/**
+ * The project-level root signal: one fresh ProgramContext per watch rebuild,
+ * covering file edits, adds, deletes, and leaf tsconfig edits.
+ */
+export const programUpdates = (
+  config: ProjectConfig,
+  watchOptions: Option.Option<ts.WatchOptions>
+): Stream.Stream<ProgramContext, Error> =>
+  Stream.asyncPush<ProgramContext, Error>(acquireWatch(config)(watchOptions))
+
+const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
+
+const isChangedFile =
+  (previous: HashMap.HashMap<string, ts.SourceFile>) =>
+  (sourceFile: ts.SourceFile): boolean =>
+    pipe(
+      HashMap.get(previous, sourceFile.fileName),
+      Option.match({
+        onNone: () => true,
+        onSome: (known) => known !== sourceFile
+      })
+    )
+
+const isRemovedFrom =
+  (next: HashMap.HashMap<string, ts.SourceFile>) =>
+  (fileName: string): boolean =>
+    !HashMap.has(next, fileName)
+
+const fileIndexEntry = (
+  sourceFile: ts.SourceFile
+): readonly [string, ts.SourceFile] => [sourceFile.fileName, sourceFile]
+
+/**
+ * Pure diff of one rebuilt program against the previous file index. Identity
+ * diffing may over-report changed files (a redundant recompute at worst); it
+ * never under-reports.
+ */
+export const diffCheckableFiles =
+  (previous: HashMap.HashMap<string, ts.SourceFile>) =>
+  (
+    context: ProgramContext
+  ): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
+    const currentFiles = pipe(
+      context.program.getSourceFiles(),
+      Array.filter(isCheckableSourceFile)
+    )
+    const next = pipe(
+      currentFiles,
+      Array.map(fileIndexEntry),
+      HashMap.fromIterable
+    )
+    const changed = Array.filter(currentFiles, isChangedFile(previous))
+    const removed = pipe(
+      previous,
+      HashMap.keys,
+      Array.fromIterable,
+      Array.filter(isRemovedFrom(next))
+    )
+    const update = new SourceUpdate({ context, changed, removed })
+
+    return [next, update]
+  }
+
+/**
+ * The file-level root signal: per rebuild, which checkable source files
+ * changed and which paths disappeared (first emission: all checkable files).
+ */
+export const sourceUpdates = (
+  config: ProjectConfig,
+  watchOptions: Option.Option<ts.WatchOptions>
+): Stream.Stream<SourceUpdate, Error> =>
+  pipe(
+    programUpdates(config, watchOptions),
+    Stream.mapAccum(emptyFileIndex, (previous, context) =>
+      diffCheckableFiles(previous)(context)
+    )
+  )

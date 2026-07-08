@@ -305,7 +305,10 @@ const schemaClassDetection =
         `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
         "for tagged variants). The class is both the type and the constructor: keep using " +
         `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
-        "so every construction is validated."
+        "so every construction is validated. When the shape must hold non-serializable " +
+        "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
+        `instead — class ${typeName} extends Data.Class<{ ... }> {} — the same ` +
+        "class-as-type-and-constructor discipline without schema validation."
     })
   }
 

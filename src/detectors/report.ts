@@ -1,13 +1,14 @@
 import {
   Array,
   Chunk,
+  Data,
   Effect,
   HashSet,
-  Option,
   Record,
   Order,
   Schema,
   Stream,
+  Struct,
   pipe
 } from "effect"
 import type { LoadedProject, LoadedWorkspace } from "../project/loadProject.js"
@@ -85,46 +86,52 @@ import {
   systemicHotspots
 } from "../advice/index.js"
 
-const detectionSignal = Schema.Any
-
 // A rule's signal, tagged with the prose name its leaf prints.
-export class RuleSignals extends Schema.Class<RuleSignals>("RuleSignals")({
-  name: Schema.String,
-  elements: detectionSignal
-}) {
-  declare readonly elements: Stream.Stream<Detection, Error>
-}
+export class RuleSignals extends Data.Class<{
+  readonly name: string
+  readonly elements: Stream.Stream<Detection, Error>
+}> {}
 
-export class NamedRuleCheck extends Schema.Class<NamedRuleCheck>(
-  "NamedRuleCheck"
-)({
-  name: Schema.String,
-  check: Schema.Any
-}) {
-  declare readonly check: RuleCheck
-}
+export class NamedRuleCheck extends Data.Class<{
+  readonly name: string
+  readonly check: RuleCheck
+}> {}
 
-const namedRuleChecks = Schema.Array(NamedRuleCheck)
-const optionalNamedRuleChecks = Schema.optional(namedRuleChecks)
-
-export class ReportWiring extends Schema.Class<ReportWiring>("ReportWiring")({
-  rules: namedRuleChecks,
-  helpers: optionalNamedRuleChecks,
-  advice: Schema.Any
-}) {
-  declare readonly advice: (
+export class ReportWiring extends Data.Class<{
+  readonly rules: ReadonlyArray<NamedRuleCheck>
+  readonly helpers: ReadonlyArray<NamedRuleCheck>
+  readonly advice: (
     rules: ReadonlyArray<RuleSignals>,
     helpers: ReadonlyArray<RuleSignals>
   ) => Stream.Stream<AdviceElement, Error>
-}
+}> {}
 
-class DedupeState extends Schema.Class<DedupeState>("DedupeState")({
-  seen: Schema.Any,
-  elements: Schema.Any
-}) {
-  declare readonly seen: HashSet.HashSet<string>
-  declare readonly elements: ReadonlyArray<Detection>
-}
+class DedupeState extends Data.Class<{
+  readonly seen: HashSet.HashSet<string>
+  readonly elements: ReadonlyArray<Detection>
+}> {}
+
+// One rule's materialized signal for one change batch: deduped, in order.
+export class RuleSnapshot extends Data.Class<{
+  readonly name: string
+  readonly detections: ReadonlyArray<Detection>
+}> {}
+
+// Every rule's signal for ONE consistent batch; helpers feed advice only.
+export class SignalsBatch extends Data.Class<{
+  readonly rules: ReadonlyArray<RuleSnapshot>
+  readonly helpers: ReadonlyArray<RuleSnapshot>
+}> {}
+
+/**
+ * A rendered report block with a stable identity across batches: text is what
+ * the report prints, cleared is the one line printed when the block disappears.
+ */
+export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
+  key: Schema.String,
+  text: Schema.String,
+  cleared: Schema.String
+}) {}
 
 // Materialize a project's node stream once; every rule replays the snapshot.
 const snapshotProject = (
@@ -175,25 +182,68 @@ const collectDetections =
     return Stream.runCollect(signal)
   }
 
-// Dedupe repeated workspace locations, then rematerialize the rule's signal
-// as a replayable snapshot stream every consumer can run independently.
-const dedupedRuleSignals =
+// Dedupe repeated workspace locations into one rule's materialized snapshot.
+const dedupedRuleSnapshot =
   (name: string) =>
-  (collected: ReadonlyArray<Chunk.Chunk<Detection>>): RuleSignals => {
+  (collected: ReadonlyArray<Chunk.Chunk<Detection>>): RuleSnapshot => {
     const elements = collected.flatMap(Chunk.toReadonlyArray)
     const deduped = Array.reduce(elements, emptyDedupeState, addUniqueElement)
-    const signal = Stream.fromIterable(deduped.elements)
 
-    return new RuleSignals({ name, elements: signal })
+    return new RuleSnapshot({ name, detections: deduped.elements })
   }
 
-const ruleSignalsFromSnapshots =
+const ruleSnapshotFromNodes =
   (snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>) =>
-  (rule: NamedRuleCheck): Effect.Effect<RuleSignals, Error> =>
+  (rule: NamedRuleCheck): Effect.Effect<RuleSnapshot, Error> =>
     pipe(
       Effect.forEach(snapshots, collectDetections(rule.check)),
-      Effect.map(dedupedRuleSignals(rule.name))
+      Effect.map(dedupedRuleSnapshot(rule.name))
     )
+
+const splitSignalsBatch =
+  (ruleCount: number) =>
+  (snapshots: ReadonlyArray<RuleSnapshot>): SignalsBatch => {
+    const rules = Array.take(snapshots, ruleCount)
+    const helpers = Array.drop(snapshots, ruleCount)
+
+    return new SignalsBatch({ rules, helpers })
+  }
+
+/**
+ * Run every wired check (rules first, then helpers) over one consistent set of
+ * project node snapshots and split the results back along the wiring.
+ */
+export const workspaceSignals =
+  (wiring: ReportWiring) =>
+  (
+    snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
+  ): Effect.Effect<SignalsBatch, Error> => {
+    const checks = Array.appendAll(wiring.rules, wiring.helpers)
+    const collected = Effect.forEach(checks, ruleSnapshotFromNodes(snapshots))
+
+    return Effect.map(collected, splitSignalsBatch(wiring.rules.length))
+  }
+
+// Lift a materialized snapshot back into the replayable stream form the advice wiring consumes.
+const snapshotSignals = (snapshot: RuleSnapshot): RuleSignals => {
+  const elements = Stream.fromIterable(snapshot.detections)
+
+  return new RuleSignals({ name: snapshot.name, elements })
+}
+
+/**
+ * Within one batch the ADR-0006 advice graph runs unchanged: advice consumes
+ * the replayable rule streams it needs.
+ */
+export const collectAdvice =
+  (wiring: ReportWiring) =>
+  (batch: SignalsBatch): Effect.Effect<ReadonlyArray<AdviceElement>, Error> => {
+    const rules = Array.map(batch.rules, snapshotSignals)
+    const helpers = Array.map(batch.helpers, snapshotSignals)
+    const advice = wiring.advice(rules, helpers)
+
+    return collectSignals(advice)
+  }
 
 export const runRuleCheckOnProject =
   (check: RuleCheck) =>
@@ -206,11 +256,14 @@ export const runRuleCheckOnProject =
 
 export const runRuleSignals =
   (workspace: LoadedWorkspace) =>
-  (rule: NamedRuleCheck): Effect.Effect<RuleSignals, Error> =>
-    pipe(
+  (rule: NamedRuleCheck): Effect.Effect<RuleSignals, Error> => {
+    const snapshotted = pipe(
       snapshotWorkspace(workspace),
-      Effect.flatMap((snapshots) => ruleSignalsFromSnapshots(snapshots)(rule))
+      Effect.flatMap((snapshots) => ruleSnapshotFromNodes(snapshots)(rule))
     )
+
+    return Effect.map(snapshotted, snapshotSignals)
+  }
 
 const evidenceText = (item: EvidenceItem): string =>
   `  evidence: ${item.measure}: ${item.count}`
@@ -227,15 +280,39 @@ const byAdviceLevel = Order.mapInput(Order.number, adviceLevelRank)
 const byAdvicePath = Order.mapInput(Order.string, advicePath)
 const adviceOrder = Order.combine(byAdviceLevel, byAdvicePath)
 
-export const adviceText = (advice: AdviceElement): string => {
+const adviceHeader = (advice: AdviceElement): string => {
   const pathLabel = advicePath(advice)
-  const header = `${pathLabel} [${advice.level}] — ${advice.title}`
+
+  return `${pathLabel} [${advice.level}] — ${advice.title}`
+}
+
+export const adviceText = (advice: AdviceElement): string => {
+  const header = adviceHeader(advice)
   const remediation = `  fix: ${advice.remediation}`
   const evidence = advice.evidence.map(evidenceText)
   const lines = Array.appendAll([header, remediation], evidence)
 
   return Array.join(lines, "\n")
 }
+
+const adviceReportBlock = (advice: AdviceElement): ReportBlock => {
+  const pathLabel = advicePath(advice)
+  const key = `advice\u0000${advice.level}\u0000${pathLabel}\u0000${advice.title}`
+  const text = adviceText(advice)
+  const header = adviceHeader(advice)
+  const cleared = `${header} — cleared`
+
+  return new ReportBlock({ key, text, cleared })
+}
+
+/**
+ * Keyed advice blocks in report order: file advice first, then directory, then
+ * project, each sorted by path.
+ */
+export const adviceReportBlocks = (
+  advice: ReadonlyArray<AdviceElement>
+): ReadonlyArray<ReportBlock> =>
+  pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
 
 const detectionBlockKey = (element: Detection): string =>
   `${element.message}\u0000${element.hint}`
@@ -261,39 +338,67 @@ const ruleTextForDetections =
       })
     )
 
-const sortedAdviceBlocks = (
-  advice: ReadonlyArray<AdviceElement>
-): ReadonlyArray<string> =>
-  pipe(advice, Array.sort(adviceOrder), Array.map(adviceText))
-
-// Leaf: fold the merged advice signal into ordered text blocks — file advice
-// first, then directory, then project, each sorted by path.
-export const adviceLeaf: (
-  advice: Stream.Stream<AdviceElement, Error>
-) => Stream.Stream<string, Error> = deriveSignals(sortedAdviceBlocks)
-
-const ruleBlocksFor =
+const ruleReportBlockForGroup =
   (name: string) =>
-  (elements: ReadonlyArray<Detection>): ReadonlyArray<string> =>
+  (elements: Array.NonEmptyArray<Detection>): ReportBlock => {
+    const first = Array.headNonEmpty(elements)
+    const key = `rule\u0000${name}\u0000${first.message}\u0000${first.hint}`
+    const text = ruleTextForDetections(name)(elements)
+    const cleared = `${name} — cleared: ${first.message}`
+
+    return new ReportBlock({ key, text, cleared })
+  }
+
+/**
+ * Keyed rule blocks, one per distinct message and hint, groups in insertion
+ * order.
+ */
+export const ruleReportBlocks =
+  (name: string) =>
+  (elements: ReadonlyArray<Detection>): ReadonlyArray<ReportBlock> =>
     pipe(
       Array.groupBy(elements, detectionBlockKey),
       Record.values,
-      Array.map(ruleTextForDetections(name))
+      Array.map(ruleReportBlockForGroup(name))
     )
 
-// Leaf: fold one rule's signal into text blocks, one block per distinct
-// message and hint, named by the prose string given at the wiring site.
+const blockText: (block: ReportBlock) => string = Struct.get("text")
+
+const sortedAdviceBlockTexts = (
+  advice: ReadonlyArray<AdviceElement>
+): ReadonlyArray<string> =>
+  pipe(advice, adviceReportBlocks, Array.map(blockText))
+
+/**
+ * Leaf: fold the merged advice signal into ordered text blocks — file advice
+ * first, then directory, then project, each sorted by path.
+ */
+export const adviceLeaf: (
+  advice: Stream.Stream<AdviceElement, Error>
+) => Stream.Stream<string, Error> = deriveSignals(sortedAdviceBlockTexts)
+
+const ruleBlockTexts =
+  (name: string) =>
+  (elements: ReadonlyArray<Detection>): ReadonlyArray<string> =>
+    pipe(elements, ruleReportBlocks(name), Array.map(blockText))
+
+/**
+ * Leaf: fold one rule's signal into text blocks, one block per distinct
+ * message and hint, named by the prose string given at the wiring site.
+ */
 export const ruleLeaf = (
   name: string
 ): ((
   elements: Stream.Stream<Detection, Error>
-) => Stream.Stream<string, Error>) => deriveSignals(ruleBlocksFor(name))
+) => Stream.Stream<string, Error>) => deriveSignals(ruleBlockTexts(name))
 
 const signalLeaf = (signals: RuleSignals): Stream.Stream<string, Error> =>
   ruleLeaf(signals.name)(signals.elements)
 
-// The report is the concatenation of the leaf streams: the advice leaf first,
-// then one rule leaf per reported rule in wiring order.
+/**
+ * The report is the concatenation of the leaf streams: the advice leaf first,
+ * then one rule leaf per reported rule in wiring order.
+ */
 export const reportLeaves = (
   advice: Stream.Stream<AdviceElement, Error>,
   rules: ReadonlyArray<RuleSignals>
@@ -305,46 +410,35 @@ export const reportLeaves = (
   return pipe(Stream.fromIterable(leaves), Stream.flatten())
 }
 
-const pageBlocksSchema = Schema.Array(Schema.String)
+const ruleSnapshotBlocks = (
+  snapshot: RuleSnapshot
+): ReadonlyArray<ReportBlock> =>
+  ruleReportBlocks(snapshot.name)(snapshot.detections)
 
-export class Page extends Schema.Class<Page>("Page")({
-  blocks: pageBlocksSchema,
-  total: Schema.Number,
-  startIndex: Schema.Number,
-  endIndex: Schema.Number
-}) {}
+/**
+ * One batch's full keyed report: advice blocks first, then rule blocks in
+ * wiring order.
+ */
+export const reportBlocks =
+  (batch: SignalsBatch) =>
+  (advice: ReadonlyArray<AdviceElement>): ReadonlyArray<ReportBlock> => {
+    const adviceBlocks = adviceReportBlocks(advice)
+    const ruleBlocks = batch.rules.flatMap(ruleSnapshotBlocks)
 
-const pageEnd =
-  (offsetValue: number) =>
-  (limitValue: Option.Option<number>) =>
-  (total: number): number =>
-    pipe(
-      limitValue,
-      Option.match({
-        onNone: () => total,
-        onSome: (value) => Math.min(offsetValue + value, total)
-      })
-    )
-
-export const paginateBlocks =
-  (offsetValue: number) =>
-  (limitValue: Option.Option<number>) =>
-  (blocks: ReadonlyArray<string>): Page => {
-    const total = blocks.length
-    const endIndex = pageEnd(offsetValue)(limitValue)(total)
-    const pageBlocks = blocks.slice(offsetValue, endIndex)
-    const startIndex = pageBlocks.length === 0 ? 0 : offsetValue + 1
-
-    return new Page({ blocks: pageBlocks, total, startIndex, endIndex })
+    return Array.appendAll(adviceBlocks, ruleBlocks)
   }
 
-export const renderPage = (page: Page): string => {
-  const body = page.blocks.join("\n\n")
-  const hasMore = page.endIndex < page.total
-  const footer = `Showing signals ${page.startIndex}-${page.endIndex} of ${page.total}. Use --offset ${page.endIndex} to see the next page.`
+/**
+ * One batch through the advice stage into its keyed blocks; shared by the
+ * snapshot report and the watch pipeline.
+ */
+export const batchReportBlocks =
+  (wiring: ReportWiring) =>
+  (batch: SignalsBatch): Effect.Effect<ReadonlyArray<ReportBlock>, Error> => {
+    const advice = collectAdvice(wiring)(batch)
 
-  return hasMore ? `${body}\n\n${footer}` : body
-}
+    return Effect.map(advice, reportBlocks(batch))
+  }
 
 const isFileLevelAdvice = (advice: AdviceElement): boolean =>
   advice.level === "file"
@@ -372,8 +466,10 @@ const unfiredFallbackFilter =
     return Stream.filter(fallbackAdvice, isUnfiredFallback(firedFiles))
   }
 
-// Fallback suppression: a file-level fallback emission survives only where no
-// file-level specific advice fired on the same path.
+/**
+ * Fallback suppression: a file-level fallback emission survives only where no
+ * file-level specific advice fired on the same path.
+ */
 export const filterFallbackAdvice = (
   specificAdvice: Stream.Stream<AdviceElement, Error>,
   fallbackAdvice: Stream.Stream<AdviceElement, Error>
@@ -384,30 +480,20 @@ export const filterFallbackAdvice = (
     Stream.unwrap
   )
 
+/**
+ * The snapshot report: one workspace snapshot through the batch stages the
+ * watch pipeline reuses. Library and test surface; the CLI watches instead.
+ */
 export const reportFromWiring =
   (wiring: ReportWiring) =>
   (workspace: LoadedWorkspace): Stream.Stream<string, Error> => {
-    const checks = Array.appendAll(wiring.rules, wiring.helpers ?? [])
-    const signalsEffect = pipe(
+    const blocksEffect = pipe(
       snapshotWorkspace(workspace),
-      Effect.flatMap((snapshots) =>
-        Effect.forEach(checks, ruleSignalsFromSnapshots(snapshots))
-      )
+      Effect.flatMap(workspaceSignals(wiring)),
+      Effect.flatMap(batchReportBlocks(wiring))
     )
-    const leavesFromSignals = (
-      signals: ReadonlyArray<RuleSignals>
-    ): Stream.Stream<string, Error> => {
-      const rules = Array.take(signals, wiring.rules.length)
-      const helpers = Array.drop(signals, wiring.rules.length)
-      const advice = wiring.advice(rules, helpers)
 
-      return reportLeaves(advice, rules)
-    }
-
-    return pipe(
-      Stream.fromEffect(signalsEffect),
-      Stream.flatMap(leavesFromSignals)
-    )
+    return pipe(Stream.fromIterableEffect(blocksEffect), Stream.map(blockText))
   }
 
 const hasSignalName =
@@ -504,9 +590,7 @@ const helperRules: ReadonlyArray<NamedRuleCheck> = [
   })
 ]
 
-// The advice graph: each derivation consumes the upstream streams it needs.
-// Snapshot streams replay on every run, so a stream consumed by two
-// derivations recomputes its pure fold instead of sharing state.
+// The advice graph: each derivation consumes the streams it needs. Snapshot streams replay on every run, so a stream consumed by two derivations recomputes its pure fold instead of sharing state.
 const defaultAdvice = (
   ruleSignals: ReadonlyArray<RuleSignals>,
   helperSignals: ReadonlyArray<RuleSignals>
@@ -566,7 +650,7 @@ const defaultAdvice = (
   )
 }
 
-const defaultWiring: ReportWiring = {
+export const defaultWiring: ReportWiring = {
   rules: reportedRules,
   helpers: helperRules,
   advice: defaultAdvice

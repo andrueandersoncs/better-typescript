@@ -1,18 +1,10 @@
 #!/usr/bin/env node
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import {
-  Chunk,
-  Console,
-  Effect,
-  Option,
-  Schema,
-  Stream,
-  flow,
-  pipe
-} from "effect"
-import { paginateBlocks, renderPage, report } from "./detectors/report.js"
-import { loadProject } from "./project/loadProject.js"
+import { Console, Effect, Option, Stream, flow, pipe } from "effect"
+import { renderEventText, watchReport } from "./detectors/watch.js"
+import type { ReportEvent } from "./detectors/watch.js"
+import { discoverWorkspace } from "./project/loadProject.js"
 
 const workingDirectory = process.cwd()
 
@@ -21,24 +13,16 @@ const project = pipe(
   Options.withDefault(workingDirectory)
 )
 
-const limit = pipe(
-  Options.integer("limit"),
-  Options.withSchema(Schema.Positive),
-  Options.withDescription("Maximum number of signal blocks to display."),
-  Options.optional
+const pretty = pipe(
+  Options.boolean("pretty"),
+  Options.withDescription(
+    "Render human-readable text blocks instead of NDJSON events."
+  )
 )
 
-const offset = pipe(
-  Options.integer("offset"),
-  Options.withSchema(Schema.NonNegative),
-  Options.withDescription("Number of signal blocks to skip before displaying."),
-  Options.withDefault(0)
-)
-
-interface AnalyzeOptions {
+interface WatchCommandOptions {
   readonly project: string
-  readonly limit: Option.Option<number>
-  readonly offset: number
+  readonly pretty: boolean
 }
 
 const setErrorExitCode = (): number => {
@@ -47,36 +31,39 @@ const setErrorExitCode = (): number => {
   return process.exitCode
 }
 
-const analyzeProject = Effect.fn("analyzeProject")(function* (
-  options: AnalyzeOptions
-) {
-  const workspace = yield* loadProject(options.project)
-  const stream = report(workspace)
-  const emitted = yield* Stream.runCollect(stream)
-  const blocks = Chunk.toReadonlyArray(emitted)
-  const isEmpty = blocks.length === 0
-  const rendered = pipe(
-    blocks,
-    paginateBlocks(options.offset)(options.limit),
-    renderPage
-  )
-
-  return isEmpty ? `No signals in ${workspace.rootPath}.` : rendered
-})
-
 const reportError = Effect.fn("reportError")(function* (error: Error) {
   yield* Console.error(`Error: ${error.message}`)
   yield* Effect.sync(setErrorExitCode)
 })
 
-const runCommand = Effect.fn("runCommand")(function* (options: AnalyzeOptions) {
-  const output = yield* analyzeProject(options)
-  yield* Console.log(output)
+const printJsonEvent = (event: ReportEvent): Effect.Effect<void> => {
+  const line = JSON.stringify(event)
+
+  return Console.log(line)
+}
+
+const printPrettyEvent = (event: ReportEvent): Effect.Effect<void> => {
+  const text = renderEventText(event)
+
+  return Console.log(`${text}\n`)
+}
+
+// Status lines go to stderr; stdout stays a pure event stream (tee it to capture).
+const runCommand = Effect.fn("runCommand")(function* (
+  options: WatchCommandOptions
+) {
+  const workspace = yield* discoverWorkspace(options.project)
+  const watchOptions = Option.none()
+  const events = watchReport(workspace, watchOptions)
+  const printEvent = options.pretty ? printPrettyEvent : printJsonEvent
+
+  yield* Console.error(`Watching ${workspace.rootPath} for changes.`)
+  yield* Stream.runForEach(events, printEvent)
 })
 
 const rootCommand = Command.make(
   "better-typescript",
-  { project, limit, offset },
+  { project, pretty },
   flow(runCommand, Effect.catchAll(reportError))
 )
 

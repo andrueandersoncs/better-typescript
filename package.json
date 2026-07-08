@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/index.ts --pretty",
     "start": "tsx src/index.ts",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "build": "tsc -p tsconfig.json && chmod +x dist/index.js",

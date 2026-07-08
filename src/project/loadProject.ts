@@ -1,7 +1,22 @@
 import * as path from "node:path"
-import { Effect, Function, HashSet, Option, Schema } from "effect"
+import { Data, Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { TsProgram } from "../detectors/tsSchema.js"
+
+/**
+ * A discovered leaf project: its config location and parsed command line, with
+ * no ts.Program built yet. Watch mode consumes configs directly.
+ */
+export class ProjectConfig extends Data.Class<{
+  readonly configPath: string
+  readonly rootPath: string
+  readonly parsed: ts.ParsedCommandLine
+}> {}
+
+export class WorkspaceConfigs extends Data.Class<{
+  readonly rootPath: string
+  readonly projects: ReadonlyArray<ProjectConfig>
+}> {}
 
 export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
   {
@@ -46,9 +61,9 @@ class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectRe
   }
 }
 
-export const loadProject: (
+export const discoverWorkspace: (
   projectPath: string
-) => Effect.Effect<LoadedWorkspace, Error> = Effect.fn("loadProject")(
+) => Effect.Effect<WorkspaceConfigs, Error> = Effect.fn("discoverWorkspace")(
   function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
     const foundConfigPath = ts.findConfigFile(
@@ -63,18 +78,43 @@ export const loadProject: (
     }
 
     const rootAncestorPaths = HashSet.empty<string>()
-    const projects = yield* loadConfig(configPath.value, rootAncestorPaths)
+    const projects = yield* discoverConfig(configPath.value, rootAncestorPaths)
     const workspaceRootPath = path.dirname(configPath.value)
 
-    return new LoadedWorkspace({ rootPath: workspaceRootPath, projects })
+    return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
   }
 )
 
-const loadConfig: (
+const createProject = (config: ProjectConfig): LoadedProject => {
+  const program = ts.createProgram({
+    rootNames: config.parsed.fileNames,
+    options: config.parsed.options,
+    projectReferences: config.parsed.projectReferences
+  })
+
+  return new LoadedProject({
+    configPath: config.configPath,
+    rootPath: config.rootPath,
+    program
+  })
+}
+
+export const loadProject: (
+  projectPath: string
+) => Effect.Effect<LoadedWorkspace, Error> = Effect.fn("loadProject")(
+  function* (projectPath: string) {
+    const workspace = yield* discoverWorkspace(projectPath)
+    const projects = workspace.projects.map(createProject)
+
+    return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
+  }
+)
+
+const discoverConfig: (
   configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
-) => Effect.Effect<ReadonlyArray<LoadedProject>, Error> = Effect.fn(
-  "loadConfig"
+) => Effect.Effect<ReadonlyArray<ProjectConfig>, Error> = Effect.fn(
+  "discoverConfig"
 )(function* (configPath: string, ancestorConfigPaths: HashSet.HashSet<string>) {
   if (HashSet.has(ancestorConfigPaths, configPath)) {
     return yield* new CircularProjectReferenceError({ configPath })
@@ -114,23 +154,18 @@ const loadConfig: (
   }
 
   const rootPath = path.dirname(configPath)
-  const program = ts.createProgram({
-    rootNames: parsedConfig.fileNames,
-    options: parsedConfig.options,
-    projectReferences: parsedConfig.projectReferences
-  })
 
-  return [new LoadedProject({ configPath, rootPath, program })]
+  return [new ProjectConfig({ configPath, rootPath, parsed: parsedConfig })]
 })
 
 const loadReference =
   (ancestorConfigPaths: HashSet.HashSet<string>) =>
   (
     reference: ts.ProjectReference
-  ): Effect.Effect<ReadonlyArray<LoadedProject>, Error> => {
+  ): Effect.Effect<ReadonlyArray<ProjectConfig>, Error> => {
     const referencedConfigPath = ts.resolveProjectReferencePath(reference)
 
-    return loadConfig(referencedConfigPath, ancestorConfigPaths)
+    return discoverConfig(referencedConfigPath, ancestorConfigPaths)
   }
 
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
