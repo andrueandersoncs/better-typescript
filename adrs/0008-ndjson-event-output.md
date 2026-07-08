@@ -37,10 +37,12 @@ The event vocabulary, discriminated by `_tag`:
   its one cleared line.
 - `empty` `{ rootPath }` — the initial report found no signals.
 
-`key` is the block's stable identity across batches (ADR-0007's keyed blocks);
-consumers correlate a `cleared` event with the `signal` events it retires by
-key. The events are plain-data `Schema.TaggedClass` values, so the wire format
-is exactly their fields plus `_tag`.
+`key` is the block's stable identity across batches. Rule keys are structured as
+`{ _tag: "rule", name, message, hint }`; advice keys are structured as
+`{ _tag: "advice", level, path, title }`. Consumers correlate a `cleared` event
+with the `signal` events it retires by deep-equal key. The events are
+plain-data `Schema.TaggedClass` values, so the wire format is exactly their
+fields plus `_tag`.
 
 `--pretty` renders the same events through `renderEventText`, reproducing the
 prior human-readable output verbatim: block texts and cleared lines each

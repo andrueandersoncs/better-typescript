@@ -124,11 +124,38 @@ export class SignalsBatch extends Data.Class<{
 }> {}
 
 /**
- * A rendered report block with a stable identity across batches: text is what
- * the report prints, cleared is the one line printed when the block disappears.
+ * Public stable identity for an advice report block.
+ */
+export class AdviceReportKey extends Schema.TaggedClass<AdviceReportKey>()(
+  "advice",
+  {
+    level: Schema.String,
+    path: Schema.String,
+    title: Schema.String
+  }
+) {}
+
+/**
+ * Public stable identity for a rule report block.
+ */
+export class RuleReportKey extends Schema.TaggedClass<RuleReportKey>()("rule", {
+  name: Schema.String,
+  message: Schema.String,
+  hint: Schema.String
+}) {}
+
+export type ReportKey = AdviceReportKey | RuleReportKey
+
+export const reportKeySchema = Schema.Union(AdviceReportKey, RuleReportKey)
+
+/**
+ * A rendered report block with a stable identity across batches: identity is
+ * private delta state, key is the public NDJSON identity, text is what the
+ * report prints, cleared is the one line printed when the block disappears.
  */
 export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
-  key: Schema.String,
+  identity: Schema.String,
+  key: reportKeySchema,
   text: Schema.String,
   cleared: Schema.String
 }) {}
@@ -295,14 +322,29 @@ export const adviceText = (advice: AdviceElement): string => {
   return Array.join(lines, "\n")
 }
 
+const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string => {
+  const identityParts = Array.prepend(parts, kind)
+
+  return JSON.stringify(identityParts)
+}
+
 const adviceReportBlock = (advice: AdviceElement): ReportBlock => {
   const pathLabel = advicePath(advice)
-  const key = `advice\u0000${advice.level}\u0000${pathLabel}\u0000${advice.title}`
+  const identity = reportIdentity("advice", [
+    advice.level,
+    pathLabel,
+    advice.title
+  ])
+  const key = new AdviceReportKey({
+    level: advice.level,
+    path: pathLabel,
+    title: advice.title
+  })
   const text = adviceText(advice)
   const header = adviceHeader(advice)
   const cleared = `${header} — cleared`
 
-  return new ReportBlock({ key, text, cleared })
+  return new ReportBlock({ identity, key, text, cleared })
 }
 
 /**
@@ -315,7 +357,7 @@ export const adviceReportBlocks = (
   pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
 
 const detectionBlockKey = (element: Detection): string =>
-  `${element.message}\u0000${element.hint}`
+  reportIdentity("detection", [element.message, element.hint])
 
 const locationText = (element: Detection): string =>
   `  ${element.location.path}:${element.location.line}:${element.location.column}`
@@ -342,11 +384,16 @@ const ruleReportBlockForGroup =
   (name: string) =>
   (elements: Array.NonEmptyArray<Detection>): ReportBlock => {
     const first = Array.headNonEmpty(elements)
-    const key = `rule\u0000${name}\u0000${first.message}\u0000${first.hint}`
+    const identity = reportIdentity("rule", [name, first.message, first.hint])
+    const key = new RuleReportKey({
+      name,
+      message: first.message,
+      hint: first.hint
+    })
     const text = ruleTextForDetections(name)(elements)
     const cleared = `${name} — cleared: ${first.message}`
 
-    return new ReportBlock({ key, text, cleared })
+    return new ReportBlock({ identity, key, text, cleared })
   }
 
 /**

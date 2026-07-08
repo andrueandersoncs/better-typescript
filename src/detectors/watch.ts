@@ -19,7 +19,12 @@ import type { ProjectConfig, WorkspaceConfigs } from "../project/loadProject.js"
 import { astNodesFromContext, sourceUpdates } from "./sources.js"
 import type { AstNodeElement, SourceUpdate } from "./sources.js"
 import type { Detection } from "./rule.js"
-import { batchReportBlocks, defaultWiring, workspaceSignals } from "./report.js"
+import {
+  batchReportBlocks,
+  defaultWiring,
+  reportKeySchema,
+  workspaceSignals
+} from "./report.js"
 import type {
   ReportBlock,
   ReportWiring,
@@ -196,14 +201,14 @@ export const adviceUpdates =
  * events, one per line; --pretty renders them through renderEventText.
  */
 export class SignalEvent extends Schema.TaggedClass<SignalEvent>()("signal", {
-  key: Schema.String,
+  key: reportKeySchema,
   text: Schema.String
 }) {}
 
 export class ClearedEvent extends Schema.TaggedClass<ClearedEvent>()(
   "cleared",
   {
-    key: Schema.String,
+    key: reportKeySchema,
     text: Schema.String
   }
 ) {}
@@ -234,7 +239,7 @@ export const renderEventText = (event: ReportEvent): string =>
     Match.exhaustive
   )
 
-const blockKey: (block: ReportBlock) => string = Struct.get("key")
+const blockIdentity: (block: ReportBlock) => string = Struct.get("identity")
 
 const blockSignalEvent = (block: ReportBlock): SignalEvent =>
   new SignalEvent({ key: block.key, text: block.text })
@@ -243,23 +248,23 @@ const blockClearedEvent = (block: ReportBlock): ClearedEvent =>
   new ClearedEvent({ key: block.key, text: block.cleared })
 
 const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] => [
-  block.key,
+  block.identity,
   block
 ]
 
 const isClearedBlock =
-  (currentKeys: HashSet.HashSet<string>) =>
+  (currentIdentities: HashSet.HashSet<string>) =>
   (block: ReportBlock): boolean =>
-    !HashSet.has(currentKeys, block.key)
+    !HashSet.has(currentIdentities, block.identity)
 
 const isChangedBlock =
-  (previousByKey: HashMap.HashMap<string, ReportBlock>) =>
+  (previousByIdentity: HashMap.HashMap<string, ReportBlock>) =>
   (block: ReportBlock): boolean =>
     pipe(
-      HashMap.get(previousByKey, block.key),
+      HashMap.get(previousByIdentity, block.identity),
       Option.match({
-        onNone: () => true,
-        onSome: (known) => known.text !== block.text
+        onNone: Function.constTrue,
+        onSome: (previous) => previous.text !== block.text
       })
     )
 
@@ -273,17 +278,17 @@ export const blockDelta =
   (previous: ReadonlyArray<ReportBlock>) =>
   (current: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     const previousEntries = previous.map(blockEntry)
-    const previousByKey = HashMap.fromIterable(previousEntries)
-    const currentKeyList = current.map(blockKey)
-    const currentKeys = HashSet.fromIterable(currentKeyList)
+    const previousByIdentity = HashMap.fromIterable(previousEntries)
+    const currentIdentityList = current.map(blockIdentity)
+    const currentIdentities = HashSet.fromIterable(currentIdentityList)
     const clearances = pipe(
       previous,
-      Array.filter(isClearedBlock(currentKeys)),
+      Array.filter(isClearedBlock(currentIdentities)),
       Array.map(blockClearedEvent)
     )
     const updates = pipe(
       current,
-      Array.filter(isChangedBlock(previousByKey)),
+      Array.filter(isChangedBlock(previousByIdentity)),
       Array.map(blockSignalEvent)
     )
 

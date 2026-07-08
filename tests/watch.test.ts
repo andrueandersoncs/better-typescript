@@ -17,10 +17,13 @@ import {
 import * as ts from "typescript"
 import { Location, locateNode } from "../src/detectors/location.js"
 import {
+  AdviceReportKey,
   ReportBlock,
+  RuleReportKey,
   RuleSnapshot,
   SignalsBatch,
   type NamedRuleCheck,
+  type ReportKey,
   type ReportWiring
 } from "../src/detectors/report.js"
 import {
@@ -104,14 +107,17 @@ const pollingWatchOptions: ts.WatchOptions = {
 const location = (filePath: string, line: number, column: number): Location =>
   new Location({ path: filePath, line, column })
 
-const block = (key: string, text: string, cleared: string): ReportBlock =>
-  new ReportBlock({ key, text, cleared })
+const testReportKey = (name: string): ReportKey =>
+  new RuleReportKey({ name, message: name, hint: name })
 
-const signal = (key: string, text: string): SignalEvent =>
-  new SignalEvent({ key, text })
+const block = (identity: string, text: string, cleared: string): ReportBlock =>
+  new ReportBlock({ identity, key: testReportKey(identity), text, cleared })
 
-const clearedEvent = (key: string, text: string): ClearedEvent =>
-  new ClearedEvent({ key, text })
+const signal = (keyName: string, text: string): SignalEvent =>
+  new SignalEvent({ key: testReportKey(keyName), text })
+
+const clearedEvent = (keyName: string, text: string): ClearedEvent =>
+  new ClearedEvent({ key: testReportKey(keyName), text })
 
 const detectionAt = (
   line: number,
@@ -211,15 +217,17 @@ test("renderEventText renders events as the pretty text blocks", () => {
   )
 })
 
-test("report events stringify to flat NDJSON objects", () => {
+test("report events stringify to NDJSON objects with structured keys", () => {
+  const key = { _tag: "rule", name: "k", message: "k", hint: "k" }
+
   assert.deepEqual(JSON.parse(JSON.stringify(signal("k", "t"))), {
     _tag: "signal",
-    key: "k",
+    key,
     text: "t"
   })
   assert.deepEqual(JSON.parse(JSON.stringify(clearedEvent("k", "t"))), {
     _tag: "cleared",
-    key: "k",
+    key,
     text: "t"
   })
   assert.deepEqual(
@@ -301,17 +309,25 @@ test("signalUpdates and adviceUpdates derive one batch and advice-first blocks p
   const blocks = blockArrays[0]
 
   assert.equal(blocks.length, 2)
-  assert.ok(
-    blocks[0].key.startsWith("advice\u0000"),
-    "expected the advice block to lead the report"
+  assert.deepEqual(
+    blocks[0].key,
+    new AdviceReportKey({
+      level: "file",
+      path: "src/cases.ts",
+      title: "probe advice"
+    })
   )
   assert.equal(
     blocks[0].text.split("\n")[0],
     "src/cases.ts [file] — probe advice"
   )
-  assert.ok(
-    blocks[1].key.startsWith(`rule\u0000${probeName}\u0000`),
-    "expected the rule block to follow the advice block"
+  assert.deepEqual(
+    blocks[1].key,
+    new RuleReportKey({
+      name: probeName,
+      message: probeMessage,
+      hint: probeHint
+    })
   )
 })
 
@@ -402,7 +418,11 @@ test("watch pushes the initial report, updated blocks, and cleared events for fs
       assert.deepEqual(
         cleared,
         new ClearedEvent({
-          key: `rule\u0000${probeName}\u0000${probeMessage}\u0000${probeHint}`,
+          key: new RuleReportKey({
+            name: probeName,
+            message: probeMessage,
+            hint: probeHint
+          }),
           text: `${probeName} — cleared: ${probeMessage}`
         })
       )

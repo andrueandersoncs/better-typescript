@@ -44,8 +44,8 @@ By default stdout is NDJSON: one JSON event per line. There are three event
 shapes, discriminated by `_tag`:
 
 ```json
-{"_tag":"signal","key":"...","text":"no-throw\n  Avoid throwing errors with throw.\n  Hint: ...\n  src/cases.ts:4:3"}
-{"_tag":"cleared","key":"...","text":"no-throw — cleared: Avoid throwing errors with throw."}
+{"_tag":"signal","key":{"_tag":"rule","name":"no-throw","message":"Avoid throwing errors with throw.","hint":"Create a custom error with Schema.TaggedError..."},"text":"no-throw\n  Avoid throwing errors with throw.\n  Hint: ...\n  src/cases.ts:4:3"}
+{"_tag":"cleared","key":{"_tag":"rule","name":"no-throw","message":"Avoid throwing errors with throw.","hint":"Create a custom error with Schema.TaggedError..."},"text":"no-throw — cleared: Avoid throwing errors with throw."}
 {"_tag":"empty","rootPath":"/path/to/project"}
 ```
 
@@ -55,8 +55,9 @@ shapes, discriminated by `_tag`:
   line.
 - `empty` — the initial report found no signals.
 
-`key` is the block's stable identity across events: correlate a `cleared` event
-with the earlier `signal` events it retires by key.
+`key` is the block's stable identity across events. Rule keys carry
+`{ _tag: "rule", name, message, hint }`; advice keys carry
+`{ _tag: "advice", level, path, title }`.
 
 With `--pretty`, the CLI renders the same events as the human-readable text
 blocks instead (each block followed by a blank line; the empty report prints
