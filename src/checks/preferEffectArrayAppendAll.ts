@@ -22,7 +22,6 @@ const isEmptyArrayLiteral = (expression: ts.Expression): boolean =>
 const isNonEmptyArrayBranch = (expression: ts.Expression): boolean =>
   arrayLiteralElementCount(expression) !== 0
 
-// The context stage runs once per file, so match is shared by every SpreadElement the report wiring feeds to matches.
 const conditionalArraySpreadMatches = (context: CheckContext) => {
   const match = detection(context)
 

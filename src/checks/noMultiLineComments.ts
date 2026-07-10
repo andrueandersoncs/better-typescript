@@ -1,8 +1,14 @@
-import { Array as Arr, Option, Schema, Struct } from "effect"
+import { Array as Arr, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "../engine/check.js"
-import { Location, toRelativeFileName } from "../engine/location.js"
 import { Detection } from "../engine/check.js"
+import { Location, toRelativeFileName } from "../engine/location.js"
+import {
+  commentText,
+  isJsDocComment,
+  sourceComments,
+  type SourceComment
+} from "./support/comments.js"
 import type { Check, CheckContext } from "../engine/check.js"
 
 const message = "Avoid multi-line comments."
@@ -13,50 +19,25 @@ const hint =
   "permitted. For architectural decisions that require longer explanation, create an " +
   "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
 
-class ScannedToken extends Schema.Class<ScannedToken>("ScannedToken")({
-  kind: Schema.Number,
-  pos: Schema.Number
-}) {}
-
-// Array.unfold drives the stateful scanner with a bounded internal loop; recursion overflows large files.
-const scanNextToken = (
-  scanner: ts.Scanner
-): Option.Option<readonly [ScannedToken, ts.Scanner]> => {
-  const kind = scanner.scan()
-
-  if (kind === ts.SyntaxKind.EndOfFileToken) {
-    return Option.none()
-  }
-
-  const pos = scanner.getTokenStart()
-  const token = new ScannedToken({ kind, pos })
-
-  return Option.some([token, scanner])
-}
 type RunStartPosition = (
-  current: ScannedToken,
+  current: SourceComment,
   index: number
 ) => Option.Option<number>
 
-// JSDoc (`/** ... */`) is API documentation surfaced by editors and doc tooling, not prose comments.
 const isMultiLineBlock =
   (text: string) =>
-  (token: ScannedToken): boolean => {
-    const isBlock = token.kind === ts.SyntaxKind.MultiLineCommentTrivia
-    const closeIndex = text.indexOf("*/", token.pos)
-    const notFound = closeIndex === -1
-    const end = notFound ? text.length : closeIndex + 2
-    const commentText = text.slice(token.pos, end)
-    const hasNewline = commentText.indexOf("\n") !== -1
-    const isJsDoc = commentText.startsWith("/**")
+  (comment: SourceComment): boolean => {
+    const isBlock = comment.kind === ts.SyntaxKind.MultiLineCommentTrivia
+    const hasNewline = commentText(text)(comment).includes("\n")
+    const isJsDoc = isJsDocComment(text)(comment)
 
     return [isBlock, hasNewline, !isJsDoc].every(Boolean)
   }
 
-const isSingleLineComment = (token: ScannedToken): boolean =>
-  token.kind === ts.SyntaxKind.SingleLineCommentTrivia
+const isSingleLineComment = (comment: SourceComment): boolean =>
+  comment.kind === ts.SyntaxKind.SingleLineCommentTrivia
 
-const tokenPos = Struct.get("pos")
+const commentPosition = Struct.get("pos")
 
 const lineOf =
   (sourceFile: ts.SourceFile) =>
@@ -65,13 +46,13 @@ const lineOf =
 
 const isAdjacentLine =
   (sourceFile: ts.SourceFile) =>
-  (a: ScannedToken) =>
-  (b: ScannedToken): boolean =>
+  (a: SourceComment) =>
+  (b: SourceComment): boolean =>
     lineOf(sourceFile)(b.pos) - lineOf(sourceFile)(a.pos) === 1
 
 const runStartPosition =
   (sourceFile: ts.SourceFile) =>
-  (singles: ReadonlyArray<ScannedToken>): RunStartPosition =>
+  (singles: ReadonlyArray<SourceComment>): RunStartPosition =>
   (current, index) => {
     const hasNextAdjacent =
       index < singles.length - 1 &&
@@ -81,10 +62,10 @@ const runStartPosition =
       return hasNextAdjacent ? Option.some(current.pos) : Option.none()
     }
 
-    const previousToken = singles[index - 1]
+    const previousComment = singles[index - 1]
     const isNotAdjacentToPrevious =
-      !isAdjacentLine(sourceFile)(previousToken)(current)
-    const previousIsNotSingleLine = !isSingleLineComment(previousToken)
+      !isAdjacentLine(sourceFile)(previousComment)(current)
+    const previousIsNotSingleLine = !isSingleLineComment(previousComment)
     const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
     const shouldFlag = isRunStart && hasNextAdjacent
 
@@ -105,29 +86,22 @@ const positionToMatch =
     return new Detection({ location, message, hint })
   }
 
-// filterMap stays bounded by the comment array; per-comment recursion overflows large files.
 const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
-  const scanner = ts.createScanner(
-    ts.ScriptTarget.Latest,
-    false,
-    ts.LanguageVariant.Standard,
-    text
-  )
-  const tokens = Arr.unfold(scanner, scanNextToken)
-  const blockPositions = tokens.filter(isMultiLineBlock(text)).map(tokenPos)
-  const singleLineTokens = tokens.filter(isSingleLineComment)
+  const comments = sourceComments(sourceFile)
+  const blockPositions = comments
+    .filter(isMultiLineBlock(text))
+    .map(commentPosition)
+  const singleLineComments = comments.filter(isSingleLineComment)
   const adjacentRunPositions = Arr.filterMap(
-    singleLineTokens,
-    runStartPosition(sourceFile)(singleLineTokens)
+    singleLineComments,
+    runStartPosition(sourceFile)(singleLineComments)
   )
   const positions = blockPositions.concat(adjacentRunPositions)
 
   return positions.map(positionToMatch(sourceFile)(fileName))
 }
 
-const check = fileCheck(fileMatches)
-
-export const noMultiLineComments: Check = check
+export const noMultiLineComments: Check = fileCheck(fileMatches)

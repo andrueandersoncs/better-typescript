@@ -63,7 +63,7 @@ const printPrettyEvent = (event: ReportEvent): Effect.Effect<void> => {
   return Console.log(`${text}\n`)
 }
 
-// Status lines go to stderr; stdout stays a pure event stream (tee it to capture).
+// Send status lines to stderr because stdout remains a pure event stream for capture.
 const runCommand = Effect.fn("runCommand")(function* (
   options: WatchCommandOptions
 ) {

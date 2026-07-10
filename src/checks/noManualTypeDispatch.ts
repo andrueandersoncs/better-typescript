@@ -6,10 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext, Detection } from "../engine/check.js"
 
-// A dispatch chain shorter than this reads as a couple of ordinary early-return guards, not a hand-rolled match.
+// Require this many branches because shorter chains read as ordinary early-return guards rather than a hand-rolled match.
 const minimumChainLength = 3
 
-// A guard is a branchless if whose body always leaves the scope, so successive guards form a flat dispatch ladder.
+// Treat branchless exiting if statements as guards because successive guards form a flat dispatch ladder.
 const isDispatchGuard = (
   statement: ts.Statement
 ): statement is ts.IfStatement => {
@@ -26,7 +26,7 @@ const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
   return Array.appendAll(ownNames, childNames)
 }
 
-// The discriminants are the identifiers a guard inspects, e.g. `node` in `Schema.is(StepNode)(node)`.
+// Compare guard discriminants because a dispatch ladder must inspect the same subject.
 const discriminants = (
   ifStatement: ts.IfStatement
 ): HashSet.HashSet<string> => {
@@ -75,7 +75,7 @@ const continuesChain =
       Option.exists(sharesSubjectWith(ifStatement))
     )
 
-// A chain head shares a subject with the next guard but not with any prior guard, so only the head reports.
+// Report only the chain head because it shares a subject with the next guard but not a prior guard.
 const isChainHead = (ifStatement: ts.IfStatement): boolean => {
   const precedesAnotherGuard = continuesChain(1)(ifStatement)
   const startsTheChain = !continuesChain(-1)(ifStatement)
@@ -113,7 +113,6 @@ const manualTypeDispatchMatch =
         "error rather than a silent fall-through."
     })
 
-// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the report wiring feeds to matches.
 const manualTypeDispatchMatches = (context: CheckContext) => {
   const ruleMatch = manualTypeDispatchMatch(detection(context))
 

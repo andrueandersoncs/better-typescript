@@ -34,7 +34,7 @@ const signatureDeclarationIsExternal = (
   return !isProjectSourceFile(sourceFile)
 }
 
-// Missing declarations (untyped code) count as external: the shape is not author-controlled.
+// Missing declarations count as external because their shape is not author-controlled.
 export const signatureIsExternal = (signature: ts.Signature): boolean => {
   const declaration = signature.getDeclaration()
 
@@ -53,7 +53,7 @@ const signatureDeclarationOption = (
   return Option.fromNullable(declaration)
 }
 
-// Missing declarations do NOT grant an escape: escapes require a proven external boundary.
+// Missing declarations do not grant an escape because exemptions require a proven external boundary.
 const hasExternalDeclaration = (signature: ts.Signature): boolean =>
   pipe(
     signatureDeclarationOption(signature),
@@ -103,7 +103,7 @@ export const argumentConsumingCall = (
   return isForwarding ? argumentConsumingCall(parent) : Option.none()
 }
 
-// node_modules packages excluding the default library: effect combinators qualify, Array.prototype.map does not.
+// Exclude the default library because only dependency combinators form an external callback boundary.
 export const isExternalPackageArgument =
   (checker: ts.TypeChecker) =>
   (program: ts.Program) =>
@@ -123,7 +123,7 @@ const isExternalArgumentPosition =
       Option.exists(hasExternalDeclaration)
     )
 
-// ts.forEachChild stops as soon as the callback returns truthy, which is exactly the some() short-circuit.
+// Return truthy from forEachChild because TypeScript uses it to short-circuit the traversal.
 const someDescendant =
   (predicate: (node: ts.Node) => boolean) =>
   (node: ts.Node): boolean => {
@@ -200,7 +200,7 @@ const initializesDeclaration =
   (declaration: ts.VariableDeclaration): boolean =>
     declaration.initializer === expression
 
-// A construction escapes when it is handed to an external signature, directly or through a variable.
+// A construction escapes because an external signature receives it directly or through a variable.
 export const constructionEscapesExternally =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): boolean => {
@@ -281,7 +281,7 @@ const carrierEscapes =
     return nameNodeEscapes(checker)(sourceFile)(carrier.name)
   }
 
-// A written Map/Set type escapes when its carrier (variable or parameter) crosses an external boundary.
+// A written Map or Set type escapes because its carrier crosses an external boundary.
 export const typeReferenceEscapesExternally =
   (checker: ts.TypeChecker) =>
   (typeRef: ts.TypeReferenceNode): boolean =>

@@ -174,7 +174,7 @@ export const hasExportModifier = (statement: ts.Statement): boolean =>
 const isDeclareKeyword = (modifier: ts.ModifierLike): boolean =>
   modifier.kind === ts.SyntaxKind.DeclareKeyword
 
-// Ambient declarations (declare statements, .d.ts files) mirror external reality rather than author choices.
+// Treat ambient declarations as external because they mirror a dependency's contract rather than an author choice.
 export const isInAmbientContext = (node: ts.Node): boolean => {
   const sourceFile = node.getSourceFile()
   const modifiers = ts.canHaveModifiers(node)

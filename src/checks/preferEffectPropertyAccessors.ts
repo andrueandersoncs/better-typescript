@@ -136,7 +136,6 @@ const variableDeclarationName =
       Option.flatMap(identifierBindingNameText)
     )
 
-// The context stage runs once per file, so every partial below is shared by all accessor functions the report wiring feeds to matches.
 const propertyAccessorMatches = (context: CheckContext) => {
   const checker = context.checker
   const sourceFile = context.sourceFile

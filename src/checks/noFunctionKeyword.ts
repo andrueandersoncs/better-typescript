@@ -45,7 +45,6 @@ const lacksOverloadSignature =
 const isFunctionKeywordToken = (child: ts.Node): boolean =>
   child.kind === ts.SyntaxKind.FunctionKeyword
 
-// The context stage runs once per file, so every partial below is shared by all function-keyword nodes the report wiring feeds to matches.
 const functionKeywordMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const lacksOverloads = lacksOverloadSignature(context.checker)

@@ -129,7 +129,6 @@ const isCallbackSignature =
     return returnsVoid && hasFunctionArgument
   }
 
-// The context stage runs once per file, so every partial below is shared by all callback-style declarations the report wiring feeds to matches.
 const callbackStyleMatches = (context: CheckContext) => {
   const checker = context.checker
   const declarationIsCallbackSignature = isCallbackSignature(checker)
@@ -138,7 +137,7 @@ const callbackStyleMatches = (context: CheckContext) => {
   const matches = (
     declaration: CallbackStyleDeclaration
   ): ReadonlyArray<Detection> => {
-    // A declare statement mirrors a third-party API's existing shape; there is no Effect-returning alternative to describe.
+    // Exempt declarations because they mirror a third-party API with no Effect-returning alternative to describe.
     if (isInAmbientContext(declaration)) {
       return []
     }

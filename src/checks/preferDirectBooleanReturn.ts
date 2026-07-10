@@ -11,8 +11,6 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext, Detection } from "../engine/check.js"
 
-// --- Shared helpers ---
-
 const booleanLiteralValue = (
   expression: ts.Expression
 ): Option.Option<boolean> => {
@@ -33,7 +31,6 @@ const returnStatementExpression = (
   statement: ts.ReturnStatement
 ): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
-// --- Literal boolean return from conditional branch ---
 type StatementConditionalFalseMatch = (
   statement: ts.Statement,
   index: number
@@ -81,8 +78,6 @@ const directBooleanMatches =
       Option.map(ruleMatch(ifStatement)),
       Option.toArray
     )
-
-// --- Conditional return followed by return false ---
 
 const isFalseKeyword = (expression: ts.Expression): boolean =>
   unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
@@ -143,8 +138,6 @@ const conditionalFalseReturnMatches =
       statementConditionalFalseMatch(match)(block)
     )
 
-// --- Combined ---
-
 type BooleanReturnTarget = ts.IfStatement | ts.Block
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget =>
@@ -155,7 +148,6 @@ const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.Block
 ]
 
-// The context stage runs once per file, so every partial below is shared by all IfStatements and Blocks the report wiring feeds to matches.
 const booleanReturnMatches = (context: CheckContext) => {
   const match = detection(context)
   const literalMatches = directBooleanMatches(

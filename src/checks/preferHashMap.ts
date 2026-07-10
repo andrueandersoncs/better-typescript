@@ -10,8 +10,6 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext, Detection } from "../engine/check.js"
 
-// --- new Map(...) detection ---
-
 const isMapIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Map"
 
@@ -50,8 +48,6 @@ const newMapMatches = (checker: ts.TypeChecker) => (match: MakeDetection) => {
 
   return matches
 }
-
-// --- Map<K, V> / ReadonlyMap<K, V> type reference detection ---
 
 const mapTypeNames: ReadonlyArray<string> = ["Map", "ReadonlyMap"]
 
@@ -94,8 +90,6 @@ const mapTypeRefMatches =
     return matches
   }
 
-// --- subscription ---
-
 type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
 const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
@@ -106,7 +100,6 @@ const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
     Option.exists(isMapTypeName)
   )
 
-// The context stage runs once per file, so both specialized handlers are shared by every node the report wiring feeds to matches.
 const mapMatches = (context: CheckContext) => {
   const match = detection(context)
   const constructionMatches = newMapMatches(context.checker)(match)
@@ -122,7 +115,5 @@ const check = nodeCheck([
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
 ])(isMapRuleNode)(mapMatches)
-
-// --- examples ---
 
 export const preferHashMap: Check = check

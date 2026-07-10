@@ -40,7 +40,6 @@ const containingIfStatementFrom =
       : Option.some(parentNode)
   }
 
-// The context stage runs once per file, so match is shared by every IfStatement the report wiring feeds to matches.
 const nestedIfMatches = (context: CheckContext) => {
   const match = detection(context)
 

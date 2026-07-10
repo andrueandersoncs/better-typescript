@@ -53,7 +53,6 @@ const schemaGuardMatch =
     })
   }
 
-// The context stage runs once per file, so the specialized guard match is shared by every IfStatement the report wiring feeds to matches.
 const inOperatorGuardMatches = (context: CheckContext) => {
   const match = detection(context)
   const guardMatch = schemaGuardMatch(context.sourceFile)(match)

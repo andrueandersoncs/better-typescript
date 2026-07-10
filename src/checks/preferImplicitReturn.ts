@@ -9,7 +9,6 @@ type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
 }
 
-// The context stage runs once per file, so the hoisted match is shared by every ArrowFunction the report wiring feeds to matches.
 const implicitReturnMatches = (context: CheckContext) => {
   const match = detection(context)
 

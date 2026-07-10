@@ -40,7 +40,7 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
     return ownCount
   }
 
-  // A ternary's condition is its own counting root: prefer-conditional-return mandates `cond ? x : y`, so condition operators are counted at the condition, not the ternary.
+  // Count a ternary condition separately because prefer-conditional-return mandates `cond ? x : y`.
   const countedChildren = ts.isConditionalExpression(unwrapped)
     ? [unwrapped.whenTrue, unwrapped.whenFalse]
     : astChildren(unwrapped)
@@ -97,7 +97,6 @@ const nestedExpressionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ClassExpression
 )
 
-// The context stage runs once per file, so match is shared by every boolean expression the report wiring feeds to matches.
 const multipleBooleanOperatorMatches = (context: CheckContext) => {
   const match = detection(context)
 

@@ -127,7 +127,6 @@ type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
   ts.isReturnStatement(node) || ts.isArrowFunction(node)
 
-// The context stage runs once per file, so both partials below are shared by every ReturnStatement and ArrowFunction the report wiring feeds to matches.
 const objectLiteralReturnMatches = (context: CheckContext) => {
   const match = detection(context)
   const expressionMatches = expressionDetections(match)

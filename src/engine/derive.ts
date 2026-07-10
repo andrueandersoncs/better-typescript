@@ -46,7 +46,6 @@ export const collectSignals = <A>(
 ): Effect.Effect<ReadonlyArray<A>, Error> =>
   pipe(Stream.runCollect(signals), Effect.map(Chunk.toReadonlyArray))
 
-// A derivation folds completed upstream signals into emissions of its own.
 export const deriveSignals =
   <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
   (signals: Stream.Stream<A, Error>): Stream.Stream<B, Error> =>

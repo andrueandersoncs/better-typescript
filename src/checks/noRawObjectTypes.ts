@@ -82,7 +82,6 @@ const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.GetAccessor
 ]
 
-// The context stage runs once per file, so both rule-match partials are shared by every raw-object target the report wiring feeds to matches.
 const rawObjectTypeMatches = (context: CheckContext) => {
   const match = detection(context)
   const parameterMatch = rawObjectParameterMatch(match)

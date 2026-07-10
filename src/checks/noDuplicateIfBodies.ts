@@ -115,7 +115,6 @@ const duplicateIfDetection =
         `if (${combinedCondition}) { ... }.`
     })
 
-// The context stage runs once per file, so every partial below is shared by all IfStatements the report wiring feeds to matches.
 const duplicateIfMatches = (context: CheckContext) => {
   const fingerprint = bodyFingerprint(context.sourceFile)
   const conditionText = (ifStatement: ts.IfStatement): string =>

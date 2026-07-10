@@ -179,7 +179,6 @@ const undefinedMessages: Record<UndefinedUsageKind, string> = {
   comparison: "Avoid comparing values against undefined."
 }
 
-// Each subscription applies this factory with its kind; the resulting context stage runs once per file, so match and message are shared by every node that subscription feeds to matches.
 const undefinedUsageMatches =
   (kind: UndefinedUsageKind) => (context: CheckContext) => {
     const match = detection(context)

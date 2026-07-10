@@ -71,7 +71,7 @@ const deleteExpressionTarget = (
   expression: ts.DeleteExpression
 ): Option.Option<ts.Expression> => Option.some(expression.expression)
 
-// Built-in JavaScript values (Array, Object, Error.prototype, ...) are declared in the ECMAScript default libraries; host environments (lib.dom) and packages are not.
+// Recognize only ECMAScript default-library values as built-ins because host environments and packages remain external.
 const ecmaScriptLibPrefixes: ReadonlyArray<string> = [
   "lib.es",
   "lib.decorators",
@@ -91,7 +91,7 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
   return ecmaScriptLibPrefixes.some(isPrefixOf(baseName))
 }
 
-// A symbol is uncontrolled when every declaration lives outside the project AND outside the ECMAScript standard library: host globals (WebSocket), package types (ts.System). Project declarations and JS built-ins are first-party data the author keeps immutable.
+// Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? []
   const sourceFiles = declarations.map(declarationSourceFile)
@@ -104,7 +104,7 @@ const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   )
 }
 
-// An import binding is an alias symbol declared in THIS file; the exemption must judge the aliased declaration, not the local import statement.
+// Follow an import alias because its local declaration cannot determine whether the imported value is external.
 const resolveAlias =
   (checker: ts.TypeChecker) =>
   (symbol: ts.Symbol): ts.Symbol => {
@@ -118,7 +118,7 @@ const isUncontrolledType =
   (type: ts.Type): boolean => {
     const withoutNullability = checker.getNonNullableType(type)
 
-    // A union receiver could hold any member at runtime: exempt only when every member is uncontrolled. An intersection is one value; a single uncontrolled constituent (Window & typeof globalThis) marks the whole value third-party.
+    // Exempt a union only when every member is uncontrolled because any member can occur at runtime.
     if (withoutNullability.isUnion()) {
       return withoutNullability.types.every(isUncontrolledType(checker))
     }
@@ -127,7 +127,7 @@ const isUncontrolledType =
       return withoutNullability.types.some(isUncontrolledType(checker))
     }
 
-    // getSymbol() names the declaration that shaped the value (class WebSocket); aliasSymbol only names a project-local spelling and must not override it.
+    // Prefer getSymbol because aliasSymbol names only a project-local spelling, not the declaration that shaped the value.
     const symbol =
       withoutNullability.getSymbol() ?? withoutNullability.aliasSymbol
 
@@ -145,14 +145,14 @@ const isUncontrolledTarget =
       ts.isPropertyAccessExpression(unwrapped) ||
       ts.isElementAccessExpression(unwrapped)
 
-    // x.y = v and x[0] = v write INTO x: the exemption belongs to the data structure being written, so judge the type of the receiver expression.
+    // Judge the receiver because property and element assignments write into its data structure.
     if (isAccess) {
       const receiverType = checker.getTypeAtLocation(unwrapped.expression)
 
       return isUncontrolledType(checker)(receiverType)
     }
 
-    // x = v rebinds x itself: the exemption belongs to the binding's declaration site.
+    // Judge the binding declaration because an assignment rebinding x replaces the binding itself.
     const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
 
     return pipe(
@@ -161,8 +161,6 @@ const isUncontrolledTarget =
       Option.exists(isUncontrolledSymbol)
     )
   }
-
-// --- scope facets: shared-state | local | builtin ---
 
 type MutationScope = "shared-state" | "local" | "builtin"
 
@@ -182,7 +180,7 @@ const enclosingExecutionBoundary = (node: ts.Node): ts.Node =>
     ? node
     : enclosingExecutionBoundary(node.parent)
 
-// x.y[0].z writes into whatever x names, so the scope facet belongs to the root receiver.
+// Use the root receiver because x.y[0].z writes into whatever x names.
 const rootReceiver = (expression: ts.Expression): ts.Expression => {
   const unwrapped = unwrapExpression(expression)
   const isAccess =
@@ -192,7 +190,7 @@ const rootReceiver = (expression: ts.Expression): ts.Expression => {
   return isAccess ? rootReceiver(unwrapped.expression) : unwrapped
 }
 
-// Shared state outlives the function that writes it: a binding declared at module scope, or captured from an enclosing function, is a long-lived cell rather than local data.
+// Treat module and captured bindings as shared because they outlive the function that writes them.
 const scopeForDeclaration =
   (root: ts.Node) =>
   (declaration: ts.Declaration): MutationScope => {
@@ -264,7 +262,6 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode =>
     ts.isDeleteExpression(node)
   ].some(Boolean)
 
-// The context stage runs once per file, so the exemption check and match partial are shared by every candidate the report wiring feeds to matches.
 const mutationMatches = (context: CheckContext) => {
   const isExemptTarget = isUncontrolledTarget(context.checker)
   const scopeOf = mutationScope(context.checker)

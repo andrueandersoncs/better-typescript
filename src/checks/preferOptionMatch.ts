@@ -83,7 +83,6 @@ const hasDotValueInBranch =
     return containsDotValue(argumentName)(branch)
   }
 
-// The context stage runs once per file, so the specialized rule match is shared by every ConditionalExpression the report wiring feeds to matches.
 const optionMatchMatches = (context: CheckContext) => {
   const ruleMatch = optionMatchDetection(detection(context))
 

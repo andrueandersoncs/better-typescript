@@ -10,8 +10,6 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext, Detection } from "../engine/check.js"
 
-// --- new Set(...) detection ---
-
 const isSetIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Set"
 
@@ -50,8 +48,6 @@ const newSetMatches = (checker: ts.TypeChecker) => (match: MakeDetection) => {
 
   return matches
 }
-
-// --- Set<T> / ReadonlySet<T> type reference detection ---
 
 const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
 
@@ -94,8 +90,6 @@ const setTypeRefMatches =
     return matches
   }
 
-// --- subscription ---
-
 type SetRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
 const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>
@@ -106,7 +100,6 @@ const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>
     Option.exists(isSetTypeName)
   )
 
-// The context stage runs once per file, so both specialized handlers are shared by every node the report wiring feeds to matches.
 const setMatches = (context: CheckContext) => {
   const match = detection(context)
   const constructionMatches = newSetMatches(context.checker)(match)
@@ -122,7 +115,5 @@ const check = nodeCheck([
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
 ])(isSetRuleNode)(setMatches)
-
-// --- examples ---
 
 export const preferHashSet: Check = check

@@ -30,8 +30,6 @@ class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")({
     ts.FunctionDeclaration | ts.VariableDeclaration
 }
 
-// Currying detection
-
 const unwrapParenthesized = (expression: ts.Expression): ts.Expression =>
   ts.isParenthesizedExpression(expression)
     ? unwrapParenthesized(expression.expression)
@@ -49,8 +47,6 @@ const isCurriedArrow = (initializer: ts.Expression): boolean =>
     Option.liftPredicate(ts.isArrowFunction)(initializer),
     Option.exists(hasCurriedBody)
   )
-
-// Entry collection: variable declarations
 
 const variableEntryFromNameNode =
   (statement: ts.VariableStatement) =>
@@ -84,8 +80,6 @@ const variableDeclarationEntry =
       Option.map(variableEntryFromNameNode(statement)(declaration))
     )
 
-// Entry collection: function declarations
-
 const functionEntryFromNameNode =
   (declaration: ts.FunctionDeclaration) =>
   (nameNode: ts.Identifier): FunctionEntry => {
@@ -106,8 +100,6 @@ const namedFunctionEntry = (
     Option.fromNullable(declaration.name),
     Option.map(functionEntryFromNameNode(declaration))
   )
-
-// Combined entry collection
 
 const statementEntries = (
   statement: ts.Statement
@@ -131,8 +123,6 @@ const sourceFileEntries = (
   sourceFile: ts.SourceFile
 ): ReadonlyArray<FunctionEntry> =>
   sourceFile.statements.flatMap(statementEntries)
-
-// Reference classification
 
 class SymbolClassification extends Schema.Class<SymbolClassification>(
   "SymbolClassification"
@@ -253,8 +243,6 @@ const classifyIdentifierRef =
     )
   }
 
-// Tree folding
-
 const foldDescendants =
   (folder: ClassificationFolder): ClassificationFolder =>
   (classifications, sourceFile) =>
@@ -295,8 +283,6 @@ const entryToSymbolPair =
   (entry: FunctionEntry): Option.Option<[ts.Symbol, FunctionEntry]> =>
     pipe(symbolForEntry(checker)(entry), Option.map(pairWithEntry(entry)))
 
-// Index construction
-
 class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
   entries: Schema.Any,
   calleeOnlySymbols: Schema.Any
@@ -327,7 +313,6 @@ const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
   return new ReferenceIndex({ entries, calleeOnlySymbols })
 }
 
-// Match generation
 const symbolInSet =
   (calleeOnlySymbols: HashSet.HashSet<ts.Symbol>) =>
   (sym: ts.Symbol): boolean =>
@@ -373,7 +358,6 @@ const isInFile =
   (entry: FunctionEntry): boolean =>
     entry.nameNode.getSourceFile().fileName === sourceFile.fileName
 
-// The file handler runs once per file, so every partial below is shared by all its entries.
 const singleUseCalleeMatches =
   (index: ReferenceIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {

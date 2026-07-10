@@ -80,7 +80,7 @@ const constituentIsFirstParty = (type: ts.Type): boolean => {
   return Option.exists(symbol, isFirstPartySymbol)
 }
 
-// Schema.is(Class) uses instanceof semantics: rewriting a _tag check on a type the project does not declare (plain JSON, third-party unions) would invert its runtime result.
+// Restrict this rewrite to declared classes because Schema.is(Class) uses instanceof semantics that would invert plain JSON or third-party unions.
 const isFirstPartyTagAccess =
   (checker: ts.TypeChecker) =>
   (access: ts.PropertyAccessExpression): boolean => {
@@ -92,7 +92,6 @@ const isFirstPartyTagAccess =
     return constituents.every(constituentIsFirstParty)
   }
 
-// The context stage runs once per file, so every partial below is shared by all BinaryExpressions the report wiring feeds to matches.
 const schemaIsMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)

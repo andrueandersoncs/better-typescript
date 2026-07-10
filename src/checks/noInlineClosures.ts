@@ -16,7 +16,6 @@ const effectiveParent = (node: ts.Node): ts.Node =>
     ? effectiveParent(node.parent)
     : node.parent
 
-// The context stage runs once per file, so every partial below is shared by all ArrowFunctions the report wiring feeds to matches.
 const arrowFunctionMatches = (context: CheckContext) => {
   const isExternalArgument = isExternalPackageArgument(context.checker)(
     context.program

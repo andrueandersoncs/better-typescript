@@ -37,7 +37,6 @@ const rootLevelClassMatch =
     })
   }
 
-// The context stage runs once per file, so ruleMatch is shared by every class node the report wiring feeds to matches.
 const rootLevelClassMatches = (context: CheckContext) => {
   const ruleMatch = rootLevelClassMatch(detection(context))
 

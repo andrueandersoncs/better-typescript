@@ -6,8 +6,6 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext, Detection } from "../engine/check.js"
 
-// --- Detection ---
-
 const accessExpression = Struct.get("expression")
 
 const declarePropertyAccess = (
@@ -24,8 +22,6 @@ const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
     Option.flatMap(declarePropertyAccess),
     Option.exists(hasDeclareText)
   )
-
-// --- Type analysis ---
 
 const signatureTypePredicate =
   (checker: ts.TypeChecker) =>
@@ -62,7 +58,7 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   const symbol = typeSymbol(type)
   const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
   const isDataStructure = type.getCallSignatures().length === 0
-  // A generic type parameter is a placeholder for a caller-supplied type, not a first-party data structure, even though its declaration sits in a project file.
+  // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
   const isConcreteType = !type.isTypeParameter()
 
   return [isFirstParty, isDataStructure, isConcreteType].every(Boolean)
@@ -71,8 +67,6 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
 const symbolName = Struct.get("name")
 
 const fallbackTypeName: () => string = Function.constant("unknown")
-
-// --- Rule match ---
 
 const schemaDeclareHint =
   "Schema.declare is meant for integrating third-party types you do not control. " +
@@ -107,7 +101,6 @@ const schemaDeclareMatchOption =
       Option.map(schemaDeclareMatchSource(match)(call))
     )
 
-// The context stage runs once per file, so every partial below is shared by all Schema.declare calls the report wiring feeds to matches.
 const schemaDeclareMatches = (context: CheckContext) => {
   const assertedType = predicateAssertedType(context.checker)
   const match = detection(context)
@@ -130,7 +123,5 @@ const schemaDeclareMatches = (context: CheckContext) => {
 const check = nodeCheck([ts.SyntaxKind.CallExpression])(isDeclareCall)(
   schemaDeclareMatches
 )
-
-// --- Examples ---
 
 export const noFirstPartySchemaDeclare: Check = check

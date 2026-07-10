@@ -60,7 +60,6 @@ const isDataTaggedClassDeclaration = (
   return Option.exists(classOption, hasDataTaggedClassHeritage)
 }
 
-// The context stage runs once per file, so match is shared by every ClassDeclaration the report wiring feeds to matches.
 const dataTaggedClassMatches = (context: CheckContext) => {
   const match = detection(context)
 

@@ -359,7 +359,6 @@ const dataLastModuleMatchForDefinition =
       Option.flatMap(structureMatch(definition))
     )
 
-// The context stage runs once per file, so every partial below is shared by all checked functions the report wiring feeds to matches.
 const dataLastModuleMatches = (context: CheckContext) => {
   const match = detection(context)
   const isMember = isDataStructureMember(context.checker)

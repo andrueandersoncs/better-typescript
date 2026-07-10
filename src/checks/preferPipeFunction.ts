@@ -8,7 +8,7 @@ import type { Check, CheckContext, Detection } from "../engine/check.js"
 const isPipeName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "pipe"
 
-// Only effect's Pipeable#pipe is rewritable; Node streams and RxJS observables keep their .pipe().
+// Rewrite only Effect's Pipeable.pipe because Node streams and RxJS observables retain different pipe semantics.
 const isEffectPipeAccess =
   (checker: ts.TypeChecker) =>
   (access: ts.PropertyAccessExpression): boolean => {
@@ -20,7 +20,6 @@ const isEffectPipeAccess =
     )
   }
 
-// The context stage runs once per file, so both partials are shared by every CallExpression the report wiring feeds to matches.
 const pipeMethodCallMatches = (context: CheckContext) => {
   const isEffectPipe = isEffectPipeAccess(context.checker)
   const match = detection(context)

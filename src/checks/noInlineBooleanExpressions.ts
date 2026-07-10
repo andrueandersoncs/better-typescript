@@ -13,7 +13,6 @@ const logicalOperatorKinds = HashSet.make(
 const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
-// The context stage runs once per file, so the hoisted match partial is shared by all IfStatements the report wiring feeds to matches.
 const inlineBooleanConditionMatches = (context: CheckContext) => {
   const match = detection(context)
 

@@ -70,7 +70,7 @@ export const workspaceUpdates = (
     indexedSourceUpdates(watchOptions)
   )
   const merged = Stream.mergeAll(updateStreams, { concurrency: "unbounded" })
-  // Gate: a rebuild that touched nothing checkable is dropped after the project's first arrival; the batch that completes warm-up always emits, so the initial report prints even for an empty workspace.
+  // Drop empty rebuilds after warm-up because only the initial batch must report an empty workspace.
   const applyUpdate = Effect.fn("applyProjectUpdate")(function* (
     cache: HashMap.HashMap<number, Chunk.Chunk<AstNodeElement>>,
     indexed: readonly [number, SourceUpdate]

@@ -82,7 +82,6 @@ const structGetCall =
       return call
     })
 
-// The context stage runs once per file, so every partial below is shared by all VariableDeclarations the report wiring feeds to matches.
 const monomorphicStructGetMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)

@@ -34,7 +34,6 @@ const mutableDeclarationDetection =
         "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
     })
 
-// The context stage runs once per file, so both partials below are shared by every VariableDeclarationList the report wiring feeds to matches.
 const mutableDeclarationMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const ruleMatch = mutableDeclarationDetection(detection(context))

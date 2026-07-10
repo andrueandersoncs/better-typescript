@@ -19,7 +19,7 @@ const containsYieldExpression = (node: ts.Node): boolean => {
   return isYield || childContainsYield
 }
 
-// A branch already returning a ternary would collapse into a nested ternary, which no-multiple-boolean-operators forbids; leave those if statements alone.
+// Leave branches that return ternaries alone because collapsing them would create a nested ternary that another rule forbids.
 const isSimpleReturnExpression =
   (sourceFile: ts.SourceFile) =>
   (expression: ts.Expression): boolean => {
@@ -156,7 +156,6 @@ const statementConditionalMatch =
     )
   }
 
-// The context stage runs once per file, so every partial below is shared by all Blocks the report wiring feeds to matches.
 const conditionalReturnDetections = (context: CheckContext) => {
   const returnExpression = returnExpressionFromStatement(context.sourceFile)
   const standardTernary = standardTernaryText(context.sourceFile)

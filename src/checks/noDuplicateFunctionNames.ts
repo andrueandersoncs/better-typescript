@@ -73,7 +73,7 @@ const isOtherFileName =
   (fileName: string): boolean =>
     fileName !== candidateFileName
 
-// Mutual assignability is signature equality up to parameter names: a renamed copy-paste still matches, while a same-name function over different data (user.ts#make vs account.ts#make) does not.
+// Compare mutual assignability because parameter renames preserve a copied signature while different domain data does not.
 const hasIdenticalSignature =
   (checker: ts.TypeChecker) =>
   (candidate: ts.Identifier) =>
@@ -137,7 +137,6 @@ const candidateDetection =
     return Option.some(duplicateMatch)
   }
 
-// The file handler runs once per file, so every partial below is shared by all its top-level functions.
 const duplicateFunctionMatches =
   (index: FunctionNameIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {

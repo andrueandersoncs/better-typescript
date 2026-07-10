@@ -73,7 +73,7 @@ const isEffectGenAccess =
     )
   }
 
-// Only Effect.gen wrappers are rewritable as Effect.fn without changing what the function builds; plain combinator bodies (Effect.sync, pipe chains) stay as-is.
+// Rewrite only Effect.gen wrappers because Effect.fn would change what plain combinator bodies build.
 const bodyIsEffectGenCall =
   (checker: ts.TypeChecker) =>
   (initializer: FunctionInitializer): boolean => {
@@ -119,7 +119,6 @@ const effectFnDetection =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all VariableDeclarations the report wiring feeds to matches.
 const effectFnMatches = (context: CheckContext) => {
   const returnsEffectType = returnsEffect(context.checker)
   const bodyIsGenCall = bodyIsEffectGenCall(context.checker)

@@ -537,7 +537,6 @@ const curriedDataLastElement =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all candidate declarations the report wiring feeds to elements.
 const curriedDataLastElements =
   (symbolUses: SymbolUses) => (context: CheckContext) => {
     const isContextuallyTyped = isContextuallyTypedFunction(context.checker)

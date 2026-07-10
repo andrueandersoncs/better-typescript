@@ -24,7 +24,7 @@ const findOverrideModifier = (
   return Option.fromNullable(modifier)
 }
 
-// MethodDeclaration also covers object-literal method shorthand; only class members are OOP coupling.
+// Check the parent class because MethodDeclaration also represents object-literal shorthand that is not OOP coupling.
 const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
   const isClassMember = ts.isClassLike(node.parent)
   const bodyOption = Option.fromNullable(node.body)
@@ -55,7 +55,6 @@ const methodImplementationMatch =
     })
   }
 
-// The context stage runs once per file, so the hoisted match partial is shared by all MethodDeclarations the report wiring feeds to matches.
 const methodImplementationMatches = (context: CheckContext) => {
   const ruleMatch = methodImplementationMatch(detection(context))
 

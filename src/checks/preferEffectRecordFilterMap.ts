@@ -24,7 +24,6 @@ const hasNoProperties = (expression: ts.Expression): boolean =>
 const hasSomeProperties = (expression: ts.Expression): boolean =>
   objectLiteralPropertyCount(expression) > 0
 
-// The context stage runs once per file, so the hoisted match is shared by every SpreadAssignment the report wiring feeds to matches.
 const conditionalObjectSpreadMatches = (context: CheckContext) => {
   const match = detection(context)
 

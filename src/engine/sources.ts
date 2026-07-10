@@ -17,7 +17,7 @@ import * as ts from "typescript"
 import type { LoadedProject, ProjectConfig } from "../project/loadProject.js"
 import { TsNode, TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
 
-// The program context is born with the source stream: every element carries it.
+// The program context travels with the source stream because every node needs the same program, checker, and project root.
 export class ProgramContext extends Schema.Class<ProgramContext>(
   "ProgramContext"
 )({
@@ -133,8 +133,6 @@ export const astNodes = (
 ): Stream.Stream<AstNodeElement, Error> =>
   pipe(project.program, contextFor(project.rootPath), astNodesFromContext)
 
-// --- continuous sources: watch-driven program rebuilds and per-rebuild file diffs ---
-
 /**
  * One rebuild's file-level diff against the previous program: changed carries
  * the checkable source files whose object identity differs (the abstract
@@ -147,7 +145,7 @@ export class SourceUpdate extends Data.Class<{
   readonly removed: ReadonlyArray<string>
 }> {}
 
-// Both reporters are silenced: mid-run config breakage is tolerated and the watcher keeps the last good program.
+// Reporter diagnostics stay silent because the watcher must retain the last valid program through a transient config failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 
 const emitProgramContext =
@@ -176,7 +174,7 @@ const startWatch =
       watchOptionsToExtend
     )
 
-    // The host's handler slot is a third-party assignment contract; the initial program fires it synchronously inside createWatchProgram and asyncPush buffers that first emission.
+    // Assign the handler after construction because createWatchProgram emits the initial program synchronously and asyncPush buffers it.
     host.afterProgramCreate = emitProgramContext(emit)(config.rootPath)
 
     return ts.createWatchProgram(host)

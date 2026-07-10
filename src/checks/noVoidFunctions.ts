@@ -57,7 +57,7 @@ const signaturePermitsVoid =
     return permitsVoid(returnType)
   }
 
-// DOM handler slots are typed `((ev) => any) | null`: the author's function is never the null constituent, so judge the callable part of the contextual type.
+// Judge the callable contextual type because DOM handler slots include null even when the author's function cannot be null.
 const contextualSignaturePermitsVoid =
   (checker: ts.TypeChecker) =>
   (contextualType: ts.Type): boolean => {
@@ -66,7 +66,7 @@ const contextualSignaturePermitsVoid =
     return callableType.getCallSignatures().some(signaturePermitsVoid(checker))
   }
 
-// Void imposed by a callback's contextual type (e.g. React's EffectCallback) is the consumer's contract, not the author's choice, so no Effect-returning alternative exists.
+// Exempt consumer-imposed void because the author cannot replace that external callback contract with Effect.
 const isContextuallyVoidCallback =
   (checker: ts.TypeChecker) =>
   (initializer: FunctionInitializer): boolean => {
@@ -93,7 +93,7 @@ const literalHasContextualType =
     return Option.isSome(contextualType)
   }
 
-// A method inside a contextually typed object literal (`const l: Logger = { log() {} }`) implements the annotated interface's contract, not an author-chosen signature.
+// Exempt contextually typed object methods because they implement an annotated interface rather than an author-chosen signature.
 const isContextuallyTypedObjectMethod =
   (checker: ts.TypeChecker) =>
   (declaration: VoidableFunction): boolean =>
@@ -120,7 +120,6 @@ const voidFunctionMatch =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all voidable functions the report wiring feeds to matches.
 const voidFunctionMatches = (context: CheckContext) => {
   const isContextualVoidCallback = isContextuallyVoidCallback(context.checker)
   const isContextualObjectMethod = isContextuallyTypedObjectMethod(

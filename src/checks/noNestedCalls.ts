@@ -105,7 +105,6 @@ const consumerDetection =
     return Option.some(ruleMatch)
   }
 
-// The context stage runs once per file, so every partial below is shared by all call-like expressions the report wiring feeds to matches.
 const nestedCallMatches = (context: CheckContext) => {
   const checker = context.checker
   const producesCallable = flow(

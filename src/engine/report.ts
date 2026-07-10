@@ -27,7 +27,6 @@ export class NamedCheck extends Data.Class<{
   readonly reported: boolean
 }> {}
 
-// One deduplicated, first-occurrence-ordered result from one check in one batch.
 export class Signal extends Data.Class<{
   readonly name: string
   readonly reported: boolean
@@ -84,7 +83,6 @@ export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
   cleared: Schema.String
 }) {}
 
-// Materialize a project's node stream once; every check replays the snapshot.
 const snapshotProject = (
   project: LoadedProject
 ): Effect.Effect<Chunk.Chunk<AstNodeElement>, Error> => {
@@ -129,7 +127,6 @@ const addUniqueElement = (
   return new DedupeState({ seen, elements })
 }
 
-// Run one check over one project's node snapshot and collect its signal.
 const collectDetections =
   (check: Check) =>
   (
@@ -141,7 +138,6 @@ const collectDetections =
     return Stream.runCollect(signal)
   }
 
-// Dedupe repeated workspace detections into one materialized signal.
 const dedupedSignal =
   (check: NamedCheck) =>
   (collected: ReadonlyArray<Chunk.Chunk<Detection>>): Signal => {

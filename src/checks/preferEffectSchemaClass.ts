@@ -315,7 +315,6 @@ const schemaClassDetection =
     })
   }
 
-// The context stage runs once per file, so every partial below is shared by all declarations the report wiring feeds to matches.
 const objectTypeDeclarationMatches =
   (index: ConstructionIndex) => (context: CheckContext) => {
     const checker = context.checker

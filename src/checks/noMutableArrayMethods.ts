@@ -113,7 +113,6 @@ const mutableArrayDetection =
         "instead of manipulating an array in place."
     })
 
-// The context stage runs once per file, so every partial below is shared by all CallExpressions the report wiring feeds to matches.
 const mutableArrayMatches = (context: CheckContext) => {
   const checker = context.checker
   const isReceiverArrayType = isArrayType(checker)

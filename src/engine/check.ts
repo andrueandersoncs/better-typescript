@@ -56,7 +56,6 @@ class FileSubscription extends Schema.Class<FileSubscription>(
 
 export type Subscription = NodeSubscription | FileSubscription
 
-// A check transforms the upstream AST-node stream into its signal.
 export type Check = (
   nodes: Stream.Stream<AstNodeElement, Error>
 ) => Stream.Stream<Detection, Error>
@@ -134,7 +133,6 @@ type PlannedSubscriptions = readonly [
 
 const noPlan: Option.Option<PlannedSubscriptions> = Option.none()
 
-// The plan runs once per program context, derived from the elements themselves; adjacent grouping yields one context stage per file, since every checkable file emits at least its root SourceFile node.
 export const checkFromSubscriptions =
   (plan: (context: ProgramContext) => ReadonlyArray<Subscription>): Check =>
   (nodes) =>
