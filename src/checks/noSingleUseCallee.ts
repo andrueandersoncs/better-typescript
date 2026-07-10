@@ -1,4 +1,4 @@
-import { Array, HashMap, HashSet, Option, Schema, pipe } from "effect"
+import { Array, Function, HashMap, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { fileSubscriptions, withProgramIndex } from "../engine/check.js"
 import {
@@ -154,8 +154,8 @@ const emptyClassification = new SymbolClassification({
 
 const emptyClassifications: Classifications = HashMap.empty()
 
-const fallbackEmptyClassification = (): SymbolClassification =>
-  emptyClassification
+const fallbackEmptyClassification: () => SymbolClassification =
+  Function.constant(emptyClassification)
 
 const disqualifiedClassification = new SymbolClassification({
   calleeCount: 0,

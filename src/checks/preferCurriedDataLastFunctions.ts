@@ -264,7 +264,8 @@ const trackedSymbolsForProgram =
     )
   }
 
-const fallbackEmptySymbolUse = (): SymbolUse => emptySymbolUse
+const fallbackEmptySymbolUse: () => SymbolUse =
+  Function.constant(emptySymbolUse)
 
 const useForSymbol =
   (uses: SymbolUses) =>

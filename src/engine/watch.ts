@@ -211,9 +211,6 @@ export class EmptyReportEvent extends Schema.TaggedClass<EmptyReportEvent>()(
 
 export type ReportEvent = SignalEvent | ClearedEvent | EmptyReportEvent
 
-const eventText: (event: SignalEvent | ClearedEvent) => string =
-  Struct.get("text")
-
 const emptyReportText = (event: EmptyReportEvent): string =>
   `No signals in ${event.rootPath}.`
 
@@ -223,12 +220,11 @@ const emptyReportText = (event: EmptyReportEvent): string =>
 export const renderEventText = (event: ReportEvent): string =>
   pipe(
     Match.value(event),
-    Match.tag("signal", "cleared", eventText),
+    Match.tag("signal", (signal) => Struct.get("text")(signal)),
+    Match.tag("cleared", (cleared) => Struct.get("text")(cleared)),
     Match.tag("empty", emptyReportText),
     Match.exhaustive
   )
-
-const blockIdentity: (block: ReportBlock) => string = Struct.get("identity")
 
 const blockSignalEvent = (block: ReportBlock): SignalEvent =>
   new SignalEvent({ key: block.key, text: block.text })
@@ -268,7 +264,7 @@ export const blockDelta =
   (current: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     const previousEntries = previous.map(blockEntry)
     const previousByIdentity = HashMap.fromIterable(previousEntries)
-    const currentIdentityList = current.map(blockIdentity)
+    const currentIdentityList = current.map(Struct.get("identity"))
     const currentIdentities = HashSet.fromIterable(currentIdentityList)
     const clearances = pipe(
       previous,

@@ -1,4 +1,12 @@
-import { HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
+import {
+  Function,
+  HashSet,
+  Match,
+  Option,
+  Predicate,
+  Struct,
+  pipe
+} from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
 import {
@@ -196,7 +204,7 @@ const scopeForDeclaration =
     return [isModuleScoped, isCaptured].some(Boolean) ? "shared-state" : "local"
   }
 
-const fallbackLocalScope = (): MutationScope => "local"
+const fallbackLocalScope: () => MutationScope = Function.constant("local")
 
 const scopeForResolvedSymbol =
   (root: ts.Node) =>

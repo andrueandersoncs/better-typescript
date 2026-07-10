@@ -15,7 +15,7 @@ const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
     Option.exists(isInstanceofOperator)
   )
 
-const className: (symbol: ts.Symbol) => string = Struct.get("name")
+const className = Struct.get("name")
 
 const instanceofDetection =
   (match: MakeDetection) =>

@@ -1,4 +1,4 @@
-import { Option, Struct, pipe } from "effect"
+import { Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
 import { isFirstPartySymbol } from "./support/tsNode.js"
@@ -8,8 +8,7 @@ import type { Check, CheckContext, Detection } from "../engine/check.js"
 
 // --- Detection ---
 
-const accessExpression: (access: ts.PropertyAccessExpression) => ts.Expression =
-  Struct.get("expression")
+const accessExpression = Struct.get("expression")
 
 const declarePropertyAccess = (
   call: ts.CallExpression
@@ -69,9 +68,9 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   return [isFirstParty, isDataStructure, isConcreteType].every(Boolean)
 }
 
-const symbolName: (symbol: ts.Symbol) => string = Struct.get("name")
+const symbolName = Struct.get("name")
 
-const fallbackTypeName = (): string => "unknown"
+const fallbackTypeName: () => string = Function.constant("unknown")
 
 // --- Rule match ---
 

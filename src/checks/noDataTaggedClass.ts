@@ -12,11 +12,9 @@ const isTaggedClassProperty = (expression: ts.Expression): boolean =>
   ts.isPropertyAccessExpression(expression) &&
   hasTaggedClassName(expression.name)
 
-const accessExpression: (access: ts.PropertyAccessExpression) => ts.Expression =
-  Struct.get("expression")
+const accessExpression = Struct.get("expression")
 
-const callExpression: (call: ts.CallExpression) => ts.Expression =
-  Struct.get("expression")
+const callExpression = Struct.get("expression")
 
 const isDataIdentifier = (id: ts.Identifier): boolean => id.text === "Data"
 

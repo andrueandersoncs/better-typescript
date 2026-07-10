@@ -1,4 +1,4 @@
-import { Array, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
 import { alwaysExitsScope, hasNoElseBranch } from "./support/tsNode.js"
@@ -95,7 +95,7 @@ const chainLengthFrom = (ifStatement: ts.IfStatement): number =>
       )
     : 1
 
-const returnsOne = (): number => 1
+const returnsOne: () => number = Function.constant(1)
 
 const isLongEnough = (head: ts.IfStatement): boolean =>
   chainLengthFrom(head) >= minimumChainLength

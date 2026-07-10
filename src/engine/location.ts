@@ -1,10 +1,10 @@
 import * as path from "node:path"
-import { Schema } from "effect"
+import { Function, Schema } from "effect"
 import type * as ts from "typescript"
 import type { CheckContext } from "./check.js"
 import { TsNode } from "./tsSchema.js"
 
-const zeroPosition = (): number => 0
+const zeroPosition: () => number = Function.constant(0)
 
 export const positionSchema = Schema.optionalWith(Schema.Int, {
   default: zeroPosition

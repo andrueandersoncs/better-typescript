@@ -2,6 +2,7 @@ import {
   Array,
   Chunk,
   Effect,
+  Function,
   HashMap,
   HashSet,
   Option,
@@ -75,16 +76,12 @@ export class CountSummary extends Schema.Class<CountSummary>("CountSummary")({
   declare readonly filesByCheck: HashMap.HashMap<string, number>
 }
 
-const namedDetectionName: (element: NamedDetection) => string =
-  Struct.get("name")
+const namedDetectionName = Struct.get("name")
 
 export const countAt =
   (counts: HashMap.HashMap<string, number>) =>
   (key: string): number =>
-    pipe(
-      HashMap.get(counts, key),
-      Option.getOrElse(() => 0)
-    )
+    pipe(HashMap.get(counts, key), Option.getOrElse(Function.constant(0)))
 
 const addCount =
   (key: string) =>
@@ -170,13 +167,19 @@ export const countSummary = (
   })
 }
 
-const evidenceMeasure: (item: EvidenceItem) => string = Struct.get("measure")
-const evidenceCount: (item: EvidenceItem) => number = Struct.get("count")
-
 const descendingNumber = Order.reverse(Order.number)
-const byCountDescending = Order.mapInput(descendingNumber, evidenceCount)
-const byMeasure = Order.mapInput(Order.string, evidenceMeasure)
-export const evidenceOrder = Order.combine(byCountDescending, byMeasure)
+const byCountDescending: Order.Order<EvidenceItem> = Order.mapInput(
+  descendingNumber,
+  Struct.get("count")
+)
+const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(
+  Order.string,
+  Struct.get("measure")
+)
+export const evidenceOrder: Order.Order<EvidenceItem> = Order.combine(
+  byCountDescending,
+  byMeasure
+)
 
 export const evidenceItem = (measure: string, count: number): EvidenceItem =>
   new EvidenceItem({ measure, count })

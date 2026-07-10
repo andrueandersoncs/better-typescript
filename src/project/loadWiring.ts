@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Effect, Option, Schema, Struct, pipe } from "effect"
+import { Effect, Function, Option, Schema, Struct, pipe } from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring, makeWiring } from "../engine/report.js"
 import type { Check } from "../engine/check.js"
@@ -55,8 +55,6 @@ const isFunctionValue = (value: unknown): value is WiringFactory =>
 
 const isError = (cause: unknown): cause is Error => cause instanceof Error
 
-const errorMessage: (error: Error) => string = Struct.get("message")
-
 const hasText = (value: string): boolean => value.length > 0
 
 const causeText = (cause: unknown) => (): string => String(cause)
@@ -64,7 +62,7 @@ const causeText = (cause: unknown) => (): string => String(cause)
 const formatCause = (cause: unknown): string =>
   pipe(
     Option.liftPredicate(isError)(cause),
-    Option.map(errorMessage),
+    Option.map(Struct.get("message")),
     Option.filter(hasText),
     Option.getOrElse(causeText(cause))
   )
@@ -90,12 +88,6 @@ const configExport =
 
 const defaultConfigExport = configExport(defaultExportName)
 
-const defaultRecordValue: (record: ModuleRecord) => unknown =
-  Struct.get(defaultExportName)
-
-const wiringRecordValue: (record: ModuleRecord) => unknown =
-  Struct.get(wiringExportName)
-
 const recordHasOwnKey =
   (key: ConfigExportName) =>
   (record: ModuleRecord): boolean =>
@@ -114,11 +106,13 @@ const ownConfigExport =
     )
   }
 
-const defaultOwnConfigExport =
-  ownConfigExport(defaultExportName)(defaultRecordValue)
+const defaultOwnConfigExport = ownConfigExport(defaultExportName)(
+  Struct.get(defaultExportName)
+)
 
-const wiringOwnConfigExport =
-  ownConfigExport(wiringExportName)(wiringRecordValue)
+const wiringOwnConfigExport = ownConfigExport(wiringExportName)(
+  Struct.get(wiringExportName)
+)
 
 const defaultOwnExport =
   (record: ModuleRecord) => (): Option.Option<ConfigExport> =>
@@ -245,7 +239,7 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
   const hasValidReported = pipe(
     reported,
     Option.match({
-      onNone: () => true,
+      onNone: Function.constant(true),
       onSome: (reported) => typeof reported === "boolean"
     })
   )

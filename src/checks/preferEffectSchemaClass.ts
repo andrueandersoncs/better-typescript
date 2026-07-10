@@ -81,7 +81,7 @@ const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
     Option.fromNullable(type.aliasSymbol),
     Option.filter(isProjectObjectTypeSymbol)
   )
-  const fallbackAlias = () => aliasSymbol
+  const fallbackAlias = Function.constant(aliasSymbol)
 
   return Option.orElse(directSymbol, fallbackAlias)
 }

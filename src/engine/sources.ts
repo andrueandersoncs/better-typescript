@@ -2,6 +2,7 @@ import {
   Array,
   Data,
   Effect,
+  Function,
   HashMap,
   MutableList,
   MutableRef,
@@ -221,7 +222,7 @@ const isChangedFile =
     pipe(
       HashMap.get(previous, sourceFile.fileName),
       Option.match({
-        onNone: () => true,
+        onNone: Function.constant(true),
         onSome: (known) => known !== sourceFile
       })
     )

@@ -313,8 +313,6 @@ export const checkReportBlocks =
       Array.map(checkReportBlockForGroup(name))
     )
 
-const blockText: (block: ReportBlock) => string = Struct.get("text")
-
 /**
  * One batch's full keyed report: advice blocks first, then reported local
  * blocks in wiring order. Silent signals still ran and fed derivation.
@@ -418,7 +416,7 @@ export const reportFromWiring =
     pipe(
       reportBlocksFromWiring(wiring)(workspace),
       Stream.fromIterableEffect,
-      Stream.map(blockText)
+      Stream.map(Struct.get("text"))
     )
 
 export const signalOf =
