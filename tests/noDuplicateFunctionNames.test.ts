@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { noDuplicateFunctionNames } from "../src/rules/noDuplicateFunctionNames.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { noDuplicateFunctionNames } from "../src/checks/noDuplicateFunctionNames.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -247,9 +247,7 @@ const runNoDuplicateFunctionNamesFixture = async (): Promise<
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runRuleCheckOnProject(noDuplicateFunctionNames)(project)
-      )
+      Effect.runPromise(runCheckOnProject(noDuplicateFunctionNames)(project))
     )
   )
 

@@ -7,7 +7,7 @@ import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
 import { loadProject } from "../src/project/loadProject.js"
 import type { LoadedProject } from "../src/project/loadProject.js"
-import { checkableSourceFiles } from "../src/detectors/sources.js"
+import { checkableSourceFiles } from "../src/engine/sources.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturesRoot = path.join(testDirectory, "fixtures")

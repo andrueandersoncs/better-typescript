@@ -15,36 +15,36 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import { Location, locateNode } from "../src/detectors/location.js"
+import { Location, locateNode } from "../src/engine/location.js"
 import {
   AdviceReportKey,
+  namedCheck,
   ReportBlock,
   reportBlocksFromWiring,
   RuleReportKey,
-  RuleSnapshot,
-  SignalsBatch,
-  type NamedRuleCheck,
+  Signal,
+  type NamedCheck,
   type ReportKey,
-  type ReportWiring
-} from "../src/detectors/report.js"
+  type Wiring
+} from "../src/engine/report.js"
 import {
   checkFromSubscriptions,
   nodeSubscription,
   Detection,
-  type RuleCheck
-} from "../src/detectors/rule.js"
+  type Check
+} from "../src/engine/check.js"
 import {
   astNodes,
   contextFor,
   diffCheckableFiles
-} from "../src/detectors/sources.js"
-import type { AdviceElement } from "../src/detectors/summary.js"
+} from "../src/engine/sources.js"
+import type { Advice } from "../src/engine/derive.js"
 import {
   ClearedEvent,
   EmptyReportEvent,
   SignalEvent,
   WorkspaceUpdate,
-  adviceUpdates,
+  reportBlockUpdates,
   blockDelta,
   blockDeltas,
   renderEventText,
@@ -53,7 +53,7 @@ import {
   signalsEquivalence,
   watchReportFromWiring,
   type ReportEvent
-} from "../src/detectors/watch.js"
+} from "../src/engine/watch.js"
 import { discoverWorkspace, loadProject } from "../src/project/loadProject.js"
 import type { LoadedProject } from "../src/project/loadProject.js"
 
@@ -79,7 +79,7 @@ const loadFixtureProject = async (): Promise<LoadedProject> => {
   return project
 }
 
-const throwProbeCheck: RuleCheck = checkFromSubscriptions(() => [
+const throwProbeCheck: Check = checkFromSubscriptions(() => [
   nodeSubscription([ts.SyntaxKind.ThrowStatement])((context) => (node) => [
     new Detection({
       location: locateNode(context)(node),
@@ -89,15 +89,11 @@ const throwProbeCheck: RuleCheck = checkFromSubscriptions(() => [
   ])
 ])
 
-const throwProbeRule: NamedRuleCheck = {
-  name: probeName,
-  check: throwProbeCheck
-}
+const throwProbeNamedCheck: NamedCheck = namedCheck(probeName, throwProbeCheck)
 
-const probeWiring: ReportWiring = {
-  rules: [throwProbeRule],
-  helpers: [],
-  advice: () => Stream.empty
+const probeWiring: Wiring = {
+  checks: [throwProbeNamedCheck],
+  derive: () => Stream.empty
 }
 
 const pollingWatchOptions: ts.WatchOptions = {
@@ -133,11 +129,11 @@ const detectionAt = (
     data
   })
 
-const batchOf = (detections: ReadonlyArray<Detection>): SignalsBatch =>
-  new SignalsBatch({
-    rules: [new RuleSnapshot({ name: probeName, detections })],
-    helpers: []
-  })
+const batchOf = (
+  detections: ReadonlyArray<Detection>
+): ReadonlyArray<Signal> => [
+  new Signal({ name: probeName, reported: true, detections })
+]
 
 test("blockDelta emits every current block as a signal event when there is no previous report", () => {
   const a = block("a", "text a", "a cleared")
@@ -309,23 +305,22 @@ test("signalsEquivalence under-cuts on fresh non-Equal detection data by design"
   assert.equal(signalsEquivalence(a, b), false)
 })
 
-test("signalUpdates and adviceUpdates derive one batch and advice-first blocks per element", async () => {
+test("signalUpdates and reportBlockUpdates derive one signal array and advice-first blocks per element", async () => {
   const project = await loadFixtureProject()
   const snapshot = await Effect.runPromise(Stream.runCollect(astNodes(project)))
   const update = new WorkspaceUpdate({
     snapshots: [snapshot]
   })
-  const fixedAdvice: AdviceElement = {
+  const fixedAdvice: Advice = {
     location: location("src/cases.ts", 1, 1),
     level: "file",
     title: "probe advice",
     remediation: "act on the probe evidence",
     evidence: [{ measure: "probe", count: 4 }]
   }
-  const adviceProbeWiring: ReportWiring = {
-    rules: [throwProbeRule],
-    helpers: [],
-    advice: () => Stream.fromIterable([fixedAdvice])
+  const adviceProbeWiring: Wiring = {
+    checks: [throwProbeNamedCheck],
+    derive: () => Stream.fromIterable([fixedAdvice])
   }
 
   const batches = await collectStream(
@@ -333,16 +328,19 @@ test("signalUpdates and adviceUpdates derive one batch and advice-first blocks p
   )
 
   assert.equal(batches.length, 1)
-  assert.equal(batches[0].rules.length, 1)
-  assert.equal(batches[0].rules[0].name, probeName)
-  assert.equal(batches[0].rules[0].detections.length, 4)
-  assert.equal(batches[0].helpers.length, 0)
+  assert.equal(batches[0]?.length, 1)
+  const [probeSignal] = batches[0] ?? []
+
+  assert.ok(probeSignal, "expected the probe check to emit one signal")
+  assert.equal(probeSignal.name, probeName)
+  assert.equal(probeSignal.reported, true)
+  assert.equal(probeSignal.detections.length, 4)
 
   const blockArrays = await collectStream(
     pipe(
       Stream.fromIterable([update]),
       signalUpdates(adviceProbeWiring),
-      adviceUpdates(adviceProbeWiring)
+      reportBlockUpdates(adviceProbeWiring)
     )
   )
 

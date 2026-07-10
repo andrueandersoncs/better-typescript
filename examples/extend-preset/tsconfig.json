@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "better-typescript": ["../../src/kernel.ts"],
+      "better-typescript/preset": ["../../src/preset.ts"]
+    }
+  },
+  "include": ["better-typescript.config.ts"]
+}

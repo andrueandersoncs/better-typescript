@@ -4,9 +4,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { noMutation } from "../src/rules/noMutation.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { noMutation } from "../src/checks/noMutation.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -120,7 +120,7 @@ const runNoMutationFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(noMutation)(project))
+      Effect.runPromise(runCheckOnProject(noMutation)(project))
     )
   )
 

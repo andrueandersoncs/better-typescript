@@ -4,23 +4,16 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
-import {
-  reportFromWiring,
-  type ReportWiring
-} from "../src/kernel.js"
+import { reportFromWiring, type Wiring } from "../src/kernel.js"
 import { loadProject } from "../src/project/loadProject.js"
-import {
-  loadWiring,
-  ProjectWiringError
-} from "../src/project/loadWiring.js"
+import { loadWiring, ProjectWiringError } from "../src/project/loadWiring.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
 
-const fallbackWiring: ReportWiring = {
-  rules: [],
-  helpers: [],
-  advice: () => Stream.empty
+const fallbackWiring: Wiring = {
+  checks: [],
+  derive: () => Stream.empty
 }
 
 const tsconfig = {
@@ -92,9 +85,8 @@ test("loadWiring accepts a direct default wiring object", async () => {
         'import { Stream } from "effect"',
         "",
         "export default {",
-        "  rules: [{ name: \"direct-default-rule\", check: () => Stream.empty }],",
-        "  helpers: [],",
-        "  advice: () => Stream.empty",
+        '  checks: [{ name: "direct-default-check", check: () => Stream.empty }],',
+        "  derive: () => Stream.empty",
         "}",
         ""
       ].join("\n")
@@ -105,10 +97,13 @@ test("loadWiring accepts a direct default wiring object", async () => {
     )
 
     assert.deepEqual(
-      wiring.rules.map((rule) => rule.name),
-      ["direct-default-rule"]
+      wiring.checks.map((check) => check.name),
+      ["direct-default-check"]
     )
-    assert.deepEqual(wiring.helpers, [])
+    assert.deepEqual(
+      wiring.checks.map((check) => check.reported),
+      [true]
+    )
   })
 })
 
@@ -120,9 +115,8 @@ test("loadWiring accepts a named zero-argument wiring factory", async () => {
         'import { Stream } from "effect"',
         "",
         "export const wiring = () => ({",
-        "  rules: [{ name: \"named-factory-rule\", check: () => Stream.empty }],",
-        "  helpers: [],",
-        "  advice: () => Stream.empty",
+        '  checks: [{ name: "named-factory-check", check: () => Stream.empty }],',
+        "  derive: () => Stream.empty",
         "})",
         ""
       ].join("\n")
@@ -133,8 +127,8 @@ test("loadWiring accepts a named zero-argument wiring factory", async () => {
     )
 
     assert.deepEqual(
-      wiring.rules.map((rule) => rule.name),
-      ["named-factory-rule"]
+      wiring.checks.map((check) => check.name),
+      ["named-factory-check"]
     )
   })
 })
@@ -147,9 +141,8 @@ test("loadWiring accepts a default zero-argument wiring factory", async () => {
         'import { Stream } from "effect"',
         "",
         "export default () => ({",
-        "  rules: [{ name: \"default-factory-rule\", check: () => Stream.empty }],",
-        "  helpers: [],",
-        "  advice: () => Stream.empty",
+        '  checks: [{ name: "default-factory-check", check: () => Stream.empty }],',
+        "  derive: () => Stream.empty",
         "})",
         ""
       ].join("\n")
@@ -160,13 +153,13 @@ test("loadWiring accepts a default zero-argument wiring factory", async () => {
     )
 
     assert.deepEqual(
-      wiring.rules.map((rule) => rule.name),
-      ["default-factory-rule"]
+      wiring.checks.map((check) => check.name),
+      ["default-factory-check"]
     )
   })
 })
 
-test("loadWiring keeps a custom config rule through reportFromWiring", async () => {
+test("loadWiring keeps a custom config check through reportFromWiring", async () => {
   await runInTempProject(async (projectDirectory) => {
     await writeConfig(
       projectDirectory,
@@ -175,20 +168,19 @@ test("loadWiring keeps a custom config rule through reportFromWiring", async () 
         'import { Detection, Location } from "../../src/kernel.js"',
         "",
         "export default {",
-        "  rules: [",
+        "  checks: [",
         "    {",
-        "      name: \"config-extra-rule\",",
+        '      name: "config-extra-check",',
         "      check: () => Stream.fromIterable([",
         "        new Detection({",
-        "          location: new Location({ path: \"src/cases.ts\", line: 1, column: 1 }),",
-        "          message: \"configured detection\",",
-        "          hint: \"loaded from project config\"",
+        '          location: new Location({ path: "src/cases.ts", line: 1, column: 1 }),',
+        '          message: "configured detection",',
+        '          hint: "loaded from project config"',
         "        })",
         "      ])",
         "    }",
         "  ],",
-        "  helpers: [],",
-        "  advice: () => Stream.empty",
+        "  derive: () => Stream.empty",
         "}",
         ""
       ].join("\n")
@@ -202,7 +194,7 @@ test("loadWiring keeps a custom config rule through reportFromWiring", async () 
 
     assert.deepEqual(blocks, [
       [
-        "config-extra-rule",
+        "config-extra-check",
         "  configured detection",
         "  Hint: loaded from project config",
         "  src/cases.ts:1:1"
@@ -211,7 +203,7 @@ test("loadWiring keeps a custom config rule through reportFromWiring", async () 
   })
 })
 
-test("loadWiring wraps duplicate config names in ProjectWiringError with collisions", async () => {
+test("loadWiring wraps duplicate config check names in ProjectWiringError with collisions", async () => {
   await runInTempProject(async (projectDirectory) => {
     await writeConfig(
       projectDirectory,
@@ -219,15 +211,11 @@ test("loadWiring wraps duplicate config names in ProjectWiringError with collisi
         'import { Stream } from "effect"',
         "",
         "export default {",
-        "  rules: [",
-        "    { name: \"duplicate-rule\", check: () => Stream.empty },",
-        "    { name: \"duplicate-rule\", check: () => Stream.empty }",
+        "  checks: [",
+        '    { name: "duplicate-check", check: () => Stream.empty },',
+        '    { name: "duplicate-check", check: () => Stream.empty }',
         "  ],",
-        "  helpers: [",
-        "    { name: \"duplicate-helper\", check: () => Stream.empty },",
-        "    { name: \"duplicate-helper\", check: () => Stream.empty }",
-        "  ],",
-        "  advice: () => Stream.empty",
+        "  derive: () => Stream.empty",
         "}",
         ""
       ].join("\n")
@@ -236,8 +224,32 @@ test("loadWiring wraps duplicate config names in ProjectWiringError with collisi
     const error = await loadConfigFailure(projectDirectory)
 
     assert.ok(error instanceof ProjectWiringError)
-    assert.match(error.message, /rules: duplicate-rule/)
-    assert.match(error.message, /helpers: duplicate-helper/)
+    assert.match(error.message, /Duplicate check names: duplicate-check/)
+  })
+})
+
+test("loadWiring rejects duplicate names across reported and silent checks", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    await writeConfig(
+      projectDirectory,
+      [
+        'import { Stream } from "effect"',
+        "",
+        "export default {",
+        "  checks: [",
+        '    { name: "global-duplicate", check: () => Stream.empty },',
+        '    { name: "global-duplicate", reported: false, check: () => Stream.empty }',
+        "  ],",
+        "  derive: () => Stream.empty",
+        "}",
+        ""
+      ].join("\n")
+    )
+
+    const error = await loadConfigFailure(projectDirectory)
+
+    assert.ok(error instanceof ProjectWiringError)
+    assert.match(error.message, /Duplicate check names: global-duplicate/)
   })
 })
 
@@ -246,11 +258,11 @@ test("loadWiring rejects invalid wiring shapes as ProjectWiringError", async () 
     await writeConfig(projectDirectory, "export default 42\n")
 
     const error = await loadConfigFailure(projectDirectory)
-
     assert.ok(error instanceof ProjectWiringError)
+
     assert.match(
       error.message,
-      /exported wiring must be an object with rules, helpers, and advice/
+      /exported wiring must be an object with checks and derive/
     )
   })
 })

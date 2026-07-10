@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { preferEffectArrayAppendAll } from "../src/rules/preferEffectArrayAppendAll.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { preferEffectArrayAppendAll } from "../src/checks/preferEffectArrayAppendAll.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -96,9 +96,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runRuleCheckOnProject(preferEffectArrayAppendAll)(project)
-      )
+      Effect.runPromise(runCheckOnProject(preferEffectArrayAppendAll)(project))
     )
   )
 

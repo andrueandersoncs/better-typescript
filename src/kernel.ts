@@ -1,19 +1,17 @@
 export type {
+  Check,
   FileHandler,
   NodeHandler,
-  ProgramContext,
-  RuleCheck,
-  RuleContext,
   Subscription
-} from "./detectors/rule.js"
-export type { AstNodeElement } from "./detectors/sources.js"
-export type {
-  NamedRuleCheck,
-  ReportWiring,
-  RuleSignals
-} from "./detectors/report.js"
+} from "./engine/check.js"
+export type { AstNodeElement } from "./engine/sources.js"
+export type { AdviceLevel } from "./engine/derive.js"
 
-export { checkFromSubscriptions } from "./detectors/rule.js"
+export {
+  CheckContext,
+  ProgramContext,
+  checkFromSubscriptions
+} from "./engine/check.js"
 export {
   combineAll,
   fileCheck,
@@ -21,10 +19,18 @@ export {
   nodeCheck,
   nodeSubscriptions,
   withProgramIndex
-} from "./rules/ruleCheck.js"
-export { Detection, Location, detection, locateNode } from "./detectors/location.js"
+} from "./engine/check.js"
 export {
-  AdviceElement,
+  Detection,
+  Location,
+  detection,
+  locateNode
+} from "./engine/location.js"
+export {
+  Advice,
+  CountSummary,
+  EvidenceItem,
+  FileDetections,
   NamedDetection,
   adviceLocation,
   byFile,
@@ -32,19 +38,25 @@ export {
   collidingLines,
   countSummary,
   deriveSignals,
-  dominantRuleEvidence,
+  dominantCheckEvidence,
   evidenceFromCounts,
   evidenceItem,
   evidenceOrder,
   namedDetection,
   parentDirectories
-} from "./detectors/summary.js"
+} from "./engine/derive.js"
 export {
+  DuplicateCheckNamesError,
+  NamedCheck,
+  Signal,
+  Wiring,
+  filterFallbackAdviceForUncoveredFiles,
   makeWiring,
-  namedRuleCheck,
+  namedCheck,
   reportFromWiring,
-  ruleSignal,
-  runRuleCheckOnProject,
+  runCheckOnProject,
+  signalOf,
+  silentCheck,
   withFallbackAdvice
-} from "./detectors/report.js"
-export { watchReportFromWiring } from "./detectors/watch.js"
+} from "./engine/report.js"
+export { reportBlockUpdates, watchReportFromWiring } from "./engine/watch.js"

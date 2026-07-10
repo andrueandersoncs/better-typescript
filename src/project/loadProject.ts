@@ -1,7 +1,7 @@
 import * as path from "node:path"
 import { Data, Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { TsProgram } from "../detectors/tsSchema.js"
+import { TsProgram } from "../engine/tsSchema.js"
 
 /**
  * A discovered leaf project: its config location and parsed command line, with

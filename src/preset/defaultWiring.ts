@@ -1,4 +1,4 @@
-import { Effect, Stream, pipe } from "effect"
+import { Array, Effect, Stream, Struct, pipe } from "effect"
 import {
   highSignalDensity,
   hotSubsystem,
@@ -6,24 +6,18 @@ import {
   pipelineHostile,
   ruleDominance,
   sideEffectLaundering,
-  systemicHotspots
-} from "../advice/index.js"
-import { preferCurriedDataLastFunctions } from "../advice/preferCurriedDataLastFunctions.js"
+  systemicHotspots,
+  preferCurriedDataLastFunctions
+} from "../checks/index.js"
 import {
-  namedRuleCheck,
-  ruleSignal,
-  withFallbackAdvice
-} from "../detectors/report.js"
-import type {
-  NamedRuleCheck,
-  ReportWiring,
-  RuleSignals
-} from "../detectors/report.js"
-import { collectSignals, namedDetection } from "../detectors/summary.js"
-import type {
-  AdviceElement,
-  NamedDetection
-} from "../detectors/summary.js"
+  filterFallbackAdviceForUncoveredFiles,
+  namedCheck,
+  signalOf,
+  silentCheck
+} from "../engine/report.js"
+import type { NamedCheck, Signal, Wiring } from "../engine/report.js"
+import { collectSignals, namedDetection } from "../engine/derive.js"
+import type { Advice, NamedDetection } from "../engine/derive.js"
 import {
   noAbstractClasses,
   noArraySpread,
@@ -76,109 +70,88 @@ import {
   preferImplicitReturn,
   preferOptionMatch,
   preferPipeFunction
-} from "../rules/index.js"
-
-const highSignalDensityTitle = "high signal density"
+} from "../checks/index.js"
 
 const nameDetections = (
-  rule: RuleSignals
+  signal: Signal
 ): Stream.Stream<NamedDetection, Error> => {
-  const toNamedDetection = namedDetection(rule.name)
+  const toNamedDetection = namedDetection(signal.name)
 
-  return Stream.map(rule.elements, toNamedDetection)
+  return pipe(
+    Stream.fromIterable(signal.detections),
+    Stream.map(toNamedDetection)
+  )
 }
 
-const isHighSignalDensityAdvice = (advice: AdviceElement): boolean =>
-  advice.title === highSignalDensityTitle
-
 const replayAdvice = (
-  advice: ReadonlyArray<AdviceElement>
-): Stream.Stream<AdviceElement, Error> => Stream.fromIterable(advice)
+  items: ReadonlyArray<Advice>
+): Stream.Stream<Advice, Error> => Stream.fromIterable(items)
 
-export const reportedRules: ReadonlyArray<NamedRuleCheck> = [
-  namedRuleCheck("prefer-effect-schema-guard", preferEffectSchemaGuard),
-  namedRuleCheck("prefer-effect-schema-is", preferEffectSchemaIs),
-  namedRuleCheck(
-    "prefer-effect-schema-constructor",
-    preferEffectSchemaConstructor
-  ),
-  namedRuleCheck("prefer-effect-schema-class", preferEffectSchemaClass),
-  namedRuleCheck("prefer-effect-fn", preferEffectFn),
-  namedRuleCheck(
-    "prefer-effect-property-accessors",
-    preferEffectPropertyAccessors
-  ),
-  namedRuleCheck(
-    "prefer-effect-record-filter-map",
-    preferEffectRecordFilterMap
-  ),
-  namedRuleCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll),
-  namedRuleCheck("prefer-data-last-module", preferDataLastModule),
-  namedRuleCheck("prefer-conditional-return", preferConditionalReturn),
-  namedRuleCheck("prefer-direct-boolean-return", preferDirectBooleanReturn),
-  namedRuleCheck("prefer-implicit-return", preferImplicitReturn),
-  namedRuleCheck("no-throw", noThrow),
-  namedRuleCheck("no-new-error", noNewError),
-  namedRuleCheck("no-try-catch", noTryCatch),
-  namedRuleCheck("no-undefined", noUndefined),
-  namedRuleCheck("no-void-functions", noVoidFunctions),
-  namedRuleCheck("no-root-level-classes", noRootLevelClasses),
-  namedRuleCheck("no-multi-line-comments", noMultiLineComments),
-  namedRuleCheck("no-explicit-any-return", noExplicitAnyReturn),
-  namedRuleCheck("no-multiple-boolean-operators", noMultipleBooleanOperators),
-  namedRuleCheck("no-inline-boolean-expressions", noInlineBooleanExpressions),
-  namedRuleCheck("no-mutable-array-methods", noMutableArrayMethods),
-  namedRuleCheck(
-    "no-mutable-variable-declarations",
-    noMutableVariableDeclarations
-  ),
-  namedRuleCheck("no-mutation", noMutation),
-  namedRuleCheck("no-nested-if-statements", noNestedIfStatements),
-  namedRuleCheck("no-non-null-assertion", noNonNullAssertion),
-  namedRuleCheck("no-duplicate-if-bodies", noDuplicateIfBodies),
-  namedRuleCheck("no-duplicate-function-names", noDuplicateFunctionNames),
-  namedRuleCheck("no-callbacks", noCallbacks),
-  namedRuleCheck("no-async-functions", noAsyncFunctions),
-  namedRuleCheck("no-array-spread", noArraySpread),
-  namedRuleCheck("no-for-in-loops", noForInLoops),
-  namedRuleCheck("no-for-loops", noForLoops),
-  namedRuleCheck("no-for-of-loops", noForOfLoops),
-  namedRuleCheck("no-switch-statements", noSwitchStatements),
-  namedRuleCheck("no-function-keyword", noFunctionKeyword),
-  namedRuleCheck("no-inline-closures", noInlineClosures),
-  namedRuleCheck("no-nested-calls", noNestedCalls),
-  namedRuleCheck("no-manual-type-dispatch", noManualTypeDispatch),
-  namedRuleCheck("no-abstract-classes", noAbstractClasses),
-  namedRuleCheck(
-    "no-class-method-implementations",
-    noClassMethodImplementations
-  ),
-  namedRuleCheck("no-raw-object-types", noRawObjectTypes),
-  namedRuleCheck("no-first-party-schema-declare", noFirstPartySchemaDeclare),
-  namedRuleCheck("no-data-tagged-class", noDataTaggedClass),
-  namedRuleCheck("no-instanceof", noInstanceof),
-  namedRuleCheck("no-single-use-callee", noSingleUseCallee),
-  namedRuleCheck("prefer-hash-set", preferHashSet),
-  namedRuleCheck("prefer-hash-map", preferHashMap),
-  namedRuleCheck("prefer-option-match", preferOptionMatch),
-  namedRuleCheck("prefer-pipe-function", preferPipeFunction)
-]
-
-export const helperRules: ReadonlyArray<NamedRuleCheck> = [
-  namedRuleCheck(
+export const defaultChecks: ReadonlyArray<NamedCheck> = [
+  namedCheck("prefer-effect-schema-guard", preferEffectSchemaGuard),
+  namedCheck("prefer-effect-schema-is", preferEffectSchemaIs),
+  namedCheck("prefer-effect-schema-constructor", preferEffectSchemaConstructor),
+  namedCheck("prefer-effect-schema-class", preferEffectSchemaClass),
+  namedCheck("prefer-effect-fn", preferEffectFn),
+  namedCheck("prefer-effect-property-accessors", preferEffectPropertyAccessors),
+  namedCheck("prefer-effect-record-filter-map", preferEffectRecordFilterMap),
+  namedCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll),
+  namedCheck("prefer-data-last-module", preferDataLastModule),
+  namedCheck("prefer-conditional-return", preferConditionalReturn),
+  namedCheck("prefer-direct-boolean-return", preferDirectBooleanReturn),
+  namedCheck("prefer-implicit-return", preferImplicitReturn),
+  namedCheck("no-throw", noThrow),
+  namedCheck("no-new-error", noNewError),
+  namedCheck("no-try-catch", noTryCatch),
+  namedCheck("no-undefined", noUndefined),
+  namedCheck("no-void-functions", noVoidFunctions),
+  namedCheck("no-root-level-classes", noRootLevelClasses),
+  namedCheck("no-multi-line-comments", noMultiLineComments),
+  namedCheck("no-explicit-any-return", noExplicitAnyReturn),
+  namedCheck("no-multiple-boolean-operators", noMultipleBooleanOperators),
+  namedCheck("no-inline-boolean-expressions", noInlineBooleanExpressions),
+  namedCheck("no-mutable-array-methods", noMutableArrayMethods),
+  namedCheck("no-mutable-variable-declarations", noMutableVariableDeclarations),
+  namedCheck("no-mutation", noMutation),
+  namedCheck("no-nested-if-statements", noNestedIfStatements),
+  namedCheck("no-non-null-assertion", noNonNullAssertion),
+  namedCheck("no-duplicate-if-bodies", noDuplicateIfBodies),
+  namedCheck("no-duplicate-function-names", noDuplicateFunctionNames),
+  namedCheck("no-callbacks", noCallbacks),
+  namedCheck("no-async-functions", noAsyncFunctions),
+  namedCheck("no-array-spread", noArraySpread),
+  namedCheck("no-for-in-loops", noForInLoops),
+  namedCheck("no-for-loops", noForLoops),
+  namedCheck("no-for-of-loops", noForOfLoops),
+  namedCheck("no-switch-statements", noSwitchStatements),
+  namedCheck("no-function-keyword", noFunctionKeyword),
+  namedCheck("no-inline-closures", noInlineClosures),
+  namedCheck("no-nested-calls", noNestedCalls),
+  namedCheck("no-manual-type-dispatch", noManualTypeDispatch),
+  namedCheck("no-abstract-classes", noAbstractClasses),
+  namedCheck("no-class-method-implementations", noClassMethodImplementations),
+  namedCheck("no-raw-object-types", noRawObjectTypes),
+  namedCheck("no-first-party-schema-declare", noFirstPartySchemaDeclare),
+  namedCheck("no-data-tagged-class", noDataTaggedClass),
+  namedCheck("no-instanceof", noInstanceof),
+  namedCheck("no-single-use-callee", noSingleUseCallee),
+  namedCheck("prefer-hash-set", preferHashSet),
+  namedCheck("prefer-hash-map", preferHashMap),
+  namedCheck("prefer-option-match", preferOptionMatch),
+  namedCheck("prefer-pipe-function", preferPipeFunction),
+  silentCheck(
     "prefer-curried-data-last-functions",
     preferCurriedDataLastFunctions
   )
 ]
 
-export const defaultAdvice = (
-  ruleSignals: ReadonlyArray<RuleSignals>,
-  helperSignals: ReadonlyArray<RuleSignals>
-): Stream.Stream<AdviceElement, Error> => {
-  const elementsOf = ruleSignal(ruleSignals)
-  const helperElementsOf = ruleSignal(helperSignals)
-  const ruleSignalStream = Stream.fromIterable(ruleSignals)
-  const namedElements = pipe(ruleSignalStream, Stream.flatMap(nameDetections))
+export const defaultDerive = (
+  signals: ReadonlyArray<Signal>
+): Stream.Stream<Advice, Error> => {
+  const elementsOf = signalOf(signals)
+  const reportedSignals = Array.filter(signals, Struct.get("reported"))
+  const signalStream = Stream.fromIterable(reportedSignals)
+  const namedElements = pipe(signalStream, Stream.flatMap(nameDetections))
   const noMutation = elementsOf("no-mutation")
   const preferHashMap = elementsOf("prefer-hash-map")
   const preferHashSet = elementsOf("prefer-hash-set")
@@ -187,7 +160,7 @@ export const defaultAdvice = (
     "no-mutable-variable-declarations"
   )
   const noNestedCalls = elementsOf("no-nested-calls")
-  const preferCurried = helperElementsOf("prefer-curried-data-last-functions")
+  const preferCurried = elementsOf("prefer-curried-data-last-functions")
   const imperativeAdvice = imperativeStateManager({
     noMutation,
     preferHashMap,
@@ -211,30 +184,27 @@ export const defaultAdvice = (
   const dominanceAdvice = ruleDominance(namedElements)
 
   const materializedAdvice = Effect.gen(function* () {
-    const specificWithFallbackAdvice = withFallbackAdvice(
-      specificAdvice,
-      densityAdvice
-    )
-    const densityAwareAdviceEffect = collectSignals(specificWithFallbackAdvice)
+    const specificItems = yield* collectSignals(specificAdvice)
+    const densityAfterFallbackSuppression =
+      filterFallbackAdviceForUncoveredFiles(specificItems)(densityAdvice)
+    const densityAdviceEffect = collectSignals(densityAfterFallbackSuppression)
     const subsystemAdviceEffect = collectSignals(subsystemAdvice)
     const dominanceAdviceEffect = collectSignals(dominanceAdvice)
-    const densityAwareAdvice = yield* densityAwareAdviceEffect
-    const subsystemAdviceElements = yield* subsystemAdviceEffect
-    const dominanceAdviceElements = yield* dominanceAdviceEffect
-    const highSignalDensityOnlyAdvice = densityAwareAdvice.filter(
-      isHighSignalDensityAdvice
-    )
-    const densityAwareReplay = replayAdvice(densityAwareAdvice)
-    const subsystemReplay = replayAdvice(subsystemAdviceElements)
-    const dominanceReplay = replayAdvice(dominanceAdviceElements)
-    const highSignalDensityReplay = replayAdvice(highSignalDensityOnlyAdvice)
+    const densityItems = yield* densityAdviceEffect
+    const subsystemItems = yield* subsystemAdviceEffect
+    const dominanceItems = yield* dominanceAdviceEffect
+    const specificReplay = replayAdvice(specificItems)
+    const densityReplay = replayAdvice(densityItems)
+    const subsystemReplay = replayAdvice(subsystemItems)
+    const dominanceReplay = replayAdvice(dominanceItems)
     const systemicInput = {
       hotSubsystem: subsystemReplay,
-      highSignalDensity: highSignalDensityReplay
+      highSignalDensity: densityReplay
     }
     const systemicAdvice = systemicHotspots(systemicInput)
     const outputAdviceStreams = Stream.fromIterable([
-      densityAwareReplay,
+      specificReplay,
+      densityReplay,
       subsystemReplay,
       dominanceReplay,
       systemicAdvice
@@ -246,8 +216,7 @@ export const defaultAdvice = (
   return pipe(materializedAdvice, Stream.unwrap)
 }
 
-export const defaultWiring: ReportWiring = {
-  rules: reportedRules,
-  helpers: helperRules,
-  advice: defaultAdvice
+export const defaultWiring: Wiring = {
+  checks: defaultChecks,
+  derive: defaultDerive
 }

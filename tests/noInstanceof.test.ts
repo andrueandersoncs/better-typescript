@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { noInstanceof } from "../src/rules/noInstanceof.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { noInstanceof } from "../src/checks/noInstanceof.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -67,7 +67,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(noInstanceof)(project))
+      Effect.runPromise(runCheckOnProject(noInstanceof)(project))
     )
   )
 

@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { noDuplicateIfBodies } from "../src/rules/noDuplicateIfBodies.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { noDuplicateIfBodies } from "../src/checks/noDuplicateIfBodies.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -130,7 +130,7 @@ const runNoDuplicateIfBodiesFixture = async (): Promise<
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(noDuplicateIfBodies)(project))
+      Effect.runPromise(runCheckOnProject(noDuplicateIfBodies)(project))
     )
   )
 

@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { noTryCatch } from "../src/rules/noTryCatch.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { noTryCatch } from "../src/checks/noTryCatch.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -111,7 +111,7 @@ const runNoTryCatchFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(noTryCatch)(project))
+      Effect.runPromise(runCheckOnProject(noTryCatch)(project))
     )
   )
 

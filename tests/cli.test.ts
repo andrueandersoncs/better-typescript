@@ -114,7 +114,9 @@ const createSignalFreeFixture = async (): Promise<string> => {
   return tempDir
 }
 
-const parseNdjson = (stdout: string): ReadonlyArray<Record<string, unknown>> => {
+const parseNdjson = (
+  stdout: string
+): ReadonlyArray<Record<string, unknown>> => {
   const lines = stdout.split(/\r?\n/).filter((line) => line.length > 0)
 
   assert.ok(lines.length > 0, "expected stdout to contain NDJSON events")

@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { preferEffectSchemaGuard } from "../src/rules/preferEffectSchemaGuard.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { preferEffectSchemaGuard } from "../src/checks/preferEffectSchemaGuard.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -115,7 +115,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(preferEffectSchemaGuard)(project))
+      Effect.runPromise(runCheckOnProject(preferEffectSchemaGuard)(project))
     )
   )
 

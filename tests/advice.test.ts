@@ -9,11 +9,11 @@ import {
   ruleDominance,
   sideEffectLaundering,
   systemicHotspots
-} from "../src/advice/index.js"
-import { Location } from "../src/detectors/location.js"
-import { NamedDetection } from "../src/detectors/summary.js"
-import type { AdviceElement } from "../src/detectors/summary.js"
-import { Detection } from "../src/detectors/rule.js"
+} from "../src/checks/index.js"
+import { Location } from "../src/engine/location.js"
+import { NamedDetection } from "../src/engine/derive.js"
+import type { Advice } from "../src/engine/derive.js"
+import { Detection } from "../src/engine/check.js"
 
 function signalAt(path: string, line: number, data?: unknown): Detection {
   return new Detection({
@@ -37,17 +37,16 @@ const signalStream = <A>(elements: ReadonlyArray<A>): Stream.Stream<A, Error> =>
   Stream.fromIterable(elements)
 
 const collectAdvice = (
-  advice: Stream.Stream<AdviceElement, Error>
-): Promise<ReadonlyArray<AdviceElement>> =>
+  advice: Stream.Stream<Advice, Error>
+): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(
     Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray)
   )
 
-const adviceTitles = (
-  advice: ReadonlyArray<AdviceElement>
-): ReadonlyArray<string> => advice.map((item) => item.title)
+const adviceTitles = (advice: ReadonlyArray<Advice>): ReadonlyArray<string> =>
+  advice.map((item) => item.title)
 
-const evidenceMeasures = (advice: AdviceElement): ReadonlyArray<string> =>
+const evidenceMeasures = (advice: Advice): ReadonlyArray<string> =>
   advice.evidence.map((item) => item.measure)
 
 test("imperativeStateManager fires on shared-state mutation density", async () => {
@@ -221,21 +220,21 @@ test("hotSubsystem reports the deepest qualifying directory", async () => {
 })
 
 test("systemicHotspots fires only when subsystem and dense-file advice are both present", async () => {
-  const hot: AdviceElement = {
+  const hot: Advice = {
     location: new Location({ path: "src/mcp" }),
     level: "directory",
     title: "hot subsystem",
     remediation: "fix subsystem",
     evidence: [{ measure: "signals", count: 27 }]
   }
-  const firstDense: AdviceElement = {
+  const firstDense: Advice = {
     location: new Location({ path: "src/one.ts" }),
     level: "file",
     title: "high signal density",
     remediation: "fix one",
     evidence: [{ measure: "signals", count: 10 }]
   }
-  const secondDense: AdviceElement = {
+  const secondDense: Advice = {
     location: new Location({ path: "src/two.ts" }),
     level: "file",
     title: "high signal density",

@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { noManualTypeDispatch } from "../src/rules/noManualTypeDispatch.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { noManualTypeDispatch } from "../src/checks/noManualTypeDispatch.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -89,7 +89,7 @@ const runNoManualTypeDispatchFixture = async (): Promise<
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(noManualTypeDispatch)(project))
+      Effect.runPromise(runCheckOnProject(noManualTypeDispatch)(project))
     )
   )
 

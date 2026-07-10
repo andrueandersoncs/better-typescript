@@ -1,17 +1,17 @@
 import { Stream, pipe } from "effect"
 import * as ts from "typescript"
 import {
-  AdviceElement,
+  Advice,
   adviceLocation,
   deriveSignals,
   detection,
   evidenceItem,
   makeWiring,
-  namedRuleCheck,
+  namedCheck,
   nodeCheck,
-  ruleSignal
+  signalOf
 } from "better-typescript"
-import type { Detection, RuleCheck } from "better-typescript"
+import type { Check, Detection } from "better-typescript"
 import { defaultWiring } from "better-typescript/preset"
 
 // This example is documentation. Copy it to a consumer project's
@@ -28,7 +28,7 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   )
 }
 
-const noConsoleLog: RuleCheck = nodeCheck([ts.SyntaxKind.CallExpression])(
+const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(
   ts.isCallExpression
 )((context) => {
   const element = detection(context)
@@ -39,8 +39,7 @@ const noConsoleLog: RuleCheck = nodeCheck([ts.SyntaxKind.CallExpression])(
           element({
             node,
             message: "Avoid console.log in runtime code.",
-            hint:
-              "Return data to the caller or use this project's structured logger at the boundary."
+            hint: "Return data to the caller or use this project's structured logger at the boundary."
           })
         ]
       : []
@@ -59,11 +58,11 @@ const detectionPaths = (
 
 const consoleLogBoundaryAdvice = (
   detections: Stream.Stream<Detection, Error>
-): Stream.Stream<AdviceElement, Error> =>
+): Stream.Stream<Advice, Error> =>
   deriveSignals((elements: ReadonlyArray<Detection>) =>
     detectionPaths(elements).map(
       (path) =>
-        new AdviceElement({
+        new Advice({
           location: adviceLocation(path),
           level: "file",
           title: "console logging in runtime code",
@@ -76,14 +75,13 @@ const consoleLogBoundaryAdvice = (
     )
   )(detections)
 
-const consoleLogRule = namedRuleCheck("acme/no-console-log", noConsoleLog)
+const consoleLogCheck = namedCheck("acme/no-console-log", noConsoleLog)
 
 export default makeWiring({
-  rules: [...defaultWiring.rules, consoleLogRule],
-  helpers: defaultWiring.helpers,
-  advice: (ruleSignals, helperSignals) => {
-    const elementsOf = ruleSignal(ruleSignals)
-    const presetAdvice = defaultWiring.advice(ruleSignals, helperSignals)
+  checks: [...defaultWiring.checks, consoleLogCheck],
+  derive: (signals) => {
+    const elementsOf = signalOf(signals)
+    const presetAdvice = defaultWiring.derive(signals)
     const localAdvice = consoleLogBoundaryAdvice(
       elementsOf("acme/no-console-log")
     )

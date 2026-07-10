@@ -2,7 +2,7 @@
 
 Better TypeScript is a TypeScript analysis CLI for coding agents. It uses the
 official `typescript` package to inspect source files and type information,
-emit architectural advice to stdout, and exit by default. Output is one NDJSON
+emit actionable signals to stdout, and exit by default. Output is one NDJSON
 event per line unless `--pretty` projects the same events into human-readable
 text blocks. `--watch` opts into continuous analysis as files change.
 
@@ -14,19 +14,25 @@ the code toward the shape this project enforces.
 
 The architecture is intentionally plain:
 
-- A detector is any function that produces an Effect `Stream`.
-- The stream is the signal.
-- Rules see the program: loaded source text, AST nodes, and type information.
-- Advice sees signals: it folds over rule streams and other advice streams.
-- The CLI prints the events emitted by the leaf streams of the graph.
+- A check is any function that consumes the loaded AST-node stream and produces
+  an Effect `Stream` of `Detection` values.
+- The runner materializes each named check into one completed `Signal` for an
+  analysis batch: `{ name, reported, detections }`.
+- `reported` controls visibility only. Reported checks render local detection
+  blocks; silent checks still run, still affect watch equivalence, and still feed
+  derivation, but render no local block.
+- `derive` receives the completed `Signal[]` for the batch and emits aggregate
+  `Advice` values.
+- The CLI renders derived `Advice` and reported local detections into the event
+  stream.
 
-There are no suppressions, severities, per-rule options, or result-based exit
+There are no suppressions, severities, per-check options, or result-based exit
 gate. If a signal appears, fix the cause in the code.
 
 ## What the CLI does
 
 1. Discovers the TypeScript project from its `tsconfig.json`.
-2. Loads the project's `ReportWiring` from `better-typescript.config.ts` or the
+2. Loads the project's `Wiring` from `better-typescript.config.ts` or the
    built-in preset.
 3. By default, analyzes the current snapshot once, emits the initial report, and
    exits `0`.
@@ -36,9 +42,10 @@ gate. If a signal appears, fix the cause in the code.
    - a block that disappears emits one `cleared` event;
    - a rebuild with no visible change emits nothing.
 
-Advice blocks lead when they explain a broader shape, such as an imperative
-state manager, a pipeline-hostile module, a hot subsystem, or systemic hotspots.
-Rule blocks still render their locations.
+Aggregate advice blocks lead when they explain a broader shape, such as an
+imperative state manager, a pipeline-hostile module, a hot subsystem, or systemic
+hotspots. Reported check blocks render their local detection locations after the
+aggregate advice.
 
 ### Output format
 
@@ -60,13 +67,17 @@ shapes, discriminated by `_tag`:
 - `empty` — the initial report found no signals. A one-shot run emits exactly
   one `empty` event when the snapshot is signal-free.
 
-`key` is the block's stable identity across events. Rule keys carry
-`{ _tag: "rule", name, message, hint }`; advice keys carry
-`{ _tag: "advice", level, path, title }`.
+`key` is the block's stable identity across events. Local detection keys still
+serialize as `{ _tag: "rule", name, message, hint }`; aggregate advice keys
+still serialize as `{ _tag: "advice", level, path, title }`. Those two tag
+names are wire-format compatibility forms only. Internally, checks and derived
+`Advice` are the current model.
 
 With `--pretty`, the CLI renders the same events as human-readable text blocks
 instead (each block followed by a blank line; the empty report prints
-`No signals in /path/to/project.`).
+`No signals in /path/to/project.`). Any remaining local/aggregate pretty-block
+vocabulary historically described as rule/advice output is presentation
+compatibility only, just like the NDJSON key tags.
 
 Status lines go to stderr; stdout carries only the event stream. The default
 one-shot status is `Analyzing /path/to/project.`. The watch status is
@@ -99,13 +110,15 @@ printing the initial report.
 Better TypeScript has two public import boundaries:
 
 - `better-typescript` is the **kernel**. It exports the authoring and
-  composition surface: `RuleCheck`, `nodeCheck`, `fileCheck`, `detection`,
-  `locateNode`, `AdviceElement`, `ReportWiring`, `namedRuleCheck`,
-  `makeWiring`, `ruleSignal`, `withFallbackAdvice`,
-  `reportFromWiring`, and `watchReportFromWiring`.
-- `better-typescript/preset` is the built-in fleet. It exports `rules`,
-  `advice`, `reportedRules`, `helperRules`, `defaultAdvice`,
-  `defaultWiring`, and default `report` / `watchReport` runners.
+  composition surface: `Check`, `Advice`, `NamedCheck`, `Signal`, `Wiring`,
+  `nodeCheck`, `fileCheck`, `checkFromSubscriptions`, `combineAll`,
+  `nodeSubscriptions`, `fileSubscriptions`, `withProgramIndex`, `Detection`,
+  `Location`, `detection`, `locateNode`, `deriveSignals`, `adviceLocation`,
+  `evidenceItem`, `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`,
+  `withFallbackAdvice`, `reportFromWiring`, and `watchReportFromWiring`.
+- `better-typescript/preset` is the built-in fleet. It exports the `checks`
+  namespace, `defaultChecks`, `defaultDerive`, `defaultWiring`, and default
+  `report` / `watchReport` runners.
 
 Do not import from `better-typescript/src/...`; the package entrypoints are the
 public boundary.
@@ -136,38 +149,31 @@ export const wiring = wiring
 export const wiring = () => wiring
 ```
 
-The loaded value is structurally validated as:
+The loaded value is structurally validated as the current `Wiring` shape:
 
 ```ts
 {
-  rules: ReadonlyArray<{ name: string; check: RuleCheck }>
-  helpers: ReadonlyArray<{ name: string; check: RuleCheck }>
-  advice: (rules: ReadonlyArray<RuleSignals>, helpers: ReadonlyArray<RuleSignals>) =>
-    Stream.Stream<AdviceElement, Error>
+  checks: ReadonlyArray<{ name: string; check: Check; reported?: boolean }>
+  derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, Error>
 }
 ```
 
-`makeWiring` rejects duplicate names inside `rules` and inside `helpers`.
-Rule names and helper names are validated separately; using the same prose name
-in both arrays is allowed but discouraged because advice receives separate rule
-and helper signal lists. Config load, compile, shape, and duplicate-name
-failures print an error and exit `2`.
+`reported` defaults to `true` when omitted in handwritten config objects.
+`namedCheck(name, check)` creates a reported `NamedCheck`; `silentCheck(name,
+check)` creates a silent one. Names are unique across the whole `checks` array,
+and `makeWiring` rejects duplicates. Config load, compile, shape, and duplicate
+name failures print an error and exit `2`.
 
-### Minimal custom rule config
+### Minimal custom check config
 
 Put this at `<project-directory>/better-typescript.config.ts` to replace the
-preset fleet with one local rule:
+preset fleet with one local reported check:
 
 ```ts
 import { Stream } from "effect"
 import * as ts from "typescript"
-import {
-  detection,
-  makeWiring,
-  namedRuleCheck,
-  nodeCheck
-} from "better-typescript"
-import type { Detection, RuleCheck } from "better-typescript"
+import { detection, makeWiring, namedCheck, nodeCheck } from "better-typescript"
+import type { Check, Detection } from "better-typescript"
 
 const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   const expression = node.expression
@@ -180,7 +186,7 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   )
 }
 
-const noConsoleLog: RuleCheck = nodeCheck([ts.SyntaxKind.CallExpression])(
+const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(
   ts.isCallExpression
 )((context) => {
   const element = detection(context)
@@ -191,90 +197,107 @@ const noConsoleLog: RuleCheck = nodeCheck([ts.SyntaxKind.CallExpression])(
           element({
             node,
             message: "Avoid console.log in runtime code.",
-            hint:
-              "Return data to the caller or use this project's structured logger at the boundary."
+            hint: "Return data to the caller or use this project's structured logger at the boundary."
           })
         ]
       : []
 })
 
 export default makeWiring({
-  rules: [namedRuleCheck("acme/no-console-log", noConsoleLog)],
-  helpers: [],
-  advice: () => Stream.empty
+  checks: [namedCheck("acme/no-console-log", noConsoleLog)],
+  derive: () => Stream.empty
 })
 ```
 
-Rules see the program only: their input stream contains AST-node elements with
-source file, program, and type-checker context. Rules should not read other
-rules' output, depend on advice, or create rule-to-rule dependencies.
+Checks see the program only: their input stream contains AST-node elements with
+source file, program, and type-checker context. Checks should not read signals,
+depend on derived advice, or create check-to-check dependencies.
 
 ### Extending or cherry-picking the preset
 
-To extend the built-in fleet, spread the preset arrays and add your named
-checks. To cherry-pick, build new arrays from the exported preset entries and
-omit the ones you do not want. Never shadow a preset rule by reusing its name;
-`makeWiring` rejects duplicate names in the same layer.
+To extend the built-in fleet, spread `defaultChecks` and add local `NamedCheck`
+values. To cherry-pick, build a new `checks` array from `defaultChecks` or the
+exported `checks` namespace and omit the entries you do not want. Never shadow a
+preset check by reusing its name; names are one global lookup namespace.
+
+Use `namedCheck` when the check should render local detection blocks. Use
+`silentCheck` when it exists only to feed `derive`; it still runs, still
+materializes a `Signal`, still participates in watch equality, and still remains
+available through `signalOf(signals)(name)`.
 
 ```ts
 import { Stream, pipe } from "effect"
 import {
-  AdviceElement,
+  Advice,
   adviceLocation,
   deriveSignals,
   evidenceItem,
   makeWiring,
-  namedRuleCheck,
-  ruleSignal
+  signalOf,
+  silentCheck
 } from "better-typescript"
-import type { Detection } from "better-typescript"
-import { defaultWiring } from "better-typescript/preset"
-import { noConsoleLog } from "./rules/noConsoleLog.js"
+import type { Detection, NamedCheck, Signal, Wiring } from "better-typescript"
+import { defaultChecks, defaultDerive } from "better-typescript/preset"
+import { noConsoleLog } from "./checks/noConsoleLog.js"
 
-const localRule = namedRuleCheck("acme/no-console-log", noConsoleLog)
+const countAtPath = (
+  path: string,
+  detections: ReadonlyArray<Detection>
+): number =>
+  detections.filter((element) => element.location.path === path).length
+
+const detectionPaths = (
+  detections: ReadonlyArray<Detection>
+): ReadonlyArray<string> =>
+  Array.from(new Set(detections.map((element) => element.location.path))).sort()
 
 const consoleLogAdvice = (
   detections: Stream.Stream<Detection, Error>
-): Stream.Stream<AdviceElement, Error> =>
-  deriveSignals((elements) =>
-    elements.length === 0
-      ? []
-      : [
-          new AdviceElement({
-            location: adviceLocation("project"),
-            level: "project",
-            title: "console logging in runtime code",
-            remediation:
-              "Replace ad-hoc console output with the project's runtime boundary logging.",
-            evidence: [evidenceItem("console.log calls", elements.length)]
-          })
-        ]
+): Stream.Stream<Advice, Error> =>
+  deriveSignals((elements: ReadonlyArray<Detection>) =>
+    detectionPaths(elements).map(
+      (path) =>
+        new Advice({
+          location: adviceLocation(path),
+          level: "file",
+          title: "console logging in runtime code",
+          remediation:
+            "Replace console.log with the project's structured logger or return data to the caller.",
+          evidence: [
+            evidenceItem("console.log calls", countAtPath(path, elements))
+          ]
+        })
+    )
   )(detections)
 
-export default makeWiring({
-  rules: [...defaultWiring.rules, localRule],
-  helpers: defaultWiring.helpers,
-  advice: (ruleSignals, helperSignals) => {
-    const elementsOf = ruleSignal(ruleSignals)
-    const presetAdvice = defaultWiring.advice(ruleSignals, helperSignals)
-    const localAdvice = consoleLogAdvice(elementsOf("acme/no-console-log"))
+const consoleLogEvidence: NamedCheck = silentCheck(
+  "acme/console-log-evidence",
+  noConsoleLog
+)
+
+const wiring: Wiring = makeWiring({
+  checks: [...defaultChecks, consoleLogEvidence],
+  derive: (signals: ReadonlyArray<Signal>): Stream.Stream<Advice, Error> => {
+    const elementsOf = signalOf(signals)
+    const presetAdvice = defaultDerive(signals)
+    const localAdvice = consoleLogAdvice(
+      elementsOf("acme/console-log-evidence")
+    )
 
     return pipe(presetAdvice, Stream.concat(localAdvice))
   }
 })
+
+export default wiring
 ```
 
-Advice consumes signals by prose name through `ruleSignal`. Missing names yield
-`Stream.empty`, so renaming a rule is a breaking change for advice that asks for
-that name. Helpers are named rule checks in `helpers`: they run over the same
-AST stream as rules and are visible to advice through the second
-`helperSignals` argument, but they do not render rule report blocks.
-
-Use `withFallbackAdvice(specific, fallback)` when fallback file-level advice
-should appear only for files where no file-level specific advice fired. It
-materializes the specific stream once, emits specific advice first, and filters
-fallback file advice for already-covered files. Direct composition with Effect
-`Stream` combinators is appropriate when the advice streams should all emit.
+`derive` consumes a completed signal array, not live upstream streams. Missing
+names yield `Stream.empty`, so renaming a check is a breaking change for every
+derivation lookup that asks for that name. Compose derived output with Effect
+`Stream` combinators. Use `withFallbackAdvice(specific, fallback)` when fallback
+file-level advice should appear only for files where no file-level specific
+advice fired; it materializes the specific stream once, emits specific advice
+first, and filters fallback file advice for already-covered files.
 
 `examples/extend-preset/better-typescript.config.ts` contains a complete
 copyable config that extends the preset from an examples subtree. The CLI will
@@ -286,14 +309,14 @@ checks the direct `--project` / current-working-directory root.
 - `0`: the one-shot report completed, or the watch stream ran until it was
   ended with Ctrl-C.
 - `2`: the tool could not start, for example because the project path,
-  TypeScript configuration, or `ReportWiring` config is invalid.
+  TypeScript configuration, or `Wiring` config is invalid.
 
 ## Non-goals
 
 Better TypeScript intentionally does not provide:
 
 - Dynamic plugin discovery or config strings resolved to packages at runtime.
-- Suppression comments, severity levels, or per-rule configuration.
+- Suppression comments, severity levels, or per-check configuration.
 - A replacement for `tsc`, ESLint, or Prettier.
 - Automatic code formatting.
 - A generated style-guide subcommand.
@@ -301,20 +324,22 @@ Better TypeScript intentionally does not provide:
 ## Analysis modes
 
 The default CLI path is a terminating snapshot run. It loads the project once,
-runs the configured `ReportWiring` over that snapshot, projects the initial
-report blocks to `ReportEvent`s, prints them as NDJSON or `--pretty` text, and
-exits `0` after stdout drains. The initial event projection is the same as the
-first batch of watch mode: either one `signal` event per report block or one
-`empty` event when there are no signals.
+runs every configured check over one snapshotted AST-node stream, materializes a
+complete `Signal[]`, runs `derive(signals)`, projects the resulting report blocks
+to `ReportEvent`s, prints them as NDJSON or `--pretty` text, and exits `0` after
+stdout drains. The initial event projection is the same as the first batch of
+watch mode: either one `signal` event per visible report block or one `empty`
+event when there are no signals.
 
 `--watch` opts into the continuous pipeline. Watch mode uses
 `ts.createWatchProgram`-backed streams: one fresh program context per rebuild,
 diffed by `ts.SourceFile` identity into changed and removed files. The pipeline
-is source updates → signal batches → advice and report blocks → per-block delta
-events, where every element carries one consistent batch and change gates
-between stages keep quiet batches silent. Rules recompute in full inside each
+is source updates → check signals → derived advice and report blocks → per-block
+delta events, where every element carries one consistent batch and change gates
+between stages keep quiet batches silent. Checks recompute in full inside each
 batch, so detection sets always match what a fresh snapshot report would compute
-for the current programs.
+for the current programs. Silent checks participate in signal equality; only
+`reported` controls whether their local detections render.
 
 The snapshot `reportFromWiring` runner remains public library surface for tests,
 benchmarks, and programmatic one-shot use. The `watchReportFromWiring` runner
@@ -325,21 +350,33 @@ reference list need a restart. Each leaf project's own tsconfig hot-reloads.
 Mid-run tsconfig breakage is tolerated silently — the watcher keeps the last
 good program and recovers when the config is fixed.
 
+## Source topology
+
+Source checks and derivation helpers live under `src/checks/`. Execution,
+reporting, watch, source-loading, location, and TypeScript-schema infrastructure
+live under `src/engine/`. The public entrypoints remain the package exports;
+source paths are implementation details for maintainers.
+
 ## Architecture notes
 
+- `adrs/0011-rules-and-advice-are-one-concept.md` records the current check,
+  signal, `reported`, and `derive` architecture. It supersedes ADR-0009's wiring
+  shape and separate visibility categories while preserving explicit reviewed
+  TypeScript configuration.
 - `adrs/0010-one-shot-default-watch-opt-in.md` records the current CLI mode
-  decision: one-shot by default, `--watch` for continuous deltas.
+  decision: one-shot by default, `--watch` for continuous deltas. ADR-0011
+  preserves that wire behavior.
 - `adrs/0008-ndjson-event-output.md` records the NDJSON-by-default output
-  decision and the event schema, which ADR-0010 retains for both modes.
-- `adrs/0009-user-fleets-are-report-wiring.md` records the `ReportWiring`
-  config model, retained by ADR-0010 except for ADR-0009's continuous-default
-  consequence.
+  decision and the event schema. ADR-0011 preserves its event tags, report-key
+  shapes, rendering order, and pretty-output projection.
+- `adrs/0009-user-fleets-are-report-wiring.md` remains historical context for
+  one root TypeScript config, no discovery, no hot reload, and no plugin
+  registry. ADR-0011 supersedes its public wiring shape.
 - `adrs/0007-continuous-watch-analysis.md` records the watch pipeline and its
   change gates; its continuous-only/default claim is superseded by ADR-0010.
-- `adrs/0006-detection-is-streams-and-functions.md` records the stream/function
-  ontology used by this implementation; its "daemon direction intentionally
-  undecided" clause is superseded by ADR-0007 and ADR-0010, and its rejection of
-  machine-readable output is superseded by ADR-0008.
+- `adrs/0006-detection-is-streams-and-functions.md` records the direct
+  Effect-stream/function ontology that ADR-0011 preserves: no registry,
+  scheduler, ids, roles, severities, suppressions, or dependency metadata.
 - `adrs/0003-detectors-over-a-stratified-containment-tree.md` and
   `adrs/0005-detector-fleets-are-user-code.md` are superseded where they depend
   on identity metadata, category labels, generated guides, or structured reports.

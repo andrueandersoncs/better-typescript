@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import { Effect, Stream } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
-import { reportFromWiring } from "../src/detectors/report.js"
+import { reportFromWiring } from "../src/engine/report.js"
 import { defaultWiring } from "../src/preset/defaultWiring.js"
 import { loadProject } from "../src/project/loadProject.js"
 
@@ -17,7 +17,9 @@ console.log(`Loading project: ${targetPath}`)
 const workspace = await Effect.runPromise(loadProject(targetPath))
 
 const collectReport = () =>
-  Effect.runPromise(Stream.runCollect(reportFromWiring(defaultWiring)(workspace)))
+  Effect.runPromise(
+    Stream.runCollect(reportFromWiring(defaultWiring)(workspace))
+  )
 
 const warmed = await collectReport()
 const bench = new Bench({ time: 1000 })

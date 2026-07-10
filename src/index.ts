@@ -7,8 +7,8 @@ import {
   reportEventsFromWiring,
   renderEventText,
   watchReportFromWiring
-} from "./detectors/watch.js"
-import type { ReportEvent } from "./detectors/watch.js"
+} from "./engine/watch.js"
+import type { ReportEvent } from "./engine/watch.js"
 import { defaultWiring } from "./preset.js"
 import { discoverWorkspace, loadProject } from "./project/loadProject.js"
 import { loadWiring } from "./project/loadWiring.js"

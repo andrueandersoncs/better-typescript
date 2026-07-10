@@ -3,9 +3,9 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
-import { preferConditionalReturn } from "../src/rules/preferConditionalReturn.js"
-import type { Detection } from "../src/detectors/rule.js"
-import { runRuleCheckOnProject } from "../src/detectors/report.js"
+import { preferConditionalReturn } from "../src/checks/preferConditionalReturn.js"
+import type { Detection } from "../src/engine/check.js"
+import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -119,7 +119,7 @@ const runPreferConditionalReturnFixture = async (): Promise<
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runRuleCheckOnProject(preferConditionalReturn)(project))
+      Effect.runPromise(runCheckOnProject(preferConditionalReturn)(project))
     )
   )
 

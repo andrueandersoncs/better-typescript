@@ -1,15 +1,12 @@
-import { reportFromWiring } from "./detectors/report.js"
-import { watchReportFromWiring } from "./detectors/watch.js"
+import { reportFromWiring } from "./engine/report.js"
+import { watchReportFromWiring } from "./engine/watch.js"
 import { defaultWiring } from "./preset/defaultWiring.js"
 
-export * as advice from "./advice/index.js"
-export * as rules from "./rules/index.js"
-export { preferCurriedDataLastFunctions } from "./advice/preferCurriedDataLastFunctions.js"
+export * as checks from "./checks/index.js"
 export {
-  defaultAdvice,
-  defaultWiring,
-  helperRules,
-  reportedRules
+  defaultChecks,
+  defaultDerive,
+  defaultWiring
 } from "./preset/defaultWiring.js"
 
 export const report = reportFromWiring(defaultWiring)
