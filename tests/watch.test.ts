@@ -19,6 +19,7 @@ import { Location, locateNode } from "../src/detectors/location.js"
 import {
   AdviceReportKey,
   ReportBlock,
+  reportBlocksFromWiring,
   RuleReportKey,
   RuleSnapshot,
   SignalsBatch,
@@ -47,6 +48,7 @@ import {
   blockDelta,
   blockDeltas,
   renderEventText,
+  reportEventsFromWiring,
   signalUpdates,
   signalsEquivalence,
   watchReportFromWiring,
@@ -236,6 +238,48 @@ test("report events stringify to NDJSON objects with structured keys", () => {
   )
 })
 
+test("reportEventsFromWiring emits initial signal events from the same wiring projection", async () => {
+  const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
+  const blocks = await Effect.runPromise(
+    reportBlocksFromWiring(probeWiring)(workspace)
+  )
+  const events = await collectStream(
+    reportEventsFromWiring(probeWiring)(workspace)
+  )
+  const expected = blocks.map(
+    (reportBlock) =>
+      new SignalEvent({
+        key: reportBlock.key,
+        text: reportBlock.text
+      })
+  )
+
+  assert.ok(blocks.length > 0, "expected the fixture to produce report blocks")
+  assert.deepEqual(events, expected)
+})
+
+test("reportEventsFromWiring emits one empty event for a signal-free workspace", async () => {
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "report-events-empty-")
+  )
+
+  try {
+    await fs.cp(noThrowFixturePath, tempDir, { recursive: true })
+    await fs.rm(path.join(tempDir, "src", "cases.ts"))
+
+    const workspace = await Effect.runPromise(loadProject(tempDir))
+    const events = await collectStream(
+      reportEventsFromWiring(probeWiring)(workspace)
+    )
+
+    assert.deepEqual(events, [
+      new EmptyReportEvent({ rootPath: workspace.rootPath })
+    ])
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test("signalsEquivalence accepts equal detection sets", () => {
   const a = batchOf([
     detectionAt(4, probeMessage),
@@ -269,9 +313,7 @@ test("signalUpdates and adviceUpdates derive one batch and advice-first blocks p
   const project = await loadFixtureProject()
   const snapshot = await Effect.runPromise(Stream.runCollect(astNodes(project)))
   const update = new WorkspaceUpdate({
-    snapshots: [snapshot],
-    changed: [],
-    removed: []
+    snapshots: [snapshot]
   })
   const fixedAdvice: AdviceElement = {
     location: location("src/cases.ts", 1, 1),

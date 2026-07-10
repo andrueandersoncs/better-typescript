@@ -1,10 +1,17 @@
 #!/usr/bin/env node
+import * as path from "node:path"
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, Stream, flow, pipe } from "effect"
-import { renderEventText, watchReport } from "./detectors/watch.js"
+import { Console, Effect, Function, Option, Stream, flow, pipe } from "effect"
+import {
+  reportEventsFromWiring,
+  renderEventText,
+  watchReportFromWiring
+} from "./detectors/watch.js"
 import type { ReportEvent } from "./detectors/watch.js"
-import { discoverWorkspace } from "./project/loadProject.js"
+import { defaultWiring } from "./preset.js"
+import { discoverWorkspace, loadProject } from "./project/loadProject.js"
+import { loadWiring } from "./project/loadWiring.js"
 
 const workingDirectory = process.cwd()
 
@@ -20,9 +27,17 @@ const pretty = pipe(
   )
 )
 
+const watch = pipe(
+  Options.boolean("watch"),
+  Options.withDescription(
+    "Continue watching for changes after the initial report."
+  )
+)
+
 interface WatchCommandOptions {
   readonly project: string
   readonly pretty: boolean
+  readonly watch: boolean
 }
 
 const setErrorExitCode = (): number => {
@@ -52,18 +67,40 @@ const printPrettyEvent = (event: ReportEvent): Effect.Effect<void> => {
 const runCommand = Effect.fn("runCommand")(function* (
   options: WatchCommandOptions
 ) {
-  const workspace = yield* discoverWorkspace(options.project)
-  const watchOptions = Option.none()
-  const events = watchReport(workspace, watchOptions)
-  const printEvent = options.pretty ? printPrettyEvent : printJsonEvent
+  const projectDirectory = path.resolve(options.project)
+  const wiring = yield* loadWiring(projectDirectory, defaultWiring)
+  const prettyOption = Option.liftPredicate(Boolean)(options.pretty)
+  const printEvent = Option.match(prettyOption, {
+    onNone: Function.constant(printJsonEvent),
+    onSome: Function.constant(printPrettyEvent)
+  })
+  const oneShot = Effect.gen(function* () {
+    const workspace = yield* loadProject(projectDirectory)
+    const events = reportEventsFromWiring(wiring)(workspace)
 
-  yield* Console.error(`Watching ${workspace.rootPath} for changes.`)
-  yield* Stream.runForEach(events, printEvent)
+    yield* Console.error(`Analyzing ${workspace.rootPath}.`)
+    yield* Stream.runForEach(events, printEvent)
+  })
+  const watched = Effect.gen(function* () {
+    const workspace = yield* discoverWorkspace(projectDirectory)
+    const watchOptions = Option.none()
+    const events = watchReportFromWiring(wiring)(workspace, watchOptions)
+
+    yield* Console.error(`Watching ${workspace.rootPath} for changes.`)
+    yield* Stream.runForEach(events, printEvent)
+  })
+  const watchMode = Option.liftPredicate(Boolean)(options.watch)
+  const commandEffect = Option.match(watchMode, {
+    onNone: Function.constant(oneShot),
+    onSome: Function.constant(watched)
+  })
+
+  yield* commandEffect
 })
 
 const rootCommand = Command.make(
   "better-typescript",
-  { project, pretty },
+  { project, pretty, watch },
   flow(runCommand, Effect.catchAll(reportError))
 )
 

@@ -1,5 +1,6 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
+export { isProjectSourceFile } from "../detectors/sources.js"
 
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
@@ -90,15 +91,6 @@ export const outermostTransparentWrapper = (
   isTransparentParent(expression.parent)
     ? outermostTransparentWrapper(expression.parent)
     : expression
-
-export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
-  const isSkippableSourceFile = [
-    sourceFile.isDeclarationFile,
-    sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
-  ].some(Boolean)
-
-  return !isSkippableSourceFile
-}
 
 export const unwrapSingleStatementBlock = (
   statement: ts.Statement

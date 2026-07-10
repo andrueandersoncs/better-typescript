@@ -33,7 +33,7 @@ const onNodeKind = Schema.Literal("OnNode")
 const syntaxKinds = Schema.Array(Schema.Number)
 const onFileKind = Schema.Literal("OnFile")
 
-export class NodeSubscription extends Schema.Class<NodeSubscription>(
+class NodeSubscription extends Schema.Class<NodeSubscription>(
   "NodeSubscription"
 )({
   kind: onNodeKind,
@@ -44,7 +44,7 @@ export class NodeSubscription extends Schema.Class<NodeSubscription>(
   declare readonly handler: NodeHandler
 }
 
-export class FileSubscription extends Schema.Class<FileSubscription>(
+class FileSubscription extends Schema.Class<FileSubscription>(
   "FileSubscription"
 )({
   kind: onFileKind,
@@ -62,17 +62,17 @@ export type RuleCheck = (
 
 export const nodeSubscription =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
-  (handler: NodeHandler): NodeSubscription =>
+  (handler: NodeHandler): Subscription =>
     new NodeSubscription({ kind: "OnNode", kinds, handler })
 
-export const fileSubscription = (handler: FileHandler): FileSubscription =>
+export const fileSubscription = (handler: FileHandler): Subscription =>
   new FileSubscription({ kind: "OnFile", handler })
 
-export const isNodeSubscription = (
+const isNodeSubscription = (
   subscription: Subscription
 ): subscription is NodeSubscription => subscription.kind === "OnNode"
 
-export const isFileSubscription = (
+const isFileSubscription = (
   subscription: Subscription
 ): subscription is FileSubscription => subscription.kind === "OnFile"
 

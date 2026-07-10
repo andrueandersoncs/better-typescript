@@ -31,23 +31,29 @@ The intended product model remains:
 ```text
 better-typescript.config.ts
   → load and validate one ReportWiring
-  → watchReportFromWiring(wiring)
-  → stable NDJSON events
+  → default CLI: snapshot report blocks projected to initial NDJSON events, then exit
+  → --watch CLI: watchReportFromWiring(wiring) for initial events plus changed/cleared deltas
 ```
+
+The public runner seam remains explicit: `reportFromWiring(wiring)` for snapshot
+library use and `watchReportFromWiring(wiring)` for continuous watch streams.
 
 Rules see the program. Advice sees signals. Composition is TypeScript code.
 
 ## Baseline
 
-The bounded self-host run completed with no detections:
+The self-host run completed with no detections:
 
 ```text
-$ timeout 10 npm run dev
-Watching /Users/andrueanderson/Workspace/better-typescript for changes.
+$ npm run dev
+Analyzing /Users/andrueanderson/Workspace/better-typescript.
 No signals in /Users/andrueanderson/Workspace/better-typescript.
 ```
 
-The command exited with `124` only because `timeout` terminated the intentional watch process after ten seconds.
+The command exits `0` after the initial report. Bounded watch verification uses
+the explicit watch flag, for example `timeout 10 npm run dev -- --watch`, and
+expects `Watching /Users/andrueanderson/Workspace/better-typescript for changes.`
+before the bound terminates the intentional watch process.
 
 Existing tests already prove the core injection seam:
 
@@ -62,14 +68,21 @@ All constraints in `extensibility-plan.md` remain in force.
 
 1. No registry, detector ID, matcher language, role, severity, suppression, generated style guide, or dynamic plugin discovery.
 2. One explicit TypeScript config module: `better-typescript.config.ts`.
-3. Watch-only CLI; snapshot reporting remains a library/test surface.
-4. NDJSON default output and `--pretty` output semantics.
-5. Deterministic report ordering: advice blocks first, then reported rule blocks in wiring order.
-6. Absent config falls back to the current preset.
-7. Duplicate names are rejected within `rules` and within `helpers`; cross-array name reuse remains allowed.
-8. Missing advice signal lookups remain `Stream.empty`.
-9. Full rule recomputation per consistent workspace batch. Do not add per-file incremental rule execution.
-10. This repository continues to self-host with `No signals`.
+3. One-shot CLI by default; `--watch` opts into the continuous TypeScript
+   watch/delta behavior.
+4. Snapshot reporting remains a library/test surface through
+   `reportFromWiring`; the generic watch runner remains
+   `watchReportFromWiring`.
+5. NDJSON default output and `--pretty` output semantics.
+6. Deterministic report ordering: advice blocks first, then reported rule blocks
+   in wiring order.
+7. Absent config falls back to the current preset.
+8. Duplicate names are rejected within `rules` and within `helpers`; cross-array
+   name reuse remains allowed.
+9. Missing advice signal lookups remain `Stream.empty`.
+10. Full rule recomputation per consistent workspace batch. Do not add per-file
+    incremental rule execution.
+11. This repository continues to self-host with `No signals`.
 
 ### Must not use simplification as an excuse to remove useful seams
 
@@ -95,12 +108,24 @@ Keep:
 ## Current execution model
 
 ```text
-CLI
-  → discoverWorkspace(--project)
-  → watchReport(defaultWiring)
+CLI default
+  → loadProject(--project)
+  → loadWiring(--project, defaultWiring)
+  → snapshot report blocks
+  → initial ReportEvents as NDJSON or --pretty text
+  → exit 0
 
-watchReportFromWiring(wiring)
-  → workspaceUpdates
+CLI --watch
+  → discoverWorkspace(--project)
+  → loadWiring(--project, defaultWiring)
+  → watchReportFromWiring(wiring)
+  → emit initial blocks and later changed/cleared deltas as ReportEvents
+```
+
+`watchReportFromWiring(wiring)` still owns the continuous pipeline:
+
+```text
+workspaceUpdates
   → recompute every wired rule/helper over consistent AST snapshots
   → materialize named rule snapshots
   → run advice against replayable signal streams
@@ -513,17 +538,26 @@ Retain the existing intended contract:
 ### CLI shape
 
 ```ts
-const workspace = yield* discoverWorkspace(options.project)
-const wiring = yield* loadWiring(options.project, defaultWiring)
-const events = watchReportFromWiring(wiring)(workspace, Option.none())
+const projectDirectory = path.resolve(options.project)
+const wiring = yield* loadWiring(projectDirectory, defaultWiring)
+
+if (options.watch) {
+  const workspace = yield* discoverWorkspace(projectDirectory)
+  const events = watchReportFromWiring(wiring)(workspace, Option.none())
+} else {
+  const workspace = yield* loadProject(projectDirectory)
+  const events = reportEventsFromWiring(wiring)(workspace)
+}
 ```
 
 Keep:
 
-- stderr status lines,
+- stderr status lines (`Analyzing ...` by default, `Watching ...` with
+  `--watch`),
 - NDJSON stdout by default,
-- `--pretty` rendering,
-- watch-only operation,
+- `--pretty` rendering over the same events,
+- one-shot default operation,
+- explicit `--watch` operation,
 - exit-code behavior.
 
 ---
@@ -563,9 +597,12 @@ Keep:
 
 1. Add `loadWiring` behind the agreed config-root rule.
 2. Add `jiti`.
-3. Load, normalize, shape-check, and validate config once before starting the watch stream.
-4. Cut the CLI over to `watchReportFromWiring(wiring)`.
-5. Keep `defaultWiring` as the missing-config fallback.
+3. Load, normalize, shape-check, and validate config once before running either
+   CLI mode.
+4. Cut the default CLI over to snapshot initial `ReportEvent` output and normal
+   completion.
+5. Wire `--watch` to `watchReportFromWiring(wiring)`.
+6. Keep `defaultWiring` as the missing-config fallback.
 
 ### Phase 4 — document the product boundary
 
@@ -588,10 +625,14 @@ Keep:
 ### Behavior and output
 
 1. `npm run typecheck` and `npm test` pass.
-2. `timeout 10 npm run dev` prints `No signals` for this repository.
-3. No-config CLI output is unchanged from the current preset behavior.
-4. `--pretty` and NDJSON event schemas remain unchanged.
-5. Existing clearance-before-update event ordering remains unchanged.
+2. `npm run dev` completes normally, prints `Analyzing <repo>.` on stderr, and
+   prints `No signals in <repo>.` on stdout for this repository.
+3. `timeout 10 npm run dev -- --watch` prints `Watching <repo> for changes.`
+   and the initial no-signals report before the bound terminates the watch
+   process.
+4. No-config CLI output uses `defaultWiring` from `better-typescript/preset`.
+5. `--pretty` and NDJSON event schemas remain unchanged.
+6. Existing clearance-before-update event ordering remains unchanged.
 
 ### Kernel and preset
 

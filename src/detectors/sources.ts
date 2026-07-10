@@ -25,11 +25,6 @@ export class ProgramContext extends Schema.Class<ProgramContext>(
   projectRoot: Schema.String
 }) {}
 
-export class SourceText extends Schema.Class<SourceText>("SourceText")({
-  sourceFile: TsSourceFile,
-  text: Schema.String
-}) {}
-
 export class AstNodeElement extends Schema.Class<AstNodeElement>(
   "AstNodeElement"
 )({
@@ -40,7 +35,7 @@ export class AstNodeElement extends Schema.Class<AstNodeElement>(
 
 export type AstFold<A> = (accumulator: A, node: ts.Node) => A
 
-const isCheckableSourceFile = (sourceFile: ts.SourceFile): boolean => {
+export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
   const normalizedPath = sourceFile.fileName.replaceAll("\\", "/")
   const isInNodeModules = normalizedPath.includes("/node_modules/")
   const isSkippable = sourceFile.isDeclarationFile || isInNodeModules
@@ -61,20 +56,9 @@ export const checkableSourceFiles = (
 ): Stream.Stream<ts.SourceFile, Error> =>
   pipe(
     project.program.getSourceFiles(),
-    Array.filter(isCheckableSourceFile),
+    Array.filter(isProjectSourceFile),
     Stream.fromIterable
   )
-
-const sourceText = (sourceFile: ts.SourceFile): SourceText => {
-  const text = sourceFile.getFullText()
-
-  return new SourceText({ sourceFile, text })
-}
-
-export const fileTexts = (
-  project: LoadedProject
-): Stream.Stream<SourceText, Error> =>
-  pipe(checkableSourceFiles(project), Stream.map(sourceText))
 
 const recordChild =
   (children: MutableList.MutableList<ts.Node>) =>
@@ -138,7 +122,7 @@ export const astNodesFromContext = (
 ): Stream.Stream<AstNodeElement, Error> =>
   pipe(
     context.program.getSourceFiles(),
-    Array.filter(isCheckableSourceFile),
+    Array.filter(isProjectSourceFile),
     Stream.fromIterable,
     Stream.flatMap(astNodeStream(context))
   )
@@ -197,16 +181,12 @@ const startWatch =
     return ts.createWatchProgram(host)
   }
 
-const closeWatch =
-  (watch: ts.WatchOfConfigFile<ts.BuilderProgram>) => (): boolean => {
-    watch.close()
-
-    return true
-  }
-
 const stopWatch = (
   watch: ts.WatchOfConfigFile<ts.BuilderProgram>
-): Effect.Effect<boolean> => Effect.sync(closeWatch(watch))
+): Effect.Effect<void> =>
+  Effect.sync(() => {
+    watch.close()
+  })
 
 const acquireWatch =
   (config: ProjectConfig) =>
@@ -267,7 +247,7 @@ export const diffCheckableFiles =
   ): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
     const currentFiles = pipe(
       context.program.getSourceFiles(),
-      Array.filter(isCheckableSourceFile)
+      Array.filter(isProjectSourceFile)
     )
     const next = pipe(
       currentFiles,

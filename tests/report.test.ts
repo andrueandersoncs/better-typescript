@@ -4,29 +4,24 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream, pipe } from "effect"
 import * as ts from "typescript"
-import { Location, locateNode } from "../src/detectors/location.js"
 import {
-  adviceText,
-  filterFallbackAdvice,
-  report,
+  Detection,
+  fileCheck,
+  Location,
+  locateNode,
+  makeWiring,
+  namedRuleCheck,
+  nodeCheck,
   reportFromWiring,
-  reportLeaves,
-  ruleLeaf,
   runRuleCheckOnProject,
-  runRuleSignals,
+  withFallbackAdvice,
+  type AdviceElement,
   type NamedRuleCheck,
   type ReportWiring,
-  type RuleSignals
-} from "../src/detectors/report.js"
-import { astNodes } from "../src/detectors/sources.js"
-import {
-  checkFromSubscriptions,
-  fileSubscription,
-  nodeSubscription,
-  Detection,
   type RuleCheck
-} from "../src/detectors/rule.js"
-import type { AdviceElement } from "../src/detectors/summary.js"
+} from "../src/kernel.js"
+import { report } from "../src/preset.js"
+import { astNodes } from "../src/detectors/sources.js"
 import { loadProject } from "../src/project/loadProject.js"
 import type {
   LoadedProject,
@@ -94,14 +89,14 @@ const collectAstSignatures = async (
   return nodes.map(nodeSignature(project))
 }
 
-const throwProbeCheck: RuleCheck = checkFromSubscriptions(() => [
-  nodeSubscription([ts.SyntaxKind.ThrowStatement])((context) => (node) => [
-    new Detection({
-      location: locateNode(context)(node),
-      message: probeMessage,
-      hint: probeHint
-    })
-  ])
+const throwProbeCheck: RuleCheck = nodeCheck([ts.SyntaxKind.ThrowStatement])(
+  ts.isThrowStatement
+)((context) => (node) => [
+  new Detection({
+    location: locateNode(context)(node),
+    message: probeMessage,
+    hint: probeHint
+  })
 ])
 
 const throwProbeRule: NamedRuleCheck = {
@@ -111,14 +106,12 @@ const throwProbeRule: NamedRuleCheck = {
 
 const helperProbeRule: NamedRuleCheck = {
   name: "helper-only probe",
-  check: checkFromSubscriptions(() => [
-    fileSubscription(() => [
-      new Detection({
-        location: location("src/helper-observation.ts", 1, 1),
-        message: "helper observation",
-        hint: "helper observations only feed advice"
-      })
-    ])
+  check: fileCheck(() => [
+    new Detection({
+      location: location("src/helper-observation.ts", 1, 1),
+      message: "helper observation",
+      hint: "helper observations only feed advice"
+    })
   ])
 }
 
@@ -128,12 +121,6 @@ const detectionRecord = (element: Detection) => ({
   column: element.location.column,
   message: element.message,
   hint: element.hint
-})
-
-const detectionLocationRecord = (element: Detection) => ({
-  path: element.location.path,
-  line: element.location.line,
-  column: element.location.column
 })
 
 const expectedThrowProbeElements = [
@@ -183,11 +170,6 @@ const advice = (
   evidence: [{ measure: `${title} evidence`, count: 1 }]
 })
 
-const ruleSignals = (
-  name: string,
-  elements: ReadonlyArray<Detection>
-): RuleSignals => ({ name, elements: Stream.fromIterable(elements) })
-
 const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
   blocks.map((block) => block.split("\n")[0])
 
@@ -196,6 +178,36 @@ const delayedSource = <A>(items: ReadonlyArray<A>): Stream.Stream<A, Error> =>
     Stream.fromIterable(items),
     Stream.mapEffect((item) => pipe(Effect.sleep("1 millis"), Effect.as(item)))
   )
+
+const noAdvice: ReportWiring["advice"] = () => Stream.empty
+
+const fixedRuleCheck =
+  (elements: ReadonlyArray<Detection>): RuleCheck =>
+  () =>
+    Stream.fromIterable(elements)
+
+const reportWiring = (
+  rules: ReadonlyArray<NamedRuleCheck>,
+  advice: ReportWiring["advice"] = noAdvice,
+  helpers: ReadonlyArray<NamedRuleCheck> = []
+): ReportWiring => ({ rules, helpers, advice })
+
+const noOpCheck: RuleCheck = () => Stream.empty
+
+const namedNoOpCheck = (name: string): NamedRuleCheck =>
+  namedRuleCheck(name, noOpCheck)
+
+const thrownError = (run: () => unknown): Error => {
+  try {
+    run()
+  } catch (error) {
+    assert.ok(error instanceof Error, "expected an Error to be thrown")
+
+    return error
+  }
+
+  assert.fail("expected an Error to be thrown")
+}
 
 test("astNodes emits fixture AST elements in stable traversal order", async () => {
   const project = await loadFixtureProject("no-throw")
@@ -226,7 +238,7 @@ test("runRuleCheckOnProject applies probe subscriptions to matching fixture node
   )
 })
 
-test("runRuleSignals deduplicates a rule's repeated workspace locations", async () => {
+test("reportFromWiring collapses duplicate workspace detections by rule and location", async () => {
   const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
   const [project] = workspace.projects
 
@@ -236,60 +248,108 @@ test("runRuleSignals deduplicates a rule's repeated workspace locations", async 
     ...workspace,
     projects: [project, project]
   }
-  const signals = await Effect.runPromise(
-    runRuleSignals(duplicatedWorkspace)(throwProbeRule)
+  const blocks = await collectStream(
+    reportFromWiring(reportWiring([throwProbeRule]))(duplicatedWorkspace)
   )
-  const elements = await collectStream(signals.elements)
 
+  assert.equal(blocks.length, 1)
   assert.deepEqual(
-    elements.map(detectionLocationRecord),
-    expectedThrowProbeElements.map(({ path: filePath, line, column }) => ({
-      path: filePath,
-      line,
-      column
-    })),
-    "expected duplicate project emissions to collapse by path, line, and column"
+    blocks[0]?.split("\n").slice(3),
+    expectedThrowProbeElements.map(
+      ({ path: filePath, line, column }) => `  ${filePath}:${line}:${column}`
+    ),
+    "expected duplicate project emissions to collapse by path, line, column, message, and hint"
   )
 })
 
-test("adviceText formats the advice header, remediation, and evidence lines", () => {
-  const block = adviceText({
+test("reportFromWiring preserves two distinct detections emitted at the same AST location", async () => {
+  const doubleDetectionCheck: RuleCheck = nodeCheck([
+    ts.SyntaxKind.ThrowStatement
+  ])(ts.isThrowStatement)((context) => (node) => {
+    const sharedLocation = locateNode(context)(node)
+
+    return [
+      new Detection({
+        location: sharedLocation,
+        message: "first interpretation",
+        hint: "handle the first interpretation"
+      }),
+      new Detection({
+        location: sharedLocation,
+        message: "second interpretation",
+        hint: "handle the second interpretation"
+      })
+    ]
+  })
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(
+    reportFromWiring(
+      reportWiring([namedRuleCheck("two messages on one node", doubleDetectionCheck)])
+    )(workspace)
+  )
+
+  assert.equal(blocks.length, 2)
+  assert.deepEqual(blocks.map((block) => block.split("\n")[1]), [
+    "  first interpretation",
+    "  second interpretation"
+  ])
+  assert.ok(
+    blocks[0]?.includes("  src/cases.ts:4:3"),
+    "expected the first detection block to include the shared throw statement location"
+  )
+  assert.ok(
+    blocks[1]?.includes("  src/cases.ts:4:3"),
+    "expected the second detection block to include the same throw statement location"
+  )
+})
+
+test("reportFromWiring renders advice header, remediation, and evidence lines", async () => {
+  const fixedAdvice = {
     location: location("src/cases.ts", 4, 3),
-    level: "file",
+    level: "file" as const,
     title: "high signal density",
     remediation: "split the module before changing individual rules",
     evidence: [
       { measure: "signals", count: 12 },
       { measure: "no-throw", count: 4 }
     ]
-  })
+  }
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(
+    reportFromWiring(reportWiring([], () => Stream.fromIterable([fixedAdvice])))(
+      workspace
+    )
+  )
 
-  assert.equal(
-    block,
+  assert.deepEqual(blocks, [
     [
       "src/cases.ts [file] — high signal density",
       "  fix: split the module before changing individual rules",
       "  evidence: signals: 12",
       "  evidence: no-throw: 4"
     ].join("\n")
-  )
+  ])
 })
 
-test("ruleLeaf groups locations under the rule prose name, message, and hint", async () => {
-  const elements = Stream.fromIterable([
-    new Detection({
-      location: location("src/cases.ts", 4, 3),
-      message: probeMessage,
-      hint: probeHint
-    }),
-    new Detection({
-      location: location("src/cases.ts", 9, 5),
-      message: probeMessage,
-      hint: probeHint
-    })
-  ])
+test("reportFromWiring groups locations under the rule prose name, message, and hint", async () => {
+  const groupedRule = namedRuleCheck(
+    "probe throw statements",
+    fixedRuleCheck([
+      new Detection({
+        location: location("src/cases.ts", 4, 3),
+        message: probeMessage,
+        hint: probeHint
+      }),
+      new Detection({
+        location: location("src/cases.ts", 9, 5),
+        message: probeMessage,
+        hint: probeHint
+      })
+    ])
+  )
+  const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    ruleLeaf("probe throw statements")(elements)
+    reportFromWiring(reportWiring([groupedRule]))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -303,31 +363,35 @@ test("ruleLeaf groups locations under the rule prose name, message, and hint", a
   ])
 })
 
-test("ruleLeaf splits one rule into distinct message and hint groups", async () => {
-  const elements = Stream.fromIterable([
-    new Detection({
-      location: location("src/cases.ts", 4, 3),
-      message: "throw statement",
-      hint: "yield typed errors instead of throwing"
-    }),
-    new Detection({
-      location: location("src/cases.ts", 9, 5),
-      message: "throw statement",
-      hint: "yield typed errors instead of throwing"
-    }),
-    new Detection({
-      location: location("src/cases.ts", 19, 5),
-      message: "throw expression",
-      hint: "yield typed errors instead of throwing"
-    }),
-    new Detection({
-      location: location("src/cases.ts", 26, 3),
-      message: "throw statement",
-      hint: "return error values instead"
-    })
-  ])
+test("reportFromWiring splits one rule into distinct message and hint groups", async () => {
+  const splitRule = namedRuleCheck(
+    "probe throw statements",
+    fixedRuleCheck([
+      new Detection({
+        location: location("src/cases.ts", 4, 3),
+        message: "throw statement",
+        hint: "yield typed errors instead of throwing"
+      }),
+      new Detection({
+        location: location("src/cases.ts", 9, 5),
+        message: "throw statement",
+        hint: "yield typed errors instead of throwing"
+      }),
+      new Detection({
+        location: location("src/cases.ts", 19, 5),
+        message: "throw expression",
+        hint: "yield typed errors instead of throwing"
+      }),
+      new Detection({
+        location: location("src/cases.ts", 26, 3),
+        message: "throw statement",
+        hint: "return error values instead"
+      })
+    ])
+  )
+  const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    ruleLeaf("probe throw statements")(elements)
+    reportFromWiring(reportWiring([splitRule]))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -353,23 +417,26 @@ test("ruleLeaf splits one rule into distinct message and hint groups", async () 
   ])
 })
 
-test("reportLeaves orders advice before rule blocks and sorts advice by level then path", async () => {
-  const adviceStream = Stream.fromIterable([
+test("reportFromWiring orders advice before rule blocks and sorts advice by level then path", async () => {
+  const fixedAdvice = Stream.fromIterable([
     advice("project", "ignored.ts", "project advice"),
     advice("file", "src/z.ts", "file z advice"),
     advice("directory", "src", "directory advice"),
     advice("file", "src/a.ts", "file a advice")
   ])
-  const blocks = await collectStream(
-    reportLeaves(adviceStream, [
-      ruleSignals("probe throw statements", [
-        new Detection({
-          location: location("src/cases.ts", 4, 3),
-          message: probeMessage,
-          hint: probeHint
-        })
-      ])
+  const groupedRule = namedRuleCheck(
+    "probe throw statements",
+    fixedRuleCheck([
+      new Detection({
+        location: location("src/cases.ts", 4, 3),
+        message: probeMessage,
+        hint: probeHint
+      })
     ])
+  )
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(
+    reportFromWiring(reportWiring([groupedRule], () => fixedAdvice))(workspace)
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -391,26 +458,28 @@ test("reportLeaves orders advice before rule blocks and sorts advice by level th
   )
 })
 
-test("reportLeaves preserves asynchronously emitted advice and rule streams", async () => {
-  const blocks = await collectStream(
-    reportLeaves(
+test("reportFromWiring preserves asynchronously emitted advice and rule streams", async () => {
+  const delayedRule = namedRuleCheck(
+    "probe throw statements",
+    () =>
       delayedSource([
-        advice("file", "src/z.ts", "file z advice"),
-        advice("file", "src/a.ts", "file a advice")
-      ]),
-      [
-        {
-          name: "probe throw statements",
-          elements: delayedSource([
-            new Detection({
-              location: location("src/cases.ts", 4, 3),
-              message: probeMessage,
-              hint: probeHint
-            })
-          ])
-        }
-      ]
-    )
+        new Detection({
+          location: location("src/cases.ts", 4, 3),
+          message: probeMessage,
+          hint: probeHint
+        })
+      ])
+  )
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(
+    reportFromWiring(
+      reportWiring([delayedRule], () =>
+        delayedSource([
+          advice("file", "src/z.ts", "file z advice"),
+          advice("file", "src/a.ts", "file a advice")
+        ])
+      )
+    )(workspace)
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -505,58 +574,80 @@ test("report collects the exported report stream for a loaded workspace", async 
   )
 })
 
-test("filterFallbackAdvice suppresses same-path file fallback advice only", async () => {
+test("withFallbackAdvice emits specific advice before applicable fallback and runs specific effects once per invocation", async () => {
+  const specificA = advice("file", "src/a.ts", "specific a")
   const fallbackA = advice("file", "src/a.ts", "density fallback a")
   const fallbackB = advice("file", "src/b.ts", "density fallback b")
+  let specificEffects = 0
+  const collectInvocation = (): Promise<ReadonlyArray<AdviceElement>> =>
+    collectStream(
+      withFallbackAdvice(
+        pipe(
+          Stream.fromIterable([specificA]),
+          Stream.mapEffect((item) =>
+            Effect.sync(() => {
+              specificEffects += 1
 
-  const filtered = await collectStream(
-    filterFallbackAdvice(
-      Stream.fromIterable([advice("file", "src/a.ts", "specific a")]),
-      Stream.fromIterable([fallbackA, fallbackB])
+              return item
+            })
+          )
+        ),
+        Stream.fromIterable([fallbackA, fallbackB])
+      )
     )
-  )
-
+  const first = await collectInvocation()
+  const second = await collectInvocation()
   assert.deepEqual(
-    filtered.map((element) => [element.location.path, element.title]),
-    [["src/b.ts", "density fallback b"]]
-  )
-})
-
-test("filterFallbackAdvice keeps fallback advice when no file-level specific advice fired", async () => {
-  const fallbackA = advice("file", "src/a.ts", "density fallback a")
-  const fallbackB = advice("file", "src/b.ts", "density fallback b")
-
-  const filtered = await collectStream(
-    filterFallbackAdvice(
-      Stream.empty,
-      Stream.fromIterable([fallbackA, fallbackB])
-    )
-  )
-
-  assert.deepEqual(
-    filtered.map((element) => [element.location.path, element.title]),
+    first.map((item) => [item.location.path, item.title]),
     [
-      ["src/a.ts", "density fallback a"],
+      ["src/a.ts", "specific a"],
       ["src/b.ts", "density fallback b"]
     ]
   )
+  assert.deepEqual(
+    second.map((item) => [item.location.path, item.title]),
+    [
+      ["src/a.ts", "specific a"],
+      ["src/b.ts", "density fallback b"]
+    ]
+  )
+  assert.equal(
+    specificEffects,
+    2,
+    "expected the specific stream side effect to run once for each withFallbackAdvice invocation"
+  )
 })
 
-test("filterFallbackAdvice ignores non-file specific advice when suppressing file fallback", async () => {
-  const fallbackA = advice("file", "src/a.ts", "density fallback a")
-
-  const filtered = await collectStream(
-    filterFallbackAdvice(
-      Stream.fromIterable([
-        advice("directory", "src/a.ts", "directory specific a"),
-        advice("project", "src/a.ts", "project specific a")
-      ]),
-      Stream.fromIterable([fallbackA])
+test("makeWiring rejects duplicate rule names and reports the collisions", () => {
+  const error = thrownError(() =>
+    makeWiring(
+      reportWiring([namedNoOpCheck("same-rule"), namedNoOpCheck("same-rule")])
     )
   )
 
-  assert.deepEqual(
-    filtered.map((element) => [element.location.path, element.title]),
-    [["src/a.ts", "density fallback a"]]
+  assert.match(error.message, /rules: same-rule/)
+})
+
+test("makeWiring rejects duplicate helper names and reports the collisions", () => {
+  const error = thrownError(() =>
+    makeWiring(
+      reportWiring(
+        [],
+        noAdvice,
+        [namedNoOpCheck("same-helper"), namedNoOpCheck("same-helper")]
+      )
+    )
   )
+
+  assert.match(error.message, /helpers: same-helper/)
+})
+
+test("makeWiring allows a rule and helper to share a name", () => {
+  const wiring = reportWiring(
+    [namedNoOpCheck("shared-name")],
+    noAdvice,
+    [namedNoOpCheck("shared-name")]
+  )
+
+  assert.equal(makeWiring(wiring), wiring)
 })

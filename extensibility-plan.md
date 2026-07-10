@@ -1,334 +1,222 @@
 # Extensibility Plan — user fleets as `ReportWiring`
 
-## Context
+## Status
 
-ADR-0005 wanted the kernel as the product and detector fleets as user code. ADR-0006 deleted the registry/id/matcher machinery that ADR-0005's `Registry.make` hung on, but left the composition seam intact: a detector is a function producing an Effect `Stream`; the report graph is ordinary function application.
+Implemented. Better TypeScript now exposes explicit user-authored report
+wirings without adding a registry, dynamic plugin system, severities,
+suppressions, per-rule options, or rule-to-rule dependencies.
 
-That seam already exists in-library:
+The core law is unchanged:
 
-- `ReportWiring = { rules, helpers, advice }`
-- `reportFromWiring(wiring)` / `watchReportFromWiring(wiring)`
-- tests already inject custom wirings (`helperInfluencedWiring`, `probeWiring`)
+> Rules see the TypeScript program. Advice sees signals. Composition is code.
 
-What is missing is the **product boundary**:
+## Implemented product boundary
 
-1. The CLI hard-closes over `defaultWiring` (`src/index.ts` → `watchReport`).
-2. `package.json` is private/bin-only — no `exports`, no public authoring surface.
-3. End users cannot import `RuleCheck` constructors, advice helpers, or the reference preset as a library.
-4. There is no `better-typescript.config.ts` load path.
+The package has two public entrypoints:
 
-This plan opens the tool fully: end users write TypeScript that **implements** new signals (`RuleCheck` / advice derivations returning `Stream`s) and **consumes** existing signals by wiring those streams into a `ReportWiring`. All built-in rules, advice, and detectors remain consumable; the tool stays fully extensible without reviving ids, catalogs, or dynamic plugin discovery.
+| Entrypoint | Purpose |
+| --- | --- |
+| `better-typescript` | Kernel APIs for rule authoring, advice authoring, wiring composition, validation, and library runners. |
+| `better-typescript/preset` | The built-in fleet: preset rules, preset advice, `reportedRules`, `helperRules`, `defaultAdvice`, `defaultWiring`, and preset `report` / `watchReport` runners. |
 
-Settled with user:
+The physical split is intentional. Consumers import the kernel when authoring a
+fleet and import the preset only when they want to extend, cherry-pick, or reuse
+the built-in fleet. `src/` paths are not public API.
 
-- **Config surface**: `better-typescript.config.ts` at the project root (ADR-0005 shape), exporting a `ReportWiring`.
-- **Depth**: rules + advice + wiring (full graph authorship).
-- **Packaging**: single package with export paths (kernel + preset), not a package split.
-- **Validation**: minimal — duplicate rule/helper names → exit 2; missing prose-name lookups stay silent `Stream.empty` (today's semantics).
-- **Doc**: this plan at repo root; ADR-0009 when implementing.
+### Kernel surface
 
-## Target ontology (unchanged; newly published)
+The kernel entrypoint exports the implemented authoring and composition surface:
 
-| Concept | Realized as | User-facing? |
-| --- | --- | --- |
-| Signal | `Stream.Stream<A, Error>` — used directly | yes (consume / produce) |
-| Rule | `RuleCheck = Stream<AstNodeElement> => Stream<Detection>` | yes (author + wire) |
-| Helper | `NamedRuleCheck` in `wiring.helpers` — runs, feeds advice, no rule leaf | yes |
-| Advice | `(rules, helpers) => Stream<AdviceElement>` or smaller stream transformers composed inside | yes (author + wire) |
-| Wiring | `ReportWiring` — the fleet | yes (the config export) |
-| Leaf / report | `watchReportFromWiring` / `reportFromWiring` | yes (CLI uses loaded wiring; library keeps both) |
-| Preset | today's `defaultWiring` + named rule/advice exports | yes (spread / cherry-pick / ignore) |
+- rule types and constructors: `RuleCheck`, `RuleContext`, `ProgramContext`,
+  `AstNodeElement`, `Subscription`, `NodeHandler`, `FileHandler`,
+  `nodeCheck`, `fileCheck`, `nodeSubscriptions`, `fileSubscriptions`,
+  `combineAll`, `withProgramIndex`, and `checkFromSubscriptions`;
+- detection and location data: `Location`, `Detection`, `detection`, and
+  `locateNode`;
+- advice data and helpers: `AdviceElement`, `NamedDetection`,
+  `namedDetection`, `collectSignals`, `deriveSignals`, `byFile`,
+  `countSummary`, `parentDirectories`, `evidenceItem`,
+  `evidenceFromCounts`, `evidenceOrder`, `adviceLocation`,
+  `collidingLines`, and `dominantRuleEvidence`;
+- wiring and runners: `NamedRuleCheck`, `RuleSignals`, `ReportWiring`,
+  `namedRuleCheck`, `makeWiring`, `ruleSignal`, `withFallbackAdvice`,
+  `reportFromWiring`, `watchReportFromWiring`, and
+  `runRuleCheckOnProject`.
 
-Terms that stay retired: detector ids, registry, matcher language, roles, severities, suppressions, dynamic plugin discovery, generated style guide.
+### Preset surface
 
-Slogan (unchanged): **rules see the program, advice sees signals.** Composition is code.
+The preset entrypoint exports:
 
-## Constraints
+- `rules` namespace for built-in `RuleCheck` values;
+- `advice` namespace for built-in advice derivations;
+- `preferCurriedDataLastFunctions`, the preset helper rule;
+- `reportedRules`, `helperRules`, `defaultAdvice`, and `defaultWiring`;
+- `report` and `watchReport` aliases over the default preset wiring.
 
-### Must hold
+## Config module contract
 
-1. **ADR-0006 ontology**: no invented `Detector`/`Signal` types; no ids/catalog; names are prose at wiring sites (`NamedRuleCheck.name`).
-2. **ADR-0007 continuous product**: CLI stays watch-only; snapshot `report` remains library/test surface.
-3. **ADR-0008 NDJSON default**: event schema unchanged; `--pretty` unchanged.
-4. **No dynamic plugin discovery**: config is an explicit TypeScript module the repo owns and reviews (ADR-0005 security stance). No `extends` chains, no package-name resolution of rules.
-5. **No suppressions / severities / per-rule options**: a check is present or absent in the wiring.
-6. **Determinism**: same wiring + same programs → byte-identical events (wiring order is leaf order).
-7. **Zero-config default**: absence of `better-typescript.config.ts` → today's `defaultWiring` (exit 0 path unchanged).
-8. **Self-hosting**: this repo keeps no config (or an equivalent that equals `defaultWiring`); bounded `timeout 10 npm run dev` still prints `No signals`.
-9. **Exit codes**: load/compile/validation failures → exit 2; successful watch stream → exit 0.
-10. **ADRs 0001–0008 immutable**; ADR-0009 records this decision when implementing.
+The CLI resolves one config file:
 
-### Consciously not revived from ADR-0005
+```text
+<project-directory>/better-typescript.config.ts
+```
 
-- `Registry.make`, mention DAG, orphan-signal checks, example-admission harness as load gates.
-- Generated per-fleet style guide / `rules` subcommand.
-- Finding-stream access restrictions as a typed wall — under ADR-0006, advice already sees signals by construction; rules still only see `AstNodeElement` streams.
+`<project-directory>` is the `--project` option when present, otherwise the
+current working directory. Config resolution does not walk parent directories
+and does not read package metadata.
 
-## Contracts (normative — to ship)
+The config module is loaded with `jiti`. Accepted export shapes are:
 
-### Package exports (single package)
+- default export of a wiring object;
+- default export of a zero-argument factory returning a wiring object;
+- named `wiring` export of a wiring object;
+- named `wiring` export of a zero-argument factory returning a wiring object.
 
-```jsonc
-// package.json (illustrative)
+If the file is absent, the CLI uses `defaultWiring` from
+`better-typescript/preset`. Load, compile, factory, shape, and validation
+failures are startup errors and exit `2`.
+
+The loader performs structural validation instead of introducing a registry:
+
+```ts
 {
-  "name": "better-typescript",
-  "type": "module",
-  "bin": { "better-typescript": "./dist/index.js" },
-  "exports": {
-    ".": "./dist/kernel.js",
-    "./preset": "./dist/preset.js",
-    "./package.json": "./package.json"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0 || ^6.0.0"
-  },
-  "dependencies": {
-    "effect": "…",
-    "@effect/cli": "…",
-    "@effect/platform-node": "…",
-    "jiti": "^2" // config .ts loader for the published bin
-  }
+  rules: ReadonlyArray<{ name: string; check: RuleCheck }>
+  helpers: ReadonlyArray<{ name: string; check: RuleCheck }>
+  advice: (rules: ReadonlyArray<RuleSignals>, helpers: ReadonlyArray<RuleSignals>) =>
+    Stream.Stream<AdviceElement, Error>
 }
 ```
 
-- **`better-typescript` (kernel)**: authoring + composition types/helpers only — no built-in fleet constants required to author a custom wiring.
-- **`better-typescript/preset`**: named `RuleCheck`s, named advice derivations, `defaultWiring`, and small wiring helpers (`namedRuleCheck`, `ruleSignal`, …).
+`makeWiring` rejects duplicate names within `rules` and within `helpers`.
+Rule/helper cross-array overlap is still allowed because advice receives rule
+signals and helper signals as separate lists; configs should avoid overlap to
+keep prose-name lookups obvious.
 
-Exact file split is an implementation detail; the public surface is the export map, not `src/` paths.
+## Runtime model
 
-### Kernel surface (minimum)
+The config and wiring model is shared by the one-shot and watch runners:
+
+1. The CLI resolves the TypeScript workspace under the project directory.
+2. It loads project wiring from `better-typescript.config.ts` or falls back to
+   `defaultWiring`.
+3. The default CLI mode runs one snapshot report, emits the initial
+   `ReportEvent`s (`signal` events or one `empty` event), and exits `0`.
+4. `--watch` uses the same wiring with `watchReportFromWiring`: it emits the
+   initial report, keeps the process alive, then emits changed `signal` events
+   and removed-block `cleared` events for later TypeScript rebuilds.
+5. Every rule and helper runs over the current AST-node snapshot or watch batch.
+6. Each rule/helper stream is materialized as `RuleSignals` under its prose
+   name.
+7. Advice receives the materialized rule and helper signal lists.
+8. Advice blocks render first; rule blocks render after advice in wiring order.
+
+Self-host verification uses the terminating default: `npm run dev` prints
+`Analyzing <repo>.`, emits the initial report, and completes. Bounded watch
+verification must pass `--watch` explicitly, for example
+`timeout 10 npm run dev -- --watch`, and expect
+`Watching <repo> for changes.` before the bound ends the watch process.
+
+Rules and helpers are both `RuleCheck`s. The difference is report position:
+
+- entries in `rules` feed advice and render rule report blocks;
+- entries in `helpers` feed advice only and do not render rule report blocks.
+
+Advice selects signals with `ruleSignal(ruleSignals)("prose-name")` or
+`ruleSignal(helperSignals)("prose-name")`. Missing names return `Stream.empty`,
+which preserves the existing silent-missing semantics.
+
+## Detection deduplication
+
+For each named rule or helper in each batch, collected detections are deduped
+before they are exposed to advice or rendered as rule blocks. The dedupe key is
+semantic report identity:
+
+- location path;
+- line;
+- column;
+- message;
+- hint;
+- `data` equality.
+
+The first occurrence wins, preserving deterministic report order while removing
+duplicate detections caused by multi-project or repeated upstream traversal.
+
+## Advice layering
+
+Higher-level advice is ordinary Effect stream composition over materialized
+signals. The default preset uses this layering:
+
+- specific file advice derives from selected rule/helper signals;
+- fallback density advice is filtered through `withFallbackAdvice`;
+- directory/project advice derives from named signal streams or from explicitly
+  materialized advice streams inside `defaultAdvice`;
+- systemic advice is composed explicitly from the preceding advice outputs.
+
+`withFallbackAdvice(specific, fallback)` is the safe public fallback helper. It
+collects the specific advice once, emits it first, then emits fallback advice
+except file-level fallback for files already covered by file-level specific
+advice. Consumers who want all advice streams to emit should compose them
+directly with Effect `Stream` combinators.
+
+Rules remain AST-only. Advice consumes signals. There is no rule-to-rule
+dependency mechanism.
+
+## Examples
+
+### Minimal custom fleet
 
 ```ts
-// better-typescript — authoring + composition
-export type {
-  RuleCheck,
-  RuleContext,
-  ProgramContext,
-  AstNodeElement,
-  Subscription,
-  NodeHandler,
-  FileHandler
-}
-export {
-  // rule authoring
-  nodeCheck,
-  fileCheck,
-  nodeSubscriptions,
-  fileSubscriptions,
-  combineAll,
-  withProgramIndex,
-  checkFromSubscriptions,
-  // domain data
-  Location,
-  Detection,
-  detection,
-  locateNode,
-  // advice building blocks
-  AdviceElement,
-  NamedDetection,
-  namedDetection,
-  collectSignals,
-  deriveSignals,
-  byFile,
-  countSummary,
-  parentDirectories,
-  evidenceItem,
-  evidenceFromCounts,
-  evidenceOrder,
-  adviceLocation,
-  collidingLines,
-  dominantRuleEvidence,
-  filterFallbackAdvice,
-  // composition
-  NamedRuleCheck,
-  RuleSignals,
-  ReportWiring,
-  namedRuleCheck, // promote today's private ctor
-  makeWiring, // smart constructor: reject duplicate names within rules / within helpers
-  ruleSignal, // (signals) => (name) => Stream<Detection>  — today's ruleSignalElements
-  // runners (library)
-  reportFromWiring,
-  watchReportFromWiring,
-  runRuleCheckOnProject
-}
-```
-
-Optional later (not required for v1 extensibility): re-export `ReportEvent` / key schemas for typed consumers of NDJSON.
-
-### Preset surface (minimum)
-
-```ts
-// better-typescript/preset
-export * as rules from "./rules" // or named exports of every RuleCheck
-export * as advice from "./advice" // every advice derivation
-export { preferCurriedDataLastFunctions } // helper
-export { defaultWiring, defaultAdvice, reportedRules, helperRules }
-```
-
-Users compose:
-
-```ts
-// better-typescript.config.ts
-import {
-  makeWiring,
-  namedRuleCheck,
-  filterFallbackAdvice,
-  ruleSignal
-} from "better-typescript"
-import { rules, advice, defaultWiring } from "better-typescript/preset"
 import { Stream } from "effect"
-import { myRule } from "./detectors/myRule.js"
-import { myAdvice } from "./detectors/myAdvice.js"
-
-const extra = namedRuleCheck("acme/no-raw-sql", myRule)
+import { makeWiring, namedRuleCheck } from "better-typescript"
+import { myRule } from "./rules/myRule.js"
 
 export default makeWiring({
-  rules: [...defaultWiring.rules, extra],
+  rules: [namedRuleCheck("acme/my-rule", myRule)],
+  helpers: [],
+  advice: () => Stream.empty
+})
+```
+
+### Extend the preset
+
+```ts
+import { Stream, pipe } from "effect"
+import { makeWiring, namedRuleCheck, ruleSignal } from "better-typescript"
+import { defaultWiring } from "better-typescript/preset"
+import { myRule } from "./rules/myRule.js"
+import { myAdvice } from "./rules/myAdvice.js"
+
+const localRule = namedRuleCheck("acme/my-rule", myRule)
+
+export default makeWiring({
+  rules: [...defaultWiring.rules, localRule],
   helpers: defaultWiring.helpers,
   advice: (ruleSignals, helperSignals) => {
     const elementsOf = ruleSignal(ruleSignals)
-    const preset = defaultWiring.advice(ruleSignals, helperSignals)
-    const mine = myAdvice({
-      noThrow: elementsOf("no-throw"),
-      mine: elementsOf("acme/no-raw-sql")
-    })
-    return Stream.merge(preset, mine) // or explicit concat / filterFallbackAdvice as needed
+    const presetAdvice = defaultWiring.advice(ruleSignals, helperSignals)
+    const localAdvice = myAdvice(elementsOf("acme/my-rule"))
+
+    return pipe(presetAdvice, Stream.concat(localAdvice))
   }
 })
 ```
 
-Cherry-pick / replace = omit from the `rules` array and add your own — never shadow by duplicate name (`makeWiring` rejects duplicates).
+### Cherry-pick preset rules
 
-### Config module contract
+Cherry-picking is explicit array construction. Omit the preset rules you do not
+want, add local rules under new prose names, and pass the result to
+`makeWiring`. Do not shadow a preset name with a duplicate entry.
 
-1. Resolve `better-typescript.config.ts` under `--project` (else cwd). Only that filename for v1 (no `package.json` field).
-2. Load with **jiti** (`createJiti(import.meta.url).import(path, { default: true })`) so the published `node dist/index.js` bin can execute user TypeScript without requiring the user to run under `tsx`.
-3. Accepted export shapes (first match):
-   - `default` export is a `ReportWiring`, or
-   - `default` export is a zero-arg function returning `ReportWiring`, or
-   - named export `wiring` is either of the above.
-4. Pass through `makeWiring` (duplicate-name check). Shape check is structural: `rules`/`helpers` arrays of `{ name: string, check: function }`, `advice` is a function — not a revived registry.
-5. Absence → `defaultWiring`. Load/compile/validation errors → stderr + exit 2.
-6. Threat model: config is reviewed user code (build-script equivalent). No sandbox.
+## Non-goals
 
-### CLI change
-
-```ts
-// src/index.ts (conceptual)
-const wiring = yield* loadWiring(options.project) // Option → defaultWiring
-const events = watchReportFromWiring(wiring)(workspace, watchOptions)
-```
-
-`watchReport` / `report` remain as aliases over `defaultWiring` for tests and the preset.
-
-### `makeWiring` law
-
-```ts
-export const makeWiring = (wiring: ReportWiring): ReportWiring => {
-  // within wiring.rules: unique names
-  // within wiring.helpers: unique names
-  // same name in rules AND helpers is ALLOWED (separate lookups today) but
-  // SHOULD be documented as a footgun; v1 does not reject cross-array overlap
-  // missing advice lookups remain Stream.empty
-}
-```
-
-Duplicate → throw / Effect fail with the colliding names listed → CLI exit 2.
-
-## Approach
-
-### Step 0 — Baseline
-
-1. Read rule modules + `repos/effect/` Stream idioms (AGENTS.md).
-2. Confirm current injectability: `tests/report.test.ts` / `tests/watch.test.ts` custom wirings still green.
-3. Snapshot public intent: list every symbol Step 1 will export (this plan's Contracts).
-
-### Step 1 — Publishable surface (no CLI behavior change yet)
-
-1. Promote `namedRuleCheck` to an exported constructor.
-2. Add `ruleSignal` (export of today's `ruleSignalElements`).
-3. Add `makeWiring` with duplicate-name rejection + unit tests.
-4. Introduce `src/kernel.ts` and `src/preset.ts` (or equivalent) that re-export the Contracts surface; keep `src/detectors/report.ts` as the composition home — avoid a second wiring implementation.
-5. Move `defaultWiring` / `reportedRules` / `helperRules` / `defaultAdvice` behind the preset entry (they may physically stay in `report.ts` and be re-exported).
-6. Wire `package.json` `exports`, `peerDependencies.typescript`, and ensure `tsc` emits the entrypoints into `dist/`.
-7. Keep `private: true` until a deliberate publish; exports still enable local `file:` / workspace consumers and document the boundary.
-
-### Step 2 — Config loading
-
-1. Add `src/project/loadWiring.ts` (or `src/config/loadWiring.ts`): resolve path, jiti-import, normalize export, `makeWiring`.
-2. Add `jiti` dependency.
-3. Unit tests with fixture configs:
-   - missing file → `defaultWiring`
-   - default export wiring with one extra rule → that rule's leaf appears
-   - duplicate names → error
-   - syntax/throw in config → error
-   - `default` as zero-arg factory works
-4. Do not execute user configs against the real watch host in unit tests; feed the loaded wiring into `reportFromWiring` / `watchReportFromWiring` with existing harnesses.
-
-### Step 3 — CLI cutover
-
-1. `src/index.ts`: load wiring before `watchReportFromWiring`.
-2. Keep stderr status lines; stdout event stream unchanged.
-3. Smoke:
-   - no config → identical to today's default fleet
-   - config adding a probe rule on a fixture project → probe events
-   - bad config → exit 2
-
-### Step 4 — Authoring docs + examples
-
-1. **README**: replace the non-goal "no custom third-party rules" framing with ADR-0005's corrected stance — no *dynamic* discovery; fleets are explicit config modules. Document:
-   - kernel vs preset imports
-   - config resolution
-   - minimal custom-rule example
-   - cherry-pick / extend preset example
-   - advice that consumes preset signals by prose name
-2. **Example config** in-repo (e.g. `examples/extend-preset/better-typescript.config.ts`) — not loaded by self-host unless copied; kept as documentation.
-3. **`.claude/commands/implement-rule.md`**: add the external-author path (import from `better-typescript`, wire in *their* config) alongside the in-repo path (`src/rules` + preset arrays).
-4. **ADR-0009** (`adrs/0009-user-fleets-are-report-wiring.md`): decision = publish kernel/preset exports + config module exporting `ReportWiring`; context = ADR-0005 intent under ADR-0006 ontology; consequences = jiti loader, `makeWiring` duplicates, silent missing lookups retained, no registry revival. Supersedes ADR-0005's `Registry`/`FindingOf` mechanics; preserves its "fleet is user code" and "no dynamic plugins" laws.
-
-### Step 5 — Verification
-
-1. `npm run typecheck` / `npm test`.
-2. Bounded self-host: `timeout 10 npm run dev` → `No signals`.
-3. Extensibility acceptance:
-   - Fixture config that **only** wires `noThrow` → only that rule's signals (plus empty advice) on a throw fixture.
-   - Fixture config that spreads `defaultWiring.rules` and appends a custom rule → custom leaf present; preset leaves unchanged.
-   - Custom advice consuming `elementsOf("no-mutation")` fires on the mutation fixture.
-   - Duplicate name in config → exit 2 with names in the error.
-   - Invalid TS config → exit 2.
-4. Grep guardrails (zero matches in public docs for revived concepts): `Registry.make`, `FindingOf`, `detectorId`, "plugin discovery".
-5. Leave uncommitted on the current branch (AGENTS.md).
-
-## Critical files & anchors
-
-- `src/detectors/report.ts` — `ReportWiring`, `NamedRuleCheck`, `defaultWiring`, `defaultAdvice`, `ruleSignalElements` (private), `reportFromWiring`
-- `src/detectors/watch.ts` — `watchReportFromWiring`, `watchReport = …(defaultWiring)`
-- `src/index.ts` — CLI hard-wires `watchReport` today
-- `src/rules/ruleCheck.ts` / `src/detectors/rule.ts` — rule authoring
-- `src/detectors/summary.ts` / `src/detectors/location.ts` — advice/domain helpers
-- `src/advice/*.ts` — preset advice derivations (stream in → stream out)
-- `package.json` — bin-only; needs `exports` + `jiti` + `typescript` peer
-- `tests/report.test.ts`, `tests/watch.test.ts` — existing custom-wiring proofs
-- `adrs/0005-…` (intent), `0006-…` (ontology), `0007-…` / `0008-…` (product) — immutable; 0009 records the open
-
-## Assumptions & contingencies
-
-- **Prose names are the only identity.** Advice selects upstream signals by string (`"no-mutation"`). Renaming a preset rule is a breaking change for user advice that hard-codes that string — document it; do not add ids to "fix" it.
-- **Silent empty streams on missing names stay.** Stricter static dependency declarations are a future opt-in, not v1.
-- **Cross-array name overlap (rule vs helper) stays allowed** to avoid breaking the mental model of separate lookups; document the footgun. Revisit if real configs collide.
-- **jiti is the config loader** (ESLint's pattern for `eslint.config.ts`). Native Node type-stripping may eventually replace it; keep the load behind `loadWiring` so the engine is swappable.
-- **`typescript` peer dependency**: user rules call checker APIs; version skew is a support surface — document a supported range aligned with this repo (`^5 \|\| ^6` or whatever `package.json` pins at implement time).
-- **Advice merge semantics** in user configs are ordinary Effect `Stream` combinators — the kernel does not invent an advice registry or auto-topo-sort. Users who need fallback suppression call `filterFallbackAdvice` explicitly (as `defaultAdvice` does).
-- **Publishing** (`private: false`, npm release) is out of scope for the functional cutover; export paths and local consumption are in scope.
-- **Performance** remains non-gating: every wired check still full-recomputes per batch (ADR-0007). Large user fleets are the user's cost.
-- **Security**: no sandbox; config code runs in-process with the analyzer's privileges.
-
-## Non-goals (v1)
-
-- Dynamic plugin discovery / `extends` / config strings resolved to packages.
-- Severities, suppressions, per-rule options.
-- Reviving matcher language, strata scheduler, or `Registry`.
-- Generated style guide for composed fleets.
-- Multi-file config search paths beyond `better-typescript.config.ts` at the project root.
-- Hot-reload of the config module itself (restart the CLI to pick up fleet edits).
-- Separate `@better-typescript/kernel` npm package (single package with export paths only).
+- Dynamic plugin discovery, package-name rule loading, config strings, or
+  config inheritance.
+- Severities, suppressions, per-rule options, or result-based exit gates.
+- A registry, matcher language, scheduler strata, generated style guide, or
+  rule catalog separate from the wired arrays.
+- Multi-file config search paths beyond the direct project-root
+  `better-typescript.config.ts`.
+- Hot reload of the config module itself; restart the CLI after editing the
+  fleet.
+- A separate kernel npm package; the split is by package export path in the
+  single package.

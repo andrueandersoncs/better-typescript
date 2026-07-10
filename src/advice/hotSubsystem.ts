@@ -1,4 +1,4 @@
-import { Array, Schema, Stream, Struct } from "effect"
+import { Array, HashMap, Option, Schema, Stream, Struct, pipe } from "effect"
 import {
   AdviceElement,
   FileDetections,
@@ -21,25 +21,6 @@ class DirectorySignals extends Schema.Class<DirectorySignals>(
   files: fileDetectionsArray,
   projectTotal: Schema.Number
 }) {}
-
-const fileDirectoryEntry = (
-  file: FileDetections
-): ReadonlyArray<readonly [string, FileDetections]> => {
-  const directories = parentDirectories(file.path)
-
-  return Array.map(directories, (directory) => [directory, file] as const)
-}
-
-const directorySignals =
-  (files: ReadonlyArray<FileDetections>) =>
-  (projectTotal: number) =>
-  (path: string): DirectorySignals => {
-    const belongingFiles = Array.filter(files, (file) =>
-      parentDirectories(file.path).includes(path)
-    )
-
-    return new DirectorySignals({ path, files: belongingFiles, projectTotal })
-  }
 
 const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
@@ -96,14 +77,54 @@ const hotSubsystemAdvice = (
   signals: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<AdviceElement> => {
   const files = byFile(signals)
-  const projectTotal = Array.flatMap(files, Struct.get("elements")).length
-  const directoryEntries = Array.flatMap(files, fileDirectoryEntry)
-  const directoryNames = Array.map(directoryEntries, (entry) => entry[0])
-  const uniqueDirectories = Array.dedupe(directoryNames)
-  const directories = Array.map(
-    uniqueDirectories,
-    directorySignals(files)(projectTotal)
+  const projectElements = Array.flatMap(files, Struct.get("elements"))
+  const projectTotal = projectElements.length
+  const directoryEntries = Array.flatMap(files, (file) => {
+    const directories = parentDirectories(file.path)
+    const entries = Array.map(
+      directories,
+      (directory) => [directory, file] as const
+    )
+
+    return entries
+  })
+  const directoryNamesWithDuplicates = Array.map(
+    directoryEntries,
+    (entry) => entry[0]
   )
+  const directoryNames = Array.dedupe(directoryNamesWithDuplicates)
+  const emptyDirectoryFiles: HashMap.HashMap<
+    string,
+    ReadonlyArray<FileDetections>
+  > = HashMap.empty()
+  const directoryFiles = Array.reduce(
+    directoryEntries,
+    emptyDirectoryFiles,
+    (groups, entry) => {
+      const path = entry[0]
+      const filesOption = HashMap.get(groups, path)
+      const filesForDirectory = pipe(
+        filesOption,
+        Option.getOrElse((): ReadonlyArray<FileDetections> => [])
+      )
+      const groupedFiles = Array.append(filesForDirectory, entry[1])
+
+      return HashMap.set(groups, path, groupedFiles)
+    }
+  )
+  const directories = Array.map(directoryNames, (path): DirectorySignals => {
+    const filesOption = HashMap.get(directoryFiles, path)
+    const belongingFiles = pipe(
+      filesOption,
+      Option.getOrElse((): ReadonlyArray<FileDetections> => [])
+    )
+
+    return new DirectorySignals({
+      path,
+      files: belongingFiles,
+      projectTotal
+    })
+  })
   const hotDirectories = Array.filter(directories, isHotSubsystem)
   const deepest = Array.filter(
     hotDirectories,

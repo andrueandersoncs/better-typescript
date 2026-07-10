@@ -3,9 +3,12 @@ import {
   Chunk,
   Data,
   Effect,
+  Equal,
+  HashMap,
   HashSet,
-  Record,
+  Option,
   Order,
+  Record,
   Schema,
   Stream,
   Struct,
@@ -15,76 +18,8 @@ import type { LoadedProject, LoadedWorkspace } from "../project/loadProject.js"
 import { astNodes } from "./sources.js"
 import type { AstNodeElement } from "./sources.js"
 import type { RuleCheck, Detection } from "./rule.js"
-import {
-  NamedDetection,
-  collectSignals,
-  deriveSignals,
-  namedDetection
-} from "./summary.js"
+import { collectSignals } from "./summary.js"
 import type { AdviceElement, EvidenceItem } from "./summary.js"
-import { preferCurriedDataLastFunctions } from "../advice/preferCurriedDataLastFunctions.js"
-import {
-  noAbstractClasses,
-  noArraySpread,
-  noAsyncFunctions,
-  noCallbacks,
-  noClassMethodImplementations,
-  noDataTaggedClass,
-  noDuplicateFunctionNames,
-  noDuplicateIfBodies,
-  noExplicitAnyReturn,
-  noFirstPartySchemaDeclare,
-  noForInLoops,
-  noForLoops,
-  noForOfLoops,
-  noFunctionKeyword,
-  noInlineBooleanExpressions,
-  noInlineClosures,
-  noInstanceof,
-  noManualTypeDispatch,
-  noMultiLineComments,
-  noMultipleBooleanOperators,
-  noMutableArrayMethods,
-  noMutableVariableDeclarations,
-  noMutation,
-  noNestedCalls,
-  noNestedIfStatements,
-  noNewError,
-  noNonNullAssertion,
-  noRawObjectTypes,
-  noRootLevelClasses,
-  noSingleUseCallee,
-  noSwitchStatements,
-  noThrow,
-  noTryCatch,
-  noUndefined,
-  noVoidFunctions,
-  preferConditionalReturn,
-  preferDataLastModule,
-  preferDirectBooleanReturn,
-  preferEffectArrayAppendAll,
-  preferEffectFn,
-  preferEffectPropertyAccessors,
-  preferEffectRecordFilterMap,
-  preferEffectSchemaClass,
-  preferEffectSchemaConstructor,
-  preferEffectSchemaGuard,
-  preferEffectSchemaIs,
-  preferHashMap,
-  preferHashSet,
-  preferImplicitReturn,
-  preferOptionMatch,
-  preferPipeFunction
-} from "../rules/index.js"
-import {
-  highSignalDensity,
-  hotSubsystem,
-  imperativeStateManager,
-  pipelineHostile,
-  ruleDominance,
-  sideEffectLaundering,
-  systemicHotspots
-} from "../advice/index.js"
 
 // A rule's signal, tagged with the prose name its leaf prints.
 export class RuleSignals extends Data.Class<{
@@ -107,7 +42,7 @@ export class ReportWiring extends Data.Class<{
 }> {}
 
 class DedupeState extends Data.Class<{
-  readonly seen: HashSet.HashSet<string>
+  readonly seen: HashMap.HashMap<string, ReadonlyArray<Detection>>
   readonly elements: ReadonlyArray<Detection>
 }> {}
 
@@ -175,7 +110,7 @@ const snapshotWorkspace = (
   Effect.forEach(workspace.projects, snapshotProject)
 
 const emptyDedupeState: DedupeState = {
-  seen: HashSet.empty<string>(),
+  seen: HashMap.empty<string, ReadonlyArray<Detection>>(),
   elements: []
 }
 
@@ -184,14 +119,27 @@ const addUniqueElement = (
   element: Detection
 ): DedupeState => {
   const location = element.location
-  const key = `${location.path}:${location.line}:${location.column}`
-  const alreadySeen = HashSet.has(state.seen, key)
+  const key = JSON.stringify([
+    location.path,
+    location.line,
+    location.column,
+    element.message,
+    element.hint
+  ])
+  const bucket = pipe(
+    HashMap.get(state.seen, key),
+    Option.getOrElse((): ReadonlyArray<Detection> => [])
+  )
+  const hasMatchingData = (candidate: Detection): boolean =>
+    Equal.equals(candidate.data, element.data)
+  const alreadySeen = bucket.some(hasMatchingData)
 
   if (alreadySeen) {
     return state
   }
 
-  const seen = HashSet.add(state.seen, key)
+  const bucketWithElement = Array.append(bucket, element)
+  const seen = HashMap.set(state.seen, key, bucketWithElement)
   const elements = Array.append(state.elements, element)
 
   return new DedupeState({ seen, elements })
@@ -209,7 +157,7 @@ const collectDetections =
     return Stream.runCollect(signal)
   }
 
-// Dedupe repeated workspace locations into one rule's materialized snapshot.
+// Dedupe repeated workspace detections into one rule's materialized snapshot.
 const dedupedRuleSnapshot =
   (name: string) =>
   (collected: ReadonlyArray<Chunk.Chunk<Detection>>): RuleSnapshot => {
@@ -411,51 +359,6 @@ export const ruleReportBlocks =
 
 const blockText: (block: ReportBlock) => string = Struct.get("text")
 
-const sortedAdviceBlockTexts = (
-  advice: ReadonlyArray<AdviceElement>
-): ReadonlyArray<string> =>
-  pipe(advice, adviceReportBlocks, Array.map(blockText))
-
-/**
- * Leaf: fold the merged advice signal into ordered text blocks — file advice
- * first, then directory, then project, each sorted by path.
- */
-export const adviceLeaf: (
-  advice: Stream.Stream<AdviceElement, Error>
-) => Stream.Stream<string, Error> = deriveSignals(sortedAdviceBlockTexts)
-
-const ruleBlockTexts =
-  (name: string) =>
-  (elements: ReadonlyArray<Detection>): ReadonlyArray<string> =>
-    pipe(elements, ruleReportBlocks(name), Array.map(blockText))
-
-/**
- * Leaf: fold one rule's signal into text blocks, one block per distinct
- * message and hint, named by the prose string given at the wiring site.
- */
-export const ruleLeaf = (
-  name: string
-): ((
-  elements: Stream.Stream<Detection, Error>
-) => Stream.Stream<string, Error>) => deriveSignals(ruleBlockTexts(name))
-
-const signalLeaf = (signals: RuleSignals): Stream.Stream<string, Error> =>
-  ruleLeaf(signals.name)(signals.elements)
-
-/**
- * The report is the concatenation of the leaf streams: the advice leaf first,
- * then one rule leaf per reported rule in wiring order.
- */
-export const reportLeaves = (
-  advice: Stream.Stream<AdviceElement, Error>,
-  rules: ReadonlyArray<RuleSignals>
-): Stream.Stream<string, Error> => {
-  const adviceBlocks = adviceLeaf(advice)
-  const ruleLeaves = Array.map(rules, signalLeaf)
-  const leaves = Array.prepend(ruleLeaves, adviceBlocks)
-
-  return pipe(Stream.fromIterable(leaves), Stream.flatten())
-}
 
 const ruleSnapshotBlocks = (
   snapshot: RuleSnapshot
@@ -514,18 +417,38 @@ const unfiredFallbackFilter =
   }
 
 /**
- * Fallback suppression: a file-level fallback emission survives only where no
- * file-level specific advice fired on the same path.
+ * Fallback suppression: file-level fallback advice is emitted only for files
+ * where no file-level specific advice fired. Specific advice is collected once
+ * and emitted before the applicable fallback advice.
  */
-export const filterFallbackAdvice = (
+export const withFallbackAdvice = (
   specificAdvice: Stream.Stream<AdviceElement, Error>,
   fallbackAdvice: Stream.Stream<AdviceElement, Error>
 ): Stream.Stream<AdviceElement, Error> =>
   pipe(
     collectSignals(specificAdvice),
-    Effect.map(unfiredFallbackFilter(fallbackAdvice)),
+    Effect.map((specific) => {
+      const fallback = unfiredFallbackFilter(fallbackAdvice)(specific)
+
+      return pipe(Stream.fromIterable(specific), Stream.concat(fallback))
+    }),
     Stream.unwrap
   )
+
+/**
+ * One workspace snapshot through the batch stages the watch pipeline reuses.
+ * Engine surface for callers that need keyed blocks instead of rendered text.
+ */
+export const reportBlocksFromWiring =
+  (wiring: ReportWiring) =>
+  (
+    workspace: LoadedWorkspace
+  ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+    pipe(
+      snapshotWorkspace(workspace),
+      Effect.flatMap(workspaceSignals(wiring)),
+      Effect.flatMap(batchReportBlocks(wiring))
+    )
 
 /**
  * The snapshot report: one workspace snapshot through the batch stages the
@@ -533,174 +456,118 @@ export const filterFallbackAdvice = (
  */
 export const reportFromWiring =
   (wiring: ReportWiring) =>
-  (workspace: LoadedWorkspace): Stream.Stream<string, Error> => {
-    const blocksEffect = pipe(
-      snapshotWorkspace(workspace),
-      Effect.flatMap(workspaceSignals(wiring)),
-      Effect.flatMap(batchReportBlocks(wiring))
+  (workspace: LoadedWorkspace): Stream.Stream<string, Error> =>
+    pipe(
+      reportBlocksFromWiring(wiring)(workspace),
+      Stream.fromIterableEffect,
+      Stream.map(blockText)
     )
-
-    return pipe(Stream.fromIterableEffect(blocksEffect), Stream.map(blockText))
-  }
 
 const hasSignalName =
   (name: string) =>
   (signal: RuleSignals): boolean =>
     signal.name === name
 
-const ruleSignalElements =
+export const ruleSignal =
   (signals: ReadonlyArray<RuleSignals>) =>
   (name: string): Stream.Stream<Detection, Error> =>
     signals.find(hasSignalName(name))?.elements ?? Stream.empty
 
-const nameDetections = (
-  rule: RuleSignals
-): Stream.Stream<NamedDetection, Error> =>
-  Stream.map(rule.elements, namedDetection(rule.name))
-
-const namedRuleCheck = (name: string, check: RuleCheck): NamedRuleCheck =>
+export const namedRuleCheck = (name: string, check: RuleCheck): NamedRuleCheck =>
   new NamedRuleCheck({ name, check })
 
-const reportedRules: ReadonlyArray<NamedRuleCheck> = [
-  namedRuleCheck("prefer-effect-schema-guard", preferEffectSchemaGuard),
-  namedRuleCheck("prefer-effect-schema-is", preferEffectSchemaIs),
-  namedRuleCheck(
-    "prefer-effect-schema-constructor",
-    preferEffectSchemaConstructor
-  ),
-  namedRuleCheck("prefer-effect-schema-class", preferEffectSchemaClass),
-  namedRuleCheck("prefer-effect-fn", preferEffectFn),
-  namedRuleCheck(
-    "prefer-effect-property-accessors",
-    preferEffectPropertyAccessors
-  ),
-  namedRuleCheck(
-    "prefer-effect-record-filter-map",
-    preferEffectRecordFilterMap
-  ),
-  namedRuleCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll),
-  namedRuleCheck("prefer-data-last-module", preferDataLastModule),
-  namedRuleCheck("prefer-conditional-return", preferConditionalReturn),
-  namedRuleCheck("prefer-direct-boolean-return", preferDirectBooleanReturn),
-  namedRuleCheck("prefer-implicit-return", preferImplicitReturn),
-  namedRuleCheck("no-throw", noThrow),
-  namedRuleCheck("no-new-error", noNewError),
-  namedRuleCheck("no-try-catch", noTryCatch),
-  namedRuleCheck("no-undefined", noUndefined),
-  namedRuleCheck("no-void-functions", noVoidFunctions),
-  namedRuleCheck("no-root-level-classes", noRootLevelClasses),
-  namedRuleCheck("no-multi-line-comments", noMultiLineComments),
-  namedRuleCheck("no-explicit-any-return", noExplicitAnyReturn),
-  namedRuleCheck("no-multiple-boolean-operators", noMultipleBooleanOperators),
-  namedRuleCheck("no-inline-boolean-expressions", noInlineBooleanExpressions),
-  namedRuleCheck("no-mutable-array-methods", noMutableArrayMethods),
-  namedRuleCheck(
-    "no-mutable-variable-declarations",
-    noMutableVariableDeclarations
-  ),
-  namedRuleCheck("no-mutation", noMutation),
-  namedRuleCheck("no-nested-if-statements", noNestedIfStatements),
-  namedRuleCheck("no-non-null-assertion", noNonNullAssertion),
-  namedRuleCheck("no-duplicate-if-bodies", noDuplicateIfBodies),
-  namedRuleCheck("no-duplicate-function-names", noDuplicateFunctionNames),
-  namedRuleCheck("no-callbacks", noCallbacks),
-  namedRuleCheck("no-async-functions", noAsyncFunctions),
-  namedRuleCheck("no-array-spread", noArraySpread),
-  namedRuleCheck("no-for-in-loops", noForInLoops),
-  namedRuleCheck("no-for-loops", noForLoops),
-  namedRuleCheck("no-for-of-loops", noForOfLoops),
-  namedRuleCheck("no-switch-statements", noSwitchStatements),
-  namedRuleCheck("no-function-keyword", noFunctionKeyword),
-  namedRuleCheck("no-inline-closures", noInlineClosures),
-  namedRuleCheck("no-nested-calls", noNestedCalls),
-  namedRuleCheck("no-manual-type-dispatch", noManualTypeDispatch),
-  namedRuleCheck("no-abstract-classes", noAbstractClasses),
-  namedRuleCheck(
-    "no-class-method-implementations",
-    noClassMethodImplementations
-  ),
-  namedRuleCheck("no-raw-object-types", noRawObjectTypes),
-  namedRuleCheck("no-first-party-schema-declare", noFirstPartySchemaDeclare),
-  namedRuleCheck("no-data-tagged-class", noDataTaggedClass),
-  namedRuleCheck("no-instanceof", noInstanceof),
-  namedRuleCheck("no-single-use-callee", noSingleUseCallee),
-  namedRuleCheck("prefer-hash-set", preferHashSet),
-  namedRuleCheck("prefer-hash-map", preferHashMap),
-  namedRuleCheck("prefer-option-match", preferOptionMatch),
-  namedRuleCheck("prefer-pipe-function", preferPipeFunction)
-]
+const duplicateNameArray = Schema.Array(Schema.String)
 
-const helperRules: ReadonlyArray<NamedRuleCheck> = [
-  new NamedRuleCheck({
-    name: "prefer-curried-data-last-functions",
-    check: preferCurriedDataLastFunctions
-  })
-]
+class DuplicateWiringNamesError extends Schema.TaggedError<DuplicateWiringNamesError>(
+  "DuplicateWiringNamesError"
+)("DuplicateWiringNamesError", {
+  rules: duplicateNameArray,
+  helpers: duplicateNameArray
+}) {
+  get message(): string {
+    const ruleSection =
+      this.rules.length === 0 ? "" : `rules: ${this.rules.join(", ")}`
+    const helperSection =
+      this.helpers.length === 0 ? "" : `helpers: ${this.helpers.join(", ")}`
+    const ruleSections: ReadonlyArray<string> =
+      ruleSection.length === 0 ? [] : [ruleSection]
+    const sections =
+      helperSection.length === 0
+        ? ruleSections
+        : Array.append(ruleSections, helperSection)
 
-// The advice graph: each derivation consumes the streams it needs. Snapshot streams replay on every run, so a stream consumed by two derivations recomputes its pure fold instead of sharing state.
-const defaultAdvice = (
-  ruleSignals: ReadonlyArray<RuleSignals>,
-  helperSignals: ReadonlyArray<RuleSignals>
-): Stream.Stream<AdviceElement, Error> => {
-  const elementsOf = ruleSignalElements(ruleSignals)
-  const helperElementsOf = ruleSignalElements(helperSignals)
-  const namedElements = pipe(
-    Stream.fromIterable(ruleSignals),
-    Stream.flatMap(nameDetections)
-  )
-  const noMutation = elementsOf("no-mutation")
-  const preferHashMap = elementsOf("prefer-hash-map")
-  const preferHashSet = elementsOf("prefer-hash-set")
-  const noMutableArrayMethods = elementsOf("no-mutable-array-methods")
-  const noMutableVariableDeclarations = elementsOf(
-    "no-mutable-variable-declarations"
-  )
-  const noNestedCalls = elementsOf("no-nested-calls")
-  const preferCurried = helperElementsOf("prefer-curried-data-last-functions")
-  const imperativeAdvice = imperativeStateManager({
-    noMutation,
-    preferHashMap,
-    preferHashSet,
-    noMutableArrayMethods,
-    noMutableVariableDeclarations
-  })
-  const launderingAdvice = sideEffectLaundering(namedElements)
-  const pipelineAdvice = pipelineHostile({
-    noNestedCalls,
-    preferCurriedDataLastFunctions: preferCurried
-  })
-  const specificAdvice = pipe(
-    Stream.fromIterable([imperativeAdvice, launderingAdvice, pipelineAdvice]),
-    Stream.flatten()
-  )
-  const densityAdvice = highSignalDensity(namedElements)
-  const filteredDensityAdvice = filterFallbackAdvice(
-    specificAdvice,
-    densityAdvice
-  )
-  const subsystemAdvice = hotSubsystem(namedElements)
-  const dominanceAdvice = ruleDominance(namedElements)
-  const systemicAdvice = systemicHotspots({
-    hotSubsystem: subsystemAdvice,
-    highSignalDensity: filteredDensityAdvice
-  })
-
-  return pipe(
-    Stream.fromIterable([
-      specificAdvice,
-      filteredDensityAdvice,
-      subsystemAdvice,
-      dominanceAdvice,
-      systemicAdvice
-    ]),
-    Stream.flatten()
-  )
+    return `Duplicate report wiring names (${sections.join("; ")})`
+  }
 }
 
-export const defaultWiring: ReportWiring = {
-  rules: reportedRules,
-  helpers: helperRules,
-  advice: defaultAdvice
+class DuplicateNameState extends Data.Class<{
+  readonly seen: HashSet.HashSet<string>
+  readonly collisions: HashSet.HashSet<string>
+  readonly names: ReadonlyArray<string>
+}> {}
+
+const emptyDuplicateNamesSeen = HashSet.empty<string>()
+const emptyDuplicateNameCollisions = HashSet.empty<string>()
+
+const emptyDuplicateNameState: DuplicateNameState = new DuplicateNameState({
+  seen: emptyDuplicateNamesSeen,
+  collisions: emptyDuplicateNameCollisions,
+  names: []
+})
+
+const addDuplicateName = (
+  state: DuplicateNameState,
+  check: NamedRuleCheck
+): DuplicateNameState => {
+  const name = check.name
+  const alreadySeen = HashSet.has(state.seen, name)
+  const alreadyCollision = HashSet.has(state.collisions, name)
+
+  if (!alreadySeen) {
+    const seen = HashSet.add(state.seen, name)
+
+    return new DuplicateNameState({
+      seen,
+      collisions: state.collisions,
+      names: state.names
+    })
+  }
+
+  if (alreadyCollision) {
+    return state
+  }
+
+  const collisions = HashSet.add(state.collisions, name)
+  const names = Array.append(state.names, name)
+
+  return new DuplicateNameState({
+    seen: state.seen,
+    collisions,
+    names
+  })
 }
 
-export const report = reportFromWiring(defaultWiring)
+const duplicateNames = (
+  checks: ReadonlyArray<NamedRuleCheck>
+): ReadonlyArray<string> =>
+  Array.reduce(checks, emptyDuplicateNameState, addDuplicateName).names
+
+export const makeWiring = (wiring: ReportWiring): ReportWiring => {
+  const rules = duplicateNames(wiring.rules)
+  const helpers = duplicateNames(wiring.helpers)
+  const hasRuleDuplicates = rules.length > 0
+  const hasHelperDuplicates = helpers.length > 0
+  const hasDuplicateNames = hasRuleDuplicates || hasHelperDuplicates
+
+  if (!hasDuplicateNames) {
+    return wiring
+  }
+
+  const duplicateNamesError = new DuplicateWiringNamesError({
+    rules,
+    helpers
+  })
+  const failedWiring = Effect.fail(duplicateNamesError)
+
+  return Effect.runSync(failedWiring)
+}

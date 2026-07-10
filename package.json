@@ -18,18 +18,28 @@
     "bench": "tsx bench/rules.bench.ts",
     "prepare": "npm run build",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "watch": "tsx src/index.ts --pretty --watch"
   },
   "dependencies": {
     "@effect/cli": "^0.75.2",
     "@effect/platform-node": "^0.107.0",
     "effect": "^3.21.3",
-    "typescript": "^6.0.3"
+    "jiti": "^2.7.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
     "prettier": "^3.9.1",
     "tinybench": "^6.0.2",
-    "tsx": "^4.22.4"
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0 || ^6.0.0"
+  },
+  "exports": {
+    ".": "./dist/kernel.js",
+    "./preset": "./dist/preset.js",
+    "./package.json": "./package.json"
   }
 }

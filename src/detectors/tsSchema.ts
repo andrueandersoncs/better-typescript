@@ -29,27 +29,3 @@ export const TsNode = Schema.declare(isTsNode).annotations({
   identifier: "ts.Node"
 })
 
-const isTsIdentifier = (input: unknown): input is ts.Identifier =>
-  Predicate.hasProperty(input, "kind") && Predicate.hasProperty(input, "text")
-
-export const TsIdentifier = Schema.declare(isTsIdentifier).annotations({
-  identifier: "ts.Identifier"
-})
-
-const isTsSymbol = (input: unknown): input is ts.Symbol =>
-  Predicate.hasProperty(input, "flags") && Predicate.hasProperty(input, "name")
-
-export const TsSymbol = Schema.declare(isTsSymbol).annotations({
-  identifier: "ts.Symbol"
-})
-
-const isFunctionDeclarationNode = (
-  input: unknown
-): input is ts.VariableDeclaration | ts.FunctionDeclaration =>
-  Predicate.hasProperty(input, "kind") && Predicate.hasProperty(input, "name")
-
-export const TsFunctionDeclarationNode = Schema.declare(
-  isFunctionDeclarationNode
-).annotations({
-  identifier: "ts.VariableDeclaration | ts.FunctionDeclaration"
-})

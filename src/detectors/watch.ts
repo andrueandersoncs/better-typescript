@@ -15,13 +15,17 @@ import {
   pipe
 } from "effect"
 import type * as ts from "typescript"
-import type { ProjectConfig, WorkspaceConfigs } from "../project/loadProject.js"
+import type {
+  LoadedWorkspace,
+  ProjectConfig,
+  WorkspaceConfigs
+} from "../project/loadProject.js"
 import { astNodesFromContext, sourceUpdates } from "./sources.js"
 import type { AstNodeElement, SourceUpdate } from "./sources.js"
 import type { Detection } from "./rule.js"
 import {
   batchReportBlocks,
-  defaultWiring,
+  reportBlocksFromWiring,
   reportKeySchema,
   workspaceSignals
 } from "./report.js"
@@ -33,13 +37,11 @@ import type {
 } from "./report.js"
 
 /**
- * One consistent workspace-wide change batch: every project's node snapshot in
- * project index order, plus the updated project's changed and removed files.
+ * One consistent workspace-wide snapshot batch: every project's node snapshot
+ * in project index order, emitted only after source-update quiet/warm gating.
  */
 export class WorkspaceUpdate extends Data.Class<{
   readonly snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
-  readonly changed: ReadonlyArray<ts.SourceFile>
-  readonly removed: ReadonlyArray<string>
 }> {}
 
 const indexedSourceUpdates =
@@ -104,11 +106,7 @@ export const workspaceUpdates = (
         Option.getOrElse(() => Chunk.empty<AstNodeElement>())
       )
     )
-    const emitted = new WorkspaceUpdate({
-      snapshots,
-      changed: update.changed,
-      removed: update.removed
-    })
+    const emitted = new WorkspaceUpdate({ snapshots })
 
     return [nextCache, Option.some(emitted)] as const
   })
@@ -332,6 +330,19 @@ export const blockDeltas =
     )
 
 /**
+ * The one-shot product: one loaded workspace snapshot mapped through the same
+ * first-batch event vocabulary the continuous pipeline emits.
+ */
+export const reportEventsFromWiring =
+  (wiring: ReportWiring) =>
+  (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, Error> =>
+    pipe(
+      reportBlocksFromWiring(wiring)(workspace),
+      Effect.map(initialReportEvents(workspace.rootPath)),
+      Stream.fromIterableEffect
+    )
+
+/**
  * The continuous product: a linear pipeline of stream transformers whose
  * elements each carry one consistent batch.
  *
@@ -364,4 +375,3 @@ export const watchReportFromWiring =
       blockDeltas(workspace.rootPath)
     )
 
-export const watchReport = watchReportFromWiring(defaultWiring)
