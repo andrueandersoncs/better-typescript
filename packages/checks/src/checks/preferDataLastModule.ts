@@ -261,7 +261,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
   const findCurriedLazy = (
     arrowParent: ts.ArrowFunction
-  ): Option.Option<FunctionDefinition> => findCurried(arrowParent)
+  ): Option.Option<FunctionDefinition> => pipe(arrowParent, findCurried)
 
   const fromConcise = (
     expression: ts.Expression

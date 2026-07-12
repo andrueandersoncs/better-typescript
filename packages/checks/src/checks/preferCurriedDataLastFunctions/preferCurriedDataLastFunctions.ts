@@ -162,11 +162,6 @@ const hasCurriedArrowBody = (
   )
 }
 
-const hasCallableType =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): boolean =>
-    hasCallSignature(checker)(type)
-
 const contextualType =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): Option.Option<ts.Type> =>
@@ -180,7 +175,7 @@ const isContextuallyTypedFunction =
       Option.exists((expression) =>
         pipe(
           contextualType(checker)(expression),
-          Option.exists(hasCallableType(checker))
+          Option.exists(hasCallSignature(checker))
         )
       )
     )
@@ -235,13 +230,10 @@ const symbolForDeclaration =
     return pipe(declarationName, Option.flatMap(symbolAtLocation(checker)))
   }
 
-const foldCurriedDataLastDescendants =
-  <A>(visit: (node: ts.Node) => (accumulator: A) => A) =>
-  (node: ts.Node) =>
-  (accumulator: A): A =>
-    foldAst((current: A, currentNode: ts.Node): A =>
-      visit(currentNode)(current)
-    )(node)(accumulator)
+const foldCurriedDataLastDescendants = <A>(
+  visit: (node: ts.Node) => (accumulator: A) => A
+) =>
+  foldAst((current: A, currentNode: ts.Node): A => visit(currentNode)(current))
 
 type NameDeclaration =
   ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
@@ -375,7 +367,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
 
           const optionHasCallableType = (
             type: Option.Option<ts.Type>
-          ): boolean => Option.exists(type, hasCallableType(checker))
+          ): boolean => Option.exists(type, hasCallSignature(checker))
 
           const hasCallableContext = Array.some(
             [expressionContextualType, signatureType],

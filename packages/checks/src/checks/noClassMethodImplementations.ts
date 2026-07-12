@@ -14,8 +14,7 @@ const methodDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.MethodDeclaration
 ]
 
-const isMethodDeclaration = (node: ts.Node): node is ts.MethodDeclaration =>
-  ts.isMethodDeclaration(node)
+const isMethodDeclaration = ts.isMethodDeclaration
 
 const isOverrideModifier = (modifier: ts.ModifierLike): boolean =>
   modifier.kind === ts.SyntaxKind.OverrideKeyword

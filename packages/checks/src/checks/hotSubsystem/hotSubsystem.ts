@@ -137,6 +137,4 @@ const hotSubsystemAdvice = (
   return Array.map(deepest, subsystemAdvice)
 }
 
-export const hotSubsystem = (
-  signals: Stream.Stream<NamedDetection, Error>
-): Stream.Stream<Advice, Error> => deriveSignals(hotSubsystemAdvice)(signals)
+export const hotSubsystem = deriveSignals(hotSubsystemAdvice)

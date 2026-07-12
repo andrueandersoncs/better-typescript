@@ -39,6 +39,4 @@ const collidingFileAdvice = (
   })
 }
 
-export const sideEffectLaundering = (
-  signals: Stream.Stream<NamedDetection, Error>
-): Stream.Stream<Advice, Error> => deriveSignals(collidingFileAdvice)(signals)
+export const sideEffectLaundering = deriveSignals(collidingFileAdvice)

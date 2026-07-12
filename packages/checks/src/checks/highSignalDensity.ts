@@ -42,6 +42,4 @@ const denseFileAdvice = (
     Array.map(densityAdvice)
   )
 
-export const highSignalDensity = (
-  signals: Stream.Stream<NamedDetection, Error>
-): Stream.Stream<Advice, Error> => deriveSignals(denseFileAdvice)(signals)
+export const highSignalDensity = deriveSignals(denseFileAdvice)

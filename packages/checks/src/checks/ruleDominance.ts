@@ -35,6 +35,4 @@ const dominanceAdvice = (
   return isDominated ? [advice] : []
 }
 
-export const ruleDominance = (
-  signals: Stream.Stream<NamedDetection, Error>
-): Stream.Stream<Advice, Error> => deriveSignals(dominanceAdvice)(signals)
+export const ruleDominance = deriveSignals(dominanceAdvice)

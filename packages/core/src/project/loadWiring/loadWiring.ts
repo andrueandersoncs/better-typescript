@@ -92,8 +92,7 @@ const configExportFromRecord = (record: ModuleRecord): ConfigExport => {
   )
 }
 
-const configExportFromFunction = (factory: WiringFactory): ConfigExport =>
-  defaultConfigExport(factory)
+const configExportFromFunction = defaultConfigExport
 
 const selectedExport = Effect.fn("selectedExport")(function* (
   configPath: string,
@@ -202,7 +201,7 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     examples,
     Option.match({
       onNone: Function.constant(true),
-      onSome: (examples) => Array.isArray(examples)
+      onSome: Array.isArray
     })
   )
 

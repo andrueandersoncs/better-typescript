@@ -180,8 +180,8 @@ const emptyReportText = (event: EmptyReportEvent): string =>
 export const renderEventText = (event: ReportEvent): string =>
   pipe(
     Match.value(event),
-    Match.tag("signal", (signal) => Struct.get("text")(signal)),
-    Match.tag("cleared", (cleared) => Struct.get("text")(cleared)),
+    Match.tag("signal", Struct.get("text")),
+    Match.tag("cleared", Struct.get("text")),
     Match.tag("empty", emptyReportText),
     Match.exhaustive
   )

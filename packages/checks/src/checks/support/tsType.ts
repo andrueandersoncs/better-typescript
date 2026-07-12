@@ -38,12 +38,6 @@ export const differentApparentType =
       Option.liftPredicate(isDifferentType(type))
     )
 
-const callSignatureCheckWithSeen =
-  (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean =>
-    hasCallSignatureWithSeen(checker)(seen)(type)
-
 export const isUnseenType =
   (seen: HashSet.HashSet<ts.Type>) =>
   (type: ts.Type): boolean =>
@@ -124,10 +118,7 @@ const hasCallSignatureWithSeen =
         if (type.isUnionOrIntersection()) {
           return (
             hasDirectCallSignature ||
-            Array.some(
-              type.types,
-              callSignatureCheckWithSeen(checker)(nextSeen)
-            )
+            Array.some(type.types, hasCallSignatureWithSeen(checker)(nextSeen))
           )
         }
 
@@ -136,12 +127,12 @@ const hasCallSignatureWithSeen =
 
         const constraintHasCallSignature = Option.exists(
           baseConstraint,
-          callSignatureCheckWithSeen(checker)(nextSeen)
+          hasCallSignatureWithSeen(checker)(nextSeen)
         )
 
         const apparentTypeHasCallSignature = Option.exists(
           apparentType,
-          callSignatureCheckWithSeen(checker)(nextSeen)
+          hasCallSignatureWithSeen(checker)(nextSeen)
         )
 
         const hasIndirectCallSignature =

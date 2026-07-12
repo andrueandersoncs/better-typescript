@@ -202,6 +202,10 @@ import {
   preferFunctionCompositionExamples
 } from "../checks/preferFunctionComposition.js"
 import {
+  preferEtaReduction,
+  preferEtaReductionExamples
+} from "../checks/preferEtaReduction.js"
+import {
   preferImplicitReturn,
   preferImplicitReturnExamples
 } from "../checks/preferImplicitReturn.js"
@@ -244,9 +248,7 @@ const nameDetections = (
   )
 }
 
-const replayAdvice = (
-  items: ReadonlyArray<Advice>
-): Stream.Stream<Advice, Error> => Stream.fromIterable(items)
+const replayAdvice = Stream.fromIterable
 
 export const defaultChecks: ReadonlyArray<NamedCheck> = [
   namedCheck(
@@ -319,6 +321,11 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = [
     "prefer-function-composition",
     preferFunctionComposition,
     preferFunctionCompositionExamples
+  ),
+  namedCheck(
+    "prefer-eta-reduction",
+    preferEtaReduction,
+    preferEtaReductionExamples
   ),
   namedCheck(
     "prefer-implicit-return",
