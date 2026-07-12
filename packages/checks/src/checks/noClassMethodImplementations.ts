@@ -44,11 +44,9 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
 const methodImplementationMatches = (context: CheckContext) => {
   const match = detection(context)
 
-  const matches = (node: ts.MethodDeclaration): ReadonlyArray<Detection> => {
-    const reportable = Option.liftPredicate(isReportableMethod)(node)
-
-    return pipe(
-      reportable,
+  const matches = (node: ts.MethodDeclaration): ReadonlyArray<Detection> =>
+    pipe(
+      Option.liftPredicate(isReportableMethod)(node),
       Option.map((node) => {
         const reportTarget = namedDetectionTarget(node)
 
@@ -64,7 +62,6 @@ const methodImplementationMatches = (context: CheckContext) => {
       }),
       Option.toArray
     )
-  }
 
   return matches
 }

@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Array, Effect, Function, pipe, Option, Struct } from "effect"
+import { Array, Effect, Function, flow, pipe, Option, Struct } from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring } from "../../engine/report/data.js"
 import { makeWiring } from "../../engine/report/report.js"
@@ -28,11 +28,8 @@ const projectWiringError = (
 const failConfig = (
   configPath: string,
   reason: string
-): Effect.Effect<never, ProjectWiringError> => {
-  const error = projectWiringError(configPath, reason)
-
-  return Effect.fail(error)
-}
+): Effect.Effect<never, ProjectWiringError> =>
+  pipe(projectWiringError(configPath, reason), Effect.fail)
 
 const isRecord = (value: unknown): value is ModuleRecord => {
   const isObject = typeof value === "object"
@@ -68,17 +65,13 @@ const defaultConfigExport = configExport(defaultExportName)
 const ownConfigExport =
   (name: ConfigExportName) =>
   (valueFromRecord: (record: ModuleRecord) => unknown) =>
-  (record: ModuleRecord): Option.Option<ConfigExport> => {
-    const recordWithKey = Option.liftPredicate(
-      (candidate: ModuleRecord): boolean => Object.hasOwn(candidate, name)
-    )(record)
-
-    return pipe(
-      recordWithKey,
+    flow(
+      Option.liftPredicate((candidate: ModuleRecord): boolean =>
+        Object.hasOwn(candidate, name)
+      ),
       Option.map(valueFromRecord),
       Option.map(configExport(name))
     )
-  }
 
 const defaultOwnConfigExport = ownConfigExport(defaultExportName)(
   Struct.get(defaultExportName)

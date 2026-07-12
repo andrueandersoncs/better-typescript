@@ -31,13 +31,8 @@ const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
 }
 
 // Compare guard discriminants because a dispatch ladder must inspect the same subject.
-const discriminants = (
-  ifStatement: ts.IfStatement
-): HashSet.HashSet<string> => {
-  const names = identifierNames(ifStatement.expression)
-
-  return HashSet.fromIterable(names)
-}
+const discriminants = (ifStatement: ts.IfStatement): HashSet.HashSet<string> =>
+  pipe(identifierNames(ifStatement.expression), HashSet.fromIterable)
 
 const siblingDispatchGuard =
   (offset: number) =>

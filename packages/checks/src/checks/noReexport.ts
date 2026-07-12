@@ -94,14 +94,13 @@ const exportAssignmentElements = (context: CheckContext) => {
   const matches = (node: ts.ExportAssignment): ReadonlyArray<Detection> =>
     pipe(
       Option.liftPredicate(ts.isIdentifier)(node.expression),
-      Option.filter((name) => {
-        const symbolAtLocation = checker.getSymbolAtLocation(name)
-
-        return pipe(
-          Option.fromNullable(symbolAtLocation),
+      Option.filter((name) =>
+        pipe(
+          checker.getSymbolAtLocation(name),
+          Option.fromNullable,
           Option.exists(isImportedSymbol)
         )
-      }),
+      ),
       Option.map(() => [detect(node)]),
       Option.getOrElse((): ReadonlyArray<Detection> => [])
     )

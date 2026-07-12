@@ -103,11 +103,8 @@ const isParameterAcceptingUndefined = (
     Option.exists(parameterAcceptsUndefined)
   )
 
-const hasUndefinedReturnType = (decl: ReturnTypeDeclaration): boolean => {
-  const typeNode = Option.fromNullable(decl.type)
-
-  return containsUndefinedType(typeNode)
-}
+const hasUndefinedReturnType = (decl: ReturnTypeDeclaration): boolean =>
+  pipe(Option.fromNullable(decl.type), containsUndefinedType)
 
 const isUndefinedReturnTypeDeclaration = (
   node: ts.Node

@@ -23,22 +23,20 @@ export const isDifferentType =
 
 export const differentBaseConstraint =
   (checker: ts.TypeChecker) =>
-  (type: ts.Type): Option.Option<ts.Type> => {
-    const baseConstraint = checker.getBaseConstraintOfType(type)
-
-    return pipe(
-      Option.fromNullable(baseConstraint),
+  (type: ts.Type): Option.Option<ts.Type> =>
+    pipe(
+      checker.getBaseConstraintOfType(type),
+      Option.fromNullable,
       Option.filter(isDifferentType(type))
     )
-  }
 
 export const differentApparentType =
   (checker: ts.TypeChecker) =>
-  (type: ts.Type): Option.Option<ts.Type> => {
-    const apparentType = checker.getApparentType(type)
-
-    return Option.liftPredicate(isDifferentType(type))(apparentType)
-  }
+  (type: ts.Type): Option.Option<ts.Type> =>
+    pipe(
+      checker.getApparentType(type),
+      Option.liftPredicate(isDifferentType(type))
+    )
 
 const callSignatureCheckWithSeen =
   (checker: ts.TypeChecker) =>
@@ -153,10 +151,7 @@ const hasCallSignatureWithSeen =
       })
     )
 
-export const callSignatureCheck = (checker: ts.TypeChecker) => {
-  const seen = HashSet.empty<ts.Type>()
-
-  return hasCallSignatureWithSeen(checker)(seen)
-}
+export const callSignatureCheck = (checker: ts.TypeChecker) =>
+  pipe(HashSet.empty<ts.Type>(), hasCallSignatureWithSeen(checker))
 
 export const hasCallSignature = callSignatureCheck

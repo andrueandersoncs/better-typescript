@@ -58,11 +58,9 @@ const voidFunctionMatches = (context: CheckContext) => {
       const callableType = checker.getNonNullableType(type)
       const signatures = callableType.getCallSignatures()
 
-      return Array.some(signatures, (signature) => {
-        const returnType = checker.getReturnTypeOfSignature(signature)
-
-        return permitsVoid(returnType)
-      })
+      return Array.some(signatures, (signature) =>
+        pipe(checker.getReturnTypeOfSignature(signature), permitsVoid)
+      )
     })
 
     const isContextualVoid =
@@ -91,11 +89,9 @@ const voidFunctionMatches = (context: CheckContext) => {
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
 
-    const declarationReturnsVoid = Option.exists(signature, (resolved) => {
-      const returnType = checker.getReturnTypeOfSignature(resolved)
-
-      return isVoidType(returnType)
-    })
+    const declarationReturnsVoid = Option.exists(signature, (resolved) =>
+      pipe(checker.getReturnTypeOfSignature(resolved), isVoidType)
+    )
 
     if (!declarationReturnsVoid) {
       return []

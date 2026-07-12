@@ -106,11 +106,8 @@ export const unwrapSingleStatementBlock = (
   return hasOneStatement ? statement.statements[0] : statement
 }
 
-export const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean => {
-  const elseStatement = Option.fromNullable(ifStatement.elseStatement)
-
-  return Option.isNone(elseStatement)
-}
+export const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean =>
+  pipe(Option.fromNullable(ifStatement.elseStatement), Option.isNone)
 
 export const lastStatement = (block: ts.Block): Option.Option<ts.Statement> =>
   Option.fromNullable(block.statements[block.statements.length - 1])

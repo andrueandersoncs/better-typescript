@@ -108,18 +108,15 @@ const readExampleTree: (
   return yield* pipe(
     snippets,
     Array.matchLeft({
-      onEmpty: () => {
-        const error = new ExampleLoadError({
-          message: `Example tree has no TypeScript files: ${treeRoot}`
-        })
-
-        return Effect.fail(error)
-      },
-      onNonEmpty: (first, rest) => {
-        const tree = Array.prepend(rest, first)
-
-        return Effect.succeed(tree)
-      }
+      onEmpty: () =>
+        pipe(
+          new ExampleLoadError({
+            message: `Example tree has no TypeScript files: ${treeRoot}`
+          }),
+          Effect.fail
+        ),
+      onNonEmpty: (first, rest) =>
+        pipe(Array.prepend(rest, first), Effect.succeed)
     })
   )
 })
@@ -169,18 +166,15 @@ export const loadRefactorExamplesAt: (
   return yield* pipe(
     examples,
     Array.matchLeft({
-      onEmpty: () => {
-        const error = new ExampleLoadError({
-          message: `Expected example/<id>/{bad,good} directories under ${exampleRoot}`
-        })
-
-        return Effect.fail(error)
-      },
-      onNonEmpty: (first, rest) => {
-        const nonEmpty = Array.prepend(rest, first)
-
-        return Effect.succeed(nonEmpty)
-      }
+      onEmpty: () =>
+        pipe(
+          new ExampleLoadError({
+            message: `Expected example/<id>/{bad,good} directories under ${exampleRoot}`
+          }),
+          Effect.fail
+        ),
+      onNonEmpty: (first, rest) =>
+        pipe(Array.prepend(rest, first), Effect.succeed)
     })
   )
 })

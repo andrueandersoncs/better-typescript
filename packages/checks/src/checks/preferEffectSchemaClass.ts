@@ -291,14 +291,11 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
 
   const fileConstructionEntries = (
     sourceFile: ts.SourceFile
-  ): ReadonlyArray<readonly [ts.Symbol, string]> => {
-    const literals = foldAst(addObjectLiteral)(sourceFile)([])
-
-    return Array.flatMap(
-      literals,
-      literalConstructionEntries(sourceFile.fileName)
+  ): ReadonlyArray<readonly [ts.Symbol, string]> =>
+    pipe(
+      foldAst(addObjectLiteral)(sourceFile)([]),
+      Array.flatMap(literalConstructionEntries(sourceFile.fileName))
     )
-  }
 
   const programSourceFiles = context.program.getSourceFiles()
   const filtered = Array.filter(programSourceFiles, isProjectSourceFile)
@@ -315,11 +312,10 @@ const objectTypeDeclarationMatches =
 
     const matches = (
       declaration: ObjectTypeDeclaration
-    ): ReadonlyArray<Detection> => {
-      const declarationSymbol = checker.getSymbolAtLocation(declaration.name)
-
-      return pipe(
-        Option.fromNullable(declarationSymbol),
+    ): ReadonlyArray<Detection> =>
+      pipe(
+        checker.getSymbolAtLocation(declaration.name),
+        Option.fromNullable,
         Option.flatMap((symbol) => HashMap.get(index, symbol)),
         Option.map((constructionFileName) => {
           const typeName = declaration.name.text
@@ -349,7 +345,6 @@ const objectTypeDeclarationMatches =
         }),
         Option.toArray
       )
-    }
 
     return matches
   }

@@ -41,11 +41,8 @@ import {
 
 const snapshotProject = (
   project: LoadedProject
-): Effect.Effect<Chunk.Chunk<AstNodeElement>, Error> => {
-  const nodeStream = astNodes(project)
-
-  return Stream.runCollect(nodeStream)
-}
+): Effect.Effect<Chunk.Chunk<AstNodeElement>, Error> =>
+  pipe(astNodes(project), Stream.runCollect)
 
 const emptyDedupeState: DedupeState = {
   seen: HashMap.empty<string, ReadonlyArray<Detection>>(),
@@ -136,11 +133,8 @@ export const deriveAdvice =
   (wiring: Wiring) =>
   (
     signals: ReadonlyArray<Signal>
-  ): Effect.Effect<ReadonlyArray<Advice>, Error> => {
-    const advice = wiring.derive(signals)
-
-    return collectSignals(advice)
-  }
+  ): Effect.Effect<ReadonlyArray<Advice>, Error> =>
+    pipe(wiring.derive(signals), collectSignals)
 
 export const runCheckOnProject =
   (check: Check) =>
@@ -181,11 +175,8 @@ export const adviceText = (advice: Advice): string => {
   return Array.join(lines, "\n")
 }
 
-const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string => {
-  const identityParts = Array.prepend(parts, kind)
-
-  return JSON.stringify(identityParts)
-}
+const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
+  pipe(Array.prepend(parts, kind), JSON.stringify)
 
 const adviceReportBlock = (advice: Advice): ReportBlock => {
   const pathLabel = advicePath(advice)

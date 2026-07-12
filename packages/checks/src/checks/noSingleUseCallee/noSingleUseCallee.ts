@@ -89,11 +89,8 @@ const sourceFileEntries = (
 
 const symbolForEntry =
   (checker: ts.TypeChecker) =>
-  (entry: FunctionEntry): Option.Option<ts.Symbol> => {
-    const symbol = checker.getSymbolAtLocation(entry.nameNode)
-
-    return Option.fromNullable(symbol)
-  }
+  (entry: FunctionEntry): Option.Option<ts.Symbol> =>
+    pipe(checker.getSymbolAtLocation(entry.nameNode), Option.fromNullable)
 
 const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
   const program = context.program

@@ -21,34 +21,26 @@ const hasTagPropertyName = (expression: ts.PropertyAccessExpression): boolean =>
 
 const tagPropertyAccess = (
   expression: ts.Expression
-): Option.Option<ts.PropertyAccessExpression> => {
-  const unwrapped = unwrapExpression(expression)
-
-  return pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
+): Option.Option<ts.PropertyAccessExpression> =>
+  pipe(
+    unwrapExpression(expression),
+    Option.liftPredicate(ts.isPropertyAccessExpression),
     Option.filter(hasTagPropertyName)
   )
-}
 
 const stringLiteralExpression = (
   expression: ts.Expression
-): Option.Option<ts.StringLiteralLike> => {
-  const unwrapped = unwrapExpression(expression)
+): Option.Option<ts.StringLiteralLike> =>
+  pipe(
+    unwrapExpression(expression),
+    Option.liftPredicate(ts.isStringLiteralLike)
+  )
 
-  return Option.liftPredicate(ts.isStringLiteralLike)(unwrapped)
-}
+const hasTagPropertyOperand = (expression: ts.Expression): boolean =>
+  pipe(tagPropertyAccess(expression), Option.isSome)
 
-const hasTagPropertyOperand = (expression: ts.Expression): boolean => {
-  const access = tagPropertyAccess(expression)
-
-  return Option.isSome(access)
-}
-
-const hasStringLiteralOperand = (expression: ts.Expression): boolean => {
-  const literal = stringLiteralExpression(expression)
-
-  return Option.isSome(literal)
-}
+const hasStringLiteralOperand = (expression: ts.Expression): boolean =>
+  pipe(stringLiteralExpression(expression), Option.isSome)
 
 const isSchemaTagComparisonBinary = (node: ts.BinaryExpression): boolean => {
   const isStrictComparison = HashSet.has(

@@ -6,6 +6,7 @@ import {
   Option,
   Stream,
   Struct,
+  flow,
   pipe
 } from "effect"
 import type * as ts from "typescript"
@@ -127,38 +128,23 @@ export const fileSubscriptions = (
 export const nodeCheck =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
-  (
-    handler: (context: CheckContext) => (node: N) => ReadonlyArray<Detection>
-  ): Check => {
-    const subscriptions = nodeSubscriptions(kinds)(refine)(handler)
+    flow(
+      nodeSubscriptions(kinds)(refine),
+      Function.constant,
+      checkFromSubscriptions
+    )
 
-    return checkFromSubscriptions(Function.constant(subscriptions))
-  }
+export const fileCheck = flow(
+  fileSubscriptions,
+  Function.constant,
+  checkFromSubscriptions
+)
 
-export const fileCheck = (
-  handler: (context: CheckContext) => ReadonlyArray<Detection>
-): Check => {
-  const subscriptions = fileSubscriptions(handler)
-
-  return checkFromSubscriptions(Function.constant(subscriptions))
-}
-
-export const combineAll = (
+export const combineAll: (
   subscriptionGroups: ReadonlyArray<ReadonlyArray<Subscription>>
-): Check => {
-  const subscriptions = Array.flatten(subscriptionGroups)
-
-  return checkFromSubscriptions(Function.constant(subscriptions))
-}
+) => Check = flow(Array.flatten, Function.constant, checkFromSubscriptions)
 
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
-  (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check => {
-    const plan = (context: ProgramContext): ReadonlyArray<Subscription> => {
-      const index = build(context)
-
-      return subscriptions(index)
-    }
-
-    return checkFromSubscriptions(plan)
-  }
+  (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check =>
+    checkFromSubscriptions(flow(build, subscriptions))

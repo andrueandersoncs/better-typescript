@@ -26,14 +26,13 @@ const pipeMethodCallMatches = (context: CheckContext) => {
       ),
       Option.filter(isPipeName),
       // Rewrite only Effect's Pipeable.pipe because Node streams and RxJS observables retain different pipe semantics.
-      Option.filter((access) => {
-        const symbol = checker.getSymbolAtLocation(access.name)
-
-        return pipe(
-          Option.fromNullable(symbol),
+      Option.filter((access) =>
+        pipe(
+          checker.getSymbolAtLocation(access.name),
+          Option.fromNullable,
           Option.exists(symbolDeclaredInEffectPackage)
         )
-      }),
+      ),
       Option.map((access) =>
         match({
           node: access.name,

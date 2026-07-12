@@ -102,14 +102,13 @@ const effectFnMatches = (context: CheckContext) => {
           Option.map(Struct.get("expression")),
           Option.filter(ts.isPropertyAccessExpression),
           Option.filter(isGenPropertyName),
-          Option.exists((access) => {
-            const symbol = checker.getSymbolAtLocation(access.name)
-
-            return pipe(
-              Option.fromNullable(symbol),
+          Option.exists((access) =>
+            pipe(
+              checker.getSymbolAtLocation(access.name),
+              Option.fromNullable,
               Option.exists(symbolDeclaredInEffectPackage)
             )
-          })
+          )
         )
       }),
       Option.as(declaration),

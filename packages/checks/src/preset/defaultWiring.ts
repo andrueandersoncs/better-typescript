@@ -198,6 +198,10 @@ import {
   preferHashSetExamples
 } from "../checks/preferHashSet.js"
 import {
+  preferFunctionComposition,
+  preferFunctionCompositionExamples
+} from "../checks/preferFunctionComposition.js"
+import {
   preferImplicitReturn,
   preferImplicitReturnExamples
 } from "../checks/preferImplicitReturn.js"
@@ -310,6 +314,11 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = [
     "prefer-direct-boolean-return",
     preferDirectBooleanReturn,
     preferDirectBooleanReturnExamples
+  ),
+  namedCheck(
+    "prefer-function-composition",
+    preferFunctionComposition,
+    preferFunctionCompositionExamples
   ),
   namedCheck(
     "prefer-implicit-return",

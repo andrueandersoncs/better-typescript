@@ -30,11 +30,17 @@ const typePredicateAssertedType = (
   predicate: ts.TypePredicate
 ): Option.Option<ts.Type> => Option.fromNullable(predicate.type)
 
-const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
-  const symbol = type.aliasSymbol ?? type.getSymbol()
-
-  return Option.fromNullable(symbol)
-}
+const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> =>
+  pipe(
+    Option.fromNullable(type.aliasSymbol),
+    Option.orElse(() =>
+      pipe(
+        type,
+        (candidate: ts.Type) => candidate.getSymbol(),
+        Option.fromNullable
+      )
+    )
+  )
 
 const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   const symbol = typeSymbol(type)
@@ -66,11 +72,13 @@ const schemaDeclareMatches = (context: CheckContext) => {
 
     return pipe(
       Option.fromNullable(signatures[0]),
-      Option.flatMap((signature) => {
-        const typePredicate = checker.getTypePredicateOfSignature(signature)
-
-        return Option.fromNullable(typePredicate)
-      }),
+      Option.flatMap((signature) =>
+        pipe(
+          signature,
+          (candidate) => checker.getTypePredicateOfSignature(candidate),
+          Option.fromNullable
+        )
+      ),
       Option.flatMap(typePredicateAssertedType)
     )
   }

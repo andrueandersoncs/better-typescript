@@ -20,11 +20,8 @@ export const callArguments = (
 
 export const resolvedCallSignature =
   (checker: ts.TypeChecker) =>
-  (call: CallLikeExpression): Option.Option<ts.Signature> => {
-    const signature = checker.getResolvedSignature(call)
-
-    return Option.fromNullable(signature)
-  }
+  (call: CallLikeExpression): Option.Option<ts.Signature> =>
+    pipe(checker.getResolvedSignature(call), Option.fromNullable)
 
 const signatureDeclarationIsExternal = (
   declaration: ts.Declaration
@@ -35,23 +32,18 @@ const signatureDeclarationIsExternal = (
 }
 
 // Missing declarations count as external because their shape is not author-controlled.
-export const signatureIsExternal = (signature: ts.Signature): boolean => {
-  const declaration = signature.getDeclaration()
-
-  return pipe(
-    Option.fromNullable(declaration),
+export const signatureIsExternal = (signature: ts.Signature): boolean =>
+  pipe(
+    signature.getDeclaration(),
+    Option.fromNullable,
     Option.map(signatureDeclarationIsExternal),
     Option.getOrElse(Function.constant(true))
   )
-}
 
 const signatureDeclarationOption = (
   signature: ts.Signature
-): Option.Option<ts.Declaration> => {
-  const declaration = signature.getDeclaration()
-
-  return Option.fromNullable(declaration)
-}
+): Option.Option<ts.Declaration> =>
+  pipe(signature.getDeclaration(), Option.fromNullable)
 
 // Missing declarations do not grant an escape because exemptions require a proven external boundary.
 const hasExternalDeclaration = (signature: ts.Signature): boolean =>
@@ -122,11 +114,8 @@ const isExternalArgumentPosition =
 
 const symbolAtNode =
   (checker: ts.TypeChecker) =>
-  (node: ts.Node): Option.Option<ts.Symbol> => {
-    const symbol = checker.getSymbolAtLocation(node)
-
-    return Option.fromNullable(symbol)
-  }
+  (node: ts.Node): Option.Option<ts.Symbol> =>
+    pipe(checker.getSymbolAtLocation(node), Option.fromNullable)
 
 const nameNodeEscapes =
   (checker: ts.TypeChecker) =>

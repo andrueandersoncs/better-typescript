@@ -84,11 +84,7 @@ const typeAliasIsObjectDataStructure = (
 
 const functionDeclarationHasName = (
   declaration: ts.FunctionDeclaration
-): boolean => {
-  const name = Option.fromNullable(declaration.name)
-
-  return Option.isSome(name)
-}
+): boolean => pipe(Option.fromNullable(declaration.name), Option.isSome)
 
 const algorithmsInStatement = (
   statement: ts.Statement

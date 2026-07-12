@@ -76,16 +76,12 @@ const isTagAssignment = (
     Option.exists(hasTagText)
   )
 
-const tagValueText = (
-  property: ts.PropertyAssignment
-): Option.Option<string> => {
-  const initializer = unwrapTransparentExpression(property.initializer)
-
-  return pipe(
-    Option.liftPredicate(ts.isStringLiteralLike)(initializer),
+const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> =>
+  pipe(
+    unwrapTransparentExpression(property.initializer),
+    Option.liftPredicate(ts.isStringLiteralLike),
     Option.map(Struct.get("text"))
   )
-}
 
 const taggedMessage = (tag: string): string =>
   `Avoid returning a raw "${tag}" object literal.`

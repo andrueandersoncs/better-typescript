@@ -265,15 +265,13 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
   const fromConcise = (
     expression: ts.Expression
-  ): Option.Option<FunctionDefinition> => {
-    const parent = expression.parent
-
-    return pipe(
-      Option.liftPredicate(ts.isArrowFunction)(parent),
+  ): Option.Option<FunctionDefinition> =>
+    pipe(
+      expression.parent,
+      Option.liftPredicate(ts.isArrowFunction),
       Option.filter((arrow) => arrow.body === expression),
       Option.flatMap(findCurriedLazy)
     )
-  }
 
   const findCurried = (
     arrowParent: ts.ArrowFunction

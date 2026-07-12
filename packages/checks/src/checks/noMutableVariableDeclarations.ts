@@ -29,11 +29,10 @@ const mutableDeclarationMatches = (context: CheckContext) => {
 
   const matches = (
     declarationList: ts.VariableDeclarationList
-  ): ReadonlyArray<Detection> => {
-    const firstToken = declarationList.getFirstToken(sourceFile)
-
-    return pipe(
-      Option.fromNullable(firstToken),
+  ): ReadonlyArray<Detection> =>
+    pipe(
+      declarationList.getFirstToken(sourceFile),
+      Option.fromNullable,
       Option.flatMap(tokenMutableKind),
       Option.map((kind) =>
         match({
@@ -48,7 +47,6 @@ const mutableDeclarationMatches = (context: CheckContext) => {
       ),
       Option.toArray
     )
-  }
 
   return matches
 }

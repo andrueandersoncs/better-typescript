@@ -50,11 +50,8 @@ const reportError = Effect.fn("reportError")(function* (error: Error) {
   yield* Effect.sync(setErrorExitCode)
 })
 
-const printJsonEvent = (event: ReportEvent): Effect.Effect<void> => {
-  const line = JSON.stringify(event)
-
-  return Console.log(line)
-}
+const printJsonEvent = (event: ReportEvent): Effect.Effect<void> =>
+  pipe(JSON.stringify(event), Console.log)
 
 const printPrettyEvent = (event: ReportEvent): Effect.Effect<void> => {
   const text = renderEventText(event)

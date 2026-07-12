@@ -113,11 +113,8 @@ const isRuntimeParameter = (parameter: ts.ParameterDeclaration): boolean => {
   return parameterName !== "this"
 }
 
-const parameterHasRestToken = (parameter: ts.ParameterDeclaration): boolean => {
-  const restToken = Option.fromNullable(parameter.dotDotDotToken)
-
-  return Option.isSome(restToken)
-}
+const parameterHasRestToken = (parameter: ts.ParameterDeclaration): boolean =>
+  pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
 
 const hasRestParameter = (declaration: CurriedDataLastCandidate): boolean =>
   Array.some(declaration.parameters, parameterHasRestToken)
@@ -172,11 +169,8 @@ const hasCallableType =
 
 const contextualType =
   (checker: ts.TypeChecker) =>
-  (expression: ts.Expression): Option.Option<ts.Type> => {
-    const type = checker.getContextualType(expression)
-
-    return Option.fromNullable(type)
-  }
+  (expression: ts.Expression): Option.Option<ts.Type> =>
+    pipe(checker.getContextualType(expression), Option.fromNullable)
 
 const isContextuallyTypedFunction =
   (checker: ts.TypeChecker) =>
@@ -193,18 +187,16 @@ const isContextuallyTypedFunction =
 
 const symbolAtLocation =
   (checker: ts.TypeChecker) =>
-  (node: ts.Node): Option.Option<ts.Symbol> => {
-    const symbol = checker.getSymbolAtLocation(node)
-
-    return pipe(
-      Option.fromNullable(symbol),
+  (node: ts.Node): Option.Option<ts.Symbol> =>
+    pipe(
+      checker.getSymbolAtLocation(node),
+      Option.fromNullable,
       Option.map((candidate) => {
         const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
 
         return isAlias ? checker.getAliasedSymbol(candidate) : candidate
       })
     )
-  }
 
 type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
 

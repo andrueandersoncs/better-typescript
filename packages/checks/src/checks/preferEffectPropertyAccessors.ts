@@ -60,11 +60,11 @@ const singleReturnExpression = (
 
 const directPropertyAccessExpression = (
   expression: ts.Expression
-): Option.Option<ts.PropertyAccessExpression> => {
-  const unwrapped = unwrapTransparentExpression(expression)
-
-  return Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped)
-}
+): Option.Option<ts.PropertyAccessExpression> =>
+  pipe(
+    unwrapTransparentExpression(expression),
+    Option.liftPredicate(ts.isPropertyAccessExpression)
+  )
 
 const identifierBindingNameText = (
   name: ts.BindingName
