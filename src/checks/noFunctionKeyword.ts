@@ -2,7 +2,8 @@ import { Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 type FunctionDeclarationWithBody = ts.FunctionDeclaration & {

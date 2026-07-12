@@ -4,7 +4,7 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
-import { reportFromWiring, type Wiring } from "../src/kernel.js"
+import { reportFromWiring, type Wiring } from "../src/engine/report.js"
 import { loadProject } from "../src/project/loadProject.js"
 import { loadWiring, ProjectWiringError } from "../src/project/loadWiring.js"
 
@@ -165,7 +165,7 @@ test("loadWiring keeps a custom config check through reportFromWiring", async ()
       projectDirectory,
       [
         'import { Stream } from "effect"',
-        'import { Detection, Location } from "../../src/kernel.js"',
+        'import { Detection, Location } from "../../src/engine/location.js"',
         "",
         "export default {",
         "  checks: [",

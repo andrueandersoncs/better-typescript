@@ -27,12 +27,8 @@ import {
   type ReportKey,
   type Wiring
 } from "../src/engine/report.js"
-import {
-  checkFromSubscriptions,
-  nodeSubscription,
-  Detection,
-  type Check
-} from "../src/engine/check.js"
+import { checkFromSubscriptions, nodeSubscription, type Check } from "../src/engine/check.js"
+import { Detection } from "../src/engine/location.js"
 import {
   astNodes,
   contextFor,

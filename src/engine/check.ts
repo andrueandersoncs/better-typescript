@@ -15,8 +15,6 @@ import { ProgramContext } from "./sources.js"
 import type { AstNodeElement } from "./sources.js"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
 
-export { Detection, detection, ProgramContext }
-
 export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
   program: TsProgram,
   checker: TsTypeChecker,

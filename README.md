@@ -107,21 +107,25 @@ printing the initial report.
 
 ## Configuration and extension
 
-Better TypeScript has two public import boundaries:
+Better TypeScript exposes defining modules directly. Do not re-export
+across files, and do not import from `better-typescript/src/...`.
 
-- `better-typescript` is the **kernel**. It exports the authoring and
-  composition surface: `Check`, `Advice`, `NamedCheck`, `Signal`, `Wiring`,
-  `nodeCheck`, `fileCheck`, `checkFromSubscriptions`, `combineAll`,
-  `nodeSubscriptions`, `fileSubscriptions`, `withProgramIndex`, `Detection`,
-  `Location`, `detection`, `locateNode`, `deriveSignals`, `adviceLocation`,
-  `evidenceItem`, `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`,
-  `withFallbackAdvice`, `reportFromWiring`, and `watchReportFromWiring`.
-- `better-typescript/preset` is the built-in fleet. It exports the `checks`
-  namespace, `defaultChecks`, `defaultDerive`, `defaultWiring`, and default
-  `report` / `watchReport` runners.
-
-Do not import from `better-typescript/src/...`; the package entrypoints are the
-public boundary.
+- `better-typescript/engine/check`: `Check`, `CheckContext`, `nodeCheck`,
+  `fileCheck`, `checkFromSubscriptions`, `combineAll`, `nodeSubscriptions`,
+  `fileSubscriptions`, `withProgramIndex`
+- `better-typescript/engine/location`: `Detection`, `Location`, `detection`,
+  `locateNode`
+- `better-typescript/engine/derive`: `Advice`, `deriveSignals`,
+  `adviceLocation`, `evidenceItem`, and related derivation helpers
+- `better-typescript/engine/report`: `NamedCheck`, `Signal`, `Wiring`,
+  `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`, `withFallbackAdvice`,
+  `reportFromWiring`
+- `better-typescript/engine/watch`: `watchReportFromWiring`, report events
+- `better-typescript/engine/sources`: program/source stream helpers
+- `better-typescript/preset`: default `report` / `watchReport` runners
+- `better-typescript/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
+  `defaultWiring`
+- `better-typescript/checks/<name>`: individual check modules
 
 ### Config resolution
 
@@ -138,7 +142,7 @@ lookup in parent directories, no `package.json` field, no `extends` chain, and
 no dynamic plugin discovery.
 
 If no config file exists, the CLI uses `defaultWiring` from
-`better-typescript/preset`.
+`better-typescript/preset/defaultWiring`.
 
 A config may export any of these shapes:
 
@@ -172,8 +176,9 @@ preset fleet with one local reported check:
 ```ts
 import { Stream } from "effect"
 import * as ts from "typescript"
-import { detection, makeWiring, namedCheck, nodeCheck } from "better-typescript"
-import type { Check, Detection } from "better-typescript"
+import { nodeCheck, type Check } from "better-typescript/engine/check"
+import { detection, type Detection } from "better-typescript/engine/location"
+import { makeWiring, namedCheck } from "better-typescript/engine/report"
 
 const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   const expression = node.expression
@@ -216,9 +221,10 @@ depend on derived advice, or create check-to-check dependencies.
 ### Extending or cherry-picking the preset
 
 To extend the built-in fleet, spread `defaultChecks` and add local `NamedCheck`
-values. To cherry-pick, build a new `checks` array from `defaultChecks` or the
-exported `checks` namespace and omit the entries you do not want. Never shadow a
-preset check by reusing its name; names are one global lookup namespace.
+values. To cherry-pick, build a new `checks` array from `defaultChecks` or import
+individual checks from `better-typescript/checks/<name>` and omit the entries you
+do not want. Never shadow a preset check by reusing its name; names are one
+global lookup namespace.
 
 Use `namedCheck` when the check should render local detection blocks. Use
 `silentCheck` when it exists only to feed `derive`; it still runs, still
@@ -227,17 +233,22 @@ available through `signalOf(signals)(name)`.
 
 ```ts
 import { Stream, pipe } from "effect"
+import type { Detection } from "better-typescript/engine/location"
 import {
   Advice,
   adviceLocation,
   deriveSignals,
-  evidenceItem,
+  evidenceItem
+} from "better-typescript/engine/derive"
+import {
   makeWiring,
   signalOf,
-  silentCheck
-} from "better-typescript"
-import type { Detection, NamedCheck, Signal, Wiring } from "better-typescript"
-import { defaultChecks, defaultDerive } from "better-typescript/preset"
+  silentCheck,
+  type NamedCheck,
+  type Signal,
+  type Wiring
+} from "better-typescript/engine/report"
+import { defaultChecks, defaultDerive } from "better-typescript/preset/defaultWiring"
 import { noConsoleLog } from "./checks/noConsoleLog.js"
 
 const countAtPath = (

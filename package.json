@@ -38,8 +38,15 @@
     "typescript": "^5.0.0 || ^6.0.0"
   },
   "exports": {
-    ".": "./dist/kernel.js",
+    "./engine/check": "./dist/engine/check.js",
+    "./engine/location": "./dist/engine/location.js",
+    "./engine/derive": "./dist/engine/derive.js",
+    "./engine/report": "./dist/engine/report.js",
+    "./engine/watch": "./dist/engine/watch.js",
+    "./engine/sources": "./dist/engine/sources.js",
     "./preset": "./dist/preset.js",
+    "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
+    "./checks/*": "./dist/checks/*.js",
     "./package.json": "./package.json"
   }
 }

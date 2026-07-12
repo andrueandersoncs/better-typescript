@@ -14,7 +14,7 @@ import {
   pipe
 } from "effect"
 import { Location } from "./location.js"
-import { Detection } from "./check.js"
+import { Detection } from "./location.js"
 
 export type AdviceLevel = "file" | "directory" | "project"
 

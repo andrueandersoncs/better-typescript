@@ -4,7 +4,8 @@ import { combineAll, nodeSubscriptions } from "../engine/check.js"
 import { isReturnTypeDeclaration, unwrapExpression } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode

@@ -4,7 +4,8 @@ import { nodeCheck } from "../engine/check.js"
 import { alwaysExitsScope, hasNoElseBranch } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 // Require this many branches because shorter chains read as ordinary early-return guards rather than a hand-rolled match.
 const minimumChainLength = 3

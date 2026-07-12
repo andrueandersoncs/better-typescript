@@ -5,26 +5,20 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import {
   conciseArrowBody,
-  foldAst,
-  type AstFold,
   isFunctionInitializer,
-  isProjectSourceFile,
   namedDetectionTarget,
   outermostTransparentWrapper,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
+import { foldAst, isProjectSourceFile, type AstFold } from "../engine/sources.js"
 import {
   resolvedCallSignature,
   signatureIsExternal
 } from "./support/tsSignature.js"
 import { hasCallSignature } from "./support/tsType.js"
-import type {
-  ProgramContext,
-  Check,
-  CheckContext,
-  Detection,
-  Subscription
-} from "../engine/check.js"
+import type { Check, CheckContext, Subscription } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
+import type { ProgramContext } from "../engine/sources.js"
 
 type CurriedDataLastCandidate =
   | ts.FunctionDeclaration

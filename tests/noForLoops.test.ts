@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { loadProject } from "../src/project/loadProject.js"
 import { noForLoops } from "../src/checks/noForLoops.js"
-import type { Detection } from "../src/engine/check.js"
+import type { Detection } from "../src/engine/location.js"
 import { runCheckOnProject } from "../src/engine/report.js"
 import {
   assertAllowedFixtureItems,

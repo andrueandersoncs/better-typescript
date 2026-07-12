@@ -1,7 +1,7 @@
 import { Array as Arr, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "../engine/check.js"
-import { Detection } from "../engine/check.js"
+import { Detection } from "../engine/location.js"
 import { Location, toRelativeFileName } from "../engine/location.js"
 import {
   commentText,

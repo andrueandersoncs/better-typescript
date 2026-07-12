@@ -1,19 +1,17 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
 import { Chunk, Effect, Stream } from "effect"
-import {
-  highSignalDensity,
-  hotSubsystem,
-  imperativeStateManager,
-  pipelineHostile,
-  ruleDominance,
-  sideEffectLaundering,
-  systemicHotspots
-} from "../src/checks/index.js"
+import { highSignalDensity } from "../src/checks/highSignalDensity.js"
+import { hotSubsystem } from "../src/checks/hotSubsystem.js"
+import { imperativeStateManager } from "../src/checks/imperativeStateManager.js"
+import { pipelineHostile } from "../src/checks/pipelineHostile.js"
+import { ruleDominance } from "../src/checks/ruleDominance.js"
+import { sideEffectLaundering } from "../src/checks/sideEffectLaundering.js"
+import { systemicHotspots } from "../src/checks/systemicHotspots.js"
 import { Location } from "../src/engine/location.js"
 import { NamedDetection } from "../src/engine/derive.js"
 import type { Advice } from "../src/engine/derive.js"
-import { Detection } from "../src/engine/check.js"
+import { Detection } from "../src/engine/location.js"
 
 function signalAt(path: string, line: number, data?: unknown): Detection {
   return new Detection({

@@ -3,7 +3,8 @@ import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
 import { isFirstPartySymbol, unwrapExpression } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 const tagPropertyName = "_tag"
 

@@ -7,7 +7,8 @@ import {
   returnedExpression as returnedStatementExpression,
   unwrapExpression
 } from "./support/tsNode.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 
 type ConstantThunk = ts.ArrowFunction | ts.FunctionExpression

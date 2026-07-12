@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { requireBecauseInComments } from "../src/checks/requireBecauseInComments.js"
-import type { Detection } from "../src/engine/check.js"
+import type { Detection } from "../src/engine/location.js"
 import { runCheckOnProject } from "../src/engine/report.js"
 import { loadProject } from "../src/project/loadProject.js"
 import {

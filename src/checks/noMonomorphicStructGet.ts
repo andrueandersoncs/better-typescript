@@ -6,7 +6,8 @@ import {
   hasExportModifier,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 const message = "Avoid monomorphizing Struct.get at its declaration."
 

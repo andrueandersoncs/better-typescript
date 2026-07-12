@@ -2,20 +2,14 @@ import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeSubscriptions, withProgramIndex } from "../engine/check.js"
 import {
-  foldAst,
-  type AstFold,
-  isProjectSourceFile,
   outermostTransparentWrapper
 } from "./support/tsNode.js"
+import { foldAst, isProjectSourceFile, type AstFold } from "../engine/sources.js"
 import { detection, toRelativeFileName } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type {
-  ProgramContext,
-  Check,
-  CheckContext,
-  Detection,
-  Subscription
-} from "../engine/check.js"
+import type { Check, CheckContext, Subscription } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
+import type { ProgramContext } from "../engine/sources.js"
 
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 

@@ -56,7 +56,8 @@ check-to-check dependencies.
    locations. Give every detection a clear `message` and actionable `hint`.
 
 4. **Wire it into the preset.**
-   - Export it from `src/checks/index.ts`.
+   - Import it directly from `src/checks/<camelCaseName>.ts` in
+     `src/preset/defaultWiring.ts` (no barrel `index.ts`).
    - Add `namedCheck("<kebab-name>", <camelCaseName>)` to `defaultChecks` in
      `src/preset/defaultWiring.ts` when the check should render local detection
      blocks.
@@ -97,12 +98,16 @@ check-to-check dependencies.
    directory. Do not add files to the analyzer package.
 
 2. **Import public entrypoints only.**
-   - From `better-typescript`, import kernel APIs such as `Check`, `Advice`,
+   - Import defining modules directly:
+     `better-typescript/engine/check`, `better-typescript/engine/location`,
+     `better-typescript/engine/derive`, `better-typescript/engine/report`,
+     and related engine entrypoints for kernel APIs such as `Check`, `Advice`,
      `Detection`, `nodeCheck`, `fileCheck`, `detection`, `locateNode`,
      `deriveSignals`, `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`,
      and `withFallbackAdvice`.
-   - From `better-typescript/preset`, import `defaultChecks`, `defaultDerive`,
-     `defaultWiring`, or the `checks` namespace as needed.
+   - From `better-typescript/preset/defaultWiring`, import `defaultChecks`,
+     `defaultDerive`, or `defaultWiring`. Import individual checks from
+     `better-typescript/checks/<name>` when needed.
    - Never import from `better-typescript/src/...`.
 
 3. **Author the local check** in the config file or a local module imported by
@@ -135,13 +140,11 @@ import {
   Advice,
   adviceLocation,
   deriveSignals,
-  evidenceItem,
-  makeWiring,
-  namedCheck,
-  signalOf
-} from "better-typescript"
-import type { Detection } from "better-typescript"
-import { defaultChecks, defaultDerive } from "better-typescript/preset"
+  evidenceItem
+} from "better-typescript/engine/derive"
+import type { Detection } from "better-typescript/engine/location"
+import { makeWiring, namedCheck, signalOf } from "better-typescript/engine/report"
+import { defaultChecks, defaultDerive } from "better-typescript/preset/defaultWiring"
 import { localCheck } from "./checks/localCheck.js"
 
 const local = namedCheck("acme/local-check", localCheck)

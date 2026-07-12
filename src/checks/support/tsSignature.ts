@@ -2,10 +2,10 @@ import { Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import {
   declarationSourceFile,
-  isProjectSourceFile,
   isSameNode,
   outermostTransparentWrapper
 } from "./tsNode.js"
+import { isProjectSourceFile } from "../../engine/sources.js"
 
 export type CallLikeExpression = ts.CallExpression | ts.NewExpression
 

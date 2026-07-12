@@ -1,14 +1,67 @@
 import { Array, Effect, Stream, Struct, pipe } from "effect"
-import {
-  highSignalDensity,
-  hotSubsystem,
-  imperativeStateManager,
-  pipelineHostile,
-  ruleDominance,
-  sideEffectLaundering,
-  systemicHotspots,
-  preferCurriedDataLastFunctions
-} from "../checks/index.js"
+import { highSignalDensity } from "../checks/highSignalDensity.js"
+import { hotSubsystem } from "../checks/hotSubsystem.js"
+import { imperativeStateManager } from "../checks/imperativeStateManager.js"
+import { pipelineHostile } from "../checks/pipelineHostile.js"
+import { ruleDominance } from "../checks/ruleDominance.js"
+import { sideEffectLaundering } from "../checks/sideEffectLaundering.js"
+import { systemicHotspots } from "../checks/systemicHotspots.js"
+import { preferCurriedDataLastFunctions } from "../checks/preferCurriedDataLastFunctions.js"
+import { noAbstractClasses } from "../checks/noAbstractClasses.js"
+import { noArraySpread } from "../checks/noArraySpread.js"
+import { noAsyncFunctions } from "../checks/noAsyncFunctions.js"
+import { noCallbacks } from "../checks/noCallbacks.js"
+import { noClassMethodImplementations } from "../checks/noClassMethodImplementations.js"
+import { noDataTaggedClass } from "../checks/noDataTaggedClass.js"
+import { noDuplicateFunctionNames } from "../checks/noDuplicateFunctionNames.js"
+import { noDuplicateIfBodies } from "../checks/noDuplicateIfBodies.js"
+import { noExplicitAnyReturn } from "../checks/noExplicitAnyReturn.js"
+import { noFirstPartySchemaDeclare } from "../checks/noFirstPartySchemaDeclare.js"
+import { noForInLoops } from "../checks/noForInLoops.js"
+import { noForLoops } from "../checks/noForLoops.js"
+import { noForOfLoops } from "../checks/noForOfLoops.js"
+import { noFunctionKeyword } from "../checks/noFunctionKeyword.js"
+import { noInlineBooleanExpressions } from "../checks/noInlineBooleanExpressions.js"
+import { noInlineClosures } from "../checks/noInlineClosures.js"
+import { noInstanceof } from "../checks/noInstanceof.js"
+import { noManualTypeDispatch } from "../checks/noManualTypeDispatch.js"
+import { noMonomorphicStructGet } from "../checks/noMonomorphicStructGet.js"
+import { noMultiLineComments } from "../checks/noMultiLineComments.js"
+import { noMultipleBooleanOperators } from "../checks/noMultipleBooleanOperators.js"
+import { noMutableArrayMethods } from "../checks/noMutableArrayMethods.js"
+import { noMutableVariableDeclarations } from "../checks/noMutableVariableDeclarations.js"
+import { noMutation } from "../checks/noMutation.js"
+import { noNestedCalls } from "../checks/noNestedCalls.js"
+import { noNestedIfStatements } from "../checks/noNestedIfStatements.js"
+import { noNewError } from "../checks/noNewError.js"
+import { noNonNullAssertion } from "../checks/noNonNullAssertion.js"
+import { noRawObjectTypes } from "../checks/noRawObjectTypes.js"
+import { noReexport } from "../checks/noReexport.js"
+import { noRootLevelClasses } from "../checks/noRootLevelClasses.js"
+import { noSingleUseCallee } from "../checks/noSingleUseCallee.js"
+import { noSwitchStatements } from "../checks/noSwitchStatements.js"
+import { noThrow } from "../checks/noThrow.js"
+import { noTryCatch } from "../checks/noTryCatch.js"
+import { noUndefined } from "../checks/noUndefined.js"
+import { noVoidFunctions } from "../checks/noVoidFunctions.js"
+import { requireBecauseInComments } from "../checks/requireBecauseInComments.js"
+import { preferConditionalReturn } from "../checks/preferConditionalReturn.js"
+import { preferDataLastModule } from "../checks/preferDataLastModule.js"
+import { preferDirectBooleanReturn } from "../checks/preferDirectBooleanReturn.js"
+import { preferEffectArrayAppendAll } from "../checks/preferEffectArrayAppendAll.js"
+import { preferEffectFn } from "../checks/preferEffectFn.js"
+import { preferEffectFunctionConstant } from "../checks/preferEffectFunctionConstant.js"
+import { preferEffectPropertyAccessors } from "../checks/preferEffectPropertyAccessors.js"
+import { preferEffectRecordFilterMap } from "../checks/preferEffectRecordFilterMap.js"
+import { preferEffectSchemaClass } from "../checks/preferEffectSchemaClass.js"
+import { preferEffectSchemaConstructor } from "../checks/preferEffectSchemaConstructor.js"
+import { preferEffectSchemaGuard } from "../checks/preferEffectSchemaGuard.js"
+import { preferEffectSchemaIs } from "../checks/preferEffectSchemaIs.js"
+import { preferHashMap } from "../checks/preferHashMap.js"
+import { preferHashSet } from "../checks/preferHashSet.js"
+import { preferImplicitReturn } from "../checks/preferImplicitReturn.js"
+import { preferOptionMatch } from "../checks/preferOptionMatch.js"
+import { preferPipeFunction } from "../checks/preferPipeFunction.js"
 import {
   filterFallbackAdviceForUncoveredFiles,
   namedCheck,
@@ -18,62 +71,6 @@ import {
 import type { NamedCheck, Signal, Wiring } from "../engine/report.js"
 import { collectSignals, namedDetection } from "../engine/derive.js"
 import type { Advice, NamedDetection } from "../engine/derive.js"
-import {
-  noAbstractClasses,
-  noArraySpread,
-  noAsyncFunctions,
-  noCallbacks,
-  noClassMethodImplementations,
-  noDataTaggedClass,
-  noDuplicateFunctionNames,
-  noDuplicateIfBodies,
-  noExplicitAnyReturn,
-  noFirstPartySchemaDeclare,
-  noForInLoops,
-  noForLoops,
-  noForOfLoops,
-  noFunctionKeyword,
-  noInlineBooleanExpressions,
-  noInlineClosures,
-  noInstanceof,
-  noManualTypeDispatch,
-  noMonomorphicStructGet,
-  noMultiLineComments,
-  noMultipleBooleanOperators,
-  noMutableArrayMethods,
-  noMutableVariableDeclarations,
-  noMutation,
-  noNestedCalls,
-  noNestedIfStatements,
-  noNewError,
-  noNonNullAssertion,
-  noRawObjectTypes,
-  noRootLevelClasses,
-  noSingleUseCallee,
-  noSwitchStatements,
-  noThrow,
-  noTryCatch,
-  noUndefined,
-  noVoidFunctions,
-  requireBecauseInComments,
-  preferConditionalReturn,
-  preferDataLastModule,
-  preferDirectBooleanReturn,
-  preferEffectArrayAppendAll,
-  preferEffectFn,
-  preferEffectFunctionConstant,
-  preferEffectPropertyAccessors,
-  preferEffectRecordFilterMap,
-  preferEffectSchemaClass,
-  preferEffectSchemaConstructor,
-  preferEffectSchemaGuard,
-  preferEffectSchemaIs,
-  preferHashMap,
-  preferHashSet,
-  preferImplicitReturn,
-  preferOptionMatch,
-  preferPipeFunction
-} from "../checks/index.js"
 
 const nameDetections = (
   signal: Signal
@@ -137,6 +134,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = [
   namedCheck("no-abstract-classes", noAbstractClasses),
   namedCheck("no-class-method-implementations", noClassMethodImplementations),
   namedCheck("no-raw-object-types", noRawObjectTypes),
+  namedCheck("no-reexport", noReexport),
   namedCheck("no-first-party-schema-declare", noFirstPartySchemaDeclare),
   namedCheck("no-data-tagged-class", noDataTaggedClass),
   namedCheck("no-instanceof", noInstanceof),

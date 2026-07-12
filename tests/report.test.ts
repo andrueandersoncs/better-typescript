@@ -4,24 +4,20 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream, pipe } from "effect"
 import * as ts from "typescript"
+import { fileCheck, nodeCheck, type Check } from "../src/engine/check.js"
+import { Detection, Location, locateNode } from "../src/engine/location.js"
+import type { Advice } from "../src/engine/derive.js"
 import {
-  Detection,
-  fileCheck,
-  Location,
-  locateNode,
   makeWiring,
   namedCheck,
-  nodeCheck,
   reportFromWiring,
   runCheckOnProject,
   signalOf,
   silentCheck,
   withFallbackAdvice,
-  type Advice,
-  type Check,
   type NamedCheck,
   type Wiring
-} from "../src/kernel.js"
+} from "../src/engine/report.js"
 import { report } from "../src/preset.js"
 import { astNodes } from "../src/engine/sources.js"
 import { loadProject } from "../src/project/loadProject.js"

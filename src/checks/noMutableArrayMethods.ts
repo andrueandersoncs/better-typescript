@@ -8,7 +8,8 @@ import {
 } from "./support/tsType.js"
 import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 type MutableArrayMethod =
   | "copyWithin"

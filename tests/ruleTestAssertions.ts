@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import type { Detection } from "../src/engine/check.js"
+import type { Detection } from "../src/engine/location.js"
 
 interface SourceLocation {
   readonly fileName: string

@@ -9,7 +9,7 @@ import {
   watchReportFromWiring
 } from "./engine/watch.js"
 import type { ReportEvent } from "./engine/watch.js"
-import { defaultWiring } from "./preset.js"
+import { defaultWiring } from "./preset/defaultWiring.js"
 import { discoverWorkspace, loadProject } from "./project/loadProject.js"
 import { loadWiring } from "./project/loadWiring.js"
 

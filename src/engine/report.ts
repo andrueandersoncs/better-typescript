@@ -17,7 +17,8 @@ import {
 import type { LoadedProject, LoadedWorkspace } from "../project/loadProject.js"
 import { astNodes } from "./sources.js"
 import type { AstNodeElement } from "./sources.js"
-import type { Check, Detection } from "./check.js"
+import type { Check } from "./check.js"
+import type { Detection } from "./location.js"
 import { collectSignals } from "./derive.js"
 import type { Advice, EvidenceItem } from "./derive.js"
 

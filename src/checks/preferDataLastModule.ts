@@ -3,14 +3,15 @@ import { Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
 import {
-  isProjectSourceFile,
   namedDetectionTarget,
   outermostTransparentWrapper
 } from "./support/tsNode.js"
+import { isProjectSourceFile } from "../engine/sources.js"
 import { hasCallSignature } from "./support/tsType.js"
 import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 type CheckedFunction =
   | ts.FunctionDeclaration

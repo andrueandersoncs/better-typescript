@@ -1,10 +1,12 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "../engine/check.js"
-import { astChildren, unwrapExpression } from "./support/tsNode.js"
+import { unwrapExpression } from "./support/tsNode.js"
+import { astChildren } from "../engine/sources.js"
 import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 const conditionExpressions = (
   expression: ts.Expression

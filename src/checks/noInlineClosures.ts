@@ -4,7 +4,8 @@ import { nodeCheck } from "../engine/check.js"
 import { transparentWrapperKinds } from "./support/tsNode.js"
 import { isExternalPackageArgument } from "./support/tsSignature.js"
 import { detection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 const sanctionedParentKinds = HashSet.make(
   ts.SyntaxKind.VariableDeclaration,

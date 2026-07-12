@@ -3,21 +3,16 @@ import * as ts from "typescript"
 import { fileSubscriptions, withProgramIndex } from "../engine/check.js"
 import {
   conciseArrowBody,
-  foldAst,
   functionInitializer,
   hasExportModifier,
-  isFunctionInitializer,
-  isProjectSourceFile
+  isFunctionInitializer
 } from "./support/tsNode.js"
+import { foldAst, isProjectSourceFile } from "../engine/sources.js"
 import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type {
-  ProgramContext,
-  Check,
-  CheckContext,
-  Detection,
-  Subscription
-} from "../engine/check.js"
+import type { Check, CheckContext, Subscription } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
+import type { ProgramContext } from "../engine/sources.js"
 
 class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")({
   nameNode: Schema.Any,

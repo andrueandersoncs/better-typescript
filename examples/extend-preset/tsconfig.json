@@ -11,8 +11,14 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "better-typescript": ["../../src/kernel.ts"],
-      "better-typescript/preset": ["../../src/preset.ts"]
+      "better-typescript/engine/check": ["../../src/engine/check.ts"],
+      "better-typescript/engine/location": ["../../src/engine/location.ts"],
+      "better-typescript/engine/derive": ["../../src/engine/derive.ts"],
+      "better-typescript/engine/report": ["../../src/engine/report.ts"],
+      "better-typescript/engine/watch": ["../../src/engine/watch.ts"],
+      "better-typescript/engine/sources": ["../../src/engine/sources.ts"],
+      "better-typescript/preset": ["../../src/preset.ts"],
+      "better-typescript/preset/defaultWiring": ["../../src/preset/defaultWiring.ts"]
     }
   },
   "include": ["better-typescript.config.ts"]

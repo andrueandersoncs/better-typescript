@@ -22,7 +22,7 @@ import type {
 } from "../project/loadProject.js"
 import { astNodesFromContext, sourceUpdates } from "./sources.js"
 import type { AstNodeElement, SourceUpdate } from "./sources.js"
-import type { Detection } from "./check.js"
+import type { Detection } from "./location.js"
 import {
   batchReportBlocks,
   reportBlocksFromWiring,

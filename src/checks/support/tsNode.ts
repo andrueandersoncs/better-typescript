@@ -1,12 +1,5 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-export {
-  astChildren,
-  foldAst,
-  isProjectSourceFile
-} from "../../engine/sources.js"
-export type { AstFold } from "../../engine/sources.js"
-
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
 export type ReturnTypeDeclaration =

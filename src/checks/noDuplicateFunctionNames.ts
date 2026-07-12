@@ -1,16 +1,13 @@
 import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { fileSubscriptions, withProgramIndex } from "../engine/check.js"
-import { functionInitializer, isProjectSourceFile } from "./support/tsNode.js"
+import { functionInitializer } from "./support/tsNode.js"
+import { isProjectSourceFile } from "../engine/sources.js"
 import { detection, toRelativeFileName } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type {
-  ProgramContext,
-  Check,
-  CheckContext,
-  Detection,
-  Subscription
-} from "../engine/check.js"
+import type { Check, CheckContext, Subscription } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
+import type { ProgramContext } from "../engine/sources.js"
 
 type FunctionNameIndex = HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
 

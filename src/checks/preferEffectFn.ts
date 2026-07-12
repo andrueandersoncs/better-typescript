@@ -11,7 +11,8 @@ import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { FunctionInitializer } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
-import type { Check, CheckContext, Detection } from "../engine/check.js"
+import type { Check, CheckContext } from "../engine/check.js"
+import type { Detection } from "../engine/location.js"
 
 const hasParameters = (initializer: FunctionInitializer): boolean =>
   initializer.parameters.length > 0
