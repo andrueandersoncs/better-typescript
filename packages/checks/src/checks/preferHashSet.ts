@@ -12,9 +12,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const isSetIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Set"
 
@@ -57,10 +56,15 @@ const setMatches = (context: CheckContext) => {
       const expressionOption = Option.liftPredicate(ts.isIdentifier)(
         node.expression
       )
+
       const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)
-      const escapesExternally =
-        isSetConstruction && constructionEscapes(node)
-      const isReportable = Array.every([isSetConstruction, !escapesExternally], Boolean)
+
+      const escapesExternally = isSetConstruction && constructionEscapes(node)
+
+      const isReportable = Array.every(
+        [isSetConstruction, !escapesExternally],
+        Boolean
+      )
 
       return isReportable
         ? [
@@ -86,6 +90,7 @@ const setMatches = (context: CheckContext) => {
       Option.map(Struct.get("text")),
       Option.getOrElse(Function.constant(""))
     )
+
     const message = `Avoid the built-in ${name} type.`
 
     return [

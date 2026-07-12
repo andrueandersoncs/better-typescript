@@ -16,11 +16,13 @@ export const discoverWorkspace: (
 ) => Effect.Effect<WorkspaceConfigs, Error> = Effect.fn("discoverWorkspace")(
   function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
+
     const foundConfigPath = ts.findConfigFile(
       rootPath,
       ts.sys.fileExists,
       "tsconfig.json"
     )
+
     const configPath = Option.fromNullable(foundConfigPath)
 
     if (Option.isNone(configPath)) {
@@ -80,6 +82,7 @@ const discoverConfig: (
   }
 
   const configDirectory = path.dirname(configPath)
+
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
     ts.sys,

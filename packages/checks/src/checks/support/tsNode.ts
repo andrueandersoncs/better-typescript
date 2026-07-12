@@ -36,6 +36,7 @@ export const isReturnTypeDeclaration = (
     ts.isFunctionTypeNode(node),
     ts.isGetAccessorDeclaration(node)
   ]
+
   return Array.some(conditions, Boolean)
 }
 
@@ -175,16 +176,17 @@ const isDeclareKeyword = (modifier: ts.ModifierLike): boolean =>
 // Treat ambient declarations as external because they mirror a dependency's contract rather than an author choice.
 export const isInAmbientContext = (node: ts.Node): boolean => {
   const sourceFile = node.getSourceFile()
+
   const modifiers = ts.canHaveModifiers(node)
     ? (ts.getModifiers(node) ?? [])
     : []
+
   const hasDeclareModifier = Array.some(modifiers, isDeclareKeyword)
   const parent = Option.fromNullable<ts.Node>(node.parent)
   const parentIsAmbient = Option.exists(parent, isInAmbientContext)
 
-  return Array.some([
-    sourceFile.isDeclarationFile,
-    hasDeclareModifier,
-    parentIsAmbient
-  ], Boolean)
+  return Array.some(
+    [sourceFile.isDeclarationFile, hasDeclareModifier, parentIsAmbient],
+    Boolean
+  )
 }

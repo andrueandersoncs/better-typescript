@@ -8,9 +8,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 type MutableArrayMethod =
   | "copyWithin"
   | "fill"
@@ -47,6 +46,7 @@ const mutableArrayMatches = (context: CheckContext) => {
     }
 
     const propertyAccess = callExpression.expression
+
     const methodName = HashSet.has(
       mutableArrayMethods,
       propertyAccess.name.text as MutableArrayMethod

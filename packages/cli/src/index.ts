@@ -3,10 +3,17 @@ import * as path from "node:path"
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Console, Effect, Function, Option, Stream, flow, pipe } from "effect"
-import { reportEventsFromWiring, renderEventText, watchReportFromWiring } from "@better-typescript/core/engine/watch"
+import {
+  reportEventsFromWiring,
+  renderEventText,
+  watchReportFromWiring
+} from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
+import {
+  discoverWorkspace,
+  loadProject
+} from "@better-typescript/core/project/loadProject"
 import { loadWiring } from "@better-typescript/core/project/loadWiring"
 
 const workingDirectory = process.cwd()
@@ -62,10 +69,12 @@ const runCommand = Effect.fn("runCommand")(function* (
   const projectDirectory = path.resolve(options.project)
   const wiring = yield* loadWiring(projectDirectory, defaultWiring)
   const prettyOption = Option.liftPredicate(Boolean)(options.pretty)
+
   const printEvent = Option.match(prettyOption, {
     onNone: Function.constant(printJsonEvent),
     onSome: Function.constant(printPrettyEvent)
   })
+
   const oneShot = Effect.gen(function* () {
     const workspace = yield* loadProject(projectDirectory)
     const events = reportEventsFromWiring(wiring)(workspace)
@@ -73,6 +82,7 @@ const runCommand = Effect.fn("runCommand")(function* (
     yield* Console.error(`Analyzing ${workspace.rootPath}.`)
     yield* Stream.runForEach(events, printEvent)
   })
+
   const watched = Effect.gen(function* () {
     const workspace = yield* discoverWorkspace(projectDirectory)
     const watchOptions = Option.none()
@@ -81,7 +91,9 @@ const runCommand = Effect.fn("runCommand")(function* (
     yield* Console.error(`Watching ${workspace.rootPath} for changes.`)
     yield* Stream.runForEach(events, printEvent)
   })
+
   const watchMode = Option.liftPredicate(Boolean)(options.watch)
+
   const commandEffect = Option.match(watchMode, {
     onNone: Function.constant(oneShot),
     onSome: Function.constant(watched)

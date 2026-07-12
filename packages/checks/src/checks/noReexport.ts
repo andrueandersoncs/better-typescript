@@ -1,6 +1,9 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, nodeSubscriptions } from "@better-typescript/core/engine/check"
+import {
+  combineAll,
+  nodeSubscriptions
+} from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -8,9 +11,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid re-exporting entities defined in other files."
 
 const hint =
@@ -25,12 +26,13 @@ const isImportDeclaration = (declaration: ts.Declaration): boolean => {
     ts.isImportClause(declaration),
     ts.isImportEqualsDeclaration(declaration)
   ]
+
   return Array.some(conditions, Boolean)
 }
 
 const isImportedSymbol = (symbol: ts.Symbol): boolean => {
   const aliased = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-  const imported = Array.some((symbol.declarations ?? []), isImportDeclaration)
+  const imported = Array.some(symbol.declarations ?? [], isImportDeclaration)
 
   return aliased && imported
 }
@@ -65,10 +67,12 @@ const exportDeclarationElements = (context: CheckContext) => {
           Array.filterMap((specifier) => {
             const localTarget =
               checker.getExportSpecifierLocalTargetSymbol(specifier)
+
             const imported = pipe(
               Option.fromNullable(localTarget),
               Option.exists(isImportedSymbol)
             )
+
             const detected = detect(specifier)
 
             return imported ? Option.some(detected) : Option.none()

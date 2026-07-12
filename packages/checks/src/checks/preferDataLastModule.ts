@@ -40,6 +40,7 @@ const isCheckedFunction = (node: ts.Node): node is CheckedFunction => {
     ts.isArrowFunction(node),
     ts.isMethodDeclaration(node)
   ]
+
   return Array.some(conditions4, Boolean)
 }
 
@@ -65,6 +66,7 @@ const dataStructureModule = (name: string) => {
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .replaceAll("_", "-")
     .toLowerCase()}.ts`
+
   const expectedModulePath = path.posix.join("modules", moduleFileName)
 
   return [name, expectedModulePath] as const
@@ -106,8 +108,9 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const fileName = sourceFile.fileName
 
   const isMember = (type: ts.Type): boolean => {
-        const conditions3 = [checker.isArrayType(type), checker.isTupleType(type)]
-const exclusions = [
+    const conditions3 = [checker.isArrayType(type), checker.isTupleType(type)]
+
+    const exclusions = [
       (type.flags & primitiveTypeFlags) !== 0,
       Array.some(conditions3, Boolean),
       hasCallSignature(checker)(type)
@@ -122,11 +125,12 @@ const exclusions = [
       const relativeFileName = path.relative(projectRoot, candidateFileName)
       const normalizedFileName = relativeFileName.replaceAll("\\", "/")
 
-            const conditions2 = [
+      const conditions2 = [
         normalizedFileName === expectedModulePath,
         normalizedFileName.endsWith(`/${expectedModulePath}`)
       ]
-return Array.some(conditions2, Boolean)
+
+      return Array.some(conditions2, Boolean)
     }
 
   const isModuleDeclaration =
@@ -135,21 +139,27 @@ return Array.some(conditions2, Boolean)
       const dataStructure = dataStructureModule(symbol.name)
       const declarationSourceFile = declaration.getSourceFile()
       const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
-            const conditions = [
+
+      const conditions = [
         ts.isInterfaceDeclaration(declaration),
         ts.isTypeAliasDeclaration(declaration),
         ts.isClassDeclaration(declaration)
       ]
-const declarationIsDataStructure = Array.some(conditions, Boolean)
+
+      const declarationIsDataStructure = Array.some(conditions, Boolean)
+
       const declarationIsExpectedModule = isExpectedModule(dataStructure[1])(
         declarationSourceFile.fileName
       )
 
-      return Array.every([
-        sourceFileIsProject,
-        declarationIsDataStructure,
-        declarationIsExpectedModule
-      ], Boolean)
+      return Array.every(
+        [
+          sourceFileIsProject,
+          declarationIsDataStructure,
+          declarationIsExpectedModule
+        ],
+        Boolean
+      )
     }
 
   const structureForSymbol =
@@ -158,9 +168,11 @@ const declarationIsDataStructure = Array.some(conditions, Boolean)
       const declarations = symbol.declarations ?? []
       const isDeclarationForSymbol = isModuleDeclaration(symbol)
       const isFirstParty = Array.some(declarations, isDeclarationForSymbol)
+
       const isStructured = type.isUnionOrIntersection()
         ? Array.every(type.types, isMember)
         : isMember(type)
+
       const isDataStructure = Array.every([isFirstParty, isStructured], Boolean)
       const dataStructure = dataStructureModule(symbol.name)
 
@@ -175,6 +187,7 @@ const declarationIsDataStructure = Array.some(conditions, Boolean)
       Option.map((node) => checker.getTypeFromTypeNode(node)),
       Option.getOrElse(() => checker.getTypeAtLocation(parameter))
     )
+
     const typeSymbol = type.getSymbol()
     const aliasOrSymbol = type.aliasSymbol ?? typeSymbol
     const symbol = Option.fromNullable(aliasOrSymbol)
@@ -226,13 +239,18 @@ const declarationIsDataStructure = Array.some(conditions, Boolean)
       return Option.none()
     }
 
-    const hasMatchingArgument = Array.some(parent.arguments, sameExpression(expression))
+    const hasMatchingArgument = Array.some(
+      parent.arguments,
+      sameExpression(expression)
+    )
+
     if (!hasMatchingArgument) {
       return Option.none()
     }
 
     const wrappedExpression = outermostTransparentWrapper(parent)
     const wrappedParent = wrappedExpression.parent
+
     const declaration = pipe(
       Option.liftPredicate(ts.isVariableDeclaration)(wrappedParent),
       Option.filter(isVariableInitializer(wrappedExpression))
@@ -298,12 +316,14 @@ const declarationIsDataStructure = Array.some(conditions, Boolean)
   const matches = (node: CheckedFunction): ReadonlyArray<Detection> => {
     const isFunctionOrMethodDeclaration =
       ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
+
     if (isFunctionOrMethodDeclaration) {
       const name = pipe(
         Option.fromNullable(node.name),
         Option.map((nameNode) => nameNode.getText(sourceFile)),
         Option.getOrElse(Function.constant("this function"))
       )
+
       const reportNode = namedDetectionTarget(node)
       const definition: FunctionDefinition = [name, reportNode]
 

@@ -1,2 +1,1 @@
-const parseConfig = (raw: string): any =>
-  JSON.parse(raw)
+const parseConfig = (raw: string): any => JSON.parse(raw)

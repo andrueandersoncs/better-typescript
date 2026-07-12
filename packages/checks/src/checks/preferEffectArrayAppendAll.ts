@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid conditional array spreads."
 
 const hint =
@@ -42,11 +40,14 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
       isEmptyArrayLiteral(expression.whenTrue),
       isNonEmptyArrayBranch(expression.whenFalse)
     ]
+
     const emptyThenNonEmpty = Array.every(emptyThenNonEmptyConditions, Boolean)
+
     const nonEmptyThenEmptyConditions = [
       isNonEmptyArrayBranch(expression.whenTrue),
       isEmptyArrayLiteral(expression.whenFalse)
     ]
+
     const nonEmptyThenEmpty = Array.every(nonEmptyThenEmptyConditions, Boolean)
 
     return Array.some([emptyThenNonEmpty, nonEmptyThenEmpty], Boolean)

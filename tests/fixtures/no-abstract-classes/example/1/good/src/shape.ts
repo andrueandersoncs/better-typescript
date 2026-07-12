@@ -1,2 +1,1 @@
-export const circleArea = (radius: number): number =>
-  Math.PI * radius ** 2
+export const circleArea = (radius: number): number => Math.PI * radius ** 2

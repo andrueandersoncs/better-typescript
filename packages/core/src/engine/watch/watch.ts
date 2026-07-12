@@ -51,13 +51,16 @@ export const workspaceUpdates = (
   watchOptions: Option.Option<ts.WatchOptions>
 ): Stream.Stream<WorkspaceUpdate, Error> => {
   const projectCount = workspace.projects.length
+
   const updateStreams = Array.map(workspace.projects, (config, index) =>
     pipe(
       sourceUpdates(config, watchOptions),
       Stream.map((update) => [index, update] as const)
     )
   )
+
   const merged = Stream.mergeAll(updateStreams, { concurrency: "unbounded" })
+
   // Drop empty rebuilds after warm-up because only the initial batch must report an empty workspace.
   const applyUpdate = Effect.fn("applyProjectUpdate")(function* (
     cache: HashMap.HashMap<number, Chunk.Chunk<AstNodeElement>>,
@@ -89,6 +92,7 @@ export const workspaceUpdates = (
         Option.getOrElse(() => Chunk.empty<AstNodeElement>())
       )
     )
+
     const emitted = new WorkspaceUpdate({ snapshots })
 
     return [nextCache, Option.some(emitted)] as const
@@ -126,14 +130,10 @@ const detectionEquals = (a: Detection, b: Detection): boolean => {
   const sameHint = a.hint === b.hint
   const sameData = Equal.equals(a.data, b.data)
 
-  return Array.every([
-    samePath,
-    sameLine,
-    sameColumn,
-    sameMessage,
-    sameHint,
-    sameData
-  ], Boolean)
+  return Array.every(
+    [samePath, sameLine, sameColumn, sameMessage, sameHint, sameData],
+    Boolean
+  )
 }
 
 const detectionsEquivalence = Array.getEquivalence(detectionEquals)
@@ -210,11 +210,13 @@ export const blockDelta =
     const previousByIdentity = HashMap.fromIterable(previousEntries)
     const currentIdentityList = Array.map(current, Struct.get("identity"))
     const currentIdentities = HashSet.fromIterable(currentIdentityList)
+
     const clearances = pipe(
       previous,
       Array.filter((block) => !HashSet.has(currentIdentities, block.identity)),
       Array.map(blockClearedEvent)
     )
+
     const updates = pipe(
       current,
       Array.filter((block) =>

@@ -8,9 +8,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const hasTaggedClassName = (name: ts.MemberName): boolean =>
   name.text === "TaggedClass"
 
@@ -39,6 +38,7 @@ const exprContainsDataTaggedClass = (
   const callExpr = Option.liftPredicate(ts.isCallExpression)(
     typeExpr.expression
   )
+
   const calleeExpr = Option.map(callExpr, callExpression)
   const propAccess = Option.filter(calleeExpr, ts.isPropertyAccessExpression)
 

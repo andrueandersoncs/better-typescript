@@ -13,9 +13,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 type CallbackStyleDeclaration =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -44,10 +43,13 @@ const isCallbackStyleCandidate = (
 ): node is CallbackStyleDeclaration => {
   const isFunctionOrExpression =
     ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+
   const isArrowOrMethod =
     ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+
   const isSignature =
     ts.isMethodSignature(node) || ts.isCallSignatureDeclaration(node)
+
   const isFunctionOrArrow = isFunctionOrExpression || isArrowOrMethod
   const isDirectCallbackKind = isFunctionOrArrow || isSignature
 
@@ -57,6 +59,7 @@ const isCallbackStyleCandidate = (
 
   const typeNode = effectiveCallableTypeNode(node)
   const parent = typeNode.parent
+
   const isValueDeclaration =
     ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
@@ -75,11 +78,14 @@ const isCallbackStyleCandidate = (
   const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(
     parent
   )
+
   const hasTypeAliasFunctionType = Option.exists(
     aliasDeclaration,
     (alias) => alias.type === typeNode
   )
+
   const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
+
   const hasPropertySignatureFunctionType = Option.exists(
     propertySignature,
     (signature) => signature.type === typeNode
@@ -102,15 +108,19 @@ const callbackStyleMatches = (context: CheckContext) => {
 
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
+
     const isCallback = Option.exists(signature, (resolvedSignature) => {
       const returnType = checker.getReturnTypeOfSignature(resolvedSignature)
       const returnsVoid = isVoidType(returnType)
+
       const hasFunctionArgument = Array.some(
         declaration.parameters,
         (parameter) => {
           const parameterType = checker.getTypeAtLocation(parameter)
+
           const parameterHasCallSignature =
             hasCallSignature(checker)(parameterType)
+
           const restToken = Option.fromNullable(parameter.dotDotDotToken)
 
           if (Option.isNone(restToken)) {
@@ -121,13 +131,18 @@ const callbackStyleMatches = (context: CheckContext) => {
             parameterType,
             ts.IndexKind.Number
           )
+
           const elementType = Option.fromNullable(indexType)
+
           const elementHasCallSignature = Option.exists(
             elementType,
             callSignatureCheck(checker)
           )
 
-          return Array.some([parameterHasCallSignature, elementHasCallSignature], Boolean)
+          return Array.some(
+            [parameterHasCallSignature, elementHasCallSignature],
+            Boolean
+          )
         }
       )
 

@@ -12,9 +12,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 type VoidableFunction =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -35,6 +34,7 @@ const isVoidableFunction = (node: ts.Node): node is VoidableFunction => {
     ts.isArrowFunction(node),
     ts.isMethodDeclaration(node)
   ]
+
   return Array.some(conditions, Boolean)
 }
 
@@ -51,27 +51,29 @@ const voidFunctionMatches = (context: CheckContext) => {
     const contextualTypeNode = isFunctionInitializer(declaration)
       ? checker.getContextualType(declaration)
       : undefined
+
     const contextualType = Option.fromNullable(contextualTypeNode)
-    const isContextualVoidCallback = Option.exists(
-      contextualType,
-      (type) => {
-        const callableType = checker.getNonNullableType(type)
-        const signatures = callableType.getCallSignatures()
 
-        return Array.some(signatures, (signature) => {
-          const returnType = checker.getReturnTypeOfSignature(signature)
+    const isContextualVoidCallback = Option.exists(contextualType, (type) => {
+      const callableType = checker.getNonNullableType(type)
+      const signatures = callableType.getCallSignatures()
 
-          return permitsVoid(returnType)
-        })
-      }
-    )
+      return Array.some(signatures, (signature) => {
+        const returnType = checker.getReturnTypeOfSignature(signature)
+
+        return permitsVoid(returnType)
+      })
+    })
+
     const isContextualVoid =
       isFunctionInitializer(declaration) && isContextualVoidCallback
+
     const isContextualMethod = pipe(
       Option.liftPredicate(ts.isMethodDeclaration)(declaration),
       Option.flatMap(objectLiteralParent),
       Option.exists((literal) => {
         const literalContextualTypeNode = checker.getContextualType(literal)
+
         const literalContextualType = Option.fromNullable(
           literalContextualTypeNode
         )
@@ -79,6 +81,7 @@ const voidFunctionMatches = (context: CheckContext) => {
         return Option.isSome(literalContextualType)
       })
     )
+
     const isConsumerContract = isContextualVoid || isContextualMethod
 
     if (isConsumerContract) {
@@ -87,6 +90,7 @@ const voidFunctionMatches = (context: CheckContext) => {
 
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullable(declaredSignature)
+
     const declarationReturnsVoid = Option.exists(signature, (resolved) => {
       const returnType = checker.getReturnTypeOfSignature(resolved)
 

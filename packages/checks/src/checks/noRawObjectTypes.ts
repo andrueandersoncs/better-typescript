@@ -13,18 +13,19 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const conditions = [
     ts.isTypeLiteralNode(typeNode),
     typeNode.kind === ts.SyntaxKind.ObjectKeyword,
-    ts.isUnionTypeNode(typeNode) && Array.some(typeNode.types, containsRawObjectType),
+    ts.isUnionTypeNode(typeNode) &&
+      Array.some(typeNode.types, containsRawObjectType),
     ts.isIntersectionTypeNode(typeNode) &&
-    Array.some(typeNode.types, containsRawObjectType),
+      Array.some(typeNode.types, containsRawObjectType),
     ts.isParenthesizedTypeNode(typeNode) && containsRawObjectType(typeNode.type)
   ]
+
   return Array.some(conditions, Boolean)
 }
 

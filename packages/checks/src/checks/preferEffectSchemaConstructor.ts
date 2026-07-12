@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const tagPropertyName = "_tag"
 
 const shortCircuitOperatorKinds = HashSet.make(
@@ -35,12 +33,16 @@ const isShortCircuitExpression = (
 const ternaryBranches = (
   conditional: ts.ConditionalExpression
 ): ReadonlyArray<ts.Expression> =>
-  Array.flatMap([conditional.whenTrue, conditional.whenFalse], branchExpressions)
+  Array.flatMap(
+    [conditional.whenTrue, conditional.whenFalse],
+    branchExpressions
+  )
 
 const branchExpressions = (
   expression: ts.Expression
 ): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapTransparentExpression(expression)
+
   const branches = [
     pipe(
       Option.liftPredicate(ts.isConditionalExpression)(unwrapped),
@@ -126,10 +128,12 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
           Array.findFirst(literal.properties, isTagAssignment),
           Option.flatMap(tagValueText)
         )
+
         const message = Option.match(tag, {
           onNone: Function.constant(untaggedMessage),
           onSome: taggedMessage
         })
+
         const hint = Option.match(tag, {
           onNone: Function.constant(untaggedHint),
           onSome: taggedHint

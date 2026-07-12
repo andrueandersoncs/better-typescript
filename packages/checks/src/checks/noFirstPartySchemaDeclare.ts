@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const accessExpression = Struct.get("expression")
 
 const declarePropertyAccess = (
@@ -62,9 +60,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
   const { checker } = context
   const match = detection(context)
 
-  const assertedType = (
-    predicate: ts.Expression
-  ): Option.Option<ts.Type> => {
+  const assertedType = (predicate: ts.Expression): Option.Option<ts.Type> => {
     const type = checker.getTypeAtLocation(predicate)
     const signatures = type.getCallSignatures()
 
@@ -85,6 +81,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
     if (!ts.isIdentifier(object)) return []
     const isOnSchema = object.text === "Schema"
     const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
+
     const declareMatch = isDeclareOnSchema
       ? pipe(
           Option.fromNullable(call.arguments[0]),
@@ -96,6 +93,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
               Option.map(symbolName),
               Option.getOrElse(fallbackTypeName)
             )
+
             const message = `Avoid Schema.declare for the first-party type "${name}".`
 
             return match({ node: call, message, hint: schemaDeclareHint })

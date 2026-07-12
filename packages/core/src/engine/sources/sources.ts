@@ -10,7 +10,10 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import type { LoadedProject, ProjectConfig } from "../../project/loadProject/data.js"
+import type {
+  LoadedProject,
+  ProjectConfig
+} from "../../project/loadProject/data.js"
 import { AstNodeElement, ProgramContext, SourceUpdate } from "./data.js"
 
 export type AstFold<A> = (accumulator: A, node: ts.Node) => A
@@ -57,6 +60,7 @@ export const foldAst =
   (root: ts.Node) =>
   (initial: A): A => {
     const accumulator = MutableRef.make(initial)
+
     const visit = (node: ts.Node): false => {
       const current = MutableRef.get(accumulator)
       const folded = fold(current, node)
@@ -65,6 +69,7 @@ export const foldAst =
 
       return false
     }
+
     visit(root)
 
     return MutableRef.get(accumulator)
@@ -79,6 +84,7 @@ export const astNodesFromContext = (
     Stream.fromIterable,
     Stream.flatMap((sourceFile) => {
       const initial = MutableList.empty<AstNodeElement>()
+
       const append = (
         nodes: MutableList.MutableList<AstNodeElement>,
         node: ts.Node
@@ -87,6 +93,7 @@ export const astNodesFromContext = (
 
         return MutableList.append(nodes, element)
       }
+
       const collected = foldAst(append)(sourceFile)(initial)
       const nodes = Array.fromIterable(collected)
 
@@ -120,6 +127,7 @@ export const programUpdates = (
   Stream.asyncPush<ProgramContext, Error>((emit) => {
     const acquire = Effect.sync(() => {
       const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
+
       const host = ts.createWatchCompilerHost(
         config.configPath,
         undefined,
@@ -137,6 +145,7 @@ export const programUpdates = (
 
         return emit.single(context)
       }
+
       host.afterProgramCreate = afterProgramCreate
 
       return ts.createWatchProgram(host)
@@ -165,11 +174,13 @@ export const diffCheckableFiles =
       context.program.getSourceFiles(),
       Array.filter(isProjectSourceFile)
     )
+
     const next = pipe(
       currentFiles,
       Array.map(fileIndexEntry),
       HashMap.fromIterable
     )
+
     const changed = Array.filter(currentFiles, (sourceFile) =>
       pipe(
         HashMap.get(previous, sourceFile.fileName),
@@ -179,12 +190,14 @@ export const diffCheckableFiles =
         })
       )
     )
+
     const removed = pipe(
       previous,
       HashMap.keys,
       Array.fromIterable,
       Array.filter((fileName) => !HashMap.has(next, fileName))
     )
+
     const update = new SourceUpdate({ context, changed, removed })
 
     return [next, update]

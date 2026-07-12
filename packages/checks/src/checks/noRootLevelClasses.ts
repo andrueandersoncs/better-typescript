@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type ClassNode = ts.ClassDeclaration | ts.ClassExpression
 
 const classNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
@@ -22,7 +20,7 @@ const isClassNode = (node: ts.Node): node is ClassNode =>
   ts.isClassDeclaration(node) || ts.isClassExpression(node)
 
 const lacksExtendsClause = (declaration: ClassNode): boolean =>
-  !Array.some((declaration.heritageClauses ?? []), isExtendsClause)
+  !Array.some(declaration.heritageClauses ?? [], isExtendsClause)
 
 const rootLevelClassMatches = (context: CheckContext) => {
   const match = detection(context)

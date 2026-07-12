@@ -1,6 +1,11 @@
 import { Array, Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, byFile, collidingLines, deriveSignals } from "@better-typescript/core/engine/derive"
+import {
+  adviceLocation,
+  byFile,
+  collidingLines,
+  deriveSignals
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 
 const collidingFileAdvice = (
@@ -14,6 +19,7 @@ const collidingFileAdvice = (
 
     if (hasEnoughCollisions) {
       const location = adviceLocation(file.path)
+
       const advice = new Advice({
         location,
         level: "file",

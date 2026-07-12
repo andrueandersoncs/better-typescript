@@ -21,9 +21,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid mutating first-party data."
 
 const hint =
@@ -89,7 +87,9 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
   const separatorIndex = normalized.lastIndexOf("/")
   const baseName = normalized.slice(separatorIndex + 1)
 
-  return Array.some(ecmaScriptLibPrefixes, (prefix) => baseName.startsWith(prefix))
+  return Array.some(ecmaScriptLibPrefixes, (prefix) =>
+    baseName.startsWith(prefix)
+  )
 }
 
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
@@ -100,7 +100,10 @@ const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
   const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
-  return Array.every([hasDeclarations, !isDeclaredInProject, !isEcmaScriptBuiltin], Boolean)
+  return Array.every(
+    [hasDeclarations, !isDeclaredInProject, !isEcmaScriptBuiltin],
+    Boolean
+  )
 }
 
 // Follow an import alias because its local declaration cannot determine whether the imported value is external.
@@ -157,6 +160,7 @@ const enclosingExecutionBoundary = (node: ts.Node): ts.Node =>
 // Use the root receiver because x.y[0].z writes into whatever x names.
 const rootReceiver = (expression: ts.Expression): ts.Expression => {
   const unwrapped = unwrapExpression(expression)
+
   const isAccess =
     ts.isPropertyAccessExpression(unwrapped) ||
     ts.isElementAccessExpression(unwrapped)
@@ -180,6 +184,7 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode => {
     ts.isPostfixUnaryExpression(node),
     ts.isDeleteExpression(node)
   ]
+
   return Array.some(conditions, Boolean)
 }
 
@@ -204,12 +209,14 @@ const mutationMatches = (context: CheckContext) => {
         const declarations = symbol.getDeclarations() ?? []
         const sourceFiles = Array.map(declarations, declarationSourceFile)
         const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
+
         const declaredScope = pipe(
           Option.fromNullable(declarations[0]),
           Option.map((declaration): MutationScope => {
             const declarationBoundary = enclosingExecutionBoundary(
               declaration.parent
             )
+
             const mutationBoundary = enclosingExecutionBoundary(root.parent)
             const isModuleScoped = ts.isSourceFile(declarationBoundary)
             const isCaptured = declarationBoundary !== mutationBoundary
@@ -236,6 +243,7 @@ const mutationMatches = (context: CheckContext) => {
       Option.filter(
         Predicate.not((target) => {
           const unwrapped = unwrapExpression(target)
+
           const isAccess =
             ts.isPropertyAccessExpression(unwrapped) ||
             ts.isElementAccessExpression(unwrapped)

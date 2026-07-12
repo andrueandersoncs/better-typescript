@@ -14,9 +14,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid multi-line comments."
 
 const hint =
@@ -46,6 +44,7 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const comments = sourceComments(sourceFile)
+
   const blockComments = Array.filter(comments, (comment) => {
     const isBlock = comment.kind === ts.SyntaxKind.MultiLineCommentTrivia
     const hasNewline = commentText(text)(comment).includes("\n")
@@ -53,8 +52,10 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
 
     return Array.every([isBlock, hasNewline, !isJsDoc], Boolean)
   })
+
   const blockPositions = Array.map(blockComments, commentPosition)
   const singleLineComments = Array.filter(comments, isSingleLineComment)
+
   const adjacentRunPositions = Array.filterMap(
     singleLineComments,
     (current, index) => {
@@ -67,8 +68,10 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
       }
 
       const previousComment = singleLineComments[index - 1]
+
       const isNotAdjacentToPrevious =
         !isAdjacentLine(sourceFile)(previousComment)(current)
+
       const previousIsNotSingleLine = !isSingleLineComment(previousComment)
       const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
       const shouldFlag = isRunStart && hasNextAdjacent
@@ -76,10 +79,12 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
       return shouldFlag ? Option.some(current.pos) : Option.none()
     }
   )
+
   const positions = Array.appendAll(blockPositions, adjacentRunPositions)
 
   return Array.map(positions, (pos) => {
     const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(pos)
+
     const location = new Location({
       path: fileName,
       line: lineAndCharacter.line + 1,

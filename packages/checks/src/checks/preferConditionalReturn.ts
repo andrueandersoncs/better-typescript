@@ -11,13 +11,12 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const maximumReturnExpressionLength = 100
 
 const containsYieldExpression = (node: ts.Node): boolean => {
   const isYield = ts.isYieldExpression(node)
+
   const childContainsYield =
     ts.forEachChild(node, containsYieldExpression) === true
 
@@ -44,6 +43,7 @@ const ternaryText =
       ":",
       whenFalse.getText(sourceFile)
     ]
+
     return Array.join(values2, " ")
   }
 
@@ -57,9 +57,11 @@ const conditionalReturnDetections = (context: CheckContext) => {
   ): Option.Option<ts.Expression> =>
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(statement)
+
       const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
         unwrappedStatement
       )
+
       const expression = yield* Option.fromNullable(returnStatement.expression)
 
       return yield* Option.liftPredicate((expression: ts.Expression) => {
@@ -70,7 +72,10 @@ const conditionalReturnDetections = (context: CheckContext) => {
         const unwrapped = unwrapExpression(expression)
         const isTernary = ts.isConditionalExpression(unwrapped)
 
-        return Array.every([isSingleLine, isShort, !hasYieldExpression, !isTernary], Boolean)
+        return Array.every(
+          [isSingleLine, isShort, !hasYieldExpression, !isTernary],
+          Boolean
+        )
       })(expression)
     })
 
@@ -85,30 +90,32 @@ const conditionalReturnDetections = (context: CheckContext) => {
             const thenExpression = yield* returnExpression(
               ifStatement.thenStatement
             )
-            const elseStatement = Option.fromNullable(
-              ifStatement.elseStatement
-            )
+
+            const elseStatement = Option.fromNullable(ifStatement.elseStatement)
+
             const fallbackStatement = Option.isSome(elseStatement)
               ? elseStatement
               : nextStatement
+
             const fallbackExpression = yield* Option.flatMap(
               fallbackStatement,
               returnExpression
             )
-            const unwrappedCondition = unwrapExpression(
-              ifStatement.expression
-            )
+
+            const unwrappedCondition = unwrapExpression(ifStatement.expression)
+
             const negatedCondition = pipe(
               Option.liftPredicate(ts.isPrefixUnaryExpression)(
                 unwrappedCondition
               ),
               Option.flatMap(negatedPrefixUnaryExpressionOperand)
             )
+
             const returnText = Option.match(negatedCondition, {
               onNone: () =>
-                ternaryText(sourceFile)(ifStatement.expression)(
-                  thenExpression
-                )(fallbackExpression),
+                ternaryText(sourceFile)(ifStatement.expression)(thenExpression)(
+                  fallbackExpression
+                ),
               onSome: (operand) =>
                 ternaryText(sourceFile)(operand)(fallbackExpression)(
                   thenExpression

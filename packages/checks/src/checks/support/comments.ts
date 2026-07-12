@@ -21,6 +21,7 @@ const commentSyntaxKinds = HashSet.make(
   ts.SyntaxKind.SingleLineCommentTrivia,
   ts.SyntaxKind.MultiLineCommentTrivia
 )
+
 const jsDocPrefix = "/**"
 
 const byPosition: Order.Order<SourceComment> = pipe(
@@ -36,6 +37,7 @@ export const sourceComments = (
   sourceFile: ts.SourceFile
 ): ReadonlyArray<SourceComment> => {
   const pending = MutableList.make<ts.Node>(sourceFile)
+
   const nextSyntaxNode = (): Option.Option<
     readonly [ts.Node, MutableList.MutableList<ts.Node>]
   > => {
@@ -44,6 +46,7 @@ export const sourceComments = (
 
     return Option.map(node, (current) => {
       const children = current.getChildren(sourceFile)
+
       const nextPending = Array.reduce(
         children,
         pending,
@@ -56,16 +59,20 @@ export const sourceComments = (
       return [current, nextPending]
     })
   }
+
   const nodes = Array.unfold(pending, nextSyntaxNode)
   const text = sourceFile.getFullText()
+
   const commentRangesAt = (node: ts.Node): ReadonlyArray<ts.CommentRange> => {
     const leading = ts.getLeadingCommentRanges(text, node.pos) ?? []
     const trailing = ts.getTrailingCommentRanges(text, node.end) ?? []
 
     return Array.appendAll(leading, trailing)
   }
+
   const ranges = Array.flatMap(nodes, commentRangesAt)
   const emptyComments = HashMap.empty<number, SourceComment>()
+
   const commentsByPosition = Array.reduce(
     ranges,
     emptyComments,

@@ -54,6 +54,7 @@ const collectTypeScriptFiles: (
   "collectTypeScriptFiles"
 )(function* (directory: string) {
   const entries = yield* readDirectoryEntries(directory)
+
   const nested = yield* Effect.forEach(entries, (entry) => {
     const absolute = path.join(directory, entry.name)
 
@@ -81,6 +82,7 @@ const readExampleTree: (
   "readExampleTree"
 )(function* (treeRoot: string) {
   const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
+
   const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
     Effect.gen(function* () {
       const code = yield* Effect.try({
@@ -94,6 +96,7 @@ const readExampleTree: (
             message: `Unable to read example file: ${absoluteFile}`
           })
       })
+
       const relative = path.relative(treeRoot, absoluteFile)
       const segments = relative.split(path.sep)
       const filePath = Array.join(segments, "/")
@@ -133,6 +136,7 @@ export const loadRefactorExamplesAt: (
   }
 
   const entries = yield* readDirectoryEntries(exampleRoot)
+
   const names = Array.flatMap(entries, (entry) => {
     if (!entry.isDirectory()) {
       return []
@@ -147,7 +151,9 @@ export const loadRefactorExamplesAt: (
 
     return complete ? [entry.name] : []
   })
+
   const pairNames = Array.sort(names, byPairName)
+
   const examples = yield* Effect.forEach(pairNames, (pairName) =>
     Effect.gen(function* () {
       const pairRoot = path.join(exampleRoot, pairName)

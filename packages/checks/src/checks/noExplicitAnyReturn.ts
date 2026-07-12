@@ -9,9 +9,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
@@ -25,9 +24,11 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
 
 const containsAnyKeyword = (node: ts.Node): boolean => {
   const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
+
   const anyChild = ts.forEachChild(node, (child) =>
     containsAnyKeyword(child) ? child : void 0
   )
+
   const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
 
   return Array.some([isAnyKeyword, hasAnyDescendant], Boolean)

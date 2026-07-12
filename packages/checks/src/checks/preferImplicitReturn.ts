@@ -8,9 +8,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
 }
@@ -24,6 +23,7 @@ const implicitReturnMatches = (context: CheckContext) => {
     if (!ts.isBlock(arrowFunction.body)) return []
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
+
     const hasSingleValueReturn =
       hasOneStatement &&
       pipe(

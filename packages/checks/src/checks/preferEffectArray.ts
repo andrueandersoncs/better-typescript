@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 type ArrayPrototypeMethod =
   | "at"
@@ -112,6 +110,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
     }
 
     const propertyAccess = callExpression.expression
+
     const methodName = HashSet.has(
       arrayPrototypeMethods,
       propertyAccess.name.text as ArrayPrototypeMethod
@@ -124,6 +123,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
     }
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+
     const methodCall = isReceiverArrayType(receiverType)
       ? methodName
       : Option.none()

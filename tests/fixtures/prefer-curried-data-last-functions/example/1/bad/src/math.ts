@@ -1,2 +1,1 @@
-const add = (left: number, right: number): number =>
-  left + right
+const add = (left: number, right: number): number => left + right

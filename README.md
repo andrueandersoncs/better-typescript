@@ -197,7 +197,10 @@ preset fleet with one local reported check:
 import { Stream } from "effect"
 import * as ts from "typescript"
 import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
-import { detection, type Detection } from "@better-typescript/core/engine/location"
+import {
+  detection,
+  type Detection
+} from "@better-typescript/core/engine/location"
 import {
   exampleSnippet,
   refactorExample
@@ -268,7 +271,11 @@ available through `signalOf(signals)(name)`.
 import { Stream, pipe } from "effect"
 import type { Detection } from "@better-typescript/core/engine/location"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  adviceLocation,
+  deriveSignals,
+  evidenceItem
+} from "@better-typescript/core/engine/derive"
 import {
   makeWiring,
   signalOf,
@@ -277,7 +284,10 @@ import {
   type Signal,
   type Wiring
 } from "@better-typescript/core/engine/report"
-import { defaultChecks, defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
+import {
+  defaultChecks,
+  defaultDerive
+} from "@better-typescript/checks/preset/defaultWiring"
 import { noConsoleLog } from "./checks/noConsoleLog.js"
 
 const countAtPath = (

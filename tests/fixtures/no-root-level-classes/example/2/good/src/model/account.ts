@@ -9,4 +9,6 @@ export const Account = Schema.Struct({
 })
 export type Account = typeof Account.Type
 
-export const getById = Effect.fn("account/getById")(function* (id: AccountId) {})
+export const getById = Effect.fn("account/getById")(function* (
+  id: AccountId
+) {})

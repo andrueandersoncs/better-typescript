@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const tagPropertyName = "_tag"
 
 const strictTagComparisonOperators = HashSet.make(
@@ -57,10 +55,13 @@ const isSchemaTagComparisonBinary = (node: ts.BinaryExpression): boolean => {
     strictTagComparisonOperators,
     node.operatorToken.kind
   )
+
   const leftTagRightString =
     hasTagPropertyOperand(node.left) && hasStringLiteralOperand(node.right)
+
   const leftStringRightTag =
     hasStringLiteralOperand(node.left) && hasTagPropertyOperand(node.right)
+
   const hasTagComparison = leftTagRightString || leftStringRightTag
 
   return isStrictComparison && hasTagComparison
@@ -85,6 +86,7 @@ const constituentIsFirstParty = (type: ts.Type): boolean => {
 const schemaIsMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
+
   const matches = (
     expression: ts.BinaryExpression
   ): ReadonlyArray<Detection> => {
@@ -92,8 +94,10 @@ const schemaIsMatches = (context: CheckContext) => {
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = [leftAccess, rightAccess]
     const tagAccess = Option.firstSomeOf(accessOptions)
+
     const isFirstParty = Option.exists(tagAccess, (access) => {
       const checkedType = context.checker.getTypeAtLocation(access.expression)
+
       const constituents = checkedType.isUnion()
         ? checkedType.types
         : [checkedType]
@@ -104,24 +108,30 @@ const schemaIsMatches = (context: CheckContext) => {
     if (!isFirstParty) {
       return []
     }
+
     const valueText = pipe(
       tagAccess,
       Option.map((access) => access.expression.getText(sourceFile)),
       Option.getOrElse(Function.constant("the value"))
     )
+
     const operatorText = expression.operatorToken.getText(sourceFile)
     const leftLiteral = stringLiteralExpression(expression.left)
     const rightLiteral = stringLiteralExpression(expression.right)
     const literalOptions = [leftLiteral, rightLiteral]
+
     const tagText = pipe(
       Option.firstSomeOf(literalOptions),
       Option.map(Struct.get("text")),
       Option.getOrElse(Function.constant("$tag"))
     )
+
     const schemaIsCheck = `Schema.is($schema)(${valueText})`
+
     const isNegated =
       expression.operatorToken.kind ===
       ts.SyntaxKind.ExclamationEqualsEqualsToken
+
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
     return [

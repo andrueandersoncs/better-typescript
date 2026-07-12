@@ -12,9 +12,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type ConstantThunk = ts.ArrowFunction | ts.FunctionExpression
 
 const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = [
@@ -56,13 +54,16 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
       const nodeWithModifiers = yield* Option.liftPredicate(
         ts.canHaveModifiers
       )(node)
+
       const modifiers = ts.getModifiers(nodeWithModifiers)
 
       return yield* Option.fromNullable(modifiers)
     }),
     Option.getOrElse(fallbackModifiers)
   )
+
   const hasAsync = Array.some(modifiers, modifierIsAsync)
+
   const hasGenerator = pipe(
     Option.gen(function* () {
       const functionExpression = yield* Option.liftPredicate(
@@ -73,17 +74,21 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
     }),
     Option.isSome
   )
+
   const hasTypeParameters = pipe(
     Option.fromNullable(node.typeParameters),
     Option.exists(hasElements)
   )
 
-  return Array.every([
-    node.parameters.length === 0,
-    !hasAsync,
-    !hasGenerator,
-    !hasTypeParameters
-  ], Boolean)
+  return Array.every(
+    [
+      node.parameters.length === 0,
+      !hasAsync,
+      !hasGenerator,
+      !hasTypeParameters
+    ],
+    Boolean
+  )
 }
 
 const blockReturnedExpression = (
@@ -92,6 +97,7 @@ const blockReturnedExpression = (
   Option.gen(function* () {
     yield* Option.liftPredicate(hasSingleElement)(body.statements)
     const statement = yield* Option.fromNullable(body.statements[0])
+
     const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
       statement
     )
@@ -148,16 +154,20 @@ const functionConstantMatches = (context: CheckContext) => {
     pipe(
       Option.gen(function* () {
         yield* Option.liftPredicate(isEligibleFunction)(node)
+
         const expression = yield* pipe(
           Option.some(node),
           Option.flatMap(constantThunkReturnedExpression)
         )
+
         const unwrapped = unwrapExpression(expression)
+
         const isPrimitive = pipe(
           Option.some(unwrapped),
           Option.filter(isPrimitiveLiteralExpression),
           Option.isSome
         )
+
         const isStableIdentifier = pipe(
           Option.liftPredicate(ts.isIdentifier)(unwrapped),
           Option.exists((identifier: ts.Identifier): boolean =>
@@ -165,16 +175,21 @@ const functionConstantMatches = (context: CheckContext) => {
               Option.gen(function* () {
                 const symbolCandidate =
                   context.checker.getSymbolAtLocation(identifier)
+
                 const symbol = yield* Option.fromNullable(symbolCandidate)
                 const declarationCandidates = symbol.getDeclarations()
+
                 const declarations = yield* Option.fromNullable(
                   declarationCandidates
                 )
+
                 yield* Option.liftPredicate(hasSingleElement)(declarations)
                 const declaration = yield* Option.fromNullable(declarations[0])
+
                 const variableDeclaration = yield* Option.liftPredicate(
                   ts.isVariableDeclaration
                 )(declaration)
+
                 yield* Option.liftPredicate(
                   (candidate: ts.Declaration): boolean =>
                     candidate.getSourceFile() === context.sourceFile
@@ -199,9 +214,9 @@ const functionConstantMatches = (context: CheckContext) => {
             )
           )
         )
-        yield* Option.liftPredicate(
-          (_expression: ts.Expression): boolean =>
-            Array.some([isPrimitive, isStableIdentifier], Boolean)
+
+        yield* Option.liftPredicate((_expression: ts.Expression): boolean =>
+          Array.some([isPrimitive, isStableIdentifier], Boolean)
         )(expression)
         const expressionText = expression.getText(context.sourceFile)
 

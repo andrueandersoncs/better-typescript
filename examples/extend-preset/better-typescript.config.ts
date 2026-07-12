@@ -4,9 +4,20 @@ import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
 import { type Detection } from "@better-typescript/core/engine/location/data"
 import { detection } from "@better-typescript/core/engine/location"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
-import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
-import { makeWiring, namedCheck, signalOf } from "@better-typescript/core/engine/report"
+import {
+  adviceLocation,
+  deriveSignals,
+  evidenceItem
+} from "@better-typescript/core/engine/derive"
+import {
+  exampleSnippet,
+  refactorExample
+} from "@better-typescript/core/engine/example"
+import {
+  makeWiring,
+  namedCheck,
+  signalOf
+} from "@better-typescript/core/engine/report"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 
 // This example is documentation. Copy it to a consumer project's
@@ -72,14 +83,8 @@ const consoleLogBoundaryAdvice = (
 
 const consoleLogExamples = [
   refactorExample(
-    exampleSnippet(
-      "src/main.ts",
-      `console.log("starting")`
-    ),
-    exampleSnippet(
-      "src/main.ts",
-      `return { status: "starting" as const }`
-    )
+    exampleSnippet("src/main.ts", `console.log("starting")`),
+    exampleSnippet("src/main.ts", `return { status: "starting" as const }`)
   )
 ] as const
 

@@ -1,6 +1,9 @@
 import { Array, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
-import { combineAll, nodeSubscriptions } from "@better-typescript/core/engine/check"
+import {
+  combineAll,
+  nodeSubscriptions
+} from "@better-typescript/core/engine/check"
 import { isReturnTypeDeclaration, unwrapExpression } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
@@ -9,9 +12,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
@@ -41,10 +42,14 @@ const isUndefinedExpression = (expression: ts.Expression): boolean => {
 
 const containsUndefinedKeyword = (node: ts.Node): boolean => {
   const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
+
   const childContainsUndefinedKeyword =
     ts.forEachChild(node, containsUndefinedKeyword) === true
 
-  return Array.some([isUndefinedKeyword, childContainsUndefinedKeyword], Boolean)
+  return Array.some(
+    [isUndefinedKeyword, childContainsUndefinedKeyword],
+    Boolean
+  )
 }
 
 const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
@@ -62,7 +67,11 @@ const isEqualityWithUndefined = (expr: ts.BinaryExpression): boolean => {
     equalityComparisonOperators,
     expr.operatorToken.kind
   )
-  const hasUndefinedOperand = Array.some([expr.left, expr.right], isUndefinedExpression)
+
+  const hasUndefinedOperand = Array.some(
+    [expr.left, expr.right],
+    isUndefinedExpression
+  )
 
   return Array.every([isEqualityComparison, hasUndefinedOperand], Boolean)
 }
@@ -79,6 +88,7 @@ const parameterAcceptsUndefined = (param: ts.ParameterDeclaration): boolean => {
     Option.fromNullable,
     Option.isSome
   )
+
   const typeNode = Option.fromNullable(param.type)
   const hasUndefinedType = containsUndefinedType(typeNode)
 
@@ -121,6 +131,7 @@ const isUndefinedReturnExpression = (
 ): node is UndefinedReturnExpression => {
   const returnStmt = Option.liftPredicate(ts.isReturnStatement)(node)
   const returnExprValue = Option.flatMap(returnStmt, getReturnExpression)
+
   const isUndefinedReturn = Option.exists(
     returnExprValue,
     isUndefinedExpression
@@ -144,6 +155,7 @@ const propertySignatureAcceptsUndefined = (
     Option.fromNullable,
     Option.isSome
   )
+
   const typeNode = Option.fromNullable(node.type)
   const hasUndefinedType = containsUndefinedType(typeNode)
 
@@ -166,6 +178,7 @@ const isUndefinedTypeDeclaration = (
     Option.liftPredicate(ts.isPropertySignature)(node),
     Option.exists(propertySignatureAcceptsUndefined)
   )
+
   const isMappedWithUndefined = pipe(
     Option.liftPredicate(ts.isMappedTypeNode)(node),
     Option.exists(mappedTypeAcceptsUndefined)

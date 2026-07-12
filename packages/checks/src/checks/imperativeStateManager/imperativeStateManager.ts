@@ -1,6 +1,12 @@
 import { Array, Effect, Function, Option, Schema, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, collectSignals, countDetectionsAtPath, detectionAtPath, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  adviceLocation,
+  collectSignals,
+  countDetectionsAtPath,
+  detectionAtPath,
+  evidenceItem
+} from "@better-typescript/core/engine/derive"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import {
   ImperativeStateManagerInput,
@@ -10,6 +16,7 @@ import {
 
 const isSharedStateMutation = (element: Detection): boolean => {
   const data = Option.fromNullable(element.data)
+
   const sharedState = pipe(
     data,
     Option.filter(Schema.is(MutationElementData)),
@@ -36,6 +43,7 @@ const imperativeStateAdviceFor = (
     signals.noMutation,
     (element) => element.location.path
   )
+
   const paths = Array.dedupe(mutationPaths)
 
   return pipe(
@@ -49,13 +57,17 @@ const imperativeStateAdviceFor = (
       const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
       const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
       const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
+
       const arrayCount = countDetectionsAtPath(path)(
         signals.noMutableArrayMethods
       )
+
       const declarationCount = countDetectionsAtPath(path)(
         signals.noMutableVariableDeclarations
       )
+
       const sharedItem = evidenceItem("no-mutation/shared-state", sharedCount)
+
       const observations = [
         evidenceItem("no-mutation", mutationCount),
         evidenceItem("prefer-hash-map", hashMapCount),
@@ -63,6 +75,7 @@ const imperativeStateAdviceFor = (
         evidenceItem("no-mutable-array-methods", arrayCount),
         evidenceItem("no-mutable-variable-declarations", declarationCount)
       ]
+
       const nonZero = Array.filter(observations, (item) => item.count > 0)
       const evidence = Array.prepend(nonZero, sharedItem)
 
@@ -88,6 +101,7 @@ export const imperativeStateManager = (
   const preferHashMap = collectSignals(input.preferHashMap)
   const preferHashSet = collectSignals(input.preferHashSet)
   const noMutableArrayMethods = collectSignals(input.noMutableArrayMethods)
+
   const noMutableVariableDeclarations = collectSignals(
     input.noMutableVariableDeclarations
   )

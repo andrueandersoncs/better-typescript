@@ -12,9 +12,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const isMapIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Map"
 
@@ -57,10 +56,15 @@ const mapMatches = (context: CheckContext) => {
       const expressionOption = Option.liftPredicate(ts.isIdentifier)(
         node.expression
       )
+
       const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
-      const escapesExternally =
-        isMapConstruction && constructionEscapes(node)
-      const isReportable = Array.every([isMapConstruction, !escapesExternally], Boolean)
+
+      const escapesExternally = isMapConstruction && constructionEscapes(node)
+
+      const isReportable = Array.every(
+        [isMapConstruction, !escapesExternally],
+        Boolean
+      )
 
       return isReportable
         ? [
@@ -86,6 +90,7 @@ const mapMatches = (context: CheckContext) => {
       Option.map(Struct.get("text")),
       Option.getOrElse(Function.constant(""))
     )
+
     const message = `Avoid the built-in ${name} type.`
 
     return [

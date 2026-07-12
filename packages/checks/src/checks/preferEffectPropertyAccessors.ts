@@ -11,9 +11,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 type PropertyAccessorFunction =
   | ts.ArrowFunction
   | ts.FunctionExpression
@@ -36,6 +35,7 @@ const isPropertyAccessorFunction = (
     ts.isFunctionDeclaration(node),
     ts.isMethodDeclaration(node)
   ]
+
   return Array.some(conditions2, Boolean)
 }
 
@@ -50,6 +50,7 @@ const singleReturnExpression = (
   body: ts.Block
 ): Option.Option<ts.Expression> => {
   const hasSingleStatement = body.statements.length === 1
+
   const statement = hasSingleStatement
     ? Option.fromNullable(body.statements[0])
     : Option.none<ts.Statement>()
@@ -93,8 +94,12 @@ const isRecordType =
   (type: ts.Type): boolean => {
     const apparentType = checker.getApparentType(type)
 
-        const conditions = [hasIndexSignature(type), hasIndexSignature(apparentType)]
-return type.isUnionOrIntersection()
+    const conditions = [
+      hasIndexSignature(type),
+      hasIndexSignature(apparentType)
+    ]
+
+    return type.isUnionOrIntersection()
       ? Array.every(type.types, isRecordType(checker))
       : Array.some(conditions, Boolean)
   }
@@ -104,6 +109,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
   const isRecord = isRecordType(checker)
+
   const propertyNameText = (name: ts.PropertyName): string =>
     name.getText(sourceFile)
 
@@ -122,6 +128,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
         ),
         Option.getOrElse(Function.constant("this function"))
       )
+
       const accessedText = access.getText(sourceFile)
       const accessedType = checker.getTypeAtLocation(access.expression)
       const moduleName = isRecord(accessedType) ? "Record" : "Struct"
@@ -141,9 +148,11 @@ const propertyAccessorMatches = (context: CheckContext) => {
     node: PropertyAccessorFunction
   ): ReadonlyArray<Detection> => {
     const hasSingleParam = node.parameters.length === 1
+
     const singleParam = hasSingleParam
       ? Option.fromNullable(node.parameters[0])
       : Option.none<ts.ParameterDeclaration>()
+
     const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
 
     return pipe(
@@ -153,6 +162,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
           Option.liftPredicate(ts.isArrowFunction)(node),
           Option.flatMap(conciseArrowBody)
         )
+
         const blockExpression = pipe(
           Option.fromNullable(node.body),
           Option.filter(ts.isBlock),

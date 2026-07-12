@@ -1,2 +1,1 @@
-const validateAge = (age: number): boolean =>
-  age > 0
+const validateAge = (age: number): boolean => age > 0

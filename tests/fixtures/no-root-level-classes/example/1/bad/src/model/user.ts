@@ -1,3 +1,5 @@
 export class UserService {
-  getUser(id: string) { /* ... */ }
+  getUser(id: string) {
+    /* ... */
+  }
 }

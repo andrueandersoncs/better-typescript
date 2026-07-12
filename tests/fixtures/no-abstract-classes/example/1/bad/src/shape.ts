@@ -7,5 +7,7 @@ export class Circle extends Shape {
     super()
   }
 
-  area(): number { return Math.PI * this.radius ** 2 }
+  area(): number {
+    return Math.PI * this.radius ** 2
+  }
 }

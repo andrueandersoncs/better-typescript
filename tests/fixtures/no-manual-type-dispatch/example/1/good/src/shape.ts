@@ -1,8 +1,13 @@
 import { Match, Schema, pipe } from "effect"
 
-class Circle extends Schema.Class<Circle>("Circle")({ radius: Schema.Number }) {}
+class Circle extends Schema.Class<Circle>("Circle")({
+  radius: Schema.Number
+}) {}
 class Square extends Schema.Class<Square>("Square")({ side: Schema.Number }) {}
-class Triangle extends Schema.Class<Triangle>("Triangle")({ base: Schema.Number, height: Schema.Number }) {}
+class Triangle extends Schema.Class<Triangle>("Triangle")({
+  base: Schema.Number,
+  height: Schema.Number
+}) {}
 
 declare const circleArea: (circle: Circle) => number
 declare const squareArea: (square: Square) => number

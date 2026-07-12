@@ -1,6 +1,9 @@
 import { Effect, Schema, pipe } from "effect"
 
-class ReadError extends Schema.TaggedError<ReadError>("ReadError")("ReadError", {}) {}
+class ReadError extends Schema.TaggedError<ReadError>("ReadError")(
+  "ReadError",
+  {}
+) {}
 
 interface Config {
   readonly name: string

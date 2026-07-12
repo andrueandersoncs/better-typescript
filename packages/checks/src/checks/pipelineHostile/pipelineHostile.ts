@@ -1,6 +1,11 @@
 import { Array, Effect, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, collectSignals, countDetectionsAtPath, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  adviceLocation,
+  collectSignals,
+  countDetectionsAtPath,
+  evidenceItem
+} from "@better-typescript/core/engine/derive"
 import { PipelineHostileInput, PipelineSignals } from "./data.js"
 
 const pipelineHostileAdviceFor = (
@@ -9,15 +14,18 @@ const pipelineHostileAdviceFor = (
   const isPipelineHostile = (path: string): boolean => {
     const hasNestedCalls =
       countDetectionsAtPath(path)(signals.noNestedCalls) >= 5
+
     const hasUncurriedFunctions =
       countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions) >= 5
 
     return Array.every([hasNestedCalls, hasUncurriedFunctions], Boolean)
   }
+
   const nestedCallPaths = Array.map(
     signals.noNestedCalls,
     (element) => element.location.path
   )
+
   const uniquePaths = Array.dedupe(nestedCallPaths)
 
   return pipe(
@@ -26,14 +34,18 @@ const pipelineHostileAdviceFor = (
     Array.map((path) => {
       const location = adviceLocation(path)
       const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
+
       const uncurriedCount = countDetectionsAtPath(path)(
         signals.preferCurriedDataLastFunctions
       )
+
       const nestedItem = evidenceItem("no-nested-calls", nestedCount)
+
       const uncurriedItem = evidenceItem(
         "prefer-curried-data-last-functions",
         uncurriedCount
       )
+
       const evidence = [nestedItem, uncurriedItem]
 
       return new Advice({
@@ -54,6 +66,7 @@ export const pipelineHostile = (
   input: PipelineHostileInput
 ): Stream.Stream<Advice, Error> => {
   const noNestedCalls = collectSignals(input.noNestedCalls)
+
   const preferCurriedDataLastFunctions = collectSignals(
     input.preferCurriedDataLastFunctions
   )

@@ -13,9 +13,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = 'Comments must include the word "because".'
 
 const hint =
@@ -33,6 +31,7 @@ const commentsWithoutBecause = (
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const comments = sourceComments(sourceFile)
+
   const missingBecause = Array.filter(comments, (comment) => {
     const isJsDoc = isJsDocComment(text)(comment)
     const textOfComment = commentText(text)(comment)
@@ -45,6 +44,7 @@ const commentsWithoutBecause = (
 
   return Array.map(missingBecause, (comment) => {
     const position = sourceFile.getLineAndCharacterOfPosition(comment.pos)
+
     const location = new Location({
       path: fileName,
       line: position.line + 1,

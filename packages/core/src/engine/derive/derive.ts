@@ -81,8 +81,7 @@ export const parentDirectories = (filePath: string): ReadonlyArray<string> => {
   return Array.map(parents, (_segment, index) => {
     const taken = Array.take(parents, index + 1)
     return Array.join(taken, "/")
-  }
-  )
+  })
 }
 
 const addDetectionCount = (
@@ -126,14 +125,17 @@ export const countSummary = (
 }
 
 const descendingNumber = Order.reverse(Order.number)
+
 const byCountDescending: Order.Order<EvidenceItem> = Order.mapInput(
   descendingNumber,
   Struct.get("count")
 )
+
 const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(
   Order.string,
   Struct.get("measure")
 )
+
 export const evidenceOrder: Order.Order<EvidenceItem> = Order.combine(
   byCountDescending,
   byMeasure
@@ -212,12 +214,14 @@ export const dominantCheckEvidence =
   (minSpread: number) =>
   (summary: CountSummary): ReadonlyArray<EvidenceItem> => {
     const entries = HashMap.toEntries(summary.countsByCheck)
+
     const dominant = Array.filter(entries, (entry) => {
       const spread = countAt(summary.filesByCheck)(entry[0])
       const holdsShare = entry[1] * denominator >= summary.total * numerator
 
       return holdsShare && spread >= minSpread
     })
+
     const evidence = Array.map(dominant, countEntryEvidence)
 
     return Array.sort(evidence, evidenceOrder)

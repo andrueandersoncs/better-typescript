@@ -7,9 +7,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
@@ -26,9 +24,11 @@ const functionKeywordMatches = (context: CheckContext) => {
   const matches = (node: FunctionKeywordNode): ReadonlyArray<Detection> => {
     const asteriskToken = Option.fromNullable(node.asteriskToken)
     const isNotGenerator = !Option.isSome(asteriskToken)
+
     const declarationWithBody = ts.isFunctionDeclaration(node)
       ? pipe(Option.fromNullable(node.body), Option.as(node))
       : Option.none()
+
     const isDisallowedKind =
       ts.isFunctionExpression(node) ||
       Option.exists(declarationWithBody, (declaration) => {
@@ -59,6 +59,7 @@ const functionKeywordMatches = (context: CheckContext) => {
     }
 
     const children = node.getChildren(sourceFile)
+
     const keywordToken = pipe(
       Array.findFirst(children, isFunctionKeywordToken),
       Option.getOrElse(Function.constant(node))

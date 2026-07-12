@@ -11,9 +11,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
   ts.SyntaxKind.AsExpression,
@@ -65,12 +64,15 @@ const ruleHint =
 
 const nestedCallMatches = (context: CheckContext) => {
   const checker = context.checker
+
   const producesCallable = flow(
     (call: CallLikeExpression) => checker.getTypeAtLocation(call),
     hasCallSignature(checker)
   )
+
   const sourceFile = context.sourceFile
   const match = detection(context)
+
   const calleeText = (target: CallLikeExpression): string => {
     const text = target.expression.getText(sourceFile)
 
@@ -86,9 +88,11 @@ const nestedCallMatches = (context: CheckContext) => {
         }
 
         const callerExpression = consumer.expression
+
         const callerName = ts.isIdentifier(callerExpression)
           ? callerExpression.text
           : undefined
+
         const isPipeName = callerName === "pipe"
         const isCallConsumer = ts.isCallExpression(consumer)
         const isFirstArg = callArguments(consumer)[0] === call
@@ -101,6 +105,7 @@ const nestedCallMatches = (context: CheckContext) => {
 
         const callText = calleeText(call)
         const consumerText = calleeText(consumer)
+
         const ruleMatch = match({
           node: call,
           message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,

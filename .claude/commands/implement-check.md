@@ -164,14 +164,25 @@ check-to-check dependencies.
 ```ts
 import { Stream, pipe } from "effect"
 import { Advice } from "better-typescript/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "better-typescript/engine/derive"
+import {
+  adviceLocation,
+  deriveSignals,
+  evidenceItem
+} from "better-typescript/engine/derive"
 import type { Detection } from "better-typescript/engine/location"
 import {
   exampleSnippet,
   refactorExample
 } from "better-typescript/engine/example"
-import { makeWiring, namedCheck, signalOf } from "better-typescript/engine/report"
-import { defaultChecks, defaultDerive } from "better-typescript/preset/defaultWiring"
+import {
+  makeWiring,
+  namedCheck,
+  signalOf
+} from "better-typescript/engine/report"
+import {
+  defaultChecks,
+  defaultDerive
+} from "better-typescript/preset/defaultWiring"
 import { localCheck } from "./checks/localCheck.js"
 
 const localExamples = [

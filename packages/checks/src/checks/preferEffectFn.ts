@@ -15,9 +15,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const hasParameters = (initializer: FunctionInitializer): boolean =>
   initializer.parameters.length > 0
 
@@ -32,7 +31,11 @@ const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
-  const hasEffectModuleDeclaration = Array.some((symbol.declarations ?? []), isEffectModuleDeclaration)
+
+  const hasEffectModuleDeclaration = Array.some(
+    symbol.declarations ?? [],
+    isEffectModuleDeclaration
+  )
 
   return isNamedEffect && hasEffectModuleDeclaration
 }
@@ -59,6 +62,7 @@ const effectFnMatches = (context: CheckContext) => {
       Option.filter((initializer) => {
         const declaredSignature =
           checker.getSignatureFromDeclaration(initializer)
+
         const signature = Option.fromNullable(declaredSignature)
 
         return Option.exists(signature, (signature) => {
@@ -73,19 +77,23 @@ const effectFnMatches = (context: CheckContext) => {
       // Rewrite only Effect.gen wrappers because Effect.fn would change what plain combinator bodies build.
       Option.filter((initializer) => {
         const body = initializer.body
+
         const blockResult = pipe(
           Option.liftPredicate(ts.isBlock)(body),
           Option.flatMap(singleBlockStatement),
           Option.filter(ts.isReturnStatement),
           Option.flatMap(returnedExpression)
         )
+
         const conciseResult = ts.isBlock(body)
           ? Option.none<ts.Expression>()
           : Option.some(body)
+
         const resultExpression = Option.orElse(
           blockResult,
           Function.constant(conciseResult)
         )
+
         const unwrapped = Option.map(resultExpression, unwrapExpression)
 
         return pipe(

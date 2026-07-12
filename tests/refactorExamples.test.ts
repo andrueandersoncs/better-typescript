@@ -4,7 +4,10 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
-import { fixtureExampleRoot, fixturesRoot } from "@better-typescript/checks/fixtureExamples"
+import {
+  fixtureExampleRoot,
+  fixturesRoot
+} from "@better-typescript/checks/fixtureExamples"
 import { runCheckOnProject } from "@better-typescript/core/engine/report"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"

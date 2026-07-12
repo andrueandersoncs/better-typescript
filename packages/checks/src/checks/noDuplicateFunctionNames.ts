@@ -1,18 +1,25 @@
 import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
+import {
+  fileSubscriptions,
+  withProgramIndex
+} from "@better-typescript/core/engine/check"
 import { functionInitializer } from "./support/tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
-import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
+import {
+  detection,
+  toRelativeFileName
+} from "@better-typescript/core/engine/location"
+import type {
+  CheckContext,
+  Subscription
+} from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type FunctionNameIndex = HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
 
 const declaredFunction = (
@@ -34,6 +41,7 @@ const statementFunctions = (
   const variableDeclarationFunctions = ts.isVariableStatement(statement)
     ? Array.filterMap(statement.declarationList.declarations, declaredFunction)
     : []
+
   const functionDeclarationNames = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
     Option.flatMap(namedFunctionDeclaration),
@@ -93,14 +101,17 @@ const duplicateNameListeners = (
       fileFunctions,
       (candidate): Option.Option<Detection> => {
         const declarations = declarationsForName(index)(candidate.text)
+
         // Compare mutual assignability because parameter renames preserve a copied signature while different domain data does not.
         const identicalDeclarations = Array.filter(declarations, (other) => {
           const candidateType = context.checker.getTypeAtLocation(candidate)
           const otherType = context.checker.getTypeAtLocation(other)
+
           const forward = context.checker.isTypeAssignableTo(
             candidateType,
             otherType
           )
+
           const backward = context.checker.isTypeAssignableTo(
             otherType,
             candidateType
@@ -108,8 +119,14 @@ const duplicateNameListeners = (
 
           return Array.every([forward, backward], Boolean)
         })
-        const declaredFileNames = Array.map(identicalDeclarations, declaredFileName)
+
+        const declaredFileNames = Array.map(
+          identicalDeclarations,
+          declaredFileName
+        )
+
         const uniqueFileNames = Array.dedupe(declaredFileNames)
+
         const otherFileNames = Array.filter(
           uniqueFileNames,
           (fileName) => fileName !== candidateFileName
@@ -121,14 +138,16 @@ const duplicateNameListeners = (
 
         const functionName = candidate.text
         const relativeFileNames = Array.map(otherFileNames, toRelative)
-                const taken = Array.take(relativeFileNames, maxListedFileNames)
-const listedFileNames = Array.join(taken, ", ")
+        const taken = Array.take(relativeFileNames, maxListedFileNames)
+        const listedFileNames = Array.join(taken, ", ")
         const remainingCount = relativeFileNames.length - maxListedFileNames
         const isSingleFile = remainingCount === 1
+
         const otherFiles =
           remainingCount > 0
             ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
             : listedFileNames
+
         const duplicateMatch = match({
           node: candidate,
           message: `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,

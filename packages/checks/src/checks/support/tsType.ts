@@ -63,21 +63,29 @@ const isArrayLikeTypeWithSeen =
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((type) => {
         const nextSeen = HashSet.add(seen, type)
+
         const isDirectArrayType =
           checker.isArrayType(type) || checker.isTupleType(type)
+
         const unionOrIntersection = Option.liftPredicate(
           isUnionOrIntersectionType
         )(type)
+
         const hasUnionOrIntersectionArrayType = Option.exists(
           unionOrIntersection,
-          (type) => Array.some(type.types, isArrayLikeTypeWithSeen(checker)(nextSeen))
+          (type) =>
+            Array.some(type.types, isArrayLikeTypeWithSeen(checker)(nextSeen))
         )
+
         const baseConstraint = differentBaseConstraint(checker)(type)
+
         const hasConstrainedArrayType = Option.exists(
           baseConstraint,
           isArrayLikeTypeWithSeen(checker)(nextSeen)
         )
+
         const apparentType = differentApparentType(checker)(type)
+
         const hasApparentArrayType = Option.exists(
           apparentType,
           isArrayLikeTypeWithSeen(checker)(nextSeen)
@@ -118,20 +126,26 @@ const hasCallSignatureWithSeen =
         if (type.isUnionOrIntersection()) {
           return (
             hasDirectCallSignature ||
-            Array.some(type.types, callSignatureCheckWithSeen(checker)(nextSeen))
+            Array.some(
+              type.types,
+              callSignatureCheckWithSeen(checker)(nextSeen)
+            )
           )
         }
 
         const baseConstraint = differentBaseConstraint(checker)(type)
         const apparentType = differentApparentType(checker)(type)
+
         const constraintHasCallSignature = Option.exists(
           baseConstraint,
           callSignatureCheckWithSeen(checker)(nextSeen)
         )
+
         const apparentTypeHasCallSignature = Option.exists(
           apparentType,
           callSignatureCheckWithSeen(checker)(nextSeen)
         )
+
         const hasIndirectCallSignature =
           constraintHasCallSignature || apparentTypeHasCallSignature
 

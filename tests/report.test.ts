@@ -4,18 +4,41 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream, pipe } from "effect"
 import * as ts from "typescript"
-import { fileCheck, nodeCheck, type Check } from "@better-typescript/core/engine/check"
-import { Detection, Location } from "@better-typescript/core/engine/location/data"
+import {
+  fileCheck,
+  nodeCheck,
+  type Check
+} from "@better-typescript/core/engine/check"
+import {
+  Detection,
+  Location
+} from "@better-typescript/core/engine/location/data"
 import { locateNode } from "@better-typescript/core/engine/location"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { type NamedCheck, type Wiring } from "@better-typescript/core/engine/report/data"
-import { makeWiring, namedCheck, reportFromWiring, runCheckOnProject, signalOf, silentCheck, withFallbackAdvice } from "@better-typescript/core/engine/report"
-import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
+import {
+  type NamedCheck,
+  type Wiring
+} from "@better-typescript/core/engine/report/data"
+import {
+  makeWiring,
+  namedCheck,
+  reportFromWiring,
+  runCheckOnProject,
+  signalOf,
+  silentCheck,
+  withFallbackAdvice
+} from "@better-typescript/core/engine/report"
+import {
+  exampleSnippet,
+  refactorExample
+} from "@better-typescript/core/engine/example"
 import { report } from "@better-typescript/checks/preset"
 import { astNodes } from "@better-typescript/core/engine/sources"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import type { LoadedProject, LoadedWorkspace } from "@better-typescript/core/project/loadProject/data"
-
+import type {
+  LoadedProject,
+  LoadedWorkspace
+} from "@better-typescript/core/project/loadProject/data"
 
 const probeExamples = [
   refactorExample(
@@ -253,9 +276,7 @@ test("reportFromWiring collapses duplicate workspace detections by check and loc
 
   assert.equal(blocks.length, 1)
   assert.deepEqual(
-    blocks[0]
-      ?.split("\n")
-      .filter((line) => /^  [^ ].*:\d+:\d+$/.test(line)),
+    blocks[0]?.split("\n").filter((line) => /^  [^ ].*:\d+:\d+$/.test(line)),
     expectedThrowProbeElements.map(
       ({ path: filePath, line, column }) => `  ${filePath}:${line}:${column}`
     ),
@@ -286,7 +307,11 @@ test("reportFromWiring preserves two distinct detections emitted at the same AST
   const blocks = await collectStream(
     reportFromWiring(
       testWiring([
-        namedCheck("two messages on one node", doubleDetectionCheck, probeExamples)
+        namedCheck(
+          "two messages on one node",
+          doubleDetectionCheck,
+          probeExamples
+        )
       ])
     )(workspace)
   )

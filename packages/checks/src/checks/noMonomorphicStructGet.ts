@@ -11,9 +11,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid monomorphizing Struct.get at its declaration."
 
 const hint =
@@ -35,9 +33,11 @@ const declarationIsEffectStructModule = (
 ): boolean => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
+
   const inEffectPackage = Array.some(effectPackagePathSegments, (segment) =>
     fileName.includes(segment)
   )
+
   const isStructModule = Array.some(structModuleSuffixes, (suffix) =>
     fileName.endsWith(suffix)
   )
@@ -68,6 +68,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
     const declaredType = checker.getTypeFromTypeNode(typeNode)
     const signatures = declaredType.getCallSignatures()
     const hasCallSignature = signatures.length > 0
+
     const hasNoGenericSignature = !Array.some(signatures, (signature) => {
       const typeParameterCount = signature.typeParameters?.length ?? 0
 
@@ -81,10 +82,15 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
     pipe(
       Option.gen(function* () {
         const expression = unwrapTransparentExpression(initializer)
-        const call = yield* Option.liftPredicate(ts.isCallExpression)(expression)
-        const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(
-          call.expression
+
+        const call = yield* Option.liftPredicate(ts.isCallExpression)(
+          expression
         )
+
+        const callee = yield* Option.liftPredicate(
+          ts.isPropertyAccessExpression
+        )(call.expression)
+
         const symbolAtName = checker.getSymbolAtLocation(callee.name)
         yield* pipe(
           Option.fromNullable(symbolAtName),
@@ -119,6 +125,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
         const localDeclaration = declarationIsExported(declaration)
           ? Option.none<ts.VariableDeclaration>()
           : Option.some(declaration)
+
         yield* localDeclaration
         const typeNode = yield* Option.fromNullable(declaration.type)
         const initializer = yield* Option.fromNullable(declaration.initializer)

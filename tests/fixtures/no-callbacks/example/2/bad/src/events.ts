@@ -3,7 +3,10 @@ interface Message {
 }
 
 interface MessageSocket {
-  addEventListener(event: "message", handler: (msg: Message) => void): MessageSocket
+  addEventListener(
+    event: "message",
+    handler: (msg: Message) => void
+  ): MessageSocket
 }
 
 declare const socket: MessageSocket

@@ -12,14 +12,21 @@ import {
   Struct,
   pipe
 } from "effect"
-import type { LoadedProject, LoadedWorkspace } from "../../project/loadProject/data.js"
+import type {
+  LoadedProject,
+  LoadedWorkspace
+} from "../../project/loadProject/data.js"
 import { astNodes } from "../sources/sources.js"
 import type { AstNodeElement } from "../sources/data.js"
 import type { Check } from "../check/check.js"
 import type { Detection } from "../location/data.js"
 import { collectSignals } from "../derive/derive.js"
 import type { Advice, EvidenceItem } from "../derive/data.js"
-import type { ExampleSnippet, NonEmptyRefactorExamples, RefactorExample } from "../example/data.js"
+import type {
+  ExampleSnippet,
+  NonEmptyRefactorExamples,
+  RefactorExample
+} from "../example/data.js"
 import {
   AdviceReportKey,
   DedupeState,
@@ -50,6 +57,7 @@ const addUniqueElement = (
   element: Detection
 ): DedupeState => {
   const location = element.location
+
   const key = JSON.stringify([
     location.path,
     location.line,
@@ -57,12 +65,15 @@ const addUniqueElement = (
     element.message,
     element.hint
   ])
+
   const bucket = pipe(
     HashMap.get(state.seen, key),
     Option.getOrElse((): ReadonlyArray<Detection> => [])
   )
+
   const hasMatchingData = (candidate: Detection): boolean =>
     Equal.equals(candidate.data, element.data)
+
   const alreadySeen = Array.some(bucket, hasMatchingData)
 
   if (alreadySeen) {
@@ -101,6 +112,7 @@ export const workspaceSignals =
         Effect.forEach(snapshots, collectDetections(check.check)),
         Effect.map((collected) => {
           const elements = Array.flatMap(collected, Chunk.toReadonlyArray)
+
           const deduped = Array.reduce(
             elements,
             emptyDedupeState,
@@ -177,16 +189,19 @@ const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string => {
 
 const adviceReportBlock = (advice: Advice): ReportBlock => {
   const pathLabel = advicePath(advice)
+
   const identity = reportIdentity("advice", [
     advice.level,
     pathLabel,
     advice.title
   ])
+
   const key = new AdviceReportKey({
     level: advice.level,
     path: pathLabel,
     title: advice.title
   })
+
   const text = adviceText(advice)
   const header = adviceHeader(advice)
   const cleared = `${header} — cleared`
@@ -243,16 +258,19 @@ export const checkReportBlocks =
       Record.values,
       Array.map((group) => {
         const first = Array.headNonEmpty(group)
+
         const identity = reportIdentity("rule", [
           name,
           first.message,
           first.hint
         ])
+
         const key = new RuleReportKey({
           name,
           message: first.message,
           hint: first.hint
         })
+
         const text = pipe(
           group,
           Array.matchLeft({
@@ -261,10 +279,12 @@ export const checkReportBlocks =
               const message = `  ${head.message}`
               const hint = `  Hint: ${head.hint}`
               const examplesText = Array.map(examples, formatRefactorExample)
+
               const header = Array.appendAll(
                 [name, message, hint],
                 examplesText
               )
+
               const locations = Array.map(group, locationText)
               const lines = Array.appendAll(header, locations)
 
@@ -272,6 +292,7 @@ export const checkReportBlocks =
             }
           })
         )
+
         const cleared = `${name} — cleared: ${first.message}`
 
         return new ReportBlock({ identity, key, text, cleared })
@@ -286,6 +307,7 @@ export const reportBlocks =
   (signals: ReadonlyArray<Signal>) =>
   (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> => {
     const adviceBlocks = adviceReportBlocks(advice)
+
     const signalBlocks = pipe(
       signals,
       Array.filter(Struct.get("reported")),
@@ -387,6 +409,7 @@ export const signalOf =
       signals,
       (signal) => signal.name === name
     )
+
     const detections = pipe(namedSignal, Option.map(Struct.get("detections")))
 
     return pipe(

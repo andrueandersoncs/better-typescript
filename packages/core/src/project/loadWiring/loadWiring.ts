@@ -107,15 +107,19 @@ const selectedExport = Effect.fn("selectedExport")(function* (
   moduleValue: unknown
 ) {
   const recordValueOption = Option.liftPredicate(isRecord)(moduleValue)
+
   const recordExport = pipe(
     recordValueOption,
     Option.map(configExportFromRecord)
   )
+
   const functionValueOption = Option.liftPredicate(isFunctionValue)(moduleValue)
+
   const functionExport = pipe(
     functionValueOption,
     Option.map(configExportFromFunction)
   )
+
   const exportOption = pipe(
     recordExport,
     Option.orElse(Function.constant(functionExport))
@@ -184,9 +188,11 @@ const checkShapeReason =
 const hasNamedCheckFields = (record: ModuleRecord): boolean => {
   const hasStringName = typeof record.name === "string"
   const hasFunctionCheck = typeof record.check === "function"
+
   const reported = Object.hasOwn(record, "reported")
     ? Option.some(record.reported)
     : Option.none()
+
   const hasValidReported = pipe(
     reported,
     Option.match({
@@ -194,9 +200,11 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
       onSome: (reported) => typeof reported === "boolean"
     })
   )
+
   const examples = Object.hasOwn(record, "examples")
     ? Option.some(record.examples)
     : Option.none()
+
   const hasValidExamples = pipe(
     examples,
     Option.match({
@@ -205,12 +213,10 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
-  return Array.every([
-    hasStringName,
-    hasFunctionCheck,
-    hasValidReported,
-    hasValidExamples
-  ], Boolean)
+  return Array.every(
+    [hasStringName, hasFunctionCheck, hasValidReported, hasValidExamples],
+    Boolean
+  )
 }
 
 const invalidNamedCheck = (value: unknown): boolean => {
@@ -224,9 +230,11 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
   const record = value as ModuleRecord
   const name = record.name as string
   const check = record.check as Check
+
   const reported = Object.hasOwn(record, "reported")
     ? (record.reported as boolean)
     : true
+
   const examples = Object.hasOwn(record, "examples")
     ? (record.examples as ReadonlyArray<RefactorExample>)
     : []
@@ -248,10 +256,12 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
   }
 
   const checks = value as ReadonlyArray<unknown>
+
   const invalidIndex = pipe(
     Array.findFirstIndex(checks, invalidNamedCheck),
     Option.getOrElse(() => -1)
   )
+
   const hasInvalidCheck = invalidIndex >= 0
 
   if (hasInvalidCheck) {
@@ -308,6 +318,7 @@ const loadExistingWiring = Effect.fn("loadExistingWiring")(function* (
       return projectWiringError(configPath, reason)
     }
   })
+
   const exportValue = yield* resolvedExport(configPath, moduleValue)
   const wiring = yield* validateWiringShape(configPath, exportValue)
 

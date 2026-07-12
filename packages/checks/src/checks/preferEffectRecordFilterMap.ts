@@ -8,9 +8,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid conditional object spreads."
 
 const hint =
@@ -38,16 +36,19 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
 
-        const conditions2 = [
+    const conditions2 = [
       hasNoProperties(expression.whenTrue),
       hasSomeProperties(expression.whenFalse)
     ]
-const emptyThenNonEmptyElse = Array.every(conditions2, Boolean)
-        const conditions = [
+
+    const emptyThenNonEmptyElse = Array.every(conditions2, Boolean)
+
+    const conditions = [
       hasSomeProperties(expression.whenTrue),
       hasNoProperties(expression.whenFalse)
     ]
-const nonEmptyThenEmptyElse = Array.every(conditions, Boolean)
+
+    const nonEmptyThenEmptyElse = Array.every(conditions, Boolean)
 
     return Array.some([emptyThenNonEmptyElse, nonEmptyThenEmptyElse], Boolean)
       ? [match({ node: spread, message, hint })]

@@ -9,9 +9,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const conditionExpressions = (
   expression: ts.Expression
 ): ReadonlyArray<ts.Expression> => {
@@ -31,6 +30,7 @@ const binaryExpressionIsStringKeyIn = (
 ): boolean => {
   const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
   const keyExpression = unwrapExpression(expression.left)
+
   const hasStringKey =
     ts.isStringLiteral(keyExpression) ||
     ts.isNoSubstitutionTemplateLiteral(keyExpression)
@@ -58,6 +58,7 @@ const inOperatorGuardMatches = (context: CheckContext) => {
         const propertyName = unwrapExpression(expression.left).getText(
           sourceFile
         )
+
         const objectText = expression.right.getText(sourceFile)
 
         return match({

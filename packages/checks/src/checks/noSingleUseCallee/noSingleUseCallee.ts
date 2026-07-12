@@ -4,17 +4,17 @@ import {
   fileSubscriptions,
   withProgramIndex
 } from "@better-typescript/core/engine/check"
-import {
-  functionInitializer,
-  hasExportModifier
-} from "../support/tsNode.js"
+import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
 import {
   foldAst,
   isProjectSourceFile
 } from "@better-typescript/core/engine/sources"
 import { detection } from "@better-typescript/core/engine/location"
 import type { Check } from "@better-typescript/core/engine/check"
-import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
+import type {
+  CheckContext,
+  Subscription
+} from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
@@ -30,9 +30,7 @@ import {
   fallbackEmptyClassification
 } from "./data.js"
 
-const isSingleCalleeEntry = (
-  classification: SymbolClassification
-): boolean => {
+const isSingleCalleeEntry = (classification: SymbolClassification): boolean => {
   const isSingleCallee = classification.calleeCount === 1
   const isNotDisqualified = !classification.disqualified
 
@@ -43,26 +41,25 @@ const statementEntries = (
   statement: ts.Statement
 ): ReadonlyArray<FunctionEntry> => {
   const variableEntries = ts.isVariableStatement(statement)
-    ? Array.filterMap(
-        statement.declarationList.declarations,
-        (declaration) =>
-          pipe(
-            functionInitializer(declaration),
-            Option.flatMap(() =>
-              Option.liftPredicate(ts.isIdentifier)(declaration.name)
-            ),
-            Option.map((nameNode) => {
-              const isExported = hasExportModifier(statement)
+    ? Array.filterMap(statement.declarationList.declarations, (declaration) =>
+        pipe(
+          functionInitializer(declaration),
+          Option.flatMap(() =>
+            Option.liftPredicate(ts.isIdentifier)(declaration.name)
+          ),
+          Option.map((nameNode) => {
+            const isExported = hasExportModifier(statement)
 
-              return new FunctionEntry({
-                nameNode,
-                declarationNode: declaration,
-                isExported
-              })
+            return new FunctionEntry({
+              nameNode,
+              declarationNode: declaration,
+              isExported
             })
-          )
+          })
+        )
       )
     : []
+
   const functionEntries = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
     Option.flatMap((declaration) =>
@@ -104,13 +101,16 @@ const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
   const sourceFiles = program.getSourceFiles()
   const projectFiles = Array.filter(sourceFiles, isProjectSourceFile)
   const entries = Array.flatMap(projectFiles, sourceFileEntries)
+
   const symbolEntryPairs = Array.filterMap(entries, (entry) =>
     pipe(
       symbolForEntry(checker)(entry),
       Option.map((sym): [ts.Symbol, FunctionEntry] => [sym, entry])
     )
   )
+
   const symbolToEntry = HashMap.fromIterable(symbolEntryPairs)
+
   const folder = (
     classifications: Classifications,
     sourceFile: ts.SourceFile
@@ -122,15 +122,15 @@ const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
 
       const sym = checker.getSymbolAtLocation(node)
       const symOption = Option.fromNullable(sym)
+
       const trackedSym = Option.filter(symOption, (candidate) =>
         HashMap.has(symbolToEntry, candidate)
       )
+
       const nonDeclSym = Option.filter(trackedSym, (candidate) =>
         pipe(
           HashMap.get(symbolToEntry, candidate),
-          Option.map(
-            (entry) => entry.declarationNode.name ?? entry.nameNode
-          ),
+          Option.map((entry) => entry.declarationNode.name ?? entry.nameNode),
           Option.exists((declName) => node !== declName)
         )
       )
@@ -162,11 +162,13 @@ const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
         Option.getOrElse(() => folded)
       )
     })(sourceFile)(classifications)
+
   const classifications = Array.reduce(
     projectFiles,
     emptyClassifications,
     folder
   )
+
   const calleeOnlySymbols = pipe(
     HashMap.filter(classifications, isSingleCalleeEntry),
     HashMap.keys,

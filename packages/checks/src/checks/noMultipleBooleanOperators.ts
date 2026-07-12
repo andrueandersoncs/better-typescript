@@ -9,9 +9,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 type BooleanOperatorExpression =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
 
@@ -21,19 +20,20 @@ const isBooleanOperatorExpression = (
   const isBinaryBooleanOperator =
     ts.isBinaryExpression(node) &&
     HashSet.has(booleanBinaryOperatorKinds, node.operatorToken.kind)
+
   const unaryOperator = ts.isPrefixUnaryExpression(node)
     ? node.operator
     : undefined
+
   const isUnaryBooleanOperator =
     unaryOperator === ts.SyntaxKind.ExclamationToken
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
-  return Array.some([
-    isBinaryBooleanOperator,
-    isUnaryBooleanOperator,
-    isTernaryOperator
-  ], Boolean)
+  return Array.some(
+    [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator],
+    Boolean
+  )
 }
 
 const addBooleanOperatorCount = (total: number, child: ts.Expression): number =>
@@ -51,8 +51,9 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
   const countedChildren = ts.isConditionalExpression(unwrapped)
     ? [unwrapped.whenTrue, unwrapped.whenFalse]
     : astChildren(unwrapped)
-    const filtered = Array.filter(countedChildren, ts.isExpression)
-const childCount = Array.reduce(filtered, 0, addBooleanOperatorCount)
+
+  const filtered = Array.filter(countedChildren, ts.isExpression)
+  const childCount = Array.reduce(filtered, 0, addBooleanOperatorCount)
 
   return ownCount + childCount
 }
@@ -74,16 +75,19 @@ const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
     isBooleanOperatorExpression(parent),
     hasBooleanOperatorAncestor(parent)
   ]
+
   return Array.some(conditions, Boolean)
 }
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   const parent = Option.fromNullable(node.parent)
+
   const isConditionEdge = pipe(
     parent,
     Option.filter(ts.isConditionalExpression),
     Option.exists(isConditionOf(node))
   )
+
   const hasCountedAncestor = Option.exists(
     parent,
     isOrHasBooleanOperatorAncestor
@@ -113,13 +117,18 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
   ): ReadonlyArray<Detection> => {
     const expressionUsesBooleanOperator =
       isBooleanOperatorExpression(expression)
+
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
-    const isReportableRoot = Array.every([
-      expressionUsesBooleanOperator,
-      hasNoBooleanOperatorAncestor,
-      hasMultiple
-    ], Boolean)
+
+    const isReportableRoot = Array.every(
+      [
+        expressionUsesBooleanOperator,
+        hasNoBooleanOperatorAncestor,
+        hasMultiple
+      ],
+      Boolean
+    )
 
     return isReportableRoot
       ? [

@@ -13,9 +13,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const booleanLiteralValue = (
   expression: ts.Expression
 ): Option.Option<boolean> => {
@@ -68,9 +67,11 @@ const booleanReturnMatches = (context: CheckContext) => {
           const unwrappedStatement = unwrapSingleStatementBlock(
             node.thenStatement
           )
+
           const returnStatement = yield* Option.liftPredicate(
             ts.isReturnStatement
           )(unwrappedStatement)
+
           const expression = yield* Option.fromNullable(
             returnStatement.expression
           )
@@ -79,9 +80,11 @@ const booleanReturnMatches = (context: CheckContext) => {
         }),
         Option.map((literalValue) => {
           const conditionText = node.expression.getText(sourceFile)
+
           const returnExpression = literalValue
             ? `(${conditionText})`
             : `!(${conditionText})`
+
           const literalText = String(literalValue)
 
           return match({
@@ -102,6 +105,7 @@ const booleanReturnMatches = (context: CheckContext) => {
         Option.flatMap((ifStatement) =>
           Option.gen(function* () {
             yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
+
             const thenBranchExpr = ts.isBlock(ifStatement.thenStatement)
               ? pipe(
                   lastStatement(ifStatement.thenStatement),
@@ -114,6 +118,7 @@ const booleanReturnMatches = (context: CheckContext) => {
                   ),
                   Option.flatMap(returnStatementExpression)
                 )
+
             yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
             yield* Option.filter(nextStatement, isFalseLiteralReturn)
 

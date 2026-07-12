@@ -8,9 +8,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const methodDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.MethodDeclaration
 ]
@@ -32,6 +31,7 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
   const bodyOption = Option.fromNullable(node.body)
   const bodyExists = Option.isSome(bodyOption)
   const modifiers = ts.getModifiers(node)
+
   const isOverride = pipe(
     Option.fromNullable(modifiers),
     Option.flatMap(findOverrideModifier),

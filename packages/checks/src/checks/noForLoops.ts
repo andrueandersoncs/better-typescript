@@ -7,9 +7,7 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const forStatementKind = ts.SyntaxKind.ForStatement
 
 const forLoopElements = (context: CheckContext) => {
@@ -20,16 +18,23 @@ const forLoopElements = (context: CheckContext) => {
       Option.fromNullable(node.condition),
       Option.isSome
     )
+
     const hasInitializer = pipe(
       Option.fromNullable(node.initializer),
       Option.isSome
     )
+
     const hasIncrementor = pipe(
       Option.fromNullable(node.incrementor),
       Option.isSome
     )
+
     const hasIterator = Array.some([hasInitializer, hasIncrementor], Boolean)
-    const isIteratorForLoop = Array.every([hasStopCondition, hasIterator], Boolean)
+
+    const isIteratorForLoop = Array.every(
+      [hasStopCondition, hasIterator],
+      Boolean
+    )
 
     return isIteratorForLoop
       ? [

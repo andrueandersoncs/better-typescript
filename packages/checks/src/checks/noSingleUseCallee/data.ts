@@ -1,15 +1,16 @@
 import { Function, HashMap, HashSet, Schema } from "effect"
 import * as ts from "typescript"
 
-export class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")({
-  nameNode: Schema.Any,
-  declarationNode: Schema.Any,
-  isExported: Schema.Boolean
-}) {
+export class FunctionEntry extends Schema.Class<FunctionEntry>("FunctionEntry")(
+  {
+    nameNode: Schema.Any,
+    declarationNode: Schema.Any,
+    isExported: Schema.Boolean
+  }
+) {
   declare readonly nameNode: ts.Identifier
   declare readonly declarationNode:
-    | ts.FunctionDeclaration
-    | ts.VariableDeclaration
+    ts.FunctionDeclaration | ts.VariableDeclaration
 }
 
 export class SymbolClassification extends Schema.Class<SymbolClassification>(
@@ -36,8 +37,9 @@ export const disqualifiedClassification = new SymbolClassification({
   disqualified: true
 })
 
-
-export class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
+export class ReferenceIndex extends Schema.Class<ReferenceIndex>(
+  "ReferenceIndex"
+)({
   entries: Schema.Any,
   calleeOnlySymbols: Schema.Any
 }) {

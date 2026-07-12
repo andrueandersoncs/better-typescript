@@ -1,11 +1,7 @@
 import * as path from "node:path"
 import type * as ts from "typescript"
 import type { CheckContext } from "../check/data.js"
-import {
-  Detection,
-  DetectionSource,
-  Location
-} from "./data.js"
+import { Detection, DetectionSource, Location } from "./data.js"
 
 export type MakeDetection = (source: DetectionSource) => Detection
 
@@ -23,6 +19,7 @@ export const locateNode =
     const sourceFile = context.sourceFile
     const start = node.getStart(sourceFile)
     const position = sourceFile.getLineAndCharacterOfPosition(start)
+
     const fileName = toRelativeFileName(context.projectRoot)(
       sourceFile.fileName
     )

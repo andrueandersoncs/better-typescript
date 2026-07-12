@@ -102,6 +102,7 @@ export const isExternalPackageArgument =
 
         return Option.exists(declarationFile, (sourceFile) => {
           const isExternal = !isProjectSourceFile(sourceFile)
+
           const isDefaultLibrary =
             program.isSourceFileDefaultLibrary(sourceFile)
 
@@ -140,12 +141,15 @@ const nameNodeEscapes =
             Option.exists((identifier) => {
               const isDeclarationName = identifier === nameNode
               const nodeSymbol = symbolAtNode(checker)(identifier)
+
               const refersToSymbol = Option.exists(
                 nodeSymbol,
                 (candidateSymbol) => candidateSymbol === symbol
               )
+
               const isExternalArgument =
                 isExternalArgumentPosition(checker)(identifier)
+
               const escapeConditions = [
                 !isDeclarationName,
                 refersToSymbol,
@@ -155,6 +159,7 @@ const nameNodeEscapes =
               return Array.every(escapeConditions, Boolean)
             })
           )
+
           const childMatch = isEscapingReference
             ? true
             : ts.forEachChild(candidate, findMatch)
@@ -171,14 +176,15 @@ export const constructionEscapesExternally =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): boolean => {
     const outermost = outermostTransparentWrapper(expression)
+
     const isDirectExternalArgument =
       isExternalArgumentPosition(checker)(outermost)
+
     const sourceFile = expression.getSourceFile()
+
     const escapesThroughVariable = pipe(
       Option.liftPredicate(ts.isVariableDeclaration)(outermost.parent),
-      Option.filter(
-        (declaration) => declaration.initializer === outermost
-      ),
+      Option.filter((declaration) => declaration.initializer === outermost),
       Option.map(Struct.get("name")),
       Option.exists(nameNodeEscapes(checker)(sourceFile))
     )
@@ -220,20 +226,25 @@ export const typeReferenceEscapesExternally =
         if (ts.isParameter(carrier)) {
           const enclosing = carrier.parent
           const sourceFile = carrier.getSourceFile()
+
           const isDirectExternalArgument =
             isExternalArgumentPosition(checker)(enclosing)
+
           const variableName = pipe(
             Option.liftPredicate(ts.isVariableDeclaration)(enclosing.parent),
             Option.map(Struct.get("name"))
           )
+
           const functionName = pipe(
             Option.liftPredicate(ts.isFunctionDeclaration)(enclosing),
             Option.flatMap(functionDeclarationName)
           )
+
           const nameNode = pipe(
             variableName,
             Option.orElse(Function.constant(functionName))
           )
+
           const escapesThroughName = Option.exists(
             nameNode,
             nameNodeEscapes(checker)(sourceFile)

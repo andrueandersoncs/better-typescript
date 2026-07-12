@@ -7,21 +7,20 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
   const parent = node.parent
 
-    const conditions = [
+  const conditions = [
     ts.isFunctionDeclaration(parent),
     ts.isFunctionExpression(parent),
     ts.isArrowFunction(parent),
     ts.isMethodDeclaration(parent)
   ]
-return Array.some(conditions, Boolean)
+
+  return Array.some(conditions, Boolean)
 }
 
 const asyncFunctionElements = (context: CheckContext) => {

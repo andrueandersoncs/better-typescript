@@ -12,9 +12,8 @@ import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
 const isGuardIfStatement = (
   statement: ts.Statement
 ): statement is ts.IfStatement =>
@@ -44,25 +43,38 @@ const duplicateIfMatches = (context: CheckContext) => {
 
     return Array.join(tokens, " ")
   }
+
   const conditionText = (ifStatement: ts.IfStatement): string =>
     ifStatement.expression.getText(context.sourceFile)
+
   const sameBody =
     (firstIfStatement: ts.IfStatement) =>
     (secondIfStatement: ts.IfStatement): boolean =>
       fingerprint(firstIfStatement.thenStatement) ===
       fingerprint(secondIfStatement.thenStatement)
+
   const combineConditions =
     (firstIfStatement: ts.IfStatement) =>
     (ifStatement: ts.IfStatement): string => {
-      const values = [conditionText(firstIfStatement), conditionText(ifStatement)]
+      const values = [
+        conditionText(firstIfStatement),
+        conditionText(ifStatement)
+      ]
+
       return Array.join(values, " || ")
     }
+
   const guardDup =
     (ifStatement: ts.IfStatement) =>
     (previousIfStatement: ts.IfStatement): Option.Option<string> => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
-      const isMergeableDuplicate = Array.every([hasDuplicateBody, bodyExitsScope], Boolean)
+
+      const isMergeableDuplicate = Array.every(
+        [hasDuplicateBody, bodyExitsScope],
+        Boolean
+      )
+
       const combinedCondition =
         combineConditions(previousIfStatement)(ifStatement)
 
@@ -70,16 +82,20 @@ const duplicateIfMatches = (context: CheckContext) => {
         ? Option.some(combinedCondition)
         : Option.none()
     }
+
   const parentDup =
     (ifStatement: ts.IfStatement) =>
     (parentIfStatement: ts.IfStatement): Option.Option<string> => {
       const hasDuplicateBody = sameBody(parentIfStatement)(ifStatement)
+
       const combinedCondition =
         combineConditions(parentIfStatement)(ifStatement)
 
       return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
     }
+
   const match = detection(context)
+
   const ruleMatch =
     (ifStatement: ts.IfStatement) =>
     (combinedCondition: string): Detection =>

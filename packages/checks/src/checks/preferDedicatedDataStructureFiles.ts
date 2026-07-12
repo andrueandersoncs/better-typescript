@@ -32,9 +32,7 @@ const dataStructureMemberNames = HashSet.make(
 const dataStructureNamespaces = HashSet.make("Schema", "Data")
 
 type DataStructureDeclaration =
-  | ts.ClassDeclaration
-  | ts.InterfaceDeclaration
-  | ts.TypeAliasDeclaration
+  ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration
 
 const unwrapCallee = (expression: ts.Expression): ts.Expression => {
   const call = Option.liftPredicate(ts.isCallExpression)(expression)
@@ -52,6 +50,7 @@ const propertyAccessIsDataStructure = (
   const isKnownMember = HashSet.has(dataStructureMemberNames, memberName)
   const namespace = Option.liftPredicate(ts.isIdentifier)(access.expression)
   const namespaceName = Option.map(namespace, Struct.get("text"))
+
   const isKnownNamespace = Option.exists(namespaceName, (name) =>
     HashSet.has(dataStructureNamespaces, name)
   )
@@ -98,7 +97,9 @@ const algorithmsInStatement = (
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
     Option.filter(functionDeclarationHasName)
   )
+
   const fromFunction = Option.toArray(functionDeclaration)
+
   const fromVariables = pipe(
     Option.liftPredicate(ts.isVariableStatement)(statement),
     Option.map((variableStatement) =>
@@ -113,7 +114,9 @@ const algorithmsInStatement = (
         }
       )
     ),
-    Option.getOrElse(Function.constant([] as ReadonlyArray<ts.VariableDeclaration>))
+    Option.getOrElse(
+      Function.constant([] as ReadonlyArray<ts.VariableDeclaration>)
+    )
   )
 
   return Array.appendAll(fromFunction, fromVariables)
@@ -126,7 +129,9 @@ const dataStructureInStatement = (
     Option.liftPredicate(ts.isClassDeclaration)(statement),
     Option.filter(classDeclarationIsDataStructure)
   )
+
   const asInterface = Option.liftPredicate(ts.isInterfaceDeclaration)(statement)
+
   const asObjectAlias = pipe(
     Option.liftPredicate(ts.isTypeAliasDeclaration)(statement),
     Option.filter(typeAliasIsObjectDataStructure)

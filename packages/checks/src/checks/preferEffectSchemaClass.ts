@@ -1,20 +1,29 @@
 import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
 import {
-  outermostTransparentWrapper
-} from "./support/tsNode.js"
-import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
-import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
-import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
+  nodeSubscriptions,
+  withProgramIndex
+} from "@better-typescript/core/engine/check"
+import { outermostTransparentWrapper } from "./support/tsNode.js"
+import {
+  foldAst,
+  isProjectSourceFile,
+  type AstFold
+} from "@better-typescript/core/engine/sources"
+import {
+  detection,
+  toRelativeFileName
+} from "@better-typescript/core/engine/location"
+import type {
+  CheckContext,
+  Subscription
+} from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import {
-  fixtureRefactorExamples
-} from "../fixtureExamples.js"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
@@ -34,29 +43,34 @@ const isProjectObjectTypeDeclaration = (
   declaration: ts.Declaration
 ): boolean => {
   const sourceFile = declaration.getSourceFile()
-    const conditions = [
+
+  const conditions = [
     ts.isInterfaceDeclaration(declaration),
     ts.isTypeAliasDeclaration(declaration) &&
       ts.isTypeLiteralNode(declaration.type)
   ]
-const isRelevantDeclaration = Array.some(conditions, Boolean)
+
+  const isRelevantDeclaration = Array.some(conditions, Boolean)
 
   return isProjectSourceFile(sourceFile) && isRelevantDeclaration
 }
 
 const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean =>
-  Array.some((symbol.declarations ?? []), isProjectObjectTypeDeclaration)
+  Array.some(symbol.declarations ?? [], isProjectObjectTypeDeclaration)
 
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
+
   const directSymbol = pipe(
     Option.fromNullable(symbol),
     Option.filter(isProjectObjectTypeSymbol)
   )
+
   const aliasSymbol = pipe(
     Option.fromNullable(type.aliasSymbol),
     Option.filter(isProjectObjectTypeSymbol)
   )
+
   const fallbackAlias = Function.constant(aliasSymbol)
 
   return Option.orElse(directSymbol, fallbackAlias)
@@ -108,10 +122,13 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   const matchesLiteralShape =
     (literal: ts.ObjectLiteralExpression) =>
     (type: ts.Type): boolean => {
-        const propertyNames = Array.filterMap(literal.properties, namedPropertyText)
+      const propertyNames = Array.filterMap(
+        literal.properties,
+        namedPropertyText
+      )
 
-        return Array.every(propertyNames, typeHasProperty(type))
-      }
+      return Array.every(propertyNames, typeHasProperty(type))
+    }
 
   const candidateTypes =
     (literal: ts.ObjectLiteralExpression) =>
@@ -149,6 +166,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.TypeReference): ReadonlyArray<ts.Type> => {
       const typeArguments = checker.getTypeArguments(declaredMember)
+
       const parameterPosition = pipe(
         Array.findFirstIndex(
           typeArguments,
@@ -161,7 +179,10 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         return []
       }
 
-      const matchingMembers = Array.filter(contextualMembers, sameTypeReferenceTarget(declaredMember))
+      const matchingMembers = Array.filter(
+        contextualMembers,
+        sameTypeReferenceTarget(declaredMember)
+      )
 
       return Array.filterMap(matchingMembers, typeArgumentAt(parameterPosition))
     }
@@ -221,30 +242,40 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     ): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullable(contextualType)
+
       const boxedTypes = pipe(
         Option.gen(function* () {
           const argument = outermostTransparentWrapper(literal)
+
           const call = yield* Option.liftPredicate(ts.isCallExpression)(
             argument.parent
           )
+
           const argumentPosition = yield* Array.findFirstIndex(
             call.arguments,
             (candidate) => candidate === argument
           )
+
           const callContextualType = checker.getContextualType(call)
           const contextual = yield* Option.fromNullable(callContextualType)
+
           const signatures = checker
             .getTypeAtLocation(call.expression)
             .getCallSignatures()
 
-          return Array.flatMap(signatures, signatureBoxedTypes(argumentPosition)(contextual))
+          return Array.flatMap(
+            signatures,
+            signatureBoxedTypes(argumentPosition)(contextual)
+          )
         }),
         Option.getOrElse(Function.constant([]))
       )
+
       const contextualCandidates = pipe(
         Option.toArray(directContextualType),
         Array.appendAll(boxedTypes)
       )
+
       const targetTypes = Array.flatMap(
         contextualCandidates,
         candidateTypes(literal)
@@ -263,7 +294,10 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   ): ReadonlyArray<readonly [ts.Symbol, string]> => {
     const literals = foldAst(addObjectLiteral)(sourceFile)([])
 
-    return Array.flatMap(literals, literalConstructionEntries(sourceFile.fileName))
+    return Array.flatMap(
+      literals,
+      literalConstructionEntries(sourceFile.fileName)
+    )
   }
 
   const programSourceFiles = context.program.getSourceFiles()
@@ -290,6 +324,7 @@ const objectTypeDeclarationMatches =
         Option.map((constructionFileName) => {
           const typeName = declaration.name.text
           const exampleFile = toRelative(constructionFileName)
+
           const kindLabel = ts.isInterfaceDeclaration(declaration)
             ? "an interface"
             : "a type alias"
@@ -330,6 +365,7 @@ const schemaClassListeners = (
   const interfaceListeners = nodeSubscriptions([
     ts.SyntaxKind.InterfaceDeclaration
   ])(ts.isInterfaceDeclaration)(objectTypeDeclarationMatches(index))
+
   const typeAliasListeners = nodeSubscriptions([
     ts.SyntaxKind.TypeAliasDeclaration
   ])(isObjectTypeAliasDeclaration)(objectTypeDeclarationMatches(index))
