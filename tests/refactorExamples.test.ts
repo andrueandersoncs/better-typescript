@@ -4,10 +4,10 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
-import { fixtureExampleRoot, fixturesRoot } from "../src/engine/example.js"
-import { runCheckOnProject } from "../src/engine/report.js"
-import { loadProject } from "../src/project/loadProject.js"
-import { defaultWiring } from "../src/preset/defaultWiring.js"
+import { fixtureExampleRoot, fixturesRoot } from "@better-typescript/checks/fixtureExamples"
+import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 

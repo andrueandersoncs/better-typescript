@@ -28,7 +28,7 @@ interface CloseResult {
 const spawnCli = (
   args: ReadonlyArray<string>
 ): ChildProcessWithoutNullStreams => {
-  const nodeArgs = ["--import", "tsx", "src/index.ts", ...args]
+  const nodeArgs = ["--import", "tsx", "packages/cli/src/index.ts", ...args]
 
   const child = spawn(process.execPath, nodeArgs, {
     cwd: repoRoot,

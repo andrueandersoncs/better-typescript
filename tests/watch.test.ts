@@ -15,7 +15,7 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import { Location, locateNode } from "../src/engine/location.js"
+import { Location, locateNode } from "@better-typescript/core/engine/location"
 import {
   AdviceReportKey,
   namedCheck,
@@ -26,19 +26,19 @@ import {
   type NamedCheck,
   type ReportKey,
   type Wiring
-} from "../src/engine/report.js"
+} from "@better-typescript/core/engine/report"
 import {
   exampleSnippet,
   refactorExample
-} from "../src/engine/example.js"
-import { checkFromSubscriptions, nodeSubscription, type Check } from "../src/engine/check.js"
-import { Detection } from "../src/engine/location.js"
+} from "@better-typescript/core/engine/example"
+import { checkFromSubscriptions, nodeSubscription, type Check } from "@better-typescript/core/engine/check"
+import { Detection } from "@better-typescript/core/engine/location"
 import {
   astNodes,
   contextFor,
   diffCheckableFiles
-} from "../src/engine/sources.js"
-import type { Advice } from "../src/engine/derive.js"
+} from "@better-typescript/core/engine/sources"
+import type { Advice } from "@better-typescript/core/engine/derive"
 import {
   ClearedEvent,
   EmptyReportEvent,
@@ -53,9 +53,9 @@ import {
   signalsEquivalence,
   watchReportFromWiring,
   type ReportEvent
-} from "../src/engine/watch.js"
-import { discoverWorkspace, loadProject } from "../src/project/loadProject.js"
-import type { LoadedProject } from "../src/project/loadProject.js"
+} from "@better-typescript/core/engine/watch"
+import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
+import type { LoadedProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")

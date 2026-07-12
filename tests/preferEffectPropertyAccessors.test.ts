@@ -2,10 +2,10 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
-import { loadProject } from "../src/project/loadProject.js"
-import { preferEffectPropertyAccessors } from "../src/checks/preferEffectPropertyAccessors.js"
-import type { Detection } from "../src/engine/location.js"
-import { runCheckOnProject } from "../src/engine/report.js"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { preferEffectPropertyAccessors } from "@better-typescript/checks/preferEffectPropertyAccessors"
+import type { Detection } from "@better-typescript/core/engine/location"
+import { runCheckOnProject } from "@better-typescript/core/engine/report"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,

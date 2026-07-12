@@ -4,9 +4,9 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
-import { reportFromWiring, type Wiring } from "../src/engine/report.js"
-import { loadProject } from "../src/project/loadProject.js"
-import { loadWiring, ProjectWiringError } from "../src/project/loadWiring.js"
+import { reportFromWiring, type Wiring } from "@better-typescript/core/engine/report"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { loadWiring, ProjectWiringError } from "@better-typescript/core/project/loadWiring"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
@@ -165,7 +165,7 @@ test("loadWiring keeps a custom config check through reportFromWiring", async ()
       projectDirectory,
       [
         'import { Stream } from "effect"',
-        'import { Detection, Location } from "../../src/engine/location.js"',
+        'import { Detection, Location } from "@better-typescript/core/engine/location"',
         "",
         "export default {",
         "  checks: [",

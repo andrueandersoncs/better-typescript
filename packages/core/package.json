@@ -1,0 +1,36 @@
+{
+  "name": "@better-typescript/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./engine/check": "./dist/engine/check.js",
+    "./engine/location": "./dist/engine/location.js",
+    "./engine/derive": "./dist/engine/derive.js",
+    "./engine/report": "./dist/engine/report.js",
+    "./engine/watch": "./dist/engine/watch.js",
+    "./engine/sources": "./dist/engine/sources.js",
+    "./engine/example": "./dist/engine/example.js",
+    "./project/loadProject": "./dist/project/loadProject.js",
+    "./project/loadWiring": "./dist/project/loadWiring.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "effect": "^3.21.3",
+    "jiti": "^2.7.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0 || ^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "typescript": "^6.0.3"
+  }
+}

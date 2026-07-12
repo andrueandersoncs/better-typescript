@@ -1,11 +1,11 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
 import { Chunk, Effect, Stream } from "effect"
-import { defaultDerive } from "../src/preset/defaultWiring.js"
-import { Detection } from "../src/engine/location.js"
-import type { Advice } from "../src/engine/derive.js"
-import { Location } from "../src/engine/location.js"
-import { Signal } from "../src/engine/report.js"
+import { defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
+import { Detection } from "@better-typescript/core/engine/location"
+import type { Advice } from "@better-typescript/core/engine/derive"
+import { Location } from "@better-typescript/core/engine/location"
+import { Signal } from "@better-typescript/core/engine/report"
 
 const range = (count: number): ReadonlyArray<number> =>
   Array.from({ length: count }, (_, index) => index + 1)

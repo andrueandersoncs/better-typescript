@@ -3,9 +3,9 @@ import { fileURLToPath } from "node:url"
 import { Effect, Stream } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
-import { reportFromWiring } from "../src/engine/report.js"
-import { defaultWiring } from "../src/preset/defaultWiring.js"
-import { loadProject } from "../src/project/loadProject.js"
+import { reportFromWiring } from "@better-typescript/core/engine/report"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { loadProject } from "@better-typescript/core/project/loadProject"
 
 const benchDir = path.dirname(fileURLToPath(import.meta.url))
 const cliArguments = process.argv.slice(2)

@@ -1,0 +1,43 @@
+import { Array, Stream } from "effect"
+import {
+  Advice,
+  adviceLocation,
+  byFile,
+  collidingLines,
+  deriveSignals
+} from "@better-typescript/core/engine/derive"
+import type { NamedDetection } from "@better-typescript/core/engine/derive"
+
+const collidingFileAdvice = (
+  signals: ReadonlyArray<NamedDetection>
+): ReadonlyArray<Advice> => {
+  const files = byFile(signals)
+
+  return Array.flatMap(files, (file) => {
+    const evidence = collidingLines(file.elements)
+    const hasEnoughCollisions = evidence.length >= 2
+
+    if (hasEnoughCollisions) {
+      const location = adviceLocation(file.path)
+      const advice = new Advice({
+        location,
+        level: "file",
+        title: "colliding fixes on shared expressions",
+        remediation:
+          "Multiple rules dispute the same expressions: each expression is doing two jobs, and " +
+          "any edit that appeases one rule trips another. Restructure instead of appeasing — " +
+          "split the expression, or annotate the value with the consuming library's own " +
+          "callback type so the contract is the consumer's.",
+        evidence
+      })
+
+      return [advice]
+    }
+
+    return []
+  })
+}
+
+export const sideEffectLaundering = (
+  signals: Stream.Stream<NamedDetection, Error>
+): Stream.Stream<Advice, Error> => deriveSignals(collidingFileAdvice)(signals)

@@ -3,29 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "bin": {
-    "better-typescript": "./dist/index.js"
-  },
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "dev": "tsx src/index.ts --pretty",
-    "start": "tsx src/index.ts",
-    "test": "node --import tsx --test tests/**/*.test.ts",
-    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p examples/extend-preset/tsconfig.json",
-    "bench": "tsx bench/rules.bench.ts",
+    "dev": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts --pretty",
+    "start": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts",
+    "watch": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts --pretty --watch",
+    "build": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && npm run build -w @better-typescript/cli",
+    "typecheck": "npm run build && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p examples/extend-preset/tsconfig.json",
+    "test": "npm run build && node --import tsx --test tests/**/*.test.ts",
+    "bench": "npm run build && tsx bench/rules.bench.ts",
     "prepare": "npm run build",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "watch": "tsx src/index.ts --pretty --watch"
-  },
-  "dependencies": {
-    "@effect/cli": "^0.75.2",
-    "@effect/platform-node": "^0.107.0",
-    "effect": "^3.21.3",
-    "jiti": "^2.7.0"
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
@@ -33,21 +24,5 @@
     "tinybench": "^6.0.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0 || ^6.0.0"
-  },
-  "exports": {
-    "./engine/check": "./dist/engine/check.js",
-    "./engine/location": "./dist/engine/location.js",
-    "./engine/derive": "./dist/engine/derive.js",
-    "./engine/report": "./dist/engine/report.js",
-    "./engine/watch": "./dist/engine/watch.js",
-    "./engine/sources": "./dist/engine/sources.js",
-    "./preset": "./dist/preset.js",
-    "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
-    "./checks/*": "./dist/checks/*.js",
-    "./package.json": "./package.json",
-    "./engine/example": "./dist/engine/example.js"
   }
 }

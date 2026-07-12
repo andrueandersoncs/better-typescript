@@ -1,19 +1,19 @@
 import { Stream, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck, type Check } from "better-typescript/engine/check"
-import { detection, type Detection } from "better-typescript/engine/location"
+import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
+import { detection, type Detection } from "@better-typescript/core/engine/location"
 import {
   Advice,
   adviceLocation,
   deriveSignals,
   evidenceItem
-} from "better-typescript/engine/derive"
+} from "@better-typescript/core/engine/derive"
 import {
   exampleSnippet,
   refactorExample
-} from "better-typescript/engine/example"
-import { makeWiring, namedCheck, signalOf } from "better-typescript/engine/report"
-import { defaultWiring } from "better-typescript/preset/defaultWiring"
+} from "@better-typescript/core/engine/example"
+import { makeWiring, namedCheck, signalOf } from "@better-typescript/core/engine/report"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 
 // This example is documentation. Copy it to a consumer project's
 // better-typescript.config.ts to load it. It stays under examples/ so this

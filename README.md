@@ -105,27 +105,35 @@ printing the initial report.
 - `--watch`: keep running after the initial report, watch TypeScript project
   changes, and emit changed/cleared deltas.
 
+## Packages
+
+This repository is an npm workspaces monorepo:
+
+- `@better-typescript/core` — analysis kernel (`engine/*`, `project/*`)
+- `@better-typescript/checks` — built-in checks and default preset wiring
+- `@better-typescript/cli` — `better-typescript` binary
+
 ## Configuration and extension
 
 Better TypeScript exposes defining modules directly. Do not re-export
-across files, and do not import from `better-typescript/src/...`.
+across files, and do not import from package `src/` paths.
 
-- `better-typescript/engine/check`: `Check`, `CheckContext`, `nodeCheck`,
+- `@better-typescript/core/engine/check`: `Check`, `CheckContext`, `nodeCheck`,
   `fileCheck`, `checkFromSubscriptions`, `combineAll`, `nodeSubscriptions`,
   `fileSubscriptions`, `withProgramIndex`
-- `better-typescript/engine/location`: `Detection`, `Location`, `detection`,
+- `@better-typescript/core/engine/location`: `Detection`, `Location`, `detection`,
   `locateNode`
-- `better-typescript/engine/derive`: `Advice`, `deriveSignals`,
+- `@better-typescript/core/engine/derive`: `Advice`, `deriveSignals`,
   `adviceLocation`, `evidenceItem`, and related derivation helpers
-- `better-typescript/engine/report`: `NamedCheck`, `Signal`, `Wiring`,
+- `@better-typescript/core/engine/report`: `NamedCheck`, `Signal`, `Wiring`,
   `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`, `withFallbackAdvice`,
   `reportFromWiring`
-- `better-typescript/engine/watch`: `watchReportFromWiring`, report events
-- `better-typescript/engine/sources`: program/source stream helpers
-- `better-typescript/preset`: default `report` / `watchReport` runners
-- `better-typescript/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
+- `@better-typescript/core/engine/watch`: `watchReportFromWiring`, report events
+- `@better-typescript/core/engine/sources`: program/source stream helpers
+- `@better-typescript/checks/preset`: default `report` / `watchReport` runners
+- `@better-typescript/checks/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
   `defaultWiring`
-- `better-typescript/checks/<name>`: individual check modules
+- `@better-typescript/checks/<name>`: individual check modules
 
 ### Config resolution
 
@@ -142,7 +150,7 @@ lookup in parent directories, no `package.json` field, no `extends` chain, and
 no dynamic plugin discovery.
 
 If no config file exists, the CLI uses `defaultWiring` from
-`better-typescript/preset/defaultWiring`.
+`@better-typescript/checks/preset/defaultWiring`.
 
 A config may export any of these shapes:
 
@@ -188,13 +196,13 @@ preset fleet with one local reported check:
 ```ts
 import { Stream } from "effect"
 import * as ts from "typescript"
-import { nodeCheck, type Check } from "better-typescript/engine/check"
-import { detection, type Detection } from "better-typescript/engine/location"
+import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
+import { detection, type Detection } from "@better-typescript/core/engine/location"
 import {
   exampleSnippet,
   refactorExample
-} from "better-typescript/engine/example"
-import { makeWiring, namedCheck } from "better-typescript/engine/report"
+} from "@better-typescript/core/engine/example"
+import { makeWiring, namedCheck } from "@better-typescript/core/engine/report"
 
 const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   const expression = node.expression
@@ -247,7 +255,7 @@ depend on derived advice, or create check-to-check dependencies.
 
 To extend the built-in fleet, spread `defaultChecks` and add local `NamedCheck`
 values. To cherry-pick, build a new `checks` array from `defaultChecks` or import
-individual checks from `better-typescript/checks/<name>` and omit the entries you
+individual checks from `@better-typescript/checks/<name>` and omit the entries you
 do not want. Never shadow a preset check by reusing its name; names are one
 global lookup namespace.
 
@@ -258,13 +266,13 @@ available through `signalOf(signals)(name)`.
 
 ```ts
 import { Stream, pipe } from "effect"
-import type { Detection } from "better-typescript/engine/location"
+import type { Detection } from "@better-typescript/core/engine/location"
 import {
   Advice,
   adviceLocation,
   deriveSignals,
   evidenceItem
-} from "better-typescript/engine/derive"
+} from "@better-typescript/core/engine/derive"
 import {
   makeWiring,
   signalOf,
@@ -272,8 +280,8 @@ import {
   type NamedCheck,
   type Signal,
   type Wiring
-} from "better-typescript/engine/report"
-import { defaultChecks, defaultDerive } from "better-typescript/preset/defaultWiring"
+} from "@better-typescript/core/engine/report"
+import { defaultChecks, defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
 import { noConsoleLog } from "./checks/noConsoleLog.js"
 
 const countAtPath = (
