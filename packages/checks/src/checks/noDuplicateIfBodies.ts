@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -31,14 +31,17 @@ const tokenTexts =
 
     return isLeafToken
       ? [node.getText(sourceFile)]
-      : children.flatMap(tokenTexts(sourceFile))
+      : Array.flatMap(children, tokenTexts(sourceFile))
   }
 
 const duplicateIfMatches = (context: CheckContext) => {
   const fingerprint = (statement: ts.Statement): string => {
     const unwrappedBody = unwrapSingleStatementBlock(statement)
 
-    return tokenTexts(context.sourceFile)(unwrappedBody).join(" ")
+    const textsForFile = tokenTexts(context.sourceFile)
+    const tokens = textsForFile(unwrappedBody)
+
+    return Array.join(tokens, " ")
   }
   const conditionText = (ifStatement: ts.IfStatement): string =>
     ifStatement.expression.getText(context.sourceFile)
@@ -49,16 +52,16 @@ const duplicateIfMatches = (context: CheckContext) => {
       fingerprint(secondIfStatement.thenStatement)
   const combineConditions =
     (firstIfStatement: ts.IfStatement) =>
-    (ifStatement: ts.IfStatement): string =>
-      [conditionText(firstIfStatement), conditionText(ifStatement)].join(" || ")
+    (ifStatement: ts.IfStatement): string => {
+      const values = [conditionText(firstIfStatement), conditionText(ifStatement)]
+      return Array.join(values, " || ")
+    }
   const guardDup =
     (ifStatement: ts.IfStatement) =>
     (previousIfStatement: ts.IfStatement): Option.Option<string> => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
-      const isMergeableDuplicate = [hasDuplicateBody, bodyExitsScope].every(
-        Boolean
-      )
+      const isMergeableDuplicate = Array.every([hasDuplicateBody, bodyExitsScope], Boolean)
       const combinedCondition =
         combineConditions(previousIfStatement)(ifStatement)
 
@@ -93,11 +96,17 @@ const duplicateIfMatches = (context: CheckContext) => {
     const guardDuplicateMatch = isGuardIfStatement(ifStatement)
       ? pipe(
           Option.liftPredicate(ts.isBlock)(ifStatement.parent),
-          Option.flatMap((block: ts.Block) => {
-            const statementIndex = block.statements.indexOf(ifStatement)
-
-            return Option.fromNullable(block.statements[statementIndex - 1])
-          }),
+          Option.flatMap((block: ts.Block) =>
+            pipe(
+              Array.findFirstIndex(
+                block.statements,
+                (statement) => statement === ifStatement
+              ),
+              Option.flatMap((statementIndex) =>
+                Option.fromNullable(block.statements[statementIndex - 1])
+              )
+            )
+          ),
           Option.filter(isGuardIfStatement),
           Option.flatMap(guardDup(ifStatement))
         )

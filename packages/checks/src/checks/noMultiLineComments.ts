@@ -1,4 +1,4 @@
-import { Array as Arr, Option, Struct } from "effect"
+import { Array, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location"
@@ -44,16 +44,16 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const comments = sourceComments(sourceFile)
-  const blockComments = Arr.filter(comments, (comment) => {
+  const blockComments = Array.filter(comments, (comment) => {
     const isBlock = comment.kind === ts.SyntaxKind.MultiLineCommentTrivia
     const hasNewline = commentText(text)(comment).includes("\n")
     const isJsDoc = isJsDocComment(text)(comment)
 
-    return [isBlock, hasNewline, !isJsDoc].every(Boolean)
+    return Array.every([isBlock, hasNewline, !isJsDoc], Boolean)
   })
-  const blockPositions = Arr.map(blockComments, commentPosition)
-  const singleLineComments = Arr.filter(comments, isSingleLineComment)
-  const adjacentRunPositions = Arr.filterMap(
+  const blockPositions = Array.map(blockComments, commentPosition)
+  const singleLineComments = Array.filter(comments, isSingleLineComment)
+  const adjacentRunPositions = Array.filterMap(
     singleLineComments,
     (current, index) => {
       const hasNextAdjacent =
@@ -74,9 +74,9 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
       return shouldFlag ? Option.some(current.pos) : Option.none()
     }
   )
-  const positions = blockPositions.concat(adjacentRunPositions)
+  const positions = Array.appendAll(blockPositions, adjacentRunPositions)
 
-  return Arr.map(positions, (pos) => {
+  return Array.map(positions, (pos) => {
     const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(pos)
     const location = new Location({
       path: fileName,

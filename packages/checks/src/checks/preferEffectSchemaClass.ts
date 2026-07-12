@@ -33,17 +33,18 @@ const isProjectObjectTypeDeclaration = (
   declaration: ts.Declaration
 ): boolean => {
   const sourceFile = declaration.getSourceFile()
-  const isRelevantDeclaration = [
+    const conditions = [
     ts.isInterfaceDeclaration(declaration),
     ts.isTypeAliasDeclaration(declaration) &&
       ts.isTypeLiteralNode(declaration.type)
-  ].some(Boolean)
+  ]
+const isRelevantDeclaration = Array.some(conditions, Boolean)
 
   return isProjectSourceFile(sourceFile) && isRelevantDeclaration
 }
 
 const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean =>
-  (symbol.declarations ?? []).some(isProjectObjectTypeDeclaration)
+  Array.some((symbol.declarations ?? []), isProjectObjectTypeDeclaration)
 
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
@@ -78,8 +79,6 @@ const typeMembers = (type: ts.Type): ReadonlyArray<ts.Type> =>
 const isSignatureTypeParameter = (type: ts.Type): boolean =>
   type.isTypeParameter()
 
-const isFoundIndex = (index: number): boolean => index >= 0
-
 const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (
   literals,
   node
@@ -107,16 +106,17 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
 
   const matchesLiteralShape =
     (literal: ts.ObjectLiteralExpression) =>
-    (type: ts.Type): boolean =>
-      Array.filterMap(literal.properties, namedPropertyText).every(
-        typeHasProperty(type)
-      )
+    (type: ts.Type): boolean => {
+        const propertyNames = Array.filterMap(literal.properties, namedPropertyText)
+
+        return Array.every(propertyNames, typeHasProperty(type))
+      }
 
   const candidateTypes =
     (literal: ts.ObjectLiteralExpression) =>
     (contextualType: ts.Type): ReadonlyArray<ts.Type> =>
       contextualType.isUnion()
-        ? contextualType.types.filter(matchesLiteralShape(literal))
+        ? Array.filter(contextualType.types, matchesLiteralShape(literal))
         : [contextualType]
 
   const hasTypeReferenceTarget =
@@ -147,17 +147,20 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     (typeParameter: ts.Type) =>
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.TypeReference): ReadonlyArray<ts.Type> => {
-      const parameterPosition = checker
-        .getTypeArguments(declaredMember)
-        .indexOf(typeParameter)
+      const typeArguments = checker.getTypeArguments(declaredMember)
+      const parameterPosition = pipe(
+        Array.findFirstIndex(
+          typeArguments,
+          (candidate) => candidate === typeParameter
+        ),
+        Option.getOrElse(() => -1)
+      )
 
       if (parameterPosition < 0) {
         return []
       }
 
-      const matchingMembers = contextualMembers.filter(
-        sameTypeReferenceTarget(declaredMember)
-      )
+      const matchingMembers = Array.filter(contextualMembers, sameTypeReferenceTarget(declaredMember))
 
       return Array.filterMap(matchingMembers, typeArgumentAt(parameterPosition))
     }
@@ -187,9 +190,11 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       const declaredReturn = signature.getReturnType()
       const contextualMembers = typeMembers(contextual)
 
-      return typeMembers(declaredReturn).flatMap(
-        memberExtractions(typeParameter)(contextualMembers)
-      )
+      const declaredMembers = typeMembers(declaredReturn)
+      const extractForParameter = memberExtractions(typeParameter)
+      const extractMembers = extractForParameter(contextualMembers)
+
+      return Array.flatMap(declaredMembers, extractMembers)
     }
 
   const signatureBoxedTypes =
@@ -221,29 +226,35 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
           const call = yield* Option.liftPredicate(ts.isCallExpression)(
             argument.parent
           )
-          const argumentIndex = call.arguments.indexOf(argument)
-          const argumentPosition =
-            yield* Option.liftPredicate(isFoundIndex)(argumentIndex)
+          const argumentPosition = yield* Array.findFirstIndex(
+            call.arguments,
+            (candidate) => candidate === argument
+          )
           const callContextualType = checker.getContextualType(call)
           const contextual = yield* Option.fromNullable(callContextualType)
           const signatures = checker
             .getTypeAtLocation(call.expression)
             .getCallSignatures()
 
-          return signatures.flatMap(
-            signatureBoxedTypes(argumentPosition)(contextual)
-          )
+          return Array.flatMap(signatures, signatureBoxedTypes(argumentPosition)(contextual))
         }),
         Option.getOrElse(Function.constant([]))
       )
-      const targetTypes = pipe(
+      const contextualCandidates = pipe(
         Option.toArray(directContextualType),
         Array.appendAll(boxedTypes)
-      ).flatMap(candidateTypes(literal))
-
-      return Array.filterMap(targetTypes, typeObjectTypeSymbol).map(
-        symbolFileEntry(fileName)
       )
+      const targetTypes = Array.flatMap(
+        contextualCandidates,
+        candidateTypes(literal)
+      )
+
+      const objectTypeSymbols = Array.filterMap(
+        targetTypes,
+        typeObjectTypeSymbol
+      )
+
+      return Array.map(objectTypeSymbols, symbolFileEntry(fileName))
     }
 
   const fileConstructionEntries = (
@@ -251,14 +262,14 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   ): ReadonlyArray<readonly [ts.Symbol, string]> => {
     const literals = foldAst(addObjectLiteral)(sourceFile)([])
 
-    return literals.flatMap(literalConstructionEntries(sourceFile.fileName))
+    return Array.flatMap(literals, literalConstructionEntries(sourceFile.fileName))
   }
 
-  return context.program
-    .getSourceFiles()
-    .filter(isProjectSourceFile)
-    .flatMap(fileConstructionEntries)
-    .reduce(addConstructionEntry, emptyIndex)
+  const programSourceFiles = context.program.getSourceFiles()
+  const filtered = Array.filter(programSourceFiles, isProjectSourceFile)
+  const flatMapped = Array.flatMap(filtered, fileConstructionEntries)
+
+  return Array.reduce(flatMapped, emptyIndex, addConstructionEntry)
 }
 
 const objectTypeDeclarationMatches =

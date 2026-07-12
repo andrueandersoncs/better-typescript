@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -31,9 +31,7 @@ const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
-  const hasEffectModuleDeclaration = (symbol.declarations ?? []).some(
-    isEffectModuleDeclaration
-  )
+  const hasEffectModuleDeclaration = Array.some((symbol.declarations ?? []), isEffectModuleDeclaration)
 
   return isNamedEffect && hasEffectModuleDeclaration
 }

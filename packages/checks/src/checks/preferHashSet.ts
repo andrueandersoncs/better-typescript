@@ -1,4 +1,4 @@
-import { Function, Option, Struct, pipe } from "effect"
+import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isInAmbientContext, typeNameIdentifier } from "./support/tsNode.js"
@@ -28,7 +28,7 @@ const constructorHint =
 const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
 
 const isSetTypeName = (id: ts.Identifier): boolean =>
-  setTypeNames.includes(id.text)
+  Array.contains(setTypeNames, id.text)
 
 const typeRefHint =
   "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
@@ -59,7 +59,7 @@ const setMatches = (context: CheckContext) => {
       const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)
       const escapesExternally =
         isSetConstruction && constructionEscapes(node)
-      const isReportable = [isSetConstruction, !escapesExternally].every(Boolean)
+      const isReportable = Array.every([isSetConstruction, !escapesExternally], Boolean)
 
       return isReportable
         ? [

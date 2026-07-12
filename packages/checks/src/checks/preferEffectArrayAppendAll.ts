@@ -1,3 +1,4 @@
+import { Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
@@ -36,16 +37,18 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
 
-    const emptyThenNonEmpty = [
+    const emptyThenNonEmptyConditions = [
       isEmptyArrayLiteral(expression.whenTrue),
       isNonEmptyArrayBranch(expression.whenFalse)
-    ].every(Boolean)
-    const nonEmptyThenEmpty = [
+    ]
+    const emptyThenNonEmpty = Array.every(emptyThenNonEmptyConditions, Boolean)
+    const nonEmptyThenEmptyConditions = [
       isNonEmptyArrayBranch(expression.whenTrue),
       isEmptyArrayLiteral(expression.whenFalse)
-    ].every(Boolean)
+    ]
+    const nonEmptyThenEmpty = Array.every(nonEmptyThenEmptyConditions, Boolean)
 
-    return [emptyThenNonEmpty, nonEmptyThenEmpty].some(Boolean)
+    return Array.some([emptyThenNonEmpty, nonEmptyThenEmpty], Boolean)
       ? [match({ node: spread, message, hint })]
       : []
   }

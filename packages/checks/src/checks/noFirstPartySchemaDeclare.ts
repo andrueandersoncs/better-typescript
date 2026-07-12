@@ -1,4 +1,4 @@
-import { Function, Option, Struct, pipe } from "effect"
+import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isFirstPartySymbol } from "./support/tsNode.js"
@@ -44,7 +44,7 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
   const isConcreteType = !type.isTypeParameter()
 
-  return [isFirstParty, isDataStructure, isConcreteType].every(Boolean)
+  return Array.every([isFirstParty, isDataStructure, isConcreteType], Boolean)
 }
 
 const symbolName = Struct.get("name")

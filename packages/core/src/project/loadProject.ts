@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Data, Effect, Function, HashSet, Option, Schema } from "effect"
+import { Array, Data, Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { TsProgram } from "../engine/tsSchema.js"
 
@@ -104,7 +104,7 @@ export const loadProject: (
 ) => Effect.Effect<LoadedWorkspace, Error> = Effect.fn("loadProject")(
   function* (projectPath: string) {
     const workspace = yield* discoverWorkspace(projectPath)
-    const projects = workspace.projects.map(createProject)
+    const projects = Array.map(workspace.projects, createProject)
 
     return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
   }
@@ -168,7 +168,7 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
     return discoverConfig(referencedConfigPath, ancestorConfigPaths)
   })
 
-  return projects.flat()
+  return Array.flatten(projects)
 })
 
 const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>

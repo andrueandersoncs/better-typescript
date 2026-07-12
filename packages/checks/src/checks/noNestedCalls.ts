@@ -1,4 +1,4 @@
-import { HashSet, Option, flow, pipe } from "effect"
+import { Array, flow, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isSameNode } from "./support/tsNode.js"
@@ -43,9 +43,11 @@ const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   const isCallLike = isCallLikeExpression(parent)
 
   if (isCallLike) {
-    return Option.liftPredicate((call: CallLikeExpression) =>
-      callArguments(call).some(isSameNode(node))
-    )(parent)
+    return Option.liftPredicate((call: CallLikeExpression) => {
+      const args = callArguments(call)
+
+      return Array.some(args, isSameNode(node))
+    })(parent)
   }
 
   const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)

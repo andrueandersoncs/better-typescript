@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Effect, Function, Option, Schema, Struct, pipe } from "effect"
+import { Array, Effect, Function, pipe, Option, Schema, Struct } from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring, makeWiring } from "../engine/report.js"
 import type { Check } from "../engine/check.js"
@@ -48,7 +48,7 @@ const isRecord = (value: unknown): value is ModuleRecord => {
   const isObject = typeof value === "object"
   const isPresent = value !== null
 
-  return [isObject, isPresent].every(Boolean)
+  return Array.every([isObject, isPresent], Boolean)
 }
 
 const isFunctionValue = (value: unknown): value is WiringFactory =>
@@ -215,12 +215,12 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
-  return [
+  return Array.every([
     hasStringName,
     hasFunctionCheck,
     hasValidReported,
     hasValidExamples
-  ].every(Boolean)
+  ], Boolean)
 }
 
 const invalidNamedCheck = (value: unknown): boolean => {
@@ -258,7 +258,10 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
   }
 
   const checks = value as ReadonlyArray<unknown>
-  const invalidIndex = checks.findIndex(invalidNamedCheck)
+  const invalidIndex = pipe(
+    Array.findFirstIndex(checks, invalidNamedCheck),
+    Option.getOrElse(() => -1)
+  )
   const hasInvalidCheck = invalidIndex >= 0
 
   if (hasInvalidCheck) {
@@ -267,7 +270,7 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
     return yield* failConfig(configPath, reason)
   }
 
-  return checks.map(namedCheckFrom)
+  return Array.map(checks, namedCheckFrom)
 })
 
 const invalidWiringShapeReason =

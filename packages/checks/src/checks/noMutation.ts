@@ -94,14 +94,12 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? []
-  const sourceFiles = declarations.map(declarationSourceFile)
+  const sourceFiles = Array.map(declarations, declarationSourceFile)
   const hasDeclarations = sourceFiles.length > 0
-  const isDeclaredInProject = sourceFiles.some(isProjectFile)
-  const isEcmaScriptBuiltin = sourceFiles.some(isEcmaScriptLibFile)
+  const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
+  const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
-  return [hasDeclarations, !isDeclaredInProject, !isEcmaScriptBuiltin].every(
-    Boolean
-  )
+  return Array.every([hasDeclarations, !isDeclaredInProject, !isEcmaScriptBuiltin], Boolean)
 }
 
 // Follow an import alias because its local declaration cannot determine whether the imported value is external.
@@ -120,11 +118,11 @@ const isUncontrolledType =
 
     // Exempt a union only when every member is uncontrolled because any member can occur at runtime.
     if (withoutNullability.isUnion()) {
-      return withoutNullability.types.every(isUncontrolledType(checker))
+      return Array.every(withoutNullability.types, isUncontrolledType(checker))
     }
 
     if (withoutNullability.isIntersection()) {
-      return withoutNullability.types.some(isUncontrolledType(checker))
+      return Array.some(withoutNullability.types, isUncontrolledType(checker))
     }
 
     // Prefer getSymbol because aliasSymbol names only a project-local spelling, not the declaration that shaped the value.
@@ -174,13 +172,15 @@ const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.DeleteExpression
 ]
 
-const isMutationCandidate = (node: ts.Node): node is MutationNode =>
-  [
+const isMutationCandidate = (node: ts.Node): node is MutationNode => {
+  const conditions = [
     ts.isBinaryExpression(node),
     ts.isPrefixUnaryExpression(node),
     ts.isPostfixUnaryExpression(node),
     ts.isDeleteExpression(node)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions, Boolean)
+}
 
 const mutationMatches = (context: CheckContext) => {
   const checker = context.checker
@@ -201,8 +201,8 @@ const mutationMatches = (context: CheckContext) => {
       Option.map(resolveAlias(checker)),
       Option.map((symbol): MutationScope => {
         const declarations = symbol.getDeclarations() ?? []
-        const sourceFiles = declarations.map(declarationSourceFile)
-        const isBuiltin = sourceFiles.some(isEcmaScriptLibFile)
+        const sourceFiles = Array.map(declarations, declarationSourceFile)
+        const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
         const declaredScope = pipe(
           Option.fromNullable(declarations[0]),
           Option.map((declaration): MutationScope => {
@@ -213,7 +213,7 @@ const mutationMatches = (context: CheckContext) => {
             const isModuleScoped = ts.isSourceFile(declarationBoundary)
             const isCaptured = declarationBoundary !== mutationBoundary
 
-            return [isModuleScoped, isCaptured].some(Boolean)
+            return Array.some([isModuleScoped, isCaptured], Boolean)
               ? "shared-state"
               : "local"
           }),

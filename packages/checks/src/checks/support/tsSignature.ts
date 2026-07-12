@@ -75,7 +75,8 @@ export const argumentConsumingCall = (
   const parent = node.parent
 
   if (isCallLikeExpression(parent)) {
-    const isArgument = callArguments(parent).some(isSameNode(node))
+    const args = callArguments(parent)
+    const isArgument = Array.some(args, isSameNode(node))
 
     return isArgument ? Option.some(parent) : Option.none()
   }
@@ -104,7 +105,7 @@ export const isExternalPackageArgument =
           const isDefaultLibrary =
             program.isSourceFileDefaultLibrary(sourceFile)
 
-          return [isExternal, !isDefaultLibrary].every(Boolean)
+          return Array.every([isExternal, !isDefaultLibrary], Boolean)
         })
       })
     )
@@ -145,12 +146,13 @@ const nameNodeEscapes =
               )
               const isExternalArgument =
                 isExternalArgumentPosition(checker)(identifier)
-
-              return [
+              const escapeConditions = [
                 !isDeclarationName,
                 refersToSymbol,
                 isExternalArgument
-              ].every(Boolean)
+              ]
+
+              return Array.every(escapeConditions, Boolean)
             })
           )
           const childMatch = isEscapingReference
@@ -263,5 +265,5 @@ const declarationInEffectPackage = (declaration: ts.Declaration): boolean => {
 export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? []
 
-  return declarations.some(declarationInEffectPackage)
+  return Array.some(declarations, declarationInEffectPackage)
 }

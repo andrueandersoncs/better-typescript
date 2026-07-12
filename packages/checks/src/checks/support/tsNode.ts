@@ -1,4 +1,4 @@
-import { Function, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
@@ -25,8 +25,8 @@ export const isFunctionInitializer = (
 
 export const isReturnTypeDeclaration = (
   node: ts.Node
-): node is ReturnTypeDeclaration =>
-  [
+): node is ReturnTypeDeclaration => {
+  const conditions = [
     ts.isFunctionDeclaration(node),
     ts.isFunctionExpression(node),
     ts.isArrowFunction(node),
@@ -35,7 +35,9 @@ export const isReturnTypeDeclaration = (
     ts.isCallSignatureDeclaration(node),
     ts.isFunctionTypeNode(node),
     ts.isGetAccessorDeclaration(node)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions, Boolean)
+}
 
 export const functionInitializer = (
   declaration: ts.VariableDeclaration
@@ -141,9 +143,9 @@ export const declarationSourceFile = (
 
 export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? []
-  const sourceFiles = declarations.map(declarationSourceFile)
+  const sourceFiles = Array.map(declarations, declarationSourceFile)
 
-  return sourceFiles.some(isProjectFile)
+  return Array.some(sourceFiles, isProjectFile)
 }
 
 export const typeNameIdentifier = (
@@ -159,11 +161,13 @@ export const isSameNode =
 const isExportKeyword = (modifier: ts.Modifier): boolean =>
   modifier.kind === ts.SyntaxKind.ExportKeyword
 
-export const hasExportModifier = (statement: ts.Statement): boolean =>
-  (ts.canHaveModifiers(statement)
+export const hasExportModifier = (statement: ts.Statement): boolean => {
+  const modifiers = ts.canHaveModifiers(statement)
     ? (ts.getModifiers(statement) ?? [])
     : []
-  ).some(isExportKeyword)
+
+  return Array.some(modifiers, isExportKeyword)
+}
 
 const isDeclareKeyword = (modifier: ts.ModifierLike): boolean =>
   modifier.kind === ts.SyntaxKind.DeclareKeyword
@@ -174,13 +178,13 @@ export const isInAmbientContext = (node: ts.Node): boolean => {
   const modifiers = ts.canHaveModifiers(node)
     ? (ts.getModifiers(node) ?? [])
     : []
-  const hasDeclareModifier = modifiers.some(isDeclareKeyword)
+  const hasDeclareModifier = Array.some(modifiers, isDeclareKeyword)
   const parent = Option.fromNullable<ts.Node>(node.parent)
   const parentIsAmbient = Option.exists(parent, isInAmbientContext)
 
-  return [
+  return Array.some([
     sourceFile.isDeclarationFile,
     hasDeclareModifier,
     parentIsAmbient
-  ].some(Boolean)
+  ], Boolean)
 }

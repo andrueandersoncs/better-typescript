@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -37,7 +37,7 @@ const functionKeywordMatches = (context: CheckContext) => {
           const symbol = yield* Option.fromNullable(nameSymbol)
           const decls = yield* Option.fromNullable(symbol.declarations)
 
-          return decls.filter(ts.isFunctionDeclaration)
+          return Array.filter(decls, ts.isFunctionDeclaration)
         })
 
         return !Option.exists(declarations, (decls) =>
@@ -46,7 +46,7 @@ const functionKeywordMatches = (context: CheckContext) => {
             const body = Option.fromNullable(candidate.body)
             const hasNoBody = Option.isNone(body)
 
-            return [!isImplementation, hasNoBody].every(Boolean)
+            return Array.every([!isImplementation, hasNoBody], Boolean)
           })
         )
       })
@@ -57,8 +57,11 @@ const functionKeywordMatches = (context: CheckContext) => {
       return []
     }
 
-    const keywordToken =
-      node.getChildren(sourceFile).find(isFunctionKeywordToken) ?? node
+    const children = node.getChildren(sourceFile)
+    const keywordToken = pipe(
+      Array.findFirst(children, isFunctionKeywordToken),
+      Option.getOrElse(Function.constant(node))
+    )
 
     return [
       match({

@@ -29,7 +29,7 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const hasEnoughFiles = directory.files.length >= 3
   const hasProjectShare = total * 5 >= directory.projectTotal * 3
 
-  return [hasEnoughSignals, hasEnoughFiles, hasProjectShare].every(Boolean)
+  return Array.every([hasEnoughSignals, hasEnoughFiles, hasProjectShare], Boolean)
 }
 
 const subsystemAdvice = (directory: DirectorySignals): Advice => {
@@ -118,7 +118,7 @@ const hotSubsystemAdvice = (
       const isDifferentPath = directory.path !== candidate.path
       const isNestedPath = directory.path.startsWith(`${candidate.path}/`)
 
-      return [isDifferentPath, isNestedPath].every(Boolean)
+      return Array.every([isDifferentPath, isNestedPath], Boolean)
     })
 
     return !hasHotDescendant

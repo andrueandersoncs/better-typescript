@@ -116,10 +116,12 @@ export const byFile = (
 export const parentDirectories = (filePath: string): ReadonlyArray<string> => {
   const normalized = filePath.replaceAll("\\", "/")
   const segments = normalized.split("/")
-  const parents = segments.slice(0, -1)
+  const parents = Array.dropRight(segments, 1)
 
-  return Array.map(parents, (_segment, index) =>
-    parents.slice(0, index + 1).join("/")
+  return Array.map(parents, (_segment, index) => {
+    const taken = Array.take(parents, index + 1)
+    return Array.join(taken, "/")
+  }
   )
 }
 
@@ -190,7 +192,7 @@ export const detectionAtPath =
 export const detectionsAtPath =
   (path: string) =>
   (elements: ReadonlyArray<Detection>): ReadonlyArray<Detection> =>
-    elements.filter(detectionAtPath(path))
+    Array.filter(elements, detectionAtPath(path))
 
 export const countDetectionsAtPath =
   (path: string) =>
@@ -215,7 +217,7 @@ const lineKey = (named: NamedDetection): string =>
 const hasDistinctChecks = (
   entry: readonly [string, ReadonlyArray<NamedDetection>]
 ): boolean => {
-  const names = entry[1].map(namedDetectionName)
+  const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
 
   return HashSet.size(distinct) > 1
@@ -224,11 +226,11 @@ const hasDistinctChecks = (
 const collisionEvidence = (
   entry: readonly [string, ReadonlyArray<NamedDetection>]
 ): EvidenceItem => {
-  const names = entry[1].map(namedDetectionName)
+  const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
   const nameList = Array.fromIterable(distinct)
   const sortedNames = Array.sort(nameList, Order.string)
-  const measure = `line ${entry[0]}: ${sortedNames.join(" + ")}`
+  const measure = `line ${entry[0]}: ${Array.join(sortedNames, " + ")}`
 
   return evidenceItem(measure, entry[1].length)
 }
@@ -238,8 +240,8 @@ export const collidingLines = (
 ): ReadonlyArray<EvidenceItem> => {
   const grouped = Array.groupBy(elements, lineKey)
   const entries = Record.toEntries(grouped)
-  const collisions = entries.filter(hasDistinctChecks)
-  const evidence = collisions.map(collisionEvidence)
+  const collisions = Array.filter(entries, hasDistinctChecks)
+  const evidence = Array.map(collisions, collisionEvidence)
 
   return Array.sort(evidence, byMeasure)
 }
@@ -256,7 +258,7 @@ export const dominantCheckEvidence =
 
       return holdsShare && spread >= minSpread
     })
-    const evidence = dominant.map(countEntryEvidence)
+    const evidence = Array.map(dominant, countEntryEvidence)
 
     return Array.sort(evidence, evidenceOrder)
   }

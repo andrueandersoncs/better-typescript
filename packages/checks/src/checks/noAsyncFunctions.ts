@@ -1,3 +1,4 @@
+import { Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -13,12 +14,13 @@ const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
   const parent = node.parent
 
-  return [
+    const conditions = [
     ts.isFunctionDeclaration(parent),
     ts.isFunctionExpression(parent),
     ts.isArrowFunction(parent),
     ts.isMethodDeclaration(parent)
-  ].some(Boolean)
+  ]
+return Array.some(conditions, Boolean)
 }
 
 const asyncFunctionElements = (context: CheckContext) => {

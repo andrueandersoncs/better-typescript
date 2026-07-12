@@ -1,4 +1,4 @@
-import { Option, Struct } from "effect"
+import { Option, Struct, Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isExtendsClause, namedDetectionTarget } from "./support/tsNode.js"
@@ -45,14 +45,13 @@ const exprContainsDataTaggedClass = (
 }
 
 const extendsDataTaggedClass = (clause: ts.HeritageClause): boolean =>
-  clause.types.some(exprContainsDataTaggedClass)
+  Array.some(clause.types, exprContainsDataTaggedClass)
 
 const hasDataTaggedClassHeritage = (
   classNode: ts.ClassDeclaration
 ): boolean => {
   const clauses = classNode.heritageClauses ?? []
-  const found = clauses.find(isExtendsClause)
-  const clause = Option.fromNullable(found)
+  const clause = Array.findFirst(clauses, isExtendsClause)
 
   return Option.exists(clause, extendsDataTaggedClass)
 }

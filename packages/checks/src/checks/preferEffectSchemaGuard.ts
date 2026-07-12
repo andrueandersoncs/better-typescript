@@ -16,10 +16,11 @@ const conditionExpressions = (
 ): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
 
+  const children = astChildren(unwrapped)
+  const filtered = Array.filter(children, ts.isExpression)
+
   return pipe(
-    astChildren(unwrapped)
-      .filter(ts.isExpression)
-      .flatMap(conditionExpressions),
+    Array.flatMap(filtered, conditionExpressions),
     Array.prepend(unwrapped)
   )
 }

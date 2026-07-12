@@ -1,11 +1,7 @@
 import { HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  differentApparentType,
-  differentBaseConstraint,
-  isUnseenType
-} from "./support/tsType.js"
+import { isArrayLikeType } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
@@ -37,57 +33,9 @@ const mutableArrayMethods = HashSet.make(
   "unshift" as MutableArrayMethod
 )
 
-const isArrayTypeWithSeen =
-  (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean =>
-    pipe(
-      Option.liftPredicate(isUnseenType(seen))(type),
-      Option.exists((type) => {
-        const nextSeen = HashSet.add(seen, type)
-        const isDirectArrayType =
-          checker.isArrayType(type) || checker.isTupleType(type)
-        const unionOrIntersection = Option.liftPredicate(
-          isUnionOrIntersectionType
-        )(type)
-        const hasUnionOrIntersectionArrayType = Option.exists(
-          unionOrIntersection,
-          (type) => type.types.some(isArrayTypePart(checker)(nextSeen))
-        )
-        const baseConstraint = differentBaseConstraint(checker)(type)
-        const hasConstrainedArrayType = Option.exists(
-          baseConstraint,
-          isArrayTypePart(checker)(nextSeen)
-        )
-        const apparentType = differentApparentType(checker)(type)
-        const hasApparentArrayType = Option.exists(
-          apparentType,
-          isArrayTypePart(checker)(nextSeen)
-        )
-
-        return [
-          isDirectArrayType,
-          hasUnionOrIntersectionArrayType,
-          hasConstrainedArrayType,
-          hasApparentArrayType
-        ].some(Boolean)
-      })
-    )
-
-const isArrayTypePart =
-  (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (part: ts.Type): boolean =>
-    isArrayTypeWithSeen(checker)(seen)(part)
-
-const isUnionOrIntersectionType = (
-  type: ts.Type
-): type is ts.UnionOrIntersectionType => type.isUnionOrIntersection()
-
 const mutableArrayMatches = (context: CheckContext) => {
   const checker = context.checker
-  const emptySeen = HashSet.empty<ts.Type>()
-  const isReceiverArrayType = isArrayTypeWithSeen(checker)(emptySeen)
+  const isReceiverArrayType = isArrayLikeType(checker)
   const match = detection(context)
 
   const matches = (

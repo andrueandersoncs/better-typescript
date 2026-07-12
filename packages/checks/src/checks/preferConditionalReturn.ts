@@ -35,14 +35,16 @@ const ternaryText =
   (sourceFile: ts.SourceFile) =>
   (condition: ts.Expression) =>
   (whenTrue: ts.Expression) =>
-  (whenFalse: ts.Expression): string =>
-    [
+  (whenFalse: ts.Expression): string => {
+    const values2 = [
       `(${condition.getText(sourceFile)})`,
       "?",
       whenTrue.getText(sourceFile),
       ":",
       whenFalse.getText(sourceFile)
-    ].join(" ")
+    ]
+    return Array.join(values2, " ")
+  }
 
 const conditionalReturnDetections = (context: CheckContext) => {
   const sourceFile = context.sourceFile
@@ -67,9 +69,7 @@ const conditionalReturnDetections = (context: CheckContext) => {
         const unwrapped = unwrapExpression(expression)
         const isTernary = ts.isConditionalExpression(unwrapped)
 
-        return [isSingleLine, isShort, !hasYieldExpression, !isTernary].every(
-          Boolean
-        )
+        return Array.every([isSingleLine, isShort, !hasYieldExpression, !isTernary], Boolean)
       })(expression)
     })
 

@@ -34,7 +34,7 @@ const isShortCircuitExpression = (
 const ternaryBranches = (
   conditional: ts.ConditionalExpression
 ): ReadonlyArray<ts.Expression> =>
-  [conditional.whenTrue, conditional.whenFalse].flatMap(branchExpressions)
+  Array.flatMap([conditional.whenTrue, conditional.whenFalse], branchExpressions)
 
 const branchExpressions = (
   expression: ts.Expression

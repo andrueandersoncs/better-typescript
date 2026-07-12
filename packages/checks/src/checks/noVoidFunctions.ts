@@ -27,13 +27,15 @@ const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.MethodDeclaration
 ]
 
-const isVoidableFunction = (node: ts.Node): node is VoidableFunction =>
-  [
+const isVoidableFunction = (node: ts.Node): node is VoidableFunction => {
+  const conditions = [
     ts.isFunctionDeclaration(node),
     ts.isFunctionExpression(node),
     ts.isArrowFunction(node),
     ts.isMethodDeclaration(node)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions, Boolean)
+}
 
 const objectLiteralParent = (
   declaration: ts.MethodDeclaration

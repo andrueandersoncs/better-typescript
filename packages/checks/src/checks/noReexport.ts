@@ -16,17 +16,19 @@ const hint =
   "from the file that defines it. For package entrypoints, point package.json " +
   "exports at the defining modules instead of barrel re-exports."
 
-const isImportDeclaration = (declaration: ts.Declaration): boolean =>
-  [
+const isImportDeclaration = (declaration: ts.Declaration): boolean => {
+  const conditions = [
     ts.isImportSpecifier(declaration),
     ts.isNamespaceImport(declaration),
     ts.isImportClause(declaration),
     ts.isImportEqualsDeclaration(declaration)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions, Boolean)
+}
 
 const isImportedSymbol = (symbol: ts.Symbol): boolean => {
   const aliased = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-  const imported = (symbol.declarations ?? []).some(isImportDeclaration)
+  const imported = Array.some((symbol.declarations ?? []), isImportDeclaration)
 
   return aliased && imported
 }

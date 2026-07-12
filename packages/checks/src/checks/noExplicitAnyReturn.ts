@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isReturnTypeDeclaration, returnTypeNode } from "./support/tsNode.js"
@@ -29,7 +29,7 @@ const containsAnyKeyword = (node: ts.Node): boolean => {
   )
   const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
 
-  return [isAnyKeyword, hasAnyDescendant].some(Boolean)
+  return Array.some([isAnyKeyword, hasAnyDescendant], Boolean)
 }
 
 const explicitAnyReturnElements = (context: CheckContext) => {

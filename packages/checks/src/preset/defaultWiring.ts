@@ -48,6 +48,7 @@ import { requireBecauseInComments, requireBecauseInCommentsExamples } from "../c
 import { preferConditionalReturn, preferConditionalReturnExamples } from "../checks/preferConditionalReturn.js"
 import { preferDataLastModule, preferDataLastModuleExamples } from "../checks/preferDataLastModule.js"
 import { preferDirectBooleanReturn, preferDirectBooleanReturnExamples } from "../checks/preferDirectBooleanReturn.js"
+import { preferEffectArray, preferEffectArrayExamples } from "../checks/preferEffectArray.js"
 import { preferEffectArrayAppendAll, preferEffectArrayAppendAllExamples } from "../checks/preferEffectArrayAppendAll.js"
 import { preferEffectFn, preferEffectFnExamples } from "../checks/preferEffectFn.js"
 import { preferEffectFunctionConstant, preferEffectFunctionConstantExamples } from "../checks/preferEffectFunctionConstant.js"
@@ -96,6 +97,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = [
   namedCheck("prefer-effect-function-constant", preferEffectFunctionConstant, preferEffectFunctionConstantExamples),
   namedCheck("prefer-effect-property-accessors", preferEffectPropertyAccessors, preferEffectPropertyAccessorsExamples),
   namedCheck("prefer-effect-record-filter-map", preferEffectRecordFilterMap, preferEffectRecordFilterMapExamples),
+  namedCheck("prefer-effect-array", preferEffectArray, preferEffectArrayExamples),
   namedCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll, preferEffectArrayAppendAllExamples),
   namedCheck("prefer-data-last-module", preferDataLastModule, preferDataLastModuleExamples),
   namedCheck("prefer-conditional-return", preferConditionalReturn, preferConditionalReturnExamples),

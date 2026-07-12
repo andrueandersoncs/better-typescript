@@ -1,4 +1,4 @@
-import { Function, Option, Struct, pipe } from "effect"
+import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -28,13 +28,15 @@ const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
 
 const isPropertyAccessorFunction = (
   node: ts.Node
-): node is PropertyAccessorFunction =>
-  [
+): node is PropertyAccessorFunction => {
+  const conditions2 = [
     ts.isArrowFunction(node),
     ts.isFunctionExpression(node),
     ts.isFunctionDeclaration(node),
     ts.isMethodDeclaration(node)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions2, Boolean)
+}
 
 const returnExpression = (
   statement: ts.Statement
@@ -90,9 +92,10 @@ const isRecordType =
   (type: ts.Type): boolean => {
     const apparentType = checker.getApparentType(type)
 
-    return type.isUnionOrIntersection()
-      ? type.types.every(isRecordType(checker))
-      : [hasIndexSignature(type), hasIndexSignature(apparentType)].some(Boolean)
+        const conditions = [hasIndexSignature(type), hasIndexSignature(apparentType)]
+return type.isUnionOrIntersection()
+      ? Array.every(type.types, isRecordType(checker))
+      : Array.some(conditions, Boolean)
   }
 
 const propertyAccessorMatches = (context: CheckContext) => {

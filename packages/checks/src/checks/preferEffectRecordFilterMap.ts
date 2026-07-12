@@ -1,3 +1,4 @@
+import { Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
@@ -36,16 +37,18 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return []
 
-    const emptyThenNonEmptyElse = [
+        const conditions2 = [
       hasNoProperties(expression.whenTrue),
       hasSomeProperties(expression.whenFalse)
-    ].every(Boolean)
-    const nonEmptyThenEmptyElse = [
+    ]
+const emptyThenNonEmptyElse = Array.every(conditions2, Boolean)
+        const conditions = [
       hasSomeProperties(expression.whenTrue),
       hasNoProperties(expression.whenFalse)
-    ].every(Boolean)
+    ]
+const nonEmptyThenEmptyElse = Array.every(conditions, Boolean)
 
-    return [emptyThenNonEmptyElse, nonEmptyThenEmptyElse].some(Boolean)
+    return Array.some([emptyThenNonEmptyElse, nonEmptyThenEmptyElse], Boolean)
       ? [match({ node: spread, message, hint })]
       : []
   }

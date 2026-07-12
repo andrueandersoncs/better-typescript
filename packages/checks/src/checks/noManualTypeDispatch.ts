@@ -25,7 +25,8 @@ const isDispatchGuard = (
 
 const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
   const ownNames = ts.isIdentifier(node) ? [node.text] : []
-  const childNames = node.getChildren().flatMap(identifierNames)
+  const children = node.getChildren()
+  const childNames = Array.flatMap(children, identifierNames)
 
   return Array.appendAll(ownNames, childNames)
 }
@@ -47,10 +48,13 @@ const siblingDispatchGuard =
       return Option.none()
     }
 
-    const index = block.statements.indexOf(ifStatement)
-
     return pipe(
-      Option.fromNullable(block.statements[index + offset]),
+      Array.findFirstIndex(
+        block.statements,
+        (statement) => statement === ifStatement
+      ),
+      Option.map((index) => index + offset),
+      Option.flatMap((index) => Option.fromNullable(block.statements[index])),
       Option.filter(isDispatchGuard)
     )
   }

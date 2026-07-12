@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream, pipe } from "effect"
+import { Array, Effect, pipe, Schema, Stream } from "effect"
 import {
   Advice,
   adviceLocation,
@@ -28,7 +28,7 @@ export class SystemicHotspotsInput extends Schema.Class<SystemicHotspotsInput>(
 const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const hasHotSubsystem = signals.hotSubsystem.length >= 1
   const hasDenseFiles = signals.highSignalDensity.length >= 2
-  const isSystemic = [hasHotSubsystem, hasDenseFiles].every(Boolean)
+  const isSystemic = Array.every([hasHotSubsystem, hasDenseFiles], Boolean)
   const location = adviceLocation("project")
   const subsystemItem = evidenceItem(
     "hot-subsystem",

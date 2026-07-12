@@ -80,7 +80,7 @@ const statementEntries = (
 const sourceFileEntries = (
   sourceFile: ts.SourceFile
 ): ReadonlyArray<FunctionEntry> =>
-  sourceFile.statements.flatMap(statementEntries)
+  Array.flatMap(sourceFile.statements, statementEntries)
 
 class SymbolClassification extends Schema.Class<SymbolClassification>(
   "SymbolClassification"
@@ -131,8 +131,9 @@ class ReferenceIndex extends Schema.Class<ReferenceIndex>("ReferenceIndex")({
 const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
   const program = context.program
   const checker = context.checker
-  const projectFiles = program.getSourceFiles().filter(isProjectSourceFile)
-  const entries = projectFiles.flatMap(sourceFileEntries)
+  const sourceFiles = program.getSourceFiles()
+  const projectFiles = Array.filter(sourceFiles, isProjectSourceFile)
+  const entries = Array.flatMap(projectFiles, sourceFileEntries)
   const symbolEntryPairs = Array.filterMap(entries, (entry) =>
     pipe(
       symbolForEntry(checker)(entry),

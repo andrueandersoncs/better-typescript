@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Array, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { combineAll, nodeSubscriptions } from "@better-typescript/core/engine/check"
 import { isReturnTypeDeclaration, unwrapExpression } from "./support/tsNode.js"
@@ -43,7 +43,7 @@ const containsUndefinedKeyword = (node: ts.Node): boolean => {
   const childContainsUndefinedKeyword =
     ts.forEachChild(node, containsUndefinedKeyword) === true
 
-  return [isUndefinedKeyword, childContainsUndefinedKeyword].some(Boolean)
+  return Array.some([isUndefinedKeyword, childContainsUndefinedKeyword], Boolean)
 }
 
 const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
@@ -61,11 +61,9 @@ const isEqualityWithUndefined = (expr: ts.BinaryExpression): boolean => {
     equalityComparisonOperators,
     expr.operatorToken.kind
   )
-  const hasUndefinedOperand = [expr.left, expr.right].some(
-    isUndefinedExpression
-  )
+  const hasUndefinedOperand = Array.some([expr.left, expr.right], isUndefinedExpression)
 
-  return [isEqualityComparison, hasUndefinedOperand].every(Boolean)
+  return Array.every([isEqualityComparison, hasUndefinedOperand], Boolean)
 }
 
 const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression => {
@@ -131,7 +129,7 @@ const isUndefinedReturnExpression = (
   const arrowBody = Option.flatMap(arrowFn, getArrowExpressionBody)
   const isUndefinedArrow = Option.exists(arrowBody, isUndefinedExpression)
 
-  return [isUndefinedReturn, isUndefinedArrow].some(Boolean)
+  return Array.some([isUndefinedReturn, isUndefinedArrow], Boolean)
 }
 
 const isNotMinusToken = (questionToken: ts.Node): boolean =>

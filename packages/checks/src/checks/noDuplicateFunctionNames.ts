@@ -45,7 +45,7 @@ const statementFunctions = (
 const topLevelFunctions = (
   sourceFile: ts.SourceFile
 ): ReadonlyArray<ts.Identifier> =>
-  sourceFile.statements.flatMap(statementFunctions)
+  Array.flatMap(sourceFile.statements, statementFunctions)
 
 const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
   Function.constant([])
@@ -71,13 +71,12 @@ const declaredFileName = (nameNode: ts.Identifier): string =>
 const maxListedFileNames = 3
 
 const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
-  const projectFunctions = context.program
-    .getSourceFiles()
-    .filter(isProjectSourceFile)
-    .flatMap(topLevelFunctions)
+  const programSourceFiles = context.program.getSourceFiles()
+  const filtered = Array.filter(programSourceFiles, isProjectSourceFile)
+  const projectFunctions = Array.flatMap(filtered, topLevelFunctions)
   const emptyIndex = HashMap.empty<string, ReadonlyArray<ts.Identifier>>()
 
-  return projectFunctions.reduce(addFunctionToIndex, emptyIndex)
+  return Array.reduce(projectFunctions, emptyIndex, addFunctionToIndex)
 }
 
 const duplicateNameListeners = (
@@ -106,9 +105,9 @@ const duplicateNameListeners = (
             candidateType
           )
 
-          return [forward, backward].every(Boolean)
+          return Array.every([forward, backward], Boolean)
         })
-        const declaredFileNames = identicalDeclarations.map(declaredFileName)
+        const declaredFileNames = Array.map(identicalDeclarations, declaredFileName)
         const uniqueFileNames = Array.dedupe(declaredFileNames)
         const otherFileNames = Array.filter(
           uniqueFileNames,
@@ -120,10 +119,9 @@ const duplicateNameListeners = (
         }
 
         const functionName = candidate.text
-        const relativeFileNames = otherFileNames.map(toRelative)
-        const listedFileNames = relativeFileNames
-          .slice(0, maxListedFileNames)
-          .join(", ")
+        const relativeFileNames = Array.map(otherFileNames, toRelative)
+                const taken = Array.take(relativeFileNames, maxListedFileNames)
+const listedFileNames = Array.join(taken, ", ")
         const remainingCount = relativeFileNames.length - maxListedFileNames
         const isSingleFile = remainingCount === 1
         const otherFiles =

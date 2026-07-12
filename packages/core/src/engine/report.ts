@@ -122,7 +122,7 @@ const addUniqueElement = (
   )
   const hasMatchingData = (candidate: Detection): boolean =>
     Equal.equals(candidate.data, element.data)
-  const alreadySeen = bucket.some(hasMatchingData)
+  const alreadySeen = Array.some(bucket, hasMatchingData)
 
   if (alreadySeen) {
     return state
@@ -159,7 +159,7 @@ export const workspaceSignals =
       pipe(
         Effect.forEach(snapshots, collectDetections(check.check)),
         Effect.map((collected) => {
-          const elements = collected.flatMap(Chunk.toReadonlyArray)
+          const elements = Array.flatMap(collected, Chunk.toReadonlyArray)
           const deduped = Array.reduce(
             elements,
             emptyDedupeState,
@@ -222,7 +222,7 @@ const adviceHeader = (advice: Advice): string => {
 export const adviceText = (advice: Advice): string => {
   const header = adviceHeader(advice)
   const remediation = `  fix: ${advice.remediation}`
-  const evidence = advice.evidence.map(evidenceText)
+  const evidence = Array.map(advice.evidence, evidenceText)
   const lines = Array.appendAll([header, remediation], evidence)
 
   return Array.join(lines, "\n")
@@ -475,7 +475,7 @@ export class DuplicateCheckNamesError extends Schema.TaggedError<DuplicateCheckN
   names: duplicateNameArray
 }) {
   get message(): string {
-    return `Duplicate check names: ${this.names.join(", ")}`
+    return `Duplicate check names: ${Array.join(this.names, ", ")}`
   }
 }
 

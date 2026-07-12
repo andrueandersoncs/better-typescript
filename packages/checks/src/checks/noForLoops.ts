@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -27,8 +27,8 @@ const forLoopElements = (context: CheckContext) => {
       Option.fromNullable(node.incrementor),
       Option.isSome
     )
-    const hasIterator = [hasInitializer, hasIncrementor].some(Boolean)
-    const isIteratorForLoop = [hasStopCondition, hasIterator].every(Boolean)
+    const hasIterator = Array.some([hasInitializer, hasIncrementor], Boolean)
+    const isIteratorForLoop = Array.every([hasStopCondition, hasIterator], Boolean)
 
     return isIteratorForLoop
       ? [

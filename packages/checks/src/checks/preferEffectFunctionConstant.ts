@@ -1,4 +1,4 @@
-import { Function, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -61,7 +61,7 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
     }),
     Option.getOrElse(fallbackModifiers)
   )
-  const hasAsync = modifiers.some(modifierIsAsync)
+  const hasAsync = Array.some(modifiers, modifierIsAsync)
   const hasGenerator = pipe(
     Option.gen(function* () {
       const functionExpression = yield* Option.liftPredicate(
@@ -77,12 +77,12 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
     Option.exists(hasElements)
   )
 
-  return [
+  return Array.every([
     node.parameters.length === 0,
     !hasAsync,
     !hasGenerator,
     !hasTypeParameters
-  ].every(Boolean)
+  ], Boolean)
 }
 
 const blockReturnedExpression = (
@@ -200,7 +200,7 @@ const functionConstantMatches = (context: CheckContext) => {
         )
         yield* Option.liftPredicate(
           (_expression: ts.Expression): boolean =>
-            [isPrimitive, isStableIdentifier].some(Boolean)
+            Array.some([isPrimitive, isStableIdentifier], Boolean)
         )(expression)
         const expressionText = expression.getText(context.sourceFile)
 

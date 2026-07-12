@@ -130,14 +130,14 @@ const detectionEquals = (a: Detection, b: Detection): boolean => {
   const sameHint = a.hint === b.hint
   const sameData = Equal.equals(a.data, b.data)
 
-  return [
+  return Array.every([
     samePath,
     sameLine,
     sameColumn,
     sameMessage,
     sameHint,
     sameData
-  ].every(Boolean)
+  ], Boolean)
 }
 
 const detectionsEquivalence = Array.getEquivalence(detectionEquals)
@@ -238,9 +238,9 @@ const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] => [
 export const blockDelta =
   (previous: ReadonlyArray<ReportBlock>) =>
   (current: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
-    const previousEntries = previous.map(blockEntry)
+    const previousEntries = Array.map(previous, blockEntry)
     const previousByIdentity = HashMap.fromIterable(previousEntries)
-    const currentIdentityList = current.map(Struct.get("identity"))
+    const currentIdentityList = Array.map(current, Struct.get("identity"))
     const currentIdentities = HashSet.fromIterable(currentIdentityList)
     const clearances = pipe(
       previous,

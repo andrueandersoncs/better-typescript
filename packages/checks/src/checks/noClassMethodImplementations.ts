@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { namedDetectionTarget } from "./support/tsNode.js"
@@ -22,11 +22,8 @@ const isOverrideModifier = (modifier: ts.ModifierLike): boolean =>
 
 const findOverrideModifier = (
   modifiers: ReadonlyArray<ts.ModifierLike>
-): Option.Option<ts.ModifierLike> => {
-  const modifier = modifiers.find(isOverrideModifier)
-
-  return Option.fromNullable(modifier)
-}
+): Option.Option<ts.ModifierLike> =>
+  Array.findFirst(modifiers, isOverrideModifier)
 
 // Check the parent class because MethodDeclaration also represents object-literal shorthand that is not OOP coupling.
 const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
@@ -40,7 +37,7 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
     Option.isSome
   )
 
-  return [isClassMember, bodyExists, !isOverride].every(Boolean)
+  return Array.every([isClassMember, bodyExists, !isOverride], Boolean)
 }
 
 const methodImplementationMatches = (context: CheckContext) => {

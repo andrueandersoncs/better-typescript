@@ -126,9 +126,7 @@ const callbackStyleMatches = (context: CheckContext) => {
             callSignatureCheck(checker)
           )
 
-          return [parameterHasCallSignature, elementHasCallSignature].some(
-            Boolean
-          )
+          return Array.some([parameterHasCallSignature, elementHasCallSignature], Boolean)
         }
       )
 

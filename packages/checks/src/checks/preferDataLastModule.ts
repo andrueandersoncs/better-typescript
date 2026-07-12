@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Function, Option, pipe } from "effect"
+import { Array, Function, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -32,13 +32,15 @@ const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.MethodDeclaration
 ]
 
-const isCheckedFunction = (node: ts.Node): node is CheckedFunction =>
-  [
+const isCheckedFunction = (node: ts.Node): node is CheckedFunction => {
+  const conditions4 = [
     ts.isFunctionDeclaration(node),
     ts.isFunctionExpression(node),
     ts.isArrowFunction(node),
     ts.isMethodDeclaration(node)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions4, Boolean)
+}
 
 const primitiveTypeFlags =
   ts.TypeFlags.Any |
@@ -103,13 +105,14 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const fileName = sourceFile.fileName
 
   const isMember = (type: ts.Type): boolean => {
-    const exclusions = [
+        const conditions3 = [checker.isArrayType(type), checker.isTupleType(type)]
+const exclusions = [
       (type.flags & primitiveTypeFlags) !== 0,
-      [checker.isArrayType(type), checker.isTupleType(type)].some(Boolean),
+      Array.some(conditions3, Boolean),
       hasCallSignature(checker)(type)
     ]
 
-    return exclusions.every(isFalse)
+    return Array.every(exclusions, isFalse)
   }
 
   const isExpectedModule =
@@ -118,10 +121,11 @@ const dataLastModuleMatches = (context: CheckContext) => {
       const relativeFileName = path.relative(projectRoot, candidateFileName)
       const normalizedFileName = relativeFileName.replaceAll("\\", "/")
 
-      return [
+            const conditions2 = [
         normalizedFileName === expectedModulePath,
         normalizedFileName.endsWith(`/${expectedModulePath}`)
-      ].some(Boolean)
+      ]
+return Array.some(conditions2, Boolean)
     }
 
   const isModuleDeclaration =
@@ -130,20 +134,21 @@ const dataLastModuleMatches = (context: CheckContext) => {
       const dataStructure = dataStructureModule(symbol.name)
       const declarationSourceFile = declaration.getSourceFile()
       const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
-      const declarationIsDataStructure = [
+            const conditions = [
         ts.isInterfaceDeclaration(declaration),
         ts.isTypeAliasDeclaration(declaration),
         ts.isClassDeclaration(declaration)
-      ].some(Boolean)
+      ]
+const declarationIsDataStructure = Array.some(conditions, Boolean)
       const declarationIsExpectedModule = isExpectedModule(dataStructure[1])(
         declarationSourceFile.fileName
       )
 
-      return [
+      return Array.every([
         sourceFileIsProject,
         declarationIsDataStructure,
         declarationIsExpectedModule
-      ].every(Boolean)
+      ], Boolean)
     }
 
   const structureForSymbol =
@@ -151,11 +156,11 @@ const dataLastModuleMatches = (context: CheckContext) => {
     (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
       const declarations = symbol.declarations ?? []
       const isDeclarationForSymbol = isModuleDeclaration(symbol)
-      const isFirstParty = declarations.some(isDeclarationForSymbol)
+      const isFirstParty = Array.some(declarations, isDeclarationForSymbol)
       const isStructured = type.isUnionOrIntersection()
-        ? type.types.every(isMember)
+        ? Array.every(type.types, isMember)
         : isMember(type)
-      const isDataStructure = [isFirstParty, isStructured].every(Boolean)
+      const isDataStructure = Array.every([isFirstParty, isStructured], Boolean)
       const dataStructure = dataStructureModule(symbol.name)
 
       return isDataStructure ? Option.some(dataStructure) : Option.none()
@@ -220,9 +225,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       return Option.none()
     }
 
-    const hasMatchingArgument = parent.arguments.some(
-      sameExpression(expression)
-    )
+    const hasMatchingArgument = Array.some(parent.arguments, sameExpression(expression))
     if (!hasMatchingArgument) {
       return Option.none()
     }

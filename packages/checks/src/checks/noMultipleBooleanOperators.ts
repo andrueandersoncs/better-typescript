@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
@@ -28,11 +28,11 @@ const isBooleanOperatorExpression = (
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
-  return [
+  return Array.some([
     isBinaryBooleanOperator,
     isUnaryBooleanOperator,
     isTernaryOperator
-  ].some(Boolean)
+  ], Boolean)
 }
 
 const addBooleanOperatorCount = (total: number, child: ts.Expression): number =>
@@ -50,9 +50,8 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
   const countedChildren = ts.isConditionalExpression(unwrapped)
     ? [unwrapped.whenTrue, unwrapped.whenFalse]
     : astChildren(unwrapped)
-  const childCount = countedChildren
-    .filter(ts.isExpression)
-    .reduce(addBooleanOperatorCount, 0)
+    const filtered = Array.filter(countedChildren, ts.isExpression)
+const childCount = Array.reduce(filtered, 0, addBooleanOperatorCount)
 
   return ownCount + childCount
 }
@@ -69,11 +68,13 @@ const isConditionEdge = (node: ts.Node): boolean =>
     Option.exists(isConditionOf(node))
   )
 
-const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean =>
-  [
+const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
+  const conditions = [
     isBooleanOperatorExpression(parent),
     hasBooleanOperatorAncestor(parent)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions, Boolean)
+}
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   const parent = Option.fromNullable(node.parent)
@@ -87,7 +88,7 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
     isOrHasBooleanOperatorAncestor
   )
 
-  return [!isConditionEdge, hasCountedAncestor].every(Boolean)
+  return Array.every([!isConditionEdge, hasCountedAncestor], Boolean)
 }
 
 const booleanBinaryOperatorKinds = HashSet.make(
@@ -113,11 +114,11 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
       isBooleanOperatorExpression(expression)
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
-    const isReportableRoot = [
+    const isReportableRoot = Array.every([
       expressionUsesBooleanOperator,
       hasNoBooleanOperatorAncestor,
       hasMultiple
-    ].every(Boolean)
+    ], Boolean)
 
     return isReportableRoot
       ? [

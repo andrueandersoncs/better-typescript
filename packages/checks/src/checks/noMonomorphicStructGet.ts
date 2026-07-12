@@ -41,7 +41,7 @@ const declarationIsEffectStructModule = (
     fileName.endsWith(suffix)
   )
 
-  return [inEffectPackage, isStructModule].every(Boolean)
+  return Array.every([inEffectPackage, isStructModule], Boolean)
 }
 
 const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol): boolean => {
@@ -73,7 +73,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return typeParameterCount > 0
     })
 
-    return [hasCallSignature, hasNoGenericSignature].every(Boolean)
+    return Array.every([hasCallSignature, hasNoGenericSignature], Boolean)
   }
 
   const initializerIsGenericStructGet = (initializer: ts.Expression): boolean =>

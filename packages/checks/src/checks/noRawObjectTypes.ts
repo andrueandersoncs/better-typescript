@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -15,15 +15,17 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import {
   fixtureRefactorExamples
 } from "../fixtureExamples.js"
-const containsRawObjectType = (typeNode: ts.TypeNode): boolean =>
-  [
+const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
+  const conditions = [
     ts.isTypeLiteralNode(typeNode),
     typeNode.kind === ts.SyntaxKind.ObjectKeyword,
-    ts.isUnionTypeNode(typeNode) && typeNode.types.some(containsRawObjectType),
+    ts.isUnionTypeNode(typeNode) && Array.some(typeNode.types, containsRawObjectType),
     ts.isIntersectionTypeNode(typeNode) &&
-      typeNode.types.some(containsRawObjectType),
+    Array.some(typeNode.types, containsRawObjectType),
     ts.isParenthesizedTypeNode(typeNode) && containsRawObjectType(typeNode.type)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions, Boolean)
+}
 
 const parameterTypeNode = (
   param: ts.ParameterDeclaration

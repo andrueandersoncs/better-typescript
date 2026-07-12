@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 
 export const isVoidType = (type: ts.Type): boolean =>
@@ -13,7 +13,7 @@ const isVoidCompatibleType = (type: ts.Type): boolean =>
 
 export const permitsVoid = (type: ts.Type): boolean =>
   type.isUnion()
-    ? type.types.some(isVoidCompatibleType)
+    ? Array.some(type.types, isVoidCompatibleType)
     : isVoidCompatibleType(type)
 
 export const isDifferentType =
@@ -51,6 +51,60 @@ export const isUnseenType =
   (type: ts.Type): boolean =>
     !HashSet.has(seen, type)
 
+const isUnionOrIntersectionType = (
+  type: ts.Type
+): type is ts.UnionOrIntersectionType => type.isUnionOrIntersection()
+
+const isArrayLikeTypeWithSeen =
+  (checker: ts.TypeChecker) =>
+  (seen: HashSet.HashSet<ts.Type>) =>
+  (type: ts.Type): boolean =>
+    pipe(
+      Option.liftPredicate(isUnseenType(seen))(type),
+      Option.exists((type) => {
+        const nextSeen = HashSet.add(seen, type)
+        const isDirectArrayType =
+          checker.isArrayType(type) || checker.isTupleType(type)
+        const unionOrIntersection = Option.liftPredicate(
+          isUnionOrIntersectionType
+        )(type)
+        const hasUnionOrIntersectionArrayType = Option.exists(
+          unionOrIntersection,
+          (type) => Array.some(type.types, isArrayLikeTypeWithSeen(checker)(nextSeen))
+        )
+        const baseConstraint = differentBaseConstraint(checker)(type)
+        const hasConstrainedArrayType = Option.exists(
+          baseConstraint,
+          isArrayLikeTypeWithSeen(checker)(nextSeen)
+        )
+        const apparentType = differentApparentType(checker)(type)
+        const hasApparentArrayType = Option.exists(
+          apparentType,
+          isArrayLikeTypeWithSeen(checker)(nextSeen)
+        )
+
+        return Array.some(
+          [
+            isDirectArrayType,
+            hasUnionOrIntersectionArrayType,
+            hasConstrainedArrayType,
+            hasApparentArrayType
+          ],
+          Boolean
+        )
+      })
+    )
+
+export const isArrayLikeType =
+  (checker: ts.TypeChecker) =>
+  (type: ts.Type): boolean => {
+    const withSeen = isArrayLikeTypeWithSeen(checker)
+    const emptySeen = HashSet.empty<ts.Type>()
+    const checkType = withSeen(emptySeen)
+
+    return checkType(type)
+  }
+
 const hasCallSignatureWithSeen =
   (checker: ts.TypeChecker) =>
   (seen: HashSet.HashSet<ts.Type>) =>
@@ -64,7 +118,7 @@ const hasCallSignatureWithSeen =
         if (type.isUnionOrIntersection()) {
           return (
             hasDirectCallSignature ||
-            type.types.some(callSignatureCheckWithSeen(checker)(nextSeen))
+            Array.some(type.types, callSignatureCheckWithSeen(checker)(nextSeen))
           )
         }
 

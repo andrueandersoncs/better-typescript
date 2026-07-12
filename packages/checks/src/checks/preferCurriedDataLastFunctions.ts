@@ -59,13 +59,15 @@ const candidateKinds: ReadonlyArray<ts.SyntaxKind> = [
 
 const isCurriedDataLastCandidate = (
   node: ts.Node
-): node is CurriedDataLastCandidate =>
-  [
+): node is CurriedDataLastCandidate => {
+  const conditions2 = [
     ts.isFunctionDeclaration(node),
     ts.isFunctionExpression(node),
     ts.isArrowFunction(node),
     ts.isMethodDeclaration(node)
-  ].some(Boolean)
+  ]
+  return Array.some(conditions2, Boolean)
+}
 
 const isRuntimeParameter = (parameter: ts.ParameterDeclaration): boolean => {
   const sourceFile = parameter.getSourceFile()
@@ -81,21 +83,20 @@ const parameterHasRestToken = (parameter: ts.ParameterDeclaration): boolean => {
 }
 
 const hasRestParameter = (declaration: CurriedDataLastCandidate): boolean =>
-  declaration.parameters.some(parameterHasRestToken)
+  Array.some(declaration.parameters, parameterHasRestToken)
 
 const runtimeParameters = (
   declaration: CurriedDataLastCandidate
 ): ReadonlyArray<ts.ParameterDeclaration> =>
-  declaration.parameters.filter(isRuntimeParameter)
+  Array.filter(declaration.parameters, isRuntimeParameter)
 
 const hasDisallowedParameterList = (
   declaration: CurriedDataLastCandidate
 ): boolean => {
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
 
-  return [hasRestParameter(declaration), hasMultipleRuntimeParameters].some(
-    Boolean
-  )
+    const conditions = [hasRestParameter(declaration), hasMultipleRuntimeParameters]
+return Array.some(conditions, Boolean)
 }
 
 const hasCurriedArrowBody = (
@@ -104,10 +105,10 @@ const hasCurriedArrowBody = (
   const parameters = runtimeParameters(declaration)
   const hasSingleRuntimeParameter = parameters.length === 1
   const hasNoRestParameter = !hasRestParameter(declaration)
-  const hasCurriedParameterList = [
+  const hasCurriedParameterList = Array.every([
     hasSingleRuntimeParameter,
     hasNoRestParameter
-  ].every(Boolean)
+  ], Boolean)
   const bodyIsFunctionInitializer = pipe(
     Option.liftPredicate(ts.isArrowFunction)(declaration),
     Option.flatMap(conciseArrowBody),
@@ -115,7 +116,7 @@ const hasCurriedArrowBody = (
     Option.exists(isFunctionInitializer)
   )
 
-  return [hasCurriedParameterList, bodyIsFunctionInitializer].every(Boolean)
+  return Array.every([hasCurriedParameterList, bodyIsFunctionInitializer], Boolean)
 }
 
 const hasCallableType =
@@ -248,9 +249,8 @@ const declarationHasName =
 
 const buildSymbolUses = (context: ProgramContext): SymbolUses => {
   const checker = context.checker
-  const sourceFiles = context.program
-    .getSourceFiles()
-    .filter(isProjectSourceFile)
+  const programSourceFiles = context.program.getSourceFiles()
+  const sourceFiles = Array.filter(programSourceFiles, isProjectSourceFile)
 
   const collectTrackedSymbol =
     (node: ts.Node) =>
@@ -267,11 +267,11 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             declaration
           )
 
-          return [
+          return Array.every([
             hasDisallowedParameters,
             !hasCurriedBody,
             !isContextual
-          ].every(Boolean)
+          ], Boolean)
         }),
         Option.flatMap(symbolForDeclaration(checker)),
         Option.map((symbol) => HashSet.add(currentSymbols, symbol)),
@@ -312,11 +312,11 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             Option.liftPredicate(ts.isMethodDeclaration)(identifierParent),
             Option.exists(declarationHasName(node))
           )
-          const isDeclaration = [
+          const isDeclaration = Array.some([
             isVariableName,
             isFunctionName,
             isMethodName
-          ].some(Boolean)
+          ], Boolean)
 
           if (isDeclaration) {
             return currentUses
@@ -338,13 +338,12 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
           )
           const isSameExpression = (candidate: ts.Expression): boolean =>
             candidate === expression
-          const argumentPosition = ts.isCallExpression(expression.parent)
-            ? expression.parent.arguments.findIndex(isSameExpression)
-            : -1
-          const index =
-            argumentPosition < 0
-              ? Option.none()
-              : Option.some(argumentPosition)
+          const index = ts.isCallExpression(expression.parent)
+            ? Array.findFirstIndex(
+                expression.parent.arguments,
+                isSameExpression
+              )
+            : Option.none()
           const expressionContextualType = contextualType(checker)(expression)
           const signatureType = pipe(
             parentCall,
@@ -368,10 +367,10 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
           const optionHasCallableType = (
             type: Option.Option<ts.Type>
           ): boolean => Option.exists(type, hasCallableType(checker))
-          const hasCallableContext = [
+          const hasCallableContext = Array.some([
             expressionContextualType,
             signatureType
-          ].some(optionHasCallableType)
+          ], optionHasCallableType)
           const hasExternalCallbackBoundary = pipe(
             parentCall,
             Option.exists((call) =>
@@ -381,10 +380,10 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
               )
             )
           )
-          const isContextualArgument = [
+          const isContextualArgument = Array.every([
             hasCallableContext,
             hasExternalCallbackBoundary
-          ].every(Boolean)
+          ], Boolean)
           const referenceUpdate = isContextualArgument
             ? markContextualReference
             : markOtherReference
@@ -404,9 +403,7 @@ const isContextualOnlyUse = (use: SymbolUse): boolean => {
   const hasNoDirectCall = !use.hasDirectCall
   const hasNoOtherReference = !use.hasOtherReference
 
-  return [isContextualReference, hasNoDirectCall, hasNoOtherReference].every(
-    Boolean
-  )
+  return Array.every([isContextualReference, hasNoDirectCall, hasNoOtherReference], Boolean)
 }
 
 const curriedDataLastListeners = (
@@ -428,12 +425,12 @@ const curriedDataLastListeners = (
         Option.flatMap((symbol) => HashMap.get(symbolUses, symbol)),
         Option.exists(isContextualOnlyUse)
       )
-      const shouldReport = [
+      const shouldReport = Array.every([
         hasDisallowedParameters,
         !hasCurriedBody,
         !isContextual,
         !hasOnlyContextualUse
-      ].every(Boolean)
+      ], Boolean)
 
       if (!shouldReport) {
         return []

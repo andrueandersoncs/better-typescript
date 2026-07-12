@@ -39,7 +39,7 @@ const pipelineHostileAdviceFor = (
     const hasUncurriedFunctions =
       countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions) >= 5
 
-    return [hasNestedCalls, hasUncurriedFunctions].every(Boolean)
+    return Array.every([hasNestedCalls, hasUncurriedFunctions], Boolean)
   }
   const nestedCallPaths = Array.map(
     signals.noNestedCalls,

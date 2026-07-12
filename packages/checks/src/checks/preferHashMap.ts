@@ -1,4 +1,4 @@
-import { Function, Option, Struct, pipe } from "effect"
+import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isInAmbientContext, typeNameIdentifier } from "./support/tsNode.js"
@@ -28,7 +28,7 @@ const constructorHint =
 const mapTypeNames: ReadonlyArray<string> = ["Map", "ReadonlyMap"]
 
 const isMapTypeName = (id: ts.Identifier): boolean =>
-  mapTypeNames.includes(id.text)
+  Array.contains(mapTypeNames, id.text)
 
 const typeRefHint =
   "Use HashMap.HashMap<K, V> from Effect instead. HashMap integrates with Equal and Hash " +
@@ -59,7 +59,7 @@ const mapMatches = (context: CheckContext) => {
       const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
       const escapesExternally =
         isMapConstruction && constructionEscapes(node)
-      const isReportable = [isMapConstruction, !escapesExternally].every(Boolean)
+      const isReportable = Array.every([isMapConstruction, !escapesExternally], Boolean)
 
       return isReportable
         ? [

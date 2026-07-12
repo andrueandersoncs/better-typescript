@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isExtendsClause, namedDetectionTarget } from "./support/tsNode.js"
@@ -21,7 +21,7 @@ const isClassNode = (node: ts.Node): node is ClassNode =>
   ts.isClassDeclaration(node) || ts.isClassExpression(node)
 
 const lacksExtendsClause = (declaration: ClassNode): boolean =>
-  !(declaration.heritageClauses ?? []).some(isExtendsClause)
+  !Array.some((declaration.heritageClauses ?? []), isExtendsClause)
 
 const rootLevelClassMatches = (context: CheckContext) => {
   const match = detection(context)
