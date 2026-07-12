@@ -27,6 +27,10 @@ import {
   type ReportKey,
   type Wiring
 } from "../src/engine/report.js"
+import {
+  exampleSnippet,
+  refactorExample
+} from "../src/engine/example.js"
 import { checkFromSubscriptions, nodeSubscription, type Check } from "../src/engine/check.js"
 import { Detection } from "../src/engine/location.js"
 import {
@@ -55,6 +59,14 @@ import type { LoadedProject } from "../src/project/loadProject.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")
+
+const probeExamples = [
+  refactorExample(
+    exampleSnippet("src/cases.ts", `throw new Error("boom")`),
+    exampleSnippet("src/cases.ts", `yield* new BoomError()`)
+  )
+] as const
+
 const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
@@ -85,7 +97,11 @@ const throwProbeCheck: Check = checkFromSubscriptions(() => [
   ])
 ])
 
-const throwProbeNamedCheck: NamedCheck = namedCheck(probeName, throwProbeCheck)
+const throwProbeNamedCheck: NamedCheck = namedCheck(
+  probeName,
+  throwProbeCheck,
+  probeExamples
+)
 
 const probeWiring: Wiring = {
   checks: [throwProbeNamedCheck],
@@ -128,7 +144,7 @@ const detectionAt = (
 const batchOf = (
   detections: ReadonlyArray<Detection>
 ): ReadonlyArray<Signal> => [
-  new Signal({ name: probeName, reported: true, detections })
+  new Signal({ name: probeName, reported: true, detections, examples: [] })
 ]
 
 test("blockDelta emits every current block as a signal event when there is no previous report", () => {

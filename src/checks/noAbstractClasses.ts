@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const abstractKeywordKind = ts.SyntaxKind.AbstractKeyword
 
@@ -29,3 +33,6 @@ const abstractClassElements = (context: CheckContext) => {
 export const noAbstractClasses: Check = nodeCheck([abstractKeywordKind])(
   isAbstractClassModifier
 )(abstractClassElements)
+
+export const noAbstractClassesExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-abstract-classes")

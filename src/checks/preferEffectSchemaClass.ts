@@ -10,6 +10,10 @@ import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext, Subscription } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
 import type { ProgramContext } from "../engine/sources.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 
@@ -354,3 +358,6 @@ const schemaClassListeners = (
 const check = withProgramIndex(buildConstructionIndex)(schemaClassListeners)
 
 export const preferEffectSchemaClass: Check = check
+
+export const preferEffectSchemaClassExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-effect-schema-class")

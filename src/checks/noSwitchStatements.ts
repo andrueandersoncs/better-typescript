@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const switchStatementKind = ts.SyntaxKind.SwitchStatement
 
@@ -25,3 +29,6 @@ const switchStatementElements = (context: CheckContext) => {
 export const noSwitchStatements: Check = nodeCheck([switchStatementKind])(
   ts.isSwitchStatement
 )(switchStatementElements)
+
+export const noSwitchStatementsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-switch-statements")

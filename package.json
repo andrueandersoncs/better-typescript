@@ -47,6 +47,7 @@
     "./preset": "./dist/preset.js",
     "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
     "./checks/*": "./dist/checks/*.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./engine/example": "./dist/engine/example.js"
   }
 }

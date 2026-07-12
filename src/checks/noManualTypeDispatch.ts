@@ -6,6 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 // Require this many branches because shorter chains read as ordinary early-return guards rather than a hand-rolled match.
 const minimumChainLength = 3
@@ -134,3 +138,6 @@ const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
 )
 
 export const noManualTypeDispatch: Check = check
+
+export const noManualTypeDispatchExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-manual-type-dispatch")

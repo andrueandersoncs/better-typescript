@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const nonNullExpressionKind = ts.SyntaxKind.NonNullExpression
 
@@ -27,3 +31,6 @@ const nonNullAssertionElements = (context: CheckContext) => {
 export const noNonNullAssertion: Check = nodeCheck([nonNullExpressionKind])(
   ts.isNonNullExpression
 )(nonNullAssertionElements)
+
+export const noNonNullAssertionExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-non-null-assertion")

@@ -4,6 +4,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const forStatementKind = ts.SyntaxKind.ForStatement
 
@@ -45,3 +49,6 @@ const forLoopElements = (context: CheckContext) => {
 export const noForLoops: Check = nodeCheck([forStatementKind])(
   ts.isForStatement
 )(forLoopElements)
+
+export const noForLoopsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-for-loops")

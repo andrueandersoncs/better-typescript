@@ -6,6 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const isInstanceofOperator = (expr: ts.BinaryExpression): boolean =>
   expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
@@ -60,3 +64,6 @@ const check = nodeCheck([ts.SyntaxKind.BinaryExpression])(
 )(instanceofMatches)
 
 export const noInstanceof: Check = check
+
+export const noInstanceofExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-instanceof")

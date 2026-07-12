@@ -9,6 +9,10 @@ import {
   type SourceComment
 } from "./support/comments.js"
 import type { Check, CheckContext } from "../engine/check.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const message = 'Comments must include the word "because".'
 
@@ -59,3 +63,6 @@ const commentsWithoutBecause = (
 }
 
 export const requireBecauseInComments: Check = fileCheck(commentsWithoutBecause)
+
+export const requireBecauseInCommentsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("require-because-in-comments")

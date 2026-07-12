@@ -11,6 +11,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type VoidableFunction =
   | ts.FunctionDeclaration
@@ -153,3 +157,6 @@ const check = nodeCheck(voidableFunctionKinds)(isVoidableFunction)(
 )
 
 export const noVoidFunctions: Check = check
+
+export const noVoidFunctionsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-void-functions")

@@ -6,6 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type OptionGuardKind = "isSome" | "isNone"
 
@@ -123,3 +127,6 @@ const check = nodeCheck([ts.SyntaxKind.ConditionalExpression])(
 )(optionMatchMatches)
 
 export const preferOptionMatch: Check = check
+
+export const preferOptionMatchExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-option-match")

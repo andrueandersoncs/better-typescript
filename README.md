@@ -163,10 +163,22 @@ The loaded value is structurally validated as the current `Wiring` shape:
 ```
 
 `reported` defaults to `true` when omitted in handwritten config objects.
-`namedCheck(name, check)` creates a reported `NamedCheck`; `silentCheck(name,
-check)` creates a silent one. Names are unique across the whole `checks` array,
-and `makeWiring` rejects duplicates. Config load, compile, shape, and duplicate
+`namedCheck(name, check, examples)` creates a reported `NamedCheck` with one or
+more paired bad→good refactor examples; `silentCheck(name, check, examples?)`
+creates a silent one. Reported checks print those examples under the Hint as
+`Bad (path):` / `Good (path):` blocks (each file in the tree, code indented
+four spaces). Names are unique across the whole `checks` array, and
+`makeWiring` rejects duplicates. Config load, compile, shape, and duplicate
 name failures print an error and exit `2`.
+
+In this repository, preset checks load examples from disk with
+`fixtureRefactorExamples("<kebab-name>")`, backed by real TypeScript trees at
+`tests/fixtures/<kebab-name>/example/<n>/{bad,good}/` (each side is a
+mini-project with its own `tsconfig.json`). Characterization fixtures stay
+separate: `src/cases.ts` is the disallowed corpus and `src/allowed.ts` is
+negative tests — not the "good" rewrite. Consumer configs should keep using
+inline `exampleSnippet` / `refactorExample` (or `refactorExampleTrees`) as
+shown below.
 
 ### Minimal custom check config
 
@@ -178,6 +190,10 @@ import { Stream } from "effect"
 import * as ts from "typescript"
 import { nodeCheck, type Check } from "better-typescript/engine/check"
 import { detection, type Detection } from "better-typescript/engine/location"
+import {
+  exampleSnippet,
+  refactorExample
+} from "better-typescript/engine/example"
 import { makeWiring, namedCheck } from "better-typescript/engine/report"
 
 const isConsoleLogCall = (node: ts.CallExpression): boolean => {
@@ -208,8 +224,17 @@ const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(
       : []
 })
 
+const noConsoleLogExamples = [
+  refactorExample(
+    exampleSnippet("src/main.ts", `console.log("starting")`),
+    exampleSnippet("src/main.ts", `return { status: "starting" as const }`)
+  )
+] as const
+
 export default makeWiring({
-  checks: [namedCheck("acme/no-console-log", noConsoleLog)],
+  checks: [
+    namedCheck("acme/no-console-log", noConsoleLog, noConsoleLogExamples)
+  ],
   derive: () => Stream.empty
 })
 ```

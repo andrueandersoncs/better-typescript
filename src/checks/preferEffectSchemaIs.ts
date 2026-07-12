@@ -5,6 +5,10 @@ import { isFirstPartySymbol, unwrapExpression } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const tagPropertyName = "_tag"
 
@@ -150,3 +154,6 @@ const check = nodeCheck([ts.SyntaxKind.BinaryExpression])(
 )(schemaIsMatches)
 
 export const preferEffectSchemaIs: Check = check
+
+export const preferEffectSchemaIsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-effect-schema-is")

@@ -6,62 +6,62 @@ import { pipelineHostile } from "../checks/pipelineHostile.js"
 import { ruleDominance } from "../checks/ruleDominance.js"
 import { sideEffectLaundering } from "../checks/sideEffectLaundering.js"
 import { systemicHotspots } from "../checks/systemicHotspots.js"
-import { preferCurriedDataLastFunctions } from "../checks/preferCurriedDataLastFunctions.js"
-import { noAbstractClasses } from "../checks/noAbstractClasses.js"
-import { noArraySpread } from "../checks/noArraySpread.js"
-import { noAsyncFunctions } from "../checks/noAsyncFunctions.js"
-import { noCallbacks } from "../checks/noCallbacks.js"
-import { noClassMethodImplementations } from "../checks/noClassMethodImplementations.js"
-import { noDataTaggedClass } from "../checks/noDataTaggedClass.js"
-import { noDuplicateFunctionNames } from "../checks/noDuplicateFunctionNames.js"
-import { noDuplicateIfBodies } from "../checks/noDuplicateIfBodies.js"
-import { noExplicitAnyReturn } from "../checks/noExplicitAnyReturn.js"
-import { noFirstPartySchemaDeclare } from "../checks/noFirstPartySchemaDeclare.js"
-import { noForInLoops } from "../checks/noForInLoops.js"
-import { noForLoops } from "../checks/noForLoops.js"
-import { noForOfLoops } from "../checks/noForOfLoops.js"
-import { noFunctionKeyword } from "../checks/noFunctionKeyword.js"
-import { noInlineBooleanExpressions } from "../checks/noInlineBooleanExpressions.js"
-import { noInlineClosures } from "../checks/noInlineClosures.js"
-import { noInstanceof } from "../checks/noInstanceof.js"
-import { noManualTypeDispatch } from "../checks/noManualTypeDispatch.js"
-import { noMonomorphicStructGet } from "../checks/noMonomorphicStructGet.js"
-import { noMultiLineComments } from "../checks/noMultiLineComments.js"
-import { noMultipleBooleanOperators } from "../checks/noMultipleBooleanOperators.js"
-import { noMutableArrayMethods } from "../checks/noMutableArrayMethods.js"
-import { noMutableVariableDeclarations } from "../checks/noMutableVariableDeclarations.js"
-import { noMutation } from "../checks/noMutation.js"
-import { noNestedCalls } from "../checks/noNestedCalls.js"
-import { noNestedIfStatements } from "../checks/noNestedIfStatements.js"
-import { noNewError } from "../checks/noNewError.js"
-import { noNonNullAssertion } from "../checks/noNonNullAssertion.js"
-import { noRawObjectTypes } from "../checks/noRawObjectTypes.js"
-import { noReexport } from "../checks/noReexport.js"
-import { noRootLevelClasses } from "../checks/noRootLevelClasses.js"
-import { noSingleUseCallee } from "../checks/noSingleUseCallee.js"
-import { noSwitchStatements } from "../checks/noSwitchStatements.js"
-import { noThrow } from "../checks/noThrow.js"
-import { noTryCatch } from "../checks/noTryCatch.js"
-import { noUndefined } from "../checks/noUndefined.js"
-import { noVoidFunctions } from "../checks/noVoidFunctions.js"
-import { requireBecauseInComments } from "../checks/requireBecauseInComments.js"
-import { preferConditionalReturn } from "../checks/preferConditionalReturn.js"
-import { preferDataLastModule } from "../checks/preferDataLastModule.js"
-import { preferDirectBooleanReturn } from "../checks/preferDirectBooleanReturn.js"
-import { preferEffectArrayAppendAll } from "../checks/preferEffectArrayAppendAll.js"
-import { preferEffectFn } from "../checks/preferEffectFn.js"
-import { preferEffectFunctionConstant } from "../checks/preferEffectFunctionConstant.js"
-import { preferEffectPropertyAccessors } from "../checks/preferEffectPropertyAccessors.js"
-import { preferEffectRecordFilterMap } from "../checks/preferEffectRecordFilterMap.js"
-import { preferEffectSchemaClass } from "../checks/preferEffectSchemaClass.js"
-import { preferEffectSchemaConstructor } from "../checks/preferEffectSchemaConstructor.js"
-import { preferEffectSchemaGuard } from "../checks/preferEffectSchemaGuard.js"
-import { preferEffectSchemaIs } from "../checks/preferEffectSchemaIs.js"
-import { preferHashMap } from "../checks/preferHashMap.js"
-import { preferHashSet } from "../checks/preferHashSet.js"
-import { preferImplicitReturn } from "../checks/preferImplicitReturn.js"
-import { preferOptionMatch } from "../checks/preferOptionMatch.js"
-import { preferPipeFunction } from "../checks/preferPipeFunction.js"
+import { preferCurriedDataLastFunctions, preferCurriedDataLastFunctionsExamples } from "../checks/preferCurriedDataLastFunctions.js"
+import { noAbstractClasses, noAbstractClassesExamples } from "../checks/noAbstractClasses.js"
+import { noArraySpread, noArraySpreadExamples } from "../checks/noArraySpread.js"
+import { noAsyncFunctions, noAsyncFunctionsExamples } from "../checks/noAsyncFunctions.js"
+import { noCallbacks, noCallbacksExamples } from "../checks/noCallbacks.js"
+import { noClassMethodImplementations, noClassMethodImplementationsExamples } from "../checks/noClassMethodImplementations.js"
+import { noDataTaggedClass, noDataTaggedClassExamples } from "../checks/noDataTaggedClass.js"
+import { noDuplicateFunctionNames, noDuplicateFunctionNamesExamples } from "../checks/noDuplicateFunctionNames.js"
+import { noDuplicateIfBodies, noDuplicateIfBodiesExamples } from "../checks/noDuplicateIfBodies.js"
+import { noExplicitAnyReturn, noExplicitAnyReturnExamples } from "../checks/noExplicitAnyReturn.js"
+import { noFirstPartySchemaDeclare, noFirstPartySchemaDeclareExamples } from "../checks/noFirstPartySchemaDeclare.js"
+import { noForInLoops, noForInLoopsExamples } from "../checks/noForInLoops.js"
+import { noForLoops, noForLoopsExamples } from "../checks/noForLoops.js"
+import { noForOfLoops, noForOfLoopsExamples } from "../checks/noForOfLoops.js"
+import { noFunctionKeyword, noFunctionKeywordExamples } from "../checks/noFunctionKeyword.js"
+import { noInlineBooleanExpressions, noInlineBooleanExpressionsExamples } from "../checks/noInlineBooleanExpressions.js"
+import { noInlineClosures, noInlineClosuresExamples } from "../checks/noInlineClosures.js"
+import { noInstanceof, noInstanceofExamples } from "../checks/noInstanceof.js"
+import { noManualTypeDispatch, noManualTypeDispatchExamples } from "../checks/noManualTypeDispatch.js"
+import { noMonomorphicStructGet, noMonomorphicStructGetExamples } from "../checks/noMonomorphicStructGet.js"
+import { noMultiLineComments, noMultiLineCommentsExamples } from "../checks/noMultiLineComments.js"
+import { noMultipleBooleanOperators, noMultipleBooleanOperatorsExamples } from "../checks/noMultipleBooleanOperators.js"
+import { noMutableArrayMethods, noMutableArrayMethodsExamples } from "../checks/noMutableArrayMethods.js"
+import { noMutableVariableDeclarations, noMutableVariableDeclarationsExamples } from "../checks/noMutableVariableDeclarations.js"
+import { noMutation, noMutationExamples } from "../checks/noMutation.js"
+import { noNestedCalls, noNestedCallsExamples } from "../checks/noNestedCalls.js"
+import { noNestedIfStatements, noNestedIfStatementsExamples } from "../checks/noNestedIfStatements.js"
+import { noNewError, noNewErrorExamples } from "../checks/noNewError.js"
+import { noNonNullAssertion, noNonNullAssertionExamples } from "../checks/noNonNullAssertion.js"
+import { noRawObjectTypes, noRawObjectTypesExamples } from "../checks/noRawObjectTypes.js"
+import { noReexport, noReexportExamples } from "../checks/noReexport.js"
+import { noRootLevelClasses, noRootLevelClassesExamples } from "../checks/noRootLevelClasses.js"
+import { noSingleUseCallee, noSingleUseCalleeExamples } from "../checks/noSingleUseCallee.js"
+import { noSwitchStatements, noSwitchStatementsExamples } from "../checks/noSwitchStatements.js"
+import { noThrow, noThrowExamples } from "../checks/noThrow.js"
+import { noTryCatch, noTryCatchExamples } from "../checks/noTryCatch.js"
+import { noUndefined, noUndefinedExamples } from "../checks/noUndefined.js"
+import { noVoidFunctions, noVoidFunctionsExamples } from "../checks/noVoidFunctions.js"
+import { requireBecauseInComments, requireBecauseInCommentsExamples } from "../checks/requireBecauseInComments.js"
+import { preferConditionalReturn, preferConditionalReturnExamples } from "../checks/preferConditionalReturn.js"
+import { preferDataLastModule, preferDataLastModuleExamples } from "../checks/preferDataLastModule.js"
+import { preferDirectBooleanReturn, preferDirectBooleanReturnExamples } from "../checks/preferDirectBooleanReturn.js"
+import { preferEffectArrayAppendAll, preferEffectArrayAppendAllExamples } from "../checks/preferEffectArrayAppendAll.js"
+import { preferEffectFn, preferEffectFnExamples } from "../checks/preferEffectFn.js"
+import { preferEffectFunctionConstant, preferEffectFunctionConstantExamples } from "../checks/preferEffectFunctionConstant.js"
+import { preferEffectPropertyAccessors, preferEffectPropertyAccessorsExamples } from "../checks/preferEffectPropertyAccessors.js"
+import { preferEffectRecordFilterMap, preferEffectRecordFilterMapExamples } from "../checks/preferEffectRecordFilterMap.js"
+import { preferEffectSchemaClass, preferEffectSchemaClassExamples } from "../checks/preferEffectSchemaClass.js"
+import { preferEffectSchemaConstructor, preferEffectSchemaConstructorExamples } from "../checks/preferEffectSchemaConstructor.js"
+import { preferEffectSchemaGuard, preferEffectSchemaGuardExamples } from "../checks/preferEffectSchemaGuard.js"
+import { preferEffectSchemaIs, preferEffectSchemaIsExamples } from "../checks/preferEffectSchemaIs.js"
+import { preferHashMap, preferHashMapExamples } from "../checks/preferHashMap.js"
+import { preferHashSet, preferHashSetExamples } from "../checks/preferHashSet.js"
+import { preferImplicitReturn, preferImplicitReturnExamples } from "../checks/preferImplicitReturn.js"
+import { preferOptionMatch, preferOptionMatchExamples } from "../checks/preferOptionMatch.js"
+import { preferPipeFunction, preferPipeFunctionExamples } from "../checks/preferPipeFunction.js"
 import {
   filterFallbackAdviceForUncoveredFiles,
   namedCheck,
@@ -88,65 +88,62 @@ const replayAdvice = (
 ): Stream.Stream<Advice, Error> => Stream.fromIterable(items)
 
 export const defaultChecks: ReadonlyArray<NamedCheck> = [
-  namedCheck("prefer-effect-schema-guard", preferEffectSchemaGuard),
-  namedCheck("prefer-effect-schema-is", preferEffectSchemaIs),
-  namedCheck("prefer-effect-schema-constructor", preferEffectSchemaConstructor),
-  namedCheck("prefer-effect-schema-class", preferEffectSchemaClass),
-  namedCheck("prefer-effect-fn", preferEffectFn),
-  namedCheck("prefer-effect-function-constant", preferEffectFunctionConstant),
-  namedCheck("prefer-effect-property-accessors", preferEffectPropertyAccessors),
-  namedCheck("prefer-effect-record-filter-map", preferEffectRecordFilterMap),
-  namedCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll),
-  namedCheck("prefer-data-last-module", preferDataLastModule),
-  namedCheck("prefer-conditional-return", preferConditionalReturn),
-  namedCheck("prefer-direct-boolean-return", preferDirectBooleanReturn),
-  namedCheck("prefer-implicit-return", preferImplicitReturn),
-  namedCheck("no-throw", noThrow),
-  namedCheck("no-new-error", noNewError),
-  namedCheck("no-try-catch", noTryCatch),
-  namedCheck("no-undefined", noUndefined),
-  namedCheck("no-void-functions", noVoidFunctions),
-  namedCheck("no-root-level-classes", noRootLevelClasses),
-  namedCheck("no-multi-line-comments", noMultiLineComments),
-  namedCheck("require-because-in-comments", requireBecauseInComments),
-  namedCheck("no-explicit-any-return", noExplicitAnyReturn),
-  namedCheck("no-multiple-boolean-operators", noMultipleBooleanOperators),
-  namedCheck("no-inline-boolean-expressions", noInlineBooleanExpressions),
-  namedCheck("no-mutable-array-methods", noMutableArrayMethods),
-  namedCheck("no-mutable-variable-declarations", noMutableVariableDeclarations),
-  namedCheck("no-mutation", noMutation),
-  namedCheck("no-nested-if-statements", noNestedIfStatements),
-  namedCheck("no-non-null-assertion", noNonNullAssertion),
-  namedCheck("no-duplicate-if-bodies", noDuplicateIfBodies),
-  namedCheck("no-duplicate-function-names", noDuplicateFunctionNames),
-  namedCheck("no-callbacks", noCallbacks),
-  namedCheck("no-async-functions", noAsyncFunctions),
-  namedCheck("no-array-spread", noArraySpread),
-  namedCheck("no-for-in-loops", noForInLoops),
-  namedCheck("no-for-loops", noForLoops),
-  namedCheck("no-for-of-loops", noForOfLoops),
-  namedCheck("no-switch-statements", noSwitchStatements),
-  namedCheck("no-function-keyword", noFunctionKeyword),
-  namedCheck("no-inline-closures", noInlineClosures),
-  namedCheck("no-nested-calls", noNestedCalls),
-  namedCheck("no-manual-type-dispatch", noManualTypeDispatch),
-  namedCheck("no-monomorphic-struct-get", noMonomorphicStructGet),
-  namedCheck("no-abstract-classes", noAbstractClasses),
-  namedCheck("no-class-method-implementations", noClassMethodImplementations),
-  namedCheck("no-raw-object-types", noRawObjectTypes),
-  namedCheck("no-reexport", noReexport),
-  namedCheck("no-first-party-schema-declare", noFirstPartySchemaDeclare),
-  namedCheck("no-data-tagged-class", noDataTaggedClass),
-  namedCheck("no-instanceof", noInstanceof),
-  namedCheck("no-single-use-callee", noSingleUseCallee),
-  namedCheck("prefer-hash-set", preferHashSet),
-  namedCheck("prefer-hash-map", preferHashMap),
-  namedCheck("prefer-option-match", preferOptionMatch),
-  namedCheck("prefer-pipe-function", preferPipeFunction),
-  silentCheck(
-    "prefer-curried-data-last-functions",
-    preferCurriedDataLastFunctions
-  )
+  namedCheck("prefer-effect-schema-guard", preferEffectSchemaGuard, preferEffectSchemaGuardExamples),
+  namedCheck("prefer-effect-schema-is", preferEffectSchemaIs, preferEffectSchemaIsExamples),
+  namedCheck("prefer-effect-schema-constructor", preferEffectSchemaConstructor, preferEffectSchemaConstructorExamples),
+  namedCheck("prefer-effect-schema-class", preferEffectSchemaClass, preferEffectSchemaClassExamples),
+  namedCheck("prefer-effect-fn", preferEffectFn, preferEffectFnExamples),
+  namedCheck("prefer-effect-function-constant", preferEffectFunctionConstant, preferEffectFunctionConstantExamples),
+  namedCheck("prefer-effect-property-accessors", preferEffectPropertyAccessors, preferEffectPropertyAccessorsExamples),
+  namedCheck("prefer-effect-record-filter-map", preferEffectRecordFilterMap, preferEffectRecordFilterMapExamples),
+  namedCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll, preferEffectArrayAppendAllExamples),
+  namedCheck("prefer-data-last-module", preferDataLastModule, preferDataLastModuleExamples),
+  namedCheck("prefer-conditional-return", preferConditionalReturn, preferConditionalReturnExamples),
+  namedCheck("prefer-direct-boolean-return", preferDirectBooleanReturn, preferDirectBooleanReturnExamples),
+  namedCheck("prefer-implicit-return", preferImplicitReturn, preferImplicitReturnExamples),
+  namedCheck("no-throw", noThrow, noThrowExamples),
+  namedCheck("no-new-error", noNewError, noNewErrorExamples),
+  namedCheck("no-try-catch", noTryCatch, noTryCatchExamples),
+  namedCheck("no-undefined", noUndefined, noUndefinedExamples),
+  namedCheck("no-void-functions", noVoidFunctions, noVoidFunctionsExamples),
+  namedCheck("no-root-level-classes", noRootLevelClasses, noRootLevelClassesExamples),
+  namedCheck("no-multi-line-comments", noMultiLineComments, noMultiLineCommentsExamples),
+  namedCheck("require-because-in-comments", requireBecauseInComments, requireBecauseInCommentsExamples),
+  namedCheck("no-explicit-any-return", noExplicitAnyReturn, noExplicitAnyReturnExamples),
+  namedCheck("no-multiple-boolean-operators", noMultipleBooleanOperators, noMultipleBooleanOperatorsExamples),
+  namedCheck("no-inline-boolean-expressions", noInlineBooleanExpressions, noInlineBooleanExpressionsExamples),
+  namedCheck("no-mutable-array-methods", noMutableArrayMethods, noMutableArrayMethodsExamples),
+  namedCheck("no-mutable-variable-declarations", noMutableVariableDeclarations, noMutableVariableDeclarationsExamples),
+  namedCheck("no-mutation", noMutation, noMutationExamples),
+  namedCheck("no-nested-if-statements", noNestedIfStatements, noNestedIfStatementsExamples),
+  namedCheck("no-non-null-assertion", noNonNullAssertion, noNonNullAssertionExamples),
+  namedCheck("no-duplicate-if-bodies", noDuplicateIfBodies, noDuplicateIfBodiesExamples),
+  namedCheck("no-duplicate-function-names", noDuplicateFunctionNames, noDuplicateFunctionNamesExamples),
+  namedCheck("no-callbacks", noCallbacks, noCallbacksExamples),
+  namedCheck("no-async-functions", noAsyncFunctions, noAsyncFunctionsExamples),
+  namedCheck("no-array-spread", noArraySpread, noArraySpreadExamples),
+  namedCheck("no-for-in-loops", noForInLoops, noForInLoopsExamples),
+  namedCheck("no-for-loops", noForLoops, noForLoopsExamples),
+  namedCheck("no-for-of-loops", noForOfLoops, noForOfLoopsExamples),
+  namedCheck("no-switch-statements", noSwitchStatements, noSwitchStatementsExamples),
+  namedCheck("no-function-keyword", noFunctionKeyword, noFunctionKeywordExamples),
+  namedCheck("no-inline-closures", noInlineClosures, noInlineClosuresExamples),
+  namedCheck("no-nested-calls", noNestedCalls, noNestedCallsExamples),
+  namedCheck("no-manual-type-dispatch", noManualTypeDispatch, noManualTypeDispatchExamples),
+  namedCheck("no-monomorphic-struct-get", noMonomorphicStructGet, noMonomorphicStructGetExamples),
+  namedCheck("no-abstract-classes", noAbstractClasses, noAbstractClassesExamples),
+  namedCheck("no-class-method-implementations", noClassMethodImplementations, noClassMethodImplementationsExamples),
+  namedCheck("no-raw-object-types", noRawObjectTypes, noRawObjectTypesExamples),
+  namedCheck("no-reexport", noReexport, noReexportExamples),
+  namedCheck("no-first-party-schema-declare", noFirstPartySchemaDeclare, noFirstPartySchemaDeclareExamples),
+  namedCheck("no-data-tagged-class", noDataTaggedClass, noDataTaggedClassExamples),
+  namedCheck("no-instanceof", noInstanceof, noInstanceofExamples),
+  namedCheck("no-single-use-callee", noSingleUseCallee, noSingleUseCalleeExamples),
+  namedCheck("prefer-hash-set", preferHashSet, preferHashSetExamples),
+  namedCheck("prefer-hash-map", preferHashMap, preferHashMapExamples),
+  namedCheck("prefer-option-match", preferOptionMatch, preferOptionMatchExamples),
+  namedCheck("prefer-pipe-function", preferPipeFunction, preferPipeFunctionExamples),
+  silentCheck("prefer-curried-data-last-functions", preferCurriedDataLastFunctions, preferCurriedDataLastFunctionsExamples)
 ]
 
 export const defaultDerive = (

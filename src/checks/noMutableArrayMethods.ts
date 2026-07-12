@@ -10,6 +10,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type MutableArrayMethod =
   | "copyWithin"
@@ -159,3 +163,6 @@ const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
 )
 
 export const noMutableArrayMethods: Check = check
+
+export const noMutableArrayMethodsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-mutable-array-methods")

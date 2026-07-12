@@ -10,6 +10,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const isSetIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Set"
@@ -118,3 +122,6 @@ const check = nodeCheck([
 ])(isSetRuleNode)(setMatches)
 
 export const preferHashSet: Check = check
+
+export const preferHashSetExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-hash-set")

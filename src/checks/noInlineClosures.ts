@@ -6,6 +6,10 @@ import { isExternalPackageArgument } from "./support/tsSignature.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const sanctionedParentKinds = HashSet.make(
   ts.SyntaxKind.VariableDeclaration,
@@ -56,3 +60,6 @@ const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
 )
 
 export const noInlineClosures: Check = check
+
+export const noInlineClosuresExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-inline-closures")

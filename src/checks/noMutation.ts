@@ -18,6 +18,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const message = "Avoid mutating first-party data."
 
@@ -285,3 +289,6 @@ const mutationMatches = (context: CheckContext) => {
 const check = nodeCheck(mutationNodeKinds)(isMutationCandidate)(mutationMatches)
 
 export const noMutation: Check = check
+
+export const noMutationExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-mutation")

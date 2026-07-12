@@ -28,12 +28,12 @@ const detectionsAt = (
 const reportedSignal = (
   name: string,
   detections: ReadonlyArray<Detection>
-): Signal => new Signal({ name, reported: true, detections })
+): Signal => new Signal({ name, reported: true, detections, examples: [] })
 
 const silentSignal = (
   name: string,
   detections: ReadonlyArray<Detection>
-): Signal => new Signal({ name, reported: false, detections })
+): Signal => new Signal({ name, reported: false, detections, examples: [] })
 
 const collectAdvice = (
   advice: Stream.Stream<Advice, Error>

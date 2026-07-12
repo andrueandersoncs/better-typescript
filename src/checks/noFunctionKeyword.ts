@@ -4,6 +4,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 type FunctionDeclarationWithBody = ts.FunctionDeclaration & {
@@ -94,3 +98,6 @@ const check = nodeCheck([
 ])(isFunctionKeywordNode)(functionKeywordMatches)
 
 export const noFunctionKeyword: Check = check
+
+export const noFunctionKeywordExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-function-keyword")

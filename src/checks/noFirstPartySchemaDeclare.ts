@@ -6,6 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const accessExpression = Struct.get("expression")
 
@@ -126,3 +130,6 @@ const check = nodeCheck([ts.SyntaxKind.CallExpression])(isDeclareCall)(
 )
 
 export const noFirstPartySchemaDeclare: Check = check
+
+export const noFirstPartySchemaDeclareExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-first-party-schema-declare")

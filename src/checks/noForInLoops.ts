@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const forInStatementKind = ts.SyntaxKind.ForInStatement
 
@@ -25,3 +29,6 @@ const forInLoopElements = (context: CheckContext) => {
 export const noForInLoops: Check = nodeCheck([forInStatementKind])(
   ts.isForInStatement
 )(forInLoopElements)
+
+export const noForInLoopsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-for-in-loops")

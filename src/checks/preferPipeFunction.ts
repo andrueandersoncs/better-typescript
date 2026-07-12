@@ -5,6 +5,10 @@ import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const isPipeName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "pipe"
@@ -54,3 +58,6 @@ const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
 )
 
 export const preferPipeFunction: Check = check
+
+export const preferPipeFunctionExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-pipe-function")

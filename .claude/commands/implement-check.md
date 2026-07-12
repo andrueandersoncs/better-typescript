@@ -54,15 +54,21 @@ check-to-check dependencies.
    built with `nodeCheck(...)`, `fileCheck(...)`, `combineAll(...)`, or
    `withProgramIndex(...)`. Use `locateNode` or `detection` to emit precise
    locations. Give every detection a clear `message` and actionable `hint`.
+   Also export `<camelCaseName>Examples` as
+   `fixtureRefactorExamples("<kebab-name>")` (a non-empty
+   `NonEmptyRefactorExamples`). Do not embed inline example source in the check
+   module for in-repo checks.
 
 4. **Wire it into the preset.**
-   - Import it directly from `src/checks/<camelCaseName>.ts` in
-     `src/preset/defaultWiring.ts` (no barrel `index.ts`).
-   - Add `namedCheck("<kebab-name>", <camelCaseName>)` to `defaultChecks` in
-     `src/preset/defaultWiring.ts` when the check should render local detection
-     blocks.
-   - Add `silentCheck("<kebab-name>", <camelCaseName>)` instead when the check
-     exists only as evidence for `derive` and should not render a local block.
+   - Import the check and its examples directly from
+     `src/checks/<camelCaseName>.ts` in `src/preset/defaultWiring.ts` (no barrel
+     `index.ts`).
+   - Add `namedCheck("<kebab-name>", <camelCaseName>, <camelCaseName>Examples)`
+     to `defaultChecks` in `src/preset/defaultWiring.ts` when the check should
+     render local detection blocks (examples appear under the Hint).
+   - Add `silentCheck("<kebab-name>", <camelCaseName>, <camelCaseName>Examples)`
+     instead when the check exists only as evidence for `derive` and should not
+     render a local block.
    - If aggregate guidance is required, update `defaultDerive(signals)` in
      `src/preset/defaultWiring.ts`. Use `signalOf(signals)("<kebab-name>")` to
      obtain the completed detection stream, compose with `deriveSignals(...)`
@@ -71,20 +77,36 @@ check-to-check dependencies.
    - Do not add a registry, plugin loader, severity, suppression, generated
      guide, compatibility adapter, or alternate config shape.
 
-5. **Create the fixture** under `tests/fixtures/<kebab-name>/`:
+5. **Create the characterization fixture** under `tests/fixtures/<kebab-name>/`:
    - `tsconfig.json` — copy an existing fixture's config.
-   - `src/cases.ts` — code that should emit detections.
-   - `src/allowed.ts` — similar code that should stay silent.
+   - `src/cases.ts` — code that should emit detections (disallowed corpus).
+   - `src/allowed.ts` — similar code that should stay silent (negative tests).
+   - Do not treat `allowed.ts` as the "good" rewrite target; it only proves
+     non-matches.
 
-6. **Write the test** at `tests/<camelCaseName>.test.ts`, mirroring a current
+6. **Create paired refactor example trees** under
+   `tests/fixtures/<kebab-name>/example/`:
+   - Layout: `example/<n>/{bad,good}/` where `<n>` is `1`, `2`, …
+   - Each of `bad` and `good` is a full mini-project: its own `tsconfig.json`
+     plus one or more `.ts` files (multi-file trees and directory structure are
+     allowed when the remediation needs them).
+   - `bad` must be detected by the check; `good` must stay clean.
+   - Reports print every file in each tree as `Bad (path):` / `Good (path):`
+     with 4-space indented code under the Hint.
+   - `tests/refactorExamples.test.ts` validates that every reported check has
+     ≥1 pair and that bad/good sides detect/clean respectively.
+
+7. **Write the test** at `tests/<camelCaseName>.test.ts`, mirroring a current
    per-check test. Use `runCheckOnProject` through the shared assertions in
    `tests/ruleTestAssertions.ts`. Assert each expected disallowed item with its
    exact `fileName`, `line`, `column`, `message`, and `hint`; assert the
-   allowed fixture emits no detections.
+   allowed fixture emits no detections. `ruleTestAssertions` does not load
+   example trees — characterization expectations stay hardcoded.
 
-7. **Verify, in order:**
+8. **Verify, in order:**
    - Run the new targeted test and iterate until it passes. `line` and `column`
      are 1-based.
+   - Confirm `tests/refactorExamples.test.ts` still passes for the new fixture.
    - Run the repository typecheck.
    - Run the bounded self-hosting check with `timeout 10 npm run dev`; the
      initial report must stay `No signals`. The command exits `0` when it
@@ -117,7 +139,7 @@ check-to-check dependencies.
 
 4. **Wire the consumer fleet explicitly.**
    - To extend the preset, use
-     `checks: [...defaultChecks, namedCheck("<name>", localCheck)]`.
+     `checks: [...defaultChecks, namedCheck("<name>", localCheck, localExamples)]`.
    - To cherry-pick, construct a new `checks` array from the preset exports and
      omit unwanted entries.
    - Use `silentCheck("<name>", localCheck)` for evidence-only checks that feed
@@ -132,7 +154,12 @@ check-to-check dependencies.
    be suppressed for files that already received file-level specific advice.
    Source checks must not consume signals; signal fan-in belongs in `derive`.
 
-6. **Copyable external config skeleton:**
+6. **Author paired examples inline** with `exampleSnippet` /
+   `refactorExample` (or `refactorExampleTrees` for multi-file pairs). External
+   configs do not use `tests/fixtures/.../example/`; that layout is for the
+   analyzer package's own checks via `fixtureRefactorExamples`.
+
+7. **Copyable external config skeleton:**
 
 ```ts
 import { Stream, pipe } from "effect"
@@ -143,11 +170,22 @@ import {
   evidenceItem
 } from "better-typescript/engine/derive"
 import type { Detection } from "better-typescript/engine/location"
+import {
+  exampleSnippet,
+  refactorExample
+} from "better-typescript/engine/example"
 import { makeWiring, namedCheck, signalOf } from "better-typescript/engine/report"
 import { defaultChecks, defaultDerive } from "better-typescript/preset/defaultWiring"
 import { localCheck } from "./checks/localCheck.js"
 
-const local = namedCheck("acme/local-check", localCheck)
+const localExamples = [
+  refactorExample(
+    exampleSnippet("src/main.ts", `/* bad */`),
+    exampleSnippet("src/main.ts", `/* good */`)
+  )
+] as const
+
+const local = namedCheck("acme/local-check", localCheck, localExamples)
 
 const localAdvice = (
   detections: Stream.Stream<Detection, Error>

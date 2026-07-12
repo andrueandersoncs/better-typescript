@@ -10,6 +10,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const isGuardIfStatement = (
   statement: ts.Statement
@@ -155,3 +159,6 @@ const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
 )
 
 export const noDuplicateIfBodies: Check = check
+
+export const noDuplicateIfBodiesExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-duplicate-if-bodies")

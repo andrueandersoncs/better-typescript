@@ -6,6 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type ClassNode = ts.ClassDeclaration | ts.ClassExpression
 
@@ -54,3 +58,6 @@ const rootLevelClassMatches = (context: CheckContext) => {
 const check = nodeCheck(classNodeKinds)(isClassNode)(rootLevelClassMatches)
 
 export const noRootLevelClasses: Check = check
+
+export const noRootLevelClassesExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-root-level-classes")

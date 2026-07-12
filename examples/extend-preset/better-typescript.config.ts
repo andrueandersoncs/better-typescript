@@ -8,6 +8,10 @@ import {
   deriveSignals,
   evidenceItem
 } from "better-typescript/engine/derive"
+import {
+  exampleSnippet,
+  refactorExample
+} from "better-typescript/engine/example"
 import { makeWiring, namedCheck, signalOf } from "better-typescript/engine/report"
 import { defaultWiring } from "better-typescript/preset/defaultWiring"
 
@@ -72,7 +76,24 @@ const consoleLogBoundaryAdvice = (
     )
   )(detections)
 
-const consoleLogCheck = namedCheck("acme/no-console-log", noConsoleLog)
+const consoleLogExamples = [
+  refactorExample(
+    exampleSnippet(
+      "src/main.ts",
+      `console.log("starting")`
+    ),
+    exampleSnippet(
+      "src/main.ts",
+      `return { status: "starting" as const }`
+    )
+  )
+] as const
+
+const consoleLogCheck = namedCheck(
+  "acme/no-console-log",
+  noConsoleLog,
+  consoleLogExamples
+)
 
 export default makeWiring({
   checks: [...defaultWiring.checks, consoleLogCheck],

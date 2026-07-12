@@ -10,6 +10,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const isMapIdentifier = (identifier: ts.Identifier): boolean =>
   identifier.text === "Map"
@@ -118,3 +122,6 @@ const check = nodeCheck([
 ])(isMapRuleNode)(mapMatches)
 
 export const preferHashMap: Check = check
+
+export const preferHashMapExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-hash-map")

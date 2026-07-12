@@ -9,6 +9,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
@@ -132,3 +136,6 @@ const check = nodeCheck([
 ])(isCallLikeExpression)(nestedCallMatches)
 
 export const noNestedCalls: Check = check
+
+export const noNestedCallsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-nested-calls")

@@ -18,6 +18,10 @@ import {
   type NamedCheck,
   type Wiring
 } from "../src/engine/report.js"
+import {
+  exampleSnippet,
+  refactorExample
+} from "../src/engine/example.js"
 import { report } from "../src/preset.js"
 import { astNodes } from "../src/engine/sources.js"
 import { loadProject } from "../src/project/loadProject.js"
@@ -25,6 +29,14 @@ import type {
   LoadedProject,
   LoadedWorkspace
 } from "../src/project/loadProject.js"
+
+
+const probeExamples = [
+  refactorExample(
+    exampleSnippet("src/cases.ts", `throw new Error("boom")`),
+    exampleSnippet("src/cases.ts", `yield* new BoomError()`)
+  )
+] as const
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = (name: string): string =>
@@ -99,7 +111,8 @@ const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(
 
 const throwProbeNamedCheck: NamedCheck = namedCheck(
   "probe throw statements",
-  throwProbeCheck
+  throwProbeCheck,
+  probeExamples
 )
 
 const silentProbeNamedCheck: NamedCheck = silentCheck(
@@ -191,7 +204,8 @@ const testWiring = (
 
 const noOpCheck: Check = () => Stream.empty
 
-const namedNoOpCheck = (name: string): NamedCheck => namedCheck(name, noOpCheck)
+const namedNoOpCheck = (name: string): NamedCheck =>
+  namedCheck(name, noOpCheck, probeExamples)
 
 const silentNoOpCheck = (name: string): NamedCheck =>
   silentCheck(name, noOpCheck)
@@ -253,7 +267,9 @@ test("reportFromWiring collapses duplicate workspace detections by check and loc
 
   assert.equal(blocks.length, 1)
   assert.deepEqual(
-    blocks[0]?.split("\n").slice(3),
+    blocks[0]
+      ?.split("\n")
+      .filter((line) => /^  [^ ].*:\d+:\d+$/.test(line)),
     expectedThrowProbeElements.map(
       ({ path: filePath, line, column }) => `  ${filePath}:${line}:${column}`
     ),
@@ -283,7 +299,9 @@ test("reportFromWiring preserves two distinct detections emitted at the same AST
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
     reportFromWiring(
-      testWiring([namedCheck("two messages on one node", doubleDetectionCheck)])
+      testWiring([
+        namedCheck("two messages on one node", doubleDetectionCheck, probeExamples)
+      ])
     )(workspace)
   )
 
@@ -344,7 +362,8 @@ test("reportFromWiring groups locations under the check prose name, message, and
         message: probeMessage,
         hint: probeHint
       })
-    ])
+    ]),
+    probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
@@ -356,6 +375,10 @@ test("reportFromWiring groups locations under the check prose name, message, and
       "probe throw statements",
       `  ${probeMessage}`,
       `  Hint: ${probeHint}`,
+      "  Bad (src/cases.ts):",
+      '    throw new Error("boom")',
+      "  Good (src/cases.ts):",
+      "    yield* new BoomError()",
       "  src/cases.ts:4:3",
       "  src/cases.ts:9:5"
     ].join("\n")
@@ -386,7 +409,8 @@ test("reportFromWiring splits one check into distinct message and hint groups", 
         message: "throw statement",
         hint: "return error values instead"
       })
-    ])
+    ]),
+    probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
@@ -398,6 +422,10 @@ test("reportFromWiring splits one check into distinct message and hint groups", 
       "probe throw statements",
       "  throw statement",
       "  Hint: yield typed errors instead of throwing",
+      "  Bad (src/cases.ts):",
+      '    throw new Error("boom")',
+      "  Good (src/cases.ts):",
+      "    yield* new BoomError()",
       "  src/cases.ts:4:3",
       "  src/cases.ts:9:5"
     ].join("\n"),
@@ -405,12 +433,20 @@ test("reportFromWiring splits one check into distinct message and hint groups", 
       "probe throw statements",
       "  throw expression",
       "  Hint: yield typed errors instead of throwing",
+      "  Bad (src/cases.ts):",
+      '    throw new Error("boom")',
+      "  Good (src/cases.ts):",
+      "    yield* new BoomError()",
       "  src/cases.ts:19:5"
     ].join("\n"),
     [
       "probe throw statements",
       "  throw statement",
       "  Hint: return error values instead",
+      "  Bad (src/cases.ts):",
+      '    throw new Error("boom")',
+      "  Good (src/cases.ts):",
+      "    yield* new BoomError()",
       "  src/cases.ts:26:3"
     ].join("\n")
   ])
@@ -431,7 +467,8 @@ test("reportFromWiring orders advice before check blocks and sorts advice by lev
         message: probeMessage,
         hint: probeHint
       })
-    ])
+    ]),
+    probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
@@ -452,20 +489,27 @@ test("reportFromWiring orders advice before check blocks and sorts advice by lev
       "probe throw statements",
       `  ${probeMessage}`,
       `  Hint: ${probeHint}`,
+      "  Bad (src/cases.ts):",
+      '    throw new Error("boom")',
+      "  Good (src/cases.ts):",
+      "    yield* new BoomError()",
       "  src/cases.ts:4:3"
     ].join("\n")
   )
 })
 
 test("reportFromWiring preserves asynchronously emitted advice and check streams", async () => {
-  const delayedCheck = namedCheck("probe throw statements", () =>
-    delayedSource([
-      new Detection({
-        location: location("src/cases.ts", 4, 3),
-        message: probeMessage,
-        hint: probeHint
-      })
-    ])
+  const delayedCheck = namedCheck(
+    "probe throw statements",
+    () =>
+      delayedSource([
+        new Detection({
+          location: location("src/cases.ts", 4, 3),
+          message: probeMessage,
+          hint: probeHint
+        })
+      ]),
+    probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(

@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const throwStatementKind = ts.SyntaxKind.ThrowStatement
 
@@ -25,3 +29,6 @@ const throwStatementElements = (context: CheckContext) => {
 export const noThrow: Check = nodeCheck([throwStatementKind])(
   ts.isThrowStatement
 )(throwStatementElements)
+
+export const noThrowExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-throw")

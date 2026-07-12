@@ -8,6 +8,10 @@ import {
 } from "./support/tsNode.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const message = "Avoid monomorphizing Struct.get at its declaration."
 
@@ -156,3 +160,6 @@ const check = nodeCheck([ts.SyntaxKind.VariableDeclaration])(
 )(monomorphicStructGetMatches)
 
 export const noMonomorphicStructGet: Check = check
+
+export const noMonomorphicStructGetExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-monomorphic-struct-get")

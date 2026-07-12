@@ -10,6 +10,10 @@ import {
   type SourceComment
 } from "./support/comments.js"
 import type { Check, CheckContext } from "../engine/check.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const message = "Avoid multi-line comments."
 
@@ -105,3 +109,6 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
 }
 
 export const noMultiLineComments: Check = fileCheck(fileMatches)
+
+export const noMultiLineCommentsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-multi-line-comments")

@@ -4,6 +4,10 @@ import { unwrapExpression } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const message = "Avoid conditional array spreads."
 
@@ -54,3 +58,6 @@ const check = nodeCheck([ts.SyntaxKind.SpreadElement])(ts.isSpreadElement)(
 )
 
 export const preferEffectArrayAppendAll: Check = check
+
+export const preferEffectArrayAppendAllExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-effect-array-append-all")

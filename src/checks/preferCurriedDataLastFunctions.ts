@@ -19,6 +19,10 @@ import { hasCallSignature } from "./support/tsType.js"
 import type { Check, CheckContext, Subscription } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
 import type { ProgramContext } from "../engine/sources.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type CurriedDataLastCandidate =
   | ts.FunctionDeclaration
@@ -570,3 +574,6 @@ const curriedDataLastListeners = (
 const check = withProgramIndex(buildSymbolUses)(curriedDataLastListeners)
 
 export const preferCurriedDataLastFunctions: Check = check
+
+export const preferCurriedDataLastFunctionsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-curried-data-last-functions")

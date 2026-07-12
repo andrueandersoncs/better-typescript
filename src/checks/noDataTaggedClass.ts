@@ -5,6 +5,10 @@ import { isExtendsClause, namedDetectionTarget } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const hasTaggedClassName = (name: ts.MemberName): boolean =>
   name.text === "TaggedClass"
@@ -88,3 +92,6 @@ const check = nodeCheck([ts.SyntaxKind.ClassDeclaration])(
 )(dataTaggedClassMatches)
 
 export const noDataTaggedClass: Check = check
+
+export const noDataTaggedClassExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-data-tagged-class")

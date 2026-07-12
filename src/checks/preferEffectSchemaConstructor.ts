@@ -6,6 +6,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const tagPropertyName = "_tag"
 
@@ -149,3 +153,6 @@ const check = nodeCheck([
 ])(isReturnCandidate)(objectLiteralReturnMatches)
 
 export const preferEffectSchemaConstructor: Check = check
+
+export const preferEffectSchemaConstructorExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-effect-schema-constructor")

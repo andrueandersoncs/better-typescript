@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const tryStatementKind = ts.SyntaxKind.TryStatement
 
@@ -26,3 +30,6 @@ const tryCatchElements = (context: CheckContext) => {
 export const noTryCatch: Check = nodeCheck([tryStatementKind])(
   ts.isTryStatement
 )(tryCatchElements)
+
+export const noTryCatchExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-try-catch")

@@ -13,6 +13,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const hasParameters = (initializer: FunctionInitializer): boolean =>
   initializer.parameters.length > 0
@@ -146,3 +150,6 @@ const check = nodeCheck([ts.SyntaxKind.VariableDeclaration])(
 )(effectFnMatches)
 
 export const preferEffectFn: Check = check
+
+export const preferEffectFnExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-effect-fn")

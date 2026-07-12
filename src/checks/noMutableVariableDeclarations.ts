@@ -5,6 +5,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type MutableVariableDeclarationKind = "let" | "var"
 
@@ -60,3 +64,6 @@ const check = nodeCheck([ts.SyntaxKind.VariableDeclarationList])(
 )(mutableDeclarationMatches)
 
 export const noMutableVariableDeclarations: Check = check
+
+export const noMutableVariableDeclarationsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-mutable-variable-declarations")

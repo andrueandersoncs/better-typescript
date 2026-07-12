@@ -6,6 +6,10 @@ import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.FunctionDeclaration,
@@ -56,3 +60,6 @@ const explicitAnyReturnElements = (context: CheckContext) => {
 export const noExplicitAnyReturn: Check = nodeCheck(returnTypeDeclarationKinds)(
   isReturnTypeDeclaration
 )(explicitAnyReturnElements)
+
+export const noExplicitAnyReturnExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-explicit-any-return")

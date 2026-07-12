@@ -5,6 +5,10 @@ import { unwrapExpression } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const logicalOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken,
@@ -49,3 +53,6 @@ const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
 )
 
 export const noInlineBooleanExpressions: Check = check
+
+export const noInlineBooleanExpressionsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-inline-boolean-expressions")

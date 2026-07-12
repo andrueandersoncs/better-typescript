@@ -21,17 +21,24 @@ import type { Check } from "./check.js"
 import type { Detection } from "./location.js"
 import { collectSignals } from "./derive.js"
 import type { Advice, EvidenceItem } from "./derive.js"
+import type {
+  ExampleSnippet,
+  NonEmptyRefactorExamples,
+  RefactorExample
+} from "./example.js"
 
 export class NamedCheck extends Data.Class<{
   readonly name: string
   readonly check: Check
   readonly reported: boolean
+  readonly examples: ReadonlyArray<RefactorExample>
 }> {}
 
 export class Signal extends Data.Class<{
   readonly name: string
   readonly reported: boolean
   readonly detections: ReadonlyArray<Detection>
+  readonly examples: ReadonlyArray<RefactorExample>
 }> {}
 
 export class Wiring extends Data.Class<{
@@ -148,7 +155,8 @@ const dedupedSignal =
     return new Signal({
       name: check.name,
       reported: check.reported,
-      detections: deduped.elements
+      detections: deduped.elements,
+      examples: check.examples
     })
   }
 
@@ -263,8 +271,34 @@ const detectionBlockKey = (element: Detection): string =>
 const locationText = (element: Detection): string =>
   `  ${element.location.path}:${element.location.line}:${element.location.column}`
 
+const formatExampleSnippet =
+  (label: string) =>
+  (snippet: ExampleSnippet): string => {
+    const codeLines = snippet.code.split("\n")
+    const indentedLines = Array.map(codeLines, (line) => `    ${line}`)
+    const indentedCode = Array.join(indentedLines, "\n")
+
+    return `  ${label} (${snippet.filePath}):\n${indentedCode}`
+  }
+
+const formatExampleTree =
+  (label: string) =>
+  (files: ReadonlyArray<ExampleSnippet>): string => {
+    const sections = Array.map(files, formatExampleSnippet(label))
+
+    return Array.join(sections, "\n")
+  }
+
+const formatRefactorExample = (example: RefactorExample): string => {
+  const badText = formatExampleTree("Bad")(example.bad)
+  const goodText = formatExampleTree("Good")(example.good)
+
+  return Array.join([badText, goodText], "\n")
+}
+
 const checkTextForDetections =
   (name: string) =>
+  (examples: ReadonlyArray<RefactorExample>) =>
   (elements: ReadonlyArray<Detection>): string =>
     pipe(
       elements,
@@ -273,8 +307,10 @@ const checkTextForDetections =
         onNonEmpty: (first) => {
           const message = `  ${first.message}`
           const hint = `  Hint: ${first.hint}`
+          const examplesText = Array.map(examples, formatRefactorExample)
+          const header = Array.appendAll([name, message, hint], examplesText)
           const locations = Array.map(elements, locationText)
-          const lines = Array.appendAll([name, message, hint], locations)
+          const lines = Array.appendAll(header, locations)
 
           return Array.join(lines, "\n")
         }
@@ -283,6 +319,7 @@ const checkTextForDetections =
 
 const checkReportBlockForGroup =
   (name: string) =>
+  (examples: ReadonlyArray<RefactorExample>) =>
   (elements: Array.NonEmptyArray<Detection>): ReportBlock => {
     const first = Array.headNonEmpty(elements)
     const identity = reportIdentity("rule", [name, first.message, first.hint])
@@ -291,7 +328,7 @@ const checkReportBlockForGroup =
       message: first.message,
       hint: first.hint
     })
-    const text = checkTextForDetections(name)(elements)
+    const text = checkTextForDetections(name)(examples)(elements)
     const cleared = `${name} — cleared: ${first.message}`
 
     return new ReportBlock({ identity, key, text, cleared })
@@ -303,11 +340,12 @@ const checkReportBlockForGroup =
  */
 export const checkReportBlocks =
   (name: string) =>
+  (examples: ReadonlyArray<RefactorExample>) =>
   (elements: ReadonlyArray<Detection>): ReadonlyArray<ReportBlock> =>
     pipe(
       Array.groupBy(elements, detectionBlockKey),
       Record.values,
-      Array.map(checkReportBlockForGroup(name))
+      Array.map(checkReportBlockForGroup(name)(examples))
     )
 
 /**
@@ -322,7 +360,7 @@ export const reportBlocks =
       signals,
       Array.filter(Struct.get("reported")),
       Array.flatMap((signal) =>
-        checkReportBlocks(signal.name)(signal.detections)
+        checkReportBlocks(signal.name)(signal.examples)(signal.detections)
       )
     )
 
@@ -432,11 +470,17 @@ export const signalOf =
     )
   }
 
-export const namedCheck = (name: string, check: Check): NamedCheck =>
-  new NamedCheck({ name, check, reported: true })
+export const namedCheck = (
+  name: string,
+  check: Check,
+  examples: NonEmptyRefactorExamples
+): NamedCheck => new NamedCheck({ name, check, reported: true, examples })
 
-export const silentCheck = (name: string, check: Check): NamedCheck =>
-  new NamedCheck({ name, check, reported: false })
+export const silentCheck = (
+  name: string,
+  check: Check,
+  examples: ReadonlyArray<RefactorExample> = []
+): NamedCheck => new NamedCheck({ name, check, reported: false, examples })
 
 const duplicateNameArray = Schema.Array(Schema.String)
 

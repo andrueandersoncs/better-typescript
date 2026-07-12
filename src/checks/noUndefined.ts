@@ -6,6 +6,10 @@ import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
@@ -234,3 +238,6 @@ const check = combineAll([
 ])
 
 export const noUndefined: Check = check
+
+export const noUndefinedExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-undefined")

@@ -4,6 +4,7 @@ import { Effect, Function, Option, Schema, Struct, pipe } from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring, makeWiring } from "../engine/report.js"
 import type { Check } from "../engine/check.js"
+import type { RefactorExample } from "../engine/example.js"
 
 const configFileName = "better-typescript.config.ts"
 const defaultExportName = "default"
@@ -228,7 +229,8 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
   )
 })
 
-const checkShapeReason = "{ name: string, check: function, reported?: boolean }"
+const checkShapeReason =
+  "{ name: string, check: function, reported?: boolean, examples?: RefactorExample[] }"
 
 const hasNamedCheckFields = (record: ModuleRecord): boolean => {
   const hasStringName = typeof record.name === "string"
@@ -243,8 +245,20 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
       onSome: (reported) => typeof reported === "boolean"
     })
   )
+  const examples = Object.hasOwn(record, "examples")
+    ? Option.some(record.examples)
+    : Option.none()
+  const hasValidExamples = pipe(
+    examples,
+    Option.match({
+      onNone: Function.constant(true),
+      onSome: (examples) => Array.isArray(examples)
+    })
+  )
 
-  return [hasStringName, hasFunctionCheck, hasValidReported].every(Boolean)
+  return [hasStringName, hasFunctionCheck, hasValidReported, hasValidExamples].every(
+    Boolean
+  )
 }
 
 const invalidNamedCheck = (value: unknown): boolean => {
@@ -261,8 +275,11 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
   const reported = Object.hasOwn(record, "reported")
     ? (record.reported as boolean)
     : true
+  const examples = Object.hasOwn(record, "examples")
+    ? (record.examples as ReadonlyArray<RefactorExample>)
+    : []
 
-  return new NamedCheck({ name, check, reported })
+  return new NamedCheck({ name, check, reported, examples })
 }
 
 const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (

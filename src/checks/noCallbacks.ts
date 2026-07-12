@@ -10,6 +10,10 @@ import {
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type CallbackStyleDeclaration =
   | ts.FunctionDeclaration
@@ -179,3 +183,6 @@ const check = nodeCheck([
 ])(isCallbackStyleCandidate)(callbackStyleMatches)
 
 export const noCallbacks: Check = check
+
+export const noCallbacksExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-callbacks")

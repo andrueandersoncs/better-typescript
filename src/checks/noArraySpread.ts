@@ -3,6 +3,10 @@ import { nodeCheck } from "../engine/check.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const spreadElementKind = ts.SyntaxKind.SpreadElement
 
@@ -30,3 +34,6 @@ const arraySpreadElements = (context: CheckContext) => {
 export const noArraySpread: Check = nodeCheck([spreadElementKind])(
   ts.isSpreadElement
 )(arraySpreadElements)
+
+export const noArraySpreadExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-array-spread")

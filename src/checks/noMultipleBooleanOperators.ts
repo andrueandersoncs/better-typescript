@@ -6,6 +6,10 @@ import { astChildren } from "../engine/sources.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type BooleanOperatorExpression =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
@@ -139,3 +143,6 @@ const check = nodeCheck([
 ])(isBooleanOperatorExpression)(multipleBooleanOperatorMatches)
 
 export const noMultipleBooleanOperators: Check = check
+
+export const noMultipleBooleanOperatorsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("no-multiple-boolean-operators")

@@ -5,6 +5,10 @@ import { returnedExpression } from "./support/tsNode.js"
 import { detection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
   readonly body: ts.Block
@@ -49,3 +53,6 @@ const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
 )
 
 export const preferImplicitReturn: Check = check
+
+export const preferImplicitReturnExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-implicit-return")

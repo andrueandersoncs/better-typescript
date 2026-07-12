@@ -7,6 +7,10 @@ import { detection } from "../engine/location.js"
 import type { MakeDetection } from "../engine/location.js"
 import type { Check, CheckContext } from "../engine/check.js"
 import type { Detection } from "../engine/location.js"
+import {
+  fixtureRefactorExamples
+} from "../engine/example.js"
+import type { NonEmptyRefactorExamples } from "../engine/example.js"
 
 const conditionExpressions = (
   expression: ts.Expression
@@ -72,3 +76,6 @@ const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
 )
 
 export const preferEffectSchemaGuard: Check = check
+
+export const preferEffectSchemaGuardExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("prefer-effect-schema-guard")
