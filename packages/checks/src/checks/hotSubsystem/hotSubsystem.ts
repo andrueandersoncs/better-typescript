@@ -1,4 +1,4 @@
-import { Array, HashMap, Option, Stream, Struct, pipe } from "effect"
+import { Tuple, Array, HashMap, Option, Stream, Struct, pipe } from "effect"
 import {
   Advice,
   FileDetections
@@ -22,10 +22,8 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const hasEnoughFiles = directory.files.length >= 3
   const hasProjectShare = total * 5 >= directory.projectTotal * 3
 
-  return Array.every(
-    [hasEnoughSignals, hasEnoughFiles, hasProjectShare],
-    Boolean
-  )
+  const values0 = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
+  return Array.every(values0, Boolean)
 }
 
 const subsystemAdvice = (directory: DirectorySignals): Advice => {
@@ -41,7 +39,7 @@ const subsystemAdvice = (directory: DirectorySignals): Advice => {
   const signalsItem = evidenceItem("signals", summary.total)
   const filesItem = evidenceItem("files-with-signals", directory.files.length)
   const shareItem = evidenceItem("share(signals)", sharePercent)
-  const leadingEvidence = [signalsItem, filesItem, shareItem]
+  const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
   const evidence = Array.appendAll(leadingEvidence, checkEvidence)
   const location = adviceLocation(directory.path)
 
@@ -68,9 +66,8 @@ const hotSubsystemAdvice = (
   const directoryEntries = Array.flatMap(files, (file) => {
     const directories = parentDirectories(file.path)
 
-    const entries = Array.map(
-      directories,
-      (directory) => [directory, file] as const
+    const entries = Array.map(directories, (directory) =>
+      Tuple.make(directory, file)
     )
 
     return entries
@@ -97,7 +94,7 @@ const hotSubsystemAdvice = (
 
       const filesForDirectory = pipe(
         filesOption,
-        Option.getOrElse((): ReadonlyArray<FileDetections> => [])
+        Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
       )
 
       const groupedFiles = Array.append(filesForDirectory, entry[1])
@@ -111,7 +108,7 @@ const hotSubsystemAdvice = (
 
     const belongingFiles = pipe(
       filesOption,
-      Option.getOrElse((): ReadonlyArray<FileDetections> => [])
+      Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
     )
 
     return new DirectorySignals({
@@ -128,7 +125,8 @@ const hotSubsystemAdvice = (
       const isDifferentPath = directory.path !== candidate.path
       const isNestedPath = directory.path.startsWith(`${candidate.path}/`)
 
-      return Array.every([isDifferentPath, isNestedPath], Boolean)
+      const values1 = Array.make(isDifferentPath, isNestedPath)
+      return Array.every(values1, Boolean)
     })
 
     return !hasHotDescendant

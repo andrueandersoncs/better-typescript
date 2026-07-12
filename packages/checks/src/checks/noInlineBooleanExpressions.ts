@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { Array, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
@@ -33,24 +33,23 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
       hasLogicalOperator
     )
 
-    return isLogicalOperatorExpression
-      ? [
-          match({
-            node: expression,
-            message:
-              "Avoid boolean operators inline in an if statement condition.",
-            hint:
-              "Extract the expression into a well-named const variable declaration above the if " +
-              "statement and use that variable in the if condition."
-          })
-        ]
-      : []
+    const value45 = match({
+      node: expression,
+      message: "Avoid boolean operators inline in an if statement condition.",
+      hint:
+        "Extract the expression into a well-named const variable declaration above the if " +
+        "statement and use that variable in the if condition."
+    })
+
+    return isLogicalOperatorExpression ? Array.of(value45) : Array.empty()
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
+const values46 = Array.of(ts.SyntaxKind.IfStatement)
+
+const check = nodeCheck(values46)(ts.isIfStatement)(
   inlineBooleanConditionMatches
 )
 

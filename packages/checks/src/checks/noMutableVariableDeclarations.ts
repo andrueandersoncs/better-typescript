@@ -1,4 +1,4 @@
-import { HashMap, Option, pipe } from "effect"
+import { Tuple, Array, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -10,13 +10,20 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type MutableVariableDeclarationKind = "let" | "var"
 
+const nested6 = Tuple.make(
+  ts.SyntaxKind.LetKeyword,
+  "let" as MutableVariableDeclarationKind
+)
+
+const nested7 = Tuple.make(
+  ts.SyntaxKind.VarKeyword,
+  "var" as MutableVariableDeclarationKind
+)
+
 const mutableKeywordKinds: HashMap.HashMap<
   ts.SyntaxKind,
   MutableVariableDeclarationKind
-> = HashMap.make(
-  [ts.SyntaxKind.LetKeyword, "let"] as const,
-  [ts.SyntaxKind.VarKeyword, "var"] as const
-)
+> = HashMap.make(nested6, nested7)
 
 const tokenMutableKind = (
   firstToken: ts.Node
@@ -51,9 +58,11 @@ const mutableDeclarationMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.VariableDeclarationList])(
-  ts.isVariableDeclarationList
-)(mutableDeclarationMatches)
+const values63 = Array.of(ts.SyntaxKind.VariableDeclarationList)
+
+const check = nodeCheck(values63)(ts.isVariableDeclarationList)(
+  mutableDeclarationMatches
+)
 
 export const noMutableVariableDeclarations: Check = check
 

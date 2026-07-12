@@ -11,16 +11,19 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type ClassNode = ts.ClassDeclaration | ts.ClassExpression
 
-const classNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
+const classNodeKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ClassDeclaration,
   ts.SyntaxKind.ClassExpression
-]
+)
 
 const isClassNode = (node: ts.Node): node is ClassNode =>
   ts.isClassDeclaration(node) || ts.isClassExpression(node)
 
-const lacksExtendsClause = (declaration: ClassNode): boolean =>
-  !Array.some(declaration.heritageClauses ?? [], isExtendsClause)
+const lacksExtendsClause = (declaration: ClassNode): boolean => {
+  const heritageClauses = declaration.heritageClauses ?? Array.empty()
+
+  return !Array.some(heritageClauses, isExtendsClause)
+}
 
 const rootLevelClassMatches = (context: CheckContext) => {
   const match = detection(context)

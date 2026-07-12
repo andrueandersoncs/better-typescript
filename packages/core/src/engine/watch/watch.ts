@@ -10,6 +10,7 @@ import {
   Option,
   Stream,
   Struct,
+  Tuple,
   pipe
 } from "effect"
 import type * as ts from "typescript"
@@ -55,7 +56,7 @@ export const workspaceUpdates = (
   const updateStreams = Array.map(workspace.projects, (config, index) =>
     pipe(
       sourceUpdates(config, watchOptions),
-      Stream.map((update) => [index, update] as const)
+      Stream.map((update) => Tuple.make(index, update))
     )
   )
 
@@ -74,7 +75,8 @@ export const workspaceUpdates = (
     const isQuietRebuild = hasArrived && hasEmptyDiff
 
     if (isQuietRebuild) {
-      return [cache, Option.none<WorkspaceUpdate>()] as const
+      const nested2 = Option.none<WorkspaceUpdate>()
+      return Tuple.make(cache, nested2)
     }
 
     const nodes = astNodesFromContext(update.context)
@@ -83,7 +85,8 @@ export const workspaceUpdates = (
     const isWarm = HashMap.size(nextCache) === projectCount
 
     if (!isWarm) {
-      return [nextCache, Option.none<WorkspaceUpdate>()] as const
+      const nested3 = Option.none<WorkspaceUpdate>()
+      return Tuple.make(nextCache, nested3)
     }
 
     const snapshots = Array.makeBy(projectCount, (order: number) =>
@@ -95,7 +98,8 @@ export const workspaceUpdates = (
 
     const emitted = new WorkspaceUpdate({ snapshots })
 
-    return [nextCache, Option.some(emitted)] as const
+    const nested4 = Option.some(emitted)
+    return Tuple.make(nextCache, nested4)
   })
 
   return pipe(
@@ -130,10 +134,16 @@ const detectionEquals = (a: Detection, b: Detection): boolean => {
   const sameHint = a.hint === b.hint
   const sameData = Equal.equals(a.data, b.data)
 
-  return Array.every(
-    [samePath, sameLine, sameColumn, sameMessage, sameHint, sameData],
-    Boolean
+  const values302 = Array.make(
+    samePath,
+    sameLine,
+    sameColumn,
+    sameMessage,
+    sameHint,
+    sameData
   )
+
+  return Array.every(values302, Boolean)
 }
 
 const detectionsEquivalence = Array.getEquivalence(detectionEquals)
@@ -192,10 +202,8 @@ const blockSignalEvent = (block: ReportBlock): SignalEvent =>
 const blockClearedEvent = (block: ReportBlock): ClearedEvent =>
   new ClearedEvent({ key: block.key, text: block.cleared })
 
-const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] => [
-  block.identity,
-  block
-]
+const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =>
+  Tuple.make(block.identity, block)
 
 /**
  * Pure per-block delta: clearances first (previous order) — previous blocks
@@ -236,10 +244,12 @@ export const blockDelta =
 
 const initialReportEvents =
   (rootPath: string) =>
-  (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> =>
-    blocks.length === 0
-      ? [new EmptyReportEvent({ rootPath })]
+  (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
+    const value303 = new EmptyReportEvent({ rootPath })
+    return blocks.length === 0
+      ? Array.of(value303)
       : Array.map(blocks, blockSignalEvent)
+  }
 
 const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> =
   Option.none()
@@ -265,7 +275,8 @@ export const blockDeltas =
           })
         )
 
-        return [Option.some(current), events] as const
+        const nested5 = Option.some(current)
+        return Tuple.make(nested5, events)
       }),
       Stream.flattenIterables
     )

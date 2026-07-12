@@ -76,7 +76,8 @@ const discoverConfig: (
   const configError = Option.fromNullable(configFile.error)
 
   if (Option.isSome(configError)) {
-    const message = formatDiagnostics([configError.value])
+    const values304 = Array.of(configError.value)
+    const message = formatDiagnostics(values304)
 
     return yield* new InvalidTsconfigError({ message })
   }
@@ -95,7 +96,7 @@ const discoverConfig: (
     return yield* new InvalidTsconfigError({ message })
   }
 
-  const references = parsedConfig.projectReferences ?? []
+  const references = parsedConfig.projectReferences ?? Array.empty()
   const hasNoOwnFiles = parsedConfig.fileNames.length === 0
   const hasReferences = references.length > 0
   const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
@@ -108,7 +109,13 @@ const discoverConfig: (
 
   const rootPath = path.dirname(configPath)
 
-  return [new ProjectConfig({ configPath, rootPath, parsed: parsedConfig })]
+  const value305 = new ProjectConfig({
+    configPath,
+    rootPath,
+    parsed: parsedConfig
+  })
+
+  return Array.of(value305)
 })
 
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (

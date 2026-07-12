@@ -18,15 +18,15 @@ const hint =
   "Keep Struct.get polymorphic. Inline it at a typed consumer, or put the " +
   "domain type on the consuming value or result rather than on the getter."
 
-const effectPackagePathSegments: ReadonlyArray<string> = [
+const effectPackagePathSegments: ReadonlyArray<string> = Array.make(
   "/node_modules/effect/",
   "/node_modules/@effect/"
-]
+)
 
-const structModuleSuffixes: ReadonlyArray<string> = [
+const structModuleSuffixes: ReadonlyArray<string> = Array.make(
   "/Struct.d.ts",
   "/Struct.ts"
-]
+)
 
 const declarationIsEffectStructModule = (
   declaration: ts.Declaration
@@ -42,11 +42,12 @@ const declarationIsEffectStructModule = (
     fileName.endsWith(suffix)
   )
 
-  return Array.every([inEffectPackage, isStructModule], Boolean)
+  const values51 = Array.make(inEffectPackage, isStructModule)
+  return Array.every(values51, Boolean)
 }
 
 const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol): boolean => {
-  const declarations = symbol.getDeclarations() ?? []
+  const declarations = symbol.getDeclarations() ?? Array.empty()
 
   return Array.some(declarations, declarationIsEffectStructModule)
 }
@@ -75,7 +76,8 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return typeParameterCount > 0
     })
 
-    return Array.every([hasCallSignature, hasNoGenericSignature], Boolean)
+    const values52 = Array.make(hasCallSignature, hasNoGenericSignature)
+    return Array.every(values52, Boolean)
   }
 
   const initializerIsGenericStructGet = (initializer: ts.Expression): boolean =>
@@ -140,9 +142,11 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.VariableDeclaration])(
-  ts.isVariableDeclaration
-)(monomorphicStructGetMatches)
+const values53 = Array.of(ts.SyntaxKind.VariableDeclaration)
+
+const check = nodeCheck(values53)(ts.isVariableDeclaration)(
+  monomorphicStructGetMatches
+)
 
 export const noMonomorphicStructGet: Check = check
 

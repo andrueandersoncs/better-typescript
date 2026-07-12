@@ -1,3 +1,4 @@
+import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -12,22 +13,27 @@ const forOfStatementKind = ts.SyntaxKind.ForOfStatement
 const forOfLoopElements = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ts.ForOfStatement): ReadonlyArray<Detection> => [
-    element({
-      node,
-      message: "Avoid imperative logic in for..of loops.",
-      hint:
-        "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-        "Array.filter(), or Array.flatMap(), instead."
-    })
-  ]
+  const matches = (node: ts.ForOfStatement): ReadonlyArray<Detection> =>
+    pipe(
+      {
+        node,
+        message: "Avoid imperative logic in for..of loops.",
+        hint:
+          "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+          "Array.filter(), or Array.flatMap(), instead."
+      },
+      element,
+      Array.of
+    )
 
   return matches
 }
 
-export const noForOfLoops: Check = nodeCheck([forOfStatementKind])(
-  ts.isForOfStatement
-)(forOfLoopElements)
+const values41 = Array.of(forOfStatementKind)
+
+export const noForOfLoops: Check = nodeCheck(values41)(ts.isForOfStatement)(
+  forOfLoopElements
+)
 
 export const noForOfLoopsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-for-of-loops")

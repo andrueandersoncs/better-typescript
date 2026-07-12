@@ -46,7 +46,7 @@ const snapshotProject = (
 
 const emptyDedupeState: DedupeState = {
   seen: HashMap.empty<string, ReadonlyArray<Detection>>(),
-  elements: []
+  elements: Array.empty()
 }
 
 const addUniqueElement = (
@@ -55,17 +55,19 @@ const addUniqueElement = (
 ): DedupeState => {
   const location = element.location
 
-  const key = JSON.stringify([
+  const values295 = Array.make(
     location.path,
     location.line,
     location.column,
     element.message,
     element.hint
-  ])
+  )
+
+  const key = JSON.stringify(values295)
 
   const bucket = pipe(
     HashMap.get(state.seen, key),
-    Option.getOrElse((): ReadonlyArray<Detection> => [])
+    Option.getOrElse((): ReadonlyArray<Detection> => Array.empty())
   )
 
   const hasMatchingData = (candidate: Detection): boolean =>
@@ -170,7 +172,8 @@ export const adviceText = (advice: Advice): string => {
   const header = adviceHeader(advice)
   const remediation = `  fix: ${advice.remediation}`
   const evidence = Array.map(advice.evidence, evidenceText)
-  const lines = Array.appendAll([header, remediation], evidence)
+  const values296 = Array.make(header, remediation)
+  const lines = Array.appendAll(values296, evidence)
 
   return Array.join(lines, "\n")
 }
@@ -181,11 +184,8 @@ const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
 const adviceReportBlock = (advice: Advice): ReportBlock => {
   const pathLabel = advicePath(advice)
 
-  const identity = reportIdentity("advice", [
-    advice.level,
-    pathLabel,
-    advice.title
-  ])
+  const values297 = Array.make(advice.level, pathLabel, advice.title)
+  const identity = reportIdentity("advice", values297)
 
   const key = new AdviceReportKey({
     level: advice.level,
@@ -209,8 +209,10 @@ export const adviceReportBlocks = (
 ): ReadonlyArray<ReportBlock> =>
   pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
 
-const detectionBlockKey = (element: Detection): string =>
-  reportIdentity("detection", [element.message, element.hint])
+const detectionBlockKey = (element: Detection): string => {
+  const values298 = Array.make(element.message, element.hint)
+  return reportIdentity("detection", values298)
+}
 
 const locationText = (element: Detection): string =>
   `  ${element.location.path}:${element.location.line}:${element.location.column}`
@@ -233,7 +235,8 @@ const formatRefactorExample = (example: RefactorExample): string => {
   const badText = formatExampleTree("Bad")(example.bad)
   const goodText = formatExampleTree("Good")(example.good)
 
-  return Array.join([badText, goodText], "\n")
+  const values299 = Array.make(badText, goodText)
+  return Array.join(values299, "\n")
 }
 
 /**
@@ -250,11 +253,8 @@ export const checkReportBlocks =
       Array.map((group) => {
         const first = Array.headNonEmpty(group)
 
-        const identity = reportIdentity("rule", [
-          name,
-          first.message,
-          first.hint
-        ])
+        const values300 = Array.make(name, first.message, first.hint)
+        const identity = reportIdentity("rule", values300)
 
         const key = new RuleReportKey({
           name,
@@ -271,10 +271,8 @@ export const checkReportBlocks =
               const hint = `  Hint: ${head.hint}`
               const examplesText = Array.map(examples, formatRefactorExample)
 
-              const header = Array.appendAll(
-                [name, message, hint],
-                examplesText
-              )
+              const values301 = Array.make(name, message, hint)
+              const header = Array.appendAll(values301, examplesText)
 
               const locations = Array.map(group, locationText)
               const lines = Array.appendAll(header, locations)
@@ -419,16 +417,18 @@ export const namedCheck = (
 export const silentCheck = (
   name: string,
   check: Check,
-  examples: ReadonlyArray<RefactorExample> = []
+  examples: ReadonlyArray<RefactorExample> = Array.empty()
 ): NamedCheck => new NamedCheck({ name, check, reported: false, examples })
 
 const emptyDuplicateNamesSeen = HashSet.empty<string>()
 const emptyDuplicateNameCollisions = HashSet.empty<string>()
 
+const emptyDuplicateNames = Array.empty<string>()
+
 const emptyDuplicateNameState: DuplicateNameState = new DuplicateNameState({
   seen: emptyDuplicateNamesSeen,
   collisions: emptyDuplicateNameCollisions,
-  names: []
+  names: emptyDuplicateNames
 })
 
 const addDuplicateName = (

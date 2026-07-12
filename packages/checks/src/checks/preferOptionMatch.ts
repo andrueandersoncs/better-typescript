@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Tuple, Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
@@ -71,7 +71,7 @@ const optionMatchMatches = (context: CheckContext) => {
           firstArg
         )
 
-        return [methodName as OptionGuardKind, identifier.text] as const
+        return Tuple.make(methodName as OptionGuardKind, identifier.text)
       }),
       Option.filter(
         ([kind, argumentName]: readonly [OptionGuardKind, string]): boolean => {
@@ -100,9 +100,11 @@ const optionMatchMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.ConditionalExpression])(
-  ts.isConditionalExpression
-)(optionMatchMatches)
+const values209 = Array.of(ts.SyntaxKind.ConditionalExpression)
+
+const check = nodeCheck(values209)(ts.isConditionalExpression)(
+  optionMatchMatches
+)
 
 export const preferOptionMatch: Check = check
 

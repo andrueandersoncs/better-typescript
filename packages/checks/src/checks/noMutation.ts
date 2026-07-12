@@ -77,11 +77,11 @@ const deleteExpressionTarget = (
 ): Option.Option<ts.Expression> => Option.some(expression.expression)
 
 // Recognize only ECMAScript default-library values as built-ins because host environments and packages remain external.
-const ecmaScriptLibPrefixes: ReadonlyArray<string> = [
+const ecmaScriptLibPrefixes: ReadonlyArray<string> = Array.make(
   "lib.es",
   "lib.decorators",
   "lib.d.ts"
-]
+)
 
 const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
   const normalized = sourceFile.fileName.replaceAll("\\", "/")
@@ -95,16 +95,19 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
 
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
-  const declarations = symbol.getDeclarations() ?? []
+  const declarations = symbol.getDeclarations() ?? Array.empty()
   const sourceFiles = Array.map(declarations, declarationSourceFile)
   const hasDeclarations = sourceFiles.length > 0
   const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
   const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
-  return Array.every(
-    [hasDeclarations, !isDeclaredInProject, !isEcmaScriptBuiltin],
-    Boolean
+  const values64 = Array.make(
+    hasDeclarations,
+    !isDeclaredInProject,
+    !isEcmaScriptBuiltin
   )
+
+  return Array.every(values64, Boolean)
 }
 
 // Follow an import alias because its local declaration cannot determine whether the imported value is external.
@@ -157,7 +160,8 @@ const isUncontrolledTypeWithSeen =
           Option.exists(isUncontrolledSymbol)
         )
 
-        return Array.some([isNullish, hasUncontrolledSymbol], Boolean)
+        const values65 = Array.make(isNullish, hasUncontrolledSymbol)
+        return Array.some(values65, Boolean)
       })
     )
 
@@ -192,20 +196,19 @@ const rootReceiver = (expression: ts.Expression): ts.Expression => {
 
 const fallbackLocalScope: () => MutationScope = Function.constant("local")
 
-const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
+const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.BinaryExpression,
   ts.SyntaxKind.PrefixUnaryExpression,
   ts.SyntaxKind.PostfixUnaryExpression,
   ts.SyntaxKind.DeleteExpression
-]
+)
 
 const isMutationCandidate = (node: ts.Node): node is MutationNode => {
-  const conditions = [
-    ts.isBinaryExpression(node),
-    ts.isPrefixUnaryExpression(node),
-    ts.isPostfixUnaryExpression(node),
-    ts.isDeleteExpression(node)
-  ]
+  const value66 = ts.isBinaryExpression(node)
+  const value67 = ts.isPrefixUnaryExpression(node)
+  const value68 = ts.isPostfixUnaryExpression(node)
+  const value69 = ts.isDeleteExpression(node)
+  const conditions = Array.make(value66, value67, value68, value69)
 
   return Array.some(conditions, Boolean)
 }
@@ -228,7 +231,7 @@ const mutationMatches = (context: CheckContext) => {
       Option.fromNullable(rootSymbol),
       Option.map(resolveAlias(checker)),
       Option.map((symbol): MutationScope => {
-        const declarations = symbol.getDeclarations() ?? []
+        const declarations = symbol.getDeclarations() ?? Array.empty()
         const sourceFiles = Array.map(declarations, declarationSourceFile)
         const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
@@ -243,9 +246,8 @@ const mutationMatches = (context: CheckContext) => {
             const isModuleScoped = ts.isSourceFile(declarationBoundary)
             const isCaptured = declarationBoundary !== mutationBoundary
 
-            return Array.some([isModuleScoped, isCaptured], Boolean)
-              ? "shared-state"
-              : "local"
+            const values70 = Array.make(isModuleScoped, isCaptured)
+            return Array.some(values70, Boolean) ? "shared-state" : "local"
           }),
           Option.getOrElse(fallbackLocalScope)
         )

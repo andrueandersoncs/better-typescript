@@ -32,32 +32,33 @@ const isShortCircuitExpression = (
 
 const ternaryBranches = (
   conditional: ts.ConditionalExpression
-): ReadonlyArray<ts.Expression> =>
-  Array.flatMap(
-    [conditional.whenTrue, conditional.whenFalse],
-    branchExpressions
-  )
+): ReadonlyArray<ts.Expression> => {
+  const values188 = Array.make(conditional.whenTrue, conditional.whenFalse)
+  return Array.flatMap(values188, branchExpressions)
+}
 
 const branchExpressions = (
   expression: ts.Expression
 ): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapTransparentExpression(expression)
 
-  const branches = [
-    pipe(
-      Option.liftPredicate(ts.isConditionalExpression)(unwrapped),
-      Option.map(ternaryBranches)
-    ),
-    pipe(
-      Option.liftPredicate(isShortCircuitExpression)(unwrapped),
-      Option.map(Struct.get("right")),
-      Option.map(branchExpressions)
-    )
-  ]
+  const value189 = pipe(
+    Option.liftPredicate(ts.isConditionalExpression)(unwrapped),
+    Option.map(ternaryBranches)
+  )
 
+  const value190 = pipe(
+    Option.liftPredicate(isShortCircuitExpression)(unwrapped),
+    Option.map(Struct.get("right")),
+    Option.map(branchExpressions)
+  )
+
+  const branches = Array.make(value189, value190)
+
+  const values191 = Array.of(unwrapped)
   return pipe(
     Option.firstSomeOf(branches),
-    Option.getOrElse(Function.constant([unwrapped]))
+    Option.getOrElse(Function.constant(values191))
   )
 }
 
@@ -143,10 +144,14 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([
+const values192 = Array.make(
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ArrowFunction
-])(isReturnCandidate)(objectLiteralReturnMatches)
+)
+
+const check = nodeCheck(values192)(isReturnCandidate)(
+  objectLiteralReturnMatches
+)
 
 export const preferEffectSchemaConstructor: Check = check
 

@@ -46,10 +46,12 @@ const containsUndefinedKeyword = (node: ts.Node): boolean => {
   const childContainsUndefinedKeyword =
     ts.forEachChild(node, containsUndefinedKeyword) === true
 
-  return Array.some(
-    [isUndefinedKeyword, childContainsUndefinedKeyword],
-    Boolean
+  const values102 = Array.make(
+    isUndefinedKeyword,
+    childContainsUndefinedKeyword
   )
+
+  return Array.some(values102, Boolean)
 }
 
 const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
@@ -68,12 +70,11 @@ const isEqualityWithUndefined = (expr: ts.BinaryExpression): boolean => {
     expr.operatorToken.kind
   )
 
-  const hasUndefinedOperand = Array.some(
-    [expr.left, expr.right],
-    isUndefinedExpression
-  )
+  const values103 = Array.make(expr.left, expr.right)
+  const hasUndefinedOperand = Array.some(values103, isUndefinedExpression)
 
-  return Array.every([isEqualityComparison, hasUndefinedOperand], Boolean)
+  const values104 = Array.make(isEqualityComparison, hasUndefinedOperand)
+  return Array.every(values104, Boolean)
 }
 
 const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression => {
@@ -138,7 +139,8 @@ const isUndefinedReturnExpression = (
   const arrowBody = Option.flatMap(arrowFn, getArrowExpressionBody)
   const isUndefinedArrow = Option.exists(arrowBody, isUndefinedExpression)
 
-  return Array.some([isUndefinedReturn, isUndefinedArrow], Boolean)
+  const values105 = Array.make(isUndefinedReturn, isUndefinedArrow)
+  return Array.some(values105, Boolean)
 }
 
 const isNotMinusToken = (questionToken: ts.Node): boolean =>
@@ -198,14 +200,13 @@ const undefinedUsageMatches =
     const match = detection(context)
     const message = undefinedMessages[kind]
 
-    const matches = (node: ts.Node): ReadonlyArray<Detection> => [
-      match({ node, message, hint: optionHint })
-    ]
+    const matches = (node: ts.Node): ReadonlyArray<Detection> =>
+      pipe({ node, message, hint: optionHint }, match, Array.of)
 
     return matches
   }
 
-const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
+const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
@@ -214,9 +215,11 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.CallSignature,
   ts.SyntaxKind.FunctionType,
   ts.SyntaxKind.GetAccessor
-]
+)
 
-const parameterListeners = nodeSubscriptions([ts.SyntaxKind.Parameter])(
+const values107 = Array.of(ts.SyntaxKind.Parameter)
+
+const parameterListeners = nodeSubscriptions(values107)(
   isParameterAcceptingUndefined
 )(undefinedUsageMatches("parameter"))
 
@@ -224,27 +227,39 @@ const returnTypeListeners = nodeSubscriptions(returnTypeDeclarationKinds)(
   isUndefinedReturnTypeDeclaration
 )(undefinedUsageMatches("return-type"))
 
-const returnExpressionListeners = nodeSubscriptions([
+const values108 = Array.make(
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ArrowFunction
-])(isUndefinedReturnExpression)(undefinedUsageMatches("return-expression"))
+)
 
-const typeDeclarationListeners = nodeSubscriptions([
+const returnExpressionListeners = nodeSubscriptions(values108)(
+  isUndefinedReturnExpression
+)(undefinedUsageMatches("return-expression"))
+
+const values109 = Array.make(
   ts.SyntaxKind.PropertySignature,
   ts.SyntaxKind.MappedType
-])(isUndefinedTypeDeclaration)(undefinedUsageMatches("type-declaration"))
+)
 
-const comparisonListeners = nodeSubscriptions([ts.SyntaxKind.BinaryExpression])(
-  isUndefinedComparison
-)(undefinedUsageMatches("comparison"))
+const typeDeclarationListeners = nodeSubscriptions(values109)(
+  isUndefinedTypeDeclaration
+)(undefinedUsageMatches("type-declaration"))
 
-const check = combineAll([
+const values110 = Array.of(ts.SyntaxKind.BinaryExpression)
+
+const comparisonListeners = nodeSubscriptions(values110)(isUndefinedComparison)(
+  undefinedUsageMatches("comparison")
+)
+
+const values111 = Array.make(
   parameterListeners,
   returnTypeListeners,
   returnExpressionListeners,
   typeDeclarationListeners,
   comparisonListeners
-])
+)
+
+const check = combineAll(values111)
 
 export const noUndefined: Check = check
 

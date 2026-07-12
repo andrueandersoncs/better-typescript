@@ -17,11 +17,15 @@ export const exampleSnippet = (
 export const refactorExample = (
   bad: ExampleSnippet,
   good: ExampleSnippet
-): RefactorExample =>
-  new RefactorExample({
-    bad: [bad],
-    good: [good]
+): RefactorExample => {
+  const badExamples = Array.of(bad)
+  const goodExamples = Array.of(good)
+
+  return new RefactorExample({
+    bad: badExamples,
+    good: goodExamples
   })
+}
 
 export const refactorExampleTrees = (
   bad: NonEmptyExampleTree,
@@ -68,7 +72,9 @@ const collectTypeScriptFiles: (
     const isSource = typescript && notDeclaration
     const keep = entry.isFile() && isSource
 
-    return Effect.succeed(keep ? [absolute] : [])
+    const paths = keep ? Array.of(absolute) : Array.empty()
+
+    return Effect.succeed(paths)
   })
 
   const flattened = Array.flatten(nested)
@@ -136,7 +142,7 @@ export const loadRefactorExamplesAt: (
 
   const names = Array.flatMap(entries, (entry) => {
     if (!entry.isDirectory()) {
-      return []
+      return Array.empty()
     }
 
     const pairRoot = path.join(exampleRoot, entry.name)
@@ -146,7 +152,7 @@ export const loadRefactorExamplesAt: (
     const hasGood = directoryExists(goodRoot)
     const complete = hasBad && hasGood
 
-    return complete ? [entry.name] : []
+    return complete ? Array.of(entry.name) : Array.empty()
   })
 
   const pairNames = Array.sort(names, byPairName)

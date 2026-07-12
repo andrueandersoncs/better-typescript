@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -48,9 +48,8 @@ const pipeMethodCallMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
-  pipeMethodCallMatches
-)
+const values210 = Array.of(ts.SyntaxKind.CallExpression)
+const check = nodeCheck(values210)(ts.isCallExpression)(pipeMethodCallMatches)
 
 export const preferPipeFunction: Check = check
 

@@ -16,7 +16,7 @@ export const isCallLikeExpression = (
 
 export const callArguments = (
   call: CallLikeExpression
-): ReadonlyArray<ts.Expression> => call.arguments ?? []
+): ReadonlyArray<ts.Expression> => call.arguments ?? Array.empty()
 
 export const resolvedCallSignature =
   (checker: ts.TypeChecker) =>
@@ -98,7 +98,8 @@ export const isExternalPackageArgument =
           const isDefaultLibrary =
             program.isSourceFileDefaultLibrary(sourceFile)
 
-          return Array.every([isExternal, !isDefaultLibrary], Boolean)
+          const values226 = Array.make(isExternal, !isDefaultLibrary)
+          return Array.every(values226, Boolean)
         })
       })
     )
@@ -139,11 +140,11 @@ const nameNodeEscapes =
               const isExternalArgument =
                 isExternalArgumentPosition(checker)(identifier)
 
-              const escapeConditions = [
+              const escapeConditions = Array.make(
                 !isDeclarationName,
                 refersToSymbol,
                 isExternalArgument
-              ]
+              )
 
               return Array.every(escapeConditions, Boolean)
             })
@@ -248,10 +249,10 @@ export const typeReferenceEscapesExternally =
       })
     )
 
-const effectPackagePathSegments: ReadonlyArray<string> = [
+const effectPackagePathSegments: ReadonlyArray<string> = Array.make(
   "/node_modules/effect/",
   "/node_modules/@effect/"
-]
+)
 
 const declarationInEffectPackage = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
@@ -263,7 +264,7 @@ const declarationInEffectPackage = (declaration: ts.Declaration): boolean => {
 }
 
 export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol): boolean => {
-  const declarations = symbol.getDeclarations() ?? []
+  const declarations = symbol.getDeclarations() ?? Array.empty()
 
   return Array.some(declarations, declarationInEffectPackage)
 }

@@ -51,7 +51,7 @@ const extendsDataTaggedClass = (clause: ts.HeritageClause): boolean =>
 const hasDataTaggedClassHeritage = (
   classNode: ts.ClassDeclaration
 ): boolean => {
-  const clauses = classNode.heritageClauses ?? []
+  const clauses = classNode.heritageClauses ?? Array.empty()
   const clause = Array.findFirst(clauses, isExtendsClause)
 
   return Option.exists(clause, extendsDataTaggedClass)
@@ -73,23 +73,25 @@ const dataTaggedClassMatches = (context: CheckContext) => {
   ): ReadonlyArray<Detection> => {
     const node = namedDetectionTarget(declaration)
 
-    return [
-      match({
-        node,
-        message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
-        hint:
-          "Schema.TaggedClass provides the same tagged-class features as Data.TaggedClass " +
-          "plus Schema validation, encoding, decoding, and Schema.is() type guards."
-      })
-    ]
+    const value21 = match({
+      node,
+      message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
+      hint:
+        "Schema.TaggedClass provides the same tagged-class features as Data.TaggedClass " +
+        "plus Schema validation, encoding, decoding, and Schema.is() type guards."
+    })
+
+    return Array.of(value21)
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.ClassDeclaration])(
-  isDataTaggedClassDeclaration
-)(dataTaggedClassMatches)
+const values22 = Array.of(ts.SyntaxKind.ClassDeclaration)
+
+const check = nodeCheck(values22)(isDataTaggedClassDeclaration)(
+  dataTaggedClassMatches
+)
 
 export const noDataTaggedClass: Check = check
 

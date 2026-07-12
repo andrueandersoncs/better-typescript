@@ -40,7 +40,7 @@ const statementFunctions = (
 ): ReadonlyArray<ts.Identifier> => {
   const variableDeclarationFunctions = ts.isVariableStatement(statement)
     ? Array.filterMap(statement.declarationList.declarations, declaredFunction)
-    : []
+    : Array.empty()
 
   const functionDeclarationNames = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
@@ -56,8 +56,10 @@ const topLevelFunctions = (
 ): ReadonlyArray<ts.Identifier> =>
   Array.flatMap(sourceFile.statements, statementFunctions)
 
+const values23 = Array.empty()
+
 const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
-  Function.constant([])
+  Function.constant(values23)
 
 const declarationsForName =
   (index: FunctionNameIndex) =>
@@ -117,7 +119,8 @@ const duplicateNameListeners = (
             candidateType
           )
 
-          return Array.every([forward, backward], Boolean)
+          const values24 = Array.make(forward, backward)
+          return Array.every(values24, Boolean)
         })
 
         const declaredFileNames = Array.map(

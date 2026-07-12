@@ -34,33 +34,33 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
 
   const matches = (spread: ts.SpreadAssignment): ReadonlyArray<Detection> => {
     const expression = unwrapExpression(spread.expression)
-    if (!ts.isConditionalExpression(expression)) return []
+    if (!ts.isConditionalExpression(expression)) return Array.empty()
 
-    const conditions2 = [
-      hasNoProperties(expression.whenTrue),
-      hasSomeProperties(expression.whenFalse)
-    ]
+    const value174 = hasNoProperties(expression.whenTrue)
+    const value175 = hasSomeProperties(expression.whenFalse)
+    const conditions2 = Array.make(value174, value175)
 
     const emptyThenNonEmptyElse = Array.every(conditions2, Boolean)
 
-    const conditions = [
-      hasSomeProperties(expression.whenTrue),
-      hasNoProperties(expression.whenFalse)
-    ]
+    const value176 = hasSomeProperties(expression.whenTrue)
+    const value177 = hasNoProperties(expression.whenFalse)
+    const conditions = Array.make(value176, value177)
 
     const nonEmptyThenEmptyElse = Array.every(conditions, Boolean)
 
-    return Array.some([emptyThenNonEmptyElse, nonEmptyThenEmptyElse], Boolean)
-      ? [match({ node: spread, message, hint })]
-      : []
+    const values178 = Array.make(emptyThenNonEmptyElse, nonEmptyThenEmptyElse)
+    const value179 = match({ node: spread, message, hint })
+    return Array.some(values178, Boolean) ? Array.of(value179) : Array.empty()
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.SpreadAssignment])(
-  ts.isSpreadAssignment
-)(conditionalObjectSpreadMatches)
+const values180 = Array.of(ts.SyntaxKind.SpreadAssignment)
+
+const check = nodeCheck(values180)(ts.isSpreadAssignment)(
+  conditionalObjectSpreadMatches
+)
 
 export const preferEffectRecordFilterMap: Check = check
 

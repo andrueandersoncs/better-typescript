@@ -16,15 +16,30 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
-  const conditions = [
-    ts.isTypeLiteralNode(typeNode),
-    typeNode.kind === ts.SyntaxKind.ObjectKeyword,
-    ts.isUnionTypeNode(typeNode) &&
-      Array.some(typeNode.types, containsRawObjectType),
-    ts.isIntersectionTypeNode(typeNode) &&
-      Array.some(typeNode.types, containsRawObjectType),
-    ts.isParenthesizedTypeNode(typeNode) && containsRawObjectType(typeNode.type)
-  ]
+  const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
+  const isObjectKeyword = typeNode.kind === ts.SyntaxKind.ObjectKeyword
+  const isUnionType = ts.isUnionTypeNode(typeNode)
+
+  const unionContainsRaw =
+    isUnionType && Array.some(typeNode.types, containsRawObjectType)
+
+  const isIntersectionType = ts.isIntersectionTypeNode(typeNode)
+
+  const intersectionContainsRaw =
+    isIntersectionType && Array.some(typeNode.types, containsRawObjectType)
+
+  const isParenthesizedType = ts.isParenthesizedTypeNode(typeNode)
+
+  const parenthesizedContainsRaw =
+    isParenthesizedType && containsRawObjectType(typeNode.type)
+
+  const conditions = Array.make(
+    isTypeLiteral,
+    isObjectKeyword,
+    unionContainsRaw,
+    intersectionContainsRaw,
+    parenthesizedContainsRaw
+  )
 
   return Array.some(conditions, Boolean)
 }
@@ -47,7 +62,7 @@ const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
     Option.exists(containsRawObjectType)
   )
 
-const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
+const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.Parameter,
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
@@ -57,41 +72,41 @@ const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.CallSignature,
   ts.SyntaxKind.FunctionType,
   ts.SyntaxKind.GetAccessor
-]
+)
 
 const rawObjectTypeMatches = (context: CheckContext) => {
   const match = detection(context)
 
   const matches = (node: RawObjectTarget): ReadonlyArray<Detection> => {
     if (ts.isParameter(node)) {
-      return [
-        match({
-          node,
-          message:
-            "Parameter uses an anonymous object type instead of a named type.",
-          hint:
-            "Define a named type or interface that describes the data's domain meaning — " +
-            "for example ConnectionConfig instead of { host: string, port: number }. " +
-            "Name the type after what the data represents, not its structural role " +
-            "(avoid names like FooParameters or BarOptions)."
-        })
-      ]
+      const value84 = match({
+        node,
+        message:
+          "Parameter uses an anonymous object type instead of a named type.",
+        hint:
+          "Define a named type or interface that describes the data's domain meaning — " +
+          "for example ConnectionConfig instead of { host: string, port: number }. " +
+          "Name the type after what the data represents, not its structural role " +
+          "(avoid names like FooParameters or BarOptions)."
+      })
+
+      return Array.of(value84)
     }
 
     const reportNode = namedDetectionTarget(node)
 
-    return [
-      match({
-        node: reportNode,
-        message:
-          "Return type uses an anonymous object type instead of a named type.",
-        hint:
-          "Define a named type or interface that describes the data's domain meaning — " +
-          "for example UserProfile instead of { name: string, age: number }. " +
-          "Name the type after what the data represents, not its structural role " +
-          "(avoid names like FooResult or BarResponse)."
-      })
-    ]
+    const value85 = match({
+      node: reportNode,
+      message:
+        "Return type uses an anonymous object type instead of a named type.",
+      hint:
+        "Define a named type or interface that describes the data's domain meaning — " +
+        "for example UserProfile instead of { name: string, age: number }. " +
+        "Name the type after what the data represents, not its structural role " +
+        "(avoid names like FooResult or BarResponse)."
+    })
+
+    return Array.of(value85)
   }
 
   return matches

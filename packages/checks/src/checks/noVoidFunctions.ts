@@ -20,20 +20,19 @@ type VoidableFunction =
   | ts.ArrowFunction
   | ts.MethodDeclaration
 
-const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
+const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.MethodDeclaration
-]
+)
 
 const isVoidableFunction = (node: ts.Node): node is VoidableFunction => {
-  const conditions = [
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node)
-  ]
+  const value112 = ts.isFunctionDeclaration(node)
+  const value113 = ts.isFunctionExpression(node)
+  const value114 = ts.isArrowFunction(node)
+  const value115 = ts.isMethodDeclaration(node)
+  const conditions = Array.make(value112, value113, value114, value115)
 
   return Array.some(conditions, Boolean)
 }
@@ -83,7 +82,7 @@ const voidFunctionMatches = (context: CheckContext) => {
     const isConsumerContract = isContextualVoid || isContextualMethod
 
     if (isConsumerContract) {
-      return []
+      return Array.empty()
     }
 
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
@@ -94,23 +93,23 @@ const voidFunctionMatches = (context: CheckContext) => {
     )
 
     if (!declarationReturnsVoid) {
-      return []
+      return Array.empty()
     }
 
     const node = namedDetectionTarget(declaration)
 
-    return [
-      match({
-        node,
-        message: "Avoid functions that return void.",
-        hint:
-          "A void function either does nothing or performs a side-effect. If it does nothing, " +
-          "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
-          "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not " +
-          "run. When a third-party API requires a void callback, annotate the value with that " +
-          "API's callback type so the void contract is the consumer's, not yours."
-      })
-    ]
+    const value116 = match({
+      node,
+      message: "Avoid functions that return void.",
+      hint:
+        "A void function either does nothing or performs a side-effect. If it does nothing, " +
+        "delete it. If it performs a side-effect, make it return an Effect — for example wrap " +
+        "the body in Effect.sync(() => ...) or Effect.gen so the side-effect is described, not " +
+        "run. When a third-party API requires a void callback, annotate the value with that " +
+        "API's callback type so the void contract is the consumer's, not yours."
+    })
+
+    return Array.of(value116)
   }
 
   return matches

@@ -1,3 +1,4 @@
+import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -12,20 +13,25 @@ const switchStatementKind = ts.SyntaxKind.SwitchStatement
 const switchStatementElements = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ts.SwitchStatement): ReadonlyArray<Detection> => [
-    element({
-      node,
-      message: "Avoid switch statements.",
-      hint:
-        "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
-        "so every case is handled explicitly."
-    })
-  ]
+  const matches = (node: ts.SwitchStatement): ReadonlyArray<Detection> =>
+    pipe(
+      {
+        node,
+        message: "Avoid switch statements.",
+        hint:
+          "Use Effect's Match module for pattern matching, and prefer Match.exhaustive " +
+          "so every case is handled explicitly."
+      },
+      element,
+      Array.of
+    )
 
   return matches
 }
 
-export const noSwitchStatements: Check = nodeCheck([switchStatementKind])(
+const values97 = Array.of(switchStatementKind)
+
+export const noSwitchStatements: Check = nodeCheck(values97)(
   ts.isSwitchStatement
 )(switchStatementElements)
 

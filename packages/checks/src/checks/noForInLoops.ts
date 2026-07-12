@@ -1,3 +1,4 @@
+import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -12,22 +13,27 @@ const forInStatementKind = ts.SyntaxKind.ForInStatement
 const forInLoopElements = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ts.ForInStatement): ReadonlyArray<Detection> => [
-    element({
-      node,
-      message: "Avoid imperative logic in for..in loops.",
-      hint:
-        "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
-        "or Record.toEntries(), instead."
-    })
-  ]
+  const matches = (node: ts.ForInStatement): ReadonlyArray<Detection> =>
+    pipe(
+      {
+        node,
+        message: "Avoid imperative logic in for..in loops.",
+        hint:
+          "Use Effect's Record module, such as Record.map(), Record.reduce(), " +
+          "or Record.toEntries(), instead."
+      },
+      element,
+      Array.of
+    )
 
   return matches
 }
 
-export const noForInLoops: Check = nodeCheck([forInStatementKind])(
-  ts.isForInStatement
-)(forInLoopElements)
+const values35 = Array.of(forInStatementKind)
+
+export const noForInLoops: Check = nodeCheck(values35)(ts.isForInStatement)(
+  forInLoopElements
+)
 
 export const noForInLoopsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-for-in-loops")

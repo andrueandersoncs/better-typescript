@@ -49,20 +49,19 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
 type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {
-  const conditions = [
-    ts.isIfStatement(node),
-    ts.isBlock(node),
-    ts.isConditionalExpression(node)
-  ]
+  const value152 = ts.isIfStatement(node)
+  const value153 = ts.isBlock(node)
+  const value154 = ts.isConditionalExpression(node)
+  const conditions = Array.make(value152, value153, value154)
 
   return Array.some(conditions, Boolean)
 }
 
-const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
+const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.IfStatement,
   ts.SyntaxKind.Block,
   ts.SyntaxKind.ConditionalExpression
-]
+)
 
 const andFalseHint =
   "Use && instead of branching to false (`cond && value`). When the false " +
@@ -135,10 +134,8 @@ const booleanReturnMatches = (context: CheckContext) => {
         Option.as(falseThenDetection)
       )
 
-      return pipe(
-        Option.firstSomeOf([bothLiteral, falseElseArm, falseThenArm]),
-        Option.toArray
-      )
+      const values155 = Array.make(bothLiteral, falseElseArm, falseThenArm)
+      return pipe(Option.firstSomeOf(values155), Option.toArray)
     }
 
     if (ts.isIfStatement(node)) {

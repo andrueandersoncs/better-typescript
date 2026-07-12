@@ -83,15 +83,14 @@ const isArrayLikeTypeWithSeen =
           isArrayLikeTypeWithSeen(checker)(nextSeen)
         )
 
-        return Array.some(
-          [
-            isDirectArrayType,
-            hasUnionOrIntersectionArrayType,
-            hasConstrainedArrayType,
-            hasApparentArrayType
-          ],
-          Boolean
+        const values227 = Array.make(
+          isDirectArrayType,
+          hasUnionOrIntersectionArrayType,
+          hasConstrainedArrayType,
+          hasApparentArrayType
         )
+
+        return Array.some(values227, Boolean)
       })
     )
 

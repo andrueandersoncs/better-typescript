@@ -26,16 +26,25 @@ export const isFunctionInitializer = (
 export const isReturnTypeDeclaration = (
   node: ts.Node
 ): node is ReturnTypeDeclaration => {
-  const conditions = [
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node),
-    ts.isMethodSignature(node),
-    ts.isCallSignatureDeclaration(node),
-    ts.isFunctionTypeNode(node),
-    ts.isGetAccessorDeclaration(node)
-  ]
+  const value217 = ts.isFunctionDeclaration(node)
+  const value218 = ts.isFunctionExpression(node)
+  const value219 = ts.isArrowFunction(node)
+  const value220 = ts.isMethodDeclaration(node)
+  const value221 = ts.isMethodSignature(node)
+  const value222 = ts.isCallSignatureDeclaration(node)
+  const value223 = ts.isFunctionTypeNode(node)
+  const value224 = ts.isGetAccessorDeclaration(node)
+
+  const conditions = Array.make(
+    value217,
+    value218,
+    value219,
+    value220,
+    value221,
+    value222,
+    value223,
+    value224
+  )
 
   return Array.some(conditions, Boolean)
 }
@@ -140,7 +149,7 @@ export const declarationSourceFile = (
 ): ts.SourceFile => declaration.getSourceFile()
 
 export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
-  const declarations = symbol.getDeclarations() ?? []
+  const declarations = symbol.getDeclarations() ?? Array.empty()
   const sourceFiles = Array.map(declarations, declarationSourceFile)
 
   return Array.some(sourceFiles, isProjectFile)
@@ -161,8 +170,8 @@ const isExportKeyword = (modifier: ts.Modifier): boolean =>
 
 export const hasExportModifier = (statement: ts.Statement): boolean => {
   const modifiers = ts.canHaveModifiers(statement)
-    ? (ts.getModifiers(statement) ?? [])
-    : []
+    ? (ts.getModifiers(statement) ?? Array.empty())
+    : Array.empty()
 
   return Array.some(modifiers, isExportKeyword)
 }
@@ -175,15 +184,18 @@ export const isInAmbientContext = (node: ts.Node): boolean => {
   const sourceFile = node.getSourceFile()
 
   const modifiers = ts.canHaveModifiers(node)
-    ? (ts.getModifiers(node) ?? [])
-    : []
+    ? (ts.getModifiers(node) ?? Array.empty())
+    : Array.empty()
 
   const hasDeclareModifier = Array.some(modifiers, isDeclareKeyword)
   const parent = Option.fromNullable<ts.Node>(node.parent)
   const parentIsAmbient = Option.exists(parent, isInAmbientContext)
 
-  return Array.some(
-    [sourceFile.isDeclarationFile, hasDeclareModifier, parentIsAmbient],
-    Boolean
+  const values225 = Array.make(
+    sourceFile.isDeclarationFile,
+    hasDeclareModifier,
+    parentIsAmbient
   )
+
+  return Array.some(values225, Boolean)
 }

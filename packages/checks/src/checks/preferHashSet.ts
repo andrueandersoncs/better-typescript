@@ -25,7 +25,7 @@ const constructorHint =
   "Constructing a Set is permitted only when it is handed to a third-party API that " +
   "requires one."
 
-const setTypeNames: ReadonlyArray<string> = ["Set", "ReadonlySet"]
+const setTypeNames: ReadonlyArray<string> = Array.make("Set", "ReadonlySet")
 
 const isSetTypeName = (id: ts.Identifier): boolean =>
   Array.contains(setTypeNames, id.text)
@@ -61,20 +61,16 @@ const setMatches = (context: CheckContext) => {
 
       const escapesExternally = isSetConstruction && constructionEscapes(node)
 
-      const isReportable = Array.every(
-        [isSetConstruction, !escapesExternally],
-        Boolean
-      )
+      const values203 = Array.make(isSetConstruction, !escapesExternally)
+      const isReportable = Array.every(values203, Boolean)
 
-      return isReportable
-        ? [
-            match({
-              node,
-              message: constructorMessage,
-              hint: constructorHint
-            })
-          ]
-        : []
+      const value204 = match({
+        node,
+        message: constructorMessage,
+        hint: constructorHint
+      })
+
+      return isReportable ? Array.of(value204) : Array.empty()
     }
 
     const isAmbient = isInAmbientContext(node)
@@ -82,7 +78,7 @@ const setMatches = (context: CheckContext) => {
     const isBoundaryMirror = isAmbient || escapesExternally
 
     if (isBoundaryMirror) {
-      return []
+      return Array.empty()
     }
 
     const name = pipe(
@@ -93,22 +89,24 @@ const setMatches = (context: CheckContext) => {
 
     const message = `Avoid the built-in ${name} type.`
 
-    return [
-      match({
-        node,
-        message,
-        hint: typeRefHint
-      })
-    ]
+    const value205 = match({
+      node,
+      message,
+      hint: typeRefHint
+    })
+
+    return Array.of(value205)
   }
 
   return matches
 }
 
-const check = nodeCheck([
+const values206 = Array.make(
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
-])(isSetRuleNode)(setMatches)
+)
+
+const check = nodeCheck(values206)(isSetRuleNode)(setMatches)
 
 export const preferHashSet: Check = check
 

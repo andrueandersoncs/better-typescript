@@ -31,9 +31,10 @@ const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
 
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
+  const declarations = symbol.declarations ?? Array.empty()
 
   const hasEffectModuleDeclaration = Array.some(
-    symbol.declarations ?? [],
+    declarations,
     isEffectModuleDeclaration
   )
 
@@ -130,9 +131,8 @@ const effectFnMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.VariableDeclaration])(
-  ts.isVariableDeclaration
-)(effectFnMatches)
+const values164 = Array.of(ts.SyntaxKind.VariableDeclaration)
+const check = nodeCheck(values164)(ts.isVariableDeclaration)(effectFnMatches)
 
 export const preferEffectFn: Check = check
 

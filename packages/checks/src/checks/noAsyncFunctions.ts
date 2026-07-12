@@ -1,4 +1,4 @@
-import { Array } from "effect"
+import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -13,12 +13,11 @@ const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
   const parent = node.parent
 
-  const conditions = [
-    ts.isFunctionDeclaration(parent),
-    ts.isFunctionExpression(parent),
-    ts.isArrowFunction(parent),
-    ts.isMethodDeclaration(parent)
-  ]
+  const value11 = ts.isFunctionDeclaration(parent)
+  const value12 = ts.isFunctionExpression(parent)
+  const value13 = ts.isArrowFunction(parent)
+  const value14 = ts.isMethodDeclaration(parent)
+  const conditions = Array.make(value11, value12, value13, value14)
 
   return Array.some(conditions, Boolean)
 }
@@ -26,22 +25,27 @@ const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
 const asyncFunctionElements = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ts.Node): ReadonlyArray<Detection> => [
-    element({
-      node,
-      message: "Avoid declaring functions as async.",
-      hint:
-        "Model asynchronous work with Effect instead of async/await. To integrate with a " +
-        "third-party library: wrap incoming promises with Effect.tryPromise; satisfy an " +
-        "outgoing Promise-returning callback contract with a non-async function that " +
-        "returns Effect.runPromise(effect)."
-    })
-  ]
+  const matches = (node: ts.Node): ReadonlyArray<Detection> =>
+    pipe(
+      {
+        node,
+        message: "Avoid declaring functions as async.",
+        hint:
+          "Model asynchronous work with Effect instead of async/await. To integrate with a " +
+          "third-party library: wrap incoming promises with Effect.tryPromise; satisfy an " +
+          "outgoing Promise-returning callback contract with a non-async function that " +
+          "returns Effect.runPromise(effect)."
+      },
+      element,
+      Array.of
+    )
 
   return matches
 }
 
-export const noAsyncFunctions: Check = nodeCheck([asyncKeywordKind])(
+const values16 = Array.of(asyncKeywordKind)
+
+export const noAsyncFunctions: Check = nodeCheck(values16)(
   isAsyncFunctionModifier
 )(asyncFunctionElements)
 

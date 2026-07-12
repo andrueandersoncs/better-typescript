@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, Option, Struct, pipe } from "effect"
+import { Tuple, Array, Function, HashMap, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import {
   nodeSubscriptions,
@@ -44,19 +44,23 @@ const isProjectObjectTypeDeclaration = (
 ): boolean => {
   const sourceFile = declaration.getSourceFile()
 
-  const conditions = [
-    ts.isInterfaceDeclaration(declaration),
-    ts.isTypeAliasDeclaration(declaration) &&
-      ts.isTypeLiteralNode(declaration.type)
-  ]
+  const isInterfaceDeclaration = ts.isInterfaceDeclaration(declaration)
+  const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(declaration)
 
+  const isTypeLiteralAlias =
+    isTypeAliasDeclaration && ts.isTypeLiteralNode(declaration.type)
+
+  const conditions = Array.make(isInterfaceDeclaration, isTypeLiteralAlias)
   const isRelevantDeclaration = Array.some(conditions, Boolean)
 
   return isProjectSourceFile(sourceFile) && isRelevantDeclaration
 }
 
-const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean =>
-  Array.some(symbol.declarations ?? [], isProjectObjectTypeDeclaration)
+const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean => {
+  const declarations = symbol.declarations ?? Array.empty()
+
+  return Array.some(declarations, isProjectObjectTypeDeclaration)
+}
 
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
@@ -89,7 +93,7 @@ const isTypeReference = (type: ts.Type): type is ts.TypeReference => {
 }
 
 const typeMembers = (type: ts.Type): ReadonlyArray<ts.Type> =>
-  type.isUnion() ? type.types : [type]
+  type.isUnion() ? type.types : Array.of(type)
 
 const isSignatureTypeParameter = (type: ts.Type): boolean =>
   type.isTypeParameter()
@@ -135,7 +139,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     (contextualType: ts.Type): ReadonlyArray<ts.Type> =>
       contextualType.isUnion()
         ? Array.filter(contextualType.types, matchesLiteralShape(literal))
-        : [contextualType]
+        : Array.of(contextualType)
 
   const hasTypeReferenceTarget =
     (target: ts.GenericType) =>
@@ -176,7 +180,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       )
 
       if (parameterPosition < 0) {
-        return []
+        return Array.empty()
       }
 
       const matchingMembers = Array.filter(
@@ -195,10 +199,11 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         return contextualMembers
       }
 
+      const values182 = Array.empty()
       return pipe(
         Option.liftPredicate(isTypeReference)(declaredMember),
         Option.map(referenceTypeArgument(typeParameter)(contextualMembers)),
-        Option.getOrElse(Function.constant([]))
+        Option.getOrElse(Function.constant(values182))
       )
     }
 
@@ -219,6 +224,8 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       return Array.flatMap(declaredMembers, extractMembers)
     }
 
+  const values183 = Array.empty()
+
   const signatureBoxedTypes =
     (argumentPosition: number) =>
     (contextual: ts.Type) =>
@@ -228,12 +235,13 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         Option.map(declaredParameterType),
         Option.filter(isSignatureTypeParameter),
         Option.map(boxedExtraction(signature)(contextual)),
-        Option.getOrElse(Function.constant([]))
+        Option.getOrElse(Function.constant(values183))
       )
 
   const symbolFileEntry =
     (fileName: string) =>
-    (symbol: ts.Symbol): readonly [ts.Symbol, string] => [symbol, fileName]
+    (symbol: ts.Symbol): readonly [ts.Symbol, string] =>
+      Tuple.make(symbol, fileName)
 
   const literalConstructionEntries =
     (fileName: string) =>
@@ -242,6 +250,8 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     ): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullable(contextualType)
+
+      const values184 = Array.empty()
 
       const boxedTypes = pipe(
         Option.gen(function* () {
@@ -268,7 +278,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
             signatureBoxedTypes(argumentPosition)(contextual)
           )
         }),
-        Option.getOrElse(Function.constant([]))
+        Option.getOrElse(Function.constant(values184))
       )
 
       const contextualCandidates = pipe(
@@ -289,11 +299,13 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       return Array.map(objectTypeSymbols, symbolFileEntry(fileName))
     }
 
+  const values185 = Array.empty()
+
   const fileConstructionEntries = (
     sourceFile: ts.SourceFile
   ): ReadonlyArray<readonly [ts.Symbol, string]> =>
     pipe(
-      foldAst(addObjectLiteral)(sourceFile)([]),
+      foldAst(addObjectLiteral)(sourceFile)(values185),
       Array.flatMap(literalConstructionEntries(sourceFile.fileName))
     )
 
@@ -357,13 +369,17 @@ const isObjectTypeAliasDeclaration = (
 const schemaClassListeners = (
   index: ConstructionIndex
 ): ReadonlyArray<Subscription> => {
-  const interfaceListeners = nodeSubscriptions([
-    ts.SyntaxKind.InterfaceDeclaration
-  ])(ts.isInterfaceDeclaration)(objectTypeDeclarationMatches(index))
+  const values186 = Array.of(ts.SyntaxKind.InterfaceDeclaration)
 
-  const typeAliasListeners = nodeSubscriptions([
-    ts.SyntaxKind.TypeAliasDeclaration
-  ])(isObjectTypeAliasDeclaration)(objectTypeDeclarationMatches(index))
+  const interfaceListeners = nodeSubscriptions(values186)(
+    ts.isInterfaceDeclaration
+  )(objectTypeDeclarationMatches(index))
+
+  const values187 = Array.of(ts.SyntaxKind.TypeAliasDeclaration)
+
+  const typeAliasListeners = nodeSubscriptions(values187)(
+    isObjectTypeAliasDeclaration
+  )(objectTypeDeclarationMatches(index))
 
   return Array.appendAll(interfaceListeners, typeAliasListeners)
 }

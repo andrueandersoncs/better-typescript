@@ -1,4 +1,5 @@
 import {
+  Tuple,
   Array,
   HashMap,
   HashSet,
@@ -56,7 +57,7 @@ export const sourceComments = (
         ): MutableList.MutableList<ts.Node> => MutableList.append(nodes, child)
       )
 
-      return [current, nextPending]
+      return Tuple.make(current, nextPending)
     })
   }
 
@@ -64,8 +65,10 @@ export const sourceComments = (
   const text = sourceFile.getFullText()
 
   const commentRangesAt = (node: ts.Node): ReadonlyArray<ts.CommentRange> => {
-    const leading = ts.getLeadingCommentRanges(text, node.pos) ?? []
-    const trailing = ts.getTrailingCommentRanges(text, node.end) ?? []
+    const leading = ts.getLeadingCommentRanges(text, node.pos) ?? Array.empty()
+
+    const trailing =
+      ts.getTrailingCommentRanges(text, node.end) ?? Array.empty()
 
     return Array.appendAll(leading, trailing)
   }
@@ -96,7 +99,8 @@ export const isJsDocComment =
     const startsWithJsDoc = text.startsWith(jsDocPrefix, comment.pos)
     const hasJsDocBody = text.charAt(comment.pos + jsDocPrefix.length) !== "/"
 
-    return Array.every([startsWithJsDoc, hasJsDocBody], Boolean)
+    const values216 = Array.make(startsWithJsDoc, hasJsDocBody)
+    return Array.every(values216, Boolean)
   }
 
 export const commentText =

@@ -10,7 +10,8 @@ import { SystemicHotspotsInput, SystemicSignals } from "./data.js"
 const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const hasHotSubsystem = signals.hotSubsystem.length >= 1
   const hasDenseFiles = signals.highSignalDensity.length >= 2
-  const isSystemic = Array.every([hasHotSubsystem, hasDenseFiles], Boolean)
+  const values228 = Array.make(hasHotSubsystem, hasDenseFiles)
+  const isSystemic = Array.every(values228, Boolean)
   const location = adviceLocation("project")
 
   const subsystemItem = evidenceItem(
@@ -23,7 +24,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
     signals.highSignalDensity.length
   )
 
-  const evidence = [subsystemItem, densityItem]
+  const evidence = Array.make(subsystemItem, densityItem)
 
   const advice = new Advice({
     location,
@@ -37,7 +38,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
     evidence
   })
 
-  return isSystemic ? [advice] : []
+  return isSystemic ? Array.of(advice) : Array.empty()
 }
 
 export const systemicHotspots = (

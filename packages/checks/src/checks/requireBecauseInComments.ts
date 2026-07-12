@@ -39,7 +39,8 @@ const commentsWithoutBecause = (
     const isNotJsDoc = !isJsDoc
     const isMissingBecause = !hasBecause
 
-    return Array.every([isNotJsDoc, isMissingBecause], Boolean)
+    const values211 = Array.make(isNotJsDoc, isMissingBecause)
+    return Array.every(values211, Boolean)
   })
 
   return Array.map(missingBecause, (comment) => {

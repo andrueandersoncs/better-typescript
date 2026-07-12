@@ -1,4 +1,5 @@
 import {
+  Tuple,
   Array,
   Effect,
   Function,
@@ -158,7 +159,8 @@ const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
 
 const fileIndexEntry = (
   sourceFile: ts.SourceFile
-): readonly [string, ts.SourceFile] => [sourceFile.fileName, sourceFile]
+): readonly [string, ts.SourceFile] =>
+  Tuple.make(sourceFile.fileName, sourceFile)
 
 /**
  * Pure diff of one rebuilt program against the previous file index. Identity
@@ -200,7 +202,7 @@ export const diffCheckableFiles =
 
     const update = new SourceUpdate({ context, changed, removed })
 
-    return [next, update]
+    return Tuple.make(next, update)
   }
 
 /**

@@ -1,3 +1,4 @@
+import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -12,23 +13,28 @@ const tryStatementKind = ts.SyntaxKind.TryStatement
 const tryCatchElements = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ts.TryStatement): ReadonlyArray<Detection> => [
-    element({
-      node,
-      message: "Avoid try/catch for error handling.",
-      hint:
-        "Model effectful code that can fail as an Effect and declare its failures as explicit " +
-        'Schema.TaggedError classes, for example: class FetchError extends Schema.TaggedError<FetchError>("FetchError")("FetchError", {}) {}. ' +
-        "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block."
-    })
-  ]
+  const matches = (node: ts.TryStatement): ReadonlyArray<Detection> =>
+    pipe(
+      {
+        node,
+        message: "Avoid try/catch for error handling.",
+        hint:
+          "Model effectful code that can fail as an Effect and declare its failures as explicit " +
+          'Schema.TaggedError classes, for example: class FetchError extends Schema.TaggedError<FetchError>("FetchError")("FetchError", {}) {}. ' +
+          "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block."
+      },
+      element,
+      Array.of
+    )
 
   return matches
 }
 
-export const noTryCatch: Check = nodeCheck([tryStatementKind])(
-  ts.isTryStatement
-)(tryCatchElements)
+const values101 = Array.of(tryStatementKind)
+
+export const noTryCatch: Check = nodeCheck(values101)(ts.isTryStatement)(
+  tryCatchElements
+)
 
 export const noTryCatchExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-try-catch")

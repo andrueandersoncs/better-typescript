@@ -29,32 +29,31 @@ const forLoopElements = (context: CheckContext) => {
       Option.isSome
     )
 
-    const hasIterator = Array.some([hasInitializer, hasIncrementor], Boolean)
+    const values36 = Array.make(hasInitializer, hasIncrementor)
+    const hasIterator = Array.some(values36, Boolean)
 
-    const isIteratorForLoop = Array.every(
-      [hasStopCondition, hasIterator],
-      Boolean
-    )
+    const values37 = Array.make(hasStopCondition, hasIterator)
+    const isIteratorForLoop = Array.every(values37, Boolean)
 
-    return isIteratorForLoop
-      ? [
-          element({
-            node,
-            message: "Avoid imperative logic in iterator-based for loops.",
-            hint:
-              "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
-              "Array.filter(), or Array.flatMap(), instead."
-          })
-        ]
-      : []
+    const value38 = element({
+      node,
+      message: "Avoid imperative logic in iterator-based for loops.",
+      hint:
+        "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
+        "Array.filter(), or Array.flatMap(), instead."
+    })
+
+    return isIteratorForLoop ? Array.of(value38) : Array.empty()
   }
 
   return matches
 }
 
-export const noForLoops: Check = nodeCheck([forStatementKind])(
-  ts.isForStatement
-)(forLoopElements)
+const values39 = Array.of(forStatementKind)
+
+export const noForLoops: Check = nodeCheck(values39)(ts.isForStatement)(
+  forLoopElements
+)
 
 export const noForLoopsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-for-loops")

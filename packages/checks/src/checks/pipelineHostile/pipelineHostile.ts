@@ -18,7 +18,8 @@ const pipelineHostileAdviceFor = (
     const hasUncurriedFunctions =
       countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions) >= 5
 
-    return Array.every([hasNestedCalls, hasUncurriedFunctions], Boolean)
+    const values117 = Array.make(hasNestedCalls, hasUncurriedFunctions)
+    return Array.every(values117, Boolean)
   }
 
   const nestedCallPaths = Array.map(
@@ -46,7 +47,7 @@ const pipelineHostileAdviceFor = (
         uncurriedCount
       )
 
-      const evidence = [nestedItem, uncurriedItem]
+      const evidence = Array.make(nestedItem, uncurriedItem)
 
       return new Advice({
         location,

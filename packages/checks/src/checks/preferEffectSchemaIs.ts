@@ -84,7 +84,7 @@ const schemaIsMatches = (context: CheckContext) => {
   ): ReadonlyArray<Detection> => {
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
-    const accessOptions = [leftAccess, rightAccess]
+    const accessOptions = Array.make(leftAccess, rightAccess)
     const tagAccess = Option.firstSomeOf(accessOptions)
 
     const isFirstParty = Option.exists(tagAccess, (access) => {
@@ -92,13 +92,13 @@ const schemaIsMatches = (context: CheckContext) => {
 
       const constituents = checkedType.isUnion()
         ? checkedType.types
-        : [checkedType]
+        : Array.of(checkedType)
 
       return Array.every(constituents, constituentIsFirstParty)
     })
 
     if (!isFirstParty) {
-      return []
+      return Array.empty()
     }
 
     const valueText = pipe(
@@ -110,7 +110,7 @@ const schemaIsMatches = (context: CheckContext) => {
     const operatorText = expression.operatorToken.getText(sourceFile)
     const leftLiteral = stringLiteralExpression(expression.left)
     const rightLiteral = stringLiteralExpression(expression.right)
-    const literalOptions = [leftLiteral, rightLiteral]
+    const literalOptions = Array.make(leftLiteral, rightLiteral)
 
     const tagText = pipe(
       Option.firstSomeOf(literalOptions),
@@ -126,23 +126,22 @@ const schemaIsMatches = (context: CheckContext) => {
 
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
-    return [
-      match({
-        node: expression,
-        message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
-        hint:
-          `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
-          `"${tagText}".`
-      })
-    ]
+    const value194 = match({
+      node: expression,
+      message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
+      hint:
+        `Replace the tag check with ${suggestion}, using the Effect Schema class for ` +
+        `"${tagText}".`
+    })
+
+    return Array.of(value194)
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.BinaryExpression])(
-  isSchemaTagComparison
-)(schemaIsMatches)
+const values195 = Array.of(ts.SyntaxKind.BinaryExpression)
+const check = nodeCheck(values195)(isSchemaTagComparison)(schemaIsMatches)
 
 export const preferEffectSchemaIs: Check = check
 

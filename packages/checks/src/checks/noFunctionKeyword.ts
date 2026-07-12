@@ -47,7 +47,8 @@ const functionKeywordMatches = (context: CheckContext) => {
             const body = Option.fromNullable(candidate.body)
             const hasNoBody = Option.isNone(body)
 
-            return Array.every([!isImplementation, hasNoBody], Boolean)
+            const values42 = Array.make(!isImplementation, hasNoBody)
+            return Array.every(values42, Boolean)
           })
         )
       })
@@ -55,7 +56,7 @@ const functionKeywordMatches = (context: CheckContext) => {
     const shouldFlag = isNotGenerator && isDisallowedKind
 
     if (!shouldFlag) {
-      return []
+      return Array.empty()
     }
 
     const children = node.getChildren(sourceFile)
@@ -65,25 +66,27 @@ const functionKeywordMatches = (context: CheckContext) => {
       Option.getOrElse(Function.constant(node))
     )
 
-    return [
-      match({
-        node: keywordToken,
-        message: "Avoid using the function keyword.",
-        hint:
-          "Declare this function as a const using fat-arrow syntax instead. Keep function " +
-          "declarations only when overload signatures are required, and keep function* when " +
-          "generator semantics are required."
-      })
-    ]
+    const value43 = match({
+      node: keywordToken,
+      message: "Avoid using the function keyword.",
+      hint:
+        "Declare this function as a const using fat-arrow syntax instead. Keep function " +
+        "declarations only when overload signatures are required, and keep function* when " +
+        "generator semantics are required."
+    })
+
+    return Array.of(value43)
   }
 
   return matches
 }
 
-const check = nodeCheck([
+const values44 = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression
-])(isFunctionKeywordNode)(functionKeywordMatches)
+)
+
+const check = nodeCheck(values44)(isFunctionKeywordNode)(functionKeywordMatches)
 
 export const noFunctionKeyword: Check = check
 

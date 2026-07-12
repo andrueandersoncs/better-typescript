@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Function, pipe, Option } from "effect"
+import { Tuple, Array, Function, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -26,20 +26,19 @@ type FunctionDefinition = readonly [name: string, reportNode: ts.Node]
 
 type DataStructureModule = readonly [name: string, expectedModulePath: string]
 
-const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
+const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.MethodDeclaration
-]
+)
 
 const isCheckedFunction = (node: ts.Node): node is CheckedFunction => {
-  const conditions4 = [
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node)
-  ]
+  const value136 = ts.isFunctionDeclaration(node)
+  const value137 = ts.isFunctionExpression(node)
+  const value138 = ts.isArrowFunction(node)
+  const value139 = ts.isMethodDeclaration(node)
+  const conditions4 = Array.make(value136, value137, value138, value139)
 
   return Array.some(conditions4, Boolean)
 }
@@ -69,7 +68,7 @@ const dataStructureModule = (name: string) => {
 
   const expectedModulePath = path.posix.join("modules", moduleFileName)
 
-  return [name, expectedModulePath] as const
+  return Tuple.make(name, expectedModulePath)
 }
 
 const sameExpression =
@@ -108,13 +107,18 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const fileName = sourceFile.fileName
 
   const isMember = (type: ts.Type): boolean => {
-    const conditions3 = [checker.isArrayType(type), checker.isTupleType(type)]
+    const value140 = checker.isArrayType(type)
+    const value141 = checker.isTupleType(type)
+    const conditions3 = Array.make(value140, value141)
 
-    const exclusions = [
+    const value142 = Array.some(conditions3, Boolean)
+    const value143 = hasCallSignature(checker)(type)
+
+    const exclusions = Array.make(
       (type.flags & primitiveTypeFlags) !== 0,
-      Array.some(conditions3, Boolean),
-      hasCallSignature(checker)(type)
-    ]
+      value142,
+      value143
+    )
 
     return Array.every(exclusions, isFalse)
   }
@@ -125,10 +129,12 @@ const dataLastModuleMatches = (context: CheckContext) => {
       const relativeFileName = path.relative(projectRoot, candidateFileName)
       const normalizedFileName = relativeFileName.replaceAll("\\", "/")
 
-      const conditions2 = [
+      const value144 = normalizedFileName.endsWith(`/${expectedModulePath}`)
+
+      const conditions2 = Array.make(
         normalizedFileName === expectedModulePath,
-        normalizedFileName.endsWith(`/${expectedModulePath}`)
-      ]
+        value144
+      )
 
       return Array.some(conditions2, Boolean)
     }
@@ -140,11 +146,10 @@ const dataLastModuleMatches = (context: CheckContext) => {
       const declarationSourceFile = declaration.getSourceFile()
       const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
 
-      const conditions = [
-        ts.isInterfaceDeclaration(declaration),
-        ts.isTypeAliasDeclaration(declaration),
-        ts.isClassDeclaration(declaration)
-      ]
+      const value145 = ts.isInterfaceDeclaration(declaration)
+      const value146 = ts.isTypeAliasDeclaration(declaration)
+      const value147 = ts.isClassDeclaration(declaration)
+      const conditions = Array.make(value145, value146, value147)
 
       const declarationIsDataStructure = Array.some(conditions, Boolean)
 
@@ -152,20 +157,19 @@ const dataLastModuleMatches = (context: CheckContext) => {
         declarationSourceFile.fileName
       )
 
-      return Array.every(
-        [
-          sourceFileIsProject,
-          declarationIsDataStructure,
-          declarationIsExpectedModule
-        ],
-        Boolean
+      const values148 = Array.make(
+        sourceFileIsProject,
+        declarationIsDataStructure,
+        declarationIsExpectedModule
       )
+
+      return Array.every(values148, Boolean)
     }
 
   const structureForSymbol =
     (type: ts.Type) =>
     (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
-      const declarations = symbol.declarations ?? []
+      const declarations = symbol.declarations ?? Array.empty()
       const isDeclarationForSymbol = isModuleDeclaration(symbol)
       const isFirstParty = Array.some(declarations, isDeclarationForSymbol)
 
@@ -173,7 +177,8 @@ const dataLastModuleMatches = (context: CheckContext) => {
         ? Array.every(type.types, isMember)
         : isMember(type)
 
-      const isDataStructure = Array.every([isFirstParty, isStructured], Boolean)
+      const values149 = Array.make(isFirstParty, isStructured)
+      const isDataStructure = Array.every(values149, Boolean)
       const dataStructure = dataStructureModule(symbol.name)
 
       return isDataStructure ? Option.some(dataStructure) : Option.none()
@@ -200,7 +205,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   ): FunctionDefinition => {
     const name = declaration.name.getText(sourceFile)
 
-    return [name, declaration.name] as const
+    return Tuple.make(name, declaration.name)
   }
 
   const fromInitializer = (
@@ -323,7 +328,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       )
 
       const reportNode = namedDetectionTarget(node)
-      const definition: FunctionDefinition = [name, reportNode]
+      const definition: FunctionDefinition = Tuple.make(name, reportNode)
 
       return pipe(
         Option.some(definition),

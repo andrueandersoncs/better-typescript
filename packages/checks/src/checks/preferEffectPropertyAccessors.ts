@@ -19,22 +19,21 @@ type PropertyAccessorFunction =
   | ts.FunctionDeclaration
   | ts.MethodDeclaration
 
-const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = [
+const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.MethodDeclaration
-]
+)
 
 const isPropertyAccessorFunction = (
   node: ts.Node
 ): node is PropertyAccessorFunction => {
-  const conditions2 = [
-    ts.isArrowFunction(node),
-    ts.isFunctionExpression(node),
-    ts.isFunctionDeclaration(node),
-    ts.isMethodDeclaration(node)
-  ]
+  const value167 = ts.isArrowFunction(node)
+  const value168 = ts.isFunctionExpression(node)
+  const value169 = ts.isFunctionDeclaration(node)
+  const value170 = ts.isMethodDeclaration(node)
+  const conditions2 = Array.make(value167, value168, value169, value170)
 
   return Array.some(conditions2, Boolean)
 }
@@ -94,10 +93,9 @@ const isRecordType =
   (type: ts.Type): boolean => {
     const apparentType = checker.getApparentType(type)
 
-    const conditions = [
-      hasIndexSignature(type),
-      hasIndexSignature(apparentType)
-    ]
+    const value171 = hasIndexSignature(type)
+    const value172 = hasIndexSignature(apparentType)
+    const conditions = Array.make(value171, value172)
 
     return type.isUnionOrIntersection()
       ? Array.every(type.types, isRecordType(checker))
@@ -169,8 +167,9 @@ const propertyAccessorMatches = (context: CheckContext) => {
           Option.flatMap(singleReturnExpression)
         )
 
+        const values173 = Array.make(implicitExpression, blockExpression)
         return pipe(
-          Option.firstSomeOf([implicitExpression, blockExpression]),
+          Option.firstSomeOf(values173),
           Option.flatMap(directPropertyAccessExpression),
           Option.filter((access) =>
             pipe(

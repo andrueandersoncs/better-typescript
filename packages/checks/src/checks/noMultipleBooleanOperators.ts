@@ -30,10 +30,13 @@ const isBooleanOperatorExpression = (
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
-  return Array.some(
-    [isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator],
-    Boolean
+  const values55 = Array.make(
+    isBinaryBooleanOperator,
+    isUnaryBooleanOperator,
+    isTernaryOperator
   )
+
+  return Array.some(values55, Boolean)
 }
 
 const addBooleanOperatorCount = (total: number, child: ts.Expression): number =>
@@ -49,7 +52,7 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
 
   // Count a ternary condition separately because prefer-conditional-return mandates `cond ? x : y`.
   const countedChildren = ts.isConditionalExpression(unwrapped)
-    ? [unwrapped.whenTrue, unwrapped.whenFalse]
+    ? Array.make(unwrapped.whenTrue, unwrapped.whenFalse)
     : astChildren(unwrapped)
 
   const filtered = Array.filter(countedChildren, ts.isExpression)
@@ -71,10 +74,9 @@ const isConditionEdge = (node: ts.Node): boolean =>
   )
 
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
-  const conditions = [
-    isBooleanOperatorExpression(parent),
-    hasBooleanOperatorAncestor(parent)
-  ]
+  const value56 = isBooleanOperatorExpression(parent)
+  const value57 = hasBooleanOperatorAncestor(parent)
+  const conditions = Array.make(value56, value57)
 
   return Array.some(conditions, Boolean)
 }
@@ -93,7 +95,8 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
     isOrHasBooleanOperatorAncestor
   )
 
-  return Array.every([!isConditionEdge, hasCountedAncestor], Boolean)
+  const values58 = Array.make(!isConditionEdge, hasCountedAncestor)
+  return Array.every(values58, Boolean)
 }
 
 const booleanBinaryOperatorKinds = HashSet.make(
@@ -121,37 +124,38 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
 
-    const isReportableRoot = Array.every(
-      [
-        expressionUsesBooleanOperator,
-        hasNoBooleanOperatorAncestor,
-        hasMultiple
-      ],
-      Boolean
+    const values59 = Array.make(
+      expressionUsesBooleanOperator,
+      hasNoBooleanOperatorAncestor,
+      hasMultiple
     )
 
-    return isReportableRoot
-      ? [
-          match({
-            node: expression,
-            message:
-              "Avoid combining more than one boolean operator in a single expression.",
-            hint:
-              "Declare multiple constant variables instead of combining operators into a " +
-              "single expression."
-          })
-        ]
-      : []
+    const isReportableRoot = Array.every(values59, Boolean)
+
+    const value60 = match({
+      node: expression,
+      message:
+        "Avoid combining more than one boolean operator in a single expression.",
+      hint:
+        "Declare multiple constant variables instead of combining operators into a " +
+        "single expression."
+    })
+
+    return isReportableRoot ? Array.of(value60) : Array.empty()
   }
 
   return matches
 }
 
-const check = nodeCheck([
+const values61 = Array.make(
   ts.SyntaxKind.BinaryExpression,
   ts.SyntaxKind.PrefixUnaryExpression,
   ts.SyntaxKind.ConditionalExpression
-])(isBooleanOperatorExpression)(multipleBooleanOperatorMatches)
+)
+
+const check = nodeCheck(values61)(isBooleanOperatorExpression)(
+  multipleBooleanOperatorMatches
+)
 
 export const noMultipleBooleanOperators: Check = check
 

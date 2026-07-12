@@ -10,9 +10,9 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const methodDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = [
+const methodDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.of(
   ts.SyntaxKind.MethodDeclaration
-]
+)
 
 const isMethodDeclaration = ts.isMethodDeclaration
 
@@ -37,7 +37,8 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
     Option.isSome
   )
 
-  return Array.every([isClassMember, bodyExists, !isOverride], Boolean)
+  const values20 = Array.make(isClassMember, bodyExists, !isOverride)
+  return Array.every(values20, Boolean)
 }
 
 const methodImplementationMatches = (context: CheckContext) => {

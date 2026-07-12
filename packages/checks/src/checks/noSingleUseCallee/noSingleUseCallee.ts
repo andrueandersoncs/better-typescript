@@ -1,4 +1,4 @@
-import { Array, HashMap, HashSet, Option, pipe } from "effect"
+import { Tuple, Array, HashMap, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import {
   fileSubscriptions,
@@ -34,7 +34,8 @@ const isSingleCalleeEntry = (classification: SymbolClassification): boolean => {
   const isSingleCallee = classification.calleeCount === 1
   const isNotDisqualified = !classification.disqualified
 
-  return Array.every([isSingleCallee, isNotDisqualified], Boolean)
+  const values95 = Array.make(isSingleCallee, isNotDisqualified)
+  return Array.every(values95, Boolean)
 }
 
 const statementEntries = (
@@ -58,7 +59,7 @@ const statementEntries = (
           })
         )
       )
-    : []
+    : Array.empty()
 
   const functionEntries = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
@@ -102,7 +103,7 @@ const buildReferenceIndex = (context: ProgramContext): ReferenceIndex => {
   const symbolEntryPairs = Array.filterMap(entries, (entry) =>
     pipe(
       symbolForEntry(checker)(entry),
-      Option.map((sym): [ts.Symbol, FunctionEntry] => [sym, entry])
+      Option.map((sym): [ts.Symbol, FunctionEntry] => Tuple.make(sym, entry))
     )
   )
 

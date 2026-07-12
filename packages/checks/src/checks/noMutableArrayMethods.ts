@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isArrayLikeType } from "./support/tsType.js"
@@ -42,7 +42,7 @@ const mutableArrayMatches = (context: CheckContext) => {
     callExpression: ts.CallExpression
   ): ReadonlyArray<Detection> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
-      return []
+      return Array.empty()
     }
 
     const propertyAccess = callExpression.expression
@@ -55,7 +55,7 @@ const mutableArrayMatches = (context: CheckContext) => {
       : Option.none()
 
     if (Option.isNone(methodName)) {
-      return []
+      return Array.empty()
     }
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
@@ -84,9 +84,8 @@ const mutableArrayMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
-  mutableArrayMatches
-)
+const values62 = Array.of(ts.SyntaxKind.CallExpression)
+const check = nodeCheck(values62)(ts.isCallExpression)(mutableArrayMatches)
 
 export const noMutableArrayMethods: Check = check
 

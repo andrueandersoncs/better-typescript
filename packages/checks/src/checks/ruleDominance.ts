@@ -16,7 +16,8 @@ const dominanceAdvice = (
   const dominantEvidence = dominantCheckEvidence(2)(5)(5)(summary)
   const hasEnoughSignals = summary.total >= 25
   const hasDominantCheck = dominantEvidence.length > 0
-  const isDominated = Array.every([hasEnoughSignals, hasDominantCheck], Boolean)
+  const values215 = Array.make(hasEnoughSignals, hasDominantCheck)
+  const isDominated = Array.every(values215, Boolean)
   const location = adviceLocation("project")
   const signalsItem = evidenceItem("signals", summary.total)
   const evidence = Array.prepend(dominantEvidence, signalsItem)
@@ -32,7 +33,7 @@ const dominanceAdvice = (
     evidence
   })
 
-  return isDominated ? [advice] : []
+  return isDominated ? Array.of(advice) : Array.empty()
 }
 
 export const ruleDominance = deriveSignals(dominanceAdvice)

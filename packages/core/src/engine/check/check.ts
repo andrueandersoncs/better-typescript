@@ -1,4 +1,5 @@
 import {
+  Tuple,
   Array,
   Chunk,
   Function,
@@ -58,10 +59,12 @@ export const checkFromSubscriptions =
       Stream.mapAccum(noPlan, (state, [sourceFile, elements]) => {
         const head = Chunk.headNonEmpty(elements)
 
+        const nested0 = plan(head.context)
+
         const planned = pipe(
           state,
           Option.filter(([previous]) => previous === head.context),
-          Option.getOrElse(() => [head.context, plan(head.context)] as const)
+          Option.getOrElse(() => Tuple.make(head.context, nested0))
         )
 
         const [, subscriptions] = planned
@@ -98,7 +101,8 @@ export const checkFromSubscriptions =
 
         const detections = Array.appendAll(fileElements, nodeElements)
 
-        return [Option.some(planned), detections] as const
+        const nested1 = Option.some(planned)
+        return Tuple.make(nested1, detections)
       }),
       Stream.flattenIterables
     )
@@ -113,17 +117,19 @@ export const nodeSubscriptions =
       const elements = handler(context)
 
       const refined = (node: ts.Node): ReadonlyArray<Detection> =>
-        refine(node) ? elements(node) : []
+        refine(node) ? elements(node) : Array.empty()
 
       return refined
     }
 
-    return [nodeSubscription(kinds)(wrapped)]
+    const subscribe = nodeSubscription(kinds)
+
+    return pipe(wrapped, subscribe, Array.of)
   }
 
 export const fileSubscriptions = (
   handler: (context: CheckContext) => ReadonlyArray<Detection>
-): ReadonlyArray<Subscription> => [fileSubscription(handler)]
+): ReadonlyArray<Subscription> => pipe(handler, fileSubscription, Array.of)
 
 export const nodeCheck =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>

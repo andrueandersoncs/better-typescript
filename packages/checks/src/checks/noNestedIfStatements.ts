@@ -1,4 +1,4 @@
-import { HashSet, Option } from "effect"
+import { Array, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -52,25 +52,22 @@ const nestedIfMatches = (context: CheckContext) => {
     const parentOption = Option.fromNullable(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
 
-    return Option.isSome(containingIf)
-      ? [
-          match({
-            node: ifStatement,
-            message: "Avoid nesting if statements.",
-            hint:
-              "Combine related conditions with boolean operators, or use an early return so this " +
-              "condition can remain a single-level if statement."
-          })
-        ]
-      : []
+    const value72 = match({
+      node: ifStatement,
+      message: "Avoid nesting if statements.",
+      hint:
+        "Combine related conditions with boolean operators, or use an early return so this " +
+        "condition can remain a single-level if statement."
+    })
+
+    return Option.isSome(containingIf) ? Array.of(value72) : Array.empty()
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
-  nestedIfMatches
-)
+const values73 = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(values73)(ts.isIfStatement)(nestedIfMatches)
 
 export const noNestedIfStatements: Check = check
 

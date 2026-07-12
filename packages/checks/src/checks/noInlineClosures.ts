@@ -1,4 +1,4 @@
-import { HashSet } from "effect"
+import { Array, HashSet } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { transparentWrapperKinds } from "./support/tsNode.js"
@@ -36,29 +36,26 @@ const arrowFunctionMatches = (context: CheckContext) => {
     const isExternalCallback = isExternalArgument(arrowFunction)
     const isSanctioned = hasSanctionedParent || isExternalCallback
 
-    return isSanctioned
-      ? []
-      : [
-          match({
-            node: arrowFunction.equalsGreaterThanToken,
-            message:
-              "Avoid arrow functions outside naming, currying, and third-party callback positions.",
-            hint:
-              "Name this function as a top-level const and pass it by reference, currying it when it " +
-              "needs values from the enclosing scope. Inline arrows are permitted only as arguments " +
-              "to third-party functions (effect combinators, node_modules callbacks). When the " +
-              "expression sequences several steps, prefer a generator (Option.gen or Effect.gen) " +
-              "over nesting functions."
-          })
-        ]
+    const value47 = match({
+      node: arrowFunction.equalsGreaterThanToken,
+      message:
+        "Avoid arrow functions outside naming, currying, and third-party callback positions.",
+      hint:
+        "Name this function as a top-level const and pass it by reference, currying it when it " +
+        "needs values from the enclosing scope. Inline arrows are permitted only as arguments " +
+        "to third-party functions (effect combinators, node_modules callbacks). When the " +
+        "expression sequences several steps, prefer a generator (Option.gen or Effect.gen) " +
+        "over nesting functions."
+    })
+
+    return isSanctioned ? Array.empty() : Array.of(value47)
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
-  arrowFunctionMatches
-)
+const values48 = Array.of(ts.SyntaxKind.ArrowFunction)
+const check = nodeCheck(values48)(ts.isArrowFunction)(arrowFunctionMatches)
 
 export const noInlineClosures: Check = check
 

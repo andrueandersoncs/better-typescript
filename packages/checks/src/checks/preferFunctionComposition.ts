@@ -82,7 +82,8 @@ const isUnaryCallTowerOver =
       Option.exists(isUnaryCallTowerOver(name))
     )
 
-    return Array.some([seedMatch, pipeTower, unaryTower], Boolean)
+    const values197 = Array.make(seedMatch, pipeTower, unaryTower)
+    return Array.some(values197, Boolean)
   }
 
 const functionCompositionMatches = (context: CheckContext) => {
@@ -162,7 +163,9 @@ const functionCompositionMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
+const values198 = Array.of(ts.SyntaxKind.ArrowFunction)
+
+const check = nodeCheck(values198)(ts.isArrowFunction)(
   functionCompositionMatches
 )
 

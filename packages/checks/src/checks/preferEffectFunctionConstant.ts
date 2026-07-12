@@ -15,10 +15,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 type ConstantThunk = ts.ArrowFunction | ts.FunctionExpression
 
-const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = [
+const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.FunctionExpression
-]
+)
 
 const primitiveLiteralKinds = HashSet.make(
   ts.SyntaxKind.StringLiteral,
@@ -30,7 +30,7 @@ const primitiveLiteralKinds = HashSet.make(
   ts.SyntaxKind.NullKeyword
 )
 
-const emptyModifiers: ReadonlyArray<ts.ModifierLike> = []
+const emptyModifiers: ReadonlyArray<ts.ModifierLike> = Array.empty()
 
 const fallbackModifiers: Function.LazyArg<ReadonlyArray<ts.ModifierLike>> =
   Function.constant(emptyModifiers)
@@ -80,15 +80,14 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
     Option.exists(hasElements)
   )
 
-  return Array.every(
-    [
-      node.parameters.length === 0,
-      !hasAsync,
-      !hasGenerator,
-      !hasTypeParameters
-    ],
-    Boolean
+  const values165 = Array.make(
+    node.parameters.length === 0,
+    !hasAsync,
+    !hasGenerator,
+    !hasTypeParameters
   )
+
+  return Array.every(values165, Boolean)
 }
 
 const blockReturnedExpression = (
@@ -215,9 +214,10 @@ const functionConstantMatches = (context: CheckContext) => {
           )
         )
 
-        yield* Option.liftPredicate((_expression: ts.Expression): boolean =>
-          Array.some([isPrimitive, isStableIdentifier], Boolean)
-        )(expression)
+        yield* Option.liftPredicate((_expression: ts.Expression): boolean => {
+          const values166 = Array.make(isPrimitive, isStableIdentifier)
+          return Array.some(values166, Boolean)
+        })(expression)
         const expressionText = expression.getText(context.sourceFile)
 
         return match({

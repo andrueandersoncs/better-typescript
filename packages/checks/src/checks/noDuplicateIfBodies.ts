@@ -23,14 +23,15 @@ const tokenTexts =
   (sourceFile: ts.SourceFile) =>
   (node: ts.Node): ReadonlyArray<string> => {
     if (node.kind === ts.SyntaxKind.SemicolonToken) {
-      return []
+      return Array.empty()
     }
 
     const children = node.getChildren(sourceFile)
     const isLeafToken = children.length === 0
 
+    const value25 = node.getText(sourceFile)
     return isLeafToken
-      ? [node.getText(sourceFile)]
+      ? Array.of(value25)
       : Array.flatMap(children, tokenTexts(sourceFile))
   }
 
@@ -56,10 +57,9 @@ const duplicateIfMatches = (context: CheckContext) => {
   const combineConditions =
     (firstIfStatement: ts.IfStatement) =>
     (ifStatement: ts.IfStatement): string => {
-      const values = [
-        conditionText(firstIfStatement),
-        conditionText(ifStatement)
-      ]
+      const value26 = conditionText(firstIfStatement)
+      const value27 = conditionText(ifStatement)
+      const values = Array.make(value26, value27)
 
       return Array.join(values, " || ")
     }
@@ -70,10 +70,8 @@ const duplicateIfMatches = (context: CheckContext) => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
 
-      const isMergeableDuplicate = Array.every(
-        [hasDuplicateBody, bodyExitsScope],
-        Boolean
-      )
+      const values28 = Array.make(hasDuplicateBody, bodyExitsScope)
+      const isMergeableDuplicate = Array.every(values28, Boolean)
 
       const combinedCondition =
         combineConditions(previousIfStatement)(ifStatement)
@@ -146,9 +144,8 @@ const duplicateIfMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
-  duplicateIfMatches
-)
+const values29 = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(values29)(ts.isIfStatement)(duplicateIfMatches)
 
 export const noDuplicateIfBodies: Check = check
 

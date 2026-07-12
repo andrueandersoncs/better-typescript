@@ -55,7 +55,8 @@ const propertyAccessIsDataStructure = (
     HashSet.has(dataStructureNamespaces, name)
   )
 
-  return Array.every([isKnownMember, isKnownNamespace], Boolean)
+  const values150 = Array.make(isKnownMember, isKnownNamespace)
+  return Array.every(values150, Boolean)
 }
 
 const heritageExtendsDataStructure = (
@@ -70,7 +71,7 @@ const heritageExtendsDataStructure = (
 const classDeclarationIsDataStructure = (
   declaration: ts.ClassDeclaration
 ): boolean => {
-  const clauses = declaration.heritageClauses ?? []
+  const clauses = declaration.heritageClauses ?? Array.empty()
   const extendsClause = Array.findFirst(clauses, isExtendsClause)
 
   return Option.exists(extendsClause, (clause) =>
@@ -110,9 +111,12 @@ const algorithmsInStatement = (
         }
       )
     ),
-    Option.getOrElse(
-      Function.constant([] as ReadonlyArray<ts.VariableDeclaration>)
-    )
+    Option.getOrElse(() => {
+      const emptyDeclarations =
+        Array.empty() as ReadonlyArray<ts.VariableDeclaration>
+
+      return emptyDeclarations
+    })
   )
 
   return Array.appendAll(fromFunction, fromVariables)
@@ -149,8 +153,9 @@ const dedicatedDataStructureFileMatches = (
   const dataStructures = Array.filterMap(statements, dataStructureInStatement)
   const hasAlgorithms = algorithms.length > 0
   const hasDataStructures = dataStructures.length > 0
-  const shouldReport = Array.every([hasAlgorithms, hasDataStructures], Boolean)
-  const empty: ReadonlyArray<Detection> = []
+  const values151 = Array.make(hasAlgorithms, hasDataStructures)
+  const shouldReport = Array.every(values151, Boolean)
+  const empty: ReadonlyArray<Detection> = Array.empty()
 
   return shouldReport
     ? Array.map(dataStructures, (declaration) => {

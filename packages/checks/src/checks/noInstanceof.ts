@@ -1,4 +1,4 @@
-import { Option, Struct, pipe } from "effect"
+import { Array, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isFirstPartySymbol } from "./support/tsNode.js"
@@ -53,9 +53,8 @@ const instanceofMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.BinaryExpression])(
-  isInstanceofExpression
-)(instanceofMatches)
+const values49 = Array.of(ts.SyntaxKind.BinaryExpression)
+const check = nodeCheck(values49)(isInstanceofExpression)(instanceofMatches)
 
 export const noInstanceof: Check = check
 

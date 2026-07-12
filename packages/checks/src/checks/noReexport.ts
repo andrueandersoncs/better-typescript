@@ -20,19 +20,19 @@ const hint =
   "exports at the defining modules instead of barrel re-exports."
 
 const isImportDeclaration = (declaration: ts.Declaration): boolean => {
-  const conditions = [
-    ts.isImportSpecifier(declaration),
-    ts.isNamespaceImport(declaration),
-    ts.isImportClause(declaration),
-    ts.isImportEqualsDeclaration(declaration)
-  ]
+  const value86 = ts.isImportSpecifier(declaration)
+  const value87 = ts.isNamespaceImport(declaration)
+  const value88 = ts.isImportClause(declaration)
+  const value89 = ts.isImportEqualsDeclaration(declaration)
+  const conditions = Array.make(value86, value87, value88, value89)
 
   return Array.some(conditions, Boolean)
 }
 
 const isImportedSymbol = (symbol: ts.Symbol): boolean => {
   const aliased = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-  const imported = Array.some(symbol.declarations ?? [], isImportDeclaration)
+  const declarations = symbol.declarations ?? Array.empty()
+  const imported = Array.some(declarations, isImportDeclaration)
 
   return aliased && imported
 }
@@ -55,7 +55,8 @@ const exportDeclarationElements = (context: CheckContext) => {
     const moduleSpecifier = Option.fromNullable(node.moduleSpecifier)
 
     if (Option.isSome(moduleSpecifier)) {
-      return [detect(node)]
+      const value90 = detect(node)
+      return Array.of(value90)
     }
 
     return pipe(
@@ -79,7 +80,7 @@ const exportDeclarationElements = (context: CheckContext) => {
           })
         )
       ),
-      Option.getOrElse((): ReadonlyArray<Detection> => [])
+      Option.getOrElse((): ReadonlyArray<Detection> => Array.empty())
     )
   }
 
@@ -101,25 +102,31 @@ const exportAssignmentElements = (context: CheckContext) => {
           Option.exists(isImportedSymbol)
         )
       ),
-      Option.map(() => [detect(node)]),
-      Option.getOrElse((): ReadonlyArray<Detection> => [])
+      Option.map(() => pipe(node, detect, Array.of)),
+      Option.getOrElse((): ReadonlyArray<Detection> => Array.empty())
     )
 
   return matches
 }
 
-const exportDeclarationListeners = nodeSubscriptions([
-  ts.SyntaxKind.ExportDeclaration
-])(ts.isExportDeclaration)(exportDeclarationElements)
+const values92 = Array.of(ts.SyntaxKind.ExportDeclaration)
 
-const exportAssignmentListeners = nodeSubscriptions([
-  ts.SyntaxKind.ExportAssignment
-])(ts.isExportAssignment)(exportAssignmentElements)
+const exportDeclarationListeners = nodeSubscriptions(values92)(
+  ts.isExportDeclaration
+)(exportDeclarationElements)
 
-export const noReexport: Check = combineAll([
+const values93 = Array.of(ts.SyntaxKind.ExportAssignment)
+
+const exportAssignmentListeners = nodeSubscriptions(values93)(
+  ts.isExportAssignment
+)(exportAssignmentElements)
+
+const values94 = Array.make(
   exportDeclarationListeners,
   exportAssignmentListeners
-])
+)
+
+export const noReexport: Check = combineAll(values94)
 
 export const noReexportExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-reexport")

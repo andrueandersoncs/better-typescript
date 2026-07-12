@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isArrayLikeType } from "./support/tsType.js"
@@ -106,7 +106,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
     callExpression: ts.CallExpression
   ): ReadonlyArray<Detection> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
-      return []
+      return Array.empty()
     }
 
     const propertyAccess = callExpression.expression
@@ -119,7 +119,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
       : Option.none()
 
     if (Option.isNone(methodName)) {
-      return []
+      return Array.empty()
     }
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
@@ -144,7 +144,9 @@ const preferEffectArrayMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+const values156 = Array.of(ts.SyntaxKind.CallExpression)
+
+const check = nodeCheck(values156)(ts.isCallExpression)(
   preferEffectArrayMatches
 )
 

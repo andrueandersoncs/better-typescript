@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Tuple, Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
@@ -26,7 +26,7 @@ const flowHint =
   "Replace this nested unary call tower with flow(...steps) left-to-right " +
   "(innermost callee first). Do not nest the calls."
 
-const emptyDeclarations: ReadonlyArray<ts.Declaration> = []
+const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 
 const identifierText = Struct.get("text")
 
@@ -171,7 +171,7 @@ const etaReductionMatches = (context: CheckContext) => {
             )
 
             if (argumentIsParameter) {
-              return [callee] as const
+              return Tuple.make(callee)
             }
 
             const inner = yield* unaryCalleeTower(parameterName)(argument)
@@ -242,9 +242,8 @@ const etaReductionMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
-  etaReductionMatches
-)
+const values196 = Array.of(ts.SyntaxKind.ArrowFunction)
+const check = nodeCheck(values196)(ts.isArrowFunction)(etaReductionMatches)
 
 export const preferEtaReduction: Check = check
 

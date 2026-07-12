@@ -25,7 +25,7 @@ const constructorHint =
   "Constructing a Map is permitted only when it is handed to a third-party API that " +
   "requires one."
 
-const mapTypeNames: ReadonlyArray<string> = ["Map", "ReadonlyMap"]
+const mapTypeNames: ReadonlyArray<string> = Array.make("Map", "ReadonlyMap")
 
 const isMapTypeName = (id: ts.Identifier): boolean =>
   Array.contains(mapTypeNames, id.text)
@@ -61,20 +61,16 @@ const mapMatches = (context: CheckContext) => {
 
       const escapesExternally = isMapConstruction && constructionEscapes(node)
 
-      const isReportable = Array.every(
-        [isMapConstruction, !escapesExternally],
-        Boolean
-      )
+      const values199 = Array.make(isMapConstruction, !escapesExternally)
+      const isReportable = Array.every(values199, Boolean)
 
-      return isReportable
-        ? [
-            match({
-              node,
-              message: constructorMessage,
-              hint: constructorHint
-            })
-          ]
-        : []
+      const value200 = match({
+        node,
+        message: constructorMessage,
+        hint: constructorHint
+      })
+
+      return isReportable ? Array.of(value200) : Array.empty()
     }
 
     const isAmbient = isInAmbientContext(node)
@@ -82,7 +78,7 @@ const mapMatches = (context: CheckContext) => {
     const isBoundaryMirror = isAmbient || escapesExternally
 
     if (isBoundaryMirror) {
-      return []
+      return Array.empty()
     }
 
     const name = pipe(
@@ -93,22 +89,24 @@ const mapMatches = (context: CheckContext) => {
 
     const message = `Avoid the built-in ${name} type.`
 
-    return [
-      match({
-        node,
-        message,
-        hint: typeRefHint
-      })
-    ]
+    const value201 = match({
+      node,
+      message,
+      hint: typeRefHint
+    })
+
+    return Array.of(value201)
   }
 
   return matches
 }
 
-const check = nodeCheck([
+const values202 = Array.make(
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
-])(isMapRuleNode)(mapMatches)
+)
+
+const check = nodeCheck(values202)(isMapRuleNode)(mapMatches)
 
 export const preferHashMap: Check = check
 

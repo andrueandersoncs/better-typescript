@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { returnedExpression } from "./support/tsNode.js"
@@ -20,7 +20,7 @@ const implicitReturnMatches = (context: CheckContext) => {
   const matches = (
     arrowFunction: ts.ArrowFunction
   ): ReadonlyArray<Detection> => {
-    if (!ts.isBlock(arrowFunction.body)) return []
+    if (!ts.isBlock(arrowFunction.body)) return Array.empty()
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
 
@@ -32,26 +32,22 @@ const implicitReturnMatches = (context: CheckContext) => {
         Option.isSome
       )
 
-    return hasSingleValueReturn
-      ? [
-          match({
-            node: arrowFunction.body,
-            message:
-              "Avoid arrow function block bodies that only return a value.",
-            hint:
-              "Replace this with an implicit return by removing the return statement and function " +
-              "body braces. Wrap object literals in parentheses when needed."
-          })
-        ]
-      : []
+    const value207 = match({
+      node: arrowFunction.body,
+      message: "Avoid arrow function block bodies that only return a value.",
+      hint:
+        "Replace this with an implicit return by removing the return statement and function " +
+        "body braces. Wrap object literals in parentheses when needed."
+    })
+
+    return hasSingleValueReturn ? Array.of(value207) : Array.empty()
   }
 
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.ArrowFunction])(ts.isArrowFunction)(
-  implicitReturnMatches
-)
+const values208 = Array.of(ts.SyntaxKind.ArrowFunction)
+const check = nodeCheck(values208)(ts.isArrowFunction)(implicitReturnMatches)
 
 export const preferImplicitReturn: Check = check
 

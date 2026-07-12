@@ -103,7 +103,7 @@ const callbackStyleMatches = (context: CheckContext) => {
   ): ReadonlyArray<Detection> => {
     // Exempt declarations because they mirror a third-party API with no Effect-returning alternative to describe.
     if (isInAmbientContext(declaration)) {
-      return []
+      return Array.empty()
     }
 
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
@@ -139,35 +139,35 @@ const callbackStyleMatches = (context: CheckContext) => {
             callSignatureCheck(checker)
           )
 
-          return Array.some(
-            [parameterHasCallSignature, elementHasCallSignature],
-            Boolean
+          const values17 = Array.make(
+            parameterHasCallSignature,
+            elementHasCallSignature
           )
+
+          return Array.some(values17, Boolean)
         }
       )
 
       return returnsVoid && hasFunctionArgument
     })
 
-    return isCallback
-      ? [
-          match({
-            node: declaration,
-            message:
-              "Avoid callback-style functions that accept a function argument and return void.",
-            hint:
-              "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
-              "own API as an Effect-returning function from the start. Ambient declarations " +
-              "(declare statements) describing a third-party API are permitted."
-          })
-        ]
-      : []
+    const value18 = match({
+      node: declaration,
+      message:
+        "Avoid callback-style functions that accept a function argument and return void.",
+      hint:
+        "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
+        "own API as an Effect-returning function from the start. Ambient declarations " +
+        "(declare statements) describing a third-party API are permitted."
+    })
+
+    return isCallback ? Array.of(value18) : Array.empty()
   }
 
   return matches
 }
 
-const check = nodeCheck([
+const values19 = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
@@ -175,7 +175,11 @@ const check = nodeCheck([
   ts.SyntaxKind.MethodSignature,
   ts.SyntaxKind.CallSignature,
   ts.SyntaxKind.FunctionType
-])(isCallbackStyleCandidate)(callbackStyleMatches)
+)
+
+const check = nodeCheck(values19)(isCallbackStyleCandidate)(
+  callbackStyleMatches
+)
 
 export const noCallbacks: Check = check
 

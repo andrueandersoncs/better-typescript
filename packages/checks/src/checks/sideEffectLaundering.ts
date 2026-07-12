@@ -32,10 +32,10 @@ const collidingFileAdvice = (
         evidence
       })
 
-      return [advice]
+      return Array.of(advice)
     }
 
-    return []
+    return Array.empty()
   })
 }
 

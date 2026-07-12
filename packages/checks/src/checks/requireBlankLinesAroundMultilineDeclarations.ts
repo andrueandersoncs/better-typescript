@@ -21,7 +21,7 @@ type DeclarationStatement =
 type StatementContainer =
   ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
 
-const declarationKindList: ReadonlyArray<ts.SyntaxKind> = [
+const declarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.ClassDeclaration,
@@ -29,7 +29,7 @@ const declarationKindList: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.TypeAliasDeclaration,
   ts.SyntaxKind.EnumDeclaration,
   ts.SyntaxKind.ModuleDeclaration
-]
+)
 
 const declarationKinds = HashSet.fromIterable(declarationKindList)
 
@@ -117,24 +117,24 @@ const blankLineMatches = (context: CheckContext) => {
           Option.getOrElse(fallbackTrue)
         )
 
-        const paddingOk = Array.every([aboveOk, belowOk], Boolean)
+        const values212 = Array.make(aboveOk, belowOk)
+        const paddingOk = Array.every(values212, Boolean)
 
         return paddingOk === false
       }),
       Option.getOrElse(fallbackFalse)
     )
 
-    const shouldFlag = Array.every([isMultiLine, missingPadding], Boolean)
+    const values213 = Array.make(isMultiLine, missingPadding)
+    const shouldFlag = Array.every(values213, Boolean)
 
-    return shouldFlag
-      ? [
-          match({
-            node,
-            message,
-            hint
-          })
-        ]
-      : []
+    const value214 = match({
+      node,
+      message,
+      hint
+    })
+
+    return shouldFlag ? Array.of(value214) : Array.empty()
   }
 
   return matches

@@ -1,6 +1,15 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Array, Effect, Function, flow, pipe, Option, Struct } from "effect"
+import {
+  Tuple,
+  Array,
+  Effect,
+  Function,
+  flow,
+  pipe,
+  Option,
+  Struct
+} from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring } from "../../engine/report/data.js"
 import { makeWiring } from "../../engine/report/report.js"
@@ -35,7 +44,8 @@ const isRecord = (value: unknown): value is ModuleRecord => {
   const isObject = typeof value === "object"
   const isPresent = value !== null
 
-  return Array.every([isObject, isPresent], Boolean)
+  const values306 = Array.make(isObject, isPresent)
+  return Array.every(values306, Boolean)
 }
 
 const isFunctionValue = (value: unknown): value is WiringFactory =>
@@ -58,7 +68,8 @@ const formatCause = (cause: unknown): string => {
 
 const configExport =
   (name: ConfigExportName) =>
-  (value: unknown): ConfigExport => [name, value]
+  (value: unknown): ConfigExport =>
+    Tuple.make(name, value)
 
 const defaultConfigExport = configExport(defaultExportName)
 
@@ -205,10 +216,14 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
-  return Array.every(
-    [hasStringName, hasFunctionCheck, hasValidReported, hasValidExamples],
-    Boolean
+  const values307 = Array.make(
+    hasStringName,
+    hasFunctionCheck,
+    hasValidReported,
+    hasValidExamples
   )
+
+  return Array.every(values307, Boolean)
 }
 
 const invalidNamedCheck = (value: unknown): boolean => {
@@ -229,7 +244,7 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
 
   const examples = Object.hasOwn(record, "examples")
     ? (record.examples as ReadonlyArray<RefactorExample>)
-    : []
+    : Array.empty()
 
   return new NamedCheck({ name, check, reported, examples })
 }

@@ -23,7 +23,7 @@ const isDispatchGuard = (
 }
 
 const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
-  const ownNames = ts.isIdentifier(node) ? [node.text] : []
+  const ownNames = ts.isIdentifier(node) ? Array.of(node.text) : Array.empty()
   const children = node.getChildren()
   const childNames = Array.flatMap(children, identifierNames)
 
@@ -118,9 +118,8 @@ const manualTypeDispatchMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck([ts.SyntaxKind.IfStatement])(ts.isIfStatement)(
-  manualTypeDispatchMatches
-)
+const values50 = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(values50)(ts.isIfStatement)(manualTypeDispatchMatches)
 
 export const noManualTypeDispatch: Check = check
 

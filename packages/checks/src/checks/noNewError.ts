@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -19,25 +19,25 @@ const newErrorElements = (context: CheckContext) => {
       Option.exists((expression) => expression.text === "Error")
     )
 
-    return isBareError
-      ? [
-          element({
-            node,
-            message: "Avoid using new Error() directly.",
-            hint:
-              "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
-              "instead of bare new Error()."
-          })
-        ]
-      : []
+    const value74 = element({
+      node,
+      message: "Avoid using new Error() directly.",
+      hint:
+        "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+        "instead of bare new Error()."
+    })
+
+    return isBareError ? Array.of(value74) : Array.empty()
   }
 
   return matches
 }
 
-export const noNewError: Check = nodeCheck([newExpressionKind])(
-  ts.isNewExpression
-)(newErrorElements)
+const values75 = Array.of(newExpressionKind)
+
+export const noNewError: Check = nodeCheck(values75)(ts.isNewExpression)(
+  newErrorElements
+)
 
 export const noNewErrorExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-new-error")
