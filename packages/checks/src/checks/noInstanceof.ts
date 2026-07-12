@@ -3,7 +3,6 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -22,25 +21,9 @@ const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
 
 const className = Struct.get("name")
 
-const instanceofDetection =
-  (match: MakeDetection) =>
-  (expression: ts.BinaryExpression) =>
-  (symbol: ts.Symbol): Detection => {
-    const name = className(symbol)
-
-    return match({
-      node: expression,
-      message: `Avoid instanceof for the first-party class "${name}".`,
-      hint:
-        `Use Schema.is(${name})(value) or a Schema-based type guard instead of instanceof. ` +
-        "Schema.is is structural, works across realms, and stays consistent with " +
-        "the Effect type system."
-    })
-  }
-
 const instanceofMatches = (context: CheckContext) => {
   const checker = context.checker
-  const ruleMatch = instanceofDetection(detection(context))
+  const match = detection(context)
 
   const matches = (
     expression: ts.BinaryExpression
@@ -51,7 +34,18 @@ const instanceofMatches = (context: CheckContext) => {
     return pipe(
       symbol,
       Option.filter(isFirstPartySymbol),
-      Option.map(ruleMatch(expression)),
+      Option.map((symbol) => {
+        const name = className(symbol)
+
+        return match({
+          node: expression,
+          message: `Avoid instanceof for the first-party class "${name}".`,
+          hint:
+            `Use Schema.is(${name})(value) or a Schema-based type guard instead of instanceof. ` +
+            "Schema.is is structural, works across realms, and stays consistent with " +
+            "the Effect type system."
+        })
+      }),
       Option.toArray
     )
   }

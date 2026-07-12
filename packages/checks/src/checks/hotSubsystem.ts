@@ -32,19 +32,6 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   return [hasEnoughSignals, hasEnoughFiles, hasProjectShare].every(Boolean)
 }
 
-const isDeepestHotSubsystem =
-  (directories: ReadonlyArray<DirectorySignals>) =>
-  (candidate: DirectorySignals): boolean => {
-    const hasHotDescendant = Array.some(directories, (directory) => {
-      const isDifferentPath = directory.path !== candidate.path
-      const isNestedPath = directory.path.startsWith(`${candidate.path}/`)
-
-      return [isDifferentPath, isNestedPath].every(Boolean)
-    })
-
-    return !hasHotDescendant
-  }
-
 const subsystemAdvice = (directory: DirectorySignals): Advice => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
   const summary = countSummary(elements)
@@ -126,10 +113,16 @@ const hotSubsystemAdvice = (
     })
   })
   const hotDirectories = Array.filter(directories, isHotSubsystem)
-  const deepest = Array.filter(
-    hotDirectories,
-    isDeepestHotSubsystem(hotDirectories)
-  )
+  const deepest = Array.filter(hotDirectories, (candidate) => {
+    const hasHotDescendant = Array.some(hotDirectories, (directory) => {
+      const isDifferentPath = directory.path !== candidate.path
+      const isNestedPath = directory.path.startsWith(`${candidate.path}/`)
+
+      return [isDifferentPath, isNestedPath].every(Boolean)
+    })
+
+    return !hasHotDescendant
+  })
 
   return Array.map(deepest, subsystemAdvice)
 }

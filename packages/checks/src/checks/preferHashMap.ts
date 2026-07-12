@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isInAmbientContext, typeNameIdentifier } from "./support/tsNode.js"
@@ -7,7 +7,6 @@ import {
   typeReferenceEscapesExternally
 } from "./support/tsSignature.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -26,34 +25,6 @@ const constructorHint =
   "Constructing a Map is permitted only when it is handed to a third-party API that " +
   "requires one."
 
-const newMapMatches = (checker: ts.TypeChecker) => (match: MakeDetection) => {
-  const constructionEscapes = constructionEscapesExternally(checker)
-
-  const matches = (
-    newExpression: ts.NewExpression
-  ): ReadonlyArray<Detection> => {
-    const expressionOption = Option.liftPredicate(ts.isIdentifier)(
-      newExpression.expression
-    )
-    const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
-    const escapesExternally =
-      isMapConstruction && constructionEscapes(newExpression)
-    const isReportable = [isMapConstruction, !escapesExternally].every(Boolean)
-
-    return isReportable
-      ? [
-          match({
-            node: newExpression,
-            message: constructorMessage,
-            hint: constructorHint
-          })
-        ]
-      : []
-  }
-
-  return matches
-}
-
 const mapTypeNames: ReadonlyArray<string> = ["Map", "ReadonlyMap"]
 
 const isMapTypeName = (id: ts.Identifier): boolean =>
@@ -64,36 +35,6 @@ const typeRefHint =
   "traits for structural equality. Writing the built-in Map type is permitted only where " +
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
-
-const mapTypeRefMatches =
-  (checker: ts.TypeChecker) => (match: MakeDetection) => {
-    const typeRefEscapes = typeReferenceEscapesExternally(checker)
-
-    const matches = (
-      typeRef: ts.TypeReferenceNode
-    ): ReadonlyArray<Detection> => {
-      const isAmbient = isInAmbientContext(typeRef)
-      const escapesExternally = typeRefEscapes(typeRef)
-      const isBoundaryMirror = isAmbient || escapesExternally
-
-      if (isBoundaryMirror) {
-        return []
-      }
-
-      const name = (typeRef.typeName as ts.Identifier).text
-      const message = `Avoid the built-in ${name} type.`
-
-      return [
-        match({
-          node: typeRef,
-          message,
-          hint: typeRefHint
-        })
-      ]
-    }
-
-    return matches
-  }
 
 type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
@@ -107,11 +48,53 @@ const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
 
 const mapMatches = (context: CheckContext) => {
   const match = detection(context)
-  const constructionMatches = newMapMatches(context.checker)(match)
-  const typeRefMatches = mapTypeRefMatches(context.checker)(match)
+  const constructionEscapes = constructionEscapesExternally(context.checker)
+  const typeRefEscapes = typeReferenceEscapesExternally(context.checker)
 
-  const matches = (node: MapRuleNode): ReadonlyArray<Detection> =>
-    ts.isNewExpression(node) ? constructionMatches(node) : typeRefMatches(node)
+  const matches = (node: MapRuleNode): ReadonlyArray<Detection> => {
+    if (ts.isNewExpression(node)) {
+      const expressionOption = Option.liftPredicate(ts.isIdentifier)(
+        node.expression
+      )
+      const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
+      const escapesExternally =
+        isMapConstruction && constructionEscapes(node)
+      const isReportable = [isMapConstruction, !escapesExternally].every(Boolean)
+
+      return isReportable
+        ? [
+            match({
+              node,
+              message: constructorMessage,
+              hint: constructorHint
+            })
+          ]
+        : []
+    }
+
+    const isAmbient = isInAmbientContext(node)
+    const escapesExternally = typeRefEscapes(node)
+    const isBoundaryMirror = isAmbient || escapesExternally
+
+    if (isBoundaryMirror) {
+      return []
+    }
+
+    const name = pipe(
+      typeNameIdentifier(node),
+      Option.map(Struct.get("text")),
+      Option.getOrElse(Function.constant(""))
+    )
+    const message = `Avoid the built-in ${name} type.`
+
+    return [
+      match({
+        node,
+        message,
+        hint: typeRefHint
+      })
+    ]
+  }
 
   return matches
 }

@@ -74,39 +74,6 @@ const identifierParameterName = (
   parameter: ts.ParameterDeclaration
 ): Option.Option<string> => identifierBindingNameText(parameter.name)
 
-const hasIdentifierText =
-  (text: string) =>
-  (identifier: ts.Identifier): boolean =>
-    identifier.text === text
-
-const accessesParameterProperty =
-  (parameterName: string) =>
-  (access: ts.PropertyAccessExpression): boolean =>
-    pipe(
-      Option.liftPredicate(ts.isIdentifier)(access.expression),
-      Option.exists(hasIdentifierText(parameterName))
-    )
-
-const parameterPropertyAccess =
-  (node: PropertyAccessorFunction) =>
-  (parameterName: string): Option.Option<ts.PropertyAccessExpression> => {
-    const implicitExpression = pipe(
-      Option.liftPredicate(ts.isArrowFunction)(node),
-      Option.flatMap(conciseArrowBody)
-    )
-    const blockExpression = pipe(
-      Option.fromNullable(node.body),
-      Option.filter(ts.isBlock),
-      Option.flatMap(singleReturnExpression)
-    )
-
-    return pipe(
-      Option.firstSomeOf([implicitExpression, blockExpression]),
-      Option.flatMap(directPropertyAccessExpression),
-      Option.filter(accessesParameterProperty(parameterName))
-    )
-  }
-
 const hasIndexSignature = (type: ts.Type): boolean => {
   const stringIndex = type.getStringIndexType()
   const stringIndexType = Option.fromNullable(stringIndex)
@@ -118,28 +85,15 @@ const hasIndexSignature = (type: ts.Type): boolean => {
   return hasStringIndex || hasNumberIndex
 }
 
-const isRecordTypeMember =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): boolean =>
-    isRecordType(checker)(type)
-
 const isRecordType =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): boolean => {
     const apparentType = checker.getApparentType(type)
 
     return type.isUnionOrIntersection()
-      ? type.types.every(isRecordTypeMember(checker))
+      ? type.types.every(isRecordType(checker))
       : [hasIndexSignature(type), hasIndexSignature(apparentType)].some(Boolean)
   }
-
-const variableDeclarationName =
-  (node: PropertyAccessorFunction) => (): Option.Option<string> =>
-    pipe(
-      Option.liftPredicate(ts.isVariableDeclaration)(node.parent),
-      Option.map(Struct.get("name")),
-      Option.flatMap(identifierBindingNameText)
-    )
 
 const propertyAccessorMatches = (context: CheckContext) => {
   const checker = context.checker
@@ -155,7 +109,13 @@ const propertyAccessorMatches = (context: CheckContext) => {
       const name = pipe(
         Option.fromNullable(node.name),
         Option.map(propertyNameText),
-        Option.orElse(variableDeclarationName(node)),
+        Option.orElse(() =>
+          pipe(
+            Option.liftPredicate(ts.isVariableDeclaration)(node.parent),
+            Option.map(Struct.get("name")),
+            Option.flatMap(identifierBindingNameText)
+          )
+        ),
         Option.getOrElse(Function.constant("this function"))
       )
       const accessedText = access.getText(sourceFile)
@@ -184,7 +144,28 @@ const propertyAccessorMatches = (context: CheckContext) => {
 
     return pipe(
       paramName,
-      Option.flatMap(parameterPropertyAccess(node)),
+      Option.flatMap((parameterName) => {
+        const implicitExpression = pipe(
+          Option.liftPredicate(ts.isArrowFunction)(node),
+          Option.flatMap(conciseArrowBody)
+        )
+        const blockExpression = pipe(
+          Option.fromNullable(node.body),
+          Option.filter(ts.isBlock),
+          Option.flatMap(singleReturnExpression)
+        )
+
+        return pipe(
+          Option.firstSomeOf([implicitExpression, blockExpression]),
+          Option.flatMap(directPropertyAccessExpression),
+          Option.filter((access) =>
+            pipe(
+              Option.liftPredicate(ts.isIdentifier)(access.expression),
+              Option.exists((identifier) => identifier.text === parameterName)
+            )
+          )
+        )
+      }),
       Option.map(ruleMatch(node)),
       Option.toArray
     )

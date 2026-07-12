@@ -6,7 +6,6 @@ import {
   unwrapSingleStatementBlock
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -23,42 +22,6 @@ const containsYieldExpression = (node: ts.Node): boolean => {
 
   return isYield || childContainsYield
 }
-
-// Leave branches that return ternaries alone because collapsing them would create a nested ternary that another rule forbids.
-const isSimpleReturnExpression =
-  (sourceFile: ts.SourceFile) =>
-  (expression: ts.Expression): boolean => {
-    const text = expression.getText(sourceFile)
-    const isSingleLine = !text.includes("\n")
-    const isShort = text.length <= maximumReturnExpressionLength
-    const hasYieldExpression = containsYieldExpression(expression)
-    const unwrapped = unwrapExpression(expression)
-    const isTernary = ts.isConditionalExpression(unwrapped)
-
-    return [isSingleLine, isShort, !hasYieldExpression, !isTernary].every(
-      Boolean
-    )
-  }
-
-const returnExpressionFromStatement =
-  (sourceFile: ts.SourceFile) =>
-  (statement: ts.Statement): Option.Option<ts.Expression> =>
-    Option.gen(function* () {
-      const unwrappedStatement = unwrapSingleStatementBlock(statement)
-      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
-        unwrappedStatement
-      )
-      const expression = yield* Option.fromNullable(returnStatement.expression)
-
-      return yield* Option.liftPredicate(isSimpleReturnExpression(sourceFile))(
-        expression
-      )
-    })
-
-type StatementConditionalMatch = (
-  statement: ts.Statement,
-  index: number
-) => Option.Option<Detection>
 
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
@@ -81,99 +44,86 @@ const ternaryText =
       whenFalse.getText(sourceFile)
     ].join(" ")
 
-const flippedTernaryText =
-  (sourceFile: ts.SourceFile) =>
-  (fallbackExpression: ts.Expression) =>
-  (thenExpression: ts.Expression) =>
-  (operand: ts.Expression): string =>
-    ternaryText(sourceFile)(operand)(fallbackExpression)(thenExpression)
+const conditionalReturnDetections = (context: CheckContext) => {
+  const sourceFile = context.sourceFile
+  const match = detection(context)
 
-const standardTernaryText =
-  (sourceFile: ts.SourceFile) =>
-  (condition: ts.Expression) =>
-  (thenExpression: ts.Expression) =>
-  (fallbackExpression: ts.Expression) =>
-  (): string =>
-    ternaryText(sourceFile)(condition)(thenExpression)(fallbackExpression)
-
-type ReturnExpression = (
-  statement: ts.Statement
-) => Option.Option<ts.Expression>
-type StandardTernary = (
-  condition: ts.Expression
-) => (
-  thenExpression: ts.Expression
-) => (fallbackExpression: ts.Expression) => () => string
-type FlippedTernary = (
-  fallbackExpression: ts.Expression
-) => (thenExpression: ts.Expression) => (operand: ts.Expression) => string
-
-const conditionalReturnMatch =
-  (returnExpression: ReturnExpression) =>
-  (standardTernary: StandardTernary) =>
-  (flippedTernary: FlippedTernary) =>
-  (match: MakeDetection) =>
-  (nextStatement: Option.Option<ts.Statement>) =>
-  (ifStatement: ts.IfStatement): Option.Option<Detection> =>
+  // Leave branches that return ternaries alone because collapsing them would create a nested ternary that another rule forbids.
+  const returnExpression = (
+    statement: ts.Statement
+  ): Option.Option<ts.Expression> =>
     Option.gen(function* () {
-      const thenExpression = yield* returnExpression(ifStatement.thenStatement)
-      const elseStatement = Option.fromNullable(ifStatement.elseStatement)
-      const fallbackStatement = Option.isSome(elseStatement)
-        ? elseStatement
-        : nextStatement
-      const fallbackExpression = yield* Option.flatMap(
-        fallbackStatement,
-        returnExpression
+      const unwrappedStatement = unwrapSingleStatementBlock(statement)
+      const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
+        unwrappedStatement
       )
-      const unwrappedCondition = unwrapExpression(ifStatement.expression)
-      const negatedCondition = pipe(
-        Option.liftPredicate(ts.isPrefixUnaryExpression)(unwrappedCondition),
-        Option.flatMap(negatedPrefixUnaryExpressionOperand)
-      )
-      const returnText = Option.match(negatedCondition, {
-        onNone: standardTernary(ifStatement.expression)(thenExpression)(
-          fallbackExpression
-        ),
-        onSome: flippedTernary(fallbackExpression)(thenExpression)
-      })
+      const expression = yield* Option.fromNullable(returnStatement.expression)
 
-      return match({
-        node: ifStatement,
-        message:
-          "Avoid if statements that only choose between two return values.",
-        hint: `Return a conditional expression instead: return ${returnText}.`
-      })
+      return yield* Option.liftPredicate((expression: ts.Expression) => {
+        const text = expression.getText(sourceFile)
+        const isSingleLine = !text.includes("\n")
+        const isShort = text.length <= maximumReturnExpressionLength
+        const hasYieldExpression = containsYieldExpression(expression)
+        const unwrapped = unwrapExpression(expression)
+        const isTernary = ts.isConditionalExpression(unwrapped)
+
+        return [isSingleLine, isShort, !hasYieldExpression, !isTernary].every(
+          Boolean
+        )
+      })(expression)
     })
 
-type IfConditionalMatch = (
-  nextStatement: Option.Option<ts.Statement>
-) => (ifStatement: ts.IfStatement) => Option.Option<Detection>
-
-const statementConditionalMatch =
-  (ifMatch: IfConditionalMatch) =>
-  (block: ts.Block): StatementConditionalMatch =>
-  (statement, index) => {
-    const nextStatement = Option.fromNullable(block.statements[index + 1])
-
-    return pipe(
-      Option.liftPredicate(ts.isIfStatement)(statement),
-      Option.flatMap(ifMatch(nextStatement))
-    )
-  }
-
-const conditionalReturnDetections = (context: CheckContext) => {
-  const returnExpression = returnExpressionFromStatement(context.sourceFile)
-  const standardTernary = standardTernaryText(context.sourceFile)
-  const flippedTernary = flippedTernaryText(context.sourceFile)
-  const match = detection(context)
-  const ifMatch =
-    conditionalReturnMatch(returnExpression)(standardTernary)(flippedTernary)(
-      match
-    )
-  const conditionalMatch = statementConditionalMatch(ifMatch)
-
   const matches = (block: ts.Block): ReadonlyArray<Detection> =>
-    Array.filterMap(block.statements, conditionalMatch(block))
+    Array.filterMap(block.statements, (statement, index) => {
+      const nextStatement = Option.fromNullable(block.statements[index + 1])
+
+      return pipe(
+        Option.liftPredicate(ts.isIfStatement)(statement),
+        Option.flatMap((ifStatement) =>
+          Option.gen(function* () {
+            const thenExpression = yield* returnExpression(
+              ifStatement.thenStatement
+            )
+            const elseStatement = Option.fromNullable(
+              ifStatement.elseStatement
+            )
+            const fallbackStatement = Option.isSome(elseStatement)
+              ? elseStatement
+              : nextStatement
+            const fallbackExpression = yield* Option.flatMap(
+              fallbackStatement,
+              returnExpression
+            )
+            const unwrappedCondition = unwrapExpression(
+              ifStatement.expression
+            )
+            const negatedCondition = pipe(
+              Option.liftPredicate(ts.isPrefixUnaryExpression)(
+                unwrappedCondition
+              ),
+              Option.flatMap(negatedPrefixUnaryExpressionOperand)
+            )
+            const returnText = Option.match(negatedCondition, {
+              onNone: () =>
+                ternaryText(sourceFile)(ifStatement.expression)(
+                  thenExpression
+                )(fallbackExpression),
+              onSome: (operand) =>
+                ternaryText(sourceFile)(operand)(fallbackExpression)(
+                  thenExpression
+                )
+            })
+
+            return match({
+              node: ifStatement,
+              message:
+                "Avoid if statements that only choose between two return values.",
+              hint: `Return a conditional expression instead: return ${returnText}.`
+            })
+          })
+        )
+      )
+    })
 
   return matches
 }

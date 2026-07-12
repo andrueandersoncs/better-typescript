@@ -51,43 +51,38 @@ export const isUnseenType =
   (type: ts.Type): boolean =>
     !HashSet.has(seen, type)
 
-const computeCallSignature =
-  (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean => {
-    const nextSeen = HashSet.add(seen, type)
-    const hasDirectCallSignature = type.getCallSignatures().length > 0
-
-    if (type.isUnionOrIntersection()) {
-      return (
-        hasDirectCallSignature ||
-        type.types.some(callSignatureCheckWithSeen(checker)(nextSeen))
-      )
-    }
-
-    const baseConstraint = differentBaseConstraint(checker)(type)
-    const apparentType = differentApparentType(checker)(type)
-    const constraintHasCallSignature = Option.exists(
-      baseConstraint,
-      callSignatureCheckWithSeen(checker)(nextSeen)
-    )
-    const apparentTypeHasCallSignature = Option.exists(
-      apparentType,
-      callSignatureCheckWithSeen(checker)(nextSeen)
-    )
-    const hasIndirectCallSignature =
-      constraintHasCallSignature || apparentTypeHasCallSignature
-
-    return hasDirectCallSignature || hasIndirectCallSignature
-  }
-
 const hasCallSignatureWithSeen =
   (checker: ts.TypeChecker) =>
   (seen: HashSet.HashSet<ts.Type>) =>
   (type: ts.Type): boolean =>
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
-      Option.exists(computeCallSignature(checker)(seen))
+      Option.exists((type) => {
+        const nextSeen = HashSet.add(seen, type)
+        const hasDirectCallSignature = type.getCallSignatures().length > 0
+
+        if (type.isUnionOrIntersection()) {
+          return (
+            hasDirectCallSignature ||
+            type.types.some(callSignatureCheckWithSeen(checker)(nextSeen))
+          )
+        }
+
+        const baseConstraint = differentBaseConstraint(checker)(type)
+        const apparentType = differentApparentType(checker)(type)
+        const constraintHasCallSignature = Option.exists(
+          baseConstraint,
+          callSignatureCheckWithSeen(checker)(nextSeen)
+        )
+        const apparentTypeHasCallSignature = Option.exists(
+          apparentType,
+          callSignatureCheckWithSeen(checker)(nextSeen)
+        )
+        const hasIndirectCallSignature =
+          constraintHasCallSignature || apparentTypeHasCallSignature
+
+        return hasDirectCallSignature || hasIndirectCallSignature
+      })
     )
 
 export const callSignatureCheck = (checker: ts.TypeChecker) => {

@@ -1,4 +1,4 @@
-import { Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isFirstPartySymbol, unwrapExpression } from "./support/tsNode.js"
@@ -71,11 +71,6 @@ const isSchemaTagComparison = (node: ts.Node): node is ts.BinaryExpression =>
     Option.exists(isSchemaTagComparisonBinary)
   )
 
-const checkedValueText =
-  (sourceFile: ts.SourceFile) =>
-  (access: ts.PropertyAccessExpression): string =>
-    access.expression.getText(sourceFile)
-
 const constituentIsFirstParty = (type: ts.Type): boolean => {
   const aliasSymbol = Option.fromNullable(type.aliasSymbol)
   const typeSymbol = type.getSymbol()
@@ -86,23 +81,9 @@ const constituentIsFirstParty = (type: ts.Type): boolean => {
 }
 
 // Restrict this rewrite to declared classes because Schema.is(Class) uses instanceof semantics that would invert plain JSON or third-party unions.
-const isFirstPartyTagAccess =
-  (checker: ts.TypeChecker) =>
-  (access: ts.PropertyAccessExpression): boolean => {
-    const checkedType = checker.getTypeAtLocation(access.expression)
-    const constituents = checkedType.isUnion()
-      ? checkedType.types
-      : [checkedType]
-
-    return constituents.every(constituentIsFirstParty)
-  }
-
 const schemaIsMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
-  const isFirstPartyAccess = isFirstPartyTagAccess(context.checker)
-  const valueTextOf = checkedValueText(sourceFile)
-
   const matches = (
     expression: ts.BinaryExpression
   ): ReadonlyArray<Detection> => {
@@ -110,14 +91,21 @@ const schemaIsMatches = (context: CheckContext) => {
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = [leftAccess, rightAccess]
     const tagAccess = Option.firstSomeOf(accessOptions)
-    const isFirstParty = Option.exists(tagAccess, isFirstPartyAccess)
+    const isFirstParty = Option.exists(tagAccess, (access) => {
+      const checkedType = context.checker.getTypeAtLocation(access.expression)
+      const constituents = checkedType.isUnion()
+        ? checkedType.types
+        : [checkedType]
+
+      return Array.every(constituents, constituentIsFirstParty)
+    })
 
     if (!isFirstParty) {
       return []
     }
     const valueText = pipe(
       tagAccess,
-      Option.map(valueTextOf),
+      Option.map((access) => access.expression.getText(sourceFile)),
       Option.getOrElse(Function.constant("the value"))
     )
     const operatorText = expression.operatorToken.getText(sourceFile)

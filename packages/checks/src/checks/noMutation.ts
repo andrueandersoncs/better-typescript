@@ -1,4 +1,5 @@
 import {
+  Array,
   Function,
   HashSet,
   Match,
@@ -15,7 +16,6 @@ import {
   unwrapExpression
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -83,17 +83,12 @@ const ecmaScriptLibPrefixes: ReadonlyArray<string> = [
   "lib.d.ts"
 ]
 
-const isPrefixOf =
-  (baseName: string) =>
-  (prefix: string): boolean =>
-    baseName.startsWith(prefix)
-
 const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
   const normalized = sourceFile.fileName.replaceAll("\\", "/")
   const separatorIndex = normalized.lastIndexOf("/")
   const baseName = normalized.slice(separatorIndex + 1)
 
-  return ecmaScriptLibPrefixes.some(isPrefixOf(baseName))
+  return Array.some(ecmaScriptLibPrefixes, (prefix) => baseName.startsWith(prefix))
 }
 
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
@@ -142,31 +137,6 @@ const isUncontrolledType =
     )
   }
 
-const isUncontrolledTarget =
-  (checker: ts.TypeChecker) =>
-  (target: ts.Expression): boolean => {
-    const unwrapped = unwrapExpression(target)
-    const isAccess =
-      ts.isPropertyAccessExpression(unwrapped) ||
-      ts.isElementAccessExpression(unwrapped)
-
-    // Judge the receiver because property and element assignments write into its data structure.
-    if (isAccess) {
-      const receiverType = checker.getTypeAtLocation(unwrapped.expression)
-
-      return isUncontrolledType(checker)(receiverType)
-    }
-
-    // Judge the binding declaration because an assignment rebinding x replaces the binding itself.
-    const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
-
-    return pipe(
-      Option.fromNullable(bindingSymbol),
-      Option.map(resolveAlias(checker)),
-      Option.exists(isUncontrolledSymbol)
-    )
-  }
-
 type MutationScope = "shared-state" | "local" | "builtin"
 
 const executionBoundaryKinds = HashSet.make(
@@ -195,62 +165,7 @@ const rootReceiver = (expression: ts.Expression): ts.Expression => {
   return isAccess ? rootReceiver(unwrapped.expression) : unwrapped
 }
 
-// Treat module and captured bindings as shared because they outlive the function that writes them.
-const scopeForDeclaration =
-  (root: ts.Node) =>
-  (declaration: ts.Declaration): MutationScope => {
-    const declarationBoundary = enclosingExecutionBoundary(declaration.parent)
-    const mutationBoundary = enclosingExecutionBoundary(root.parent)
-    const isModuleScoped = ts.isSourceFile(declarationBoundary)
-    const isCaptured = declarationBoundary !== mutationBoundary
-
-    return [isModuleScoped, isCaptured].some(Boolean) ? "shared-state" : "local"
-  }
-
 const fallbackLocalScope: () => MutationScope = Function.constant("local")
-
-const scopeForResolvedSymbol =
-  (root: ts.Node) =>
-  (symbol: ts.Symbol): MutationScope => {
-    const declarations = symbol.getDeclarations() ?? []
-    const sourceFiles = declarations.map(declarationSourceFile)
-    const isBuiltin = sourceFiles.some(isEcmaScriptLibFile)
-    const declaredScope = pipe(
-      Option.fromNullable(declarations[0]),
-      Option.map(scopeForDeclaration(root)),
-      Option.getOrElse(fallbackLocalScope)
-    )
-
-    return isBuiltin ? "builtin" : declaredScope
-  }
-
-const mutationScope =
-  (checker: ts.TypeChecker) =>
-  (target: ts.Expression): MutationScope => {
-    const root = rootReceiver(target)
-
-    if (root.kind === ts.SyntaxKind.ThisKeyword) {
-      return "shared-state"
-    }
-
-    const rootSymbol = checker.getSymbolAtLocation(root)
-
-    return pipe(
-      Option.fromNullable(rootSymbol),
-      Option.map(resolveAlias(checker)),
-      Option.map(scopeForResolvedSymbol(root)),
-      Option.getOrElse(fallbackLocalScope)
-    )
-  }
-
-const mutationDetection =
-  (match: MakeDetection) =>
-  (scopeOf: (target: ts.Expression) => MutationScope) =>
-  (target: ts.Expression): Detection => {
-    const scope = scopeOf(target)
-
-    return match({ node: target, message, hint, data: { target: scope } })
-  }
 
 const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.BinaryExpression,
@@ -268,9 +183,48 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode =>
   ].some(Boolean)
 
 const mutationMatches = (context: CheckContext) => {
-  const isExemptTarget = isUncontrolledTarget(context.checker)
-  const scopeOf = mutationScope(context.checker)
-  const ruleMatch = mutationDetection(detection(context))(scopeOf)
+  const checker = context.checker
+  const match = detection(context)
+
+  // Treat module and captured bindings as shared because they outlive the function that writes them.
+  const scopeOf = (target: ts.Expression): MutationScope => {
+    const root = rootReceiver(target)
+
+    if (root.kind === ts.SyntaxKind.ThisKeyword) {
+      return "shared-state"
+    }
+
+    const rootSymbol = checker.getSymbolAtLocation(root)
+
+    return pipe(
+      Option.fromNullable(rootSymbol),
+      Option.map(resolveAlias(checker)),
+      Option.map((symbol): MutationScope => {
+        const declarations = symbol.getDeclarations() ?? []
+        const sourceFiles = declarations.map(declarationSourceFile)
+        const isBuiltin = sourceFiles.some(isEcmaScriptLibFile)
+        const declaredScope = pipe(
+          Option.fromNullable(declarations[0]),
+          Option.map((declaration): MutationScope => {
+            const declarationBoundary = enclosingExecutionBoundary(
+              declaration.parent
+            )
+            const mutationBoundary = enclosingExecutionBoundary(root.parent)
+            const isModuleScoped = ts.isSourceFile(declarationBoundary)
+            const isCaptured = declarationBoundary !== mutationBoundary
+
+            return [isModuleScoped, isCaptured].some(Boolean)
+              ? "shared-state"
+              : "local"
+          }),
+          Option.getOrElse(fallbackLocalScope)
+        )
+
+        return isBuiltin ? "builtin" : declaredScope
+      }),
+      Option.getOrElse(fallbackLocalScope)
+    )
+  }
 
   const matches = (node: MutationNode): ReadonlyArray<Detection> =>
     pipe(
@@ -278,8 +232,40 @@ const mutationMatches = (context: CheckContext) => {
       Match.when(ts.isBinaryExpression, binaryAssignmentTarget),
       Match.when(ts.isDeleteExpression, deleteExpressionTarget),
       Match.orElse(unaryMutationTarget),
-      Option.filter(Predicate.not(isExemptTarget)),
-      Option.map(ruleMatch),
+      Option.filter(
+        Predicate.not((target) => {
+          const unwrapped = unwrapExpression(target)
+          const isAccess =
+            ts.isPropertyAccessExpression(unwrapped) ||
+            ts.isElementAccessExpression(unwrapped)
+
+          // Judge the receiver because property and element assignments write into its data structure.
+          if (isAccess) {
+            const receiverType = checker.getTypeAtLocation(unwrapped.expression)
+
+            return isUncontrolledType(checker)(receiverType)
+          }
+
+          // Judge the binding declaration because an assignment rebinding x replaces the binding itself.
+          const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
+
+          return pipe(
+            Option.fromNullable(bindingSymbol),
+            Option.map(resolveAlias(checker)),
+            Option.exists(isUncontrolledSymbol)
+          )
+        })
+      ),
+      Option.map((target) => {
+        const targetScope = scopeOf(target)
+
+        return match({
+          node: target,
+          message,
+          hint,
+          data: { target: targetScope }
+        })
+      }),
       Option.toArray
     )
 

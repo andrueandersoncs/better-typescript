@@ -31,28 +31,6 @@ const isImportedSymbol = (symbol: ts.Symbol): boolean => {
   return aliased && imported
 }
 
-const isImportedIdentifier =
-  (checker: ts.TypeChecker) =>
-  (name: ts.Identifier): boolean => {
-    const symbolAtLocation = checker.getSymbolAtLocation(name)
-
-    return pipe(
-      Option.fromNullable(symbolAtLocation),
-      Option.exists(isImportedSymbol)
-    )
-  }
-
-const isImportedExportSpecifier =
-  (checker: ts.TypeChecker) =>
-  (specifier: ts.ExportSpecifier): boolean => {
-    const localTarget = checker.getExportSpecifierLocalTargetSymbol(specifier)
-
-    return pipe(
-      Option.fromNullable(localTarget),
-      Option.exists(isImportedSymbol)
-    )
-  }
-
 const reexportDetection =
   (element: MakeDetection) =>
   (node: ts.Node): Detection =>
@@ -61,23 +39,6 @@ const reexportDetection =
       message,
       hint
     })
-
-const namedExportReexports =
-  (checker: ts.TypeChecker) =>
-  (element: MakeDetection) =>
-  (exportClause: ts.NamedExports): ReadonlyArray<Detection> => {
-    const detect = reexportDetection(element)
-
-    return pipe(
-      exportClause.elements,
-      Array.filterMap((specifier) => {
-        const imported = isImportedExportSpecifier(checker)(specifier)
-        const detected = detect(specifier)
-
-        return imported ? Option.some(detected) : Option.none()
-      })
-    )
-  }
 
 const exportDeclarationElements = (context: CheckContext) => {
   const element = detection(context)
@@ -94,7 +55,22 @@ const exportDeclarationElements = (context: CheckContext) => {
     return pipe(
       Option.fromNullable(node.exportClause),
       Option.filter(ts.isNamedExports),
-      Option.map(namedExportReexports(checker)(element)),
+      Option.map((exportClause) =>
+        pipe(
+          exportClause.elements,
+          Array.filterMap((specifier) => {
+            const localTarget =
+              checker.getExportSpecifierLocalTargetSymbol(specifier)
+            const imported = pipe(
+              Option.fromNullable(localTarget),
+              Option.exists(isImportedSymbol)
+            )
+            const detected = detect(specifier)
+
+            return imported ? Option.some(detected) : Option.none()
+          })
+        )
+      ),
       Option.getOrElse((): ReadonlyArray<Detection> => [])
     )
   }
@@ -110,7 +86,14 @@ const exportAssignmentElements = (context: CheckContext) => {
   const matches = (node: ts.ExportAssignment): ReadonlyArray<Detection> =>
     pipe(
       Option.liftPredicate(ts.isIdentifier)(node.expression),
-      Option.filter(isImportedIdentifier(checker)),
+      Option.filter((name) => {
+        const symbolAtLocation = checker.getSymbolAtLocation(name)
+
+        return pipe(
+          Option.fromNullable(symbolAtLocation),
+          Option.exists(isImportedSymbol)
+        )
+      }),
       Option.map(() => [detect(node)]),
       Option.getOrElse((): ReadonlyArray<Detection> => [])
     )

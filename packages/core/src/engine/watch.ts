@@ -39,17 +39,6 @@ export class WorkspaceUpdate extends Data.Class<{
   readonly snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
 }> {}
 
-const indexedSourceUpdates =
-  (watchOptions: Option.Option<ts.WatchOptions>) =>
-  (
-    config: ProjectConfig,
-    index: number
-  ): Stream.Stream<readonly [number, SourceUpdate], Error> =>
-    pipe(
-      sourceUpdates(config, watchOptions),
-      Stream.map((update) => [index, update] as const)
-    )
-
 const emptySnapshotCache: HashMap.HashMap<
   number,
   Chunk.Chunk<AstNodeElement>
@@ -66,8 +55,11 @@ export const workspaceUpdates = (
   watchOptions: Option.Option<ts.WatchOptions>
 ): Stream.Stream<WorkspaceUpdate, Error> => {
   const projectCount = workspace.projects.length
-  const updateStreams = workspace.projects.map(
-    indexedSourceUpdates(watchOptions)
+  const updateStreams = Array.map(workspace.projects, (config, index) =>
+    pipe(
+      sourceUpdates(config, watchOptions),
+      Stream.map((update) => [index, update] as const)
+    )
   )
   const merged = Stream.mergeAll(updateStreams, { concurrency: "unbounded" })
   // Drop empty rebuilds after warm-up because only the initial batch must report an empty workspace.
@@ -237,22 +229,6 @@ const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] => [
   block
 ]
 
-const isClearedBlock =
-  (currentIdentities: HashSet.HashSet<string>) =>
-  (block: ReportBlock): boolean =>
-    !HashSet.has(currentIdentities, block.identity)
-
-const isChangedBlock =
-  (previousByIdentity: HashMap.HashMap<string, ReportBlock>) =>
-  (block: ReportBlock): boolean =>
-    pipe(
-      HashMap.get(previousByIdentity, block.identity),
-      Option.match({
-        onNone: Function.constTrue,
-        onSome: (previous) => previous.text !== block.text
-      })
-    )
-
 /**
  * Pure per-block delta: clearances first (previous order) — previous blocks
  * whose key is absent from current emit their cleared event; then changed and
@@ -268,12 +244,20 @@ export const blockDelta =
     const currentIdentities = HashSet.fromIterable(currentIdentityList)
     const clearances = pipe(
       previous,
-      Array.filter(isClearedBlock(currentIdentities)),
+      Array.filter((block) => !HashSet.has(currentIdentities, block.identity)),
       Array.map(blockClearedEvent)
     )
     const updates = pipe(
       current,
-      Array.filter(isChangedBlock(previousByIdentity)),
+      Array.filter((block) =>
+        pipe(
+          HashMap.get(previousByIdentity, block.identity),
+          Option.match({
+            onNone: Function.constTrue,
+            onSome: (previousBlock) => previousBlock.text !== block.text
+          })
+        )
+      ),
       Array.map(blockSignalEvent)
     )
 

@@ -10,7 +10,7 @@ import {
   pipe
 } from "effect"
 import type * as ts from "typescript"
-import { Detection, detection } from "./location.js"
+import type { Detection } from "./location.js"
 import { ProgramContext } from "./sources.js"
 import type { AstNodeElement } from "./sources.js"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "./tsSchema.js"
@@ -74,56 +74,6 @@ const isFileSubscription = (
   subscription: Subscription
 ): subscription is FileSubscription => subscription.kind === "OnFile"
 
-const checkContextFor =
-  (context: ProgramContext) =>
-  (sourceFile: ts.SourceFile): CheckContext =>
-    new CheckContext({
-      program: context.program,
-      checker: context.checker,
-      projectRoot: context.projectRoot,
-      sourceFile
-    })
-
-const acceptsNodeKind =
-  (kinds: HashSet.HashSet<ts.SyntaxKind>) =>
-  (element: AstNodeElement): boolean =>
-    HashSet.has(kinds, element.node.kind)
-
-const handleNodeElement =
-  (handle: (node: ts.Node) => ReadonlyArray<Detection>) =>
-  (element: AstNodeElement): ReadonlyArray<Detection> =>
-    handle(element.node)
-
-const runNodeSubscriptionForFile =
-  (context: CheckContext) =>
-  (fileNodes: ReadonlyArray<AstNodeElement>) =>
-  (subscription: NodeSubscription): ReadonlyArray<Detection> => {
-    const kinds = HashSet.fromIterable(subscription.kinds)
-    const handle = subscription.handler(context)
-    const accepted = fileNodes.filter(acceptsNodeKind(kinds))
-
-    return accepted.flatMap(handleNodeElement(handle))
-  }
-
-const runFileSubscription =
-  (context: CheckContext) =>
-  (subscription: FileSubscription): ReadonlyArray<Detection> =>
-    subscription.handler(context)
-
-const runSubscriptionsForFile =
-  (context: CheckContext) =>
-  (fileNodes: ReadonlyArray<AstNodeElement>) =>
-  (subscriptions: ReadonlyArray<Subscription>): ReadonlyArray<Detection> => {
-    const fileElements = subscriptions
-      .filter(isFileSubscription)
-      .flatMap(runFileSubscription(context))
-    const nodeElements = subscriptions
-      .filter(isNodeSubscription)
-      .flatMap(runNodeSubscriptionForFile(context)(fileNodes))
-
-    return Array.appendAll(fileElements, nodeElements)
-  }
-
 type PlannedSubscriptions = readonly [
   ProgramContext,
   ReadonlyArray<Subscription>
@@ -145,37 +95,54 @@ export const checkFromSubscriptions =
           Option.getOrElse(() => [head.context, plan(head.context)] as const)
         )
         const [, subscriptions] = planned
-        const fileContext = checkContextFor(head.context)(sourceFile)
+        const fileContext = new CheckContext({
+          program: head.context.program,
+          checker: head.context.checker,
+          projectRoot: head.context.projectRoot,
+          sourceFile
+        })
         const fileNodes = Chunk.toReadonlyArray(elements)
-        const detections =
-          runSubscriptionsForFile(fileContext)(fileNodes)(subscriptions)
+        const fileElements = pipe(
+          subscriptions,
+          Array.filter(isFileSubscription),
+          Array.flatMap((subscription) => subscription.handler(fileContext))
+        )
+        const nodeElements = pipe(
+          subscriptions,
+          Array.filter(isNodeSubscription),
+          Array.flatMap((subscription) => {
+            const kinds = HashSet.fromIterable(subscription.kinds)
+            const handle = subscription.handler(fileContext)
+            const accepted = Array.filter(fileNodes, (element) =>
+              HashSet.has(kinds, element.node.kind)
+            )
+
+            return Array.flatMap(accepted, (element) => handle(element.node))
+          })
+        )
+        const detections = Array.appendAll(fileElements, nodeElements)
 
         return [Option.some(planned), detections] as const
       }),
       Stream.flattenIterables
     )
 
-const refinedHandler =
-  <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
-  (
-    handler: (context: CheckContext) => (node: N) => ReadonlyArray<Detection>
-  ): NodeHandler =>
-  (context) => {
-    const elements = handler(context)
-    const refined = (node: ts.Node): ReadonlyArray<Detection> =>
-      refine(node) ? elements(node) : []
-
-    return refined
-  }
-
 export const nodeSubscriptions =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
   (
     handler: (context: CheckContext) => (node: N) => ReadonlyArray<Detection>
-  ): ReadonlyArray<Subscription> => [
-    nodeSubscription(kinds)(refinedHandler(refine)(handler))
-  ]
+  ): ReadonlyArray<Subscription> => {
+    const wrapped: NodeHandler = (context) => {
+      const elements = handler(context)
+      const refined = (node: ts.Node): ReadonlyArray<Detection> =>
+        refine(node) ? elements(node) : []
+
+      return refined
+    }
+
+    return [nodeSubscription(kinds)(wrapped)]
+  }
 
 export const fileSubscriptions = (
   handler: (context: CheckContext) => ReadonlyArray<Detection>

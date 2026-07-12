@@ -3,7 +3,6 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { namedDetectionTarget } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -44,29 +43,29 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
   return [isClassMember, bodyExists, !isOverride].every(Boolean)
 }
 
-const methodImplementationMatch =
-  (match: MakeDetection) =>
-  (node: ts.MethodDeclaration): Detection => {
-    const reportTarget = namedDetectionTarget(node)
-
-    return match({
-      node: reportTarget,
-      message: "Avoid implementing methods on a class.",
-      hint:
-        "A class method that carries a body couples behavior to an object, which is " +
-        "object-oriented programming and is not allowed. Extract the logic into a reusable " +
-        "exported function that takes the data as a parameter. The only permitted method " +
-        "implementation is one that overrides a base-class method (marked with `override`) for the purposes of integrating with a third-party library."
-    })
-  }
-
 const methodImplementationMatches = (context: CheckContext) => {
-  const ruleMatch = methodImplementationMatch(detection(context))
+  const match = detection(context)
 
   const matches = (node: ts.MethodDeclaration): ReadonlyArray<Detection> => {
     const reportable = Option.liftPredicate(isReportableMethod)(node)
 
-    return pipe(reportable, Option.map(ruleMatch), Option.toArray)
+    return pipe(
+      reportable,
+      Option.map((node) => {
+        const reportTarget = namedDetectionTarget(node)
+
+        return match({
+          node: reportTarget,
+          message: "Avoid implementing methods on a class.",
+          hint:
+            "A class method that carries a body couples behavior to an object, which is " +
+            "object-oriented programming and is not allowed. Extract the logic into a reusable " +
+            "exported function that takes the data as a parameter. The only permitted method " +
+            "implementation is one that overrides a base-class method (marked with `override`) for the purposes of integrating with a third-party library."
+        })
+      }),
+      Option.toArray
+    )
   }
 
   return matches

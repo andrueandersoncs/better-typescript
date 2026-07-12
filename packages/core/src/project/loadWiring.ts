@@ -58,29 +58,15 @@ const isError = (cause: unknown): cause is Error => cause instanceof Error
 
 const hasText = (value: string): boolean => value.length > 0
 
-const causeText = (cause: unknown) => (): string => String(cause)
+const formatCause = (cause: unknown): string => {
+  const fallbackText = String(cause)
 
-const formatCause = (cause: unknown): string =>
-  pipe(
+  return pipe(
     Option.liftPredicate(isError)(cause),
     Option.map(Struct.get("message")),
     Option.filter(hasText),
-    Option.getOrElse(causeText(cause))
+    Option.getOrElse(Function.constant(fallbackText))
   )
-
-const loadConfigFailure =
-  (configPath: string) =>
-  (cause: unknown): ProjectWiringError => {
-    const causeMessage = formatCause(cause)
-    const reason = `failed to load config module: ${causeMessage}`
-
-    return projectWiringError(configPath, reason)
-  }
-
-const importConfig = (configPath: string) => (): Promise<unknown> => {
-  const jiti = createJiti(import.meta.url)
-
-  return jiti.import(configPath)
 }
 
 const configExport =
@@ -89,16 +75,13 @@ const configExport =
 
 const defaultConfigExport = configExport(defaultExportName)
 
-const recordHasOwnKey =
-  (key: ConfigExportName) =>
-  (record: ModuleRecord): boolean =>
-    Object.hasOwn(record, key)
-
 const ownConfigExport =
   (name: ConfigExportName) =>
   (valueFromRecord: (record: ModuleRecord) => unknown) =>
   (record: ModuleRecord): Option.Option<ConfigExport> => {
-    const recordWithKey = Option.liftPredicate(recordHasOwnKey(name))(record)
+    const recordWithKey = Option.liftPredicate(
+      (candidate: ModuleRecord): boolean => Object.hasOwn(candidate, name)
+    )(record)
 
     return pipe(
       recordWithKey,
@@ -115,33 +98,19 @@ const wiringOwnConfigExport = ownConfigExport(wiringExportName)(
   Struct.get(wiringExportName)
 )
 
-const defaultOwnExport =
-  (record: ModuleRecord) => (): Option.Option<ConfigExport> =>
-    defaultOwnConfigExport(record)
+const configExportFromRecord = (record: ModuleRecord): ConfigExport => {
+  const defaultOwn = defaultOwnConfigExport(record)
+  const directExport = defaultConfigExport(record)
 
-const directRecordExport = (record: ModuleRecord) => (): ConfigExport =>
-  defaultConfigExport(record)
-
-const configExportFromRecord = (record: ModuleRecord): ConfigExport =>
-  pipe(
+  return pipe(
     wiringOwnConfigExport(record),
-    Option.orElse(defaultOwnExport(record)),
-    Option.getOrElse(directRecordExport(record))
+    Option.orElse(Function.constant(defaultOwn)),
+    Option.getOrElse(Function.constant(directExport))
   )
+}
 
 const configExportFromFunction = (factory: WiringFactory): ConfigExport =>
   defaultConfigExport(factory)
-
-const fallbackExport =
-  (fallback: Option.Option<ConfigExport>) => (): Option.Option<ConfigExport> =>
-    fallback
-
-const missingConfigExport =
-  (configPath: string) => (): Effect.Effect<never, ProjectWiringError> =>
-    failConfig(
-      configPath,
-      "config must export a default wiring or named wiring"
-    )
 
 const selectedExport = Effect.fn("selectedExport")(function* (
   configPath: string,
@@ -159,27 +128,22 @@ const selectedExport = Effect.fn("selectedExport")(function* (
   )
   const exportOption = pipe(
     recordExport,
-    Option.orElse(fallbackExport(functionExport))
+    Option.orElse(Function.constant(functionExport))
+  )
+
+  const missingExport = failConfig(
+    configPath,
+    "config must export a default wiring or named wiring"
   )
 
   return yield* pipe(
     exportOption,
     Option.match({
-      onNone: missingConfigExport(configPath),
+      onNone: Function.constant(missingExport),
       onSome: Effect.succeed
     })
   )
 })
-
-const factoryFailure =
-  (configPath: string) =>
-  (exportName: ConfigExportName) =>
-  (cause: unknown): ProjectWiringError => {
-    const causeMessage = formatCause(cause)
-    const reason = `${exportName} export factory failed: ${causeMessage}`
-
-    return projectWiringError(configPath, reason)
-  }
 
 const callFactory = Effect.fn("callFactory")(function* (
   configPath: string,
@@ -196,21 +160,14 @@ const callFactory = Effect.fn("callFactory")(function* (
 
   return yield* Effect.try({
     try: factory,
-    catch: factoryFailure(configPath)(exportName)
+    catch: (cause) => {
+      const causeMessage = formatCause(cause)
+      const reason = `${exportName} export factory failed: ${causeMessage}`
+
+      return projectWiringError(configPath, reason)
+    }
   })
 })
-
-const resolvedPlainExport = (value: unknown) => (): Effect.Effect<unknown> =>
-  Effect.succeed(value)
-
-const selectedFactory =
-  (configPath: string) =>
-  (selected: ConfigExport) =>
-  (factory: WiringFactory): Effect.Effect<unknown, ProjectWiringError> => {
-    const exportName = selected[0]
-
-    return callFactory(configPath, exportName, factory)
-  }
 
 const resolvedExport = Effect.fn("resolvedExport")(function* (
   configPath: string,
@@ -220,11 +177,13 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
   const value = exported[1]
   const factoryOption = Option.liftPredicate(isFunctionValue)(value)
 
+  const plainExport = Effect.succeed(value)
+
   return yield* pipe(
     factoryOption,
     Option.match({
-      onNone: resolvedPlainExport(value),
-      onSome: selectedFactory(configPath)(exported)
+      onNone: Function.constant(plainExport),
+      onSome: (factory) => callFactory(configPath, exported[0], factory)
     })
   )
 })
@@ -256,9 +215,12 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
-  return [hasStringName, hasFunctionCheck, hasValidReported, hasValidExamples].every(
-    Boolean
-  )
+  return [
+    hasStringName,
+    hasFunctionCheck,
+    hasValidReported,
+    hasValidExamples
+  ].every(Boolean)
 }
 
 const invalidNamedCheck = (value: unknown): boolean => {
@@ -337,34 +299,34 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
   return new Wiring({ checks, derive })
 })
 
-const makeValidatedWiring = (wiring: Wiring) => (): Wiring => makeWiring(wiring)
-
-const wiringNamesFailure =
-  (configPath: string) =>
-  (cause: unknown): ProjectWiringError => {
-    const reason = formatCause(cause)
-
-    return projectWiringError(configPath, reason)
-  }
-
 const loadExistingWiring = Effect.fn("loadExistingWiring")(function* (
   configPath: string
 ) {
   const moduleValue = yield* Effect.tryPromise({
-    try: importConfig(configPath),
-    catch: loadConfigFailure(configPath)
+    try: () => {
+      const jiti = createJiti(import.meta.url)
+
+      return jiti.import(configPath)
+    },
+    catch: (cause) => {
+      const causeMessage = formatCause(cause)
+      const reason = `failed to load config module: ${causeMessage}`
+
+      return projectWiringError(configPath, reason)
+    }
   })
   const exportValue = yield* resolvedExport(configPath, moduleValue)
   const wiring = yield* validateWiringShape(configPath, exportValue)
 
   return yield* Effect.try({
-    try: makeValidatedWiring(wiring),
-    catch: wiringNamesFailure(configPath)
+    try: () => makeWiring(wiring),
+    catch: (cause) => {
+      const reason = formatCause(cause)
+
+      return projectWiringError(configPath, reason)
+    }
   })
 })
-
-const configExists = (configPath: string) => (): boolean =>
-  fs.existsSync(configPath)
 
 export const loadWiring: (
   projectDirectory: string,
@@ -372,7 +334,7 @@ export const loadWiring: (
 ) => Effect.Effect<Wiring, ProjectWiringError> = Effect.fn("loadWiring")(
   function* (projectDirectory: string, fallback: Wiring) {
     const configPath = path.resolve(projectDirectory, configFileName)
-    const exists = yield* Effect.sync(configExists(configPath))
+    const exists = yield* Effect.sync(() => fs.existsSync(configPath))
     const missingConfig = !exists
 
     if (missingConfig) {

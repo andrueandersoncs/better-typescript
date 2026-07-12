@@ -4,7 +4,6 @@ import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/eng
 import { functionInitializer } from "./support/tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext, Subscription } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { ProgramContext } from "@better-typescript/core/engine/sources"
@@ -69,88 +68,7 @@ const addFunctionToIndex = (
 const declaredFileName = (nameNode: ts.Identifier): string =>
   nameNode.getSourceFile().fileName
 
-const isOtherFileName =
-  (candidateFileName: string) =>
-  (fileName: string): boolean =>
-    fileName !== candidateFileName
-
-// Compare mutual assignability because parameter renames preserve a copied signature while different domain data does not.
-const hasIdenticalSignature =
-  (checker: ts.TypeChecker) =>
-  (candidate: ts.Identifier) =>
-  (other: ts.Identifier): boolean => {
-    const candidateType = checker.getTypeAtLocation(candidate)
-    const otherType = checker.getTypeAtLocation(other)
-    const forward = checker.isTypeAssignableTo(candidateType, otherType)
-    const backward = checker.isTypeAssignableTo(otherType, candidateType)
-
-    return [forward, backward].every(Boolean)
-  }
-
 const maxListedFileNames = 3
-
-type IdenticalSignature = (
-  candidate: ts.Identifier
-) => (other: ts.Identifier) => boolean
-type RelativeFileName = (fileName: string) => string
-
-const candidateDetection =
-  (index: FunctionNameIndex) =>
-  (identicalTo: IdenticalSignature) =>
-  (toRelative: RelativeFileName) =>
-  (match: MakeDetection) =>
-  (candidateFileName: string) =>
-  (candidate: ts.Identifier): Option.Option<Detection> => {
-    const declarations = declarationsForName(index)(candidate.text)
-    const identicalDeclarations = declarations.filter(identicalTo(candidate))
-    const declaredFileNames = identicalDeclarations.map(declaredFileName)
-    const otherFileNames = Array.dedupe(declaredFileNames).filter(
-      isOtherFileName(candidateFileName)
-    )
-
-    if (otherFileNames.length === 0) {
-      return Option.none()
-    }
-
-    const functionName = candidate.text
-    const relativeFileNames = otherFileNames.map(toRelative)
-    const listedFileNames = relativeFileNames
-      .slice(0, maxListedFileNames)
-      .join(", ")
-    const remainingCount = relativeFileNames.length - maxListedFileNames
-    const isSingleFile = remainingCount === 1
-    const otherFiles =
-      remainingCount > 0
-        ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
-        : listedFileNames
-    const duplicateMatch = match({
-      node: candidate,
-      message: `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,
-      hint:
-        `${functionName} is declared with the same signature in ${otherFiles}, which makes ` +
-        "the copies semantic duplicates. Extract one shared implementation into a module " +
-        "scoped to its domain and import it from every file that uses it. Name the module " +
-        "after the concept it serves (ts.Node helpers belong in ts-node.ts), not a generic " +
-        "lib.ts or utils.ts. Same-name functions over different signatures (user.ts#make, " +
-        "account.ts#make) are module vocabulary, not duplicates."
-    })
-
-    return Option.some(duplicateMatch)
-  }
-
-const duplicateFunctionMatches =
-  (index: FunctionNameIndex) =>
-  (context: CheckContext): ReadonlyArray<Detection> => {
-    const fileFunctions = topLevelFunctions(context.sourceFile)
-    const identicalTo = hasIdenticalSignature(context.checker)
-    const toRelative = toRelativeFileName(context.projectRoot)
-    const match = detection(context)
-    const candidateMatch = candidateDetection(index)(identicalTo)(toRelative)(
-      match
-    )(context.sourceFile.fileName)
-
-    return Array.filterMap(fileFunctions, candidateMatch)
-  }
 
 const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
   const projectFunctions = context.program
@@ -165,7 +83,69 @@ const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
 const duplicateNameListeners = (
   index: FunctionNameIndex
 ): ReadonlyArray<Subscription> =>
-  fileSubscriptions(duplicateFunctionMatches(index))
+  fileSubscriptions((context: CheckContext): ReadonlyArray<Detection> => {
+    const fileFunctions = topLevelFunctions(context.sourceFile)
+    const toRelative = toRelativeFileName(context.projectRoot)
+    const match = detection(context)
+    const candidateFileName = context.sourceFile.fileName
+
+    return Array.filterMap(
+      fileFunctions,
+      (candidate): Option.Option<Detection> => {
+        const declarations = declarationsForName(index)(candidate.text)
+        // Compare mutual assignability because parameter renames preserve a copied signature while different domain data does not.
+        const identicalDeclarations = Array.filter(declarations, (other) => {
+          const candidateType = context.checker.getTypeAtLocation(candidate)
+          const otherType = context.checker.getTypeAtLocation(other)
+          const forward = context.checker.isTypeAssignableTo(
+            candidateType,
+            otherType
+          )
+          const backward = context.checker.isTypeAssignableTo(
+            otherType,
+            candidateType
+          )
+
+          return [forward, backward].every(Boolean)
+        })
+        const declaredFileNames = identicalDeclarations.map(declaredFileName)
+        const uniqueFileNames = Array.dedupe(declaredFileNames)
+        const otherFileNames = Array.filter(
+          uniqueFileNames,
+          (fileName) => fileName !== candidateFileName
+        )
+
+        if (otherFileNames.length === 0) {
+          return Option.none()
+        }
+
+        const functionName = candidate.text
+        const relativeFileNames = otherFileNames.map(toRelative)
+        const listedFileNames = relativeFileNames
+          .slice(0, maxListedFileNames)
+          .join(", ")
+        const remainingCount = relativeFileNames.length - maxListedFileNames
+        const isSingleFile = remainingCount === 1
+        const otherFiles =
+          remainingCount > 0
+            ? `${listedFileNames} and ${isSingleFile ? "1 more file" : `${remainingCount} more files`}`
+            : listedFileNames
+        const duplicateMatch = match({
+          node: candidate,
+          message: `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,
+          hint:
+            `${functionName} is declared with the same signature in ${otherFiles}, which makes ` +
+            "the copies semantic duplicates. Extract one shared implementation into a module " +
+            "scoped to its domain and import it from every file that uses it. Name the module " +
+            "after the concept it serves (ts.Node helpers belong in ts-node.ts), not a generic " +
+            "lib.ts or utils.ts. Same-name functions over different signatures (user.ts#make, " +
+            "account.ts#make) are module vocabulary, not duplicates."
+        })
+
+        return Option.some(duplicateMatch)
+      }
+    )
+  })
 
 const check = withProgramIndex(buildFunctionNameIndex)(duplicateNameListeners)
 

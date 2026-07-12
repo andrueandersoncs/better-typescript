@@ -7,7 +7,6 @@ import {
   isUnseenType
 } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -44,7 +43,35 @@ const isArrayTypeWithSeen =
   (type: ts.Type): boolean =>
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
-      Option.exists(computeIsArrayType(checker)(seen))
+      Option.exists((type) => {
+        const nextSeen = HashSet.add(seen, type)
+        const isDirectArrayType =
+          checker.isArrayType(type) || checker.isTupleType(type)
+        const unionOrIntersection = Option.liftPredicate(
+          isUnionOrIntersectionType
+        )(type)
+        const hasUnionOrIntersectionArrayType = Option.exists(
+          unionOrIntersection,
+          (type) => type.types.some(isArrayTypePart(checker)(nextSeen))
+        )
+        const baseConstraint = differentBaseConstraint(checker)(type)
+        const hasConstrainedArrayType = Option.exists(
+          baseConstraint,
+          isArrayTypePart(checker)(nextSeen)
+        )
+        const apparentType = differentApparentType(checker)(type)
+        const hasApparentArrayType = Option.exists(
+          apparentType,
+          isArrayTypePart(checker)(nextSeen)
+        )
+
+        return [
+          isDirectArrayType,
+          hasUnionOrIntersectionArrayType,
+          hasConstrainedArrayType,
+          hasApparentArrayType
+        ].some(Boolean)
+      })
     )
 
 const isArrayTypePart =
@@ -53,75 +80,15 @@ const isArrayTypePart =
   (part: ts.Type): boolean =>
     isArrayTypeWithSeen(checker)(seen)(part)
 
-const anyPartIsArrayType =
-  (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.UnionOrIntersectionType): boolean =>
-    type.types.some(isArrayTypePart(checker)(seen))
-
 const isUnionOrIntersectionType = (
   type: ts.Type
 ): type is ts.UnionOrIntersectionType => type.isUnionOrIntersection()
 
-const computeIsArrayType =
-  (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean => {
-    const nextSeen = HashSet.add(seen, type)
-    const isDirectArrayType =
-      checker.isArrayType(type) || checker.isTupleType(type)
-    const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(
-      type
-    )
-    const hasUnionOrIntersectionArrayType = Option.exists(
-      unionOrIntersection,
-      anyPartIsArrayType(checker)(nextSeen)
-    )
-    const baseConstraint = differentBaseConstraint(checker)(type)
-    const hasConstrainedArrayType = Option.exists(
-      baseConstraint,
-      isArrayTypePart(checker)(nextSeen)
-    )
-    const apparentType = differentApparentType(checker)(type)
-    const hasApparentArrayType = Option.exists(
-      apparentType,
-      isArrayTypePart(checker)(nextSeen)
-    )
-
-    return [
-      isDirectArrayType,
-      hasUnionOrIntersectionArrayType,
-      hasConstrainedArrayType,
-      hasApparentArrayType
-    ].some(Boolean)
-  }
-
-const isArrayType =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): boolean => {
-    const seen = HashSet.empty<ts.Type>()
-
-    return isArrayTypeWithSeen(checker)(seen)(type)
-  }
-
-const mutableArrayDetection =
-  (match: MakeDetection) =>
-  (callExpression: ts.CallExpression) =>
-  (methodName: MutableArrayMethod): Detection =>
-    match({
-      node: callExpression,
-      message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
-      hint:
-        "This is a sign that you're doing something fundamentally procedural when you should " +
-        "be taking a more functional approach. Use Effect's Array module, such as " +
-        "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
-        "instead of manipulating an array in place."
-    })
-
 const mutableArrayMatches = (context: CheckContext) => {
   const checker = context.checker
-  const isReceiverArrayType = isArrayType(checker)
-  const ruleMatch = mutableArrayDetection(detection(context))
+  const emptySeen = HashSet.empty<ts.Type>()
+  const isReceiverArrayType = isArrayTypeWithSeen(checker)(emptySeen)
+  const match = detection(context)
 
   const matches = (
     callExpression: ts.CallExpression
@@ -150,7 +117,17 @@ const mutableArrayMatches = (context: CheckContext) => {
 
     return pipe(
       methodCall,
-      Option.map(ruleMatch(callExpression)),
+      Option.map((methodName: MutableArrayMethod) =>
+        match({
+          node: callExpression,
+          message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
+          hint:
+            "This is a sign that you're doing something fundamentally procedural when you should " +
+            "be taking a more functional approach. Use Effect's Array module, such as " +
+            "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
+            "instead of manipulating an array in place."
+        })
+      ),
       Option.toArray
     )
   }

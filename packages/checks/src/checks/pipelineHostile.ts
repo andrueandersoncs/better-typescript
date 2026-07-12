@@ -6,7 +6,6 @@ import {
   countDetectionsAtPath,
   evidenceItem
 } from "@better-typescript/core/engine/derive"
-import type { EvidenceItem } from "@better-typescript/core/engine/derive"
 import { Detection } from "@better-typescript/core/engine/location"
 
 const detectionArray = Schema.Array(Detection)
@@ -31,40 +30,6 @@ export class PipelineHostileInput extends Schema.Class<PipelineHostileInput>(
   >
 }
 
-const pipelineEvidence =
-  (signals: PipelineSignals) =>
-  (path: string): ReadonlyArray<EvidenceItem> => {
-    const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
-    const uncurriedCount = countDetectionsAtPath(path)(
-      signals.preferCurriedDataLastFunctions
-    )
-    const nestedItem = evidenceItem("no-nested-calls", nestedCount)
-    const uncurriedItem = evidenceItem(
-      "prefer-curried-data-last-functions",
-      uncurriedCount
-    )
-
-    return [nestedItem, uncurriedItem]
-  }
-
-const pipelineAdvice =
-  (signals: PipelineSignals) =>
-  (path: string): Advice => {
-    const location = adviceLocation(path)
-    const evidence = pipelineEvidence(signals)(path)
-
-    return new Advice({
-      location,
-      level: "file",
-      title: "pipeline-hostile module",
-      remediation:
-        "This file composes inside-out because its functions are not data-last: call sites " +
-        "cannot pipe, so results nest. Fix the signatures first — curry configuration ahead " +
-        "of the data argument — and the nested-call signals dissolve at the call sites.",
-      evidence
-    })
-  }
-
 const pipelineHostileAdviceFor = (
   signals: PipelineSignals
 ): ReadonlyArray<Advice> => {
@@ -85,7 +50,30 @@ const pipelineHostileAdviceFor = (
   return pipe(
     uniquePaths,
     Array.filter(isPipelineHostile),
-    Array.map(pipelineAdvice(signals))
+    Array.map((path) => {
+      const location = adviceLocation(path)
+      const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
+      const uncurriedCount = countDetectionsAtPath(path)(
+        signals.preferCurriedDataLastFunctions
+      )
+      const nestedItem = evidenceItem("no-nested-calls", nestedCount)
+      const uncurriedItem = evidenceItem(
+        "prefer-curried-data-last-functions",
+        uncurriedCount
+      )
+      const evidence = [nestedItem, uncurriedItem]
+
+      return new Advice({
+        location,
+        level: "file",
+        title: "pipeline-hostile module",
+        remediation:
+          "This file composes inside-out because its functions are not data-last: call sites " +
+          "cannot pipe, so results nest. Fix the signatures first — curry configuration ahead " +
+          "of the data argument — and the nested-call signals dissolve at the call sites.",
+        evidence
+      })
+    })
   )
 }
 

@@ -1,4 +1,4 @@
-import { Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import {
   declarationSourceFile,
@@ -60,24 +60,6 @@ const hasExternalDeclaration = (signature: ts.Signature): boolean =>
     Option.exists(signatureDeclarationIsExternal)
   )
 
-const isExternalPackageFile =
-  (program: ts.Program) =>
-  (sourceFile: ts.SourceFile): boolean => {
-    const isExternal = !isProjectSourceFile(sourceFile)
-    const isDefaultLibrary = program.isSourceFileDefaultLibrary(sourceFile)
-
-    return [isExternal, !isDefaultLibrary].every(Boolean)
-  }
-
-const signatureIsExternalPackage =
-  (program: ts.Program) =>
-  (signature: ts.Signature): boolean =>
-    pipe(
-      signatureDeclarationOption(signature),
-      Option.map(declarationSourceFile),
-      Option.exists(isExternalPackageFile(program))
-    )
-
 const argumentForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
   ts.SyntaxKind.AsExpression,
@@ -111,7 +93,20 @@ export const isExternalPackageArgument =
     pipe(
       argumentConsumingCall(node),
       Option.flatMap(resolvedCallSignature(checker)),
-      Option.exists(signatureIsExternalPackage(program))
+      Option.exists((signature) => {
+        const declarationFile = pipe(
+          signatureDeclarationOption(signature),
+          Option.map(declarationSourceFile)
+        )
+
+        return Option.exists(declarationFile, (sourceFile) => {
+          const isExternal = !isProjectSourceFile(sourceFile)
+          const isDefaultLibrary =
+            program.isSourceFileDefaultLibrary(sourceFile)
+
+          return [isExternal, !isDefaultLibrary].every(Boolean)
+        })
+      })
     )
 
 const isExternalArgumentPosition =
@@ -123,26 +118,6 @@ const isExternalArgumentPosition =
       Option.exists(hasExternalDeclaration)
     )
 
-// Return truthy from forEachChild because TypeScript uses it to short-circuit the traversal.
-const someDescendant =
-  (predicate: (node: ts.Node) => boolean) =>
-  (node: ts.Node): boolean => {
-    const findMatch = (candidate: ts.Node): boolean => {
-      const childMatch = predicate(candidate)
-        ? true
-        : ts.forEachChild(candidate, findMatch)
-
-      return childMatch === true
-    }
-
-    return findMatch(node)
-  }
-
-const isSameSymbol =
-  (symbol: ts.Symbol) =>
-  (candidate: ts.Symbol): boolean =>
-    candidate === symbol
-
 const symbolAtNode =
   (checker: ts.TypeChecker) =>
   (node: ts.Node): Option.Option<ts.Symbol> => {
@@ -151,54 +126,43 @@ const symbolAtNode =
     return Option.fromNullable(symbol)
   }
 
-const identifierEscapes =
-  (checker: ts.TypeChecker) =>
-  (symbol: ts.Symbol) =>
-  (declarationName: ts.Node) =>
-  (node: ts.Identifier): boolean => {
-    const isDeclarationName = node === declarationName
-    const nodeSymbol = symbolAtNode(checker)(node)
-    const refersToSymbol = Option.exists(nodeSymbol, isSameSymbol(symbol))
-
-    return [
-      !isDeclarationName,
-      refersToSymbol,
-      isExternalArgumentPosition(checker)(node)
-    ].every(Boolean)
-  }
-
-const isEscapingReference =
-  (checker: ts.TypeChecker) =>
-  (symbol: ts.Symbol) =>
-  (declarationName: ts.Node) =>
-  (node: ts.Node): boolean =>
-    pipe(
-      Option.liftPredicate(ts.isIdentifier)(node),
-      Option.exists(identifierEscapes(checker)(symbol)(declarationName))
-    )
-
-const symbolEscapesFrom =
-  (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile) =>
-  (declarationName: ts.Node) =>
-  (symbol: ts.Symbol): boolean =>
-    someDescendant(isEscapingReference(checker)(symbol)(declarationName))(
-      sourceFile
-    )
-
 const nameNodeEscapes =
   (checker: ts.TypeChecker) =>
   (sourceFile: ts.SourceFile) =>
   (nameNode: ts.Node): boolean =>
     pipe(
       symbolAtNode(checker)(nameNode),
-      Option.exists(symbolEscapesFrom(checker)(sourceFile)(nameNode))
-    )
+      Option.exists((symbol) => {
+        const findMatch = (candidate: ts.Node): boolean => {
+          const isEscapingReference = pipe(
+            Option.liftPredicate(ts.isIdentifier)(candidate),
+            Option.exists((identifier) => {
+              const isDeclarationName = identifier === nameNode
+              const nodeSymbol = symbolAtNode(checker)(identifier)
+              const refersToSymbol = Option.exists(
+                nodeSymbol,
+                (candidateSymbol) => candidateSymbol === symbol
+              )
+              const isExternalArgument =
+                isExternalArgumentPosition(checker)(identifier)
 
-const initializesDeclaration =
-  (expression: ts.Expression) =>
-  (declaration: ts.VariableDeclaration): boolean =>
-    declaration.initializer === expression
+              return [
+                !isDeclarationName,
+                refersToSymbol,
+                isExternalArgument
+              ].every(Boolean)
+            })
+          )
+          const childMatch = isEscapingReference
+            ? true
+            : ts.forEachChild(candidate, findMatch)
+
+          return childMatch === true
+        }
+
+        return findMatch(sourceFile)
+      })
+    )
 
 // A construction escapes because an external signature receives it directly or through a variable.
 export const constructionEscapesExternally =
@@ -210,7 +174,9 @@ export const constructionEscapesExternally =
     const sourceFile = expression.getSourceFile()
     const escapesThroughVariable = pipe(
       Option.liftPredicate(ts.isVariableDeclaration)(outermost.parent),
-      Option.filter(initializesDeclaration(outermost)),
+      Option.filter(
+        (declaration) => declaration.initializer === outermost
+      ),
       Option.map(Struct.get("name")),
       Option.exists(nameNodeEscapes(checker)(sourceFile))
     )
@@ -242,66 +208,56 @@ const functionDeclarationName = (
   declaration: ts.FunctionDeclaration
 ): Option.Option<ts.Node> => Option.fromNullable(declaration.name)
 
-const enclosingFunctionEscapes =
-  (checker: ts.TypeChecker) =>
-  (parameter: ts.ParameterDeclaration): boolean => {
-    const enclosing = parameter.parent
-    const sourceFile = parameter.getSourceFile()
-    const isDirectExternalArgument =
-      isExternalArgumentPosition(checker)(enclosing)
-    const variableName = pipe(
-      Option.liftPredicate(ts.isVariableDeclaration)(enclosing.parent),
-      Option.map(Struct.get("name"))
-    )
-    const functionName = pipe(
-      Option.liftPredicate(ts.isFunctionDeclaration)(enclosing),
-      Option.flatMap(functionDeclarationName)
-    )
-    const nameNode = pipe(
-      variableName,
-      Option.orElse(Function.constant(functionName))
-    )
-    const escapesThroughName = Option.exists(
-      nameNode,
-      nameNodeEscapes(checker)(sourceFile)
-    )
-
-    return isDirectExternalArgument || escapesThroughName
-  }
-
-const carrierEscapes =
-  (checker: ts.TypeChecker) =>
-  (carrier: EscapeCarrier): boolean => {
-    if (ts.isParameter(carrier)) {
-      return enclosingFunctionEscapes(checker)(carrier)
-    }
-
-    const sourceFile = carrier.getSourceFile()
-
-    return nameNodeEscapes(checker)(sourceFile)(carrier.name)
-  }
-
 // A written Map or Set type escapes because its carrier crosses an external boundary.
 export const typeReferenceEscapesExternally =
   (checker: ts.TypeChecker) =>
   (typeRef: ts.TypeReferenceNode): boolean =>
-    pipe(escapeCarrier(typeRef), Option.exists(carrierEscapes(checker)))
+    pipe(
+      escapeCarrier(typeRef),
+      Option.exists((carrier) => {
+        if (ts.isParameter(carrier)) {
+          const enclosing = carrier.parent
+          const sourceFile = carrier.getSourceFile()
+          const isDirectExternalArgument =
+            isExternalArgumentPosition(checker)(enclosing)
+          const variableName = pipe(
+            Option.liftPredicate(ts.isVariableDeclaration)(enclosing.parent),
+            Option.map(Struct.get("name"))
+          )
+          const functionName = pipe(
+            Option.liftPredicate(ts.isFunctionDeclaration)(enclosing),
+            Option.flatMap(functionDeclarationName)
+          )
+          const nameNode = pipe(
+            variableName,
+            Option.orElse(Function.constant(functionName))
+          )
+          const escapesThroughName = Option.exists(
+            nameNode,
+            nameNodeEscapes(checker)(sourceFile)
+          )
+
+          return isDirectExternalArgument || escapesThroughName
+        }
+
+        const sourceFile = carrier.getSourceFile()
+
+        return nameNodeEscapes(checker)(sourceFile)(carrier.name)
+      })
+    )
 
 const effectPackagePathSegments: ReadonlyArray<string> = [
   "/node_modules/effect/",
   "/node_modules/@effect/"
 ]
 
-const isSegmentOfPath =
-  (fileName: string) =>
-  (segment: string): boolean =>
-    fileName.includes(segment)
-
 const declarationInEffectPackage = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
 
-  return effectPackagePathSegments.some(isSegmentOfPath(fileName))
+  return Array.some(effectPackagePathSegments, (segment) =>
+    fileName.includes(segment)
+  )
 }
 
 export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol): boolean => {

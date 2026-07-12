@@ -9,7 +9,6 @@ import {
 } from "./support/tsNode.js"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
 
 import {
@@ -99,21 +98,19 @@ const blockReturnedExpression = (
     return yield* returnedStatementExpression(returnStatement)
   })
 
-const arrowBlockReturnedExpression =
-  (node: ts.ArrowFunction) => (): Option.Option<ts.Expression> =>
-    pipe(
-      Option.some(node.body),
-      Option.filter(ts.isBlock),
-      Option.flatMap(blockReturnedExpression)
-    )
-
 const constantThunkReturnedExpression = (
   node: ConstantThunk
 ): Option.Option<ts.Expression> =>
   ts.isArrowFunction(node)
     ? pipe(
         conciseArrowBody(node),
-        Option.orElse(arrowBlockReturnedExpression(node))
+        Option.orElse(() =>
+          pipe(
+            Option.some(node.body),
+            Option.filter(ts.isBlock),
+            Option.flatMap(blockReturnedExpression)
+          )
+        )
       )
     : blockReturnedExpression(node.body)
 
@@ -122,11 +119,6 @@ const isPrimitiveLiteralExpression = (expression: ts.Expression): boolean => {
 
   return HashSet.has(primitiveLiteralKinds, unwrapped.kind)
 }
-
-const sourceFileOwnsDeclaration =
-  (sourceFile: ts.SourceFile) =>
-  (declaration: ts.Declaration): boolean =>
-    declaration.getSourceFile() === sourceFile
 
 const declarationNameIsIdentifier = (
   declaration: ts.VariableDeclaration
@@ -148,107 +140,80 @@ const declarationListHasSingleDeclaration = (
   declarationList: ts.VariableDeclarationList
 ): boolean => hasSingleElement(declarationList.declarations)
 
-const declarationPrecedesFunction =
-  (sourceFile: ts.SourceFile) =>
-  (functionNode: ConstantThunk) =>
-  (declaration: ts.VariableDeclaration): boolean =>
-    declaration.end <= functionNode.getStart(sourceFile)
-
-const precedingConstIdentifierDeclaration =
-  (sourceFile: ts.SourceFile) =>
-  (functionNode: ConstantThunk) =>
-  (declaration: ts.Declaration): Option.Option<ts.VariableDeclaration> =>
-    Option.gen(function* () {
-      const variableDeclaration = yield* Option.liftPredicate(
-        ts.isVariableDeclaration
-      )(declaration)
-      yield* Option.liftPredicate(sourceFileOwnsDeclaration(sourceFile))(
-        variableDeclaration
-      )
-      yield* Option.liftPredicate(declarationNameIsIdentifier)(
-        variableDeclaration
-      )
-      yield* Option.liftPredicate(
-        declarationPrecedesFunction(sourceFile)(functionNode)
-      )(variableDeclaration)
-      yield* pipe(
-        Option.some(variableDeclaration),
-        Option.flatMap(variableDeclarationList),
-        Option.filter(declarationListIsConst),
-        Option.filter(declarationListHasSingleDeclaration)
-      )
-
-      return variableDeclaration
-    })
-
-const identifierResolvesToStableConst =
-  (context: CheckContext) =>
-  (functionNode: ConstantThunk) =>
-  (identifier: ts.Identifier): boolean =>
-    pipe(
-      Option.gen(function* () {
-        const symbolCandidate = context.checker.getSymbolAtLocation(identifier)
-        const symbol = yield* Option.fromNullable(symbolCandidate)
-        const declarationCandidates = symbol.getDeclarations()
-        const declarations = yield* Option.fromNullable(declarationCandidates)
-        yield* Option.liftPredicate(hasSingleElement)(declarations)
-        const declaration = yield* Option.fromNullable(declarations[0])
-
-        return yield* precedingConstIdentifierDeclaration(context.sourceFile)(
-          functionNode
-        )(declaration)
-      }),
-      Option.isSome
-    )
-
-const isStableReturnedExpression =
-  (context: CheckContext) =>
-  (functionNode: ConstantThunk) =>
-  (expression: ts.Expression): boolean => {
-    const unwrapped = unwrapExpression(expression)
-    const isPrimitive = pipe(
-      Option.some(unwrapped),
-      Option.filter(isPrimitiveLiteralExpression),
-      Option.isSome
-    )
-    const isStableIdentifier = pipe(
-      Option.liftPredicate(ts.isIdentifier)(unwrapped),
-      Option.exists(identifierResolvesToStableConst(context)(functionNode))
-    )
-
-    return [isPrimitive, isStableIdentifier].some(Boolean)
-  }
-
-const functionConstantDetection =
-  (context: CheckContext) =>
-  (match: MakeDetection) =>
-  (node: ConstantThunk): Option.Option<Detection> =>
-    Option.gen(function* () {
-      yield* Option.liftPredicate(isEligibleFunction)(node)
-      const expression = yield* pipe(
-        Option.some(node),
-        Option.flatMap(constantThunkReturnedExpression)
-      )
-      yield* Option.liftPredicate(isStableReturnedExpression(context)(node))(
-        expression
-      )
-      const expressionText = expression.getText(context.sourceFile)
-
-      return match({
-        node,
-        message,
-        hint:
-          `Use Function.constant(${expressionText}) from Effect when a zero-argument function only returns a stable value. ` +
-          "Function.constant captures that value once and returns a zero-argument function."
-      })
-    })
-
 const functionConstantMatches = (context: CheckContext) => {
   const match = detection(context)
-  const ruleMatch = functionConstantDetection(context)(match)
 
   const matches = (node: ConstantThunk): ReadonlyArray<Detection> =>
-    pipe(ruleMatch(node), Option.toArray)
+    pipe(
+      Option.gen(function* () {
+        yield* Option.liftPredicate(isEligibleFunction)(node)
+        const expression = yield* pipe(
+          Option.some(node),
+          Option.flatMap(constantThunkReturnedExpression)
+        )
+        const unwrapped = unwrapExpression(expression)
+        const isPrimitive = pipe(
+          Option.some(unwrapped),
+          Option.filter(isPrimitiveLiteralExpression),
+          Option.isSome
+        )
+        const isStableIdentifier = pipe(
+          Option.liftPredicate(ts.isIdentifier)(unwrapped),
+          Option.exists((identifier: ts.Identifier): boolean =>
+            pipe(
+              Option.gen(function* () {
+                const symbolCandidate =
+                  context.checker.getSymbolAtLocation(identifier)
+                const symbol = yield* Option.fromNullable(symbolCandidate)
+                const declarationCandidates = symbol.getDeclarations()
+                const declarations = yield* Option.fromNullable(
+                  declarationCandidates
+                )
+                yield* Option.liftPredicate(hasSingleElement)(declarations)
+                const declaration = yield* Option.fromNullable(declarations[0])
+                const variableDeclaration = yield* Option.liftPredicate(
+                  ts.isVariableDeclaration
+                )(declaration)
+                yield* Option.liftPredicate(
+                  (candidate: ts.Declaration): boolean =>
+                    candidate.getSourceFile() === context.sourceFile
+                )(variableDeclaration)
+                yield* Option.liftPredicate(declarationNameIsIdentifier)(
+                  variableDeclaration
+                )
+                yield* Option.liftPredicate(
+                  (candidate: ts.VariableDeclaration): boolean =>
+                    candidate.end <= node.getStart(context.sourceFile)
+                )(variableDeclaration)
+                yield* pipe(
+                  Option.some(variableDeclaration),
+                  Option.flatMap(variableDeclarationList),
+                  Option.filter(declarationListIsConst),
+                  Option.filter(declarationListHasSingleDeclaration)
+                )
+
+                return variableDeclaration
+              }),
+              Option.isSome
+            )
+          )
+        )
+        yield* Option.liftPredicate(
+          (_expression: ts.Expression): boolean =>
+            [isPrimitive, isStableIdentifier].some(Boolean)
+        )(expression)
+        const expressionText = expression.getText(context.sourceFile)
+
+        return match({
+          node,
+          message,
+          hint:
+            `Use Function.constant(${expressionText}) from Effect when a zero-argument function only returns a stable value. ` +
+            "Function.constant captures that value once and returns a zero-argument function."
+        })
+      }),
+      Option.toArray
+    )
 
   return matches
 }

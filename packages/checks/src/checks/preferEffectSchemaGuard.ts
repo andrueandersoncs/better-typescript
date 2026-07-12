@@ -4,7 +4,6 @@ import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
 import { astChildren } from "@better-typescript/core/engine/sources"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -45,28 +44,27 @@ const isStringKeyInExpression = (
     Option.exists(binaryExpressionIsStringKeyIn)
   )
 
-const schemaGuardMatch =
-  (sourceFile: ts.SourceFile) =>
-  (match: MakeDetection) =>
-  (expression: ts.BinaryExpression): Detection => {
-    const propertyName = unwrapExpression(expression.left).getText(sourceFile)
-    const objectText = expression.right.getText(sourceFile)
-
-    return match({
-      node: expression,
-      message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
-      hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`
-    })
-  }
-
 const inOperatorGuardMatches = (context: CheckContext) => {
   const match = detection(context)
-  const guardMatch = schemaGuardMatch(context.sourceFile)(match)
+  const sourceFile = context.sourceFile
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
-    conditionExpressions(ifStatement.expression)
-      .filter(isStringKeyInExpression)
-      .map(guardMatch)
+    pipe(
+      conditionExpressions(ifStatement.expression),
+      Array.filter(isStringKeyInExpression),
+      Array.map((expression) => {
+        const propertyName = unwrapExpression(expression.left).getText(
+          sourceFile
+        )
+        const objectText = expression.right.getText(sourceFile)
+
+        return match({
+          node: expression,
+          message: `Avoid using ${propertyName} in ${objectText} as a type guard.`,
+          hint: `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`
+        })
+      })
+    )
 
   return matches
 }

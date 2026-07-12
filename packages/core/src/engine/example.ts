@@ -34,7 +34,6 @@ export class ExampleLoadError extends Schema.TaggedError<ExampleLoadError>(
   message: Schema.String
 }) {}
 
-
 export const exampleSnippet = (
   filePath: string,
   code: string
@@ -74,20 +73,14 @@ const directoryExists = (absolutePath: string): boolean => {
   return exists ? fs.statSync(absolutePath).isDirectory() : false
 }
 
-const entryAbsolutePath =
-  (directory: string) =>
-  (entry: fs.Dirent): string =>
-    path.join(directory, entry.name)
-
 const collectTypeScriptFiles: (
   directory: string
 ) => Effect.Effect<ReadonlyArray<string>, ExampleLoadError> = Effect.fn(
   "collectTypeScriptFiles"
 )(function* (directory: string) {
   const entries = yield* readDirectoryEntries(directory)
-  const absoluteOf = entryAbsolutePath(directory)
   const nested = yield* Effect.forEach(entries, (entry) => {
-    const absolute = absoluteOf(entry)
+    const absolute = path.join(directory, entry.name)
 
     if (entry.isDirectory()) {
       return collectTypeScriptFiles(absolute)
@@ -107,18 +100,13 @@ const collectTypeScriptFiles: (
   return Array.sort(flattened, byPath)
 })
 
-const toPosixPath =
-  (treeRoot: string) =>
-  (absoluteFile: string): string => {
-    const relative = path.relative(treeRoot, absoluteFile)
-    const segments = relative.split(path.sep)
-
-    return Array.join(segments, "/")
-  }
-
-const snippetFromFile =
-  (treeRoot: string) =>
-  (absoluteFile: string): Effect.Effect<ExampleSnippet, ExampleLoadError> =>
+const readExampleTree: (
+  treeRoot: string
+) => Effect.Effect<NonEmptyExampleTree, ExampleLoadError> = Effect.fn(
+  "readExampleTree"
+)(function* (treeRoot: string) {
+  const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
+  const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
     Effect.gen(function* () {
       const code = yield* Effect.try({
         try: () => {
@@ -131,98 +119,32 @@ const snippetFromFile =
             message: `Unable to read example file: ${absoluteFile}`
           })
       })
-      const filePath = toPosixPath(treeRoot)(absoluteFile)
+      const relative = path.relative(treeRoot, absoluteFile)
+      const segments = relative.split(path.sep)
+      const filePath = Array.join(segments, "/")
 
       return exampleSnippet(filePath, code)
     })
+  )
 
-const nonEmptySnippets =
-  (treeRoot: string) =>
-  (
-    snippets: ReadonlyArray<ExampleSnippet>
-  ): Effect.Effect<NonEmptyExampleTree, ExampleLoadError> =>
-    pipe(
-      snippets,
-      Array.matchLeft({
-        onEmpty: () => {
-          const error = new ExampleLoadError({
-            message: `Example tree has no TypeScript files: ${treeRoot}`
-          })
+  return yield* pipe(
+    snippets,
+    Array.matchLeft({
+      onEmpty: () => {
+        const error = new ExampleLoadError({
+          message: `Example tree has no TypeScript files: ${treeRoot}`
+        })
 
-          return Effect.fail(error)
-        },
-        onNonEmpty: (first, rest) => {
-          const tree = Array.prepend(rest, first)
+        return Effect.fail(error)
+      },
+      onNonEmpty: (first, rest) => {
+        const tree = Array.prepend(rest, first)
 
-          return Effect.succeed(tree)
-        }
-      })
-    )
-
-const readExampleTree: (
-  treeRoot: string
-) => Effect.Effect<NonEmptyExampleTree, ExampleLoadError> = Effect.fn(
-  "readExampleTree"
-)(function* (treeRoot: string) {
-  const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
-  const toSnippet = snippetFromFile(treeRoot)
-  const snippets = yield* Effect.forEach(absoluteFiles, toSnippet)
-
-  return yield* nonEmptySnippets(treeRoot)(snippets)
-})
-
-const completePairName =
-  (exampleRoot: string) =>
-  (entry: fs.Dirent): ReadonlyArray<string> => {
-    if (!entry.isDirectory()) {
-      return []
-    }
-
-    const pairRoot = path.join(exampleRoot, entry.name)
-    const badRoot = path.join(pairRoot, "bad")
-    const goodRoot = path.join(pairRoot, "good")
-    const hasBad = directoryExists(badRoot)
-    const hasGood = directoryExists(goodRoot)
-    const complete = hasBad ? hasGood : false
-
-    return complete ? [entry.name] : []
-  }
-
-const loadPair =
-  (exampleRoot: string) =>
-  (pairName: string): Effect.Effect<RefactorExample, ExampleLoadError> =>
-    Effect.gen(function* () {
-      const pairRoot = path.join(exampleRoot, pairName)
-      const badRoot = path.join(pairRoot, "bad")
-      const goodRoot = path.join(pairRoot, "good")
-      const bad = yield* readExampleTree(badRoot)
-      const good = yield* readExampleTree(goodRoot)
-
-      return new RefactorExample({ bad, good })
+        return Effect.succeed(tree)
+      }
     })
-
-const nonEmptyExamples =
-  (exampleRoot: string) =>
-  (
-    examples: ReadonlyArray<RefactorExample>
-  ): Effect.Effect<NonEmptyRefactorExamples, ExampleLoadError> =>
-    pipe(
-      examples,
-      Array.matchLeft({
-        onEmpty: () => {
-          const error = new ExampleLoadError({
-            message: `Expected example/<id>/{bad,good} directories under ${exampleRoot}`
-          })
-
-          return Effect.fail(error)
-        },
-        onNonEmpty: (first, rest) => {
-          const nonEmpty = Array.prepend(rest, first)
-
-          return Effect.succeed(nonEmpty)
-        }
-      })
-    )
+  )
+})
 
 export const loadRefactorExamplesAt: (
   exampleRoot: string
@@ -236,10 +158,48 @@ export const loadRefactorExamplesAt: (
   }
 
   const entries = yield* readDirectoryEntries(exampleRoot)
-  const names = Array.flatMap(entries, completePairName(exampleRoot))
+  const names = Array.flatMap(entries, (entry) => {
+    if (!entry.isDirectory()) {
+      return []
+    }
+
+    const pairRoot = path.join(exampleRoot, entry.name)
+    const badRoot = path.join(pairRoot, "bad")
+    const goodRoot = path.join(pairRoot, "good")
+    const hasBad = directoryExists(badRoot)
+    const hasGood = directoryExists(goodRoot)
+    const complete = hasBad ? hasGood : false
+
+    return complete ? [entry.name] : []
+  })
   const pairNames = Array.sort(names, byPairName)
-  const examples = yield* Effect.forEach(pairNames, loadPair(exampleRoot))
+  const examples = yield* Effect.forEach(pairNames, (pairName) =>
+    Effect.gen(function* () {
+      const pairRoot = path.join(exampleRoot, pairName)
+      const badRoot = path.join(pairRoot, "bad")
+      const goodRoot = path.join(pairRoot, "good")
+      const bad = yield* readExampleTree(badRoot)
+      const good = yield* readExampleTree(goodRoot)
 
-  return yield* nonEmptyExamples(exampleRoot)(examples)
+      return new RefactorExample({ bad, good })
+    })
+  )
+
+  return yield* pipe(
+    examples,
+    Array.matchLeft({
+      onEmpty: () => {
+        const error = new ExampleLoadError({
+          message: `Expected example/<id>/{bad,good} directories under ${exampleRoot}`
+        })
+
+        return Effect.fail(error)
+      },
+      onNonEmpty: (first, rest) => {
+        const nonEmpty = Array.prepend(rest, first)
+
+        return Effect.succeed(nonEmpty)
+      }
+    })
+  )
 })
-

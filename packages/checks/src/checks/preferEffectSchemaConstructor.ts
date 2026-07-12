@@ -3,7 +3,6 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -100,33 +99,6 @@ const untaggedHint =
   'Schema.Class<TheData>("TheData")({ ... }) {} — and construct it through the schema: ' +
   "return new TheData({ ... }) instead of assembling the object by hand."
 
-const objectLiteralDetection =
-  (match: MakeDetection) =>
-  (literal: ts.ObjectLiteralExpression): Detection => {
-    const tag = pipe(
-      Array.findFirst(literal.properties, isTagAssignment),
-      Option.flatMap(tagValueText)
-    )
-    const message = Option.match(tag, {
-      onNone: Function.constant(untaggedMessage),
-      onSome: taggedMessage
-    })
-    const hint = Option.match(tag, {
-      onNone: Function.constant(untaggedHint),
-      onSome: taggedHint
-    })
-
-    return match({ node: literal, message, hint })
-  }
-
-const expressionDetections =
-  (match: MakeDetection) =>
-  (expression: ts.Expression): ReadonlyArray<Detection> =>
-    branchExpressions(expression)
-      .filter(ts.isObjectLiteralExpression)
-      .filter(hasProperties)
-      .map(objectLiteralDetection(match))
-
 type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 
 const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
@@ -134,14 +106,37 @@ const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
 
 const objectLiteralReturnMatches = (context: CheckContext) => {
   const match = detection(context)
-  const expressionMatches = expressionDetections(match)
 
   const matches = (node: ReturnCandidate): ReadonlyArray<Detection> => {
     const expression = ts.isReturnStatement(node)
       ? Option.fromNullable(node.expression)
       : Option.liftPredicate(ts.isExpression)(node.body)
 
-    return Option.toArray(expression).flatMap(expressionMatches)
+    const expressions = Option.toArray(expression)
+    return Array.flatMap(expressions, (expression) => {
+      const objectLiterals = pipe(
+        branchExpressions(expression),
+        Array.filter(ts.isObjectLiteralExpression),
+        Array.filter(hasProperties)
+      )
+
+      return Array.map(objectLiterals, (literal) => {
+        const tag = pipe(
+          Array.findFirst(literal.properties, isTagAssignment),
+          Option.flatMap(tagValueText)
+        )
+        const message = Option.match(tag, {
+          onNone: Function.constant(untaggedMessage),
+          onSome: taggedMessage
+        })
+        const hint = Option.match(tag, {
+          onNone: Function.constant(untaggedHint),
+          onSome: taggedHint
+        })
+
+        return match({ node: literal, message, hint })
+      })
+    })
   }
 
   return matches

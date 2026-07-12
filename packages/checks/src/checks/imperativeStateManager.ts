@@ -7,7 +7,6 @@ import {
   detectionAtPath,
   evidenceItem
 } from "@better-typescript/core/engine/derive"
-import type { EvidenceItem } from "@better-typescript/core/engine/derive"
 import { Detection } from "@better-typescript/core/engine/location"
 
 const detectionArray = Schema.Array(Detection)
@@ -65,51 +64,6 @@ const sharedMutationCountAt =
     return sharedStateMutations.length
   }
 
-const imperativeEvidence =
-  (signals: ImperativeStateSignals) =>
-  (path: string): ReadonlyArray<EvidenceItem> => {
-    const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
-    const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
-    const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
-    const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
-    const arrayCount = countDetectionsAtPath(path)(
-      signals.noMutableArrayMethods
-    )
-    const declarationCount = countDetectionsAtPath(path)(
-      signals.noMutableVariableDeclarations
-    )
-    const sharedItem = evidenceItem("no-mutation/shared-state", sharedCount)
-    const observations = [
-      evidenceItem("no-mutation", mutationCount),
-      evidenceItem("prefer-hash-map", hashMapCount),
-      evidenceItem("prefer-hash-set", hashSetCount),
-      evidenceItem("no-mutable-array-methods", arrayCount),
-      evidenceItem("no-mutable-variable-declarations", declarationCount)
-    ]
-    const nonZero = Array.filter(observations, (item) => item.count > 0)
-
-    return Array.prepend(nonZero, sharedItem)
-  }
-
-const imperativeStateAdvice =
-  (signals: ImperativeStateSignals) =>
-  (path: string): Advice => {
-    const location = adviceLocation(path)
-    const evidence = imperativeEvidence(signals)(path)
-
-    return new Advice({
-      location,
-      level: "file",
-      title: "imperative state manager",
-      remediation:
-        "This file manages long-lived state outside the runtime; element-level rewrites patch " +
-        "symptoms. Hold each cell in a Ref (SynchronizedRef when updates contend), fan out to " +
-        "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
-        "runtime once at the boundary.",
-      evidence
-    })
-  }
-
 const imperativeStateAdviceFor = (
   signals: ImperativeStateSignals
 ): ReadonlyArray<Advice> => {
@@ -124,7 +78,41 @@ const imperativeStateAdviceFor = (
     Array.filter(
       (path) => sharedMutationCountAt(path)(signals.noMutation) >= 8
     ),
-    Array.map(imperativeStateAdvice(signals))
+    Array.map((path) => {
+      const location = adviceLocation(path)
+      const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
+      const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
+      const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
+      const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
+      const arrayCount = countDetectionsAtPath(path)(
+        signals.noMutableArrayMethods
+      )
+      const declarationCount = countDetectionsAtPath(path)(
+        signals.noMutableVariableDeclarations
+      )
+      const sharedItem = evidenceItem("no-mutation/shared-state", sharedCount)
+      const observations = [
+        evidenceItem("no-mutation", mutationCount),
+        evidenceItem("prefer-hash-map", hashMapCount),
+        evidenceItem("prefer-hash-set", hashSetCount),
+        evidenceItem("no-mutable-array-methods", arrayCount),
+        evidenceItem("no-mutable-variable-declarations", declarationCount)
+      ]
+      const nonZero = Array.filter(observations, (item) => item.count > 0)
+      const evidence = Array.prepend(nonZero, sharedItem)
+
+      return new Advice({
+        location,
+        level: "file",
+        title: "imperative state manager",
+        remediation:
+          "This file manages long-lived state outside the runtime; element-level rewrites patch " +
+          "symptoms. Hold each cell in a Ref (SynchronizedRef when updates contend), fan out to " +
+          "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
+          "runtime once at the boundary.",
+        evidence
+      })
+    })
   )
 }
 

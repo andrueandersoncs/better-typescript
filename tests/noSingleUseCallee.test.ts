@@ -26,7 +26,7 @@ const expectedHint =
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
-    name: "singleUseNonCurriedArrow",
+    name: "singleUseArrow",
     fileName: "src/cases.ts",
     line: 4,
     column: 7,
@@ -48,50 +48,58 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 10,
     message: expectedMessage,
     hint: expectedHint
+  },
+  {
+    name: "singleUseCurriedArrow",
+    fileName: "src/cases.ts",
+    line: 27,
+    column: 7,
+    message: expectedMessage,
+    hint: expectedHint
   }
 ]
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
-    name: "curriedFunction",
-    fileName: "src/allowed.ts",
-    line: 4,
-    column: 7
-  },
-  {
     name: "exportedFunction",
     fileName: "src/allowed.ts",
-    line: 12,
+    line: 4,
     column: 14
   },
   {
     name: "multiUseFunction",
     fileName: "src/allowed.ts",
-    line: 18,
+    line: 10,
+    column: 7
+  },
+  {
+    name: "multiUseCurriedFunction",
+    fileName: "src/allowed.ts",
+    line: 16,
     column: 7
   },
   {
     name: "passedAsArgument",
     fileName: "src/allowed.ts",
-    line: 24,
+    line: 25,
     column: 7
   },
   {
     name: "objectPropertyValue",
     fileName: "src/allowed.ts",
-    line: 29,
+    line: 30,
     column: 7
   },
   {
     name: "assignedToVariable",
     fileName: "src/allowed.ts",
-    line: 34,
+    line: 35,
     column: 7
   },
   {
     name: "deadCode",
     fileName: "src/allowed.ts",
-    line: 39,
+    line: 40,
     column: 7
   }
 ]

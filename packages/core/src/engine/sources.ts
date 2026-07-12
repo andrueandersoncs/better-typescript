@@ -8,9 +8,7 @@ import {
   MutableRef,
   Option,
   Schema,
-  Scope,
   Stream,
-  StreamEmit,
   pipe
 } from "effect"
 import * as ts from "typescript"
@@ -61,18 +59,14 @@ export const checkableSourceFiles = (
     Stream.fromIterable
   )
 
-const recordChild =
-  (children: MutableList.MutableList<ts.Node>) =>
-  (child: ts.Node): false => {
-    MutableList.append(children, child)
-
-    return false
-  }
-
 export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
   const children = MutableList.empty<ts.Node>()
 
-  ts.forEachChild(node, recordChild(children))
+  ts.forEachChild(node, (child) => {
+    MutableList.append(children, child)
+
+    return false
+  })
 
   return Array.fromIterable(children)
 }
@@ -95,29 +89,6 @@ export const foldAst =
     return MutableRef.get(accumulator)
   }
 
-const appendAstNode =
-  (context: ProgramContext) =>
-  (sourceFile: ts.SourceFile) =>
-  (
-    nodes: MutableList.MutableList<AstNodeElement>,
-    node: ts.Node
-  ): MutableList.MutableList<AstNodeElement> => {
-    const element = new AstNodeElement({ context, sourceFile, node })
-
-    return MutableList.append(nodes, element)
-  }
-
-const astNodeStream =
-  (context: ProgramContext) =>
-  (sourceFile: ts.SourceFile): Stream.Stream<AstNodeElement> => {
-    const initial = MutableList.empty<AstNodeElement>()
-    const append = appendAstNode(context)(sourceFile)
-    const collected = foldAst(append)(sourceFile)(initial)
-    const nodes = Array.fromIterable(collected)
-
-    return Stream.fromIterable(nodes)
-  }
-
 export const astNodesFromContext = (
   context: ProgramContext
 ): Stream.Stream<AstNodeElement, Error> =>
@@ -125,7 +96,21 @@ export const astNodesFromContext = (
     context.program.getSourceFiles(),
     Array.filter(isProjectSourceFile),
     Stream.fromIterable,
-    Stream.flatMap(astNodeStream(context))
+    Stream.flatMap((sourceFile) => {
+      const initial = MutableList.empty<AstNodeElement>()
+      const append = (
+        nodes: MutableList.MutableList<AstNodeElement>,
+        node: ts.Node
+      ): MutableList.MutableList<AstNodeElement> => {
+        const element = new AstNodeElement({ context, sourceFile, node })
+
+        return MutableList.append(nodes, element)
+      }
+      const collected = foldAst(append)(sourceFile)(initial)
+      const nodes = Array.fromIterable(collected)
+
+      return Stream.fromIterable(nodes)
+    })
   )
 
 export const astNodes = (
@@ -148,59 +133,12 @@ export class SourceUpdate extends Data.Class<{
 // Reporter diagnostics stay silent because the watcher must retain the last valid program through a transient config failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 
-const emitProgramContext =
-  (emit: StreamEmit.EmitOpsPush<Error, ProgramContext>) =>
-  (rootPath: string) =>
-  (builder: ts.BuilderProgram): boolean => {
-    const program = builder.getProgram()
-    const context = contextFor(rootPath)(program)
-
-    return emit.single(context)
-  }
-
-const startWatch =
-  (config: ProjectConfig) =>
-  (watchOptions: Option.Option<ts.WatchOptions>) =>
-  (emit: StreamEmit.EmitOpsPush<Error, ProgramContext>) =>
-  (): ts.WatchOfConfigFile<ts.BuilderProgram> => {
-    const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
-    const host = ts.createWatchCompilerHost(
-      config.configPath,
-      undefined,
-      ts.sys,
-      ts.createAbstractBuilder,
-      ignoreDiagnostic,
-      ignoreDiagnostic,
-      watchOptionsToExtend
-    )
-
-    // Assign the handler after construction because createWatchProgram emits the initial program synchronously and asyncPush buffers it.
-    host.afterProgramCreate = emitProgramContext(emit)(config.rootPath)
-
-    return ts.createWatchProgram(host)
-  }
-
 const stopWatch = (
   watch: ts.WatchOfConfigFile<ts.BuilderProgram>
 ): Effect.Effect<void> =>
   Effect.sync(() => {
     watch.close()
   })
-
-const acquireWatch =
-  (config: ProjectConfig) =>
-  (watchOptions: Option.Option<ts.WatchOptions>) =>
-  (
-    emit: StreamEmit.EmitOpsPush<Error, ProgramContext>
-  ): Effect.Effect<
-    ts.WatchOfConfigFile<ts.BuilderProgram>,
-    never,
-    Scope.Scope
-  > => {
-    const acquire = Effect.sync(startWatch(config)(watchOptions)(emit))
-
-    return Effect.acquireRelease(acquire, stopWatch)
-  }
 
 /**
  * The project-level root signal: one fresh ProgramContext per watch rebuild,
@@ -210,25 +148,35 @@ export const programUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
 ): Stream.Stream<ProgramContext, Error> =>
-  Stream.asyncPush<ProgramContext, Error>(acquireWatch(config)(watchOptions))
+  Stream.asyncPush<ProgramContext, Error>((emit) => {
+    const acquire = Effect.sync(() => {
+      const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
+      const host = ts.createWatchCompilerHost(
+        config.configPath,
+        undefined,
+        ts.sys,
+        ts.createAbstractBuilder,
+        ignoreDiagnostic,
+        ignoreDiagnostic,
+        watchOptionsToExtend
+      )
+
+      // Assign the handler after construction because createWatchProgram emits the initial program synchronously and asyncPush buffers it.
+      const afterProgramCreate = (builder: ts.BuilderProgram): boolean => {
+        const program = builder.getProgram()
+        const context = contextFor(config.rootPath)(program)
+
+        return emit.single(context)
+      }
+      host.afterProgramCreate = afterProgramCreate
+
+      return ts.createWatchProgram(host)
+    })
+
+    return Effect.acquireRelease(acquire, stopWatch)
+  })
 
 const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
-
-const isChangedFile =
-  (previous: HashMap.HashMap<string, ts.SourceFile>) =>
-  (sourceFile: ts.SourceFile): boolean =>
-    pipe(
-      HashMap.get(previous, sourceFile.fileName),
-      Option.match({
-        onNone: Function.constant(true),
-        onSome: (known) => known !== sourceFile
-      })
-    )
-
-const isRemovedFrom =
-  (next: HashMap.HashMap<string, ts.SourceFile>) =>
-  (fileName: string): boolean =>
-    !HashMap.has(next, fileName)
 
 const fileIndexEntry = (
   sourceFile: ts.SourceFile
@@ -253,12 +201,20 @@ export const diffCheckableFiles =
       Array.map(fileIndexEntry),
       HashMap.fromIterable
     )
-    const changed = Array.filter(currentFiles, isChangedFile(previous))
+    const changed = Array.filter(currentFiles, (sourceFile) =>
+      pipe(
+        HashMap.get(previous, sourceFile.fileName),
+        Option.match({
+          onNone: Function.constant(true),
+          onSome: (known) => known !== sourceFile
+        })
+      )
+    )
     const removed = pipe(
       previous,
       HashMap.keys,
       Array.fromIterable,
-      Array.filter(isRemovedFrom(next))
+      Array.filter((fileName) => !HashMap.has(next, fileName))
     )
     const update = new SourceUpdate({ context, changed, removed })
 

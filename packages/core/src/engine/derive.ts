@@ -113,17 +113,14 @@ export const byFile = (
   return Array.map(entries, fileDetections)
 }
 
-const parentAt =
-  (segments: ReadonlyArray<string>) =>
-  (segment: string, index: number): string =>
-    segments.slice(0, index + 1).join("/")
-
 export const parentDirectories = (filePath: string): ReadonlyArray<string> => {
   const normalized = filePath.replaceAll("\\", "/")
   const segments = normalized.split("/")
   const parents = segments.slice(0, -1)
 
-  return parents.map(parentAt(parents))
+  return Array.map(parents, (_segment, index) =>
+    parents.slice(0, index + 1).join("/")
+  )
 }
 
 const addDetectionCount = (
@@ -247,27 +244,18 @@ export const collidingLines = (
   return Array.sort(evidence, byMeasure)
 }
 
-const dominantEntry =
-  (summary: CountSummary) =>
-  (numerator: number) =>
-  (denominator: number) =>
-  (minSpread: number) =>
-  (entry: readonly [string, number]): boolean => {
-    const spread = countAt(summary.filesByCheck)(entry[0])
-    const holdsShare = entry[1] * denominator >= summary.total * numerator
-
-    return holdsShare && spread >= minSpread
-  }
-
 export const dominantCheckEvidence =
   (numerator: number) =>
   (denominator: number) =>
   (minSpread: number) =>
   (summary: CountSummary): ReadonlyArray<EvidenceItem> => {
     const entries = HashMap.toEntries(summary.countsByCheck)
-    const dominant = entries.filter(
-      dominantEntry(summary)(numerator)(denominator)(minSpread)
-    )
+    const dominant = Array.filter(entries, (entry) => {
+      const spread = countAt(summary.filesByCheck)(entry[0])
+      const holdsShare = entry[1] * denominator >= summary.total * numerator
+
+      return holdsShare && spread >= minSpread
+    })
     const evidence = dominant.map(countEntryEvidence)
 
     return Array.sort(evidence, evidenceOrder)

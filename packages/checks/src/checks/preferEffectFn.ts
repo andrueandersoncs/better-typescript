@@ -10,7 +10,6 @@ import {
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { FunctionInitializer } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -39,26 +38,6 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   return isNamedEffect && hasEffectModuleDeclaration
 }
 
-const signatureReturnsEffect =
-  (checker: ts.TypeChecker) =>
-  (signature: ts.Signature): boolean => {
-    const returnType = checker.getReturnTypeOfSignature(signature)
-
-    const typeSymbol = returnType.getSymbol()
-    const symbol = Option.fromNullable(typeSymbol)
-
-    return Option.exists(symbol, isEffectInterfaceSymbol)
-  }
-
-const returnsEffect =
-  (checker: ts.TypeChecker) =>
-  (initializer: FunctionInitializer): boolean => {
-    const declaredSignature = checker.getSignatureFromDeclaration(initializer)
-    const signature = Option.fromNullable(declaredSignature)
-
-    return Option.exists(signature, signatureReturnsEffect(checker))
-  }
-
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
   block.statements.length === 1
     ? Option.fromNullable(block.statements[0])
@@ -67,67 +46,10 @@ const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
 const isGenPropertyName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "gen"
 
-const isEffectGenAccess =
-  (checker: ts.TypeChecker) =>
-  (access: ts.PropertyAccessExpression): boolean => {
-    const symbol = checker.getSymbolAtLocation(access.name)
-
-    return pipe(
-      Option.fromNullable(symbol),
-      Option.exists(symbolDeclaredInEffectPackage)
-    )
-  }
-
-// Rewrite only Effect.gen wrappers because Effect.fn would change what plain combinator bodies build.
-const bodyIsEffectGenCall =
-  (checker: ts.TypeChecker) =>
-  (initializer: FunctionInitializer): boolean => {
-    const body = initializer.body
-    const blockResult = pipe(
-      Option.liftPredicate(ts.isBlock)(body),
-      Option.flatMap(singleBlockStatement),
-      Option.filter(ts.isReturnStatement),
-      Option.flatMap(returnedExpression)
-    )
-    const conciseResult = ts.isBlock(body)
-      ? Option.none<ts.Expression>()
-      : Option.some(body)
-    const resultExpression = Option.orElse(
-      blockResult,
-      Function.constant(conciseResult)
-    )
-    const unwrapped = Option.map(resultExpression, unwrapExpression)
-
-    return pipe(
-      unwrapped,
-      Option.filter(ts.isCallExpression),
-      Option.map(Struct.get("expression")),
-      Option.filter(ts.isPropertyAccessExpression),
-      Option.filter(isGenPropertyName),
-      Option.exists(isEffectGenAccess(checker))
-    )
-  }
-
-const effectFnDetection =
-  (sourceFile: ts.SourceFile) =>
-  (match: MakeDetection) =>
-  (declaration: ts.VariableDeclaration): Detection => {
-    const functionName = declaration.name.getText(sourceFile)
-
-    return match({
-      node: declaration.name,
-      message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
-      hint:
-        `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
-        "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
-        "traced span."
-    })
-  }
-
 const effectFnMatches = (context: CheckContext) => {
-  const returnsEffectType = returnsEffect(context.checker)
-  const bodyIsGenCall = bodyIsEffectGenCall(context.checker)
-  const ruleMatch = effectFnDetection(context.sourceFile)(detection(context))
+  const checker = context.checker
+  const sourceFile = context.sourceFile
+  const match = detection(context)
 
   const matches = (
     declaration: ts.VariableDeclaration
@@ -135,10 +57,67 @@ const effectFnMatches = (context: CheckContext) => {
     pipe(
       functionInitializer(declaration),
       Option.filter(hasParameters),
-      Option.filter(returnsEffectType),
-      Option.filter(bodyIsGenCall),
+      Option.filter((initializer) => {
+        const declaredSignature =
+          checker.getSignatureFromDeclaration(initializer)
+        const signature = Option.fromNullable(declaredSignature)
+
+        return Option.exists(signature, (signature) => {
+          const returnType = checker.getReturnTypeOfSignature(signature)
+
+          const typeSymbol = returnType.getSymbol()
+          const symbol = Option.fromNullable(typeSymbol)
+
+          return Option.exists(symbol, isEffectInterfaceSymbol)
+        })
+      }),
+      // Rewrite only Effect.gen wrappers because Effect.fn would change what plain combinator bodies build.
+      Option.filter((initializer) => {
+        const body = initializer.body
+        const blockResult = pipe(
+          Option.liftPredicate(ts.isBlock)(body),
+          Option.flatMap(singleBlockStatement),
+          Option.filter(ts.isReturnStatement),
+          Option.flatMap(returnedExpression)
+        )
+        const conciseResult = ts.isBlock(body)
+          ? Option.none<ts.Expression>()
+          : Option.some(body)
+        const resultExpression = Option.orElse(
+          blockResult,
+          Function.constant(conciseResult)
+        )
+        const unwrapped = Option.map(resultExpression, unwrapExpression)
+
+        return pipe(
+          unwrapped,
+          Option.filter(ts.isCallExpression),
+          Option.map(Struct.get("expression")),
+          Option.filter(ts.isPropertyAccessExpression),
+          Option.filter(isGenPropertyName),
+          Option.exists((access) => {
+            const symbol = checker.getSymbolAtLocation(access.name)
+
+            return pipe(
+              Option.fromNullable(symbol),
+              Option.exists(symbolDeclaredInEffectPackage)
+            )
+          })
+        )
+      }),
       Option.as(declaration),
-      Option.map(ruleMatch),
+      Option.map((declaration) => {
+        const functionName = declaration.name.getText(sourceFile)
+
+        return match({
+          node: declaration.name,
+          message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
+          hint:
+            `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
+            "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
+            "traced span."
+        })
+      }),
       Option.toArray
     )
 

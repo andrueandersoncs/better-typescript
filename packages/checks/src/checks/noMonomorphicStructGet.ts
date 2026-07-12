@@ -50,47 +50,9 @@ const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol): boolean => {
   return Array.some(declarations, declarationIsEffectStructModule)
 }
 
-const unaliasedPropertySymbol =
-  (checker: ts.TypeChecker) =>
-  (symbol: ts.Symbol): ts.Symbol => {
-    const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-
-    return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-  }
-
-const propertyAccessResolvesToEffectStructGet =
-  (checker: ts.TypeChecker) =>
-  (access: ts.PropertyAccessExpression): boolean => {
-    const symbolAtName = checker.getSymbolAtLocation(access.name)
-
-    return pipe(
-      Option.fromNullable(symbolAtName),
-      Option.map(unaliasedPropertySymbol(checker)),
-      Option.filter((symbol) => symbol.name === "get"),
-      Option.exists(symbolDeclaredInEffectStructModule)
-    )
-  }
-
-const structGetCall =
-  (checker: ts.TypeChecker) =>
-  (initializer: ts.Expression): Option.Option<ts.CallExpression> =>
-    Option.gen(function* () {
-      const expression = unwrapTransparentExpression(initializer)
-      const call = yield* Option.liftPredicate(ts.isCallExpression)(expression)
-      const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(
-        call.expression
-      )
-      yield* Option.liftPredicate(
-        propertyAccessResolvesToEffectStructGet(checker)
-      )(callee)
-
-      return call
-    })
-
 const monomorphicStructGetMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
-  const initializerStructGetCall = structGetCall(checker)
 
   const declarationIsExported = (
     declaration: ts.VariableDeclaration
@@ -117,7 +79,22 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   const initializerIsGenericStructGet = (initializer: ts.Expression): boolean =>
     pipe(
       Option.gen(function* () {
-        const call = yield* initializerStructGetCall(initializer)
+        const expression = unwrapTransparentExpression(initializer)
+        const call = yield* Option.liftPredicate(ts.isCallExpression)(expression)
+        const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(
+          call.expression
+        )
+        const symbolAtName = checker.getSymbolAtLocation(callee.name)
+        yield* pipe(
+          Option.fromNullable(symbolAtName),
+          Option.map((symbol) => {
+            const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+
+            return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+          }),
+          Option.filter((symbol) => symbol.name === "get"),
+          Option.filter(symbolDeclaredInEffectStructModule)
+        )
         const resolvedSignature = checker.getResolvedSignature(call)
         const signature = yield* Option.fromNullable(resolvedSignature)
         const returnType = checker.getReturnTypeOfSignature(signature)

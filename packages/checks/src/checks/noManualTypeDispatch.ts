@@ -3,7 +3,6 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { alwaysExitsScope, hasNoElseBranch } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -40,14 +39,9 @@ const discriminants = (
   return HashSet.fromIterable(names)
 }
 
-const memberOf =
-  (names: HashSet.HashSet<string>) =>
-  (name: string): boolean =>
-    HashSet.has(names, name)
-
-const statementAt =
+const siblingDispatchGuard =
   (offset: number) =>
-  (ifStatement: ts.IfStatement): Option.Option<ts.Statement> => {
+  (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> => {
     const block = ifStatement.parent
     if (!ts.isBlock(block)) {
       return Option.none()
@@ -55,21 +49,10 @@ const statementAt =
 
     const index = block.statements.indexOf(ifStatement)
 
-    return Option.fromNullable(block.statements[index + offset])
-  }
-
-const siblingDispatchGuard =
-  (offset: number) =>
-  (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> =>
-    pipe(statementAt(offset)(ifStatement), Option.filter(isDispatchGuard))
-
-const sharesSubjectWith =
-  (ifStatement: ts.IfStatement) =>
-  (sibling: ts.IfStatement): boolean => {
-    const firstDiscriminants = discriminants(ifStatement)
-    const secondDiscriminants = discriminants(sibling)
-
-    return HashSet.some(firstDiscriminants, memberOf(secondDiscriminants))
+    return pipe(
+      Option.fromNullable(block.statements[index + offset]),
+      Option.filter(isDispatchGuard)
+    )
   }
 
 const continuesChain =
@@ -77,7 +60,14 @@ const continuesChain =
   (ifStatement: ts.IfStatement): boolean =>
     pipe(
       siblingDispatchGuard(offset)(ifStatement),
-      Option.exists(sharesSubjectWith(ifStatement))
+      Option.exists((sibling) => {
+        const firstDiscriminants = discriminants(ifStatement)
+        const secondDiscriminants = discriminants(sibling)
+
+        return HashSet.some(firstDiscriminants, (name) =>
+          HashSet.has(secondDiscriminants, name)
+        )
+      })
     )
 
 // Report only the chain head because it shares a subject with the next guard but not a prior guard.
@@ -105,28 +95,25 @@ const returnsOne: () => number = Function.constant(1)
 const isLongEnough = (head: ts.IfStatement): boolean =>
   chainLengthFrom(head) >= minimumChainLength
 
-const manualTypeDispatchMatch =
-  (match: MakeDetection) =>
-  (ifStatement: ts.IfStatement): Detection =>
-    match({
-      node: ifStatement,
-      message:
-        "Avoid dispatching on a value with a chain of if statements that each return.",
-      hint:
-        "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
-        "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
-        "error rather than a silent fall-through."
-    })
-
 const manualTypeDispatchMatches = (context: CheckContext) => {
-  const ruleMatch = manualTypeDispatchMatch(detection(context))
+  const match = detection(context)
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
     pipe(
       Option.liftPredicate(isDispatchGuard)(ifStatement),
       Option.filter(isChainHead),
       Option.filter(isLongEnough),
-      Option.map(ruleMatch),
+      Option.map((node) =>
+        match({
+          node,
+          message:
+            "Avoid dispatching on a value with a chain of if statements that each return.",
+          hint:
+            "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
+            "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
+            "error rather than a silent fall-through."
+        })
+      ),
       Option.toArray
     )
 

@@ -146,28 +146,6 @@ const collectDetections =
     return Stream.runCollect(signal)
   }
 
-const dedupedSignal =
-  (check: NamedCheck) =>
-  (collected: ReadonlyArray<Chunk.Chunk<Detection>>): Signal => {
-    const elements = collected.flatMap(Chunk.toReadonlyArray)
-    const deduped = Array.reduce(elements, emptyDedupeState, addUniqueElement)
-
-    return new Signal({
-      name: check.name,
-      reported: check.reported,
-      detections: deduped.elements,
-      examples: check.examples
-    })
-  }
-
-const signalFromNodes =
-  (snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>) =>
-  (check: NamedCheck): Effect.Effect<Signal, Error> =>
-    pipe(
-      Effect.forEach(snapshots, collectDetections(check.check)),
-      Effect.map(dedupedSignal(check))
-    )
-
 /**
  * Run every wired check over one consistent set of project node snapshots.
  * Effect.forEach preserves wiring order, producing a complete finite batch.
@@ -177,7 +155,26 @@ export const workspaceSignals =
   (
     snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
   ): Effect.Effect<ReadonlyArray<Signal>, Error> =>
-    Effect.forEach(wiring.checks, signalFromNodes(snapshots))
+    Effect.forEach(wiring.checks, (check) =>
+      pipe(
+        Effect.forEach(snapshots, collectDetections(check.check)),
+        Effect.map((collected) => {
+          const elements = collected.flatMap(Chunk.toReadonlyArray)
+          const deduped = Array.reduce(
+            elements,
+            emptyDedupeState,
+            addUniqueElement
+          )
+
+          return new Signal({
+            name: check.name,
+            reported: check.reported,
+            detections: deduped.elements,
+            examples: check.examples
+          })
+        })
+      )
+    )
 
 /**
  * Within one batch, derivation consumes the complete materialized signal array.
@@ -271,20 +268,16 @@ const detectionBlockKey = (element: Detection): string =>
 const locationText = (element: Detection): string =>
   `  ${element.location.path}:${element.location.line}:${element.location.column}`
 
-const formatExampleSnippet =
-  (label: string) =>
-  (snippet: ExampleSnippet): string => {
-    const codeLines = snippet.code.split("\n")
-    const indentedLines = Array.map(codeLines, (line) => `    ${line}`)
-    const indentedCode = Array.join(indentedLines, "\n")
-
-    return `  ${label} (${snippet.filePath}):\n${indentedCode}`
-  }
-
 const formatExampleTree =
   (label: string) =>
   (files: ReadonlyArray<ExampleSnippet>): string => {
-    const sections = Array.map(files, formatExampleSnippet(label))
+    const sections = Array.map(files, (snippet) => {
+      const codeLines = snippet.code.split("\n")
+      const indentedLines = Array.map(codeLines, (line) => `    ${line}`)
+      const indentedCode = Array.join(indentedLines, "\n")
+
+      return `  ${label} (${snippet.filePath}):\n${indentedCode}`
+    })
 
     return Array.join(sections, "\n")
   }
@@ -295,44 +288,6 @@ const formatRefactorExample = (example: RefactorExample): string => {
 
   return Array.join([badText, goodText], "\n")
 }
-
-const checkTextForDetections =
-  (name: string) =>
-  (examples: ReadonlyArray<RefactorExample>) =>
-  (elements: ReadonlyArray<Detection>): string =>
-    pipe(
-      elements,
-      Array.matchLeft({
-        onEmpty: () => name,
-        onNonEmpty: (first) => {
-          const message = `  ${first.message}`
-          const hint = `  Hint: ${first.hint}`
-          const examplesText = Array.map(examples, formatRefactorExample)
-          const header = Array.appendAll([name, message, hint], examplesText)
-          const locations = Array.map(elements, locationText)
-          const lines = Array.appendAll(header, locations)
-
-          return Array.join(lines, "\n")
-        }
-      })
-    )
-
-const checkReportBlockForGroup =
-  (name: string) =>
-  (examples: ReadonlyArray<RefactorExample>) =>
-  (elements: Array.NonEmptyArray<Detection>): ReportBlock => {
-    const first = Array.headNonEmpty(elements)
-    const identity = reportIdentity("rule", [name, first.message, first.hint])
-    const key = new RuleReportKey({
-      name,
-      message: first.message,
-      hint: first.hint
-    })
-    const text = checkTextForDetections(name)(examples)(elements)
-    const cleared = `${name} — cleared: ${first.message}`
-
-    return new ReportBlock({ identity, key, text, cleared })
-  }
 
 /**
  * Keyed local detection blocks, one per distinct message and hint, groups in
@@ -345,7 +300,41 @@ export const checkReportBlocks =
     pipe(
       Array.groupBy(elements, detectionBlockKey),
       Record.values,
-      Array.map(checkReportBlockForGroup(name)(examples))
+      Array.map((group) => {
+        const first = Array.headNonEmpty(group)
+        const identity = reportIdentity("rule", [
+          name,
+          first.message,
+          first.hint
+        ])
+        const key = new RuleReportKey({
+          name,
+          message: first.message,
+          hint: first.hint
+        })
+        const text = pipe(
+          group,
+          Array.matchLeft({
+            onEmpty: () => name,
+            onNonEmpty: (head) => {
+              const message = `  ${head.message}`
+              const hint = `  Hint: ${head.hint}`
+              const examplesText = Array.map(examples, formatRefactorExample)
+              const header = Array.appendAll(
+                [name, message, hint],
+                examplesText
+              )
+              const locations = Array.map(group, locationText)
+              const lines = Array.appendAll(header, locations)
+
+              return Array.join(lines, "\n")
+            }
+          })
+        )
+        const cleared = `${name} — cleared: ${first.message}`
+
+        return new ReportBlock({ identity, key, text, cleared })
+      })
     )
 
 /**
@@ -385,15 +374,6 @@ const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
 
 const fileAdvicePath = (advice: Advice): string => advice.location.path
 
-const isAdviceForUncoveredFile =
-  (coveredFiles: HashSet.HashSet<string>) =>
-  (advice: Advice): boolean => {
-    const isNotFileLevel = advice.level !== "file"
-    const isUncoveredFile = !HashSet.has(coveredFiles, advice.location.path)
-
-    return isNotFileLevel || isUncoveredFile
-  }
-
 export const filterFallbackAdviceForUncoveredFiles =
   (specific: ReadonlyArray<Advice>) =>
   (
@@ -403,7 +383,12 @@ export const filterFallbackAdviceForUncoveredFiles =
     const paths = Array.map(fileAdvice, fileAdvicePath)
     const coveredFiles = HashSet.fromIterable(paths)
 
-    return Stream.filter(fallbackAdvice, isAdviceForUncoveredFile(coveredFiles))
+    return Stream.filter(fallbackAdvice, (advice) => {
+      const isNotFileLevel = advice.level !== "file"
+      const isUncoveredFile = !HashSet.has(coveredFiles, advice.location.path)
+
+      return isNotFileLevel || isUncoveredFile
+    })
   }
 
 /**

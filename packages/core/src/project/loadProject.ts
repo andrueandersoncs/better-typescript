@@ -158,24 +158,15 @@ const discoverConfig: (
   return [new ProjectConfig({ configPath, rootPath, parsed: parsedConfig })]
 })
 
-const loadReference =
-  (ancestorConfigPaths: HashSet.HashSet<string>) =>
-  (
-    reference: ts.ProjectReference
-  ): Effect.Effect<ReadonlyArray<ProjectConfig>, Error> => {
-    const referencedConfigPath = ts.resolveProjectReferencePath(reference)
-
-    return discoverConfig(referencedConfigPath, ancestorConfigPaths)
-  }
-
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
   ancestorConfigPaths: HashSet.HashSet<string>
 ) {
-  const projects = yield* Effect.forEach(
-    references,
-    loadReference(ancestorConfigPaths)
-  )
+  const projects = yield* Effect.forEach(references, (reference) => {
+    const referencedConfigPath = ts.resolveProjectReferencePath(reference)
+
+    return discoverConfig(referencedConfigPath, ancestorConfigPaths)
+  })
 
   return projects.flat()
 })

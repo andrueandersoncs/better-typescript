@@ -1,3 +1,4 @@
+import { Array } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location"
@@ -5,8 +6,7 @@ import { Location, toRelativeFileName } from "@better-typescript/core/engine/loc
 import {
   commentText,
   isJsDocComment,
-  sourceComments,
-  type SourceComment
+  sourceComments
 } from "./support/comments.js"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -24,9 +24,14 @@ const hint =
 const becauseWord =
   /(?<![\p{L}\p{M}\p{N}\p{Pc}])because(?![\p{L}\p{M}\p{N}\p{Pc}])/iu
 
-const lacksBecause =
-  (text: string) =>
-  (comment: SourceComment): boolean => {
+const commentsWithoutBecause = (
+  context: CheckContext
+): ReadonlyArray<Detection> => {
+  const sourceFile = context.sourceFile
+  const text = sourceFile.getFullText()
+  const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
+  const comments = sourceComments(sourceFile)
+  const missingBecause = Array.filter(comments, (comment) => {
     const isJsDoc = isJsDocComment(text)(comment)
     const textOfComment = commentText(text)(comment)
     const hasBecause = becauseWord.test(textOfComment)
@@ -34,12 +39,9 @@ const lacksBecause =
     const isMissingBecause = !hasBecause
 
     return [isNotJsDoc, isMissingBecause].every(Boolean)
-  }
+  })
 
-const detectionAtComment =
-  (sourceFile: ts.SourceFile) =>
-  (fileName: string) =>
-  (comment: SourceComment): Detection => {
+  return Array.map(missingBecause, (comment) => {
     const position = sourceFile.getLineAndCharacterOfPosition(comment.pos)
     const location = new Location({
       path: fileName,
@@ -48,18 +50,7 @@ const detectionAtComment =
     })
 
     return new Detection({ location, message, hint })
-  }
-
-const commentsWithoutBecause = (
-  context: CheckContext
-): ReadonlyArray<Detection> => {
-  const sourceFile = context.sourceFile
-  const text = sourceFile.getFullText()
-  const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
-  const comments = sourceComments(sourceFile)
-  const missingBecause = comments.filter(lacksBecause(text))
-
-  return missingBecause.map(detectionAtComment(sourceFile)(fileName))
+  })
 }
 
 export const requireBecauseInComments: Check = fileCheck(commentsWithoutBecause)

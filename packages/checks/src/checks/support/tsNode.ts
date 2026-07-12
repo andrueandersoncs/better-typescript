@@ -1,4 +1,4 @@
-import { HashSet, Option, pipe } from "effect"
+import { Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
@@ -12,10 +12,11 @@ export type ReturnTypeDeclaration =
   | ts.FunctionTypeNode
   | ts.GetAccessorDeclaration
 
-const fallbackToNode = (node: ts.Node) => (): ts.Node => node
-
 export const namedDetectionTarget = (node: ts.NamedDeclaration): ts.Node =>
-  pipe(Option.fromNullable(node.name), Option.getOrElse(fallbackToNode(node)))
+  pipe(
+    Option.fromNullable(node.name),
+    Option.getOrElse(Function.constant(node))
+  )
 
 export const isFunctionInitializer = (
   node: ts.Node

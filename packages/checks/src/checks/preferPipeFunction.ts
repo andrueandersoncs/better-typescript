@@ -13,20 +13,8 @@ import {
 const isPipeName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "pipe"
 
-// Rewrite only Effect's Pipeable.pipe because Node streams and RxJS observables retain different pipe semantics.
-const isEffectPipeAccess =
-  (checker: ts.TypeChecker) =>
-  (access: ts.PropertyAccessExpression): boolean => {
-    const symbol = checker.getSymbolAtLocation(access.name)
-
-    return pipe(
-      Option.fromNullable(symbol),
-      Option.exists(symbolDeclaredInEffectPackage)
-    )
-  }
-
 const pipeMethodCallMatches = (context: CheckContext) => {
-  const isEffectPipe = isEffectPipeAccess(context.checker)
+  const checker = context.checker
   const match = detection(context)
 
   const matches = (
@@ -37,7 +25,15 @@ const pipeMethodCallMatches = (context: CheckContext) => {
         callExpression.expression
       ),
       Option.filter(isPipeName),
-      Option.filter(isEffectPipe),
+      // Rewrite only Effect's Pipeable.pipe because Node streams and RxJS observables retain different pipe semantics.
+      Option.filter((access) => {
+        const symbol = checker.getSymbolAtLocation(access.name)
+
+        return pipe(
+          Option.fromNullable(symbol),
+          Option.exists(symbolDeclaredInEffectPackage)
+        )
+      }),
       Option.map((access) =>
         match({
           node: access.name,

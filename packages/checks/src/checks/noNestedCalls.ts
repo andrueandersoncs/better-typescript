@@ -6,7 +6,6 @@ import { callArguments, isCallLikeExpression } from "./support/tsSignature.js"
 import type { CallLikeExpression } from "./support/tsSignature.js"
 import { hasCallSignature } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
-import type { MakeDetection } from "@better-typescript/core/engine/location"
 import type { Check, CheckContext } from "@better-typescript/core/engine/check"
 import type { Detection } from "@better-typescript/core/engine/location"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
@@ -39,31 +38,20 @@ const valueForwardingKinds = HashSet.make(
   ts.SyntaxKind.TemplateExpression
 )
 
-const consumesAsArgument =
-  (node: ts.Node) =>
-  (call: CallLikeExpression): boolean =>
-    callArguments(call).some(isSameNode(node))
-
 const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   const parent = node.parent
   const isCallLike = isCallLikeExpression(parent)
 
   if (isCallLike) {
-    return Option.liftPredicate(consumesAsArgument(node))(parent)
+    return Option.liftPredicate((call: CallLikeExpression) =>
+      callArguments(call).some(isSameNode(node))
+    )(parent)
   }
 
   const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)
 
   return isForwarding ? consumingCall(node.parent) : Option.none()
 }
-
-const calleeDisplayText =
-  (sourceFile: ts.SourceFile) =>
-  (call: CallLikeExpression): string => {
-    const calleeText = call.expression.getText(sourceFile)
-
-    return ts.isNewExpression(call) ? `new ${calleeText}` : calleeText
-  }
 
 const ruleHint =
   "A call whose result feeds another call hides a sequence of steps in one expression " +
@@ -72,58 +60,52 @@ const ruleHint =
   "pipe. Calls that return functions stay inline: currying and pipe stages read " +
   "left-to-right."
 
-type ProducesCallable = (call: CallLikeExpression) => boolean
-type CalleeText = (call: CallLikeExpression) => string
-
-const consumerDetection =
-  (producesCallable: ProducesCallable) =>
-  (calleeText: CalleeText) =>
-  (match: MakeDetection) =>
-  (call: CallLikeExpression) =>
-  (consumer: CallLikeExpression): Option.Option<Detection> => {
-    if (producesCallable(call)) {
-      return Option.none()
-    }
-
-    const callerExpression = consumer.expression
-    const callerName = ts.isIdentifier(callerExpression)
-      ? callerExpression.text
-      : undefined
-    const isPipeName = callerName === "pipe"
-    const isCallConsumer = ts.isCallExpression(consumer)
-    const isFirstArg = callArguments(consumer)[0] === call
-    const isPipeCall = isPipeName && isFirstArg
-    const isPipeFirstArg = isCallConsumer && isPipeCall
-
-    if (isPipeFirstArg) {
-      return Option.none()
-    }
-
-    const callText = calleeText(call)
-    const consumerText = calleeText(consumer)
-    const ruleMatch = match({
-      node: call,
-      message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
-      hint: ruleHint
-    })
-
-    return Option.some(ruleMatch)
-  }
-
 const nestedCallMatches = (context: CheckContext) => {
   const checker = context.checker
   const producesCallable = flow(
     (call: CallLikeExpression) => checker.getTypeAtLocation(call),
     hasCallSignature(checker)
   )
-  const calleeText = calleeDisplayText(context.sourceFile)
+  const sourceFile = context.sourceFile
   const match = detection(context)
-  const consumerMatch = consumerDetection(producesCallable)(calleeText)(match)
+  const calleeText = (target: CallLikeExpression): string => {
+    const text = target.expression.getText(sourceFile)
+
+    return ts.isNewExpression(target) ? `new ${text}` : text
+  }
 
   const matches = (call: CallLikeExpression): ReadonlyArray<Detection> =>
     pipe(
       consumingCall(call),
-      Option.flatMap(consumerMatch(call)),
+      Option.flatMap((consumer) => {
+        if (producesCallable(call)) {
+          return Option.none()
+        }
+
+        const callerExpression = consumer.expression
+        const callerName = ts.isIdentifier(callerExpression)
+          ? callerExpression.text
+          : undefined
+        const isPipeName = callerName === "pipe"
+        const isCallConsumer = ts.isCallExpression(consumer)
+        const isFirstArg = callArguments(consumer)[0] === call
+        const isPipeCall = isPipeName && isFirstArg
+        const isPipeFirstArg = isCallConsumer && isPipeCall
+
+        if (isPipeFirstArg) {
+          return Option.none()
+        }
+
+        const callText = calleeText(call)
+        const consumerText = calleeText(consumer)
+        const ruleMatch = match({
+          node: call,
+          message: `Avoid computing ${callText} inline in the arguments of ${consumerText}.`,
+          hint: ruleHint
+        })
+
+        return Option.some(ruleMatch)
+      }),
       Option.toArray
     )
 
