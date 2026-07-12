@@ -38,3 +38,11 @@ function bareReturn(active: boolean): void {
     return
   }
 }
+
+function ternaryBothNonLiteral(left: boolean, right: boolean): boolean {
+  return left ? right : left
+}
+
+function ternarySameLiterals(flag: boolean): boolean {
+  return flag ? true : true
+}

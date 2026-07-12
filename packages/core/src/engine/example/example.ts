@@ -45,7 +45,7 @@ const readDirectoryEntries = (
 const directoryExists = (absolutePath: string): boolean => {
   const exists = fs.existsSync(absolutePath)
 
-  return exists ? fs.statSync(absolutePath).isDirectory() : false
+  return exists && fs.statSync(absolutePath).isDirectory()
 }
 
 const collectTypeScriptFiles: (
@@ -65,8 +65,8 @@ const collectTypeScriptFiles: (
     const typescript = entry.name.endsWith(".ts")
     const declaration = entry.name.endsWith(".d.ts")
     const notDeclaration = !declaration
-    const isSource = typescript ? notDeclaration : false
-    const keep = entry.isFile() ? isSource : false
+    const isSource = typescript && notDeclaration
+    const keep = entry.isFile() && isSource
 
     return Effect.succeed(keep ? [absolute] : [])
   })
@@ -144,7 +144,7 @@ export const loadRefactorExamplesAt: (
     const goodRoot = path.join(pairRoot, "good")
     const hasBad = directoryExists(badRoot)
     const hasGood = directoryExists(goodRoot)
-    const complete = hasBad ? hasGood : false
+    const complete = hasBad && hasGood
 
     return complete ? [entry.name] : []
   })

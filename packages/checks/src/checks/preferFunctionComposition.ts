@@ -143,11 +143,11 @@ const functionCompositionMatches = (context: CheckContext) => {
           const seedOnly = isSeedIdentifier(name)(returned)
           const singleReference = referenceCount === 1
           const tower = isUnaryCallTowerOver(name)(returned)
-          const threaded = singleReference ? tower : false
+          const threaded = singleReference && tower
+          const keepThreaded = !seedOnly
 
-          yield* Option.liftPredicate((value: boolean) => value)(
-            seedOnly ? false : threaded
-          )
+          yield* Option.liftPredicate((value: boolean) => value)(keepThreaded)
+          yield* Option.liftPredicate((value: boolean) => value)(threaded)
 
           return match({
             node: body,

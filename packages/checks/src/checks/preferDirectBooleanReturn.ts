@@ -46,21 +46,101 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
     Option.exists(isFalseKeyword)
   )
 
-type BooleanReturnTarget = ts.IfStatement | ts.Block
+type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
-const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget =>
-  ts.isIfStatement(node) || ts.isBlock(node)
+const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {
+  const conditions = [
+    ts.isIfStatement(node),
+    ts.isBlock(node),
+    ts.isConditionalExpression(node)
+  ]
+
+  return Array.some(conditions, Boolean)
+}
 
 const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = [
   ts.SyntaxKind.IfStatement,
-  ts.SyntaxKind.Block
+  ts.SyntaxKind.Block,
+  ts.SyntaxKind.ConditionalExpression
 ]
+
+const andFalseHint =
+  "Use && instead of branching to false (`cond && value`). When the false " +
+  "branch is the then-arm (`cond ? false : value`), negate the condition into " +
+  "a named boolean first so `!` and `&&` are not stacked in one expression."
 
 const booleanReturnMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
 
+  const literalBranchMatch = (
+    node: ts.Node,
+    condition: ts.Expression,
+    literalValue: boolean
+  ): Detection => {
+    const conditionText = condition.getText(sourceFile)
+
+    const returnExpression = literalValue
+      ? `(${conditionText})`
+      : `!(${conditionText})`
+
+    const literalText = String(literalValue)
+
+    return match({
+      node,
+      message: `Avoid returning ${literalText} from a conditional branch.`,
+      hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
+    })
+  }
+
+  const andFalseMatch = (node: ts.Node): Detection =>
+    match({
+      node,
+      message: "Avoid conditional return followed by return false.",
+      hint: andFalseHint
+    })
+
   const matches = (node: BooleanReturnTarget): ReadonlyArray<Detection> => {
+    if (ts.isConditionalExpression(node)) {
+      const whenTrue = unwrapExpression(node.whenTrue)
+      const whenFalse = unwrapExpression(node.whenFalse)
+      const trueLiteral = booleanLiteralValue(whenTrue)
+      const falseLiteral = booleanLiteralValue(whenFalse)
+
+      const bothLiteral = pipe(
+        Option.all({ trueLiteral, falseLiteral }),
+        Option.filter(
+          ({ trueLiteral, falseLiteral }) => trueLiteral !== falseLiteral
+        ),
+        Option.map(({ trueLiteral }) =>
+          literalBranchMatch(node, node.condition, trueLiteral)
+        )
+      )
+
+      const falseElseDetection = andFalseMatch(node)
+
+      const falseElseArm = pipe(
+        Option.some(whenFalse),
+        Option.filter(isFalseKeyword),
+        Option.filter(() => isNonBooleanLiteral(whenTrue)),
+        Option.as(falseElseDetection)
+      )
+
+      const falseThenDetection = andFalseMatch(node)
+
+      const falseThenArm = pipe(
+        Option.some(whenTrue),
+        Option.filter(isFalseKeyword),
+        Option.filter(() => isNonBooleanLiteral(whenFalse)),
+        Option.as(falseThenDetection)
+      )
+
+      return pipe(
+        Option.firstSomeOf([bothLiteral, falseElseArm, falseThenArm]),
+        Option.toArray
+      )
+    }
+
     if (ts.isIfStatement(node)) {
       return pipe(
         Option.gen(function* () {
@@ -78,21 +158,9 @@ const booleanReturnMatches = (context: CheckContext) => {
 
           return yield* booleanLiteralValue(expression)
         }),
-        Option.map((literalValue) => {
-          const conditionText = node.expression.getText(sourceFile)
-
-          const returnExpression = literalValue
-            ? `(${conditionText})`
-            : `!(${conditionText})`
-
-          const literalText = String(literalValue)
-
-          return match({
-            node,
-            message: `Avoid returning ${literalText} from a conditional branch.`,
-            hint: `Use the condition as the boolean value instead: return ${returnExpression}.`
-          })
-        }),
+        Option.map((literalValue) =>
+          literalBranchMatch(node, node.expression, literalValue)
+        ),
         Option.toArray
       )
     }
@@ -122,11 +190,7 @@ const booleanReturnMatches = (context: CheckContext) => {
             yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
             yield* Option.filter(nextStatement, isFalseLiteralReturn)
 
-            return match({
-              node: ifStatement,
-              message: "Avoid conditional return followed by return false.",
-              hint: "Return a boolean expression using && instead of branching to return false."
-            })
+            return andFalseMatch(ifStatement)
           })
         )
       )

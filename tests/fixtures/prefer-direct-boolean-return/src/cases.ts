@@ -33,3 +33,19 @@ function bracelessTrue(n: number): boolean {
   if (n === 0) return true
   return false
 }
+
+function ternaryTrueFalse(n: number): boolean {
+  return n > 0 ? true : false
+}
+
+function ternaryFalseTrue(size: number): boolean {
+  return size > 0 ? false : true
+}
+
+function ternaryValueElseFalse(flag: boolean, value: boolean): boolean {
+  return flag ? value : false
+}
+
+function ternaryFalseThenValue(flag: boolean, value: boolean): boolean {
+  return flag ? false : value
+}

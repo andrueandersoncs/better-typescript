@@ -20,6 +20,11 @@ const fixturePath = path.join(
   "prefer-direct-boolean-return"
 )
 
+const andFalseHint =
+  "Use && instead of branching to false (`cond && value`). When the false " +
+  "branch is the then-arm (`cond ? false : value`), negate the condition into " +
+  "a named boolean first so `!` and `&&` are not stacked in one expression."
+
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "passesThrough.if",
@@ -27,7 +32,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 4,
     column: 3,
     message: "Avoid conditional return followed by return false.",
-    hint: "Return a boolean expression using && instead of branching to return false."
+    hint: andFalseHint
   },
   {
     name: "compareReturned.if",
@@ -35,7 +40,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 19,
     column: 3,
     message: "Avoid conditional return followed by return false.",
-    hint: "Return a boolean expression using && instead of branching to return false."
+    hint: andFalseHint
   },
   {
     name: "returnTrue.if",
@@ -76,6 +81,38 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 3,
     message: "Avoid returning true from a conditional branch.",
     hint: "Use the condition as the boolean value instead: return (n === 0)."
+  },
+  {
+    name: "ternaryTrueFalse.conditional",
+    fileName: "src/cases.ts",
+    line: 38,
+    column: 10,
+    message: "Avoid returning true from a conditional branch.",
+    hint: "Use the condition as the boolean value instead: return (n > 0)."
+  },
+  {
+    name: "ternaryFalseTrue.conditional",
+    fileName: "src/cases.ts",
+    line: 42,
+    column: 10,
+    message: "Avoid returning false from a conditional branch.",
+    hint: "Use the condition as the boolean value instead: return !(size > 0)."
+  },
+  {
+    name: "ternaryValueElseFalse.conditional",
+    fileName: "src/cases.ts",
+    line: 46,
+    column: 10,
+    message: "Avoid conditional return followed by return false.",
+    hint: andFalseHint
+  },
+  {
+    name: "ternaryFalseThenValue.conditional",
+    fileName: "src/cases.ts",
+    line: 50,
+    column: 10,
+    message: "Avoid conditional return followed by return false.",
+    hint: andFalseHint
   }
 ]
 
@@ -97,6 +134,18 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 37,
     column: 3
+  },
+  {
+    name: "ternaryBothNonLiteral.conditional",
+    fileName: "src/allowed.ts",
+    line: 43,
+    column: 10
+  },
+  {
+    name: "ternarySameLiterals.conditional",
+    fileName: "src/allowed.ts",
+    line: 47,
+    column: 10
   }
 ]
 
