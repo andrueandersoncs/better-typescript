@@ -163,12 +163,8 @@ check-to-check dependencies.
 
 ```ts
 import { Stream, pipe } from "effect"
-import {
-  Advice,
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "better-typescript/engine/derive"
+import { Advice } from "better-typescript/engine/derive/data"
+import { adviceLocation, deriveSignals, evidenceItem } from "better-typescript/engine/derive"
 import type { Detection } from "better-typescript/engine/location"
 import {
   exampleSnippet,

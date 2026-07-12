@@ -6,10 +6,11 @@ import {
 } from "./support/tsNode.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
 import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
-import type { Check, CheckContext, Subscription } from "@better-typescript/core/engine/check"
-import type { Detection } from "@better-typescript/core/engine/location"
-import type { ProgramContext } from "@better-typescript/core/engine/sources"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
+import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
+import type { Check } from "@better-typescript/core/engine/check"
+import type { Detection } from "@better-typescript/core/engine/location/data"
+import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import {
   fixtureRefactorExamples

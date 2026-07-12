@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { noMonomorphicStructGet } from "@better-typescript/checks/noMonomorphicStructGet"
-import type { Detection } from "@better-typescript/core/engine/location"
+import { Detection } from "@better-typescript/core/engine/location/data"
 import { runCheckOnProject } from "@better-typescript/core/engine/report"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import {

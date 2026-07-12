@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import type { LoadedProject } from "@better-typescript/core/project/loadProject"
+import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
 import { checkableSourceFiles } from "@better-typescript/core/engine/sources"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))

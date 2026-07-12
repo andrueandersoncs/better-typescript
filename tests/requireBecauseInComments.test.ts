@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import { requireBecauseInComments } from "@better-typescript/checks/requireBecauseInComments"
-import type { Detection } from "@better-typescript/core/engine/location"
+import type { Detection } from "@better-typescript/core/engine/location/data"
 import { runCheckOnProject } from "@better-typescript/core/engine/report"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import {

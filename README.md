@@ -267,12 +267,8 @@ available through `signalOf(signals)(name)`.
 ```ts
 import { Stream, pipe } from "effect"
 import type { Detection } from "@better-typescript/core/engine/location"
-import {
-  Advice,
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice } from "@better-typescript/core/engine/derive/data"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import {
   makeWiring,
   signalOf,

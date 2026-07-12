@@ -8,10 +8,10 @@ import { pipelineHostile } from "@better-typescript/checks/pipelineHostile"
 import { ruleDominance } from "@better-typescript/checks/ruleDominance"
 import { sideEffectLaundering } from "@better-typescript/checks/sideEffectLaundering"
 import { systemicHotspots } from "@better-typescript/checks/systemicHotspots"
-import { Location } from "@better-typescript/core/engine/location"
-import { NamedDetection } from "@better-typescript/core/engine/derive"
-import type { Advice } from "@better-typescript/core/engine/derive"
-import { Detection } from "@better-typescript/core/engine/location"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { Advice } from "@better-typescript/core/engine/derive/data"
+import { Detection } from "@better-typescript/core/engine/location/data"
 
 function signalAt(path: string, line: number, data?: unknown): Detection {
   return new Detection({

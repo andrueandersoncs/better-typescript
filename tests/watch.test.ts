@@ -15,47 +15,19 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import { Location, locateNode } from "@better-typescript/core/engine/location"
-import {
-  AdviceReportKey,
-  namedCheck,
-  ReportBlock,
-  reportBlocksFromWiring,
-  RuleReportKey,
-  Signal,
-  type NamedCheck,
-  type ReportKey,
-  type Wiring
-} from "@better-typescript/core/engine/report"
-import {
-  exampleSnippet,
-  refactorExample
-} from "@better-typescript/core/engine/example"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { locateNode } from "@better-typescript/core/engine/location"
+import { AdviceReportKey, ReportBlock, RuleReportKey, Signal, type NamedCheck, type ReportKey, type Wiring } from "@better-typescript/core/engine/report/data"
+import { namedCheck, reportBlocksFromWiring } from "@better-typescript/core/engine/report"
+import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { checkFromSubscriptions, nodeSubscription, type Check } from "@better-typescript/core/engine/check"
-import { Detection } from "@better-typescript/core/engine/location"
-import {
-  astNodes,
-  contextFor,
-  diffCheckableFiles
-} from "@better-typescript/core/engine/sources"
-import type { Advice } from "@better-typescript/core/engine/derive"
-import {
-  ClearedEvent,
-  EmptyReportEvent,
-  SignalEvent,
-  WorkspaceUpdate,
-  reportBlockUpdates,
-  blockDelta,
-  blockDeltas,
-  renderEventText,
-  reportEventsFromWiring,
-  signalUpdates,
-  signalsEquivalence,
-  watchReportFromWiring,
-  type ReportEvent
-} from "@better-typescript/core/engine/watch"
+import { Detection } from "@better-typescript/core/engine/location/data"
+import { astNodes, contextFor, diffCheckableFiles } from "@better-typescript/core/engine/sources"
+import type { Advice } from "@better-typescript/core/engine/derive/data"
+import { ClearedEvent, EmptyReportEvent, SignalEvent, WorkspaceUpdate, type ReportEvent } from "@better-typescript/core/engine/watch/data"
+import { reportBlockUpdates, blockDelta, blockDeltas, renderEventText, reportEventsFromWiring, signalUpdates, signalsEquivalence, watchReportFromWiring } from "@better-typescript/core/engine/watch"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
-import type { LoadedProject } from "@better-typescript/core/project/loadProject"
+import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")

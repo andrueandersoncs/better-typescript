@@ -1,16 +1,18 @@
 import { Array, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "@better-typescript/core/engine/check"
-import { Detection } from "@better-typescript/core/engine/location"
-import { Location, toRelativeFileName } from "@better-typescript/core/engine/location"
+import { Detection } from "@better-typescript/core/engine/location/data"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import {
   commentText,
   isJsDocComment,
   sourceComments,
   type SourceComment
 } from "./support/comments.js"
-import type { Check, CheckContext } from "@better-typescript/core/engine/check"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example"
+import type { CheckContext } from "@better-typescript/core/engine/check/data"
+import type { Check } from "@better-typescript/core/engine/check"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import {
   fixtureRefactorExamples

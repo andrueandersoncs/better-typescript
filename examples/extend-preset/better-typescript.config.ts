@@ -1,17 +1,11 @@
 import { Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
-import { detection, type Detection } from "@better-typescript/core/engine/location"
-import {
-  Advice,
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
-import {
-  exampleSnippet,
-  refactorExample
-} from "@better-typescript/core/engine/example"
+import { type Detection } from "@better-typescript/core/engine/location/data"
+import { detection } from "@better-typescript/core/engine/location"
+import { Advice } from "@better-typescript/core/engine/derive/data"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { makeWiring, namedCheck, signalOf } from "@better-typescript/core/engine/report"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 

@@ -1,12 +1,7 @@
 import { Array, Stream } from "effect"
-import {
-  Advice,
-  adviceLocation,
-  byFile,
-  collidingLines,
-  deriveSignals
-} from "@better-typescript/core/engine/derive"
-import type { NamedDetection } from "@better-typescript/core/engine/derive"
+import { Advice } from "@better-typescript/core/engine/derive/data"
+import { adviceLocation, byFile, collidingLines, deriveSignals } from "@better-typescript/core/engine/derive"
+import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 
 const collidingFileAdvice = (
   signals: ReadonlyArray<NamedDetection>

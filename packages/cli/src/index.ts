@@ -3,12 +3,8 @@ import * as path from "node:path"
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Console, Effect, Function, Option, Stream, flow, pipe } from "effect"
-import {
-  reportEventsFromWiring,
-  renderEventText,
-  watchReportFromWiring
-} from "@better-typescript/core/engine/watch"
-import type { ReportEvent } from "@better-typescript/core/engine/watch"
+import { reportEventsFromWiring, renderEventText, watchReportFromWiring } from "@better-typescript/core/engine/watch"
+import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import { loadWiring } from "@better-typescript/core/project/loadWiring"
@@ -34,11 +30,7 @@ const watch = pipe(
   )
 )
 
-interface WatchCommandOptions {
-  readonly project: string
-  readonly pretty: boolean
-  readonly watch: boolean
-}
+import type { WatchCommandOptions } from "./data.js"
 
 const setErrorExitCode = (): number => {
   process.exitCode = 2

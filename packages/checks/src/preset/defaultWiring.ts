@@ -1,12 +1,12 @@
 import { Array, Effect, Stream, Struct, pipe } from "effect"
 import { highSignalDensity } from "../checks/highSignalDensity.js"
-import { hotSubsystem } from "../checks/hotSubsystem.js"
-import { imperativeStateManager } from "../checks/imperativeStateManager.js"
-import { pipelineHostile } from "../checks/pipelineHostile.js"
+import { hotSubsystem } from "../checks/hotSubsystem/hotSubsystem.js"
+import { imperativeStateManager } from "../checks/imperativeStateManager/imperativeStateManager.js"
+import { pipelineHostile } from "../checks/pipelineHostile/pipelineHostile.js"
 import { ruleDominance } from "../checks/ruleDominance.js"
 import { sideEffectLaundering } from "../checks/sideEffectLaundering.js"
-import { systemicHotspots } from "../checks/systemicHotspots.js"
-import { preferCurriedDataLastFunctions, preferCurriedDataLastFunctionsExamples } from "../checks/preferCurriedDataLastFunctions.js"
+import { systemicHotspots } from "../checks/systemicHotspots/systemicHotspots.js"
+import { preferCurriedDataLastFunctions, preferCurriedDataLastFunctionsExamples } from "../checks/preferCurriedDataLastFunctions/preferCurriedDataLastFunctions.js"
 import { noAbstractClasses, noAbstractClassesExamples } from "../checks/noAbstractClasses.js"
 import { noArraySpread, noArraySpreadExamples } from "../checks/noArraySpread.js"
 import { noAsyncFunctions, noAsyncFunctionsExamples } from "../checks/noAsyncFunctions.js"
@@ -38,7 +38,7 @@ import { noNonNullAssertion, noNonNullAssertionExamples } from "../checks/noNonN
 import { noRawObjectTypes, noRawObjectTypesExamples } from "../checks/noRawObjectTypes.js"
 import { noReexport, noReexportExamples } from "../checks/noReexport.js"
 import { noRootLevelClasses, noRootLevelClassesExamples } from "../checks/noRootLevelClasses.js"
-import { noSingleUseCallee, noSingleUseCalleeExamples } from "../checks/noSingleUseCallee.js"
+import { noSingleUseCallee, noSingleUseCalleeExamples } from "../checks/noSingleUseCallee/noSingleUseCallee.js"
 import { noSwitchStatements, noSwitchStatementsExamples } from "../checks/noSwitchStatements.js"
 import { noThrow, noThrowExamples } from "../checks/noThrow.js"
 import { noTryCatch, noTryCatchExamples } from "../checks/noTryCatch.js"
@@ -47,6 +47,7 @@ import { noVoidFunctions, noVoidFunctionsExamples } from "../checks/noVoidFuncti
 import { requireBecauseInComments, requireBecauseInCommentsExamples } from "../checks/requireBecauseInComments.js"
 import { preferConditionalReturn, preferConditionalReturnExamples } from "../checks/preferConditionalReturn.js"
 import { preferDataLastModule, preferDataLastModuleExamples } from "../checks/preferDataLastModule.js"
+import { preferDedicatedDataStructureFiles, preferDedicatedDataStructureFilesExamples } from "../checks/preferDedicatedDataStructureFiles.js"
 import { preferDirectBooleanReturn, preferDirectBooleanReturnExamples } from "../checks/preferDirectBooleanReturn.js"
 import { preferEffectArray, preferEffectArrayExamples } from "../checks/preferEffectArray.js"
 import { preferEffectArrayAppendAll, preferEffectArrayAppendAllExamples } from "../checks/preferEffectArrayAppendAll.js"
@@ -63,15 +64,10 @@ import { preferHashSet, preferHashSetExamples } from "../checks/preferHashSet.js
 import { preferImplicitReturn, preferImplicitReturnExamples } from "../checks/preferImplicitReturn.js"
 import { preferOptionMatch, preferOptionMatchExamples } from "../checks/preferOptionMatch.js"
 import { preferPipeFunction, preferPipeFunctionExamples } from "../checks/preferPipeFunction.js"
-import {
-  filterFallbackAdviceForUncoveredFiles,
-  namedCheck,
-  signalOf,
-  silentCheck
-} from "@better-typescript/core/engine/report"
-import type { NamedCheck, Signal, Wiring } from "@better-typescript/core/engine/report"
+import { filterFallbackAdviceForUncoveredFiles, namedCheck, signalOf, silentCheck } from "@better-typescript/core/engine/report"
+import type { NamedCheck, Signal, Wiring } from "@better-typescript/core/engine/report/data"
 import { collectSignals, namedDetection } from "@better-typescript/core/engine/derive"
-import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive"
+import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 
 const nameDetections = (
   signal: Signal
@@ -100,6 +96,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = [
   namedCheck("prefer-effect-array", preferEffectArray, preferEffectArrayExamples),
   namedCheck("prefer-effect-array-append-all", preferEffectArrayAppendAll, preferEffectArrayAppendAllExamples),
   namedCheck("prefer-data-last-module", preferDataLastModule, preferDataLastModuleExamples),
+  namedCheck("prefer-dedicated-data-structure-files", preferDedicatedDataStructureFiles, preferDedicatedDataStructureFilesExamples),
   namedCheck("prefer-conditional-return", preferConditionalReturn, preferConditionalReturnExamples),
   namedCheck("prefer-direct-boolean-return", preferDirectBooleanReturn, preferDirectBooleanReturnExamples),
   namedCheck("prefer-implicit-return", preferImplicitReturn, preferImplicitReturnExamples),

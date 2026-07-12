@@ -2,10 +2,10 @@ import * as assert from "node:assert/strict"
 import { test } from "node:test"
 import { Chunk, Effect, Stream } from "effect"
 import { defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
-import { Detection } from "@better-typescript/core/engine/location"
-import type { Advice } from "@better-typescript/core/engine/derive"
-import { Location } from "@better-typescript/core/engine/location"
-import { Signal } from "@better-typescript/core/engine/report"
+import { Detection } from "@better-typescript/core/engine/location/data"
+import type { Advice } from "@better-typescript/core/engine/derive/data"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { Signal } from "@better-typescript/core/engine/report/data"
 
 const range = (count: number): ReadonlyArray<number> =>
   Array.from({ length: count }, (_, index) => index + 1)

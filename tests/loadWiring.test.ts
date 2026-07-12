@@ -4,9 +4,11 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
-import { reportFromWiring, type Wiring } from "@better-typescript/core/engine/report"
+import { type Wiring } from "@better-typescript/core/engine/report/data"
+import { reportFromWiring } from "@better-typescript/core/engine/report"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { loadWiring, ProjectWiringError } from "@better-typescript/core/project/loadWiring"
+import { ProjectWiringError } from "@better-typescript/core/project/loadWiring/data"
+import { loadWiring } from "@better-typescript/core/project/loadWiring"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"

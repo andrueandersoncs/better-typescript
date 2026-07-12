@@ -5,30 +5,16 @@ import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { fileCheck, nodeCheck, type Check } from "@better-typescript/core/engine/check"
-import { Detection, Location, locateNode } from "@better-typescript/core/engine/location"
-import type { Advice } from "@better-typescript/core/engine/derive"
-import {
-  makeWiring,
-  namedCheck,
-  reportFromWiring,
-  runCheckOnProject,
-  signalOf,
-  silentCheck,
-  withFallbackAdvice,
-  type NamedCheck,
-  type Wiring
-} from "@better-typescript/core/engine/report"
-import {
-  exampleSnippet,
-  refactorExample
-} from "@better-typescript/core/engine/example"
+import { Detection, Location } from "@better-typescript/core/engine/location/data"
+import { locateNode } from "@better-typescript/core/engine/location"
+import type { Advice } from "@better-typescript/core/engine/derive/data"
+import { type NamedCheck, type Wiring } from "@better-typescript/core/engine/report/data"
+import { makeWiring, namedCheck, reportFromWiring, runCheckOnProject, signalOf, silentCheck, withFallbackAdvice } from "@better-typescript/core/engine/report"
+import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { report } from "@better-typescript/checks/preset"
 import { astNodes } from "@better-typescript/core/engine/sources"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import type {
-  LoadedProject,
-  LoadedWorkspace
-} from "@better-typescript/core/project/loadProject"
+import type { LoadedProject, LoadedWorkspace } from "@better-typescript/core/project/loadProject/data"
 
 
 const probeExamples = [

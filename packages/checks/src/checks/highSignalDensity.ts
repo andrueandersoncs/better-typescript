@@ -1,14 +1,7 @@
 import { Array, Stream, pipe } from "effect"
-import {
-  Advice,
-  adviceLocation,
-  byFile,
-  countSummary,
-  deriveSignals,
-  evidenceFromCounts,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
-import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive"
+import { Advice } from "@better-typescript/core/engine/derive/data"
+import { adviceLocation, byFile, countSummary, deriveSignals, evidenceFromCounts, evidenceItem } from "@better-typescript/core/engine/derive"
+import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
 
 const densityAdvice = (file: FileDetections): Advice => {
   const summary = countSummary(file.elements)
