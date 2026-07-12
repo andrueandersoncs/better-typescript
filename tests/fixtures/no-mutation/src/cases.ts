@@ -31,3 +31,14 @@ export const overwriteParameter = (value: number): number => (value = 0)
 Error.prototype.name = "Failure"
 
 export const useLabel = (): string => label
+
+// Type-parameter receivers must not crash type inspection (Effect Struct.evolve).
+export const writeGenericField = <O extends Record<string, number>>(
+  obj: O,
+  key: keyof O & string,
+  value: number
+): O => {
+  const out = { ...obj }
+  out[key] = value
+  return out
+}

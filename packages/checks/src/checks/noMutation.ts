@@ -15,6 +15,7 @@ import {
   isProjectFile,
   unwrapExpression
 } from "./support/tsNode.js"
+import { isUnseenType } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
@@ -115,29 +116,50 @@ const resolveAlias =
     return isAlias ? checker.getAliasedSymbol(symbol) : symbol
   }
 
-const isUncontrolledType =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): boolean => {
-    const withoutNullability = checker.getNonNullableType(type)
+// Avoid checker.getNonNullableType because it stack-overflows on Effect type parameters like Struct.evolve's O.
+const nullishTypeFlags =
+  ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
 
-    // Exempt a union only when every member is uncontrolled because any member can occur at runtime.
-    if (withoutNullability.isUnion()) {
-      return Array.every(withoutNullability.types, isUncontrolledType(checker))
-    }
+const isNullishType = (type: ts.Type): boolean =>
+  (type.flags & nullishTypeFlags) !== 0
 
-    if (withoutNullability.isIntersection()) {
-      return Array.some(withoutNullability.types, isUncontrolledType(checker))
-    }
+const emptyTypeSeen: HashSet.HashSet<ts.Type> = HashSet.empty()
 
-    // Prefer getSymbol because aliasSymbol names only a project-local spelling, not the declaration that shaped the value.
-    const symbol =
-      withoutNullability.getSymbol() ?? withoutNullability.aliasSymbol
+const isUncontrolledTypeWithSeen =
+  (seen: HashSet.HashSet<ts.Type>) =>
+  (type: ts.Type): boolean =>
+    pipe(
+      Option.liftPredicate(isUnseenType(seen))(type),
+      Option.exists((candidate) => {
+        const nextSeen = HashSet.add(seen, candidate)
+        const checkMember = isUncontrolledTypeWithSeen(nextSeen)
 
-    return pipe(
-      Option.fromNullable(symbol),
-      Option.exists(isUncontrolledSymbol)
+        // Exempt a union only when every non-nullish member is uncontrolled because any member can occur at runtime.
+        if (candidate.isUnion()) {
+          const keepMember = Predicate.not(isNullishType)
+          const members = Array.filter(candidate.types, keepMember)
+          const relevant = members.length > 0 ? members : candidate.types
+
+          return Array.every(relevant, checkMember)
+        }
+
+        if (candidate.isIntersection()) {
+          return Array.some(candidate.types, checkMember)
+        }
+
+        // Prefer getSymbol because aliasSymbol names only a project-local spelling, not the declaration that shaped the value.
+        const ownSymbol = candidate.getSymbol()
+        const symbol = ownSymbol ?? candidate.aliasSymbol
+        const isNullish = isNullishType(candidate)
+
+        const hasUncontrolledSymbol = pipe(
+          Option.fromNullable(symbol),
+          Option.exists(isUncontrolledSymbol)
+        )
+
+        return Array.some([isNullish, hasUncontrolledSymbol], Boolean)
+      })
     )
-  }
 
 type MutationScope = "shared-state" | "local" | "builtin"
 
@@ -252,7 +274,7 @@ const mutationMatches = (context: CheckContext) => {
           if (isAccess) {
             const receiverType = checker.getTypeAtLocation(unwrapped.expression)
 
-            return isUncontrolledType(checker)(receiverType)
+            return isUncontrolledTypeWithSeen(emptyTypeSeen)(receiverType)
           }
 
           // Judge the binding declaration because an assignment rebinding x replaces the binding itself.

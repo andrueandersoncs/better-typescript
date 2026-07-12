@@ -55,7 +55,8 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   expectedSignal("logical assignment", 21, 1),
   expectedSignal("rebinding a project-declared let", 25, 1),
   expectedSignal("rebinding a parameter", 28, 63),
-  expectedSignal("mutating a built-in prototype", 31, 1)
+  expectedSignal("mutating a built-in prototype", 31, 1),
+  expectedSignal("mutating through a type-parameter receiver", 42, 3)
 ]
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
@@ -112,6 +113,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 36,
     column: 43
+  },
+  {
+    name: "nullish third-party receiver is still exempt",
+    fileName: "src/allowed.ts",
+    line: 42,
+    column: 37
   }
 ]
 
@@ -151,4 +158,5 @@ test("no-mutation classifies each signal with a mutation target", async () => {
   assert.equal(targetsByLine.get(25), "shared-state")
   assert.equal(targetsByLine.get(28), "local")
   assert.equal(targetsByLine.get(31), "builtin")
+  assert.equal(targetsByLine.get(42), "local")
 })

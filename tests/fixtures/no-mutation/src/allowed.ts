@@ -34,3 +34,9 @@ export const resetArgs = (): ReadonlyArray<string> => (ts.sys.args = [])
 declare const range: ts.TextRange
 
 export const rewindRange = (): number => (range.pos = 0)
+
+// Nullability wrappers must not change third-party exemption.
+declare const maybeRange: ts.TextRange | null
+
+export const rewindMaybeRange = (): number | undefined =>
+  maybeRange == null ? undefined : (maybeRange.pos = 0)
