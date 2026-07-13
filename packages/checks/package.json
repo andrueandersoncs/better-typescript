@@ -9,6 +9,7 @@
   "exports": {
     "./preset": "./dist/preset.js",
     "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
+    "./preset/architectureExploreWiring": "./dist/preset/architectureExploreWiring.js",
     "./fixtureExamples": "./dist/fixtureExamples.js",
     "./pipelineHostile": "./dist/checks/pipelineHostile/pipelineHostile.js",
     "./pipelineHostile/data": "./dist/checks/pipelineHostile/data.js",

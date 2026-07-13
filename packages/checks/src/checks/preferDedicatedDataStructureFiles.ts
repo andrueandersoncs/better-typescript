@@ -4,7 +4,8 @@ import { fileCheck } from "@better-typescript/core/engine/check"
 import {
   functionInitializer,
   isExtendsClause,
-  namedDetectionTarget
+  namedDetectionTarget,
+  unwrapCallee
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -33,15 +34,6 @@ const dataStructureNamespaces = HashSet.make("Schema", "Data")
 
 type DataStructureDeclaration =
   ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration
-
-const unwrapCallee = (expression: ts.Expression): ts.Expression => {
-  const call = Option.liftPredicate(ts.isCallExpression)(expression)
-
-  return Option.match(call, {
-    onNone: Function.constant(expression),
-    onSome: (node) => unwrapCallee(node.expression)
-  })
-}
 
 const propertyAccessIsDataStructure = (
   access: ts.PropertyAccessExpression

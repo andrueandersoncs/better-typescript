@@ -1,9 +1,8 @@
-import { Array, pipe, Option } from "effect"
+import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
   alwaysExitsScope,
-  hasNoElseBranch,
   unwrapSingleStatementBlock
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
@@ -17,7 +16,16 @@ import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const isGuardIfStatement = (
   statement: ts.Statement
 ): statement is ts.IfStatement =>
-  ts.isIfStatement(statement) && hasNoElseBranch(statement)
+  pipe(
+    Option.liftPredicate(ts.isIfStatement)(statement),
+    Option.exists(
+      Function.flow(
+        (ifStatement: ts.IfStatement) =>
+          Option.fromNullable(ifStatement.elseStatement),
+        Option.isNone
+      )
+    )
+  )
 
 const tokenTexts =
   (sourceFile: ts.SourceFile) =>

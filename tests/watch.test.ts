@@ -163,7 +163,7 @@ test("blockDelta emits every current block as a signal event when there is no pr
   const a = block("a", "text a", "a cleared")
   const b = block("b", "text b", "b cleared")
 
-  assert.deepEqual(blockDelta([])([a, b]), [
+  assert.deepEqual(blockDelta([a, b])([]), [
     signal("a", "text a"),
     signal("b", "text b")
   ])
@@ -174,7 +174,7 @@ test("blockDelta re-emits exactly the block whose text changed", () => {
   const b = block("b", "text b", "b cleared")
   const changedB = block("b", "text b changed", "b cleared")
 
-  assert.deepEqual(blockDelta([a, b])([a, changedB]), [
+  assert.deepEqual(blockDelta([a, changedB])([a, b]), [
     signal("b", "text b changed")
   ])
 })
@@ -183,7 +183,7 @@ test("blockDelta emits the cleared event for a removed block key", () => {
   const a = block("a", "text a", "a cleared")
   const b = block("b", "text b", "b cleared")
 
-  assert.deepEqual(blockDelta([a, b])([a]), [clearedEvent("b", "b cleared")])
+  assert.deepEqual(blockDelta([a])([a, b]), [clearedEvent("b", "b cleared")])
 })
 
 test("blockDelta emits clearances before changed and new blocks", () => {
@@ -192,7 +192,7 @@ test("blockDelta emits clearances before changed and new blocks", () => {
   const changedA = block("a", "text a changed", "a cleared")
   const c = block("c", "text c", "c cleared")
 
-  assert.deepEqual(blockDelta([a, b])([changedA, c]), [
+  assert.deepEqual(blockDelta([changedA, c])([a, b]), [
     clearedEvent("b", "b cleared"),
     signal("a", "text a changed"),
     signal("c", "text c")

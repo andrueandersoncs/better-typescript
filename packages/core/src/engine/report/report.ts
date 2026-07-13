@@ -100,6 +100,8 @@ const collectDetections =
 /**
  * Run every wired check over one consistent set of project node snapshots.
  * Effect.forEach preserves wiring order, producing a complete finite batch.
+ * @remarks Ordered finite batches are required because derivation consumes the
+ * complete signal array from one consistent snapshot.
  */
 export const workspaceSignals =
   (wiring: Wiring) =>
@@ -130,6 +132,8 @@ export const workspaceSignals =
 
 /**
  * Within one batch, derivation consumes the complete materialized signal array.
+ * @remarks Full-array input is required because advice must see every signal
+ * from the same batch, not a partial stream.
  */
 export const deriveAdvice =
   (wiring: Wiring) =>
@@ -203,6 +207,8 @@ const adviceReportBlock = (advice: Advice): ReportBlock => {
 /**
  * Keyed advice blocks in report order: file advice first, then directory, then
  * project, each sorted by path.
+ * @remarks Stable sort order is part of the report contract because consumers
+ * rely on file-then-directory-then-project presentation.
  */
 export const adviceReportBlocks = (
   advice: ReadonlyArray<Advice>
@@ -242,6 +248,8 @@ const formatRefactorExample = (example: RefactorExample): string => {
 /**
  * Keyed local detection blocks, one per distinct message and hint, groups in
  * insertion order. The key kind remains `rule` for NDJSON compatibility.
+ * @remarks The `rule` key kind is retained because existing NDJSON consumers
+ * already key local blocks that way.
  */
 export const checkReportBlocks =
   (name: string) =>
@@ -291,6 +299,8 @@ export const checkReportBlocks =
 /**
  * One batch's full keyed report: advice blocks first, then reported local
  * blocks in wiring order. Silent signals still ran and fed derivation.
+ * @remarks Silent signals stay in the batch because derivation still needs
+ * them even when they do not render.
  */
 export const reportBlocks =
   (signals: ReadonlyArray<Signal>) =>
@@ -311,6 +321,8 @@ export const reportBlocks =
 /**
  * One batch through the derivation stage into its keyed blocks; shared by the
  * snapshot report and the watch pipeline.
+ * @remarks Shared so snapshot and watch reports stay identical because both
+ * must render the same batch stages.
  */
 export const batchReportBlocks =
   (wiring: Wiring) =>
@@ -347,6 +359,8 @@ export const filterFallbackAdviceForUncoveredFiles =
  * Fallback suppression: file-level fallback advice is emitted only for files
  * where no file-level specific advice fired. Specific advice is collected once
  * and emitted before the applicable fallback advice.
+ * @remarks Suppression is required because fallback must not duplicate
+ * file-level advice that a specific rule already covered.
  */
 export const withFallbackAdvice = (
   specificAdvice: Stream.Stream<Advice, Error>,
@@ -366,6 +380,8 @@ export const withFallbackAdvice = (
 /**
  * One workspace snapshot through the batch stages the watch pipeline reuses.
  * Engine surface for callers that need keyed blocks instead of rendered text.
+ * @remarks Exposed as blocks because some callers need identities for deltas,
+ * not only rendered report text.
  */
 export const reportBlocksFromWiring =
   (wiring: Wiring) =>
@@ -381,6 +397,8 @@ export const reportBlocksFromWiring =
 /**
  * The snapshot report: one workspace snapshot through the batch stages the
  * watch pipeline reuses. Library and test surface; the CLI watches instead.
+ * @remarks Kept as a one-shot surface because library and test callers need
+ * the same batch stages without starting a watcher.
  */
 export const reportFromWiring =
   (wiring: Wiring) =>

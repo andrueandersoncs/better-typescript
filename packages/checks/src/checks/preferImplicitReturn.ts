@@ -1,7 +1,6 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import { returnedExpression } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
@@ -28,7 +27,7 @@ const implicitReturnMatches = (context: CheckContext) => {
       hasOneStatement &&
       pipe(
         Option.liftPredicate(ts.isReturnStatement)(firstStatement),
-        Option.flatMap(returnedExpression),
+        Option.flatMap((statement) => Option.fromNullable(statement.expression)),
         Option.isSome
       )
 

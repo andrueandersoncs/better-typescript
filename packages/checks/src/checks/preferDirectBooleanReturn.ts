@@ -2,8 +2,6 @@ import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
-  hasNoElseBranch,
-  lastStatement,
   unwrapExpression,
   unwrapSingleStatementBlock
 } from "./support/tsNode.js"
@@ -49,11 +47,10 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
 type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {
-  const conditions = Array.make(
-    ts.isIfStatement(node),
-    ts.isBlock(node),
-    ts.isConditionalExpression(node)
-  )
+  const ifStatement = ts.isIfStatement(node)
+  const block = ts.isBlock(node)
+  const conditionalExpression = ts.isConditionalExpression(node)
+  const conditions = Array.make(ifStatement, block, conditionalExpression)
 
   return Array.some(conditions, Boolean)
 }
@@ -170,20 +167,33 @@ const booleanReturnMatches = (context: CheckContext) => {
         Option.liftPredicate(ts.isIfStatement)(statement),
         Option.flatMap((ifStatement) =>
           Option.gen(function* () {
-            yield* Option.liftPredicate(hasNoElseBranch)(ifStatement)
+            const elseBranch = Option.fromNullable(ifStatement.elseStatement)
+            yield* Option.liftPredicate(Option.isNone)(elseBranch)
 
-            const thenBranchExpr = ts.isBlock(ifStatement.thenStatement)
-              ? pipe(
-                  lastStatement(ifStatement.thenStatement),
+            const thenStatement = ifStatement.thenStatement
+            const thenBlock = Option.liftPredicate(ts.isBlock)(thenStatement)
+
+            const thenBranchExpr = Option.match(thenBlock, {
+              onNone: () =>
+                pipe(
+                  Option.liftPredicate(ts.isReturnStatement)(thenStatement),
+                  Option.flatMap(returnStatementExpression)
+                ),
+              onSome: (block) => {
+                const blockStatements = block.statements
+                const lastIndex = blockStatements.length - 1
+
+                const lastThenStatement = Option.fromNullable(
+                  blockStatements[lastIndex]
+                )
+
+                return pipe(
+                  lastThenStatement,
                   Option.filter(ts.isReturnStatement),
                   Option.flatMap(returnStatementExpression)
                 )
-              : pipe(
-                  Option.liftPredicate(ts.isReturnStatement)(
-                    ifStatement.thenStatement
-                  ),
-                  Option.flatMap(returnStatementExpression)
-                )
+              }
+            })
 
             yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
             yield* Option.filter(nextStatement, isFalseLiteralReturn)

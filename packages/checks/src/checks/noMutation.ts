@@ -11,7 +11,6 @@ import {
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
-  declarationSourceFile,
   isProjectFile,
   unwrapExpression
 } from "./support/tsNode.js"
@@ -96,7 +95,11 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
-  const sourceFiles = Array.map(declarations, declarationSourceFile)
+
+  const sourceFiles = Array.map(declarations, (declaration) =>
+    declaration.getSourceFile()
+  )
+
   const hasDeclarations = sourceFiles.length > 0
   const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
   const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
@@ -204,11 +207,16 @@ const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const isMutationCandidate = (node: ts.Node): node is MutationNode => {
+  const isBinary = ts.isBinaryExpression(node)
+  const isPrefixUnary = ts.isPrefixUnaryExpression(node)
+  const isPostfixUnary = ts.isPostfixUnaryExpression(node)
+  const isDelete = ts.isDeleteExpression(node)
+
   const checks = Array.make(
-    ts.isBinaryExpression(node),
-    ts.isPrefixUnaryExpression(node),
-    ts.isPostfixUnaryExpression(node),
-    ts.isDeleteExpression(node)
+    isBinary,
+    isPrefixUnary,
+    isPostfixUnary,
+    isDelete
   )
 
   return Array.some(checks, Boolean)
@@ -233,7 +241,11 @@ const mutationMatches = (context: CheckContext) => {
       Option.map(resolveAlias(checker)),
       Option.map((symbol): MutationScope => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
-  const sourceFiles = Array.map(declarations, declarationSourceFile)
+
+  const sourceFiles = Array.map(declarations, (declaration) =>
+    declaration.getSourceFile()
+  )
+
   const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
   const declaredScope = pipe(

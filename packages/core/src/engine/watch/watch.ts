@@ -46,6 +46,8 @@ const emptySnapshotCache: HashMap.HashMap<
  * only the updated project is re-traversed, the other projects' node
  * snapshots come from the per-project cache, and nothing emits until every
  * project's initial program has arrived.
+ * @remarks Caching untouched projects is required because a workspace batch
+ * must stay consistent without re-traversing every project on each edit.
  */
 export const workspaceUpdates = (
   workspace: WorkspaceConfigs,
@@ -115,6 +117,8 @@ export const workspaceUpdates = (
  * recompute is deliberately not built — checker-using checks observe other
  * files through the type graph, so file identity under-approximates their
  * true inputs.
+ * @remarks Full recompute is required because checker-using checks can depend
+ * on files outside the edited set through the type graph.
  */
 export const signalUpdates =
   (wiring: Wiring) =>
@@ -164,6 +168,8 @@ const signalArrayEquivalence = Array.getEquivalence(signalEquals)
  * never over-cuts, and correctness never depends on it. The reported bit is
  * intentionally ignored because visibility is rendering policy, not execution
  * or invalidation policy.
+ * @remarks Under-cutting is intentional because dropping a real change would
+ * hide signals, while an extra pass-through is only redundant work.
  */
 export const signalsEquivalence = (
   a: ReadonlyArray<Signal>,
@@ -173,6 +179,8 @@ export const signalsEquivalence = (
 /**
  * Within each element the derivation graph runs unchanged: every materialized
  * signal is already present, and wiring.derive consumes the full batch.
+ * @remarks Per-element full-batch derive is required because advice must not
+ * tear across independently ticking signal streams.
  */
 export const reportBlockUpdates =
   (wiring: Wiring) =>
@@ -186,6 +194,8 @@ const emptyReportText = (event: EmptyReportEvent): string =>
 
 /**
  * Render one event as the human-readable text block the --pretty flag prints.
+ * @remarks Kept separate from NDJSON encoding because --pretty needs a
+ * human-readable projection of the same events.
  */
 export const renderEventText = (event: ReportEvent): string =>
   pipe(
@@ -210,10 +220,12 @@ const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =>
  * whose key is absent from current emit their cleared event; then changed and
  * new blocks (current order) — key absent from previous or text differs emit
  * their signal event. Unchanged blocks emit nothing.
+ * @remarks Clearances precede signals because consumers must retire stale
+ * blocks before applying replacements for the same identity.
  */
 export const blockDelta =
-  (previous: ReadonlyArray<ReportBlock>) =>
-  (current: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
+  (current: ReadonlyArray<ReportBlock>) =>
+  (previous: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     const previousEntries = Array.map(previous, blockEntry)
     const previousByIdentity = HashMap.fromIterable(previousEntries)
     const currentIdentityList = Array.map(current, Struct.get("identity"))
@@ -258,6 +270,8 @@ const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> =
  * Terminal gate: the first element emits every block as a signal event (or
  * the single empty-report event), each later element emits only its
  * blockDelta — nothing when no block changed, so quiet batches are silent.
+ * @remarks Quiet batches stay silent because continuous watch output should
+ * only surface real block changes after the initial report.
  */
 export const blockDeltas =
   (rootPath: string) =>
@@ -271,7 +285,7 @@ export const blockDeltas =
           previous,
           Option.match({
             onNone: () => initialReportEvents(rootPath)(current),
-            onSome: (before) => blockDelta(before)(current)
+            onSome: blockDelta(current)
           })
         )
 
@@ -284,6 +298,8 @@ export const blockDeltas =
 /**
  * The one-shot product: one loaded workspace snapshot mapped through the same
  * first-batch event vocabulary the continuous pipeline emits.
+ * @remarks Shares the continuous event vocabulary because one-shot and watch
+ * consumers should parse the same report events.
  */
 export const reportEventsFromWiring =
   (wiring: Wiring) =>
@@ -312,6 +328,8 @@ export const reportEventsFromWiring =
  * ticking streams. Per-node external subscribers are derived views — broadcast
  * the signal-array stream, Stream.map the projection, gate with
  * Stream.changesWith — never independently recomputed streams.
+ * @remarks Linear gated stages are required because each stage must drop
+ * unchanged values while keeping derivation fan-in inside one batch element.
  */
 export const watchReportFromWiring =
   (wiring: Wiring) =>

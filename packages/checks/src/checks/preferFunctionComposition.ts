@@ -3,7 +3,6 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
   isFunctionInitializer,
-  returnedExpression,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -125,7 +124,9 @@ const functionCompositionMatches = (context: CheckContext) => {
 
           const returned = yield* pipe(
             Option.liftPredicate(ts.isReturnStatement)(secondStatement),
-            Option.flatMap(returnedExpression)
+            Option.flatMap((statement) =>
+              Option.fromNullable(statement.expression)
+            )
           )
 
           const name = identifierText(binding.name as ts.Identifier)

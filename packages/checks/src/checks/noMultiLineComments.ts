@@ -19,8 +19,9 @@ const message = "Avoid multi-line comments."
 
 const hint =
   "Code should be self-documenting. Use single-line comments only to explain WHY " +
-  "something is done, never HOW. JSDoc (/** ... */) documenting an exported API is " +
-  "permitted. For architectural decisions that require longer explanation, create an " +
+  "something is done, never HOW. JSDoc (/** ... */) is permitted only when it documents " +
+  "an exported API with a description and at least one tag (such as @param, @returns, or " +
+  "@remarks). For architectural decisions that require longer explanation, create an " +
   "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
 
 const isSingleLineComment = (comment: SourceComment): boolean =>
@@ -44,13 +45,14 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const comments = sourceComments(sourceFile)
+  const isJsDoc = isJsDocComment(sourceFile)
 
   const blockComments = Array.filter(comments, (comment) => {
     const isBlock = comment.kind === ts.SyntaxKind.MultiLineCommentTrivia
     const hasNewline = commentText(text)(comment).includes("\n")
-    const isJsDoc = isJsDocComment(text)(comment)
+    const isDocumentingJsDoc = isJsDoc(comment)
 
-    const jsDocConditions = Array.make(isBlock, hasNewline, !isJsDoc)
+    const jsDocConditions = Array.make(isBlock, hasNewline, !isDocumentingJsDoc)
     return Array.every(jsDocConditions, Boolean)
   })
 

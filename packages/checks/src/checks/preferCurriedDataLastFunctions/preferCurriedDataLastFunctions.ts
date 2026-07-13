@@ -99,7 +99,17 @@ const candidateKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const isCurriedDataLastCandidate = (
   node: ts.Node
 ): node is CurriedDataLastCandidate => {
-  const functionLikeConditions = Array.make(ts.isFunctionDeclaration(node), ts.isFunctionExpression(node), ts.isArrowFunction(node), ts.isMethodDeclaration(node))
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isFunctionExpression = ts.isFunctionExpression(node)
+  const isArrowFunction = ts.isArrowFunction(node)
+  const isMethodDeclaration = ts.isMethodDeclaration(node)
+
+  const functionLikeConditions = Array.make(
+    isFunctionDeclaration,
+    isFunctionExpression,
+    isArrowFunction,
+    isMethodDeclaration
+  )
 
   return Array.some(functionLikeConditions, Boolean)
 }
@@ -125,9 +135,13 @@ const runtimeParameters = (
 const hasDisallowedParameterList = (
   declaration: CurriedDataLastCandidate
 ): boolean => {
+  const declarationHasRestParameter = hasRestParameter(declaration)
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
 
-    const conditions = Array.make(hasRestParameter(declaration), hasMultipleRuntimeParameters)
+  const conditions = Array.make(
+    declarationHasRestParameter,
+    hasMultipleRuntimeParameters
+  )
 
   return Array.some(conditions, Boolean)
 }

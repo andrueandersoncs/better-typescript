@@ -3,8 +3,7 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
   isReturnTypeDeclaration,
-  namedDetectionTarget,
-  returnTypeNode
+  namedDetectionTarget
 } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
@@ -58,7 +57,7 @@ const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
   ) ||
   pipe(
     Option.liftPredicate(isReturnTypeDeclaration)(node),
-    Option.flatMap(returnTypeNode),
+    Option.flatMap((decl) => Option.fromNullable(decl.type)),
     Option.exists(containsRawObjectType)
   )
 

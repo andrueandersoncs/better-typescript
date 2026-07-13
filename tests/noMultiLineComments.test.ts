@@ -24,15 +24,40 @@ const message = "Avoid multi-line comments."
 
 const hint =
   "Code should be self-documenting. Use single-line comments only to explain WHY " +
-  "something is done, never HOW. JSDoc (/** ... */) documenting an exported API is " +
-  "permitted. For architectural decisions that require longer explanation, create an " +
+  "something is done, never HOW. JSDoc (/** ... */) is permitted only when it documents " +
+  "an exported API with a description and at least one tag (such as @param, @returns, or " +
+  "@remarks). For architectural decisions that require longer explanation, create an " +
   "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
+    name: "description-only JSDoc on export",
+    fileName: "src/cases.ts",
+    line: 8,
+    column: 1,
+    message,
+    hint
+  },
+  {
+    name: "tags-only JSDoc on export",
+    fileName: "src/cases.ts",
+    line: 13,
+    column: 1,
+    message,
+    hint
+  },
+  {
+    name: "structured JSDoc on non-exported binding",
+    fileName: "src/cases.ts",
+    line: 18,
+    column: 1,
+    message,
+    hint
+  },
+  {
     name: "multi-line block comment",
     fileName: "src/cases.ts",
-    line: 6,
+    line: 26,
     column: 1,
     message,
     hint
@@ -40,7 +65,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "adjacent single-line comment run (2 lines)",
     fileName: "src/cases.ts",
-    line: 12,
+    line: 32,
     column: 1,
     message,
     hint
@@ -48,7 +73,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "adjacent single-line comment run (3 lines)",
     fileName: "src/cases.ts",
-    line: 18,
+    line: 38,
     column: 1,
     message,
     hint
@@ -57,7 +82,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
-    name: "JSDoc block comment",
+    name: "structured JSDoc on exported API",
     fileName: "src/cases.ts",
     line: 1,
     column: 1

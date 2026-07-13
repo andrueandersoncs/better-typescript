@@ -1,5 +1,4 @@
 import { Array } from "effect"
-import * as ts from "typescript"
 import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
@@ -18,8 +17,9 @@ const message = 'Comments must include the word "because".'
 
 const hint =
   "Delete comments that only restate what the code does. Otherwise, explain why the " +
-  'code or approach is necessary using the word "because". JSDoc is exempt because it ' +
-  "documents an API contract."
+  'code or approach is necessary using the word "because". Structured JSDoc on an ' +
+  "exported API (description plus at least one tag) is exempt because it documents an " +
+  "API contract."
 
 const becauseWord =
   /(?<![\p{L}\p{M}\p{N}\p{Pc}])because(?![\p{L}\p{M}\p{N}\p{Pc}])/iu
@@ -31,12 +31,13 @@ const commentsWithoutBecause = (
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const comments = sourceComments(sourceFile)
+  const isJsDoc = isJsDocComment(sourceFile)
 
   const missingBecause = Array.filter(comments, (comment) => {
-    const isJsDoc = isJsDocComment(text)(comment)
+    const isDocumentingJsDoc = isJsDoc(comment)
     const textOfComment = commentText(text)(comment)
     const hasBecause = becauseWord.test(textOfComment)
-    const isNotJsDoc = !isJsDoc
+    const isNotJsDoc = !isDocumentingJsDoc
     const isMissingBecause = !hasBecause
 
     const jsDocConditions = Array.make(isNotJsDoc, isMissingBecause)

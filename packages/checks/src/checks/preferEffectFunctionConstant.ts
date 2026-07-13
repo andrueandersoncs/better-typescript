@@ -4,7 +4,6 @@ import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import {
   conciseArrowBody,
-  returnedExpression as returnedStatementExpression,
   unwrapExpression
 } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -101,7 +100,7 @@ const blockReturnedExpression = (
       statement
     )
 
-    return yield* returnedStatementExpression(returnStatement)
+    return yield* Option.fromNullable(returnStatement.expression)
   })
 
 const constantThunkReturnedExpression = (

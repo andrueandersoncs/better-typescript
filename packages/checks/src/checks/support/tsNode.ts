@@ -26,15 +26,24 @@ export const isFunctionInitializer = (
 export const isReturnTypeDeclaration = (
   node: ts.Node
 ): node is ReturnTypeDeclaration => {
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isFunctionExpression = ts.isFunctionExpression(node)
+  const isArrowFunction = ts.isArrowFunction(node)
+  const isMethodDeclaration = ts.isMethodDeclaration(node)
+  const isMethodSignature = ts.isMethodSignature(node)
+  const isCallSignatureDeclaration = ts.isCallSignatureDeclaration(node)
+  const isFunctionTypeNode = ts.isFunctionTypeNode(node)
+  const isGetAccessorDeclaration = ts.isGetAccessorDeclaration(node)
+
   const conditions = Array.make(
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node),
-    ts.isMethodSignature(node),
-    ts.isCallSignatureDeclaration(node),
-    ts.isFunctionTypeNode(node),
-    ts.isGetAccessorDeclaration(node)
+    isFunctionDeclaration,
+    isFunctionExpression,
+    isArrowFunction,
+    isMethodDeclaration,
+    isMethodSignature,
+    isCallSignatureDeclaration,
+    isFunctionTypeNode,
+    isGetAccessorDeclaration
   )
 
   return Array.some(conditions, Boolean)
@@ -48,20 +57,12 @@ export const functionInitializer = (
     Option.filter(isFunctionInitializer)
   )
 
-export const returnTypeNode = (
-  decl: ReturnTypeDeclaration
-): Option.Option<ts.TypeNode> => Option.fromNullable(decl.type)
-
 export const conciseArrowBody = (
   arrowFunction: ts.ArrowFunction
 ): Option.Option<ts.Expression> =>
   ts.isBlock(arrowFunction.body)
     ? Option.none()
     : Option.some(arrowFunction.body)
-
-export const returnedExpression = (
-  statement: ts.ReturnStatement
-): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
 
 export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
   ts.isParenthesizedExpression(expression)
@@ -84,15 +85,37 @@ export const unwrapTransparentExpression = (
     ? unwrapTransparentExpression((expression as TransparentWrapper).expression)
     : expression
 
-export const isTransparentParent = (node: ts.Node): node is ts.Expression =>
-  HashSet.has(transparentWrapperKinds, node.kind)
+export const unwrapCarrier = (expression: ts.Expression): ts.Expression =>
+  ts.isNonNullExpression(expression)
+    ? unwrapCarrier(expression.expression)
+    : unwrapTransparentExpression(expression)
+
+export const unwrapCallee = (expression: ts.Expression): ts.Expression => {
+  const call = Option.liftPredicate(ts.isCallExpression)(expression)
+
+  return Option.match(call, {
+    onNone: Function.constant(expression),
+    onSome: (node) => unwrapCallee(node.expression)
+  })
+}
 
 export const outermostTransparentWrapper = (
   expression: ts.Expression
-): ts.Expression =>
-  isTransparentParent(expression.parent)
-    ? outermostTransparentWrapper(expression.parent)
-    : expression
+): ts.Expression => {
+  const parent = expression.parent
+  const parentIsTransparent = HashSet.has(transparentWrapperKinds, parent.kind)
+
+  if (!parentIsTransparent) {
+    return expression
+  }
+
+  const parentExpression = Option.liftPredicate(ts.isExpression)(parent)
+
+  return Option.match(parentExpression, {
+    onNone: Function.constant(expression),
+    onSome: outermostTransparentWrapper
+  })
+}
 
 export const unwrapSingleStatementBlock = (
   statement: ts.Statement
@@ -106,11 +129,7 @@ export const unwrapSingleStatementBlock = (
   return hasOneStatement ? statement.statements[0] : statement
 }
 
-export const hasNoElseBranch = (ifStatement: ts.IfStatement): boolean =>
-  pipe(Option.fromNullable(ifStatement.elseStatement), Option.isNone)
 
-export const lastStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  Option.fromNullable(block.statements[block.statements.length - 1])
 
 const exitStatementKinds = HashSet.make(
   ts.SyntaxKind.BreakStatement,
@@ -121,7 +140,9 @@ const exitStatementKinds = HashSet.make(
 
 export const alwaysExitsScope = (statement: ts.Statement): boolean => {
   if (ts.isBlock(statement)) {
-    const lastStmt = lastStatement(statement)
+    const statements = statement.statements
+    const lastIndex = statements.length - 1
+    const lastStmt = Option.fromNullable(statements[lastIndex])
 
     return Option.exists(lastStmt, alwaysExitsScope)
   }
@@ -135,21 +156,15 @@ export const isExtendsClause = (clause: ts.HeritageClause): boolean =>
 export const isProjectFile = (sourceFile: ts.SourceFile): boolean =>
   !sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
 
-export const declarationSourceFile = (
-  declaration: ts.Declaration
-): ts.SourceFile => declaration.getSourceFile()
-
 export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
-  const sourceFiles = Array.map(declarations, declarationSourceFile)
+
+  const sourceFiles = Array.map(declarations, (declaration) =>
+    declaration.getSourceFile()
+  )
 
   return Array.some(sourceFiles, isProjectFile)
 }
-
-export const typeNameIdentifier = (
-  ref: ts.TypeReferenceNode
-): Option.Option<ts.Identifier> =>
-  Option.liftPredicate(ts.isIdentifier)(ref.typeName)
 
 export const isSameNode =
   (node: ts.Node) =>

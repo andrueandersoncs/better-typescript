@@ -38,7 +38,7 @@ export const writeGenericField = <O extends Record<string, number>>(
   key: keyof O & string,
   value: number
 ): O => {
-  const out = { ...obj }
+  const out: Record<string, number> = { ...obj }
   out[key] = value
-  return out
+  return out as O
 }

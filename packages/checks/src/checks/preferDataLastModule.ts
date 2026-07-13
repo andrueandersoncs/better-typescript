@@ -34,7 +34,17 @@ const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const isCheckedFunction = (node: ts.Node): node is CheckedFunction => {
-  const functionLikeConditions = Array.make(ts.isFunctionDeclaration(node), ts.isFunctionExpression(node), ts.isArrowFunction(node), ts.isMethodDeclaration(node))
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isFunctionExpression = ts.isFunctionExpression(node)
+  const isArrowFunction = ts.isArrowFunction(node)
+  const isMethodDeclaration = ts.isMethodDeclaration(node)
+
+  const functionLikeConditions = Array.make(
+    isFunctionDeclaration,
+    isFunctionExpression,
+    isArrowFunction,
+    isMethodDeclaration
+  )
 
   return Array.some(functionLikeConditions, Boolean)
 }
@@ -103,7 +113,10 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const fileName = sourceFile.fileName
 
   const isMember = (type: ts.Type): boolean => {
-  const arrayOrTupleChecks = Array.make(checker.isArrayType(type), checker.isTupleType(type))
+    const isArrayType = checker.isArrayType(type)
+    const isTupleType = checker.isTupleType(type)
+
+    const arrayOrTupleChecks = Array.make(isArrayType, isTupleType)
 
     const isArrayOrTuple = Array.some(arrayOrTupleChecks, Boolean)
     const typeHasCallSignature = hasCallSignature(checker)(type)
@@ -136,13 +149,21 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const isModuleDeclaration =
     (symbol: ts.Symbol) =>
     (declaration: ts.Declaration): boolean => {
-  const dataStructure = dataStructureModule(symbol.name)
-  const declarationSourceFile = declaration.getSourceFile()
-  const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
+    const dataStructure = dataStructureModule(symbol.name)
+    const declarationSourceFile = declaration.getSourceFile()
+    const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
 
-  const conditions = Array.make(ts.isInterfaceDeclaration(declaration), ts.isTypeAliasDeclaration(declaration), ts.isClassDeclaration(declaration))
+    const isInterfaceDeclaration = ts.isInterfaceDeclaration(declaration)
+    const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(declaration)
+    const isClassDeclaration = ts.isClassDeclaration(declaration)
 
-  const declarationIsDataStructure = Array.some(conditions, Boolean)
+    const conditions = Array.make(
+      isInterfaceDeclaration,
+      isTypeAliasDeclaration,
+      isClassDeclaration
+    )
+
+    const declarationIsDataStructure = Array.some(conditions, Boolean)
 
   const declarationIsExpectedModule = isExpectedModule(dataStructure[1])(
         declarationSourceFile.fileName

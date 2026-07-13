@@ -1,7 +1,7 @@
 import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import { isReturnTypeDeclaration, returnTypeNode } from "./support/tsNode.js"
+import { isReturnTypeDeclaration } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -40,7 +40,7 @@ const explicitAnyReturnElements = (context: CheckContext) => {
 
   const matches = (node: ReturnTypeDeclaration): ReadonlyArray<Detection> => {
     const hasAnyReturnType = pipe(
-      returnTypeNode(node),
+      Option.fromNullable(node.type),
       Option.exists(containsAnyKeyword)
     )
 

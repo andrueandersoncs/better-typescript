@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import { alwaysExitsScope, hasNoElseBranch } from "./support/tsNode.js"
+import { alwaysExitsScope } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check"
@@ -15,12 +15,16 @@ const minimumChainLength = 3
 // Treat branchless exiting if statements as guards because successive guards form a flat dispatch ladder.
 const isDispatchGuard = (
   statement: ts.Statement
-): statement is ts.IfStatement => {
-  const isIf = ts.isIfStatement(statement)
-  const isBranchless = isIf && hasNoElseBranch(statement)
+): statement is ts.IfStatement =>
+  pipe(
+    Option.liftPredicate(ts.isIfStatement)(statement),
+    Option.exists((ifStatement) => {
+      const elseBranch = Option.fromNullable(ifStatement.elseStatement)
+      const isBranchless = Option.isNone(elseBranch)
 
-  return isBranchless && alwaysExitsScope(statement.thenStatement)
-}
+      return isBranchless && alwaysExitsScope(ifStatement.thenStatement)
+    })
+  )
 
 const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
   const ownNames = ts.isIdentifier(node) ? Array.of(node.text) : Array.empty()

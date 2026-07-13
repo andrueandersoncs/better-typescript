@@ -210,6 +210,10 @@ import {
   preferEtaReductionExamples
 } from "../checks/preferEtaReduction.js"
 import {
+  preferFunctionFlip,
+  preferFunctionFlipExamples
+} from "../checks/preferFunctionFlip.js"
+import {
   preferImplicitReturn,
   preferImplicitReturnExamples
 } from "../checks/preferImplicitReturn.js"
@@ -348,6 +352,12 @@ const preferEtaReductionCheck = namedCheck(
   "prefer-eta-reduction",
   preferEtaReduction,
   preferEtaReductionExamples
+)
+
+const preferFunctionFlipCheck = namedCheck(
+  "prefer-function-flip",
+  preferFunctionFlip,
+  preferFunctionFlipExamples
 )
 
 const preferImplicitReturnCheck = namedCheck(
@@ -604,6 +614,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferDirectBooleanReturnCheck,
   preferFunctionCompositionCheck,
   preferEtaReductionCheck,
+  preferFunctionFlipCheck,
   preferImplicitReturnCheck,
   noThrowCheck,
   noNewErrorCheck,

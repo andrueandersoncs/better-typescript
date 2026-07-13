@@ -1,7 +1,6 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import {
-  declarationSourceFile,
   isSameNode,
   outermostTransparentWrapper
 } from "./tsNode.js"
@@ -89,7 +88,7 @@ export const isExternalPackageArgument =
       Option.exists((signature) => {
         const declarationFile = pipe(
           signatureDeclarationOption(signature),
-          Option.map(declarationSourceFile)
+          Option.map((declaration) => declaration.getSourceFile())
         )
 
         return Option.exists(declarationFile, (sourceFile) => {

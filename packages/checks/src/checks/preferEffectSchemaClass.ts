@@ -227,14 +227,16 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   const signatureBoxedTypes =
     (argumentPosition: number) =>
     (contextual: ts.Type) =>
-    (signature: ts.Signature): ReadonlyArray<ts.Type> =>
-      pipe(
+    (signature: ts.Signature): ReadonlyArray<ts.Type> => {
+      const emptyTypes = Array.empty()
+      return pipe(
         Option.fromNullable(signature.parameters[argumentPosition]),
         Option.map(declaredParameterType),
         Option.filter(isSignatureTypeParameter),
         Option.map(boxedExtraction(signature)(contextual)),
-        Option.getOrElse(Function.constant(Array.empty()))
+        Option.getOrElse(Function.constant(emptyTypes))
       )
+    }
 
   const symbolFileEntry =
     (fileName: string) =>
@@ -248,6 +250,8 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     ): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullable(contextualType)
+
+      const emptyBoxedTypes = Array.empty()
 
       const boxedTypes = pipe(
         Option.gen(function* () {
@@ -274,7 +278,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
             signatureBoxedTypes(argumentPosition)(contextual)
           )
         }),
-        Option.getOrElse(Function.constant(Array.empty()))
+        Option.getOrElse(Function.constant(emptyBoxedTypes))
       )
 
       const contextualCandidates = pipe(
@@ -299,7 +303,8 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     sourceFile: ts.SourceFile
   ): ReadonlyArray<readonly [ts.Symbol, string]> =>
     pipe(
-      foldAst(addObjectLiteral)(sourceFile)(Array.empty()),
+      Array.empty(),
+      foldAst(addObjectLiteral)(sourceFile),
       Array.flatMap(literalConstructionEntries(sourceFile.fileName))
     )
 

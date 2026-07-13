@@ -36,16 +36,22 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return Array.empty()
 
+    const emptyWhenTrue = isEmptyArrayLiteral(expression.whenTrue)
+    const nonEmptyWhenFalse = isNonEmptyArrayBranch(expression.whenFalse)
+
     const emptyThenNonEmptyConditions = Array.make(
-      isEmptyArrayLiteral(expression.whenTrue),
-      isNonEmptyArrayBranch(expression.whenFalse)
+      emptyWhenTrue,
+      nonEmptyWhenFalse
     )
 
     const emptyThenNonEmpty = Array.every(emptyThenNonEmptyConditions, Boolean)
 
+    const nonEmptyWhenTrue = isNonEmptyArrayBranch(expression.whenTrue)
+    const emptyWhenFalse = isEmptyArrayLiteral(expression.whenFalse)
+
     const nonEmptyThenEmptyConditions = Array.make(
-      isNonEmptyArrayBranch(expression.whenTrue),
-      isEmptyArrayLiteral(expression.whenFalse)
+      nonEmptyWhenTrue,
+      emptyWhenFalse
     )
 
     const nonEmptyThenEmpty = Array.every(nonEmptyThenEmptyConditions, Boolean)

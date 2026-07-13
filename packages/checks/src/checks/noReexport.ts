@@ -20,11 +20,16 @@ const hint =
   "exports at the defining modules instead of barrel re-exports."
 
 const isImportDeclaration = (declaration: ts.Declaration): boolean => {
+  const isImportSpecifier = ts.isImportSpecifier(declaration)
+  const isNamespaceImport = ts.isNamespaceImport(declaration)
+  const isImportClause = ts.isImportClause(declaration)
+  const isImportEqualsDeclaration = ts.isImportEqualsDeclaration(declaration)
+
   const checks = Array.make(
-    ts.isImportSpecifier(declaration),
-    ts.isNamespaceImport(declaration),
-    ts.isImportClause(declaration),
-    ts.isImportEqualsDeclaration(declaration)
+    isImportSpecifier,
+    isNamespaceImport,
+    isImportClause,
+    isImportEqualsDeclaration
   )
 
   return Array.some(checks, Boolean)

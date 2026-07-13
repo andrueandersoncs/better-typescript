@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
   conciseArrowBody,
-  unwrapTransparentExpression
+  unwrapCarrier
 } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { detection } from "@better-typescript/core/engine/location"
@@ -29,11 +29,6 @@ const flowHint =
 const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 
 const identifierText = Struct.get("text")
-
-const unwrapCarrier = (expression: ts.Expression): ts.Expression =>
-  ts.isNonNullExpression(expression)
-    ? unwrapCarrier(expression.expression)
-    : unwrapTransparentExpression(expression)
 
 const etaReductionMatches = (context: CheckContext) => {
   const checker = context.checker
@@ -121,9 +116,8 @@ const etaReductionMatches = (context: CheckContext) => {
     return boundCalleeNeedsThis
   }
 
-  const referenceCount =
-    (name: string) =>
-    (node: ts.Node): number =>
+  const referenceCount = (name: string): ((node: ts.Node) => number) =>
+    Function.flip(
       foldAst((count: number, current: ts.Node): number =>
         pipe(
           Option.liftPredicate(ts.isIdentifier)(current),
@@ -132,7 +126,8 @@ const etaReductionMatches = (context: CheckContext) => {
         )
           ? count + 1
           : count
-      )(node)(0)
+      )
+    )(0)
 
   const unaryCalleeTower =
     (parameterName: string) =>

@@ -74,7 +74,9 @@ const isConditionEdge = (node: ts.Node): boolean =>
   )
 
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
-      const conditions = Array.make(isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent))
+  const isBooleanOperator = isBooleanOperatorExpression(parent)
+  const hasAncestor = hasBooleanOperatorAncestor(parent)
+  const conditions = Array.make(isBooleanOperator, hasAncestor)
 
   return Array.some(conditions, Boolean)
 }

@@ -120,6 +120,8 @@ const stopWatch = (
 /**
  * The project-level root signal: one fresh ProgramContext per watch rebuild,
  * covering file edits, adds, deletes, and leaf tsconfig edits.
+ * @remarks Fresh contexts per rebuild are required because downstream diffs
+ * and checks must observe the program TypeScript just produced.
  */
 export const programUpdates = (
   config: ProjectConfig,
@@ -166,6 +168,8 @@ const fileIndexEntry = (
  * Pure diff of one rebuilt program against the previous file index. Identity
  * diffing may over-report changed files (a redundant recompute at worst); it
  * never under-reports.
+ * @remarks Over-reporting is acceptable because missing a changed file would
+ * leave stale detections, while an extra recompute is only wasted work.
  */
 export const diffCheckableFiles =
   (previous: HashMap.HashMap<string, ts.SourceFile>) =>
@@ -208,6 +212,8 @@ export const diffCheckableFiles =
 /**
  * The file-level root signal: per rebuild, which checkable source files
  * changed and which paths disappeared (first emission: all checkable files).
+ * @remarks Changed and deleted paths are emitted together because workspace
+ * caching must drop removed files as well as refresh edited ones.
  */
 export const sourceUpdates = (
   config: ProjectConfig,

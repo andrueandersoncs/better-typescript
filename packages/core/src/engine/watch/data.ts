@@ -5,6 +5,8 @@ import { reportKeySchema } from "../report/data.js"
 /**
  * One consistent workspace-wide snapshot batch: every project's node snapshot
  * in project index order, emitted only after source-update quiet/warm gating.
+ * @remarks Quiet/warm gating is required because downstream stages must see
+ * one consistent workspace snapshot, not a torn partial update.
  */
 export class WorkspaceUpdate extends Data.Class<{
   readonly snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
@@ -15,6 +17,8 @@ export class WorkspaceUpdate extends Data.Class<{
  * (signal), a block's signal went away (cleared), or the initial report found
  * nothing (empty). The default CLI output is NDJSON — JSON.stringify of these
  * events, one per line; --pretty renders them through renderEventText.
+ * @remarks Tagged events are the wire vocabulary because NDJSON and --pretty
+ * both project the same signal/cleared/empty shapes.
  */
 export class SignalEvent extends Schema.TaggedClass<SignalEvent>()("signal", {
   key: reportKeySchema,

@@ -4,7 +4,6 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
   functionInitializer,
-  returnedExpression,
   unwrapExpression
 } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -83,7 +82,9 @@ const effectFnMatches = (context: CheckContext) => {
           Option.liftPredicate(ts.isBlock)(body),
           Option.flatMap(singleBlockStatement),
           Option.filter(ts.isReturnStatement),
-          Option.flatMap(returnedExpression)
+          Option.flatMap((statement) =>
+            Option.fromNullable(statement.expression)
+          )
         )
 
         const conciseResult = ts.isBlock(body)

@@ -29,11 +29,16 @@ const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const isPropertyAccessorFunction = (
   node: ts.Node
 ): node is PropertyAccessorFunction => {
+  const isArrowFunction = ts.isArrowFunction(node)
+  const isFunctionExpression = ts.isFunctionExpression(node)
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isMethodDeclaration = ts.isMethodDeclaration(node)
+
   const checks = Array.make(
-    ts.isArrowFunction(node),
-    ts.isFunctionExpression(node),
-    ts.isFunctionDeclaration(node),
-    ts.isMethodDeclaration(node)
+    isArrowFunction,
+    isFunctionExpression,
+    isFunctionDeclaration,
+    isMethodDeclaration
   )
 
   return Array.some(checks, Boolean)
@@ -93,8 +98,13 @@ const isRecordType =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): boolean => {
     const apparentType = checker.getApparentType(type)
+    const typeHasIndexSignature = hasIndexSignature(type)
+    const apparentTypeHasIndexSignature = hasIndexSignature(apparentType)
 
-  const conditions = Array.make(hasIndexSignature(type), hasIndexSignature(apparentType))
+    const conditions = Array.make(
+      typeHasIndexSignature,
+      apparentTypeHasIndexSignature
+    )
 
     return type.isUnionOrIntersection()
       ? Array.every(type.types, isRecordType(checker))

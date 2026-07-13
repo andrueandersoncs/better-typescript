@@ -1,7 +1,7 @@
 import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import { isInAmbientContext, typeNameIdentifier } from "./support/tsNode.js"
+import { isInAmbientContext } from "./support/tsNode.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
@@ -42,7 +42,7 @@ const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.flatMap(typeNameIdentifier),
+    Option.flatMap((ref) => Option.liftPredicate(ts.isIdentifier)(ref.typeName)),
     Option.exists(isSetTypeName)
   )
 
@@ -82,7 +82,7 @@ const setMatches = (context: CheckContext) => {
     }
 
     const name = pipe(
-      typeNameIdentifier(node),
+      Option.liftPredicate(ts.isIdentifier)(node.typeName),
       Option.map(Struct.get("text")),
       Option.getOrElse(Function.constant(""))
     )

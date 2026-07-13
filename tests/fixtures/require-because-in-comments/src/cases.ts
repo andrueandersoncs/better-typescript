@@ -1,5 +1,26 @@
-/** This JSDoc documents the exported API. */
+/**
+ * Stable documented export for API consumers.
+ * @remarks Preserves the exported binding name used by callers.
+ */
 export const documented = 1
+
+/**
+ * Description-only JSDoc is not an API contract exemption.
+ */
+export const descriptionOnly = 10
+
+/**
+ * @remarks Tags without a description are not enough either.
+ */
+export const tagsOnly = 11
+
+/**
+ * Structured JSDoc on a non-exported binding is not an API contract.
+ * @remarks Local-only documentation is not an exported API contract.
+ */
+const localDocumented = 12
+
+export const usesLocal = localDocumented
 
 // This describes the binding.
 export const lineComment = 2

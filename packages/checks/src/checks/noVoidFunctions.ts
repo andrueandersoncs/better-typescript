@@ -28,11 +28,16 @@ const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const isVoidableFunction = (node: ts.Node): node is VoidableFunction => {
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isFunctionExpression = ts.isFunctionExpression(node)
+  const isArrowFunction = ts.isArrowFunction(node)
+  const isMethodDeclaration = ts.isMethodDeclaration(node)
+
   const conditions = Array.make(
-    ts.isFunctionDeclaration(node),
-    ts.isFunctionExpression(node),
-    ts.isArrowFunction(node),
-    ts.isMethodDeclaration(node)
+    isFunctionDeclaration,
+    isFunctionExpression,
+    isArrowFunction,
+    isMethodDeclaration
   )
 
   return Array.some(conditions, Boolean)

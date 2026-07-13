@@ -5,6 +5,8 @@ import { TsProgram } from "../../engine/tsSchema.js"
 /**
  * A discovered leaf project: its config location and parsed command line, with
  * no ts.Program built yet. Watch mode consumes configs directly.
+ * @remarks Program construction is deferred because watch mode starts from
+ * configs and builds programs through the TypeScript watcher instead.
  */
 export class ProjectConfig extends Data.Class<{
   readonly configPath: string

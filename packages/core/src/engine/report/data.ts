@@ -32,6 +32,8 @@ export class DedupeState extends Data.Class<{
 
 /**
  * Public stable identity for an advice report block.
+ * @remarks Public because NDJSON and delta consumers key advice blocks by
+ * this stable identity.
  */
 export class AdviceReportKey extends Schema.TaggedClass<AdviceReportKey>()(
   "advice",
@@ -45,6 +47,8 @@ export class AdviceReportKey extends Schema.TaggedClass<AdviceReportKey>()(
 /**
  * Public stable identity for a local detection report block. The `_tag: "rule"`
  * wire key is retained for report compatibility while checks are the engine model.
+ * @remarks The wire tag stays `rule` because report consumers already depend
+ * on that key while checks remain the engine model.
  */
 export class RuleReportKey extends Schema.TaggedClass<RuleReportKey>()("rule", {
   name: Schema.String,
@@ -60,6 +64,8 @@ export const reportKeySchema = Schema.Union(AdviceReportKey, RuleReportKey)
  * A rendered report block with a stable identity across batches: identity is
  * private delta state, key is the public NDJSON identity, text is what the
  * report prints, cleared is the one line printed when the block disappears.
+ * @remarks Identity, key, text, and cleared are separated because deltas and
+ * NDJSON consumers need different projections of the same block.
  */
 export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
   identity: Schema.String,

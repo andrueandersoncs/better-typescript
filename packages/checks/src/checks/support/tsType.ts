@@ -141,7 +141,11 @@ const hasCallSignatureWithSeen =
       })
     )
 
-export const callSignatureCheck = (checker: ts.TypeChecker) =>
-  pipe(HashSet.empty<ts.Type>(), hasCallSignatureWithSeen(checker))
+export const callSignatureCheck = (checker: ts.TypeChecker) => {
+  const withSeen = hasCallSignatureWithSeen(checker)
+  const emptySeen = HashSet.empty<ts.Type>()
+
+  return withSeen(emptySeen)
+}
 
 export const hasCallSignature = callSignatureCheck

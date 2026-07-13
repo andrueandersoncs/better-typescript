@@ -36,16 +36,22 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return Array.empty()
 
+    const emptyWhenTrue = hasNoProperties(expression.whenTrue)
+    const nonEmptyWhenFalse = hasSomeProperties(expression.whenFalse)
+
     const emptyThenNonEmptyConditions = Array.make(
-      hasNoProperties(expression.whenTrue),
-      hasSomeProperties(expression.whenFalse)
+      emptyWhenTrue,
+      nonEmptyWhenFalse
     )
 
     const emptyThenNonEmptyElse = Array.every(emptyThenNonEmptyConditions, Boolean)
 
+    const nonEmptyWhenTrue = hasSomeProperties(expression.whenTrue)
+    const emptyWhenFalse = hasNoProperties(expression.whenFalse)
+
     const nonEmptyThenEmptyConditions = Array.make(
-      hasSomeProperties(expression.whenTrue),
-      hasNoProperties(expression.whenFalse)
+      nonEmptyWhenTrue,
+      emptyWhenFalse
     )
 
     const nonEmptyThenEmptyElse = Array.every(nonEmptyThenEmptyConditions, Boolean)
