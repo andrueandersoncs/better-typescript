@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "pass-through-wrappers")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "pass-through-wrappers"
+)
 const expectedMessage =
   "This Module is a Pass-through Wrapper — it only re-exports another Module."
 const expectedHint =

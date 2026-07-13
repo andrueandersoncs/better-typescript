@@ -9,7 +9,7 @@ import {
   sourceComments
 } from "./support/comments.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"

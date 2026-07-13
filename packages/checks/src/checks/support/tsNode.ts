@@ -129,8 +129,6 @@ export const unwrapSingleStatementBlock = (
   return hasOneStatement ? statement.statements[0] : statement
 }
 
-
-
 const exitStatementKinds = HashSet.make(
   ts.SyntaxKind.BreakStatement,
   ts.SyntaxKind.ContinueStatement,

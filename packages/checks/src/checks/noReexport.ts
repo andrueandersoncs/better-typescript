@@ -5,7 +5,7 @@ import {
   nodeSubscriptions
 } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import { detection } from "@better-typescript/core/engine/location"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { MakeDetection } from "@better-typescript/core/engine/location"

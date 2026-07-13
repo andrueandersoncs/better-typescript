@@ -18,7 +18,7 @@ import type {
   CheckContext,
   Subscription
 } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"

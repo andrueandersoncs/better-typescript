@@ -18,6 +18,14 @@ const fallbackWiring: Wiring = {
   derive: () => Stream.empty
 }
 
+const emptyCheckConfigPreamble = [
+  'import { Stream } from "effect"',
+  'import { checkFromSubscriptions } from "@better-typescript/core/engine/check"',
+  "",
+  "const emptyCheck = checkFromSubscriptions(() => [])",
+  ""
+]
+
 const tsconfig = {
   compilerOptions: {
     target: "ES2022",
@@ -84,10 +92,9 @@ test("loadWiring accepts a direct default wiring object", async () => {
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export default {",
-        '  checks: [{ name: "direct-default-check", check: () => Stream.empty }],',
+        '  checks: [{ name: "direct-default-check", check: emptyCheck }],',
         "  derive: () => Stream.empty",
         "}",
         ""
@@ -114,10 +121,9 @@ test("loadWiring preserves configured check paths", async () => {
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export default {",
-        '  checks: [{ name: "scoped-check", paths: ["src/cases.ts"], check: () => Stream.empty }],',
+        '  checks: [{ name: "scoped-check", paths: ["src/cases.ts"], check: emptyCheck }],',
         "  derive: () => Stream.empty",
         "}",
         ""
@@ -137,10 +143,9 @@ test("loadWiring rejects non-path check scopes", async () => {
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export default {",
-        '  checks: [{ name: "invalid-scope", paths: ["src", "  "], check: () => Stream.empty }],',
+        '  checks: [{ name: "invalid-scope", paths: ["src", "  "], check: emptyCheck }],',
         "  derive: () => Stream.empty",
         "}",
         ""
@@ -159,10 +164,9 @@ test("loadWiring accepts a named zero-argument wiring factory", async () => {
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export const wiring = () => ({",
-        '  checks: [{ name: "named-factory-check", check: () => Stream.empty }],',
+        '  checks: [{ name: "named-factory-check", check: emptyCheck }],',
         "  derive: () => Stream.empty",
         "})",
         ""
@@ -185,10 +189,9 @@ test("loadWiring accepts a default zero-argument wiring factory", async () => {
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export default () => ({",
-        '  checks: [{ name: "default-factory-check", check: () => Stream.empty }],',
+        '  checks: [{ name: "default-factory-check", check: emptyCheck }],',
         "  derive: () => Stream.empty",
         "})",
         ""
@@ -212,13 +215,14 @@ test("loadWiring keeps a custom config check through reportFromWiring", async ()
       projectDirectory,
       [
         'import { Stream } from "effect"',
+        'import { fileCheck } from "@better-typescript/core/engine/check"',
         'import { Detection, Location } from "@better-typescript/core/engine/location/data"',
         "",
         "export default {",
         "  checks: [",
         "    {",
         '      name: "config-extra-check",',
-        "      check: () => Stream.fromIterable([",
+        "      check: fileCheck(() => [",
         "        new Detection({",
         '          location: new Location({ path: "src/cases.ts", line: 1, column: 1 }),',
         '          message: "configured detection",',
@@ -255,12 +259,11 @@ test("loadWiring wraps duplicate config check names in ProjectWiringError with c
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export default {",
         "  checks: [",
-        '    { name: "duplicate-check", check: () => Stream.empty },',
-        '    { name: "duplicate-check", check: () => Stream.empty }',
+        '    { name: "duplicate-check", check: emptyCheck },',
+        '    { name: "duplicate-check", check: emptyCheck }',
         "  ],",
         "  derive: () => Stream.empty",
         "}",
@@ -280,12 +283,11 @@ test("loadWiring rejects duplicate names across reported and silent checks", asy
     await writeConfig(
       projectDirectory,
       [
-        'import { Stream } from "effect"',
-        "",
+        ...emptyCheckConfigPreamble,
         "export default {",
         "  checks: [",
-        '    { name: "global-duplicate", check: () => Stream.empty },',
-        '    { name: "global-duplicate", reported: false, check: () => Stream.empty }',
+        '    { name: "global-duplicate", check: emptyCheck },',
+        '    { name: "global-duplicate", reported: false, check: emptyCheck }',
         "  ],",
         "  derive: () => Stream.empty",
         "}",

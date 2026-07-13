@@ -4,7 +4,7 @@ import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -44,7 +44,10 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
       nonEmptyWhenFalse
     )
 
-    const emptyThenNonEmptyElse = Array.every(emptyThenNonEmptyConditions, Boolean)
+    const emptyThenNonEmptyElse = Array.every(
+      emptyThenNonEmptyConditions,
+      Boolean
+    )
 
     const nonEmptyWhenTrue = hasSomeProperties(expression.whenTrue)
     const emptyWhenFalse = hasNoProperties(expression.whenFalse)
@@ -54,7 +57,10 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
       emptyWhenFalse
     )
 
-    const nonEmptyThenEmptyElse = Array.every(nonEmptyThenEmptyConditions, Boolean)
+    const nonEmptyThenEmptyElse = Array.every(
+      nonEmptyThenEmptyConditions,
+      Boolean
+    )
 
     const checks = Array.make(emptyThenNonEmptyElse, nonEmptyThenEmptyElse)
     const detection = match({ node: spread, message, hint })

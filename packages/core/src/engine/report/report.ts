@@ -1,13 +1,13 @@
 import * as path from "node:path"
 import {
   Array,
-  Chunk,
   Effect,
   Equal,
   flow,
   Function,
-  HashMap,
   HashSet,
+  MutableHashMap,
+  MutableList,
   Option,
   Order,
   Record,
@@ -15,14 +15,16 @@ import {
   Struct,
   pipe
 } from "effect"
+import type * as ts from "typescript"
 import type {
   LoadedProject,
-  LoadedWorkspace
+  LoadedWorkspace,
+  ProjectConfig,
+  WorkspaceConfigs
 } from "../../project/loadProject/data.js"
-import { astNodes } from "../sources/sources.js"
-import type { AstNodeElement } from "../sources/data.js"
-import type { Check } from "../check/check.js"
-import type { Detection } from "../location/data.js"
+import { loadProjectConfig } from "../../project/loadProject/loadProject.js"
+import { runChecks } from "../check/check.js"
+import type { Check } from "../check/data.js"
 import { collectSignals } from "../derive/derive.js"
 import type { Advice, EvidenceItem } from "../derive/data.js"
 import type {
@@ -30,11 +32,14 @@ import type {
   NonEmptyRefactorExamples,
   RefactorExample
 } from "../example/data.js"
+import type { Detection } from "../location/data.js"
+import { contextFor } from "../sources/sources.js"
+import type { ProgramContext } from "../sources/data.js"
 import {
   AdviceReportKey,
-  DedupeState,
   DuplicateCheckNamesError,
   DuplicateNameState,
+  MutableDedupeState,
   NamedCheck,
   type NonEmptyCheckPaths,
   ReportBlock,
@@ -43,171 +48,177 @@ import {
   Wiring
 } from "./data.js"
 
-const snapshotProject = (
-  project: LoadedProject
-): Effect.Effect<Chunk.Chunk<AstNodeElement>, Error> =>
-  pipe(astNodes(project), Stream.runCollect)
+const emptyDetections: ReadonlyArray<Detection> = Array.empty()
+const noDetections = Function.constant(emptyDetections)
+const includeEverySourceFile = Function.constant(true)
 
-const emptyDedupeState: DedupeState = {
-  seen: HashMap.empty<string, ReadonlyArray<Detection>>(),
-  elements: Array.empty()
+const matchesPath = (
+  roots: ReadonlyArray<string>,
+  candidatePath: string
+): boolean => {
+  const isUnscoped = roots.length === 0
+
+  const isInsideConfiguredRoot = Array.some(roots, (rootPath) => {
+    const relative = path.relative(rootPath, candidatePath)
+    const isDirectParent = relative === ".."
+    const isNestedParent = relative.startsWith(`..${path.sep}`)
+    const isParent = isDirectParent || isNestedParent
+    const isDifferentRoot = path.isAbsolute(relative)
+    const isNotParent = !isParent
+    const isSameRoot = !isDifferentRoot
+    const isWithinRoot = isNotParent && isSameRoot
+
+    return isWithinRoot
+  })
+
+  return isUnscoped || isInsideConfiguredRoot
 }
 
-const addUniqueElement = (
-  state: DedupeState,
-  element: Detection
-): DedupeState => {
-  const location = element.location
+const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
+  const createContext = contextFor(project.rootPath)
 
-  const dedupeKeyParts = Array.make(
-    location.path,
-    location.line,
-    location.column,
-    element.message,
-    element.hint
-  )
-
-  const key = JSON.stringify(dedupeKeyParts)
-
-  const bucket = pipe(
-    HashMap.get(state.seen, key),
-    Option.getOrElse((): ReadonlyArray<Detection> => Array.empty())
-  )
-
-  const hasMatchingData = (candidate: Detection): boolean =>
-    Equal.equals(candidate.data, element.data)
-
-  const alreadySeen = Array.some(bucket, hasMatchingData)
-
-  if (alreadySeen) {
-    return state
-  }
-
-  const bucketWithElement = Array.append(bucket, element)
-  const seen = HashMap.set(state.seen, key, bucketWithElement)
-  const elements = Array.append(state.elements, element)
-
-  return new DedupeState({ seen, elements })
+  return createContext(project.program)
 }
 
-const collectDetections =
-  (check: Check) =>
-  (
-    nodes: Chunk.Chunk<AstNodeElement>
-  ): Effect.Effect<Chunk.Chunk<Detection>, Error> => {
-    const upstream = Stream.fromChunk(nodes)
-    const signal = check(upstream)
+const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext =
+  flow(loadProjectConfig, contextFromLoadedProject)
 
-    return Stream.runCollect(signal)
+const collectWorkspaceSignals = <A>(
+  wiring: Wiring,
+  workspaceRoot: string,
+  projects: ReadonlyArray<A>,
+  toContext: (project: A) => ProgramContext
+): Effect.Effect<ReadonlyArray<Signal>, Error> => {
+  const checks = Array.map(wiring.checks, Struct.get("check"))
+
+  const resolveCheckPath = (checkPath: string): string =>
+    path.resolve(workspaceRoot, checkPath)
+
+  const rootsByCheck = Array.map(wiring.checks, (check) =>
+    Array.map(check.paths, resolveCheckPath)
+  )
+
+  const emptyState = (): MutableDedupeState => {
+    const seen = MutableHashMap.empty<string, ReadonlyArray<Detection>>()
+    const elements = MutableList.empty<Detection>()
+
+    return new MutableDedupeState({ seen, elements })
   }
 
-const emptyDetectionChunk = Chunk.empty<Detection>()
-const emptyDetectionEffect = Effect.succeed(emptyDetectionChunk)
+  const states = Array.makeBy(checks.length, emptyState)
 
-/**
- * Run every wired check over one consistent set of project node snapshots.
- * Effect.forEach preserves wiring order, producing a complete finite batch.
- * @remarks Ordered finite batches are required because derivation consumes the
- * complete signal array from one consistent snapshot. Check paths resolve from
- * the workspace root and filter both inputs and emitted detections.
- */
-export const workspaceSignals =
-  (wiring: Wiring) =>
-  (workspaceRoot: string) =>
-  (
-    snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
-  ): Effect.Effect<ReadonlyArray<Signal>, Error> => {
-    const collectCheck = (check: NamedCheck): Effect.Effect<Signal, Error> => {
-      const signalFromCollected = (
-        collected: ReadonlyArray<Chunk.Chunk<Detection>>
-      ): Signal => {
-        const elements = Array.flatMap(collected, Chunk.toReadonlyArray)
+  const collectProject = (
+    current: ReadonlyArray<MutableDedupeState>,
+    project: A
+  ): Effect.Effect<ReadonlyArray<MutableDedupeState>> =>
+    Effect.sync(() => {
+      const context = toContext(project)
 
-        const deduped = Array.reduce(
-          elements,
-          emptyDedupeState,
-          addUniqueElement
+      const includesSourceFile = (
+        checkIndex: number,
+        sourceFile: ts.SourceFile
+      ): boolean => {
+        const candidatePath = path.resolve(
+          context.projectRoot,
+          sourceFile.fileName
         )
+
+        return matchesPath(rootsByCheck[checkIndex], candidatePath)
+      }
+
+      const checksInScope = runChecks(checks)(includesSourceFile)
+      const detectionsByCheck = checksInScope(context)
+
+      Array.forEach(detectionsByCheck, (detections, checkIndex) => {
+        Array.forEach(detections, (element) => {
+          const detectionPath = path.resolve(
+            context.projectRoot,
+            element.location.path
+          )
+
+          const isIncluded = matchesPath(
+            rootsByCheck[checkIndex],
+            detectionPath
+          )
+
+          if (!isIncluded) {
+            return
+          }
+
+          const state = current[checkIndex]
+          const location = element.location
+
+          const dedupeKeyParts = Array.make(
+            location.path,
+            location.line,
+            location.column,
+            element.message,
+            element.hint
+          )
+
+          const key = JSON.stringify(dedupeKeyParts)
+          const maybeBucket = MutableHashMap.get(state.seen, key)
+          const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
+
+          const alreadySeen = Array.some(bucket, (candidate) =>
+            Equal.equals(candidate.data, element.data)
+          )
+
+          if (alreadySeen) {
+            return
+          }
+
+          const expandedBucket = Array.append(bucket, element)
+
+          MutableHashMap.set(state.seen, key, expandedBucket)
+          MutableList.append(state.elements, element)
+        })
+      })
+
+      return current
+    })
+
+  return pipe(
+    Effect.reduce(projects, states, collectProject),
+    Effect.map((completed) =>
+      Array.map(wiring.checks, (check, checkIndex) => {
+        const detections = Array.fromIterable(completed[checkIndex].elements)
 
         return new Signal({
           name: check.name,
           reported: check.reported,
-          detections: deduped.elements,
+          detections,
           examples: check.examples
         })
-      }
+      })
+    )
+  )
+}
 
-      const absolutePaths = Array.map(check.paths, (checkPath) =>
-        path.resolve(workspaceRoot, checkPath)
-      )
+/** Run a complete check fleet over already-loaded program contexts. */
+export const workspaceSignals =
+  (wiring: Wiring) =>
+  (workspaceRoot: string) =>
+  (
+    contexts: ReadonlyArray<ProgramContext>
+  ): Effect.Effect<ReadonlyArray<Signal>, Error> =>
+    collectWorkspaceSignals(wiring, workspaceRoot, contexts, Function.identity)
 
-      const matchesPath = (candidatePath: string): boolean =>
-        Array.some(absolutePaths, (rootPath) => {
-          const relative = path.relative(rootPath, candidatePath)
-          const isDirectParent = relative === ".."
-          const isNestedParent = relative.startsWith(`..${path.sep}`)
-          const isDifferentRoot = path.isAbsolute(relative)
-
-          const outsideConditions = Array.make(
-            isDirectParent,
-            isNestedParent,
-            isDifferentRoot
-          )
-
-          const isOutside = Array.some(outsideConditions, Boolean)
-
-          return !isOutside
-        })
-
-      const collectScoped = (
-        nodes: Chunk.Chunk<AstNodeElement>
-      ): Effect.Effect<Chunk.Chunk<Detection>, Error> => {
-        const matchesSourceFile = flow(
-          (element: AstNodeElement) =>
-            path.resolve(
-              element.context.projectRoot,
-              element.sourceFile.fileName
-            ),
-          matchesPath
-        )
-
-        const scopedNodes = Chunk.filter(nodes, matchesSourceFile)
-
-        return pipe(
-          scopedNodes,
-          Chunk.head,
-          Option.match({
-            onNone: Function.constant(emptyDetectionEffect),
-            onSome: (head) => {
-              const matchesDetection = flow(
-                (element: Detection) =>
-                  path.resolve(head.context.projectRoot, element.location.path),
-                matchesPath
-              )
-
-              return pipe(
-                scopedNodes,
-                collectDetections(check.check),
-                Effect.map(Chunk.filter(matchesDetection))
-              )
-            }
-          })
-        )
-      }
-
-      const collectProject =
-        check.paths.length === 0
-          ? collectDetections(check.check)
-          : collectScoped
-
-      return pipe(
-        Effect.forEach(snapshots, collectProject),
-        Effect.map(signalFromCollected)
-      )
-    }
-
-    return Effect.forEach(wiring.checks, collectCheck)
-  }
+/**
+ * Build and analyze workspace projects one at a time so solution-style roots do
+ * not retain every TypeScript Program simultaneously.
+ * @remarks Sequential loading is required because retaining every Program in a
+ * large solution workspace exhausts the JavaScript heap.
+ */
+export const workspaceSignalsFromConfigs =
+  (wiring: Wiring) =>
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<Signal>, Error> =>
+    collectWorkspaceSignals(
+      wiring,
+      workspace.rootPath,
+      workspace.projects,
+      contextFromProjectConfig
+    )
 
 /**
  * Within one batch, derivation consumes the complete materialized signal array.
@@ -224,11 +235,14 @@ export const deriveAdvice =
 export const runCheckOnProject =
   (check: Check) =>
   (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>, Error> =>
-    pipe(
-      snapshotProject(project),
-      Effect.flatMap(collectDetections(check)),
-      Effect.map(Chunk.toReadonlyArray)
-    )
+    Effect.sync(() => {
+      const context = contextFromLoadedProject(project)
+      const singleCheck = Array.of(check)
+      const checksInEveryFile = runChecks(singleCheck)(includeEverySourceFile)
+      const detections = checksInEveryFile(context)
+
+      return pipe(detections, Array.head, Option.getOrElse(noDetections))
+    })
 
 const evidenceText = (item: EvidenceItem): string =>
   `  evidence: ${item.measure}: ${item.count}`
@@ -457,10 +471,8 @@ export const withFallbackAdvice = (
   )
 
 /**
- * One workspace snapshot through the batch stages the watch pipeline reuses.
+ * One loaded workspace through the batch stages the watch pipeline reuses.
  * Engine surface for callers that need keyed blocks instead of rendered text.
- * @remarks Exposed as blocks because some callers need identities for deltas,
- * not only rendered report text.
  */
 export const reportBlocksFromWiring =
   (wiring: Wiring) =>
@@ -468,22 +480,37 @@ export const reportBlocksFromWiring =
     workspace: LoadedWorkspace
   ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
     pipe(
-      Effect.forEach(workspace.projects, snapshotProject),
-      Effect.flatMap(workspaceSignals(wiring)(workspace.rootPath)),
+      workspace.projects,
+      Array.map(contextFromLoadedProject),
+      workspaceSignals(wiring)(workspace.rootPath),
       Effect.flatMap(batchReportBlocks(wiring))
     )
 
-/**
- * The snapshot report: one workspace snapshot through the batch stages the
- * watch pipeline reuses. Library and test surface; the CLI watches instead.
- * @remarks Kept as a one-shot surface because library and test callers need
- * the same batch stages without starting a watcher.
- */
+/** Analyze a discovered workspace while retaining at most one Program. */
+export const reportBlocksFromWorkspaceConfigs =
+  (wiring: Wiring) =>
+  (
+    workspace: WorkspaceConfigs
+  ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+    pipe(
+      workspaceSignalsFromConfigs(wiring)(workspace),
+      Effect.flatMap(batchReportBlocks(wiring))
+    )
+
 export const reportFromWiring =
   (wiring: Wiring) =>
   (workspace: LoadedWorkspace): Stream.Stream<string, Error> =>
     pipe(
       reportBlocksFromWiring(wiring)(workspace),
+      Stream.fromIterableEffect,
+      Stream.map(Struct.get("text"))
+    )
+
+export const reportFromWorkspaceConfigs =
+  (wiring: Wiring) =>
+  (workspace: WorkspaceConfigs): Stream.Stream<string, Error> =>
+    pipe(
+      reportBlocksFromWorkspaceConfigs(wiring)(workspace),
       Stream.fromIterableEffect,
       Stream.map(Struct.get("text"))
     )

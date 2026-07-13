@@ -1,6 +1,7 @@
 import { Stream, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
+import { nodeCheck } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import { type Detection } from "@better-typescript/core/engine/location/data"
 import { detection } from "@better-typescript/core/engine/location"
 import { Advice } from "@better-typescript/core/engine/derive/data"

@@ -36,12 +36,11 @@ import {
 } from "@better-typescript/core/engine/example"
 import {
   checkFromSubscriptions,
-  nodeSubscription,
-  type Check
+  nodeSubscription
 } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import {
-  astNodes,
   contextFor,
   diffCheckableFiles
 } from "@better-typescript/core/engine/sources"
@@ -331,10 +330,10 @@ test("signalsEquivalence under-cuts on fresh non-Equal detection data by design"
 
 test("signalUpdates and reportBlockUpdates derive one signal array and advice-first blocks per element", async () => {
   const project = await loadFixtureProject()
-  const snapshot = await Effect.runPromise(Stream.runCollect(astNodes(project)))
+  const context = contextFor(project.rootPath)(project.program)
   const update = new WorkspaceUpdate({
     rootPath: project.rootPath,
-    snapshots: [snapshot]
+    contexts: [context]
   })
   const fixedAdvice: Advice = {
     location: location("src/cases.ts", 1, 1),

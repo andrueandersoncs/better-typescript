@@ -1,6 +1,5 @@
 import {
   Array,
-  Chunk,
   Effect,
   Equal,
   Function,
@@ -18,12 +17,13 @@ import type {
   LoadedWorkspace,
   WorkspaceConfigs
 } from "../../project/loadProject/data.js"
-import { astNodesFromContext, sourceUpdates } from "../sources/sources.js"
-import type { AstNodeElement, SourceUpdate } from "../sources/data.js"
+import { sourceUpdates } from "../sources/sources.js"
+import type { ProgramContext, SourceUpdate } from "../sources/data.js"
 import type { Detection } from "../location/data.js"
 import {
   batchReportBlocks,
   reportBlocksFromWiring,
+  reportBlocksFromWorkspaceConfigs,
   workspaceSignals
 } from "../report/report.js"
 import type { ReportBlock, Signal, Wiring } from "../report/data.js"
@@ -35,18 +35,14 @@ import {
   type ReportEvent
 } from "./data.js"
 
-const emptySnapshotCache: HashMap.HashMap<
-  number,
-  Chunk.Chunk<AstNodeElement>
-> = HashMap.empty()
+const emptyContextCache: HashMap.HashMap<number, ProgramContext> =
+  HashMap.empty()
 
 /**
- * Merge every project's source updates into workspace-wide change batches:
- * only the updated project is re-traversed, the other projects' node
- * snapshots come from the per-project cache, and nothing emits until every
- * project's initial program has arrived.
- * @remarks Caching untouched projects is required because a workspace batch
- * must stay consistent without re-traversing every project on each edit.
+ * Merge every project's source updates into workspace-wide change batches.
+ * Untouched projects reuse their latest ProgramContext; no AST is materialized.
+ * @remarks Cached contexts are required because each emitted batch must contain
+ * every project's latest program without retaining AST snapshots.
  */
 export const workspaceUpdates = (
   workspace: WorkspaceConfigs,
@@ -63,52 +59,55 @@ export const workspaceUpdates = (
 
   const merged = Stream.mergeAll(updateStreams, { concurrency: "unbounded" })
 
-  // Drop empty rebuilds after warm-up because only the initial batch must report an empty workspace.
-  const applyUpdate = Effect.fn("applyProjectUpdate")(function* (
-    cache: HashMap.HashMap<number, Chunk.Chunk<AstNodeElement>>,
+  const applyUpdate = (
+    cache: HashMap.HashMap<number, ProgramContext>,
     indexed: readonly [number, SourceUpdate]
-  ) {
+  ): readonly [
+    HashMap.HashMap<number, ProgramContext>,
+    Option.Option<WorkspaceUpdate>
+  ] => {
     const [index, update] = indexed
     const hasArrived = HashMap.has(cache, index)
     const hasNoChanges = update.changed.length === 0
     const hasNoRemovals = update.removed.length === 0
-    const hasEmptyDiff = hasNoChanges && hasNoRemovals
-    const isQuietRebuild = hasArrived && hasEmptyDiff
+    const arrivedWithoutChanges = hasArrived && hasNoChanges
+    const isQuietRebuild = arrivedWithoutChanges && hasNoRemovals
 
     if (isQuietRebuild) {
-      const nested2 = Option.none<WorkspaceUpdate>()
-      return Tuple.make(cache, nested2)
+      const noUpdate = Option.none<WorkspaceUpdate>()
+
+      return Tuple.make(cache, noUpdate)
     }
 
-    const nodes = astNodesFromContext(update.context)
-    const snapshot = yield* Stream.runCollect(nodes)
-    const nextCache = HashMap.set(cache, index, snapshot)
+    const nextCache = HashMap.set(cache, index, update.context)
     const isWarm = HashMap.size(nextCache) === projectCount
 
     if (!isWarm) {
-      const nested3 = Option.none<WorkspaceUpdate>()
-      return Tuple.make(nextCache, nested3)
+      const noUpdate = Option.none<WorkspaceUpdate>()
+
+      return Tuple.make(nextCache, noUpdate)
     }
 
-    const snapshots = Array.makeBy(projectCount, (order: number) =>
+    const contexts = Array.makeBy(projectCount, (order: number) =>
       pipe(
         HashMap.get(nextCache, order),
-        Option.getOrElse(() => Chunk.empty<AstNodeElement>())
+        Option.getOrElse(() => update.context)
       )
     )
 
     const emitted = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
-      snapshots
+      contexts
     })
 
-    const nested4 = Option.some(emitted)
-    return Tuple.make(nextCache, nested4)
-  })
+    const updateOption = Option.some(emitted)
+
+    return Tuple.make(nextCache, updateOption)
+  }
 
   return pipe(
     merged,
-    Stream.mapAccumEffect(emptySnapshotCache, applyUpdate),
+    Stream.mapAccum(emptyContextCache, applyUpdate),
     Stream.filterMap(Function.identity)
   )
 }
@@ -130,7 +129,7 @@ export const signalUpdates =
     pipe(
       updates,
       Stream.mapEffect((update) =>
-        workspaceSignals(wiring)(update.rootPath)(update.snapshots)
+        workspaceSignals(wiring)(update.rootPath)(update.contexts)
       )
     )
 
@@ -310,6 +309,16 @@ export const reportEventsFromWiring =
   (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, Error> =>
     pipe(
       reportBlocksFromWiring(wiring)(workspace),
+      Effect.map(initialReportEvents(workspace.rootPath)),
+      Stream.fromIterableEffect
+    )
+
+/** Analyze a discovered workspace without retaining all project Programs. */
+export const reportEventsFromWorkspaceConfigs =
+  (wiring: Wiring) =>
+  (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, Error> =>
+    pipe(
+      reportBlocksFromWorkspaceConfigs(wiring)(workspace),
       Effect.map(initialReportEvents(workspace.rootPath)),
       Stream.fromIterableEffect
     )

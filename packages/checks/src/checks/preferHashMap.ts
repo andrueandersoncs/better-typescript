@@ -8,7 +8,7 @@ import {
 } from "./support/tsSignature.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -42,7 +42,9 @@ const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.flatMap((ref) => Option.liftPredicate(ts.isIdentifier)(ref.typeName)),
+    Option.flatMap((ref) =>
+      Option.liftPredicate(ts.isIdentifier)(ref.typeName)
+    ),
     Option.exists(isMapTypeName)
   )
 
@@ -61,7 +63,11 @@ const mapMatches = (context: CheckContext) => {
 
       const escapesExternally = isMapConstruction && constructionEscapes(node)
 
-      const reportableConditions = Array.make(isMapConstruction, !escapesExternally)
+      const reportableConditions = Array.make(
+        isMapConstruction,
+        !escapesExternally
+      )
+
       const isReportable = Array.every(reportableConditions, Boolean)
 
       const constructorMatch = match({

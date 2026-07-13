@@ -7,7 +7,7 @@ import {
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -132,7 +132,12 @@ const booleanReturnMatches = (context: CheckContext) => {
         Option.as(falseThenDetection)
       )
 
-      const ternaryReturnCandidates = Array.make(bothLiteral, falseElseArm, falseThenArm)
+      const ternaryReturnCandidates = Array.make(
+        bothLiteral,
+        falseElseArm,
+        falseThenArm
+      )
+
       return pipe(Option.firstSomeOf(ternaryReturnCandidates), Option.toArray)
     }
 

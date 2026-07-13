@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "seam-leakage-evidence")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "seam-leakage-evidence"
+)
 const expectedMessage =
   "This import is Seam Leakage Evidence — it reaches past a public entry into another Module's internals."
 const expectedHint =

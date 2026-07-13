@@ -12,8 +12,7 @@ export class FunctionEntry extends Schema.Class<FunctionEntry>(
   declare readonly nameNode: ts.Identifier
 
   declare readonly declarationNode:
-    | ts.FunctionDeclaration
-    | ts.VariableDeclaration
+    ts.FunctionDeclaration | ts.VariableDeclaration
 }
 
 export class SymbolClassification extends Schema.Class<SymbolClassification>(

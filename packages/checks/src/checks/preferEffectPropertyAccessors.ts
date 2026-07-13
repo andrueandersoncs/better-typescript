@@ -7,7 +7,7 @@ import {
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -123,7 +123,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const ruleMatch =
     (node: PropertyAccessorFunction) =>
     (access: ts.PropertyAccessExpression): Detection => {
-  const name = pipe(
+      const name = pipe(
         Option.fromNullable(node.name),
         Option.map(propertyNameText),
         Option.orElse(() =>
@@ -136,11 +136,11 @@ const propertyAccessorMatches = (context: CheckContext) => {
         Option.getOrElse(Function.constant("this function"))
       )
 
-  const accessedText = access.getText(sourceFile)
-  const accessedType = checker.getTypeAtLocation(access.expression)
-  const moduleName = isRecord(accessedType) ? "Record" : "Struct"
-  const propertyKey = JSON.stringify(access.name.text)
-  const suggestion = `${moduleName}.get(${propertyKey})`
+      const accessedText = access.getText(sourceFile)
+      const accessedType = checker.getTypeAtLocation(access.expression)
+      const moduleName = isRecord(accessedType) ? "Record" : "Struct"
+      const propertyKey = JSON.stringify(access.name.text)
+      const suggestion = `${moduleName}.get(${propertyKey})`
 
       return match({
         node: access,
@@ -165,18 +165,22 @@ const propertyAccessorMatches = (context: CheckContext) => {
     return pipe(
       paramName,
       Option.flatMap((parameterName) => {
-  const implicitExpression = pipe(
+        const implicitExpression = pipe(
           Option.liftPredicate(ts.isArrowFunction)(node),
           Option.flatMap(conciseArrowBody)
         )
 
-  const blockExpression = pipe(
+        const blockExpression = pipe(
           Option.fromNullable(node.body),
           Option.filter(ts.isBlock),
           Option.flatMap(singleReturnExpression)
         )
 
-  const expressionCandidates = Array.make(implicitExpression, blockExpression)
+        const expressionCandidates = Array.make(
+          implicitExpression,
+          blockExpression
+        )
+
         return pipe(
           Option.firstSomeOf(expressionCandidates),
           Option.flatMap(directPropertyAccessExpression),

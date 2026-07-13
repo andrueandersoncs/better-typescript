@@ -4,16 +4,13 @@ import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Console, Effect, Function, Option, Stream, flow, pipe } from "effect"
 import {
-  reportEventsFromWiring,
+  reportEventsFromWorkspaceConfigs,
   renderEventText,
   watchReportFromWiring
 } from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import {
-  discoverWorkspace,
-  loadProject
-} from "@better-typescript/core/project/loadProject"
+import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 import { loadWiring } from "@better-typescript/core/project/loadWiring"
 
 const workingDirectory = process.cwd()
@@ -73,8 +70,8 @@ const runCommand = Effect.fn("runCommand")(function* (
   })
 
   const oneShot = Effect.gen(function* () {
-    const workspace = yield* loadProject(projectDirectory)
-    const events = reportEventsFromWiring(wiring)(workspace)
+    const workspace = yield* discoverWorkspace(projectDirectory)
+    const events = reportEventsFromWorkspaceConfigs(wiring)(workspace)
 
     yield* Console.error(`Analyzing ${workspace.rootPath}.`)
     yield* Stream.runForEach(events, printEvent)

@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "single-use-pure-export")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "single-use-pure-export"
+)
 const expectedMessage =
   "Single-use Pure Export — a pure helper extracted for testability; locality lives at the caller."
 const expectedHint =

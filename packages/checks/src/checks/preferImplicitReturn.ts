@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -23,7 +23,9 @@ const implicitReturnMatches = (context: CheckContext) => {
       hasOneStatement &&
       pipe(
         Option.liftPredicate(ts.isReturnStatement)(firstStatement),
-        Option.flatMap((statement) => Option.fromNullable(statement.expression)),
+        Option.flatMap((statement) =>
+          Option.fromNullable(statement.expression)
+        ),
         Option.isSome
       )
 
@@ -42,7 +44,10 @@ const implicitReturnMatches = (context: CheckContext) => {
 }
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(implicitReturnMatches)
+
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
+  implicitReturnMatches
+)
 
 export const preferImplicitReturn: Check = check
 

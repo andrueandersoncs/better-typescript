@@ -1,6 +1,7 @@
-import { Schema } from "effect"
+import { Data, MutableList, Schema } from "effect"
 import type * as ts from "typescript"
 import type { Detection } from "../location/data.js"
+import type { ProgramContext } from "../sources/data.js"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
 
 export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
@@ -41,3 +42,18 @@ export class FileSubscription extends Schema.Class<FileSubscription>(
 }
 
 export type Subscription = NodeSubscription | FileSubscription
+
+export class Check extends Data.Class<{
+  readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
+}> {}
+
+export class PlannedNodeSubscription extends Data.Class<{
+  readonly checkIndex: number
+  readonly subscription: NodeSubscription
+}> {}
+
+export class ActiveNodeSubscription extends Data.Class<{
+  readonly checkIndex: number
+  readonly handle: (node: ts.Node) => ReadonlyArray<Detection>
+  readonly detections: MutableList.MutableList<Detection>
+}> {}

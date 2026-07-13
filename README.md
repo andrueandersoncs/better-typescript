@@ -119,9 +119,11 @@ This repository is an npm workspaces monorepo:
 Better TypeScript exposes defining modules directly. Do not re-export
 across files, and do not import from package `src/` paths.
 
-- `@better-typescript/core/engine/check`: `Check`, `CheckContext`, `nodeCheck`,
-  `fileCheck`, `checkFromSubscriptions`, `combineAll`, `nodeSubscriptions`,
+- `@better-typescript/core/engine/check`: `nodeCheck`, `fileCheck`,
+  `checkFromSubscriptions`, `combineAll`, `nodeSubscriptions`,
   `fileSubscriptions`, `withProgramIndex`
+- `@better-typescript/core/engine/check/data`: `Check`, `CheckContext`,
+  `Subscription`
 - `@better-typescript/core/engine/location`: `Detection`, `Location`, `detection`,
   `locateNode`
 - `@better-typescript/core/engine/derive`: `Advice`, `deriveSignals`,
@@ -236,7 +238,8 @@ preset fleet with one local reported check:
 ```ts
 import { Stream } from "effect"
 import * as ts from "typescript"
-import { nodeCheck, type Check } from "@better-typescript/core/engine/check"
+import { nodeCheck } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import {
   detection,
   type Detection

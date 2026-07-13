@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -47,7 +47,11 @@ const functionKeywordMatches = (context: CheckContext) => {
             const body = Option.fromNullable(candidate.body)
             const hasNoBody = Option.isNone(body)
 
-            const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
+            const overloadSiblingConditions = Array.make(
+              !isImplementation,
+              hasNoBody
+            )
+
             return Array.every(overloadSiblingConditions, Boolean)
           })
         )
@@ -86,7 +90,9 @@ const functionKeywordNodeKinds = Array.make(
   ts.SyntaxKind.FunctionExpression
 )
 
-const check = nodeCheck(functionKeywordNodeKinds)(isFunctionKeywordNode)(functionKeywordMatches)
+const check = nodeCheck(functionKeywordNodeKinds)(isFunctionKeywordNode)(
+  functionKeywordMatches
+)
 
 export const noFunctionKeyword: Check = check
 

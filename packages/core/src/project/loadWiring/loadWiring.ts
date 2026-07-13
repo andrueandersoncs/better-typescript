@@ -13,7 +13,7 @@ import {
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring } from "../../engine/report/data.js"
 import { makeWiring } from "../../engine/report/report.js"
-import type { Check } from "../../engine/check/check.js"
+import type { Check } from "../../engine/check/data.js"
 import type { RefactorExample } from "../../engine/example/data.js"
 import { configFileName, ProjectWiringError } from "./data.js"
 
@@ -186,7 +186,7 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 })
 
 const checkShapeReason =
-  "{ name: string, check: function, reported?: boolean, examples?: RefactorExample[], paths?: string[] }"
+  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExample[], paths?: string[] }"
 
 const isCheckPath = (value: unknown): value is string => {
   const isString = typeof value === "string"
@@ -199,7 +199,11 @@ const isCheckPathArray = (value: unknown): value is ReadonlyArray<string> =>
 
 const hasNamedCheckFields = (record: ModuleRecord): boolean => {
   const hasStringName = typeof record.name === "string"
-  const hasFunctionCheck = typeof record.check === "function"
+
+  const hasCheckPlan = pipe(
+    Option.liftPredicate(isRecord)(record.check),
+    Option.exists((check) => typeof check.plan === "function")
+  )
 
   const reported = Object.hasOwn(record, "reported")
     ? Option.some(record.reported)
@@ -239,7 +243,7 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
 
   const namedCheckShapeConditions = Array.make(
     hasStringName,
-    hasFunctionCheck,
+    hasCheckPlan,
     hasValidReported,
     hasValidExamples,
     hasValidPaths

@@ -7,7 +7,7 @@ import {
   unwrapTransparentExpression
 } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -42,7 +42,11 @@ const declarationIsEffectStructModule = (
     fileName.endsWith(suffix)
   )
 
-  const effectStructModuleConditions = Array.make(inEffectPackage, isStructModule)
+  const effectStructModuleConditions = Array.make(
+    inEffectPackage,
+    isStructModule
+  )
+
   return Array.every(effectStructModuleConditions, Boolean)
 }
 
@@ -76,7 +80,11 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return typeParameterCount > 0
     })
 
-    const nonGenericCallableConditions = Array.make(hasCallSignature, hasNoGenericSignature)
+    const nonGenericCallableConditions = Array.make(
+      hasCallSignature,
+      hasNoGenericSignature
+    )
+
     return Array.every(nonGenericCallableConditions, Boolean)
   }
 

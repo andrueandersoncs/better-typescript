@@ -7,7 +7,7 @@ import {
 } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -78,8 +78,15 @@ const duplicateIfMatches = (context: CheckContext) => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
 
-      const mergeableDuplicateConditions = Array.make(hasDuplicateBody, bodyExitsScope)
-      const isMergeableDuplicate = Array.every(mergeableDuplicateConditions, Boolean)
+      const mergeableDuplicateConditions = Array.make(
+        hasDuplicateBody,
+        bodyExitsScope
+      )
+
+      const isMergeableDuplicate = Array.every(
+        mergeableDuplicateConditions,
+        Boolean
+      )
 
       const combinedCondition =
         combineConditions(previousIfStatement)(ifStatement)

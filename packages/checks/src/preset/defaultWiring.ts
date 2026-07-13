@@ -378,9 +378,25 @@ const preferImplicitReturnCheck = namedCheck(
 )
 
 const noThrowCheck = namedCheck("no-throw", noThrow, noThrowExamples)
-const noNewErrorCheck = namedCheck("no-new-error", noNewError, noNewErrorExamples)
-const noTryCatchCheck = namedCheck("no-try-catch", noTryCatch, noTryCatchExamples)
-const noUndefinedCheck = namedCheck("no-undefined", noUndefined, noUndefinedExamples)
+
+const noNewErrorCheck = namedCheck(
+  "no-new-error",
+  noNewError,
+  noNewErrorExamples
+)
+
+const noTryCatchCheck = namedCheck(
+  "no-try-catch",
+  noTryCatch,
+  noTryCatchExamples
+)
+
+const noUndefinedCheck = namedCheck(
+  "no-undefined",
+  noUndefined,
+  noUndefinedExamples
+)
+
 const noUnusedCheck = namedCheck("no-unused", noUnused, noUnusedExamples)
 
 const noVoidFunctionsCheck = namedCheck(
@@ -443,7 +459,11 @@ const noMutableVariableDeclarationsCheck = namedCheck(
   noMutableVariableDeclarationsExamples
 )
 
-const noMutationCheck = namedCheck("no-mutation", noMutation, noMutationExamples)
+const noMutationCheck = namedCheck(
+  "no-mutation",
+  noMutation,
+  noMutationExamples
+)
 
 const noNestedIfStatementsCheck = namedCheck(
   "no-nested-if-statements",
@@ -469,7 +489,11 @@ const noDuplicateFunctionNamesCheck = namedCheck(
   noDuplicateFunctionNamesExamples
 )
 
-const noCallbacksCheck = namedCheck("no-callbacks", noCallbacks, noCallbacksExamples)
+const noCallbacksCheck = namedCheck(
+  "no-callbacks",
+  noCallbacks,
+  noCallbacksExamples
+)
 
 const noAsyncFunctionsCheck = namedCheck(
   "no-async-functions",
@@ -495,7 +519,11 @@ const noForInLoopsCheck = namedCheck(
   noForInLoopsExamples
 )
 
-const noForLoopsCheck = namedCheck("no-for-loops", noForLoops, noForLoopsExamples)
+const noForLoopsCheck = namedCheck(
+  "no-for-loops",
+  noForLoops,
+  noForLoopsExamples
+)
 
 const noForOfLoopsCheck = namedCheck(
   "no-for-of-loops",
@@ -557,7 +585,11 @@ const noRawObjectTypesCheck = namedCheck(
   noRawObjectTypesExamples
 )
 
-const noReexportCheck = namedCheck("no-reexport", noReexport, noReexportExamples)
+const noReexportCheck = namedCheck(
+  "no-reexport",
+  noReexport,
+  noReexportExamples
+)
 
 const noFirstPartySchemaDeclareCheck = namedCheck(
   "no-first-party-schema-declare",
@@ -571,7 +603,11 @@ const noDataTaggedClassCheck = namedCheck(
   noDataTaggedClassExamples
 )
 
-const noInstanceofCheck = namedCheck("no-instanceof", noInstanceof, noInstanceofExamples)
+const noInstanceofCheck = namedCheck(
+  "no-instanceof",
+  noInstanceof,
+  noInstanceofExamples
+)
 
 const noSingleUseCalleeCheck = namedCheck(
   "no-single-use-callee",

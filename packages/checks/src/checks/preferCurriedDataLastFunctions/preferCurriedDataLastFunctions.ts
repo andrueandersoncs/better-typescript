@@ -21,7 +21,7 @@ import {
   signatureIsExternal
 } from "../support/tsSignature.js"
 import { hasCallSignature } from "../support/tsType.js"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type {
   CheckContext,
   Subscription
@@ -153,7 +153,11 @@ const hasCurriedArrowBody = (
   const hasSingleRuntimeParameter = parameters.length === 1
   const hasNoRestParameter = !hasRestParameter(declaration)
 
-  const parameterChecks = Array.make(hasSingleRuntimeParameter, hasNoRestParameter)
+  const parameterChecks = Array.make(
+    hasSingleRuntimeParameter,
+    hasNoRestParameter
+  )
+
   const hasCurriedParameterList = Array.every(parameterChecks, Boolean)
 
   const bodyIsFunctionInitializer = pipe(
@@ -196,7 +200,7 @@ const symbolAtLocation =
       checker.getSymbolAtLocation(node),
       Option.fromNullable,
       Option.map((candidate) => {
-  const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
+        const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
 
         return isAlias ? checker.getAliasedSymbol(candidate) : candidate
       })
@@ -263,14 +267,14 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
       pipe(
         Option.liftPredicate(isCurriedDataLastCandidate)(node),
         Option.filter((declaration) => {
-  const hasDisallowedParameters =
+          const hasDisallowedParameters =
             hasDisallowedParameterList(declaration)
 
-  const hasCurriedBody = hasCurriedArrowBody(declaration)
+          const hasCurriedBody = hasCurriedArrowBody(declaration)
 
-  const isContextual = isContextuallyTypedFunction(checker)(declaration)
+          const isContextual = isContextuallyTypedFunction(checker)(declaration)
 
-  const reportableCurryChecks = Array.make(
+          const reportableCurryChecks = Array.make(
             hasDisallowedParameters,
             !hasCurriedBody,
             !isContextual
@@ -303,39 +307,39 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
         symbolAtLocation(checker)(node),
         Option.filter((symbol) => HashSet.has(trackedSymbols, symbol)),
         Option.map((symbol) => {
-  const identifierParent = node.parent
+          const identifierParent = node.parent
 
-  const isVariableName = pipe(
+          const isVariableName = pipe(
             Option.liftPredicate(ts.isVariableDeclaration)(identifierParent),
             Option.exists(declarationHasName(node))
           )
 
-  const isFunctionName = pipe(
+          const isFunctionName = pipe(
             Option.liftPredicate(ts.isFunctionDeclaration)(identifierParent),
             Option.exists(declarationHasName(node))
           )
 
-  const isMethodName = pipe(
+          const isMethodName = pipe(
             Option.liftPredicate(ts.isMethodDeclaration)(identifierParent),
             Option.exists(declarationHasName(node))
           )
 
-  const declarationNameChecks = Array.make(
+          const declarationNameChecks = Array.make(
             isVariableName,
             isFunctionName,
             isMethodName
           )
 
-  const isDeclaration = Array.some(declarationNameChecks, Boolean)
+          const isDeclaration = Array.some(declarationNameChecks, Boolean)
 
           if (isDeclaration) {
             return currentUses
           }
 
-  const expression = outermostTransparentWrapper(node)
-  const expressionParent = expression.parent
+          const expression = outermostTransparentWrapper(node)
+          const expressionParent = expression.parent
 
-  const isDirectCall = pipe(
+          const isDirectCall = pipe(
             Option.liftPredicate(ts.isCallExpression)(expressionParent),
             Option.exists((call) => call.expression === expression)
           )
@@ -344,23 +348,23 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             return updateSymbolUse(symbol)(markDirectCall)(currentUses)
           }
 
-  const parentCall = Option.liftPredicate(ts.isCallExpression)(
+          const parentCall = Option.liftPredicate(ts.isCallExpression)(
             expression.parent
           )
 
-  const isSameExpression = (candidate: ts.Expression): boolean =>
+          const isSameExpression = (candidate: ts.Expression): boolean =>
             candidate === expression
 
-  const index = ts.isCallExpression(expression.parent)
+          const index = ts.isCallExpression(expression.parent)
             ? Array.findFirstIndex(
                 expression.parent.arguments,
                 isSameExpression
               )
             : Option.none()
 
-  const expressionContextualType = contextualType(checker)(expression)
+          const expressionContextualType = contextualType(checker)(expression)
 
-  const signatureType = pipe(
+          const signatureType = pipe(
             parentCall,
             Option.flatMap((call) =>
               pipe(
@@ -380,18 +384,21 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             )
           )
 
-  const optionHasCallableType = (
+          const optionHasCallableType = (
             type: Option.Option<ts.Type>
           ): boolean => Option.exists(type, hasCallSignature(checker))
 
-  const contextualTypes = Array.make(expressionContextualType, signatureType)
+          const contextualTypes = Array.make(
+            expressionContextualType,
+            signatureType
+          )
 
-  const hasCallableContext = Array.some(
+          const hasCallableContext = Array.some(
             contextualTypes,
             optionHasCallableType
           )
 
-  const hasExternalCallbackBoundary = pipe(
+          const hasExternalCallbackBoundary = pipe(
             parentCall,
             Option.exists((call) =>
               pipe(
@@ -401,14 +408,17 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             )
           )
 
-  const contextualArgumentChecks = Array.make(
+          const contextualArgumentChecks = Array.make(
             hasCallableContext,
             hasExternalCallbackBoundary
           )
 
-  const isContextualArgument = Array.every(contextualArgumentChecks, Boolean)
+          const isContextualArgument = Array.every(
+            contextualArgumentChecks,
+            Boolean
+          )
 
-  const referenceUpdate = isContextualArgument
+          const referenceUpdate = isContextualArgument
             ? markContextualReference
             : markOtherReference
 
@@ -432,49 +442,49 @@ const curriedDataLastListeners = (
     const matches = (
       declaration: CurriedDataLastCandidate
     ): ReadonlyArray<Detection> => {
-  const hasDisallowedParameters = hasDisallowedParameterList(declaration)
-  const hasCurriedBody = hasCurriedArrowBody(declaration)
+      const hasDisallowedParameters = hasDisallowedParameterList(declaration)
+      const hasCurriedBody = hasCurriedArrowBody(declaration)
 
-  const isContextual = isContextuallyTypedFunction(context.checker)(
+      const isContextual = isContextuallyTypedFunction(context.checker)(
         declaration
       )
 
-  const hasOnlyContextualUse = pipe(
+      const hasOnlyContextualUse = pipe(
         symbolForDeclaration(context.checker)(declaration),
         Option.flatMap((symbol) => HashMap.get(symbolUses, symbol)),
         Option.exists(isContextualOnlyUse)
       )
 
-  const finalReportChecks = Array.make(
+      const finalReportChecks = Array.make(
         hasDisallowedParameters,
         !hasCurriedBody,
         !isContextual,
         !hasOnlyContextualUse
       )
 
-  const shouldReport = Array.every(finalReportChecks, Boolean)
+      const shouldReport = Array.every(finalReportChecks, Boolean)
 
       if (!shouldReport) {
         return Array.empty()
       }
 
-  const functionTarget = pipe(
+      const functionTarget = pipe(
         Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
         Option.map(namedDetectionTarget)
       )
 
-  const methodTarget = pipe(
+      const methodTarget = pipe(
         Option.liftPredicate(ts.isMethodDeclaration)(declaration),
         Option.map(namedDetectionTarget)
       )
 
-  const node = pipe(
+      const node = pipe(
         functionTarget,
         Option.orElse(Function.constant(methodTarget)),
         Option.getOrElse(Function.constant(declaration))
       )
 
-  const detection = makeElement({
+      const detection = makeElement({
         node,
         message: "",
         hint: ""

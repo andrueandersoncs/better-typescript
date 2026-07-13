@@ -10,7 +10,7 @@ import {
   isProjectSourceFile
 } from "@better-typescript/core/engine/sources"
 import { detection } from "@better-typescript/core/engine/location"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type {
   CheckContext,
   Subscription

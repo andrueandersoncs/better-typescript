@@ -5,7 +5,7 @@ import { unwrapExpression } from "./support/tsNode.js"
 import { astChildren } from "@better-typescript/core/engine/sources"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -73,7 +73,10 @@ const inOperatorGuardMatches = (context: CheckContext) => {
 }
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(inOperatorGuardMatches)
+
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(
+  inOperatorGuardMatches
+)
 
 export const preferEffectSchemaGuard: Check = check
 

@@ -4,8 +4,9 @@ import {
   Effect,
   Function,
   HashMap,
+  Iterable,
+  List,
   MutableList,
-  MutableRef,
   Option,
   Stream,
   pipe
@@ -56,24 +57,39 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
   return Array.fromIterable(children)
 }
 
+/**
+ * Depth-first pre-order traversal backed by an explicit persistent stack.
+ * @remarks TypeScript trees can be arbitrarily deep, so traversal must not use
+ * the JavaScript call stack.
+ */
+export const astNodesIn = (root: ts.Node): Iterable<ts.Node> => {
+  const initial = List.of(root)
+
+  return Iterable.unfold<List.List<ts.Node>, ts.Node>(initial, (pending) => {
+    if (List.isNil(pending)) {
+      return Option.none()
+    }
+
+    const node = pending.head
+    const children = astChildren(node)
+
+    const next = Array.reduceRight(children, pending.tail, (stack, child) =>
+      List.prepend(stack, child)
+    )
+
+    const entry = Tuple.make(node, next)
+
+    return Option.some(entry)
+  })
+}
+
 export const foldAst =
   <A>(fold: AstFold<A>) =>
   (root: ts.Node) =>
   (initial: A): A => {
-    const accumulator = MutableRef.make(initial)
+    const nodes = astNodesIn(root)
 
-    const visit = (node: ts.Node): false => {
-      const current = MutableRef.get(accumulator)
-      const folded = fold(current, node)
-      MutableRef.set(accumulator, folded)
-      ts.forEachChild(node, visit)
-
-      return false
-    }
-
-    visit(root)
-
-    return MutableRef.get(accumulator)
+    return Iterable.reduce(nodes, initial, fold)
   }
 
 export const astNodesFromContext = (
@@ -83,23 +99,13 @@ export const astNodesFromContext = (
     context.program.getSourceFiles(),
     Array.filter(isProjectSourceFile),
     Stream.fromIterable,
-    Stream.flatMap((sourceFile) => {
-      const initial = MutableList.empty<AstNodeElement>()
-
-      const append = (
-        nodes: MutableList.MutableList<AstNodeElement>,
-        node: ts.Node
-      ): MutableList.MutableList<AstNodeElement> => {
-        const element = new AstNodeElement({ context, sourceFile, node })
-
-        return MutableList.append(nodes, element)
-      }
-
-      const collected = foldAst(append)(sourceFile)(initial)
-      const nodes = Array.fromIterable(collected)
-
-      return Stream.fromIterable(nodes)
-    })
+    Stream.flatMap((sourceFile) =>
+      pipe(
+        astNodesIn(sourceFile),
+        Stream.fromIterable,
+        Stream.map((node) => new AstNodeElement({ context, sourceFile, node }))
+      )
+    )
   )
 
 export const astNodes = (

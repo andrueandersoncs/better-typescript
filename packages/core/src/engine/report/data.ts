@@ -1,5 +1,13 @@
-import { Array, Data, HashMap, HashSet, Schema, Stream } from "effect"
-import type { Check } from "../check/check.js"
+import {
+  Array,
+  Data,
+  HashSet,
+  MutableHashMap,
+  MutableList,
+  Schema,
+  Stream
+} from "effect"
+import type { Check } from "../check/data.js"
 import type { Advice } from "../derive/data.js"
 import type { RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
@@ -21,16 +29,16 @@ export class Signal extends Data.Class<{
   readonly examples: ReadonlyArray<RefactorExample>
 }> {}
 
+export class MutableDedupeState extends Data.Class<{
+  readonly seen: MutableHashMap.MutableHashMap<string, ReadonlyArray<Detection>>
+  readonly elements: MutableList.MutableList<Detection>
+}> {}
+
 export class Wiring extends Data.Class<{
   readonly checks: ReadonlyArray<NamedCheck>
   readonly derive: (
     signals: ReadonlyArray<Signal>
   ) => Stream.Stream<Advice, Error>
-}> {}
-
-export class DedupeState extends Data.Class<{
-  readonly seen: HashMap.HashMap<string, ReadonlyArray<Detection>>
-  readonly elements: ReadonlyArray<Detection>
 }> {}
 
 /**

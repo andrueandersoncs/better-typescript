@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -58,11 +58,13 @@ const mutableDeclarationMatches = (context: CheckContext) => {
   return matches
 }
 
-const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationList)
-
-const check = nodeCheck(variableDeclarationListKinds)(ts.isVariableDeclarationList)(
-  mutableDeclarationMatches
+const variableDeclarationListKinds = Array.of(
+  ts.SyntaxKind.VariableDeclarationList
 )
+
+const check = nodeCheck(variableDeclarationListKinds)(
+  ts.isVariableDeclarationList
+)(mutableDeclarationMatches)
 
 export const noMutableVariableDeclarations: Check = check
 

@@ -2,15 +2,12 @@ import * as path from "node:path"
 import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  functionInitializer,
-  unwrapExpression
-} from "./support/tsNode.js"
+import { functionInitializer, unwrapExpression } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { FunctionInitializer } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -133,7 +130,10 @@ const effectFnMatches = (context: CheckContext) => {
 }
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
-const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(effectFnMatches)
+
+const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(
+  effectFnMatches
+)
 
 export const preferEffectFn: Check = check
 

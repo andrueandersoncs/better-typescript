@@ -4,7 +4,7 @@ import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isArrayLikeType } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -85,7 +85,10 @@ const mutableArrayMatches = (context: CheckContext) => {
 }
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
-const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(mutableArrayMatches)
+
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
+  mutableArrayMatches
+)
 
 export const noMutableArrayMethods: Check = check
 

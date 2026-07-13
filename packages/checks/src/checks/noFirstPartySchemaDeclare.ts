@@ -4,7 +4,7 @@ import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -49,7 +49,12 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
   const isConcreteType = !type.isTypeParameter()
 
-  const ambientConditions = Array.make(isFirstParty, isDataStructure, isConcreteType)
+  const ambientConditions = Array.make(
+    isFirstParty,
+    isDataStructure,
+    isConcreteType
+  )
+
   return Array.every(ambientConditions, Boolean)
 }
 
@@ -117,7 +122,9 @@ const schemaDeclareMatches = (context: CheckContext) => {
 }
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
-const check = nodeCheck(callExpressionKinds)(isDeclareCall)(schemaDeclareMatches)
+
+const check =
+  nodeCheck(callExpressionKinds)(isDeclareCall)(schemaDeclareMatches)
 
 export const noFirstPartySchemaDeclare: Check = check
 

@@ -162,9 +162,7 @@ test("architectureExploreDerive emits bounce cluster for thin module directories
   ]
 
   const advice = await collectAdvice(
-    architectureExploreDerive([
-      silentSignal("pass-through-wrappers", wrappers)
-    ])
+    architectureExploreDerive([silentSignal("pass-through-wrappers", wrappers)])
   )
 
   const bounce = adviceWithTitle(advice, "bounce cluster")

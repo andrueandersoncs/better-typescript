@@ -22,7 +22,12 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const hasEnoughFiles = directory.files.length >= 3
   const hasProjectShare = total * 5 >= directory.projectTotal * 3
 
-  const signalsEvidence = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
+  const signalsEvidence = Array.make(
+    hasEnoughSignals,
+    hasEnoughFiles,
+    hasProjectShare
+  )
+
   return Array.every(signalsEvidence, Boolean)
 }
 

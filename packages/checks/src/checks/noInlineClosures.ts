@@ -5,7 +5,7 @@ import { transparentWrapperKinds } from "./support/tsNode.js"
 import { isExternalPackageArgument } from "./support/tsSignature.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -55,7 +55,10 @@ const arrowFunctionMatches = (context: CheckContext) => {
 }
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(arrowFunctionMatches)
+
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
+  arrowFunctionMatches
+)
 
 export const noInlineClosures: Check = check
 

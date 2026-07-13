@@ -1,9 +1,6 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  isSameNode,
-  outermostTransparentWrapper
-} from "./tsNode.js"
+import { isSameNode, outermostTransparentWrapper } from "./tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 
 export type CallLikeExpression = ts.CallExpression | ts.NewExpression

@@ -5,8 +5,11 @@ import {
   withProgramIndex
 } from "@better-typescript/core/engine/check"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { Detection, Location } from "@better-typescript/core/engine/location/data"
-import type { Check } from "@better-typescript/core/engine/check"
+import {
+  Detection,
+  Location
+} from "@better-typescript/core/engine/location/data"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type {
   CheckContext,
   Subscription
@@ -99,9 +102,8 @@ const unusedListeners = (
   return fileSubscriptions(matches)
 }
 
-export const noUnused: Check = withProgramIndex(buildUnusedProgram)(
-  unusedListeners
-)
+export const noUnused: Check =
+  withProgramIndex(buildUnusedProgram)(unusedListeners)
 
 export const noUnusedExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-unused")

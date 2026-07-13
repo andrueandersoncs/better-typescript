@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import {
+  checkFromSubscriptions,
   fileCheck,
-  nodeCheck,
-  type Check
+  fileSubscription,
+  nodeCheck
 } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import {
   Detection,
   Location
@@ -23,6 +25,7 @@ import {
   makeWiring,
   namedCheck,
   reportFromWiring,
+  reportFromWorkspaceConfigs,
   runCheckOnProject,
   scopeCheck,
   signalOf,
@@ -34,8 +37,11 @@ import {
   refactorExample
 } from "@better-typescript/core/engine/example"
 import { report } from "@better-typescript/checks/preset"
-import { astNodes } from "@better-typescript/core/engine/sources"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { astNodes, foldAst } from "@better-typescript/core/engine/sources"
+import {
+  discoverWorkspace,
+  loadProject
+} from "@better-typescript/core/project/loadProject"
 import type {
   LoadedProject,
   LoadedWorkspace
@@ -202,17 +208,15 @@ const delayedSource = <A>(items: ReadonlyArray<A>): Stream.Stream<A, Error> =>
 
 const noDerive: Wiring["derive"] = () => Stream.empty
 
-const fixedCheck =
-  (elements: ReadonlyArray<Detection>): Check =>
-  () =>
-    Stream.fromIterable(elements)
+const fixedCheck = (elements: ReadonlyArray<Detection>): Check =>
+  checkFromSubscriptions(() => [fileSubscription(() => elements)])
 
 const testWiring = (
   checks: ReadonlyArray<NamedCheck>,
   derive: Wiring["derive"] = noDerive
 ): Wiring => ({ checks, derive })
 
-const noOpCheck: Check = () => Stream.empty
+const noOpCheck: Check = checkFromSubscriptions(() => [])
 
 const namedNoOpCheck = (name: string): NamedCheck =>
   namedCheck(name, noOpCheck, probeExamples)
@@ -246,6 +250,17 @@ test("astNodes emits fixture AST elements in stable traversal order", async () =
     firstRun,
     "expected AST traversal order to be deterministic"
   )
+})
+
+test("foldAst traverses deeply nested trees without call stack recursion", () => {
+  const depth = 20_000
+  const root = Array.from({ length: depth }).reduce<ts.Expression>(
+    (expression) => ts.factory.createParenthesizedExpression(expression),
+    ts.factory.createIdentifier("value")
+  )
+  const nodeCount = foldAst((count: number) => count + 1)(root)(0)
+
+  assert.equal(nodeCount, depth + 1)
 })
 
 test("runCheckOnProject applies probe subscriptions to matching fixture nodes", async () => {
@@ -291,8 +306,36 @@ test("scopeCheck runs each check only on its configured workspace paths", async 
   )
 })
 
+test("reportFromWorkspaceConfigs analyzes referenced projects sequentially", async () => {
+  const check = namedCheck(
+    "visited source files",
+    fileCheck((context) => [
+      new Detection({
+        location: locateNode(context)(context.sourceFile),
+        message: "visited source file",
+        hint: "analyze every referenced project"
+      })
+    ]),
+    probeExamples
+  )
+  const workspace = await Effect.runPromise(
+    discoverWorkspace(fixturePath("scoped-checks"))
+  )
+  const blocks = await collectStream(
+    reportFromWorkspaceConfigs(testWiring([check]))(workspace)
+  )
+
+  assert.equal(workspace.projects.length, 2)
+  assert.deepEqual(
+    blocks[0]?.split("\n").filter((line) => line.endsWith(":1:1")),
+    ["  src/alpha.ts:1:1", "  src/beta.ts:1:1"]
+  )
+})
+
 test("scopeCheck does not invoke a check when no configured path is present", async () => {
-  const mustNotRun: Check = () => Stream.fail(new Error("check ran"))
+  const mustNotRun: Check = checkFromSubscriptions(() => {
+    throw new Error("check ran")
+  })
   const check = pipe(
     namedCheck("absent path", mustNotRun, probeExamples),
     scopeCheck(["missing"])
@@ -576,17 +619,16 @@ test("reportFromWiring orders advice before check blocks and sorts advice by lev
   )
 })
 
-test("reportFromWiring preserves asynchronously emitted advice and check streams", async () => {
+test("reportFromWiring preserves asynchronously emitted advice", async () => {
   const delayedCheck = namedCheck(
     "probe throw statements",
-    () =>
-      delayedSource([
-        new Detection({
-          location: location("src/cases.ts", 4, 3),
-          message: probeMessage,
-          hint: probeHint
-        })
-      ]),
+    fixedCheck([
+      new Detection({
+        location: location("src/cases.ts", 4, 3),
+        message: probeMessage,
+        hint: probeHint
+      })
+    ]),
     probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")

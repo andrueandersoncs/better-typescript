@@ -1,16 +1,16 @@
-import { Chunk, Data, Schema } from "effect"
-import type { AstNodeElement } from "../sources/data.js"
+import { Data, Schema } from "effect"
+import type { ProgramContext } from "../sources/data.js"
 import { reportKeySchema } from "../report/data.js"
 
 /**
- * One consistent workspace-wide snapshot batch: every project's node snapshot
- * in project index order, emitted only after source-update quiet/warm gating.
- * @remarks Quiet/warm gating is required because downstream stages must see
- * one consistent workspace snapshot, not a torn partial update.
+ * One consistent workspace-wide batch: every project's latest ProgramContext
+ * in project index order, emitted only after every project has arrived.
+ * @remarks Keeping contexts instead of materialized AST nodes lets the fused
+ * dispatcher traverse each source file once without retaining node wrappers.
  */
 export class WorkspaceUpdate extends Data.Class<{
   readonly rootPath: string
-  readonly snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
+  readonly contexts: ReadonlyArray<ProgramContext>
 }> {}
 
 /**

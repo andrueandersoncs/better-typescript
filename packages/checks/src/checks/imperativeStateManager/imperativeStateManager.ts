@@ -71,14 +71,24 @@ const imperativeStateAdviceFor = (
       const mutationEvidence = evidenceItem("no-mutation", mutationCount)
       const hashMapEvidence = evidenceItem("prefer-hash-map", hashMapCount)
       const hashSetEvidence = evidenceItem("prefer-hash-set", hashSetCount)
-      const mutableArrayEvidence = evidenceItem("no-mutable-array-methods", arrayCount)
+
+      const mutableArrayEvidence = evidenceItem(
+        "no-mutable-array-methods",
+        arrayCount
+      )
 
       const mutableDeclarationEvidence = evidenceItem(
         "no-mutable-variable-declarations",
         declarationCount
       )
 
-      const observations = Array.make(mutationEvidence, hashMapEvidence, hashSetEvidence, mutableArrayEvidence, mutableDeclarationEvidence)
+      const observations = Array.make(
+        mutationEvidence,
+        hashMapEvidence,
+        hashSetEvidence,
+        mutableArrayEvidence,
+        mutableDeclarationEvidence
+      )
 
       const nonZero = Array.filter(observations, (item) => item.count > 0)
       const evidence = Array.prepend(nonZero, sharedItem)

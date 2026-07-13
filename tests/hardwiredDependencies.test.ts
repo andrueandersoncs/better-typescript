@@ -14,7 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "hardwired-dependencies")
+const fixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "hardwired-dependencies"
+)
 const expectedMessage =
   "Hardwired Dependency — constructing a collaborator inside this Module blocks an injectable seam."
 const expectedHint =

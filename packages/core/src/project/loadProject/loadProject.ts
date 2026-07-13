@@ -30,14 +30,24 @@ export const discoverWorkspace: (
     }
 
     const rootAncestorPaths = HashSet.empty<string>()
-    const projects = yield* discoverConfig(configPath.value, rootAncestorPaths)
+
+    const discoveredProjects = yield* discoverConfig(
+      configPath.value,
+      rootAncestorPaths
+    )
+
+    const projects = Array.dedupeWith(
+      discoveredProjects,
+      (self, that) => self.configPath === that.configPath
+    )
+
     const workspaceRootPath = path.dirname(configPath.value)
 
     return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
   }
 )
 
-const createProject = (config: ProjectConfig): LoadedProject => {
+export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   const program = ts.createProgram({
     rootNames: config.parsed.fileNames,
     options: config.parsed.options,
@@ -56,7 +66,7 @@ export const loadProject: (
 ) => Effect.Effect<LoadedWorkspace, Error> = Effect.fn("loadProject")(
   function* (projectPath: string) {
     const workspace = yield* discoverWorkspace(projectPath)
-    const projects = Array.map(workspace.projects, createProject)
+    const projects = Array.map(workspace.projects, loadProjectConfig)
 
     return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
   }

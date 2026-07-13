@@ -4,10 +4,7 @@ import {
   fileSubscriptions,
   withProgramIndex
 } from "@better-typescript/core/engine/check"
-import {
-  functionInitializer,
-  hasExportModifier
-} from "../support/tsNode.js"
+import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
 import {
   foldAst,
   isProjectSourceFile
@@ -16,7 +13,7 @@ import {
   detection,
   toRelativeFileName
 } from "@better-typescript/core/engine/location"
-import type { Check } from "@better-typescript/core/engine/check"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type {
   CheckContext,
   Subscription
@@ -227,9 +224,7 @@ const buildIndex = (context: ProgramContext): PureExportIndex => {
   })
 }
 
-const listeners = (
-  index: PureExportIndex
-): ReadonlyArray<Subscription> => {
+const listeners = (index: PureExportIndex): ReadonlyArray<Subscription> => {
   const matches = (context: CheckContext): ReadonlyArray<Detection> => {
     const match = detection(context)
     const relative = toRelativeFileName(index.projectRoot)
@@ -267,8 +262,7 @@ const listeners = (
               node: entry.nameNode,
               message:
                 "Single-use Pure Export — a pure helper extracted for testability; locality lives at the caller.",
-              hint:
-                "Move the helper next to its only caller (or inline it) so bugs and changes concentrate in one Module.",
+              hint: "Move the helper next to its only caller (or inline it) so bugs and changes concentrate in one Module.",
               data
             })
           })
@@ -280,7 +274,8 @@ const listeners = (
   return fileSubscriptions(matches)
 }
 
-export const singleUsePureExport: Check = withProgramIndex(buildIndex)(listeners)
+export const singleUsePureExport: Check =
+  withProgramIndex(buildIndex)(listeners)
 
 export const singleUsePureExportExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("single-use-pure-export")
