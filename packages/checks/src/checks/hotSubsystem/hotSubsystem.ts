@@ -1,4 +1,4 @@
-import { Tuple, Array, HashMap, Option, Stream, Struct, pipe } from "effect"
+import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
 import {
   Advice,
   FileDetections

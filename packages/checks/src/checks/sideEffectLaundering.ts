@@ -1,4 +1,4 @@
-import { Array, Stream } from "effect"
+import { Array } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   adviceLocation,

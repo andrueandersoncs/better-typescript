@@ -10,13 +10,6 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const hasTaggedClassName = (name: ts.MemberName): boolean =>
-  name.text === "TaggedClass"
-
-const isTaggedClassProperty = (expression: ts.Expression): boolean =>
-  ts.isPropertyAccessExpression(expression) &&
-  hasTaggedClassName(expression.name)
-
 const accessExpression = Struct.get("expression")
 
 const callExpression = Struct.get("expression")
@@ -25,7 +18,7 @@ const isDataIdentifier = (id: ts.Identifier): boolean => id.text === "Data"
 
 const isDataTaggedCallee = (callee: ts.PropertyAccessExpression): boolean => {
   const object = accessExpression(callee)
-  const hasTaggedClass = hasTaggedClassName(callee.name)
+  const hasTaggedClass = callee.name.text === "TaggedClass"
   const identifierOption = Option.liftPredicate(ts.isIdentifier)(object)
   const isOnData = Option.exists(identifierOption, isDataIdentifier)
 

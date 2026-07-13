@@ -16,7 +16,6 @@ import {
 import type * as ts from "typescript"
 import type {
   LoadedWorkspace,
-  ProjectConfig,
   WorkspaceConfigs
 } from "../../project/loadProject/data.js"
 import { astNodesFromContext, sourceUpdates } from "../sources/sources.js"

@@ -125,6 +125,7 @@ import {
 import { noThrow, noThrowExamples } from "../checks/noThrow.js"
 import { noTryCatch, noTryCatchExamples } from "../checks/noTryCatch.js"
 import { noUndefined, noUndefinedExamples } from "../checks/noUndefined.js"
+import { noUnused, noUnusedExamples } from "../checks/noUnused.js"
 import {
   noVoidFunctions,
   noVoidFunctionsExamples
@@ -370,6 +371,7 @@ const noThrowCheck = namedCheck("no-throw", noThrow, noThrowExamples)
 const noNewErrorCheck = namedCheck("no-new-error", noNewError, noNewErrorExamples)
 const noTryCatchCheck = namedCheck("no-try-catch", noTryCatch, noTryCatchExamples)
 const noUndefinedCheck = namedCheck("no-undefined", noUndefined, noUndefinedExamples)
+const noUnusedCheck = namedCheck("no-unused", noUnused, noUnusedExamples)
 
 const noVoidFunctionsCheck = namedCheck(
   "no-void-functions",
@@ -620,6 +622,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noNewErrorCheck,
   noTryCatchCheck,
   noUndefinedCheck,
+  noUnusedCheck,
   noVoidFunctionsCheck,
   noRootLevelClassesCheck,
   noMultiLineCommentsCheck,

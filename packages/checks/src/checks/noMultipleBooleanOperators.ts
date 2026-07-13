@@ -61,18 +61,6 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
   return ownCount + childCount
 }
 
-const isConditionOf =
-  (node: ts.Node) =>
-  (parent: ts.ConditionalExpression): boolean =>
-    parent.condition === node
-
-const isConditionEdge = (node: ts.Node): boolean =>
-  pipe(
-    Option.fromNullable<ts.Node>(node.parent),
-    Option.filter(ts.isConditionalExpression),
-    Option.exists(isConditionOf(node))
-  )
-
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
   const isBooleanOperator = isBooleanOperatorExpression(parent)
   const hasAncestor = hasBooleanOperatorAncestor(parent)
@@ -87,7 +75,7 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   const isConditionEdge = pipe(
     parent,
     Option.filter(ts.isConditionalExpression),
-    Option.exists(isConditionOf(node))
+    Option.exists((conditional) => conditional.condition === node)
   )
 
   const hasCountedAncestor = Option.exists(

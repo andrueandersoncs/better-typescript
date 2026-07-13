@@ -9,10 +9,6 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-type ArrowFunctionWithBlockBody = ts.ArrowFunction & {
-  readonly body: ts.Block
-}
-
 const implicitReturnMatches = (context: CheckContext) => {
   const match = detection(context)
 
