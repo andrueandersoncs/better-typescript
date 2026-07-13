@@ -97,7 +97,10 @@ export const workspaceUpdates = (
       )
     )
 
-    const emitted = new WorkspaceUpdate({ snapshots })
+    const emitted = new WorkspaceUpdate({
+      rootPath: workspace.rootPath,
+      snapshots
+    })
 
     const nested4 = Option.some(emitted)
     return Tuple.make(nextCache, nested4)
@@ -126,7 +129,9 @@ export const signalUpdates =
   ): Stream.Stream<ReadonlyArray<Signal>, Error> =>
     pipe(
       updates,
-      Stream.mapEffect((update) => workspaceSignals(wiring)(update.snapshots))
+      Stream.mapEffect((update) =>
+        workspaceSignals(wiring)(update.rootPath)(update.snapshots)
+      )
     )
 
 const detectionEquals = (a: Detection, b: Detection): boolean => {

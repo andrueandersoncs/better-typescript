@@ -24,6 +24,7 @@ import {
   namedCheck,
   reportFromWiring,
   runCheckOnProject,
+  scopeCheck,
   signalOf,
   silentCheck,
   withFallbackAdvice
@@ -258,6 +259,72 @@ test("runCheckOnProject applies probe subscriptions to matching fixture nodes", 
     expectedThrowProbeElements,
     "expected the probe check to report every throw statement with source locations in fixture order"
   )
+})
+
+test("scopeCheck runs each check only on its configured workspace paths", async () => {
+  const fileProbe: Check = fileCheck((context) => [
+    new Detection({
+      location: locateNode(context)(context.sourceFile),
+      message: "visited scoped file",
+      hint: "keep each check within its configured paths"
+    })
+  ])
+  const alphaCheck = pipe(
+    namedCheck("alpha files", fileProbe, probeExamples),
+    scopeCheck(["packages/alpha/src"])
+  )
+  const betaCheck = pipe(
+    namedCheck("beta file", fileProbe, probeExamples),
+    scopeCheck(["packages/beta/src/beta.ts"])
+  )
+  const workspace = await loadFixtureWorkspace("scoped-checks")
+  const blocks = await collectStream(
+    reportFromWiring(testWiring([alphaCheck, betaCheck]))(workspace)
+  )
+
+  assert.deepEqual(firstLines(blocks), ["alpha files", "beta file"])
+  assert.deepEqual(
+    blocks.map((block) =>
+      block.split("\n").filter((line) => line.endsWith(":1:1"))
+    ),
+    [["  src/alpha.ts:1:1"], ["  src/beta.ts:1:1"]]
+  )
+})
+
+test("scopeCheck does not invoke a check when no configured path is present", async () => {
+  const mustNotRun: Check = () => Stream.fail(new Error("check ran"))
+  const check = pipe(
+    namedCheck("absent path", mustNotRun, probeExamples),
+    scopeCheck(["missing"])
+  )
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(
+    reportFromWiring(testWiring([check]))(workspace)
+  )
+
+  assert.deepEqual(blocks, [])
+})
+
+test("scopeCheck drops detections outside its configured paths", async () => {
+  const outsideDetection = new Detection({
+    location: location("src/allowed.ts", 1, 1),
+    message: "outside configured paths",
+    hint: "drop this detection"
+  })
+  const check = pipe(
+    namedCheck(
+      "outside detection",
+      fixedCheck([outsideDetection]),
+      probeExamples
+    ),
+    scopeCheck(["src/cases.ts"])
+  )
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(
+    reportFromWiring(testWiring([check]))(workspace)
+  )
+
+  assert.deepEqual(blocks, [])
 })
 
 test("reportFromWiring collapses duplicate workspace detections by check and location", async () => {

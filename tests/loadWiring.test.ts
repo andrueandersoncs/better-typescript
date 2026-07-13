@@ -109,6 +109,51 @@ test("loadWiring accepts a direct default wiring object", async () => {
   })
 })
 
+test("loadWiring preserves configured check paths", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    await writeConfig(
+      projectDirectory,
+      [
+        'import { Stream } from "effect"',
+        "",
+        "export default {",
+        '  checks: [{ name: "scoped-check", paths: ["src/cases.ts"], check: () => Stream.empty }],',
+        "  derive: () => Stream.empty",
+        "}",
+        ""
+      ].join("\n")
+    )
+
+    const wiring = await Effect.runPromise(
+      loadWiring(projectDirectory, fallbackWiring)
+    )
+
+    assert.deepEqual(wiring.checks[0]?.paths, ["src/cases.ts"])
+  })
+})
+
+test("loadWiring rejects non-path check scopes", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    await writeConfig(
+      projectDirectory,
+      [
+        'import { Stream } from "effect"',
+        "",
+        "export default {",
+        '  checks: [{ name: "invalid-scope", paths: ["src", "  "], check: () => Stream.empty }],',
+        "  derive: () => Stream.empty",
+        "}",
+        ""
+      ].join("\n")
+    )
+
+    const error = await loadConfigFailure(projectDirectory)
+
+    assert.ok(error instanceof ProjectWiringError)
+    assert.match(error.message, /paths\?: string\[\]/)
+  })
+})
+
 test("loadWiring accepts a named zero-argument wiring factory", async () => {
   await runInTempProject(async (projectDirectory) => {
     await writeConfig(
@@ -167,7 +212,7 @@ test("loadWiring keeps a custom config check through reportFromWiring", async ()
       projectDirectory,
       [
         'import { Stream } from "effect"',
-        'import { Detection, Location } from "@better-typescript/core/engine/location"',
+        'import { Detection, Location } from "@better-typescript/core/engine/location/data"',
         "",
         "export default {",
         "  checks: [",

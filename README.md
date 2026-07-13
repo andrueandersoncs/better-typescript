@@ -26,8 +26,9 @@ The architecture is intentionally plain:
 - The CLI renders derived `Advice` and reported local detections into the event
   stream.
 
-There are no suppressions, severities, per-check options, or result-based exit
-gate. If a signal appears, fix the cause in the code.
+There are no suppressions, severities, or result-based exit gate. Per-check
+path scopes only limit where a check executes. If a signal appears, fix the cause
+in the code.
 
 ## What the CLI does
 
@@ -126,8 +127,8 @@ across files, and do not import from package `src/` paths.
 - `@better-typescript/core/engine/derive`: `Advice`, `deriveSignals`,
   `adviceLocation`, `evidenceItem`, and related derivation helpers
 - `@better-typescript/core/engine/report`: `NamedCheck`, `Signal`, `Wiring`,
-  `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`, `withFallbackAdvice`,
-  `reportFromWiring`
+  `namedCheck`, `silentCheck`, `scopeCheck`, `signalOf`, `makeWiring`,
+  `withFallbackAdvice`, `reportFromWiring`
 - `@better-typescript/core/engine/watch`: `watchReportFromWiring`, report events
 - `@better-typescript/core/engine/sources`: program/source stream helpers
 - `@better-typescript/checks/preset`: default `report` / `watchReport` runners
@@ -165,7 +166,13 @@ The loaded value is structurally validated as the current `Wiring` shape:
 
 ```ts
 {
-  checks: ReadonlyArray<{ name: string; check: Check; reported?: boolean }>
+  checks: ReadonlyArray<{
+    name: string
+    check: Check
+    reported?: boolean
+    examples?: ReadonlyArray<RefactorExample>
+    paths?: ReadonlyArray<string>
+  }>
   derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, Error>
 }
 ```
@@ -178,6 +185,39 @@ creates a silent one. Reported checks print those examples under the Hint as
 four spaces). Names are unique across the whole `checks` array, and
 `makeWiring` rejects duplicates. Config load, compile, shape, and duplicate
 name failures print an error and exit `2`.
+
+### Scoping checks to files and directories
+
+Use `scopeCheck` to limit one `NamedCheck` without changing the other checks in
+the wiring:
+
+```ts
+import { Stream, pipe } from "effect"
+import {
+  makeWiring,
+  namedCheck,
+  scopeCheck
+} from "@better-typescript/core/engine/report"
+import { noThrow, noThrowExamples } from "@better-typescript/checks/noThrow"
+
+const serverNoThrow = pipe(
+  namedCheck("no-throw", noThrow, noThrowExamples),
+  scopeCheck(["src/server", "src/bootstrap.ts"])
+)
+
+export default makeWiring({
+  checks: [serverNoThrow],
+  derive: () => Stream.empty
+})
+```
+
+Paths resolve from the TypeScript workspace root discovered from `--project` (or
+the current directory). Each entry matches that exact file or directory and all
+descendants; entries are paths, not glob patterns. Multiple entries form a
+union. Scope filtering happens before check execution and again on emitted
+detections, and applies equally to reported and silent checks in one-shot and
+watch modes. Checks without `scopeCheck` (or with an empty `paths` array in a
+handwritten config object) continue to run over every project file.
 
 In this repository, preset checks load examples from disk with
 `fixtureRefactorExamples("<kebab-name>")`, backed by real TypeScript trees at

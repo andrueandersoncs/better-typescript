@@ -9,6 +9,7 @@ import { reportKeySchema } from "../report/data.js"
  * one consistent workspace snapshot, not a torn partial update.
  */
 export class WorkspaceUpdate extends Data.Class<{
+  readonly rootPath: string
   readonly snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
 }> {}
 

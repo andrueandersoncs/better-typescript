@@ -4,11 +4,14 @@ import type { Advice } from "../derive/data.js"
 import type { RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 
+export type NonEmptyCheckPaths = readonly [string, ...Array<string>]
+
 export class NamedCheck extends Data.Class<{
   readonly name: string
   readonly check: Check
   readonly reported: boolean
   readonly examples: ReadonlyArray<RefactorExample>
+  readonly paths: ReadonlyArray<string>
 }> {}
 
 export class Signal extends Data.Class<{

@@ -1,8 +1,11 @@
+import * as path from "node:path"
 import {
   Array,
   Chunk,
   Effect,
   Equal,
+  flow,
+  Function,
   HashMap,
   HashSet,
   Option,
@@ -33,6 +36,7 @@ import {
   DuplicateCheckNamesError,
   DuplicateNameState,
   NamedCheck,
+  type NonEmptyCheckPaths,
   ReportBlock,
   RuleReportKey,
   Signal,
@@ -97,38 +101,113 @@ const collectDetections =
     return Stream.runCollect(signal)
   }
 
+const emptyDetectionChunk = Chunk.empty<Detection>()
+const emptyDetectionEffect = Effect.succeed(emptyDetectionChunk)
+
 /**
  * Run every wired check over one consistent set of project node snapshots.
  * Effect.forEach preserves wiring order, producing a complete finite batch.
  * @remarks Ordered finite batches are required because derivation consumes the
- * complete signal array from one consistent snapshot.
+ * complete signal array from one consistent snapshot. Check paths resolve from
+ * the workspace root and filter both inputs and emitted detections.
  */
 export const workspaceSignals =
   (wiring: Wiring) =>
+  (workspaceRoot: string) =>
   (
     snapshots: ReadonlyArray<Chunk.Chunk<AstNodeElement>>
-  ): Effect.Effect<ReadonlyArray<Signal>, Error> =>
-    Effect.forEach(wiring.checks, (check) =>
-      pipe(
-        Effect.forEach(snapshots, collectDetections(check.check)),
-        Effect.map((collected) => {
-          const elements = Array.flatMap(collected, Chunk.toReadonlyArray)
+  ): Effect.Effect<ReadonlyArray<Signal>, Error> => {
+    const collectCheck = (check: NamedCheck): Effect.Effect<Signal, Error> => {
+      const signalFromCollected = (
+        collected: ReadonlyArray<Chunk.Chunk<Detection>>
+      ): Signal => {
+        const elements = Array.flatMap(collected, Chunk.toReadonlyArray)
 
-          const deduped = Array.reduce(
-            elements,
-            emptyDedupeState,
-            addUniqueElement
+        const deduped = Array.reduce(
+          elements,
+          emptyDedupeState,
+          addUniqueElement
+        )
+
+        return new Signal({
+          name: check.name,
+          reported: check.reported,
+          detections: deduped.elements,
+          examples: check.examples
+        })
+      }
+
+      const absolutePaths = Array.map(check.paths, (checkPath) =>
+        path.resolve(workspaceRoot, checkPath)
+      )
+
+      const matchesPath = (candidatePath: string): boolean =>
+        Array.some(absolutePaths, (rootPath) => {
+          const relative = path.relative(rootPath, candidatePath)
+          const isDirectParent = relative === ".."
+          const isNestedParent = relative.startsWith(`..${path.sep}`)
+          const isDifferentRoot = path.isAbsolute(relative)
+
+          const outsideConditions = Array.make(
+            isDirectParent,
+            isNestedParent,
+            isDifferentRoot
           )
 
-          return new Signal({
-            name: check.name,
-            reported: check.reported,
-            detections: deduped.elements,
-            examples: check.examples
-          })
+          const isOutside = Array.some(outsideConditions, Boolean)
+
+          return !isOutside
         })
+
+      const collectScoped = (
+        nodes: Chunk.Chunk<AstNodeElement>
+      ): Effect.Effect<Chunk.Chunk<Detection>, Error> => {
+        const matchesSourceFile = flow(
+          (element: AstNodeElement) =>
+            path.resolve(
+              element.context.projectRoot,
+              element.sourceFile.fileName
+            ),
+          matchesPath
+        )
+
+        const scopedNodes = Chunk.filter(nodes, matchesSourceFile)
+
+        return pipe(
+          scopedNodes,
+          Chunk.head,
+          Option.match({
+            onNone: Function.constant(emptyDetectionEffect),
+            onSome: (head) => {
+              const matchesDetection = flow(
+                (element: Detection) =>
+                  path.resolve(head.context.projectRoot, element.location.path),
+                matchesPath
+              )
+
+              return pipe(
+                scopedNodes,
+                collectDetections(check.check),
+                Effect.map(Chunk.filter(matchesDetection))
+              )
+            }
+          })
+        )
+      }
+
+      const collectProject =
+        check.paths.length === 0
+          ? collectDetections(check.check)
+          : collectScoped
+
+      return pipe(
+        Effect.forEach(snapshots, collectProject),
+        Effect.map(signalFromCollected)
       )
-    )
+    }
+
+    return Effect.forEach(wiring.checks, collectCheck)
+  }
 
 /**
  * Within one batch, derivation consumes the complete materialized signal array.
@@ -390,7 +469,7 @@ export const reportBlocksFromWiring =
   ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
     pipe(
       Effect.forEach(workspace.projects, snapshotProject),
-      Effect.flatMap(workspaceSignals(wiring)),
+      Effect.flatMap(workspaceSignals(wiring)(workspace.rootPath)),
       Effect.flatMap(batchReportBlocks(wiring))
     )
 
@@ -426,17 +505,44 @@ export const signalOf =
     )
   }
 
+const unscopedCheckPaths = Array.empty<string>()
+
 export const namedCheck = (
   name: string,
   check: Check,
   examples: NonEmptyRefactorExamples
-): NamedCheck => new NamedCheck({ name, check, reported: true, examples })
+): NamedCheck =>
+  new NamedCheck({
+    name,
+    check,
+    reported: true,
+    examples,
+    paths: unscopedCheckPaths
+  })
 
 export const silentCheck = (
   name: string,
   check: Check,
   examples: ReadonlyArray<RefactorExample> = Array.empty()
-): NamedCheck => new NamedCheck({ name, check, reported: false, examples })
+): NamedCheck =>
+  new NamedCheck({
+    name,
+    check,
+    reported: false,
+    examples,
+    paths: unscopedCheckPaths
+  })
+
+export const scopeCheck =
+  (paths: NonEmptyCheckPaths) =>
+  (check: NamedCheck): NamedCheck =>
+    new NamedCheck({
+      name: check.name,
+      check: check.check,
+      reported: check.reported,
+      examples: check.examples,
+      paths
+    })
 
 const emptyDuplicateNamesSeen = HashSet.empty<string>()
 const emptyDuplicateNameCollisions = HashSet.empty<string>()

@@ -333,6 +333,7 @@ test("signalUpdates and reportBlockUpdates derive one signal array and advice-fi
   const project = await loadFixtureProject()
   const snapshot = await Effect.runPromise(Stream.runCollect(astNodes(project)))
   const update = new WorkspaceUpdate({
+    rootPath: project.rootPath,
     snapshots: [snapshot]
   })
   const fixedAdvice: Advice = {

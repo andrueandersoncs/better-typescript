@@ -186,7 +186,16 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 })
 
 const checkShapeReason =
-  "{ name: string, check: function, reported?: boolean, examples?: RefactorExample[] }"
+  "{ name: string, check: function, reported?: boolean, examples?: RefactorExample[], paths?: string[] }"
+
+const isCheckPath = (value: unknown): value is string => {
+  const isString = typeof value === "string"
+
+  return isString && value.trim().length > 0
+}
+
+const isCheckPathArray = (value: unknown): value is ReadonlyArray<string> =>
+  Array.isArray(value) && Array.every(value, isCheckPath)
 
 const hasNamedCheckFields = (record: ModuleRecord): boolean => {
   const hasStringName = typeof record.name === "string"
@@ -216,11 +225,24 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
+  const paths = Object.hasOwn(record, "paths")
+    ? Option.some(record.paths)
+    : Option.none()
+
+  const hasValidPaths = pipe(
+    paths,
+    Option.match({
+      onNone: Function.constant(true),
+      onSome: isCheckPathArray
+    })
+  )
+
   const namedCheckShapeConditions = Array.make(
     hasStringName,
     hasFunctionCheck,
     hasValidReported,
-    hasValidExamples
+    hasValidExamples,
+    hasValidPaths
   )
 
   return Array.every(namedCheckShapeConditions, Boolean)
@@ -246,7 +268,11 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
     ? (record.examples as ReadonlyArray<RefactorExample>)
     : Array.empty()
 
-  return new NamedCheck({ name, check, reported, examples })
+  const paths = Object.hasOwn(record, "paths")
+    ? (record.paths as ReadonlyArray<string>)
+    : Array.empty()
+
+  return new NamedCheck({ name, check, reported, examples, paths })
 }
 
 const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
