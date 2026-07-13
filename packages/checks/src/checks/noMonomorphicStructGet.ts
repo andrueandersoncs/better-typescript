@@ -42,8 +42,8 @@ const declarationIsEffectStructModule = (
     fileName.endsWith(suffix)
   )
 
-  const values51 = Array.make(inEffectPackage, isStructModule)
-  return Array.every(values51, Boolean)
+  const effectStructModuleConditions = Array.make(inEffectPackage, isStructModule)
+  return Array.every(effectStructModuleConditions, Boolean)
 }
 
 const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol): boolean => {
@@ -76,8 +76,8 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return typeParameterCount > 0
     })
 
-    const values52 = Array.make(hasCallSignature, hasNoGenericSignature)
-    return Array.every(values52, Boolean)
+    const nonGenericCallableConditions = Array.make(hasCallSignature, hasNoGenericSignature)
+    return Array.every(nonGenericCallableConditions, Boolean)
   }
 
   const initializerIsGenericStructGet = (initializer: ts.Expression): boolean =>
@@ -142,9 +142,9 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   return matches
 }
 
-const values53 = Array.of(ts.SyntaxKind.VariableDeclaration)
+const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-const check = nodeCheck(values53)(ts.isVariableDeclaration)(
+const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(
   monomorphicStructGetMatches
 )
 

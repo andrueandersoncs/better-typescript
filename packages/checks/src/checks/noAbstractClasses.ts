@@ -33,9 +33,9 @@ const abstractClassElements = (context: CheckContext) => {
   return matches
 }
 
-const values8 = Array.of(abstractKeywordKind)
+const abstractKeywordKinds = Array.of(abstractKeywordKind)
 
-export const noAbstractClasses: Check = nodeCheck(values8)(
+export const noAbstractClasses: Check = nodeCheck(abstractKeywordKinds)(
   isAbstractClassModifier
 )(abstractClassElements)
 

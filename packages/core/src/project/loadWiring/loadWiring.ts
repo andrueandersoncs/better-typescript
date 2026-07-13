@@ -44,8 +44,8 @@ const isRecord = (value: unknown): value is ModuleRecord => {
   const isObject = typeof value === "object"
   const isPresent = value !== null
 
-  const values306 = Array.make(isObject, isPresent)
-  return Array.every(values306, Boolean)
+  const conditions = Array.make(isObject, isPresent)
+  return Array.every(conditions, Boolean)
 }
 
 const isFunctionValue = (value: unknown): value is WiringFactory =>
@@ -216,14 +216,14 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
-  const values307 = Array.make(
+  const namedCheckShapeConditions = Array.make(
     hasStringName,
     hasFunctionCheck,
     hasValidReported,
     hasValidExamples
   )
 
-  return Array.every(values307, Boolean)
+  return Array.every(namedCheckShapeConditions, Boolean)
 }
 
 const invalidNamedCheck = (value: unknown): boolean => {

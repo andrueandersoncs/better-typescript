@@ -30,9 +30,9 @@ const tryCatchElements = (context: CheckContext) => {
   return matches
 }
 
-const values101 = Array.of(tryStatementKind)
+const tryStatementKinds = Array.of(tryStatementKind)
 
-export const noTryCatch: Check = nodeCheck(values101)(ts.isTryStatement)(
+export const noTryCatch: Check = nodeCheck(tryStatementKinds)(ts.isTryStatement)(
   tryCatchElements
 )
 

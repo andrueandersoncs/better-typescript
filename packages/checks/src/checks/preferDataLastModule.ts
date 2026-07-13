@@ -34,13 +34,9 @@ const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const isCheckedFunction = (node: ts.Node): node is CheckedFunction => {
-  const value136 = ts.isFunctionDeclaration(node)
-  const value137 = ts.isFunctionExpression(node)
-  const value138 = ts.isArrowFunction(node)
-  const value139 = ts.isMethodDeclaration(node)
-  const conditions4 = Array.make(value136, value137, value138, value139)
+  const functionLikeConditions = Array.make(ts.isFunctionDeclaration(node), ts.isFunctionExpression(node), ts.isArrowFunction(node), ts.isMethodDeclaration(node))
 
-  return Array.some(conditions4, Boolean)
+  return Array.some(functionLikeConditions, Boolean)
 }
 
 const primitiveTypeFlags =
@@ -107,17 +103,15 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const fileName = sourceFile.fileName
 
   const isMember = (type: ts.Type): boolean => {
-    const value140 = checker.isArrayType(type)
-    const value141 = checker.isTupleType(type)
-    const conditions3 = Array.make(value140, value141)
+  const arrayOrTupleChecks = Array.make(checker.isArrayType(type), checker.isTupleType(type))
 
-    const value142 = Array.some(conditions3, Boolean)
-    const value143 = hasCallSignature(checker)(type)
+    const isArrayOrTuple = Array.some(arrayOrTupleChecks, Boolean)
+    const typeHasCallSignature = hasCallSignature(checker)(type)
 
     const exclusions = Array.make(
       (type.flags & primitiveTypeFlags) !== 0,
-      value142,
-      value143
+      isArrayOrTuple,
+      typeHasCallSignature
     )
 
     return Array.every(exclusions, isFalse)
@@ -126,60 +120,57 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const isExpectedModule =
     (expectedModulePath: string) =>
     (candidateFileName: string): boolean => {
-      const relativeFileName = path.relative(projectRoot, candidateFileName)
-      const normalizedFileName = relativeFileName.replaceAll("\\", "/")
+  const relativeFileName = path.relative(projectRoot, candidateFileName)
+  const normalizedFileName = relativeFileName.replaceAll("\\", "/")
 
-      const value144 = normalizedFileName.endsWith(`/${expectedModulePath}`)
+  const endsWithModulePath = normalizedFileName.endsWith(`/${expectedModulePath}`)
 
-      const conditions2 = Array.make(
+  const checks = Array.make(
         normalizedFileName === expectedModulePath,
-        value144
+        endsWithModulePath
       )
 
-      return Array.some(conditions2, Boolean)
+      return Array.some(checks, Boolean)
     }
 
   const isModuleDeclaration =
     (symbol: ts.Symbol) =>
     (declaration: ts.Declaration): boolean => {
-      const dataStructure = dataStructureModule(symbol.name)
-      const declarationSourceFile = declaration.getSourceFile()
-      const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
+  const dataStructure = dataStructureModule(symbol.name)
+  const declarationSourceFile = declaration.getSourceFile()
+  const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
 
-      const value145 = ts.isInterfaceDeclaration(declaration)
-      const value146 = ts.isTypeAliasDeclaration(declaration)
-      const value147 = ts.isClassDeclaration(declaration)
-      const conditions = Array.make(value145, value146, value147)
+  const conditions = Array.make(ts.isInterfaceDeclaration(declaration), ts.isTypeAliasDeclaration(declaration), ts.isClassDeclaration(declaration))
 
-      const declarationIsDataStructure = Array.some(conditions, Boolean)
+  const declarationIsDataStructure = Array.some(conditions, Boolean)
 
-      const declarationIsExpectedModule = isExpectedModule(dataStructure[1])(
+  const declarationIsExpectedModule = isExpectedModule(dataStructure[1])(
         declarationSourceFile.fileName
       )
 
-      const values148 = Array.make(
+  const dataStructureModuleConditions = Array.make(
         sourceFileIsProject,
         declarationIsDataStructure,
         declarationIsExpectedModule
       )
 
-      return Array.every(values148, Boolean)
+      return Array.every(dataStructureModuleConditions, Boolean)
     }
 
   const structureForSymbol =
     (type: ts.Type) =>
     (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
-      const declarations = symbol.declarations ?? Array.empty()
-      const isDeclarationForSymbol = isModuleDeclaration(symbol)
-      const isFirstParty = Array.some(declarations, isDeclarationForSymbol)
+  const declarations = symbol.declarations ?? Array.empty()
+  const isDeclarationForSymbol = isModuleDeclaration(symbol)
+  const isFirstParty = Array.some(declarations, isDeclarationForSymbol)
 
-      const isStructured = type.isUnionOrIntersection()
+  const isStructured = type.isUnionOrIntersection()
         ? Array.every(type.types, isMember)
         : isMember(type)
 
-      const values149 = Array.make(isFirstParty, isStructured)
-      const isDataStructure = Array.every(values149, Boolean)
-      const dataStructure = dataStructureModule(symbol.name)
+  const firstPartyStructureConditions = Array.make(isFirstParty, isStructured)
+  const isDataStructure = Array.every(firstPartyStructureConditions, Boolean)
+  const dataStructure = dataStructureModule(symbol.name)
 
       return isDataStructure ? Option.some(dataStructure) : Option.none()
     }
@@ -292,7 +283,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const structureMatch =
     (definition: FunctionDefinition) =>
     (dataStructure: DataStructureModule): Option.Option<Detection> => {
-      const ruleMatch = match({
+  const ruleMatch = match({
         node: definition[1],
         message:
           `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
@@ -321,14 +312,14 @@ const dataLastModuleMatches = (context: CheckContext) => {
       ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
 
     if (isFunctionOrMethodDeclaration) {
-      const name = pipe(
+  const name = pipe(
         Option.fromNullable(node.name),
         Option.map((nameNode) => nameNode.getText(sourceFile)),
         Option.getOrElse(Function.constant("this function"))
       )
 
-      const reportNode = namedDetectionTarget(node)
-      const definition: FunctionDefinition = Tuple.make(name, reportNode)
+  const reportNode = namedDetectionTarget(node)
+  const definition: FunctionDefinition = Tuple.make(name, reportNode)
 
       return pipe(
         Option.some(definition),

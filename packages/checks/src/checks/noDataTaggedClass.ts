@@ -73,7 +73,7 @@ const dataTaggedClassMatches = (context: CheckContext) => {
   ): ReadonlyArray<Detection> => {
     const node = namedDetectionTarget(declaration)
 
-    const value21 = match({
+    const reported = match({
       node,
       message: "Avoid Data.TaggedClass — use Schema.TaggedClass instead.",
       hint:
@@ -81,15 +81,15 @@ const dataTaggedClassMatches = (context: CheckContext) => {
         "plus Schema validation, encoding, decoding, and Schema.is() type guards."
     })
 
-    return Array.of(value21)
+    return Array.of(reported)
   }
 
   return matches
 }
 
-const values22 = Array.of(ts.SyntaxKind.ClassDeclaration)
+const classDeclarationKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-const check = nodeCheck(values22)(isDataTaggedClassDeclaration)(
+const check = nodeCheck(classDeclarationKinds)(isDataTaggedClassDeclaration)(
   dataTaggedClassMatches
 )
 

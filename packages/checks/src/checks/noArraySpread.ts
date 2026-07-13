@@ -14,7 +14,7 @@ const arraySpreadElements = (context: CheckContext) => {
   const element = detection(context)
 
   const matches = (node: ts.SpreadElement): ReadonlyArray<Detection> => {
-    const value9 = element({
+    const reported = element({
       node,
       message: "Avoid the array-spread operator when constructing arrays.",
       hint:
@@ -24,16 +24,16 @@ const arraySpreadElements = (context: CheckContext) => {
     })
 
     return ts.isArrayLiteralExpression(node.parent)
-      ? Array.of(value9)
+      ? Array.of(reported)
       : Array.empty()
   }
 
   return matches
 }
 
-const values10 = Array.of(spreadElementKind)
+const spreadElementKinds = Array.of(spreadElementKind)
 
-export const noArraySpread: Check = nodeCheck(values10)(ts.isSpreadElement)(
+export const noArraySpread: Check = nodeCheck(spreadElementKinds)(ts.isSpreadElement)(
   arraySpreadElements
 )
 

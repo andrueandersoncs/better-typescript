@@ -49,10 +49,11 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
 type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {
-  const value152 = ts.isIfStatement(node)
-  const value153 = ts.isBlock(node)
-  const value154 = ts.isConditionalExpression(node)
-  const conditions = Array.make(value152, value153, value154)
+  const conditions = Array.make(
+    ts.isIfStatement(node),
+    ts.isBlock(node),
+    ts.isConditionalExpression(node)
+  )
 
   return Array.some(conditions, Boolean)
 }
@@ -134,8 +135,8 @@ const booleanReturnMatches = (context: CheckContext) => {
         Option.as(falseThenDetection)
       )
 
-      const values155 = Array.make(bothLiteral, falseElseArm, falseThenArm)
-      return pipe(Option.firstSomeOf(values155), Option.toArray)
+      const ternaryReturnCandidates = Array.make(bothLiteral, falseElseArm, falseThenArm)
+      return pipe(Option.firstSomeOf(ternaryReturnCandidates), Option.toArray)
     }
 
     if (ts.isIfStatement(node)) {

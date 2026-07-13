@@ -36,29 +36,31 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
     const expression = unwrapExpression(spread.expression)
     if (!ts.isConditionalExpression(expression)) return Array.empty()
 
-    const value174 = hasNoProperties(expression.whenTrue)
-    const value175 = hasSomeProperties(expression.whenFalse)
-    const conditions2 = Array.make(value174, value175)
+    const emptyThenNonEmptyConditions = Array.make(
+      hasNoProperties(expression.whenTrue),
+      hasSomeProperties(expression.whenFalse)
+    )
 
-    const emptyThenNonEmptyElse = Array.every(conditions2, Boolean)
+    const emptyThenNonEmptyElse = Array.every(emptyThenNonEmptyConditions, Boolean)
 
-    const value176 = hasSomeProperties(expression.whenTrue)
-    const value177 = hasNoProperties(expression.whenFalse)
-    const conditions = Array.make(value176, value177)
+    const nonEmptyThenEmptyConditions = Array.make(
+      hasSomeProperties(expression.whenTrue),
+      hasNoProperties(expression.whenFalse)
+    )
 
-    const nonEmptyThenEmptyElse = Array.every(conditions, Boolean)
+    const nonEmptyThenEmptyElse = Array.every(nonEmptyThenEmptyConditions, Boolean)
 
-    const values178 = Array.make(emptyThenNonEmptyElse, nonEmptyThenEmptyElse)
-    const value179 = match({ node: spread, message, hint })
-    return Array.some(values178, Boolean) ? Array.of(value179) : Array.empty()
+    const checks = Array.make(emptyThenNonEmptyElse, nonEmptyThenEmptyElse)
+    const detection = match({ node: spread, message, hint })
+    return Array.some(checks, Boolean) ? Array.of(detection) : Array.empty()
   }
 
   return matches
 }
 
-const values180 = Array.of(ts.SyntaxKind.SpreadAssignment)
+const kinds = Array.of(ts.SyntaxKind.SpreadAssignment)
 
-const check = nodeCheck(values180)(ts.isSpreadAssignment)(
+const check = nodeCheck(kinds)(ts.isSpreadAssignment)(
   conditionalObjectSpreadMatches
 )
 

@@ -98,8 +98,8 @@ export const isExternalPackageArgument =
           const isDefaultLibrary =
             program.isSourceFileDefaultLibrary(sourceFile)
 
-          const values226 = Array.make(isExternal, !isDefaultLibrary)
-          return Array.every(values226, Boolean)
+          const ambientConditions = Array.make(isExternal, !isDefaultLibrary)
+          return Array.every(ambientConditions, Boolean)
         })
       })
     )

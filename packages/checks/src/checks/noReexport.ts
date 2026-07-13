@@ -20,13 +20,14 @@ const hint =
   "exports at the defining modules instead of barrel re-exports."
 
 const isImportDeclaration = (declaration: ts.Declaration): boolean => {
-  const value86 = ts.isImportSpecifier(declaration)
-  const value87 = ts.isNamespaceImport(declaration)
-  const value88 = ts.isImportClause(declaration)
-  const value89 = ts.isImportEqualsDeclaration(declaration)
-  const conditions = Array.make(value86, value87, value88, value89)
+  const checks = Array.make(
+    ts.isImportSpecifier(declaration),
+    ts.isNamespaceImport(declaration),
+    ts.isImportClause(declaration),
+    ts.isImportEqualsDeclaration(declaration)
+  )
 
-  return Array.some(conditions, Boolean)
+  return Array.some(checks, Boolean)
 }
 
 const isImportedSymbol = (symbol: ts.Symbol): boolean => {
@@ -55,8 +56,8 @@ const exportDeclarationElements = (context: CheckContext) => {
     const moduleSpecifier = Option.fromNullable(node.moduleSpecifier)
 
     if (Option.isSome(moduleSpecifier)) {
-      const value90 = detect(node)
-      return Array.of(value90)
+      const detection = detect(node)
+      return Array.of(detection)
     }
 
     return pipe(
@@ -109,24 +110,24 @@ const exportAssignmentElements = (context: CheckContext) => {
   return matches
 }
 
-const values92 = Array.of(ts.SyntaxKind.ExportDeclaration)
+const exportDeclarationKinds = Array.of(ts.SyntaxKind.ExportDeclaration)
 
-const exportDeclarationListeners = nodeSubscriptions(values92)(
+const exportDeclarationListeners = nodeSubscriptions(exportDeclarationKinds)(
   ts.isExportDeclaration
 )(exportDeclarationElements)
 
-const values93 = Array.of(ts.SyntaxKind.ExportAssignment)
+const exportAssignmentKinds = Array.of(ts.SyntaxKind.ExportAssignment)
 
-const exportAssignmentListeners = nodeSubscriptions(values93)(
+const exportAssignmentListeners = nodeSubscriptions(exportAssignmentKinds)(
   ts.isExportAssignment
 )(exportAssignmentElements)
 
-const values94 = Array.make(
+const listeners = Array.make(
   exportDeclarationListeners,
   exportAssignmentListeners
 )
 
-export const noReexport: Check = combineAll(values94)
+export const noReexport: Check = combineAll(listeners)
 
 export const noReexportExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-reexport")

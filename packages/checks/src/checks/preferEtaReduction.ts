@@ -242,8 +242,8 @@ const etaReductionMatches = (context: CheckContext) => {
   return matches
 }
 
-const values196 = Array.of(ts.SyntaxKind.ArrowFunction)
-const check = nodeCheck(values196)(ts.isArrowFunction)(etaReductionMatches)
+const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(etaReductionMatches)
 
 export const preferEtaReduction: Check = check
 

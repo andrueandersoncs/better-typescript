@@ -254,402 +254,402 @@ const nameDetections = (
 
 const replayAdvice = Stream.fromIterable
 
-const value229 = namedCheck(
+const preferEffectSchemaGuardCheck = namedCheck(
   "prefer-effect-schema-guard",
   preferEffectSchemaGuard,
   preferEffectSchemaGuardExamples
 )
 
-const value230 = namedCheck(
+const preferEffectSchemaIsCheck = namedCheck(
   "prefer-effect-schema-is",
   preferEffectSchemaIs,
   preferEffectSchemaIsExamples
 )
 
-const value231 = namedCheck(
+const preferEffectSchemaConstructorCheck = namedCheck(
   "prefer-effect-schema-constructor",
   preferEffectSchemaConstructor,
   preferEffectSchemaConstructorExamples
 )
 
-const value232 = namedCheck(
+const preferEffectSchemaClassCheck = namedCheck(
   "prefer-effect-schema-class",
   preferEffectSchemaClass,
   preferEffectSchemaClassExamples
 )
 
-const value233 = namedCheck(
+const preferEffectFnCheck = namedCheck(
   "prefer-effect-fn",
   preferEffectFn,
   preferEffectFnExamples
 )
 
-const value234 = namedCheck(
+const preferEffectFunctionConstantCheck = namedCheck(
   "prefer-effect-function-constant",
   preferEffectFunctionConstant,
   preferEffectFunctionConstantExamples
 )
 
-const value235 = namedCheck(
+const preferEffectPropertyAccessorsCheck = namedCheck(
   "prefer-effect-property-accessors",
   preferEffectPropertyAccessors,
   preferEffectPropertyAccessorsExamples
 )
 
-const value236 = namedCheck(
+const preferEffectRecordFilterMapCheck = namedCheck(
   "prefer-effect-record-filter-map",
   preferEffectRecordFilterMap,
   preferEffectRecordFilterMapExamples
 )
 
-const value237 = namedCheck(
+const preferEffectArrayCheck = namedCheck(
   "prefer-effect-array",
   preferEffectArray,
   preferEffectArrayExamples
 )
 
-const value238 = namedCheck(
+const preferEffectArrayAppendAllCheck = namedCheck(
   "prefer-effect-array-append-all",
   preferEffectArrayAppendAll,
   preferEffectArrayAppendAllExamples
 )
 
-const value239 = namedCheck(
+const preferDataLastModuleCheck = namedCheck(
   "prefer-data-last-module",
   preferDataLastModule,
   preferDataLastModuleExamples
 )
 
-const value240 = namedCheck(
+const preferDedicatedDataStructureFilesCheck = namedCheck(
   "prefer-dedicated-data-structure-files",
   preferDedicatedDataStructureFiles,
   preferDedicatedDataStructureFilesExamples
 )
 
-const value241 = namedCheck(
+const preferConditionalReturnCheck = namedCheck(
   "prefer-conditional-return",
   preferConditionalReturn,
   preferConditionalReturnExamples
 )
 
-const value242 = namedCheck(
+const preferDirectBooleanReturnCheck = namedCheck(
   "prefer-direct-boolean-return",
   preferDirectBooleanReturn,
   preferDirectBooleanReturnExamples
 )
 
-const value243 = namedCheck(
+const preferFunctionCompositionCheck = namedCheck(
   "prefer-function-composition",
   preferFunctionComposition,
   preferFunctionCompositionExamples
 )
 
-const value244 = namedCheck(
+const preferEtaReductionCheck = namedCheck(
   "prefer-eta-reduction",
   preferEtaReduction,
   preferEtaReductionExamples
 )
 
-const value245 = namedCheck(
+const preferImplicitReturnCheck = namedCheck(
   "prefer-implicit-return",
   preferImplicitReturn,
   preferImplicitReturnExamples
 )
 
-const value246 = namedCheck("no-throw", noThrow, noThrowExamples)
-const value247 = namedCheck("no-new-error", noNewError, noNewErrorExamples)
-const value248 = namedCheck("no-try-catch", noTryCatch, noTryCatchExamples)
-const value249 = namedCheck("no-undefined", noUndefined, noUndefinedExamples)
+const noThrowCheck = namedCheck("no-throw", noThrow, noThrowExamples)
+const noNewErrorCheck = namedCheck("no-new-error", noNewError, noNewErrorExamples)
+const noTryCatchCheck = namedCheck("no-try-catch", noTryCatch, noTryCatchExamples)
+const noUndefinedCheck = namedCheck("no-undefined", noUndefined, noUndefinedExamples)
 
-const value250 = namedCheck(
+const noVoidFunctionsCheck = namedCheck(
   "no-void-functions",
   noVoidFunctions,
   noVoidFunctionsExamples
 )
 
-const value251 = namedCheck(
+const noRootLevelClassesCheck = namedCheck(
   "no-root-level-classes",
   noRootLevelClasses,
   noRootLevelClassesExamples
 )
 
-const value252 = namedCheck(
+const noMultiLineCommentsCheck = namedCheck(
   "no-multi-line-comments",
   noMultiLineComments,
   noMultiLineCommentsExamples
 )
 
-const value253 = namedCheck(
+const requireBecauseInCommentsCheck = namedCheck(
   "require-because-in-comments",
   requireBecauseInComments,
   requireBecauseInCommentsExamples
 )
 
-const value254 = namedCheck(
+const requireBlankLinesAroundMultilineDeclarationsCheck = namedCheck(
   "require-blank-lines-around-multiline-declarations",
   requireBlankLinesAroundMultilineDeclarations,
   requireBlankLinesAroundMultilineDeclarationsExamples
 )
 
-const value255 = namedCheck(
+const noExplicitAnyReturnCheck = namedCheck(
   "no-explicit-any-return",
   noExplicitAnyReturn,
   noExplicitAnyReturnExamples
 )
 
-const value256 = namedCheck(
+const noMultipleBooleanOperatorsCheck = namedCheck(
   "no-multiple-boolean-operators",
   noMultipleBooleanOperators,
   noMultipleBooleanOperatorsExamples
 )
 
-const value257 = namedCheck(
+const noInlineBooleanExpressionsCheck = namedCheck(
   "no-inline-boolean-expressions",
   noInlineBooleanExpressions,
   noInlineBooleanExpressionsExamples
 )
 
-const value258 = namedCheck(
+const noMutableArrayMethodsCheck = namedCheck(
   "no-mutable-array-methods",
   noMutableArrayMethods,
   noMutableArrayMethodsExamples
 )
 
-const value259 = namedCheck(
+const noMutableVariableDeclarationsCheck = namedCheck(
   "no-mutable-variable-declarations",
   noMutableVariableDeclarations,
   noMutableVariableDeclarationsExamples
 )
 
-const value260 = namedCheck("no-mutation", noMutation, noMutationExamples)
+const noMutationCheck = namedCheck("no-mutation", noMutation, noMutationExamples)
 
-const value261 = namedCheck(
+const noNestedIfStatementsCheck = namedCheck(
   "no-nested-if-statements",
   noNestedIfStatements,
   noNestedIfStatementsExamples
 )
 
-const value262 = namedCheck(
+const noNonNullAssertionCheck = namedCheck(
   "no-non-null-assertion",
   noNonNullAssertion,
   noNonNullAssertionExamples
 )
 
-const value263 = namedCheck(
+const noDuplicateIfBodiesCheck = namedCheck(
   "no-duplicate-if-bodies",
   noDuplicateIfBodies,
   noDuplicateIfBodiesExamples
 )
 
-const value264 = namedCheck(
+const noDuplicateFunctionNamesCheck = namedCheck(
   "no-duplicate-function-names",
   noDuplicateFunctionNames,
   noDuplicateFunctionNamesExamples
 )
 
-const value265 = namedCheck("no-callbacks", noCallbacks, noCallbacksExamples)
+const noCallbacksCheck = namedCheck("no-callbacks", noCallbacks, noCallbacksExamples)
 
-const value266 = namedCheck(
+const noAsyncFunctionsCheck = namedCheck(
   "no-async-functions",
   noAsyncFunctions,
   noAsyncFunctionsExamples
 )
 
-const value267 = namedCheck(
+const noArraySpreadCheck = namedCheck(
   "no-array-spread",
   noArraySpread,
   noArraySpreadExamples
 )
 
-const value268 = namedCheck(
+const noPrimitiveArrayConstructorsCheck = namedCheck(
   "no-primitive-array-constructors",
   noPrimitiveArrayConstructors,
   noPrimitiveArrayConstructorsExamples
 )
 
-const value269 = namedCheck(
+const noForInLoopsCheck = namedCheck(
   "no-for-in-loops",
   noForInLoops,
   noForInLoopsExamples
 )
 
-const value270 = namedCheck("no-for-loops", noForLoops, noForLoopsExamples)
+const noForLoopsCheck = namedCheck("no-for-loops", noForLoops, noForLoopsExamples)
 
-const value271 = namedCheck(
+const noForOfLoopsCheck = namedCheck(
   "no-for-of-loops",
   noForOfLoops,
   noForOfLoopsExamples
 )
 
-const value272 = namedCheck(
+const noSwitchStatementsCheck = namedCheck(
   "no-switch-statements",
   noSwitchStatements,
   noSwitchStatementsExamples
 )
 
-const value273 = namedCheck(
+const noFunctionKeywordCheck = namedCheck(
   "no-function-keyword",
   noFunctionKeyword,
   noFunctionKeywordExamples
 )
 
-const value274 = namedCheck(
+const noInlineClosuresCheck = namedCheck(
   "no-inline-closures",
   noInlineClosures,
   noInlineClosuresExamples
 )
 
-const value275 = namedCheck(
+const noNestedCallsCheck = namedCheck(
   "no-nested-calls",
   noNestedCalls,
   noNestedCallsExamples
 )
 
-const value276 = namedCheck(
+const noManualTypeDispatchCheck = namedCheck(
   "no-manual-type-dispatch",
   noManualTypeDispatch,
   noManualTypeDispatchExamples
 )
 
-const value277 = namedCheck(
+const noMonomorphicStructGetCheck = namedCheck(
   "no-monomorphic-struct-get",
   noMonomorphicStructGet,
   noMonomorphicStructGetExamples
 )
 
-const value278 = namedCheck(
+const noAbstractClassesCheck = namedCheck(
   "no-abstract-classes",
   noAbstractClasses,
   noAbstractClassesExamples
 )
 
-const value279 = namedCheck(
+const noClassMethodImplementationsCheck = namedCheck(
   "no-class-method-implementations",
   noClassMethodImplementations,
   noClassMethodImplementationsExamples
 )
 
-const value280 = namedCheck(
+const noRawObjectTypesCheck = namedCheck(
   "no-raw-object-types",
   noRawObjectTypes,
   noRawObjectTypesExamples
 )
 
-const value281 = namedCheck("no-reexport", noReexport, noReexportExamples)
+const noReexportCheck = namedCheck("no-reexport", noReexport, noReexportExamples)
 
-const value282 = namedCheck(
+const noFirstPartySchemaDeclareCheck = namedCheck(
   "no-first-party-schema-declare",
   noFirstPartySchemaDeclare,
   noFirstPartySchemaDeclareExamples
 )
 
-const value283 = namedCheck(
+const noDataTaggedClassCheck = namedCheck(
   "no-data-tagged-class",
   noDataTaggedClass,
   noDataTaggedClassExamples
 )
 
-const value284 = namedCheck("no-instanceof", noInstanceof, noInstanceofExamples)
+const noInstanceofCheck = namedCheck("no-instanceof", noInstanceof, noInstanceofExamples)
 
-const value285 = namedCheck(
+const noSingleUseCalleeCheck = namedCheck(
   "no-single-use-callee",
   noSingleUseCallee,
   noSingleUseCalleeExamples
 )
 
-const value286 = namedCheck(
+const preferHashSetCheck = namedCheck(
   "prefer-hash-set",
   preferHashSet,
   preferHashSetExamples
 )
 
-const value287 = namedCheck(
+const preferHashMapCheck = namedCheck(
   "prefer-hash-map",
   preferHashMap,
   preferHashMapExamples
 )
 
-const value288 = namedCheck(
+const preferOptionMatchCheck = namedCheck(
   "prefer-option-match",
   preferOptionMatch,
   preferOptionMatchExamples
 )
 
-const value289 = namedCheck(
+const preferPipeFunctionCheck = namedCheck(
   "prefer-pipe-function",
   preferPipeFunction,
   preferPipeFunctionExamples
 )
 
-const value290 = silentCheck(
+const preferCurriedDataLastFunctionsCheck = silentCheck(
   "prefer-curried-data-last-functions",
   preferCurriedDataLastFunctions,
   preferCurriedDataLastFunctionsExamples
 )
 
 export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
-  value229,
-  value230,
-  value231,
-  value232,
-  value233,
-  value234,
-  value235,
-  value236,
-  value237,
-  value238,
-  value239,
-  value240,
-  value241,
-  value242,
-  value243,
-  value244,
-  value245,
-  value246,
-  value247,
-  value248,
-  value249,
-  value250,
-  value251,
-  value252,
-  value253,
-  value254,
-  value255,
-  value256,
-  value257,
-  value258,
-  value259,
-  value260,
-  value261,
-  value262,
-  value263,
-  value264,
-  value265,
-  value266,
-  value267,
-  value268,
-  value269,
-  value270,
-  value271,
-  value272,
-  value273,
-  value274,
-  value275,
-  value276,
-  value277,
-  value278,
-  value279,
-  value280,
-  value281,
-  value282,
-  value283,
-  value284,
-  value285,
-  value286,
-  value287,
-  value288,
-  value289,
-  value290
+  preferEffectSchemaGuardCheck,
+  preferEffectSchemaIsCheck,
+  preferEffectSchemaConstructorCheck,
+  preferEffectSchemaClassCheck,
+  preferEffectFnCheck,
+  preferEffectFunctionConstantCheck,
+  preferEffectPropertyAccessorsCheck,
+  preferEffectRecordFilterMapCheck,
+  preferEffectArrayCheck,
+  preferEffectArrayAppendAllCheck,
+  preferDataLastModuleCheck,
+  preferDedicatedDataStructureFilesCheck,
+  preferConditionalReturnCheck,
+  preferDirectBooleanReturnCheck,
+  preferFunctionCompositionCheck,
+  preferEtaReductionCheck,
+  preferImplicitReturnCheck,
+  noThrowCheck,
+  noNewErrorCheck,
+  noTryCatchCheck,
+  noUndefinedCheck,
+  noVoidFunctionsCheck,
+  noRootLevelClassesCheck,
+  noMultiLineCommentsCheck,
+  requireBecauseInCommentsCheck,
+  requireBlankLinesAroundMultilineDeclarationsCheck,
+  noExplicitAnyReturnCheck,
+  noMultipleBooleanOperatorsCheck,
+  noInlineBooleanExpressionsCheck,
+  noMutableArrayMethodsCheck,
+  noMutableVariableDeclarationsCheck,
+  noMutationCheck,
+  noNestedIfStatementsCheck,
+  noNonNullAssertionCheck,
+  noDuplicateIfBodiesCheck,
+  noDuplicateFunctionNamesCheck,
+  noCallbacksCheck,
+  noAsyncFunctionsCheck,
+  noArraySpreadCheck,
+  noPrimitiveArrayConstructorsCheck,
+  noForInLoopsCheck,
+  noForLoopsCheck,
+  noForOfLoopsCheck,
+  noSwitchStatementsCheck,
+  noFunctionKeywordCheck,
+  noInlineClosuresCheck,
+  noNestedCallsCheck,
+  noManualTypeDispatchCheck,
+  noMonomorphicStructGetCheck,
+  noAbstractClassesCheck,
+  noClassMethodImplementationsCheck,
+  noRawObjectTypesCheck,
+  noReexportCheck,
+  noFirstPartySchemaDeclareCheck,
+  noDataTaggedClassCheck,
+  noInstanceofCheck,
+  noSingleUseCalleeCheck,
+  preferHashSetCheck,
+  preferHashMapCheck,
+  preferOptionMatchCheck,
+  preferPipeFunctionCheck,
+  preferCurriedDataLastFunctionsCheck
 )
 
 export const defaultDerive = (
@@ -686,13 +686,13 @@ export const defaultDerive = (
     preferCurriedDataLastFunctions: preferCurried
   })
 
-  const values291 = Array.make(
+  const specificAdviceStreamsSource = Array.make(
     imperativeAdvice,
     launderingAdvice,
     pipelineAdvice
   )
 
-  const specificAdviceStreams = Stream.fromIterable(values291)
+  const specificAdviceStreams = Stream.fromIterable(specificAdviceStreamsSource)
 
   const specificAdvice = pipe(specificAdviceStreams, Stream.flatten())
   const densityAdvice = highSignalDensity(namedElements)
@@ -723,7 +723,7 @@ export const defaultDerive = (
 
     const systemicAdvice = systemicHotspots(systemicInput)
 
-    const values292 = Array.make(
+    const outputAdviceStreamsSource = Array.make(
       specificReplay,
       densityReplay,
       subsystemReplay,
@@ -731,7 +731,7 @@ export const defaultDerive = (
       systemicAdvice
     )
 
-    const outputAdviceStreams = Stream.fromIterable(values292)
+    const outputAdviceStreams = Stream.fromIterable(outputAdviceStreamsSource)
 
     return pipe(outputAdviceStreams, Stream.flatten())
   })

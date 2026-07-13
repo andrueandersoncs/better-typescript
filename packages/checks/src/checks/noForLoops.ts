@@ -29,13 +29,13 @@ const forLoopElements = (context: CheckContext) => {
       Option.isSome
     )
 
-    const values36 = Array.make(hasInitializer, hasIncrementor)
-    const hasIterator = Array.some(values36, Boolean)
+    const iteratorParts = Array.make(hasInitializer, hasIncrementor)
+    const hasIterator = Array.some(iteratorParts, Boolean)
 
-    const values37 = Array.make(hasStopCondition, hasIterator)
-    const isIteratorForLoop = Array.every(values37, Boolean)
+    const iteratorForLoopConditions = Array.make(hasStopCondition, hasIterator)
+    const isIteratorForLoop = Array.every(iteratorForLoopConditions, Boolean)
 
-    const value38 = element({
+    const forLoopMatch = element({
       node,
       message: "Avoid imperative logic in iterator-based for loops.",
       hint:
@@ -43,15 +43,15 @@ const forLoopElements = (context: CheckContext) => {
         "Array.filter(), or Array.flatMap(), instead."
     })
 
-    return isIteratorForLoop ? Array.of(value38) : Array.empty()
+    return isIteratorForLoop ? Array.of(forLoopMatch) : Array.empty()
   }
 
   return matches
 }
 
-const values39 = Array.of(forStatementKind)
+const forStatementKinds = Array.of(forStatementKind)
 
-export const noForLoops: Check = nodeCheck(values39)(ts.isForStatement)(
+export const noForLoops: Check = nodeCheck(forStatementKinds)(ts.isForStatement)(
   forLoopElements
 )
 

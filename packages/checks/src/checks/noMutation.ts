@@ -101,13 +101,13 @@ const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
   const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
-  const values64 = Array.make(
+  const moduleScopedConditions = Array.make(
     hasDeclarations,
     !isDeclaredInProject,
     !isEcmaScriptBuiltin
   )
 
-  return Array.every(values64, Boolean)
+  return Array.every(moduleScopedConditions, Boolean)
 }
 
 // Follow an import alias because its local declaration cannot determine whether the imported value is external.
@@ -134,14 +134,14 @@ const isUncontrolledTypeWithSeen =
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((candidate) => {
-        const nextSeen = HashSet.add(seen, candidate)
-        const checkMember = isUncontrolledTypeWithSeen(nextSeen)
+  const nextSeen = HashSet.add(seen, candidate)
+  const checkMember = isUncontrolledTypeWithSeen(nextSeen)
 
         // Exempt a union only when every non-nullish member is uncontrolled because any member can occur at runtime.
         if (candidate.isUnion()) {
-          const keepMember = Predicate.not(isNullishType)
-          const members = Array.filter(candidate.types, keepMember)
-          const relevant = members.length > 0 ? members : candidate.types
+  const keepMember = Predicate.not(isNullishType)
+  const members = Array.filter(candidate.types, keepMember)
+  const relevant = members.length > 0 ? members : candidate.types
 
           return Array.every(relevant, checkMember)
         }
@@ -151,17 +151,17 @@ const isUncontrolledTypeWithSeen =
         }
 
         // Prefer getSymbol because aliasSymbol names only a project-local spelling, not the declaration that shaped the value.
-        const ownSymbol = candidate.getSymbol()
-        const symbol = ownSymbol ?? candidate.aliasSymbol
-        const isNullish = isNullishType(candidate)
+  const ownSymbol = candidate.getSymbol()
+  const symbol = ownSymbol ?? candidate.aliasSymbol
+  const isNullish = isNullishType(candidate)
 
-        const hasUncontrolledSymbol = pipe(
+  const hasUncontrolledSymbol = pipe(
           Option.fromNullable(symbol),
           Option.exists(isUncontrolledSymbol)
         )
 
-        const values65 = Array.make(isNullish, hasUncontrolledSymbol)
-        return Array.some(values65, Boolean)
+  const nullishSymbolConditions = Array.make(isNullish, hasUncontrolledSymbol)
+        return Array.some(nullishSymbolConditions, Boolean)
       })
     )
 
@@ -204,13 +204,14 @@ const mutationNodeKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const isMutationCandidate = (node: ts.Node): node is MutationNode => {
-  const value66 = ts.isBinaryExpression(node)
-  const value67 = ts.isPrefixUnaryExpression(node)
-  const value68 = ts.isPostfixUnaryExpression(node)
-  const value69 = ts.isDeleteExpression(node)
-  const conditions = Array.make(value66, value67, value68, value69)
+  const checks = Array.make(
+    ts.isBinaryExpression(node),
+    ts.isPrefixUnaryExpression(node),
+    ts.isPostfixUnaryExpression(node),
+    ts.isDeleteExpression(node)
+  )
 
-  return Array.some(conditions, Boolean)
+  return Array.some(checks, Boolean)
 }
 
 const mutationMatches = (context: CheckContext) => {
@@ -231,23 +232,23 @@ const mutationMatches = (context: CheckContext) => {
       Option.fromNullable(rootSymbol),
       Option.map(resolveAlias(checker)),
       Option.map((symbol): MutationScope => {
-        const declarations = symbol.getDeclarations() ?? Array.empty()
-        const sourceFiles = Array.map(declarations, declarationSourceFile)
-        const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
+  const declarations = symbol.getDeclarations() ?? Array.empty()
+  const sourceFiles = Array.map(declarations, declarationSourceFile)
+  const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
-        const declaredScope = pipe(
+  const declaredScope = pipe(
           Option.fromNullable(declarations[0]),
           Option.map((declaration): MutationScope => {
-            const declarationBoundary = enclosingExecutionBoundary(
+  const declarationBoundary = enclosingExecutionBoundary(
               declaration.parent
             )
 
-            const mutationBoundary = enclosingExecutionBoundary(root.parent)
-            const isModuleScoped = ts.isSourceFile(declarationBoundary)
-            const isCaptured = declarationBoundary !== mutationBoundary
+  const mutationBoundary = enclosingExecutionBoundary(root.parent)
+  const isModuleScoped = ts.isSourceFile(declarationBoundary)
+  const isCaptured = declarationBoundary !== mutationBoundary
 
-            const values70 = Array.make(isModuleScoped, isCaptured)
-            return Array.some(values70, Boolean) ? "shared-state" : "local"
+  const sharedStateConditions = Array.make(isModuleScoped, isCaptured)
+            return Array.some(sharedStateConditions, Boolean) ? "shared-state" : "local"
           }),
           Option.getOrElse(fallbackLocalScope)
         )
@@ -266,21 +267,21 @@ const mutationMatches = (context: CheckContext) => {
       Match.orElse(unaryMutationTarget),
       Option.filter(
         Predicate.not((target) => {
-          const unwrapped = unwrapExpression(target)
+  const unwrapped = unwrapExpression(target)
 
-          const isAccess =
+  const isAccess =
             ts.isPropertyAccessExpression(unwrapped) ||
             ts.isElementAccessExpression(unwrapped)
 
           // Judge the receiver because property and element assignments write into its data structure.
           if (isAccess) {
-            const receiverType = checker.getTypeAtLocation(unwrapped.expression)
+  const receiverType = checker.getTypeAtLocation(unwrapped.expression)
 
             return isUncontrolledTypeWithSeen(emptyTypeSeen)(receiverType)
           }
 
           // Judge the binding declaration because an assignment rebinding x replaces the binding itself.
-          const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
+  const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
 
           return pipe(
             Option.fromNullable(bindingSymbol),
@@ -290,7 +291,7 @@ const mutationMatches = (context: CheckContext) => {
         })
       ),
       Option.map((target) => {
-        const targetScope = scopeOf(target)
+  const targetScope = scopeOf(target)
 
         return match({
           node: target,

@@ -32,7 +32,7 @@ const implicitReturnMatches = (context: CheckContext) => {
         Option.isSome
       )
 
-    const value207 = match({
+    const reported = match({
       node: arrowFunction.body,
       message: "Avoid arrow function block bodies that only return a value.",
       hint:
@@ -40,14 +40,14 @@ const implicitReturnMatches = (context: CheckContext) => {
         "body braces. Wrap object literals in parentheses when needed."
     })
 
-    return hasSingleValueReturn ? Array.of(value207) : Array.empty()
+    return hasSingleValueReturn ? Array.of(reported) : Array.empty()
   }
 
   return matches
 }
 
-const values208 = Array.of(ts.SyntaxKind.ArrowFunction)
-const check = nodeCheck(values208)(ts.isArrowFunction)(implicitReturnMatches)
+const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(implicitReturnMatches)
 
 export const preferImplicitReturn: Check = check
 

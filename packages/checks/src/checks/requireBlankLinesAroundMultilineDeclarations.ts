@@ -117,24 +117,24 @@ const blankLineMatches = (context: CheckContext) => {
           Option.getOrElse(fallbackTrue)
         )
 
-        const values212 = Array.make(aboveOk, belowOk)
-        const paddingOk = Array.every(values212, Boolean)
+        const paddingConditions = Array.make(aboveOk, belowOk)
+        const paddingOk = Array.every(paddingConditions, Boolean)
 
         return paddingOk === false
       }),
       Option.getOrElse(fallbackFalse)
     )
 
-    const values213 = Array.make(isMultiLine, missingPadding)
-    const shouldFlag = Array.every(values213, Boolean)
+    const flagConditions = Array.make(isMultiLine, missingPadding)
+    const shouldFlag = Array.every(flagConditions, Boolean)
 
-    const value214 = match({
+    const blankLineMatch = match({
       node,
       message,
       hint
     })
 
-    return shouldFlag ? Array.of(value214) : Array.empty()
+    return shouldFlag ? Array.of(blankLineMatch) : Array.empty()
   }
 
   return matches

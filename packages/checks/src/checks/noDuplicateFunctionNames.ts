@@ -56,10 +56,10 @@ const topLevelFunctions = (
 ): ReadonlyArray<ts.Identifier> =>
   Array.flatMap(sourceFile.statements, statementFunctions)
 
-const values23 = Array.empty()
+const emptyIdentifiers = Array.empty()
 
 const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
-  Function.constant(values23)
+  Function.constant(emptyIdentifiers)
 
 const declarationsForName =
   (index: FunctionNameIndex) =>
@@ -119,8 +119,8 @@ const duplicateNameListeners = (
             candidateType
           )
 
-          const values24 = Array.make(forward, backward)
-          return Array.every(values24, Boolean)
+          const ambientConditions = Array.make(forward, backward)
+          return Array.every(ambientConditions, Boolean)
         })
 
         const declaredFileNames = Array.map(

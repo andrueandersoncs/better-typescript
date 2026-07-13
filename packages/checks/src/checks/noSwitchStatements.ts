@@ -29,9 +29,9 @@ const switchStatementElements = (context: CheckContext) => {
   return matches
 }
 
-const values97 = Array.of(switchStatementKind)
+const switchStatementKinds = Array.of(switchStatementKind)
 
-export const noSwitchStatements: Check = nodeCheck(values97)(
+export const noSwitchStatements: Check = nodeCheck(switchStatementKinds)(
   ts.isSwitchStatement
 )(switchStatementElements)
 

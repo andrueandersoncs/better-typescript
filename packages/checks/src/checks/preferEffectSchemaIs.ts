@@ -126,7 +126,7 @@ const schemaIsMatches = (context: CheckContext) => {
 
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
-    const value194 = match({
+    const reported = match({
       node: expression,
       message: `Avoid checking ${valueText}._tag ${operatorText} "${tagText}" directly.`,
       hint:
@@ -134,14 +134,14 @@ const schemaIsMatches = (context: CheckContext) => {
         `"${tagText}".`
     })
 
-    return Array.of(value194)
+    return Array.of(reported)
   }
 
   return matches
 }
 
-const values195 = Array.of(ts.SyntaxKind.BinaryExpression)
-const check = nodeCheck(values195)(isSchemaTagComparison)(schemaIsMatches)
+const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
+const check = nodeCheck(binaryExpressionKinds)(isSchemaTagComparison)(schemaIsMatches)
 
 export const preferEffectSchemaIs: Check = check
 

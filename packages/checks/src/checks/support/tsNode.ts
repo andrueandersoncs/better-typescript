@@ -26,24 +26,15 @@ export const isFunctionInitializer = (
 export const isReturnTypeDeclaration = (
   node: ts.Node
 ): node is ReturnTypeDeclaration => {
-  const value217 = ts.isFunctionDeclaration(node)
-  const value218 = ts.isFunctionExpression(node)
-  const value219 = ts.isArrowFunction(node)
-  const value220 = ts.isMethodDeclaration(node)
-  const value221 = ts.isMethodSignature(node)
-  const value222 = ts.isCallSignatureDeclaration(node)
-  const value223 = ts.isFunctionTypeNode(node)
-  const value224 = ts.isGetAccessorDeclaration(node)
-
   const conditions = Array.make(
-    value217,
-    value218,
-    value219,
-    value220,
-    value221,
-    value222,
-    value223,
-    value224
+    ts.isFunctionDeclaration(node),
+    ts.isFunctionExpression(node),
+    ts.isArrowFunction(node),
+    ts.isMethodDeclaration(node),
+    ts.isMethodSignature(node),
+    ts.isCallSignatureDeclaration(node),
+    ts.isFunctionTypeNode(node),
+    ts.isGetAccessorDeclaration(node)
   )
 
   return Array.some(conditions, Boolean)
@@ -191,11 +182,11 @@ export const isInAmbientContext = (node: ts.Node): boolean => {
   const parent = Option.fromNullable<ts.Node>(node.parent)
   const parentIsAmbient = Option.exists(parent, isInAmbientContext)
 
-  const values225 = Array.make(
+  const ambientConditions = Array.make(
     sourceFile.isDeclarationFile,
     hasDeclareModifier,
     parentIsAmbient
   )
 
-  return Array.some(values225, Boolean)
+  return Array.some(ambientConditions, Boolean)
 }

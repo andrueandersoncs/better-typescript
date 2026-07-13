@@ -50,8 +50,8 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
     const hasNewline = commentText(text)(comment).includes("\n")
     const isJsDoc = isJsDocComment(text)(comment)
 
-    const values54 = Array.make(isBlock, hasNewline, !isJsDoc)
-    return Array.every(values54, Boolean)
+    const jsDocConditions = Array.make(isBlock, hasNewline, !isJsDoc)
+    return Array.every(jsDocConditions, Boolean)
   })
 
   const blockPositions = Array.map(blockComments, commentPosition)

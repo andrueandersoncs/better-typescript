@@ -79,7 +79,7 @@ const rawObjectTypeMatches = (context: CheckContext) => {
 
   const matches = (node: RawObjectTarget): ReadonlyArray<Detection> => {
     if (ts.isParameter(node)) {
-      const value84 = match({
+      const reported = match({
         node,
         message:
           "Parameter uses an anonymous object type instead of a named type.",
@@ -90,12 +90,12 @@ const rawObjectTypeMatches = (context: CheckContext) => {
           "(avoid names like FooParameters or BarOptions)."
       })
 
-      return Array.of(value84)
+      return Array.of(reported)
     }
 
     const reportNode = namedDetectionTarget(node)
 
-    const value85 = match({
+    const reported2 = match({
       node: reportNode,
       message:
         "Return type uses an anonymous object type instead of a named type.",
@@ -106,7 +106,7 @@ const rawObjectTypeMatches = (context: CheckContext) => {
         "(avoid names like FooResult or BarResponse)."
     })
 
-    return Array.of(value85)
+    return Array.of(reported2)
   }
 
   return matches

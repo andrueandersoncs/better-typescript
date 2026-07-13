@@ -48,8 +48,8 @@ const pipeMethodCallMatches = (context: CheckContext) => {
   return matches
 }
 
-const values210 = Array.of(ts.SyntaxKind.CallExpression)
-const check = nodeCheck(values210)(ts.isCallExpression)(pipeMethodCallMatches)
+const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(pipeMethodCallMatches)
 
 export const preferPipeFunction: Check = check
 

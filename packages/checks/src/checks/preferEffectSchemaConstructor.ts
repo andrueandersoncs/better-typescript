@@ -33,8 +33,8 @@ const isShortCircuitExpression = (
 const ternaryBranches = (
   conditional: ts.ConditionalExpression
 ): ReadonlyArray<ts.Expression> => {
-  const values188 = Array.make(conditional.whenTrue, conditional.whenFalse)
-  return Array.flatMap(values188, branchExpressions)
+  const ternaryArms = Array.make(conditional.whenTrue, conditional.whenFalse)
+  return Array.flatMap(ternaryArms, branchExpressions)
 }
 
 const branchExpressions = (
@@ -42,23 +42,23 @@ const branchExpressions = (
 ): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapTransparentExpression(expression)
 
-  const value189 = pipe(
+  const ternaryBranchOption = pipe(
     Option.liftPredicate(ts.isConditionalExpression)(unwrapped),
     Option.map(ternaryBranches)
   )
 
-  const value190 = pipe(
+  const shortCircuitBranchOption = pipe(
     Option.liftPredicate(isShortCircuitExpression)(unwrapped),
     Option.map(Struct.get("right")),
     Option.map(branchExpressions)
   )
 
-  const branches = Array.make(value189, value190)
+  const branches = Array.make(ternaryBranchOption, shortCircuitBranchOption)
 
-  const values191 = Array.of(unwrapped)
+  const leafBranches = Array.of(unwrapped)
   return pipe(
     Option.firstSomeOf(branches),
-    Option.getOrElse(Function.constant(values191))
+    Option.getOrElse(Function.constant(leafBranches))
   )
 }
 
@@ -144,12 +144,12 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
   return matches
 }
 
-const values192 = Array.make(
+const returnCandidateKinds = Array.make(
   ts.SyntaxKind.ReturnStatement,
   ts.SyntaxKind.ArrowFunction
 )
 
-const check = nodeCheck(values192)(isReturnCandidate)(
+const check = nodeCheck(returnCandidateKinds)(isReturnCandidate)(
   objectLiteralReturnMatches
 )
 

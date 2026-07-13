@@ -34,8 +34,8 @@ const isSingleCalleeEntry = (classification: SymbolClassification): boolean => {
   const isSingleCallee = classification.calleeCount === 1
   const isNotDisqualified = !classification.disqualified
 
-  const values95 = Array.make(isSingleCallee, isNotDisqualified)
-  return Array.every(values95, Boolean)
+  const conditions = Array.make(isSingleCallee, isNotDisqualified)
+  return Array.every(conditions, Boolean)
 }
 
 const statementEntries = (

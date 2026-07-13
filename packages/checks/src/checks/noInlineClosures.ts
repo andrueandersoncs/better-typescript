@@ -36,7 +36,7 @@ const arrowFunctionMatches = (context: CheckContext) => {
     const isExternalCallback = isExternalArgument(arrowFunction)
     const isSanctioned = hasSanctionedParent || isExternalCallback
 
-    const value47 = match({
+    const reported = match({
       node: arrowFunction.equalsGreaterThanToken,
       message:
         "Avoid arrow functions outside naming, currying, and third-party callback positions.",
@@ -48,14 +48,14 @@ const arrowFunctionMatches = (context: CheckContext) => {
         "over nesting functions."
     })
 
-    return isSanctioned ? Array.empty() : Array.of(value47)
+    return isSanctioned ? Array.empty() : Array.of(reported)
   }
 
   return matches
 }
 
-const values48 = Array.of(ts.SyntaxKind.ArrowFunction)
-const check = nodeCheck(values48)(ts.isArrowFunction)(arrowFunctionMatches)
+const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(arrowFunctionMatches)
 
 export const noInlineClosures: Check = check
 

@@ -29,9 +29,9 @@ const forInLoopElements = (context: CheckContext) => {
   return matches
 }
 
-const values35 = Array.of(forInStatementKind)
+const forInStatementKinds = Array.of(forInStatementKind)
 
-export const noForInLoops: Check = nodeCheck(values35)(ts.isForInStatement)(
+export const noForInLoops: Check = nodeCheck(forInStatementKinds)(ts.isForInStatement)(
   forInLoopElements
 )
 

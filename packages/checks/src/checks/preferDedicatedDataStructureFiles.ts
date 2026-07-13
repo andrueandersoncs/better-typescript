@@ -55,8 +55,8 @@ const propertyAccessIsDataStructure = (
     HashSet.has(dataStructureNamespaces, name)
   )
 
-  const values150 = Array.make(isKnownMember, isKnownNamespace)
-  return Array.every(values150, Boolean)
+  const conditions = Array.make(isKnownMember, isKnownNamespace)
+  return Array.every(conditions, Boolean)
 }
 
 const heritageExtendsDataStructure = (
@@ -153,8 +153,8 @@ const dedicatedDataStructureFileMatches = (
   const dataStructures = Array.filterMap(statements, dataStructureInStatement)
   const hasAlgorithms = algorithms.length > 0
   const hasDataStructures = dataStructures.length > 0
-  const values151 = Array.make(hasAlgorithms, hasDataStructures)
-  const shouldReport = Array.every(values151, Boolean)
+  const mixedContentsConditions = Array.make(hasAlgorithms, hasDataStructures)
+  const shouldReport = Array.every(mixedContentsConditions, Boolean)
   const empty: ReadonlyArray<Detection> = Array.empty()
 
   return shouldReport

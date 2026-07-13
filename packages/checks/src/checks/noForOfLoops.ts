@@ -29,9 +29,9 @@ const forOfLoopElements = (context: CheckContext) => {
   return matches
 }
 
-const values41 = Array.of(forOfStatementKind)
+const forOfStatementKinds = Array.of(forOfStatementKind)
 
-export const noForOfLoops: Check = nodeCheck(values41)(ts.isForOfStatement)(
+export const noForOfLoops: Check = nodeCheck(forOfStatementKinds)(ts.isForOfStatement)(
   forOfLoopElements
 )
 

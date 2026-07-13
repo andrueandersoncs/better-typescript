@@ -131,8 +131,8 @@ const effectFnMatches = (context: CheckContext) => {
   return matches
 }
 
-const values164 = Array.of(ts.SyntaxKind.VariableDeclaration)
-const check = nodeCheck(values164)(ts.isVariableDeclaration)(effectFnMatches)
+const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
+const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(effectFnMatches)
 
 export const preferEffectFn: Check = check
 

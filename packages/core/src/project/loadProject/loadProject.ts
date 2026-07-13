@@ -76,8 +76,8 @@ const discoverConfig: (
   const configError = Option.fromNullable(configFile.error)
 
   if (Option.isSome(configError)) {
-    const values304 = Array.of(configError.value)
-    const message = formatDiagnostics(values304)
+    const diagnostics2 = Array.of(configError.value)
+    const message = formatDiagnostics(diagnostics2)
 
     return yield* new InvalidTsconfigError({ message })
   }
@@ -109,13 +109,13 @@ const discoverConfig: (
 
   const rootPath = path.dirname(configPath)
 
-  const value305 = new ProjectConfig({
+  const projectConfig = new ProjectConfig({
     configPath,
     rootPath,
     parsed: parsedConfig
   })
 
-  return Array.of(value305)
+  return Array.of(projectConfig)
 })
 
 const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (

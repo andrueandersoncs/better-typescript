@@ -29,9 +29,9 @@ const throwStatementElements = (context: CheckContext) => {
   return matches
 }
 
-const values99 = Array.of(throwStatementKind)
+const throwStatementKinds = Array.of(throwStatementKind)
 
-export const noThrow: Check = nodeCheck(values99)(ts.isThrowStatement)(
+export const noThrow: Check = nodeCheck(throwStatementKinds)(ts.isThrowStatement)(
   throwStatementElements
 )
 

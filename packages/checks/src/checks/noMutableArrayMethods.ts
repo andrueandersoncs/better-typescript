@@ -84,8 +84,8 @@ const mutableArrayMatches = (context: CheckContext) => {
   return matches
 }
 
-const values62 = Array.of(ts.SyntaxKind.CallExpression)
-const check = nodeCheck(values62)(ts.isCallExpression)(mutableArrayMatches)
+const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(mutableArrayMatches)
 
 export const noMutableArrayMethods: Check = check
 

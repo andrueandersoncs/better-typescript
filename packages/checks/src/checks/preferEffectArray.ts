@@ -144,9 +144,9 @@ const preferEffectArrayMatches = (context: CheckContext) => {
   return matches
 }
 
-const values156 = Array.of(ts.SyntaxKind.CallExpression)
+const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(values156)(ts.isCallExpression)(
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
   preferEffectArrayMatches
 )
 

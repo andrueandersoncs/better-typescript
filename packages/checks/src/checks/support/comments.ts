@@ -99,8 +99,8 @@ export const isJsDocComment =
     const startsWithJsDoc = text.startsWith(jsDocPrefix, comment.pos)
     const hasJsDocBody = text.charAt(comment.pos + jsDocPrefix.length) !== "/"
 
-    const values216 = Array.make(startsWithJsDoc, hasJsDocBody)
-    return Array.every(values216, Boolean)
+    const jsDocConditions = Array.make(startsWithJsDoc, hasJsDocBody)
+    return Array.every(jsDocConditions, Boolean)
   }
 
 export const commentText =

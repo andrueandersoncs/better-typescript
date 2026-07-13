@@ -53,8 +53,8 @@ const instanceofMatches = (context: CheckContext) => {
   return matches
 }
 
-const values49 = Array.of(ts.SyntaxKind.BinaryExpression)
-const check = nodeCheck(values49)(isInstanceofExpression)(instanceofMatches)
+const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
+const check = nodeCheck(binaryExpressionKinds)(isInstanceofExpression)(instanceofMatches)
 
 export const noInstanceof: Check = check
 

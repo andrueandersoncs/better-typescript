@@ -120,12 +120,12 @@ const nestedCallMatches = (context: CheckContext) => {
   return matches
 }
 
-const values71 = Array.make(
+const callExpressionKinds = Array.make(
   ts.SyntaxKind.CallExpression,
   ts.SyntaxKind.NewExpression
 )
 
-const check = nodeCheck(values71)(isCallLikeExpression)(nestedCallMatches)
+const check = nodeCheck(callExpressionKinds)(isCallLikeExpression)(nestedCallMatches)
 
 export const noNestedCalls: Check = check
 

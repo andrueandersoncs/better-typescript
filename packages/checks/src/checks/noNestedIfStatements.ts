@@ -52,7 +52,7 @@ const nestedIfMatches = (context: CheckContext) => {
     const parentOption = Option.fromNullable(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
 
-    const value72 = match({
+    const reported = match({
       node: ifStatement,
       message: "Avoid nesting if statements.",
       hint:
@@ -60,14 +60,14 @@ const nestedIfMatches = (context: CheckContext) => {
         "condition can remain a single-level if statement."
     })
 
-    return Option.isSome(containingIf) ? Array.of(value72) : Array.empty()
+    return Option.isSome(containingIf) ? Array.of(reported) : Array.empty()
   }
 
   return matches
 }
 
-const values73 = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(values73)(ts.isIfStatement)(nestedIfMatches)
+const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(nestedIfMatches)
 
 export const noNestedIfStatements: Check = check
 

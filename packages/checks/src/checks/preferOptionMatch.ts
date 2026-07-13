@@ -100,9 +100,9 @@ const optionMatchMatches = (context: CheckContext) => {
   return matches
 }
 
-const values209 = Array.of(ts.SyntaxKind.ConditionalExpression)
+const conditionalExpressionKinds = Array.of(ts.SyntaxKind.ConditionalExpression)
 
-const check = nodeCheck(values209)(ts.isConditionalExpression)(
+const check = nodeCheck(conditionalExpressionKinds)(ts.isConditionalExpression)(
   optionMatchMatches
 )
 

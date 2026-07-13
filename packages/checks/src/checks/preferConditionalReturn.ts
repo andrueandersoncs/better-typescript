@@ -40,7 +40,7 @@ const ternaryText =
     const whenTrueText = whenTrue.getText(sourceFile)
     const whenFalseText = whenFalse.getText(sourceFile)
 
-    const values2 = Array.make(
+    const ternaryParts = Array.make(
       `(${conditionText})`,
       "?",
       whenTrueText,
@@ -48,7 +48,7 @@ const ternaryText =
       whenFalseText
     )
 
-    return Array.join(values2, " ")
+    return Array.join(ternaryParts, " ")
   }
 
 const conditionalReturnDetections = (context: CheckContext) => {
@@ -76,14 +76,14 @@ const conditionalReturnDetections = (context: CheckContext) => {
         const unwrapped = unwrapExpression(expression)
         const isTernary = ts.isConditionalExpression(unwrapped)
 
-        const values120 = Array.make(
+        const eligibleExpressionConditions = Array.make(
           isSingleLine,
           isShort,
           !hasYieldExpression,
           !isTernary
         )
 
-        return Array.every(values120, Boolean)
+        return Array.every(eligibleExpressionConditions, Boolean)
       })(expression)
     })
 
@@ -144,8 +144,8 @@ const conditionalReturnDetections = (context: CheckContext) => {
   return matches
 }
 
-const values121 = Array.of(ts.SyntaxKind.Block)
-const check = nodeCheck(values121)(ts.isBlock)(conditionalReturnDetections)
+const blockKinds = Array.of(ts.SyntaxKind.Block)
+const check = nodeCheck(blockKinds)(ts.isBlock)(conditionalReturnDetections)
 
 export const preferConditionalReturn: Check = check
 

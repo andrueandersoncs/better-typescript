@@ -199,11 +199,11 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         return contextualMembers
       }
 
-      const values182 = Array.empty()
+      const emptyNodes = Array.empty()
       return pipe(
         Option.liftPredicate(isTypeReference)(declaredMember),
         Option.map(referenceTypeArgument(typeParameter)(contextualMembers)),
-        Option.getOrElse(Function.constant(values182))
+        Option.getOrElse(Function.constant(emptyNodes))
       )
     }
 
@@ -224,8 +224,6 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       return Array.flatMap(declaredMembers, extractMembers)
     }
 
-  const values183 = Array.empty()
-
   const signatureBoxedTypes =
     (argumentPosition: number) =>
     (contextual: ts.Type) =>
@@ -235,7 +233,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         Option.map(declaredParameterType),
         Option.filter(isSignatureTypeParameter),
         Option.map(boxedExtraction(signature)(contextual)),
-        Option.getOrElse(Function.constant(values183))
+        Option.getOrElse(Function.constant(Array.empty()))
       )
 
   const symbolFileEntry =
@@ -250,8 +248,6 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     ): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullable(contextualType)
-
-      const values184 = Array.empty()
 
       const boxedTypes = pipe(
         Option.gen(function* () {
@@ -278,7 +274,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
             signatureBoxedTypes(argumentPosition)(contextual)
           )
         }),
-        Option.getOrElse(Function.constant(values184))
+        Option.getOrElse(Function.constant(Array.empty()))
       )
 
       const contextualCandidates = pipe(
@@ -299,13 +295,11 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       return Array.map(objectTypeSymbols, symbolFileEntry(fileName))
     }
 
-  const values185 = Array.empty()
-
   const fileConstructionEntries = (
     sourceFile: ts.SourceFile
   ): ReadonlyArray<readonly [ts.Symbol, string]> =>
     pipe(
-      foldAst(addObjectLiteral)(sourceFile)(values185),
+      foldAst(addObjectLiteral)(sourceFile)(Array.empty()),
       Array.flatMap(literalConstructionEntries(sourceFile.fileName))
     )
 
@@ -369,15 +363,15 @@ const isObjectTypeAliasDeclaration = (
 const schemaClassListeners = (
   index: ConstructionIndex
 ): ReadonlyArray<Subscription> => {
-  const values186 = Array.of(ts.SyntaxKind.InterfaceDeclaration)
+  const interfaceDeclarationKinds = Array.of(ts.SyntaxKind.InterfaceDeclaration)
 
-  const interfaceListeners = nodeSubscriptions(values186)(
+  const interfaceListeners = nodeSubscriptions(interfaceDeclarationKinds)(
     ts.isInterfaceDeclaration
   )(objectTypeDeclarationMatches(index))
 
-  const values187 = Array.of(ts.SyntaxKind.TypeAliasDeclaration)
+  const typeAliasDeclarationKinds = Array.of(ts.SyntaxKind.TypeAliasDeclaration)
 
-  const typeAliasListeners = nodeSubscriptions(values187)(
+  const typeAliasListeners = nodeSubscriptions(typeAliasDeclarationKinds)(
     isObjectTypeAliasDeclaration
   )(objectTypeDeclarationMatches(index))
 

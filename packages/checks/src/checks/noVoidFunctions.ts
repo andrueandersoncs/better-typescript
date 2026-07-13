@@ -28,11 +28,12 @@ const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const isVoidableFunction = (node: ts.Node): node is VoidableFunction => {
-  const value112 = ts.isFunctionDeclaration(node)
-  const value113 = ts.isFunctionExpression(node)
-  const value114 = ts.isArrowFunction(node)
-  const value115 = ts.isMethodDeclaration(node)
-  const conditions = Array.make(value112, value113, value114, value115)
+  const conditions = Array.make(
+    ts.isFunctionDeclaration(node),
+    ts.isFunctionExpression(node),
+    ts.isArrowFunction(node),
+    ts.isMethodDeclaration(node)
+  )
 
   return Array.some(conditions, Boolean)
 }
@@ -98,7 +99,7 @@ const voidFunctionMatches = (context: CheckContext) => {
 
     const node = namedDetectionTarget(declaration)
 
-    const value116 = match({
+    const voidFunctionMatch = match({
       node,
       message: "Avoid functions that return void.",
       hint:
@@ -109,7 +110,7 @@ const voidFunctionMatches = (context: CheckContext) => {
         "API's callback type so the void contract is the consumer's, not yours."
     })
 
-    return Array.of(value116)
+    return Array.of(voidFunctionMatch)
   }
 
   return matches

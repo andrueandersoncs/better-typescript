@@ -61,16 +61,16 @@ const mapMatches = (context: CheckContext) => {
 
       const escapesExternally = isMapConstruction && constructionEscapes(node)
 
-      const values199 = Array.make(isMapConstruction, !escapesExternally)
-      const isReportable = Array.every(values199, Boolean)
+      const reportableConditions = Array.make(isMapConstruction, !escapesExternally)
+      const isReportable = Array.every(reportableConditions, Boolean)
 
-      const value200 = match({
+      const constructorMatch = match({
         node,
         message: constructorMessage,
         hint: constructorHint
       })
 
-      return isReportable ? Array.of(value200) : Array.empty()
+      return isReportable ? Array.of(constructorMatch) : Array.empty()
     }
 
     const isAmbient = isInAmbientContext(node)
@@ -89,24 +89,24 @@ const mapMatches = (context: CheckContext) => {
 
     const message = `Avoid the built-in ${name} type.`
 
-    const value201 = match({
+    const typeRefMatch = match({
       node,
       message,
       hint: typeRefHint
     })
 
-    return Array.of(value201)
+    return Array.of(typeRefMatch)
   }
 
   return matches
 }
 
-const values202 = Array.make(
+const mapRuleNodeKinds = Array.make(
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
 )
 
-const check = nodeCheck(values202)(isMapRuleNode)(mapMatches)
+const check = nodeCheck(mapRuleNodeKinds)(isMapRuleNode)(mapMatches)
 
 export const preferHashMap: Check = check
 

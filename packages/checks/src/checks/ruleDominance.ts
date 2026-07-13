@@ -16,8 +16,8 @@ const dominanceAdvice = (
   const dominantEvidence = dominantCheckEvidence(2)(5)(5)(summary)
   const hasEnoughSignals = summary.total >= 25
   const hasDominantCheck = dominantEvidence.length > 0
-  const values215 = Array.make(hasEnoughSignals, hasDominantCheck)
-  const isDominated = Array.every(values215, Boolean)
+  const signalsEvidence = Array.make(hasEnoughSignals, hasDominantCheck)
+  const isDominated = Array.every(signalsEvidence, Boolean)
   const location = adviceLocation("project")
   const signalsItem = evidenceItem("signals", summary.total)
   const evidence = Array.prepend(dominantEvidence, signalsItem)

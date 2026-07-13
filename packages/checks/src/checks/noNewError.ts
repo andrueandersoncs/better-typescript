@@ -19,7 +19,7 @@ const newErrorElements = (context: CheckContext) => {
       Option.exists((expression) => expression.text === "Error")
     )
 
-    const value74 = element({
+    const reported = element({
       node,
       message: "Avoid using new Error() directly.",
       hint:
@@ -27,15 +27,15 @@ const newErrorElements = (context: CheckContext) => {
         "instead of bare new Error()."
     })
 
-    return isBareError ? Array.of(value74) : Array.empty()
+    return isBareError ? Array.of(reported) : Array.empty()
   }
 
   return matches
 }
 
-const values75 = Array.of(newExpressionKind)
+const newExpressionKinds = Array.of(newExpressionKind)
 
-export const noNewError: Check = nodeCheck(values75)(ts.isNewExpression)(
+export const noNewError: Check = nodeCheck(newExpressionKinds)(ts.isNewExpression)(
   newErrorElements
 )
 

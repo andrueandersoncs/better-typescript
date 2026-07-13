@@ -134,7 +134,7 @@ const detectionEquals = (a: Detection, b: Detection): boolean => {
   const sameHint = a.hint === b.hint
   const sameData = Equal.equals(a.data, b.data)
 
-  const values302 = Array.make(
+  const conditions = Array.make(
     samePath,
     sameLine,
     sameColumn,
@@ -143,7 +143,7 @@ const detectionEquals = (a: Detection, b: Detection): boolean => {
     sameData
   )
 
-  return Array.every(values302, Boolean)
+  return Array.every(conditions, Boolean)
 }
 
 const detectionsEquivalence = Array.getEquivalence(detectionEquals)
@@ -245,9 +245,9 @@ export const blockDelta =
 const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
-    const value303 = new EmptyReportEvent({ rootPath })
+    const emptyReportEvent = new EmptyReportEvent({ rootPath })
     return blocks.length === 0
-      ? Array.of(value303)
+      ? Array.of(emptyReportEvent)
       : Array.map(blocks, blockSignalEvent)
   }
 

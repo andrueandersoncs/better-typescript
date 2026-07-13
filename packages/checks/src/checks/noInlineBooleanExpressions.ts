@@ -33,7 +33,7 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
       hasLogicalOperator
     )
 
-    const value45 = match({
+    const reported = match({
       node: expression,
       message: "Avoid boolean operators inline in an if statement condition.",
       hint:
@@ -41,15 +41,15 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
         "statement and use that variable in the if condition."
     })
 
-    return isLogicalOperatorExpression ? Array.of(value45) : Array.empty()
+    return isLogicalOperatorExpression ? Array.of(reported) : Array.empty()
   }
 
   return matches
 }
 
-const values46 = Array.of(ts.SyntaxKind.IfStatement)
+const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-const check = nodeCheck(values46)(ts.isIfStatement)(
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(
   inlineBooleanConditionMatches
 )
 

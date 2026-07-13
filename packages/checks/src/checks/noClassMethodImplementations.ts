@@ -37,8 +37,8 @@ const isReportableMethod = (node: ts.MethodDeclaration): boolean => {
     Option.isSome
   )
 
-  const values20 = Array.make(isClassMember, bodyExists, !isOverride)
-  return Array.every(values20, Boolean)
+  const conditions = Array.make(isClassMember, bodyExists, !isOverride)
+  return Array.every(conditions, Boolean)
 }
 
 const methodImplementationMatches = (context: CheckContext) => {

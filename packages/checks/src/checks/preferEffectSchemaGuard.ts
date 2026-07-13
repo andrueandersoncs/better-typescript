@@ -72,8 +72,8 @@ const inOperatorGuardMatches = (context: CheckContext) => {
   return matches
 }
 
-const values193 = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(values193)(ts.isIfStatement)(inOperatorGuardMatches)
+const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(inOperatorGuardMatches)
 
 export const preferEffectSchemaGuard: Check = check
 

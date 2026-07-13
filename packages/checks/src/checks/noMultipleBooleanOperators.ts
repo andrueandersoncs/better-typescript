@@ -30,13 +30,13 @@ const isBooleanOperatorExpression = (
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
-  const values55 = Array.make(
+  const checks = Array.make(
     isBinaryBooleanOperator,
     isUnaryBooleanOperator,
     isTernaryOperator
   )
 
-  return Array.some(values55, Boolean)
+  return Array.some(checks, Boolean)
 }
 
 const addBooleanOperatorCount = (total: number, child: ts.Expression): number =>
@@ -74,9 +74,7 @@ const isConditionEdge = (node: ts.Node): boolean =>
   )
 
 const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
-  const value56 = isBooleanOperatorExpression(parent)
-  const value57 = hasBooleanOperatorAncestor(parent)
-  const conditions = Array.make(value56, value57)
+      const conditions = Array.make(isBooleanOperatorExpression(parent), hasBooleanOperatorAncestor(parent))
 
   return Array.some(conditions, Boolean)
 }
@@ -95,8 +93,8 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
     isOrHasBooleanOperatorAncestor
   )
 
-  const values58 = Array.make(!isConditionEdge, hasCountedAncestor)
-  return Array.every(values58, Boolean)
+  const checks = Array.make(!isConditionEdge, hasCountedAncestor)
+  return Array.every(checks, Boolean)
 }
 
 const booleanBinaryOperatorKinds = HashSet.make(
@@ -124,15 +122,15 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
 
-    const values59 = Array.make(
+    const checks = Array.make(
       expressionUsesBooleanOperator,
       hasNoBooleanOperatorAncestor,
       hasMultiple
     )
 
-    const isReportableRoot = Array.every(values59, Boolean)
+    const isReportableRoot = Array.every(checks, Boolean)
 
-    const value60 = match({
+    const detection = match({
       node: expression,
       message:
         "Avoid combining more than one boolean operator in a single expression.",
@@ -141,19 +139,19 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
         "single expression."
     })
 
-    return isReportableRoot ? Array.of(value60) : Array.empty()
+    return isReportableRoot ? Array.of(detection) : Array.empty()
   }
 
   return matches
 }
 
-const values61 = Array.make(
+const kinds = Array.make(
   ts.SyntaxKind.BinaryExpression,
   ts.SyntaxKind.PrefixUnaryExpression,
   ts.SyntaxKind.ConditionalExpression
 )
 
-const check = nodeCheck(values61)(isBooleanOperatorExpression)(
+const check = nodeCheck(kinds)(isBooleanOperatorExpression)(
   multipleBooleanOperatorMatches
 )
 

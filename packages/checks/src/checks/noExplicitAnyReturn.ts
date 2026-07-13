@@ -31,8 +31,8 @@ const containsAnyKeyword = (node: ts.Node): boolean => {
 
   const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
 
-  const values30 = Array.make(isAnyKeyword, hasAnyDescendant)
-  return Array.some(values30, Boolean)
+  const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)
+  return Array.some(ambientConditions, Boolean)
 }
 
 const explicitAnyReturnElements = (context: CheckContext) => {
@@ -44,7 +44,7 @@ const explicitAnyReturnElements = (context: CheckContext) => {
       Option.exists(containsAnyKeyword)
     )
 
-    const value31 = element({
+    const reported = element({
       node,
       message: "Avoid function return types that include any.",
       hint:
@@ -52,7 +52,7 @@ const explicitAnyReturnElements = (context: CheckContext) => {
         "use unknown and narrow before use."
     })
 
-    return hasAnyReturnType ? Array.of(value31) : Array.empty()
+    return hasAnyReturnType ? Array.of(reported) : Array.empty()
   }
 
   return matches

@@ -58,9 +58,9 @@ const mutableDeclarationMatches = (context: CheckContext) => {
   return matches
 }
 
-const values63 = Array.of(ts.SyntaxKind.VariableDeclarationList)
+const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationList)
 
-const check = nodeCheck(values63)(ts.isVariableDeclarationList)(
+const check = nodeCheck(variableDeclarationListKinds)(ts.isVariableDeclarationList)(
   mutableDeclarationMatches
 )
 

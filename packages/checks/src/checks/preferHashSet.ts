@@ -61,16 +61,16 @@ const setMatches = (context: CheckContext) => {
 
       const escapesExternally = isSetConstruction && constructionEscapes(node)
 
-      const values203 = Array.make(isSetConstruction, !escapesExternally)
-      const isReportable = Array.every(values203, Boolean)
+      const reportableConditions = Array.make(isSetConstruction, !escapesExternally)
+      const isReportable = Array.every(reportableConditions, Boolean)
 
-      const value204 = match({
+      const constructorMatch = match({
         node,
         message: constructorMessage,
         hint: constructorHint
       })
 
-      return isReportable ? Array.of(value204) : Array.empty()
+      return isReportable ? Array.of(constructorMatch) : Array.empty()
     }
 
     const isAmbient = isInAmbientContext(node)
@@ -89,24 +89,24 @@ const setMatches = (context: CheckContext) => {
 
     const message = `Avoid the built-in ${name} type.`
 
-    const value205 = match({
+    const typeRefMatch = match({
       node,
       message,
       hint: typeRefHint
     })
 
-    return Array.of(value205)
+    return Array.of(typeRefMatch)
   }
 
   return matches
 }
 
-const values206 = Array.make(
+const setRuleNodeKinds = Array.make(
   ts.SyntaxKind.NewExpression,
   ts.SyntaxKind.TypeReference
 )
 
-const check = nodeCheck(values206)(isSetRuleNode)(setMatches)
+const check = nodeCheck(setRuleNodeKinds)(isSetRuleNode)(setMatches)
 
 export const preferHashSet: Check = check
 

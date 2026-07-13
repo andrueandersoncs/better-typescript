@@ -29,9 +29,9 @@ const tokenTexts =
     const children = node.getChildren(sourceFile)
     const isLeafToken = children.length === 0
 
-    const value25 = node.getText(sourceFile)
+    const nodeText = node.getText(sourceFile)
     return isLeafToken
-      ? Array.of(value25)
+      ? Array.of(nodeText)
       : Array.flatMap(children, tokenTexts(sourceFile))
   }
 
@@ -57,11 +57,11 @@ const duplicateIfMatches = (context: CheckContext) => {
   const combineConditions =
     (firstIfStatement: ts.IfStatement) =>
     (ifStatement: ts.IfStatement): string => {
-      const value26 = conditionText(firstIfStatement)
-      const value27 = conditionText(ifStatement)
-      const values = Array.make(value26, value27)
+      const firstCondition = conditionText(firstIfStatement)
+      const secondCondition = conditionText(ifStatement)
+      const conditionTexts = Array.make(firstCondition, secondCondition)
 
-      return Array.join(values, " || ")
+      return Array.join(conditionTexts, " || ")
     }
 
   const guardDup =
@@ -70,8 +70,8 @@ const duplicateIfMatches = (context: CheckContext) => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
 
-      const values28 = Array.make(hasDuplicateBody, bodyExitsScope)
-      const isMergeableDuplicate = Array.every(values28, Boolean)
+      const mergeableDuplicateConditions = Array.make(hasDuplicateBody, bodyExitsScope)
+      const isMergeableDuplicate = Array.every(mergeableDuplicateConditions, Boolean)
 
       const combinedCondition =
         combineConditions(previousIfStatement)(ifStatement)
@@ -144,8 +144,8 @@ const duplicateIfMatches = (context: CheckContext) => {
   return matches
 }
 
-const values29 = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(values29)(ts.isIfStatement)(duplicateIfMatches)
+const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(duplicateIfMatches)
 
 export const noDuplicateIfBodies: Check = check
 

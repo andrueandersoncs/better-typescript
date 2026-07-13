@@ -118,8 +118,8 @@ const manualTypeDispatchMatches = (context: CheckContext) => {
   return matches
 }
 
-const values50 = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(values50)(ts.isIfStatement)(manualTypeDispatchMatches)
+const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(manualTypeDispatchMatches)
 
 export const noManualTypeDispatch: Check = check
 

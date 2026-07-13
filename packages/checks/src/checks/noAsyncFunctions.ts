@@ -13,11 +13,12 @@ const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
   const parent = node.parent
 
-  const value11 = ts.isFunctionDeclaration(parent)
-  const value12 = ts.isFunctionExpression(parent)
-  const value13 = ts.isArrowFunction(parent)
-  const value14 = ts.isMethodDeclaration(parent)
-  const conditions = Array.make(value11, value12, value13, value14)
+  const conditions = Array.make(
+    ts.isFunctionDeclaration(parent),
+    ts.isFunctionExpression(parent),
+    ts.isArrowFunction(parent),
+    ts.isMethodDeclaration(parent)
+  )
 
   return Array.some(conditions, Boolean)
 }
@@ -43,9 +44,9 @@ const asyncFunctionElements = (context: CheckContext) => {
   return matches
 }
 
-const values16 = Array.of(asyncKeywordKind)
+const asyncKeywordKinds = Array.of(asyncKeywordKind)
 
-export const noAsyncFunctions: Check = nodeCheck(values16)(
+export const noAsyncFunctions: Check = nodeCheck(asyncKeywordKinds)(
   isAsyncFunctionModifier
 )(asyncFunctionElements)
 

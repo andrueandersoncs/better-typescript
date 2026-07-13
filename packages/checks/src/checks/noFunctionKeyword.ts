@@ -47,8 +47,8 @@ const functionKeywordMatches = (context: CheckContext) => {
             const body = Option.fromNullable(candidate.body)
             const hasNoBody = Option.isNone(body)
 
-            const values42 = Array.make(!isImplementation, hasNoBody)
-            return Array.every(values42, Boolean)
+            const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
+            return Array.every(overloadSiblingConditions, Boolean)
           })
         )
       })
@@ -66,7 +66,7 @@ const functionKeywordMatches = (context: CheckContext) => {
       Option.getOrElse(Function.constant(node))
     )
 
-    const value43 = match({
+    const functionKeywordMatch = match({
       node: keywordToken,
       message: "Avoid using the function keyword.",
       hint:
@@ -75,18 +75,18 @@ const functionKeywordMatches = (context: CheckContext) => {
         "generator semantics are required."
     })
 
-    return Array.of(value43)
+    return Array.of(functionKeywordMatch)
   }
 
   return matches
 }
 
-const values44 = Array.make(
+const functionKeywordNodeKinds = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression
 )
 
-const check = nodeCheck(values44)(isFunctionKeywordNode)(functionKeywordMatches)
+const check = nodeCheck(functionKeywordNodeKinds)(isFunctionKeywordNode)(functionKeywordMatches)
 
 export const noFunctionKeyword: Check = check
 

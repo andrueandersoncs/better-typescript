@@ -139,19 +139,19 @@ const callbackStyleMatches = (context: CheckContext) => {
             callSignatureCheck(checker)
           )
 
-          const values17 = Array.make(
+          const callSignatureIndicators = Array.make(
             parameterHasCallSignature,
             elementHasCallSignature
           )
 
-          return Array.some(values17, Boolean)
+          return Array.some(callSignatureIndicators, Boolean)
         }
       )
 
       return returnsVoid && hasFunctionArgument
     })
 
-    const value18 = match({
+    const callbackMatch = match({
       node: declaration,
       message:
         "Avoid callback-style functions that accept a function argument and return void.",
@@ -161,13 +161,13 @@ const callbackStyleMatches = (context: CheckContext) => {
         "(declare statements) describing a third-party API are permitted."
     })
 
-    return isCallback ? Array.of(value18) : Array.empty()
+    return isCallback ? Array.of(callbackMatch) : Array.empty()
   }
 
   return matches
 }
 
-const values19 = Array.make(
+const callbackStyleCandidateKinds = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
@@ -177,7 +177,7 @@ const values19 = Array.make(
   ts.SyntaxKind.FunctionType
 )
 
-const check = nodeCheck(values19)(isCallbackStyleCandidate)(
+const check = nodeCheck(callbackStyleCandidateKinds)(isCallbackStyleCandidate)(
   callbackStyleMatches
 )
 

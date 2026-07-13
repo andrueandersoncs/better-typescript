@@ -29,13 +29,14 @@ const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const isPropertyAccessorFunction = (
   node: ts.Node
 ): node is PropertyAccessorFunction => {
-  const value167 = ts.isArrowFunction(node)
-  const value168 = ts.isFunctionExpression(node)
-  const value169 = ts.isFunctionDeclaration(node)
-  const value170 = ts.isMethodDeclaration(node)
-  const conditions2 = Array.make(value167, value168, value169, value170)
+  const checks = Array.make(
+    ts.isArrowFunction(node),
+    ts.isFunctionExpression(node),
+    ts.isFunctionDeclaration(node),
+    ts.isMethodDeclaration(node)
+  )
 
-  return Array.some(conditions2, Boolean)
+  return Array.some(checks, Boolean)
 }
 
 const returnExpression = (
@@ -93,9 +94,7 @@ const isRecordType =
   (type: ts.Type): boolean => {
     const apparentType = checker.getApparentType(type)
 
-    const value171 = hasIndexSignature(type)
-    const value172 = hasIndexSignature(apparentType)
-    const conditions = Array.make(value171, value172)
+  const conditions = Array.make(hasIndexSignature(type), hasIndexSignature(apparentType))
 
     return type.isUnionOrIntersection()
       ? Array.every(type.types, isRecordType(checker))
@@ -114,7 +113,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const ruleMatch =
     (node: PropertyAccessorFunction) =>
     (access: ts.PropertyAccessExpression): Detection => {
-      const name = pipe(
+  const name = pipe(
         Option.fromNullable(node.name),
         Option.map(propertyNameText),
         Option.orElse(() =>
@@ -127,11 +126,11 @@ const propertyAccessorMatches = (context: CheckContext) => {
         Option.getOrElse(Function.constant("this function"))
       )
 
-      const accessedText = access.getText(sourceFile)
-      const accessedType = checker.getTypeAtLocation(access.expression)
-      const moduleName = isRecord(accessedType) ? "Record" : "Struct"
-      const propertyKey = JSON.stringify(access.name.text)
-      const suggestion = `${moduleName}.get(${propertyKey})`
+  const accessedText = access.getText(sourceFile)
+  const accessedType = checker.getTypeAtLocation(access.expression)
+  const moduleName = isRecord(accessedType) ? "Record" : "Struct"
+  const propertyKey = JSON.stringify(access.name.text)
+  const suggestion = `${moduleName}.get(${propertyKey})`
 
       return match({
         node: access,
@@ -156,20 +155,20 @@ const propertyAccessorMatches = (context: CheckContext) => {
     return pipe(
       paramName,
       Option.flatMap((parameterName) => {
-        const implicitExpression = pipe(
+  const implicitExpression = pipe(
           Option.liftPredicate(ts.isArrowFunction)(node),
           Option.flatMap(conciseArrowBody)
         )
 
-        const blockExpression = pipe(
+  const blockExpression = pipe(
           Option.fromNullable(node.body),
           Option.filter(ts.isBlock),
           Option.flatMap(singleReturnExpression)
         )
 
-        const values173 = Array.make(implicitExpression, blockExpression)
+  const expressionCandidates = Array.make(implicitExpression, blockExpression)
         return pipe(
-          Option.firstSomeOf(values173),
+          Option.firstSomeOf(expressionCandidates),
           Option.flatMap(directPropertyAccessExpression),
           Option.filter((access) =>
             pipe(

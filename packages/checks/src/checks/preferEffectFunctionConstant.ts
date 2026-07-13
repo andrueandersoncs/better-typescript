@@ -80,14 +80,14 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
     Option.exists(hasElements)
   )
 
-  const values165 = Array.make(
+  const nodeText = Array.make(
     node.parameters.length === 0,
     !hasAsync,
     !hasGenerator,
     !hasTypeParameters
   )
 
-  return Array.every(values165, Boolean)
+  return Array.every(nodeText, Boolean)
 }
 
 const blockReturnedExpression = (
@@ -215,8 +215,8 @@ const functionConstantMatches = (context: CheckContext) => {
         )
 
         yield* Option.liftPredicate((_expression: ts.Expression): boolean => {
-          const values166 = Array.make(isPrimitive, isStableIdentifier)
-          return Array.some(values166, Boolean)
+          const nodeText2 = Array.make(isPrimitive, isStableIdentifier)
+          return Array.some(nodeText2, Boolean)
         })(expression)
         const expressionText = expression.getText(context.sourceFile)
 

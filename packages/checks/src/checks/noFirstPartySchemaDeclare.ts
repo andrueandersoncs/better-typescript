@@ -49,8 +49,8 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
   const isConcreteType = !type.isTypeParameter()
 
-  const values32 = Array.make(isFirstParty, isDataStructure, isConcreteType)
-  return Array.every(values32, Boolean)
+  const ambientConditions = Array.make(isFirstParty, isDataStructure, isConcreteType)
+  return Array.every(ambientConditions, Boolean)
 }
 
 const symbolName = Struct.get("name")
@@ -116,8 +116,8 @@ const schemaDeclareMatches = (context: CheckContext) => {
   return matches
 }
 
-const values33 = Array.of(ts.SyntaxKind.CallExpression)
-const check = nodeCheck(values33)(isDeclareCall)(schemaDeclareMatches)
+const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
+const check = nodeCheck(callExpressionKinds)(isDeclareCall)(schemaDeclareMatches)
 
 export const noFirstPartySchemaDeclare: Check = check
 

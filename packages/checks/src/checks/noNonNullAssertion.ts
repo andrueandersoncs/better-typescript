@@ -31,9 +31,9 @@ const nonNullAssertionElements = (context: CheckContext) => {
   return matches
 }
 
-const values77 = Array.of(nonNullExpressionKind)
+const nonNullExpressionKinds = Array.of(nonNullExpressionKind)
 
-export const noNonNullAssertion: Check = nodeCheck(values77)(
+export const noNonNullAssertion: Check = nodeCheck(nonNullExpressionKinds)(
   ts.isNonNullExpression
 )(nonNullAssertionElements)
 

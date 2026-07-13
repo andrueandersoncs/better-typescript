@@ -55,7 +55,7 @@ const addUniqueElement = (
 ): DedupeState => {
   const location = element.location
 
-  const values295 = Array.make(
+  const dedupeKeyParts = Array.make(
     location.path,
     location.line,
     location.column,
@@ -63,7 +63,7 @@ const addUniqueElement = (
     element.hint
   )
 
-  const key = JSON.stringify(values295)
+  const key = JSON.stringify(dedupeKeyParts)
 
   const bucket = pipe(
     HashMap.get(state.seen, key),
@@ -172,8 +172,8 @@ export const adviceText = (advice: Advice): string => {
   const header = adviceHeader(advice)
   const remediation = `  fix: ${advice.remediation}`
   const evidence = Array.map(advice.evidence, evidenceText)
-  const values296 = Array.make(header, remediation)
-  const lines = Array.appendAll(values296, evidence)
+  const prefixLines = Array.make(header, remediation)
+  const lines = Array.appendAll(prefixLines, evidence)
 
   return Array.join(lines, "\n")
 }
@@ -184,8 +184,8 @@ const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
 const adviceReportBlock = (advice: Advice): ReportBlock => {
   const pathLabel = advicePath(advice)
 
-  const values297 = Array.make(advice.level, pathLabel, advice.title)
-  const identity = reportIdentity("advice", values297)
+  const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
+  const identity = reportIdentity("advice", adviceIdentityParts)
 
   const key = new AdviceReportKey({
     level: advice.level,
@@ -210,8 +210,8 @@ export const adviceReportBlocks = (
   pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
 
 const detectionBlockKey = (element: Detection): string => {
-  const values298 = Array.make(element.message, element.hint)
-  return reportIdentity("detection", values298)
+  const detectionIdentityParts = Array.make(element.message, element.hint)
+  return reportIdentity("detection", detectionIdentityParts)
 }
 
 const locationText = (element: Detection): string =>
@@ -235,8 +235,8 @@ const formatRefactorExample = (example: RefactorExample): string => {
   const badText = formatExampleTree("Bad")(example.bad)
   const goodText = formatExampleTree("Good")(example.good)
 
-  const values299 = Array.make(badText, goodText)
-  return Array.join(values299, "\n")
+  const joinedParts = Array.make(badText, goodText)
+  return Array.join(joinedParts, "\n")
 }
 
 /**
@@ -253,8 +253,8 @@ export const checkReportBlocks =
       Array.map((group) => {
         const first = Array.headNonEmpty(group)
 
-        const values300 = Array.make(name, first.message, first.hint)
-        const identity = reportIdentity("rule", values300)
+        const ruleIdentityParts = Array.make(name, first.message, first.hint)
+        const identity = reportIdentity("rule", ruleIdentityParts)
 
         const key = new RuleReportKey({
           name,
@@ -271,8 +271,8 @@ export const checkReportBlocks =
               const hint = `  Hint: ${head.hint}`
               const examplesText = Array.map(examples, formatRefactorExample)
 
-              const values301 = Array.make(name, message, hint)
-              const header = Array.appendAll(values301, examplesText)
+              const prefixLines2 = Array.make(name, message, hint)
+              const header = Array.appendAll(prefixLines2, examplesText)
 
               const locations = Array.map(group, locationText)
               const lines = Array.appendAll(header, locations)
