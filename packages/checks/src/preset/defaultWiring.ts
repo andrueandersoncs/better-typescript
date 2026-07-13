@@ -155,6 +155,10 @@ import {
   preferDirectBooleanReturnExamples
 } from "../checks/preferDirectBooleanReturn.js"
 import {
+  preferDirectYield,
+  preferDirectYieldExamples
+} from "../checks/preferDirectYield.js"
+import {
   preferEffectArray,
   preferEffectArrayExamples
 } from "../checks/preferEffectArray.js"
@@ -341,6 +345,12 @@ const preferDirectBooleanReturnCheck = namedCheck(
   "prefer-direct-boolean-return",
   preferDirectBooleanReturn,
   preferDirectBooleanReturnExamples
+)
+
+const preferDirectYieldCheck = namedCheck(
+  "prefer-direct-yield",
+  preferDirectYield,
+  preferDirectYieldExamples
 )
 
 const preferFunctionCompositionCheck = namedCheck(
@@ -614,6 +624,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferDedicatedDataStructureFilesCheck,
   preferConditionalReturnCheck,
   preferDirectBooleanReturnCheck,
+  preferDirectYieldCheck,
   preferFunctionCompositionCheck,
   preferEtaReductionCheck,
   preferFunctionFlipCheck,
@@ -719,12 +730,9 @@ export const defaultDerive = (
     const densityAfterFallbackSuppression =
       filterFallbackAdviceForUncoveredFiles(specificItems)(densityAdvice)
 
-    const densityAdviceEffect = collectSignals(densityAfterFallbackSuppression)
-    const subsystemAdviceEffect = collectSignals(subsystemAdvice)
-    const dominanceAdviceEffect = collectSignals(dominanceAdvice)
-    const densityItems = yield* densityAdviceEffect
-    const subsystemItems = yield* subsystemAdviceEffect
-    const dominanceItems = yield* dominanceAdviceEffect
+    const densityItems = yield* collectSignals(densityAfterFallbackSuppression)
+    const subsystemItems = yield* collectSignals(subsystemAdvice)
+    const dominanceItems = yield* collectSignals(dominanceAdvice)
     const specificReplay = replayAdvice(specificItems)
     const densityReplay = replayAdvice(densityItems)
     const subsystemReplay = replayAdvice(subsystemItems)

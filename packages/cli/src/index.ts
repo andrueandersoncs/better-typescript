@@ -91,12 +91,10 @@ const runCommand = Effect.fn("runCommand")(function* (
 
   const watchMode = Option.liftPredicate(Boolean)(options.watch)
 
-  const commandEffect = Option.match(watchMode, {
+  yield* Option.match(watchMode, {
     onNone: Function.constant(oneShot),
     onSome: Function.constant(watched)
   })
-
-  yield* commandEffect
 })
 
 const rootCommand = Command.make(
