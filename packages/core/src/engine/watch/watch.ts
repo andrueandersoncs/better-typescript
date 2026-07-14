@@ -22,18 +22,23 @@ import type { ProgramContext, SourceUpdate } from "../sources/data.js"
 import type { Detection } from "../location/data.js"
 import {
   batchReportBlocks,
-  reportBlocksFromWiring,
+  reportBlocksFromConfig,
   reportBlocksFromWorkspaceConfigs,
   workspaceSignals
 } from "../report/report.js"
-import type { ReportBlock, Signal, Wiring } from "../report/data.js"
+import type {
+  ReportBlock,
+  Signal,
+  WiringConfig,
+  WiringSignals
+} from "../report/data.js"
 import {
   ClearedEvent,
   EmptyReportEvent,
   SignalEvent,
-  WorkspaceUpdate,
-  type ReportEvent
+  WorkspaceUpdate
 } from "./data.js"
+import type { ReportEvent } from "./data.js"
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> =
   HashMap.empty()
@@ -122,14 +127,14 @@ export const workspaceUpdates = (
  * on files outside the edited set through the type graph.
  */
 export const signalUpdates =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (
     updates: Stream.Stream<WorkspaceUpdate, Error>
-  ): Stream.Stream<ReadonlyArray<Signal>, Error> =>
+  ): Stream.Stream<ReadonlyArray<WiringSignals>, Error> =>
     pipe(
       updates,
       Stream.mapEffect((update) =>
-        workspaceSignals(wiring)(update.rootPath)(update.contexts)
+        workspaceSignals(config)(update.rootPath)(update.contexts)
       )
     )
 
@@ -164,33 +169,38 @@ const signalEquals = (a: Signal, b: Signal): boolean => {
 
 const signalArrayEquivalence = Array.getEquivalence(signalEquals)
 
-/**
- * Detection-set equality per signal. Best-effort on Detection.data by design:
- * it is Schema.Unknown, so a check that builds a fresh plain data object per
- * run compares unequal and the batch passes through — the gate under-cuts,
- * never over-cuts, and correctness never depends on it. The reported bit is
- * intentionally ignored because visibility is rendering policy, not execution
- * or invalidation policy.
- * @remarks Under-cutting is intentional because dropping a real change would
- * hide signals, while an extra pass-through is only redundant work.
- */
-export const signalsEquivalence = (
-  a: ReadonlyArray<Signal>,
-  b: ReadonlyArray<Signal>
-): boolean => signalArrayEquivalence(a, b)
+const wiringSignalsEquals = (a: WiringSignals, b: WiringSignals): boolean => {
+  const sameMatchState = a.matched === b.matched
+  const sameSignals = signalArrayEquivalence(a.signals, b.signals)
+
+  return sameMatchState && sameSignals
+}
+
+const wiringSignalsArrayEquivalence = Array.getEquivalence(wiringSignalsEquals)
 
 /**
- * Within each element the derivation graph runs unchanged: every materialized
- * signal is already present, and wiring.derive consumes the full batch.
- * @remarks Per-element full-batch derive is required because advice must not
- * tear across independently ticking signal streams.
+ * Compare complete signal sets for every configured wiring.
+ * @remarks Match state participates because a newly matched or fully removed
+ * glob scope must reach derivation and clearing. `Detection.data` remains
+ * best-effort because it is `Schema.Unknown`: fresh plain objects under-cut the
+ * gate but can never hide a real report change.
+ */
+export const signalsEquivalence = (
+  a: ReadonlyArray<WiringSignals>,
+  b: ReadonlyArray<WiringSignals>
+): boolean => wiringSignalsArrayEquivalence(a, b)
+
+/**
+ * Derive report blocks from each complete wiring signal set.
+ * @remarks Derivation remains per wiring because each glob assignment is one
+ * independent policy boundary.
  */
 export const reportBlockUpdates =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (
-    signals: Stream.Stream<ReadonlyArray<Signal>, Error>
+    signals: Stream.Stream<ReadonlyArray<WiringSignals>, Error>
   ): Stream.Stream<ReadonlyArray<ReportBlock>, Error> =>
-    pipe(signals, Stream.mapEffect(batchReportBlocks(wiring)))
+    pipe(signals, Stream.mapEffect(batchReportBlocks(config)))
 
 const emptyReportText = (event: EmptyReportEvent): string =>
   `No signals in ${event.rootPath}.`
@@ -304,21 +314,21 @@ export const blockDeltas =
  * @remarks Shares the continuous event vocabulary because one-shot and watch
  * consumers should parse the same report events.
  */
-export const reportEventsFromWiring =
-  (wiring: Wiring) =>
+export const reportEventsFromConfig =
+  (config: WiringConfig) =>
   (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, Error> =>
     pipe(
-      reportBlocksFromWiring(wiring)(workspace),
+      reportBlocksFromConfig(config)(workspace),
       Effect.map(initialReportEvents(workspace.rootPath)),
       Stream.fromIterableEffect
     )
 
 /** Analyze a discovered workspace without retaining all project Programs. */
 export const reportEventsFromWorkspaceConfigs =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, Error> =>
     pipe(
-      reportBlocksFromWorkspaceConfigs(wiring)(workspace),
+      reportBlocksFromWorkspaceConfigs(config)(workspace),
       Effect.map(initialReportEvents(workspace.rootPath)),
       Stream.fromIterableEffect
     )
@@ -344,16 +354,16 @@ export const reportEventsFromWorkspaceConfigs =
  * @remarks Linear gated stages are required because each stage must drop
  * unchanged values while keeping derivation fan-in inside one batch element.
  */
-export const watchReportFromWiring =
-  (wiring: Wiring) =>
+export const watchReportFromConfig =
+  (config: WiringConfig) =>
   (
     workspace: WorkspaceConfigs,
     watchOptions: Option.Option<ts.WatchOptions>
   ): Stream.Stream<ReportEvent, Error> =>
     pipe(
       workspaceUpdates(workspace, watchOptions),
-      signalUpdates(wiring),
+      signalUpdates(config),
       Stream.changesWith(signalsEquivalence),
-      reportBlockUpdates(wiring),
+      reportBlockUpdates(config),
       blockDeltas(workspace.rootPath)
     )

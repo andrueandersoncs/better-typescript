@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; public config shape superseded by ADR-0014
 
 ## Date
 

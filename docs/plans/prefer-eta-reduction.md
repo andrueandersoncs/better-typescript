@@ -9,10 +9,10 @@ parameter into a free/already-applied function call must be eta-reduced to that
 function value instead of wrapping it.
 
 **Minimal disliked example** (live in
-`packages/core/src/project/loadWiring/loadWiring.ts`):
+`packages/core/src/project/loadWiringConfig/loadWiringConfig.ts`):
 
 ```ts
-const configExportFromFunction = (factory: WiringFactory): ConfigExport =>
+const configExportFromFunction = (factory: ConfigFactory): ConfigExport =>
   defaultConfigExport(factory)
 ```
 
@@ -63,7 +63,7 @@ forms stay allowed.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Branch / worktree      | `main` (ahead of `origin/main` by 9 after `prefer-function-composition`), clean for this proposal                                                                                                                                                                                                                                                                                                        |
 | Self-host              | `timeout 10 npm run dev` → **`No signals`**                                                                                                                                                                                                                                                                                                                                                              |
-| Seed eta sites present | `loadWiring.ts` `configExportFromFunction`; `watch.ts` `Struct.get("text")` Match arms; several `deriveSignals(...)(signals)` / `hasCallSignature(checker)(type)` wrappers — **unreported today**                                                                                                                                                                                                        |
+| Seed eta sites present | `loadWiringConfig.ts` `configExportFromFunction`; `watch.ts` `Struct.get("text")` Match arms; several `deriveSignals(...)(signals)` / `hasCallSignature(checker)(type)` wrappers — **unreported today**                                                                                                                                                                                                  |
 | Existing owner?        | **None.** `prefer-function-composition` only matches two-statement bind-then-thread blocks. `prefer-implicit-return` only drops braces. `prefer-effect-property-accessors` only property reads. `prefer-effect-function-constant` only zero-arg thunks. `no-single-use-callee` is about naming/call-count, not body shape.                                                                               |
 | Rough self-host impact | ~18 expression-body unary eta candidates after excluding obvious method receivers; ~4 method-receiver skips (`includes` / `endsWith` / `startsWith`). Final count depends on checker-based `this` filtering (e.g. `checker.getTypeAtLocation` must skip).                                                                                                                                                |
 | Effect idiom           | Library code passes `identity`, `Option.some`, `Array.of`, `Chunk.of` as callees; `flow` / `compose` / `flip` are the composition toolkit. Effect _website_ “Avoid Tacit” prefers `Effect.map((x) => fn(x))` over `Effect.map(fn)` because of overloads — Better TypeScript / this repo already prefer point-free `pipe`/`flow`, so this check follows **local** convention, not that website guideline. |

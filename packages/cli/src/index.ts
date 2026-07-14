@@ -6,12 +6,12 @@ import { Console, Effect, Function, Option, Stream, flow, pipe } from "effect"
 import {
   reportEventsFromWorkspaceConfigs,
   renderEventText,
-  watchReportFromWiring
+  watchReportFromConfig
 } from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
-import { loadWiring } from "@better-typescript/core/project/loadWiring"
+import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 
 const workingDirectory = process.cwd()
 
@@ -61,7 +61,7 @@ const runCommand = Effect.fn("runCommand")(function* (
   options: WatchCommandOptions
 ) {
   const projectDirectory = path.resolve(options.project)
-  const wiring = yield* loadWiring(projectDirectory, defaultWiring)
+  const config = yield* loadWiringConfig(projectDirectory, defaultConfig)
   const prettyOption = Option.liftPredicate(Boolean)(options.pretty)
 
   const printEvent = Option.match(prettyOption, {
@@ -71,7 +71,7 @@ const runCommand = Effect.fn("runCommand")(function* (
 
   const oneShot = Effect.gen(function* () {
     const workspace = yield* discoverWorkspace(projectDirectory)
-    const events = reportEventsFromWorkspaceConfigs(wiring)(workspace)
+    const events = reportEventsFromWorkspaceConfigs(config)(workspace)
 
     yield* Console.error(`Analyzing ${workspace.rootPath}.`)
     yield* Stream.runForEach(events, printEvent)
@@ -80,7 +80,7 @@ const runCommand = Effect.fn("runCommand")(function* (
   const watched = Effect.gen(function* () {
     const workspace = yield* discoverWorkspace(projectDirectory)
     const watchOptions = Option.none()
-    const events = watchReportFromWiring(wiring)(workspace, watchOptions)
+    const events = watchReportFromConfig(config)(workspace, watchOptions)
 
     yield* Console.error(`Watching ${workspace.rootPath} for changes.`)
     yield* Stream.runForEach(events, printEvent)

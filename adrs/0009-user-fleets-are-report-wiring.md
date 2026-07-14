@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; config cardinality superseded by ADR-0014
 
 ## Date
 

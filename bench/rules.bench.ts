@@ -4,8 +4,9 @@ import { Effect, Stream, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
 import {
+  defineConfig,
   makeWiring,
-  reportFromWiring,
+  reportFromConfig,
   reportFromWorkspaceConfigs
 } from "@better-typescript/core/engine/report"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
@@ -35,6 +36,10 @@ const benchmarkWiring = makeWiring({
     )
 })
 
+const benchmarkConfig = defineConfig([
+  { files: ["**/*"], wiring: benchmarkWiring }
+])
+
 interface TaskStatistics {
   readonly latency: Statistics
   readonly throughput: Statistics
@@ -47,7 +52,7 @@ const runLoadedBenchmark = async (): Promise<void> => {
   const workspace = await Effect.runPromise(loadProject(targetPath))
   const collectReport = () =>
     Effect.runPromise(
-      Stream.runCollect(reportFromWiring(benchmarkWiring)(workspace))
+      Stream.runCollect(reportFromConfig(benchmarkConfig)(workspace))
     )
 
   const warmed = await collectReport()
@@ -88,7 +93,7 @@ const runBoundedWorkspacePass = async (
 ): Promise<void> => {
   const started = performance.now()
   const blocks = await Effect.runPromise(
-    Stream.runCollect(reportFromWorkspaceConfigs(benchmarkWiring)(workspace))
+    Stream.runCollect(reportFromWorkspaceConfigs(benchmarkConfig)(workspace))
   )
   const elapsedMs = performance.now() - started
 
