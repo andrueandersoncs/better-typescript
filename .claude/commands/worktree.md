@@ -42,6 +42,17 @@ commits:
   required by those rules.
 - Do not clean up, remove, or prune the worktree unless asked.
 
+## Keep changes on the worktree
+
+All implementation changes must remain on the worktree and its branch, including
+commits. Do not merge, squash-merge, cherry-pick, copy, apply, or otherwise
+transfer those changes into `main` or the original checkout unless the user
+explicitly asks to merge the worktree changes into `main`.
+
+A request to commit is only a request to commit on the worktree branch; it is not
+permission to merge. Until an explicit merge request is given, leave `main` and
+the original checkout untouched.
+
 ## Handoff
 
 When finished, report:
