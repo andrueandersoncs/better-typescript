@@ -1,5 +1,5 @@
 import { Stream, pipe } from "effect"
-import { makeWiring } from "@better-typescript/core/engine/report"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import {
   architectureExploreChecks,
@@ -9,7 +9,7 @@ import {
 // Self-host with the default Effect fleet plus Architecture Explore.
 // Keep architectureExploreWiring as a separate fragment so consumers can
 // still import defaultWiring alone; this repo opts into both here.
-export default makeWiring({
+const selfWiring = makeWiring({
   checks: [...defaultWiring.checks, ...architectureExploreChecks],
   derive: (signals) =>
     pipe(
@@ -17,3 +17,5 @@ export default makeWiring({
       Stream.concat(architectureExploreDerive(signals))
     )
 })
+
+export default defineConfig([{ files: ["**/*"], wiring: selfWiring }])

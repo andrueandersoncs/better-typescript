@@ -12,14 +12,11 @@ import type { Advice } from "../derive/data.js"
 import type { RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 
-export type NonEmptyCheckPaths = Array.NonEmptyReadonlyArray<string>
-
 export class NamedCheck extends Data.Class<{
   readonly name: string
   readonly check: Check
   readonly reported: boolean
   readonly examples: ReadonlyArray<RefactorExample>
-  readonly paths: ReadonlyArray<string>
 }> {}
 
 export class Signal extends Data.Class<{
@@ -39,6 +36,20 @@ export class Wiring extends Data.Class<{
   readonly derive: (
     signals: ReadonlyArray<Signal>
   ) => Stream.Stream<Advice, Error>
+}> {}
+
+export type NonEmptyFileGlobs = Array.NonEmptyReadonlyArray<string>
+
+export class WiringEntry extends Data.Class<{
+  readonly files: NonEmptyFileGlobs
+  readonly wiring: Wiring
+}> {}
+
+export type WiringConfig = ReadonlyArray<WiringEntry>
+
+export class WiringSignals extends Data.Class<{
+  readonly matched: boolean
+  readonly signals: ReadonlyArray<Signal>
 }> {}
 
 /**
@@ -94,6 +105,20 @@ export class DuplicateCheckNamesError extends Schema.TaggedError<DuplicateCheckN
 }) {
   get message(): string {
     return `Duplicate check names: ${Array.join(this.names, ", ")}`
+  }
+}
+
+const invalidWiringIndexArray = Schema.Array(Schema.Number)
+
+export class InvalidWiringFilesError extends Schema.TaggedError<InvalidWiringFilesError>(
+  "InvalidWiringFilesError"
+)("InvalidWiringFilesError", {
+  indexes: invalidWiringIndexArray
+}) {
+  get message(): string {
+    const indexes = Array.map(this.indexes, String)
+
+    return `Wiring files must be non-empty glob arrays at indexes: ${Array.join(indexes, ", ")}`
   }
 }
 

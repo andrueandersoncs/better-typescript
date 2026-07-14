@@ -22,13 +22,19 @@ import {
   ReportBlock,
   RuleReportKey,
   Signal,
-  type NamedCheck,
-  type ReportKey,
-  type Wiring
+  WiringSignals
+} from "@better-typescript/core/engine/report/data"
+import type {
+  NamedCheck,
+  NonEmptyFileGlobs,
+  ReportKey,
+  Wiring,
+  WiringConfig
 } from "@better-typescript/core/engine/report/data"
 import {
+  defineConfig,
   namedCheck,
-  reportBlocksFromWiring
+  reportBlocksFromConfig
 } from "@better-typescript/core/engine/report"
 import {
   exampleSnippet,
@@ -49,18 +55,18 @@ import {
   ClearedEvent,
   EmptyReportEvent,
   SignalEvent,
-  WorkspaceUpdate,
-  type ReportEvent
+  WorkspaceUpdate
 } from "@better-typescript/core/engine/watch/data"
+import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
 import {
   reportBlockUpdates,
   blockDelta,
   blockDeltas,
   renderEventText,
-  reportEventsFromWiring,
+  reportEventsFromConfig,
   signalUpdates,
   signalsEquivalence,
-  watchReportFromWiring
+  watchReportFromConfig
 } from "@better-typescript/core/engine/watch"
 import {
   discoverWorkspace,
@@ -119,6 +125,13 @@ const probeWiring: Wiring = {
   derive: () => Stream.empty
 }
 
+const configFor = (
+  wiring: Wiring,
+  files: NonEmptyFileGlobs = ["src/cases.ts"]
+): WiringConfig => defineConfig([{ files, wiring }])
+
+const probeConfig = configFor(probeWiring)
+
 const pollingWatchOptions: ts.WatchOptions = {
   watchFile: ts.WatchFileKind.FixedPollingInterval,
   watchDirectory: ts.WatchDirectoryKind.FixedPollingInterval,
@@ -153,9 +166,15 @@ const detectionAt = (
   })
 
 const batchOf = (
-  detections: ReadonlyArray<Detection>
-): ReadonlyArray<Signal> => [
-  new Signal({ name: probeName, reported: true, detections, examples: [] })
+  detections: ReadonlyArray<Detection>,
+  matched = true
+): ReadonlyArray<WiringSignals> => [
+  new WiringSignals({
+    matched,
+    signals: [
+      new Signal({ name: probeName, reported: true, detections, examples: [] })
+    ]
+  })
 ]
 
 test("blockDelta emits every current block as a signal event when there is no previous report", () => {
@@ -257,13 +276,13 @@ test("report events stringify to NDJSON objects with structured keys", () => {
   )
 })
 
-test("reportEventsFromWiring emits initial signal events from the same wiring projection", async () => {
+test("reportEventsFromConfig emits initial events from the same config projection", async () => {
   const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
   const blocks = await Effect.runPromise(
-    reportBlocksFromWiring(probeWiring)(workspace)
+    reportBlocksFromConfig(probeConfig)(workspace)
   )
   const events = await collectStream(
-    reportEventsFromWiring(probeWiring)(workspace)
+    reportEventsFromConfig(probeConfig)(workspace)
   )
   const expected = blocks.map(
     (reportBlock) =>
@@ -277,7 +296,7 @@ test("reportEventsFromWiring emits initial signal events from the same wiring pr
   assert.deepEqual(events, expected)
 })
 
-test("reportEventsFromWiring emits one empty event for a signal-free workspace", async () => {
+test("reportEventsFromConfig emits one empty event when no wiring matches", async () => {
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), "report-events-empty-")
   )
@@ -288,7 +307,7 @@ test("reportEventsFromWiring emits one empty event for a signal-free workspace",
 
     const workspace = await Effect.runPromise(loadProject(tempDir))
     const events = await collectStream(
-      reportEventsFromWiring(probeWiring)(workspace)
+      reportEventsFromConfig(probeConfig)(workspace)
     )
 
     assert.deepEqual(events, [
@@ -328,6 +347,10 @@ test("signalsEquivalence under-cuts on fresh non-Equal detection data by design"
   assert.equal(signalsEquivalence(a, b), false)
 })
 
+test("signalsEquivalence rejects a changed wiring match state", () => {
+  assert.equal(signalsEquivalence(batchOf([], true), batchOf([], false)), false)
+})
+
 test("signalUpdates and reportBlockUpdates derive one signal array and advice-first blocks per element", async () => {
   const project = await loadFixtureProject()
   const context = contextFor(project.rootPath)(project.program)
@@ -346,14 +369,19 @@ test("signalUpdates and reportBlockUpdates derive one signal array and advice-fi
     checks: [throwProbeNamedCheck],
     derive: () => Stream.fromIterable([fixedAdvice])
   }
+  const adviceProbeConfig = configFor(adviceProbeWiring)
 
   const batches = await collectStream(
-    pipe(Stream.fromIterable([update]), signalUpdates(adviceProbeWiring))
+    pipe(Stream.fromIterable([update]), signalUpdates(adviceProbeConfig))
   )
 
   assert.equal(batches.length, 1)
   assert.equal(batches[0]?.length, 1)
-  const [probeSignal] = batches[0] ?? []
+  const [wiringSignals] = batches[0] ?? []
+
+  assert.ok(wiringSignals, "expected one matched wiring signal set")
+  assert.equal(wiringSignals.matched, true)
+  const [probeSignal] = wiringSignals.signals
 
   assert.ok(probeSignal, "expected the probe check to emit one signal")
   assert.equal(probeSignal.name, probeName)
@@ -363,8 +391,8 @@ test("signalUpdates and reportBlockUpdates derive one signal array and advice-fi
   const blockArrays = await collectStream(
     pipe(
       Stream.fromIterable([update]),
-      signalUpdates(adviceProbeWiring),
-      reportBlockUpdates(adviceProbeWiring)
+      signalUpdates(adviceProbeConfig),
+      reportBlockUpdates(adviceProbeConfig)
     )
   )
 
@@ -431,7 +459,7 @@ test("watch pushes the initial report, updated blocks, and cleared events for fs
   await fs.cp(noThrowFixturePath, tempDir, { recursive: true })
 
   const workspace = await Effect.runPromise(discoverWorkspace(tempDir))
-  const stream = watchReportFromWiring(probeWiring)(
+  const stream = watchReportFromConfig(probeConfig)(
     workspace,
     Option.some(pollingWatchOptions)
   )
@@ -505,7 +533,7 @@ test("watch emits the empty-report event for a signal-free workspace", async () 
   await fs.rm(path.join(tempDir, "src", "cases.ts"))
 
   const workspace = await Effect.runPromise(discoverWorkspace(tempDir))
-  const stream = watchReportFromWiring(probeWiring)(
+  const stream = watchReportFromConfig(probeConfig)(
     workspace,
     Option.some(pollingWatchOptions)
   )

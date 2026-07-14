@@ -207,6 +207,7 @@ import {
   preferPipeFunctionExamples
 } from "../checks/preferPipeFunction.js"
 import {
+  defineConfig,
   filterFallbackAdviceForUncoveredFiles,
   namedCheck,
   signalOf,
@@ -215,7 +216,8 @@ import {
 import type {
   NamedCheck,
   Signal,
-  Wiring
+  Wiring,
+  WiringConfig
 } from "@better-typescript/core/engine/report/data"
 import {
   collectSignals,
@@ -731,3 +733,12 @@ export const defaultWiring: Wiring = {
   checks: defaultChecks,
   derive: defaultDerive
 }
+
+const defaultFiles = Array.of("**/*")
+
+const defaultConfigEntries: WiringConfig = Array.of({
+  files: defaultFiles,
+  wiring: defaultWiring
+})
+
+export const defaultConfig: WiringConfig = defineConfig(defaultConfigEntries)

@@ -17,17 +17,19 @@ import {
 } from "@better-typescript/core/engine/location/data"
 import { locateNode } from "@better-typescript/core/engine/location"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  type NamedCheck,
-  type Wiring
+import type {
+  NamedCheck,
+  NonEmptyFileGlobs,
+  Wiring,
+  WiringConfig
 } from "@better-typescript/core/engine/report/data"
 import {
+  defineConfig,
   makeWiring,
   namedCheck,
-  reportFromWiring,
+  reportFromConfig,
   reportFromWorkspaceConfigs,
   runCheckOnProject,
-  scopeCheck,
   signalOf,
   silentCheck,
   withFallbackAdvice
@@ -216,6 +218,14 @@ const testWiring = (
   derive: Wiring["derive"] = noDerive
 ): Wiring => ({ checks, derive })
 
+const configFor = (
+  wiring: Wiring,
+  files: NonEmptyFileGlobs = ["**/*"]
+): WiringConfig => defineConfig([{ files, wiring }])
+
+const reportFromTestWiring = (wiring: Wiring) =>
+  reportFromConfig(configFor(wiring))
+
 const noOpCheck: Check = checkFromSubscriptions(() => [])
 
 const namedNoOpCheck = (name: string): NamedCheck =>
@@ -276,34 +286,98 @@ test("runCheckOnProject applies probe subscriptions to matching fixture nodes", 
   )
 })
 
-test("scopeCheck runs each check only on its configured workspace paths", async () => {
+test("glob config runs every wiring whose file patterns match", async () => {
   const fileProbe: Check = fileCheck((context) => [
     new Detection({
       location: locateNode(context)(context.sourceFile),
-      message: "visited scoped file",
-      hint: "keep each check within its configured paths"
+      message: "visited glob-matched file",
+      hint: "run each wiring only on matching files"
     })
   ])
-  const alphaCheck = pipe(
-    namedCheck("alpha files", fileProbe, probeExamples),
-    scopeCheck(["packages/alpha/src"])
-  )
-  const betaCheck = pipe(
-    namedCheck("beta file", fileProbe, probeExamples),
-    scopeCheck(["packages/beta/src/beta.ts"])
-  )
-  const workspace = await loadFixtureWorkspace("scoped-checks")
-  const blocks = await collectStream(
-    reportFromWiring(testWiring([alphaCheck, betaCheck]))(workspace)
-  )
+  const alphaWiring = testWiring([
+    namedCheck("alpha files", fileProbe, probeExamples)
+  ])
+  const betaWiring = testWiring([
+    namedCheck("beta file", fileProbe, probeExamples)
+  ])
+  const allPackagesWiring = testWiring([
+    namedCheck("all package files", fileProbe, probeExamples)
+  ])
+  const config = defineConfig([
+    {
+      files: ["packages/*/src/alpha.?s"],
+      wiring: alphaWiring
+    },
+    {
+      files: ["packages/{alpha,beta}/src/beta.ts"],
+      wiring: betaWiring
+    },
+    {
+      files: ["packages/**/src/*.ts"],
+      wiring: allPackagesWiring
+    }
+  ])
+  const workspace = await loadFixtureWorkspace("glob-wirings")
+  const blocks = await collectStream(reportFromConfig(config)(workspace))
 
-  assert.deepEqual(firstLines(blocks), ["alpha files", "beta file"])
+  assert.deepEqual(firstLines(blocks), [
+    "alpha files",
+    "beta file",
+    "all package files"
+  ])
   assert.deepEqual(
     blocks.map((block) =>
       block.split("\n").filter((line) => line.endsWith(":1:1"))
     ),
-    [["  src/alpha.ts:1:1"], ["  src/beta.ts:1:1"]]
+    [
+      ["  src/alpha.ts:1:1"],
+      ["  src/beta.ts:1:1"],
+      ["  src/alpha.ts:1:1", "  src/beta.ts:1:1"]
+    ]
   )
+})
+
+test("each glob wiring derives from only its matching files", async () => {
+  const fileProbe: Check = fileCheck((context) => [
+    new Detection({
+      location: locateNode(context)(context.sourceFile),
+      message: "derived glob input",
+      hint: "derive independently per wiring"
+    })
+  ])
+  const alphaWiring = testWiring(
+    [namedCheck("alpha derived input", fileProbe, probeExamples)],
+    (signals) => {
+      const count = signals[0]?.detections.length ?? 0
+
+      return Stream.fromIterable([
+        advice("directory", "packages/alpha", `alpha detections ${count}`)
+      ])
+    }
+  )
+  const betaWiring = testWiring(
+    [namedCheck("beta derived input", fileProbe, probeExamples)],
+    (signals) => {
+      const count = signals[0]?.detections.length ?? 0
+
+      return Stream.fromIterable([
+        advice("directory", "packages/beta", `beta detections ${count}`)
+      ])
+    }
+  )
+  const config = defineConfig([
+    { files: ["packages/alpha/**/*.ts"], wiring: alphaWiring },
+    { files: ["packages/beta/**/*.ts"], wiring: betaWiring }
+  ])
+  const workspace = await loadFixtureWorkspace("glob-wirings")
+  const blocks = await collectStream(reportFromConfig(config)(workspace))
+
+  assert.deepEqual(firstLines(blocks), [
+    "packages/alpha [directory] — alpha detections 1",
+    "packages/beta [directory] — beta detections 1",
+    "alpha derived input",
+    "beta derived input"
+  ])
 })
 
 test("reportFromWorkspaceConfigs analyzes referenced projects sequentially", async () => {
@@ -319,10 +393,10 @@ test("reportFromWorkspaceConfigs analyzes referenced projects sequentially", asy
     probeExamples
   )
   const workspace = await Effect.runPromise(
-    discoverWorkspace(fixturePath("scoped-checks"))
+    discoverWorkspace(fixturePath("glob-wirings"))
   )
   const blocks = await collectStream(
-    reportFromWorkspaceConfigs(testWiring([check]))(workspace)
+    reportFromWorkspaceConfigs(configFor(testWiring([check])))(workspace)
   )
 
   assert.equal(workspace.projects.length, 2)
@@ -332,45 +406,42 @@ test("reportFromWorkspaceConfigs analyzes referenced projects sequentially", asy
   )
 })
 
-test("scopeCheck does not invoke a check when no configured path is present", async () => {
+test("an unmatched glob wiring invokes neither checks nor derive", async () => {
   const mustNotRun: Check = checkFromSubscriptions(() => {
     throw new Error("check ran")
   })
-  const check = pipe(
-    namedCheck("absent path", mustNotRun, probeExamples),
-    scopeCheck(["missing"])
+  const wiring = testWiring(
+    [namedCheck("absent files", mustNotRun, probeExamples)],
+    () => {
+      throw new Error("derive ran")
+    }
   )
+  const config = configFor(wiring, ["missing/**/*.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(
-    reportFromWiring(testWiring([check]))(workspace)
-  )
+  const blocks = await collectStream(reportFromConfig(config)(workspace))
 
   assert.deepEqual(blocks, [])
 })
 
-test("scopeCheck drops detections outside its configured paths", async () => {
+test("glob wiring drops detections outside its matched files", async () => {
   const outsideDetection = new Detection({
     location: location("src/allowed.ts", 1, 1),
-    message: "outside configured paths",
+    message: "outside configured glob",
     hint: "drop this detection"
   })
-  const check = pipe(
-    namedCheck(
-      "outside detection",
-      fixedCheck([outsideDetection]),
-      probeExamples
-    ),
-    scopeCheck(["src/cases.ts"])
+  const check = namedCheck(
+    "outside detection",
+    fixedCheck([outsideDetection]),
+    probeExamples
   )
+  const config = configFor(testWiring([check]), ["src/cases.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(
-    reportFromWiring(testWiring([check]))(workspace)
-  )
+  const blocks = await collectStream(reportFromConfig(config)(workspace))
 
   assert.deepEqual(blocks, [])
 })
 
-test("reportFromWiring collapses duplicate workspace detections by check and location", async () => {
+test("reportFromConfig collapses duplicate workspace detections by check and location", async () => {
   const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
   const [project] = workspace.projects
 
@@ -381,7 +452,9 @@ test("reportFromWiring collapses duplicate workspace detections by check and loc
     projects: [project, project]
   }
   const blocks = await collectStream(
-    reportFromWiring(testWiring([throwProbeNamedCheck]))(duplicatedWorkspace)
+    reportFromTestWiring(testWiring([throwProbeNamedCheck]))(
+      duplicatedWorkspace
+    )
   )
 
   assert.equal(blocks.length, 1)
@@ -394,7 +467,7 @@ test("reportFromWiring collapses duplicate workspace detections by check and loc
   )
 })
 
-test("reportFromWiring preserves two distinct detections emitted at the same AST location", async () => {
+test("reportFromConfig preserves two distinct detections emitted at the same AST location", async () => {
   const doubleDetectionCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(
     ts.isThrowStatement
   )((context) => (node) => {
@@ -415,7 +488,7 @@ test("reportFromWiring preserves two distinct detections emitted at the same AST
   })
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(
+    reportFromTestWiring(
       testWiring([
         namedCheck(
           "two messages on one node",
@@ -441,7 +514,7 @@ test("reportFromWiring preserves two distinct detections emitted at the same AST
   )
 })
 
-test("reportFromWiring renders advice header, remediation, and evidence lines", async () => {
+test("reportFromConfig renders advice header, remediation, and evidence lines", async () => {
   const fixedAdvice = {
     location: location("src/cases.ts", 4, 3),
     level: "file" as const,
@@ -454,9 +527,9 @@ test("reportFromWiring renders advice header, remediation, and evidence lines", 
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(testWiring([], () => Stream.fromIterable([fixedAdvice])))(
-      workspace
-    )
+    reportFromTestWiring(
+      testWiring([], () => Stream.fromIterable([fixedAdvice]))
+    )(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -469,7 +542,7 @@ test("reportFromWiring renders advice header, remediation, and evidence lines", 
   ])
 })
 
-test("reportFromWiring groups locations under the check prose name, message, and hint", async () => {
+test("reportFromConfig groups locations under the check prose name, message, and hint", async () => {
   const groupedCheck = namedCheck(
     "probe throw statements",
     fixedCheck([
@@ -488,7 +561,7 @@ test("reportFromWiring groups locations under the check prose name, message, and
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(testWiring([groupedCheck]))(workspace)
+    reportFromTestWiring(testWiring([groupedCheck]))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -506,7 +579,7 @@ test("reportFromWiring groups locations under the check prose name, message, and
   ])
 })
 
-test("reportFromWiring splits one check into distinct message and hint groups", async () => {
+test("reportFromConfig splits one check into distinct message and hint groups", async () => {
   const splitCheck = namedCheck(
     "probe throw statements",
     fixedCheck([
@@ -535,7 +608,7 @@ test("reportFromWiring splits one check into distinct message and hint groups", 
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(testWiring([splitCheck]))(workspace)
+    reportFromTestWiring(testWiring([splitCheck]))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -573,7 +646,7 @@ test("reportFromWiring splits one check into distinct message and hint groups", 
   ])
 })
 
-test("reportFromWiring orders advice before check blocks and sorts advice by level then path", async () => {
+test("reportFromConfig orders advice before check blocks and sorts advice by level then path", async () => {
   const fixedAdvice = Stream.fromIterable([
     advice("project", "ignored.ts", "project advice"),
     advice("file", "src/z.ts", "file z advice"),
@@ -593,7 +666,9 @@ test("reportFromWiring orders advice before check blocks and sorts advice by lev
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(testWiring([groupedCheck], () => fixedAdvice))(workspace)
+    reportFromTestWiring(testWiring([groupedCheck], () => fixedAdvice))(
+      workspace
+    )
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -619,7 +694,7 @@ test("reportFromWiring orders advice before check blocks and sorts advice by lev
   )
 })
 
-test("reportFromWiring preserves asynchronously emitted advice", async () => {
+test("reportFromConfig preserves asynchronously emitted advice", async () => {
   const delayedCheck = namedCheck(
     "probe throw statements",
     fixedCheck([
@@ -633,7 +708,7 @@ test("reportFromWiring preserves asynchronously emitted advice", async () => {
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(
+    reportFromTestWiring(
       testWiring([delayedCheck], () =>
         delayedSource([
           advice("file", "src/z.ts", "file z advice"),
@@ -666,7 +741,7 @@ test("report stream emits check blocks and omits silent checks", async () => {
   )
 })
 
-test("reportFromWiring lets silent checks influence advice without rendering local check blocks", async () => {
+test("reportFromConfig lets silent checks influence advice without rendering local check blocks", async () => {
   const silentInfluencedAdvice = (
     silentDetections: ReadonlyArray<Detection>
   ): ReadonlyArray<Advice> =>
@@ -700,7 +775,7 @@ test("reportFromWiring lets silent checks influence advice without rendering loc
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromWiring(silentInfluencedWiring)(workspace)
+    reportFromTestWiring(silentInfluencedWiring)(workspace)
   )
   const headers = firstLines(blocks)
 

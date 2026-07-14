@@ -129,14 +129,17 @@ must not bypass it through package `src/` or `internal/` paths.
   `locateNode`
 - `@better-typescript/core/engine/derive`: `Advice`, `deriveSignals`,
   `adviceLocation`, `evidenceItem`, and related derivation helpers
-- `@better-typescript/core/engine/report`: `NamedCheck`, `Signal`, `Wiring`,
-  `namedCheck`, `silentCheck`, `scopeCheck`, `signalOf`, `makeWiring`,
-  `withFallbackAdvice`, `reportFromWiring`
-- `@better-typescript/core/engine/watch`: `watchReportFromWiring`, report events
+- `@better-typescript/core/engine/report`: `namedCheck`, `silentCheck`,
+  `signalOf`, `makeWiring`, `defineConfig`, `withFallbackAdvice`,
+  `reportFromConfig`
+- `@better-typescript/core/engine/report/data`: `NamedCheck`, `Signal`,
+  `Wiring`, `WiringEntry`, `WiringConfig`
+- `@better-typescript/core/engine/watch`: `watchReportFromConfig`, report events
 - `@better-typescript/core/engine/sources`: program/source stream helpers
+- `@better-typescript/core/project/loadWiringConfig`: project config loading
 - `@better-typescript/checks/preset`: default `report` / `watchReport` runners
 - `@better-typescript/checks/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
-  `defaultWiring`
+  `defaultWiring`, `defaultConfig`
 - `@better-typescript/checks/<name>`: individual check modules
 
 ### Config resolution
@@ -153,31 +156,33 @@ TypeScript config modules work with the published Node bin. There is no config
 lookup in parent directories, no `package.json` field, no `extends` chain, and
 no dynamic plugin discovery.
 
-If no config file exists, the CLI uses `defaultWiring` from
+If no config file exists, the CLI uses `defaultConfig` from
 `@better-typescript/checks/preset/defaultWiring`.
 
 A config may export any of these shapes:
 
 ```ts
-export default wiring
-export default () => wiring
-export const wiring = wiring
-export const wiring = () => wiring
+export default config
+export default () => config
+export const config = config
+export const config = () => config
 ```
 
-The loaded value is structurally validated as the current `Wiring` shape:
+The loaded value is structurally validated as a flat `WiringConfig`:
 
 ```ts
-{
-  checks: ReadonlyArray<{
-    name: string
-    check: Check
-    reported?: boolean
-    examples?: ReadonlyArray<RefactorExample>
-    paths?: ReadonlyArray<string>
-  }>
-  derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, Error>
-}
+ReadonlyArray<{
+  files: NonEmptyReadonlyArray<string>
+  wiring: {
+    checks: ReadonlyArray<{
+      name: string
+      check: Check
+      reported?: boolean
+      examples?: ReadonlyArray<RefactorExample>
+    }>
+    derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, Error>
+  }
+}>
 ```
 
 `reported` defaults to `true` when omitted in handwritten config objects.
@@ -185,42 +190,58 @@ The loaded value is structurally validated as the current `Wiring` shape:
 more paired bad→good refactor examples; `silentCheck(name, check, examples?)`
 creates a silent one. Reported checks print those examples under the Hint as
 `Bad (path):` / `Good (path):` blocks (each file in the tree, code indented
-four spaces). Names are unique across the whole `checks` array, and
-`makeWiring` rejects duplicates. Config load, compile, shape, and duplicate
-name failures print an error and exit `2`.
+four spaces). Check names are unique across every wiring entry, and
+`defineConfig` rejects duplicates. Config load, compile, glob, shape, and
+duplicate-name failures print an error and exit `2`.
 
-### Scoping checks to files and directories
+### Assigning wirings with file globs
 
-Use `scopeCheck` to limit one `NamedCheck` without changing the other checks in
-the wiring:
+Each config entry assigns one complete `Wiring`—its checks and its `derive`
+function—to one or more workspace-relative file globs:
 
 ```ts
-import { Stream, pipe } from "effect"
+import { Stream } from "effect"
 import {
+  defineConfig,
   makeWiring,
-  namedCheck,
-  scopeCheck
+  namedCheck
 } from "@better-typescript/core/engine/report"
 import { noThrow, noThrowExamples } from "@better-typescript/checks/noThrow"
 
-const serverNoThrow = pipe(
-  namedCheck("no-throw", noThrow, noThrowExamples),
-  scopeCheck(["src/server", "src/bootstrap.ts"])
-)
-
-export default makeWiring({
-  checks: [serverNoThrow],
+const runtimeWiring = makeWiring({
+  checks: [namedCheck("runtime/no-throw", noThrow, noThrowExamples)],
   derive: () => Stream.empty
 })
+
+const testWiring = makeWiring({
+  checks: [namedCheck("tests/no-throw", noThrow, noThrowExamples)],
+  derive: () => Stream.empty
+})
+
+export default defineConfig([
+  {
+    files: ["src/**/*.{ts,tsx}", "packages/*/src/**/*.ts"],
+    wiring: runtimeWiring
+  },
+  {
+    files: ["tests/**/*.ts", "packages/*/test/**/*.ts"],
+    wiring: testWiring
+  }
+])
 ```
 
-Paths resolve from the TypeScript workspace root discovered from `--project` (or
-the current directory). Each entry matches that exact file or directory and all
-descendants; entries are paths, not glob patterns. Multiple entries form a
-union. Scope filtering happens before check execution and again on emitted
-detections, and applies equally to reported and silent checks in one-shot and
-watch modes. Checks without `scopeCheck` (or with an empty `paths` array in a
-handwritten config object) continue to run over every project file.
+`files` uses Minimatch syntax, including `*`, `**`, `?`, character classes,
+brace expansion, and extglobs. Patterns always use `/`, including on Windows,
+and resolve from the TypeScript workspace root discovered from `--project` (or
+the current directory). Dotfiles participate. Each entry's patterns form a
+union; an arbitrary number of entries may be configured; and overlapping
+entries all run. Patterns are positive—leading `!` is treated literally.
+
+Glob filtering happens before check execution and again on emitted detections.
+Each matched wiring materializes its own complete `Signal[]` and runs its own
+`derive`; a wiring with no matching project files runs neither checks nor
+derivation. The legacy per-check `paths` field and `scopeCheck` helper are not
+accepted.
 
 In this repository, preset checks load examples from disk with
 `fixtureRefactorExamples("<kebab-name>")`, backed by real TypeScript trees at
@@ -241,15 +262,17 @@ import { Stream } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import {
-  detection,
-  type Detection
-} from "@better-typescript/core/engine/location"
+import { detection } from "@better-typescript/core/engine/location"
+import type { Detection } from "@better-typescript/core/engine/location/data"
 import {
   exampleSnippet,
   refactorExample
 } from "@better-typescript/core/engine/example"
-import { makeWiring, namedCheck } from "@better-typescript/core/engine/report"
+import {
+  defineConfig,
+  makeWiring,
+  namedCheck
+} from "@better-typescript/core/engine/report"
 
 const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   const expression = node.expression
@@ -286,12 +309,14 @@ const noConsoleLogExamples = [
   )
 ] as const
 
-export default makeWiring({
+const wiring = makeWiring({
   checks: [
     namedCheck("acme/no-console-log", noConsoleLog, noConsoleLogExamples)
   ],
   derive: () => Stream.empty
 })
+
+export default defineConfig([{ files: ["src/**/*.ts"], wiring }])
 ```
 
 Checks see the program only: their input stream contains AST-node elements with
@@ -321,13 +346,16 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import {
+  defineConfig,
   makeWiring,
   signalOf,
-  silentCheck,
-  type NamedCheck,
-  type Signal,
-  type Wiring
+  silentCheck
 } from "@better-typescript/core/engine/report"
+import type {
+  NamedCheck,
+  Signal,
+  Wiring
+} from "@better-typescript/core/engine/report/data"
 import {
   defaultChecks,
   defaultDerive
@@ -382,7 +410,7 @@ const wiring: Wiring = makeWiring({
   }
 })
 
-export default wiring
+export default defineConfig([{ files: ["**/*"], wiring }])
 ```
 
 `derive` consumes a completed signal array, not live upstream streams. Missing
@@ -403,7 +431,7 @@ checks the direct `--project` / current-working-directory root.
 - `0`: the one-shot report completed, or the watch stream ran until it was
   ended with Ctrl-C.
 - `2`: the tool could not start, for example because the project path,
-  TypeScript configuration, or `Wiring` config is invalid.
+  TypeScript configuration, or `WiringConfig` is invalid.
 
 ## Non-goals
 
@@ -418,26 +446,27 @@ Better TypeScript intentionally does not provide:
 ## Analysis modes
 
 The default CLI path is a terminating snapshot run. It loads the project once,
-runs every configured check over one snapshotted AST-node stream, materializes a
-complete `Signal[]`, runs `derive(signals)`, projects the resulting report blocks
-to `ReportEvent`s, prints them as NDJSON or `--pretty` text, and exits `0` after
-stdout drains. The initial event projection is the same as the first batch of
-watch mode: either one `signal` event per visible report block or one `empty`
-event when there are no signals.
+matches project files against every wiring entry, and fuses all active checks
+into one AST traversal per project. Each matched wiring materializes its own
+complete `Signal[]` and runs its own `derive(signals)` before all advice and
+local blocks are combined. The CLI projects those blocks to `ReportEvent`s,
+prints NDJSON or `--pretty` text, and exits `0` after stdout drains. The initial
+event projection is the same as the first watch batch: either one `signal` event
+per visible report block or one `empty` event when no blocks exist.
 
 `--watch` opts into the continuous pipeline. Watch mode uses
 `ts.createWatchProgram`-backed streams: one fresh program context per rebuild,
 diffed by `ts.SourceFile` identity into changed and removed files. The pipeline
-is source updates → check signals → derived advice and report blocks → per-block
-delta events, where every element carries one consistent batch and change gates
-between stages keep quiet batches silent. Checks recompute in full inside each
-batch, so detection sets always match what a fresh snapshot report would compute
-for the current programs. Silent checks participate in signal equality; only
-`reported` controls whether their local detections render.
+is source updates → per-wiring signal sets → per-wiring derived advice and
+combined report blocks → per-block delta events. Every element carries one
+consistent workspace batch, and change gates keep quiet batches silent. Checks
+recompute in full inside each batch, so detection sets always match a fresh
+snapshot report. Wiring match state and silent checks participate in signal
+equality; only `reported` controls whether local detections render.
 
-The snapshot `reportFromWiring` runner remains public library surface for tests,
-benchmarks, and programmatic one-shot use. The `watchReportFromWiring` runner
-remains the generic watch runner used by `--watch`.
+The snapshot `reportFromConfig` runner remains public library surface for tests,
+benchmarks, and programmatic one-shot use. `watchReportFromConfig` is the
+generic watch runner used by `--watch`.
 
 Watch-mode caveat: membership changes in a solution-style root tsconfig's
 reference list need a restart. Each leaf project's own tsconfig hot-reloads.
@@ -453,6 +482,11 @@ source paths are implementation details for maintainers.
 
 ## Architecture notes
 
+- `adrs/0015-glob-specific-wiring-configuration.md` records the flat,
+  glob-matched `WiringConfig`, arbitrary wiring-entry cardinality, and removal
+  of per-check path scoping.
+- `adrs/0014-interface-depth-and-seam-evidence.md` records the evidence model
+  for module leverage, locality, seam placement, and testability.
 - `adrs/0011-rules-and-advice-are-one-concept.md` records the current check,
   signal, `reported`, and `derive` architecture. It supersedes ADR-0009's wiring
   shape and separate visibility categories while preserving explicit reviewed
