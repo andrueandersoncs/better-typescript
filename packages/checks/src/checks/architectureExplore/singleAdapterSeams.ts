@@ -25,8 +25,9 @@ import {
   isProjectSourceFile
 } from "@better-typescript/core/engine/sources"
 import { hasExportModifier } from "../support/tsNode.js"
+import { resolvedSymbolAt } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
-import { isTestSourceFile, resolvedSymbolAt } from "./programSymbols.js"
+import { isTestSourceFile } from "./programSymbols.js"
 
 /**
  * SeamCandidate binds an exported behavioural interface declaration to its

@@ -11,7 +11,11 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import { hasExportModifier, functionInitializer } from "../support/tsNode.js"
+import {
+  hasExportModifier,
+  functionInitializer,
+  resolvedSymbolAt
+} from "../support/tsNode.js"
 import {
   foldAst,
   isProjectSourceFile
@@ -122,19 +126,6 @@ export const isTestSourceFile =
 
     return inTestDirectory || hasTestSuffix
   }
-
-export const resolvedSymbolAt =
-  (checker: ts.TypeChecker) =>
-  (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(
-      checker.getSymbolAtLocation(node),
-      Option.fromNullable,
-      Option.map((symbol) => {
-        const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-
-        return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-      })
-    )
 
 const variableFunctionEntries =
   (checker: ts.TypeChecker) =>

@@ -37,6 +37,19 @@ export const namedDetectionTarget = (node: ts.NamedDeclaration): ts.Node =>
     Option.getOrElse(Function.constant(node))
   )
 
+export const resolvedSymbolAt =
+  (checker: ts.TypeChecker) =>
+  (node: ts.Node): Option.Option<ts.Symbol> =>
+    pipe(
+      checker.getSymbolAtLocation(node),
+      Option.fromNullable,
+      Option.map((symbol) => {
+        const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+
+        return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+      })
+    )
+
 export const isFunctionInitializer = (
   node: ts.Node
 ): node is FunctionInitializer =>
