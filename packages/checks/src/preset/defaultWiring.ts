@@ -16,6 +16,14 @@ import {
   preferCurriedDataLastFunctionsExamples
 } from "../checks/preferCurriedDataLastFunctions/preferCurriedDataLastFunctions.js"
 import {
+  preferSchemaTaggedClass,
+  preferSchemaTaggedClassExamples
+} from "../checks/preferSchemaTaggedClass.js"
+import {
+  requireWireSafeSchemaTaggedClass,
+  requireWireSafeSchemaTaggedClassExamples
+} from "../checks/requireWireSafeSchemaTaggedClass.js"
+import {
   noArraySpread,
   noArraySpreadExamples
 } from "../checks/noArraySpread.js"
@@ -312,6 +320,18 @@ const preferDataLastModuleCheck = namedCheck(
   preferDataLastModuleExamples
 )
 
+const preferSchemaTaggedClassCheck = namedCheck(
+  "prefer-schema-tagged-class",
+  preferSchemaTaggedClass,
+  preferSchemaTaggedClassExamples
+)
+
+const requireWireSafeSchemaTaggedClassCheck = namedCheck(
+  "require-wire-safe-schema-tagged-class",
+  requireWireSafeSchemaTaggedClass,
+  requireWireSafeSchemaTaggedClassExamples
+)
+
 const conceptControlCheck = namedCheck(
   "concept-control",
   conceptControl,
@@ -606,6 +626,8 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectArrayCheck,
   preferEffectArrayAppendAllCheck,
   preferDataLastModuleCheck,
+  preferSchemaTaggedClassCheck,
+  requireWireSafeSchemaTaggedClassCheck,
   conceptControlCheck,
   preferConditionalReturnCheck,
   preferDirectBooleanReturnCheck,

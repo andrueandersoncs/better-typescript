@@ -30,7 +30,7 @@ const makeHint = (typeName: string): string =>
   `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
   "for tagged variants). The class is both the type and the constructor: keep using " +
   `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
-  "so every construction is validated. When the shape must hold non-serializable " +
+  "so every construction is validated. When the shape must hold process-bound " +
   "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
   "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
   "preserve the class-as-type-and-constructor discipline without schema validation."
@@ -41,11 +41,11 @@ const tupleTypeHint =
   "Effect Schema class — for example class ExampleClass extends " +
   'Schema.Class<ExampleClass>("ExampleClass")({ myString: Schema.String, ' +
   "myNumber: Schema.Number }) {} — or Schema.TaggedClass for a tagged variant. " +
-  "When fields hold non-serializable runtime values, use Data.Class — class " +
-  "ExampleClass extends Data.Class<{ readonly myString: string; readonly myNumber: number }> {} — " +
-  "or Data.TaggedClass for a runtime-only tagged variant — class " +
-  'ExampleClass extends Data.TaggedClass("ExampleClass")<{ readonly myString: string; ' +
-  "readonly myNumber: number }> {}."
+  "When fields hold process-bound runtime values, use Data.Class — class " +
+  "ExampleClass extends Data.Class<{ readonly stream: Stream.Stream<string> }> {} — " +
+  "or Data.TaggedClass for a process-bound tagged variant — class " +
+  'ExampleClass extends Data.TaggedClass("ExampleClass")<{ readonly stream: ' +
+  "Stream.Stream<string> }> {}."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
