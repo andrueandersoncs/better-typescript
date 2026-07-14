@@ -9,6 +9,15 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
+/**
+ * DeclarationStatement is the shared modifiers contract used by isDeclarationStatement
+ * and blankLineMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type DeclarationStatement =
   | ts.VariableStatement
   | ts.FunctionDeclaration
@@ -18,6 +27,15 @@ type DeclarationStatement =
   | ts.EnumDeclaration
   | ts.ModuleDeclaration
 
+/**
+ * StatementContainer names the compiler syntax protocol handled by
+ * isStatementContainer.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type StatementContainer =
   ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
 

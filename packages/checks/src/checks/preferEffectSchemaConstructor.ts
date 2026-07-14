@@ -90,15 +90,26 @@ const taggedMessage = (tag: string): string =>
 const untaggedMessage = "Avoid returning a raw object literal."
 
 const taggedHint = (tag: string): string =>
-  `Define an Effect Schema for this data — class ${tag} extends ` +
-  `Schema.TaggedClass<${tag}>()("${tag}", { ... }) {} — and construct it through the ` +
-  `schema: return new ${tag}({ ... }) fills in _tag and validates every field.`
+  `Reuse the existing Effect Schema for the "${tag}" protocol variant and construct it ` +
+  `through that schema. If no such model exists, first decide whether "${tag}" is an ` +
+  "independent protocol concept or this function is only a procedural seam. Introduce a " +
+  `Schema.TaggedClass only when the tagged data has semantics beyond this return expression.`
 
 const untaggedHint =
-  "Define an Effect Schema for this data — class TheData extends " +
-  'Schema.Class<TheData>("TheData")({ ... }) {} — and construct it through the schema: ' +
-  "return new TheData({ ... }) instead of assembling the object by hand."
+  "Reuse an existing Effect Schema whose semantics match this result and construct it through " +
+  "that schema. If none exists, reconsider whether this function is a real abstraction or a " +
+  "procedural seam that should be collapsed into its owner. Introduce a Schema.Class only " +
+  "when the returned data has meaning independent of this object literal."
 
+/**
+ * ReturnCandidate is the shared ReturnCandidate values contract used by
+ * isReturnCandidate and objectLiteralReturnMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 
 const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>

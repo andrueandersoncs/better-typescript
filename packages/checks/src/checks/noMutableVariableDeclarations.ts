@@ -8,6 +8,15 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * MutableVariableDeclarationKind is the shared length contract used by nested6,
+ * nested7, and tokenMutableKind.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type MutableVariableDeclarationKind = "let" | "var"
 
 const nested6 = Tuple.make(

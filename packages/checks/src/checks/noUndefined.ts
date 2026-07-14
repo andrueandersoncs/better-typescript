@@ -13,9 +13,36 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * UndefinedReturnExpression names the compiler syntax protocol handled by
+ * isUndefinedReturnExpression.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
+/**
+ * UndefinedTypeDeclaration names the compiler syntax protocol handled by
+ * isUndefinedTypeDeclaration.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
+/**
+ * UndefinedUsageKind is the shared length contract used by undefinedUsageMatches and
+ * undefinedMessages.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type UndefinedUsageKind =
   | "parameter"
   | "return-type"

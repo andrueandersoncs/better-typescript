@@ -20,6 +20,15 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
+/**
+ * CheckedFunction is the shared modifiers, body, name, asteriskToken contract used by
+ * isCheckedFunction and dataLastModuleMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type CheckedFunction =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -64,18 +73,6 @@ const primitiveTypeFlags =
   ts.TypeFlags.EnumLike
 
 const isFalse = (value: boolean): boolean => !value
-
-const dataStructureModule = (name: string) => {
-  const moduleFileName = `${name
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replaceAll("_", "-")
-    .toLowerCase()}.ts`
-
-  const expectedModulePath = path.posix.join("modules", moduleFileName)
-
-  return new DataStructureModule({ name, expectedModulePath })
-}
 
 const sameExpression =
   (expression: ts.Expression) =>
@@ -130,80 +127,62 @@ const dataLastModuleMatches = (context: CheckContext) => {
     return Array.every(exclusions, isFalse)
   }
 
-  const isExpectedModule =
-    (expectedModulePath: string) =>
+  const isInsideModule =
+    (moduleDirectory: string) =>
     (candidateFileName: string): boolean => {
-      const relativeFileName = path.relative(projectRoot, candidateFileName)
-      const normalizedFileName = relativeFileName.replaceAll("\\", "/")
+      const relative = path.relative(moduleDirectory, candidateFileName)
+      const escapesModule = relative.startsWith(`..${path.sep}`)
+      const isParent = relative === ".."
+      const isAbsolute = path.isAbsolute(relative)
+      const exclusions = Array.make(escapesModule, isParent, isAbsolute)
 
-      const endsWithModulePath = normalizedFileName.endsWith(
-        `/${expectedModulePath}`
-      )
-
-      const checks = Array.make(
-        normalizedFileName === expectedModulePath,
-        endsWithModulePath
-      )
-
-      return Array.some(checks, Boolean)
+      return Array.every(exclusions, isFalse)
     }
 
-  const isModuleDeclaration =
-    (symbol: ts.Symbol) =>
-    (declaration: ts.Declaration): boolean => {
-      const dataStructure = dataStructureModule(symbol.name)
-      const declarationSourceFile = declaration.getSourceFile()
-      const sourceFileIsProject = isProjectSourceFile(declarationSourceFile)
+  const isDataStructureDeclaration = (declaration: ts.Declaration): boolean => {
+    const sourceFile = declaration.getSourceFile()
+    const sourceFileIsProject = isProjectSourceFile(sourceFile)
+    const declarationKinds = Array.make(
+      ts.isInterfaceDeclaration(declaration),
+      ts.isTypeAliasDeclaration(declaration),
+      ts.isClassDeclaration(declaration)
+    )
+    const declarationIsDataStructure = Array.some(declarationKinds, Boolean)
+    const conditions = Array.make(
+      sourceFileIsProject,
+      declarationIsDataStructure
+    )
 
-      const isInterfaceDeclaration = ts.isInterfaceDeclaration(declaration)
-      const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(declaration)
-      const isClassDeclaration = ts.isClassDeclaration(declaration)
-
-      const conditions = Array.make(
-        isInterfaceDeclaration,
-        isTypeAliasDeclaration,
-        isClassDeclaration
-      )
-
-      const declarationIsDataStructure = Array.some(conditions, Boolean)
-
-      const declarationIsExpectedModule = isExpectedModule(
-        dataStructure.expectedModulePath
-      )(declarationSourceFile.fileName)
-
-      const dataStructureModuleConditions = Array.make(
-        sourceFileIsProject,
-        declarationIsDataStructure,
-        declarationIsExpectedModule
-      )
-
-      return Array.every(dataStructureModuleConditions, Boolean)
-    }
+    return Array.every(conditions, Boolean)
+  }
 
   const structureForSymbol =
     (type: ts.Type) =>
     (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
       const declarations = symbol.declarations ?? Array.empty()
-      const isDeclarationForSymbol = isModuleDeclaration(symbol)
-      const isFirstParty = Array.some(declarations, isDeclarationForSymbol)
-
+      const declaration = Array.findFirst(
+        declarations,
+        isDataStructureDeclaration
+      )
       const isStructured = type.isUnionOrIntersection()
         ? Array.every(type.types, isMember)
         : isMember(type)
-
-      const firstPartyStructureConditions = Array.make(
-        isFirstParty,
-        isStructured
+      const sourceFile = pipe(
+        declaration,
+        Option.map((candidate) => candidate.getSourceFile())
+      )
+      const dataStructure = pipe(
+        sourceFile,
+        Option.map(
+          (candidate) =>
+            new DataStructureModule({
+              name: symbol.name,
+              moduleDirectory: path.dirname(candidate.fileName)
+            })
+        )
       )
 
-      const isDataStructure = Array.every(
-        firstPartyStructureConditions,
-        Boolean
-      )
-
-      const dataStructure = dataStructureModule(symbol.name)
-
-      return isDataStructure ? Option.some(dataStructure) : Option.none()
+      return isStructured ? dataStructure : Option.none()
     }
 
   const parameterStructure = (
@@ -314,19 +293,26 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const structureMatch =
     (definition: FunctionDefinition) =>
     (dataStructure: DataStructureModule): Option.Option<Detection> => {
+      const relativeDirectory = path.relative(
+        projectRoot,
+        dataStructure.moduleDirectory
+      )
+      const displayDirectory =
+        relativeDirectory.length > 0 ? relativeDirectory : "."
       const ruleMatch = match({
         node: definition.reportNode,
         message:
-          `Avoid defining ${definition.name} outside ${dataStructure.expectedModulePath} when ` +
+          `Avoid defining ${definition.name} outside ${displayDirectory} when ` +
           `its last parameter is ${dataStructure.name}.`,
         hint:
-          `Move ${definition.name} to ${dataStructure.expectedModulePath} so data-last ` +
-          `functions for ${dataStructure.name} live with the ${dataStructure.name} data structure.`
+          `Move ${definition.name} under ${displayDirectory} so data-last functions ` +
+          `for ${dataStructure.name} stay in the model's concept directory, beside rather than inside its dedicated data file.`
       })
+      const insideModule = isInsideModule(dataStructure.moduleDirectory)(
+        fileName
+      )
 
-      return isExpectedModule(dataStructure.expectedModulePath)(fileName)
-        ? Option.none()
-        : Option.some(ruleMatch)
+      return insideModule ? Option.none() : Option.some(ruleMatch)
     }
 
   const matchForDefinition =

@@ -14,6 +14,15 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
+/**
+ * VoidableFunction is the shared modifiers, body, name, asteriskToken contract used by
+ * isVoidableFunction and voidFunctionMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type VoidableFunction =
   | ts.FunctionDeclaration
   | ts.FunctionExpression

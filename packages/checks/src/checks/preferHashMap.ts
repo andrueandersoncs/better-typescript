@@ -36,6 +36,15 @@ const typeRefHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
+/**
+ * MapRuleNode is the shared typeArguments contract used by isMapRuleNode and
+ * mapMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
 const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>

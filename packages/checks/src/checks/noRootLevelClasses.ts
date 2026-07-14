@@ -9,6 +9,15 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * ClassNode is the shared modifiers, name, typeParameters, heritageClauses contract
+ * used by lacksExtendsClause, rootLevelClassMatches, and isClassNode.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type ClassNode = ts.ClassDeclaration | ts.ClassExpression
 
 const classNodeKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(

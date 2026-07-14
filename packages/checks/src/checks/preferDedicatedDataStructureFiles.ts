@@ -32,6 +32,15 @@ const dataStructureMemberNames = HashSet.make(
 
 const dataStructureNamespaces = HashSet.make("Schema", "Data")
 
+/**
+ * DataStructureDeclaration names the compiler syntax protocol handled by
+ * dataStructureInStatement.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type DataStructureDeclaration =
   ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration
 

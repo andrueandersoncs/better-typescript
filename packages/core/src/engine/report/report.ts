@@ -39,7 +39,6 @@ import {
   AdviceReportKey,
   DuplicateCheckNamesError,
   DuplicateNameState,
-  MutableDedupeState,
   NamedCheck,
   type NonEmptyCheckPaths,
   ReportBlock,
@@ -98,19 +97,14 @@ const collectWorkspaceSignals = <A>(
     Array.map(check.paths, resolveCheckPath)
   )
 
-  const emptyState = (): MutableDedupeState => {
-    const seen = MutableHashMap.empty<string, ReadonlyArray<Detection>>()
-    const elements = MutableList.empty<Detection>()
+  const seenByCheck = Array.makeBy(checks.length, () =>
+    MutableHashMap.empty<string, ReadonlyArray<Detection>>()
+  )
+  const elementsByCheck = Array.makeBy(checks.length, () =>
+    MutableList.empty<Detection>()
+  )
 
-    return new MutableDedupeState({ seen, elements })
-  }
-
-  const states = Array.makeBy(checks.length, emptyState)
-
-  const collectProject = (
-    current: ReadonlyArray<MutableDedupeState>,
-    project: A
-  ): Effect.Effect<ReadonlyArray<MutableDedupeState>> =>
+  const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
       const context = toContext(project)
 
@@ -145,7 +139,8 @@ const collectWorkspaceSignals = <A>(
             return
           }
 
-          const state = current[checkIndex]
+          const seen = seenByCheck[checkIndex]
+          const elements = elementsByCheck[checkIndex]
           const location = element.location
 
           const dedupeKeyParts = Array.make(
@@ -157,7 +152,7 @@ const collectWorkspaceSignals = <A>(
           )
 
           const key = JSON.stringify(dedupeKeyParts)
-          const maybeBucket = MutableHashMap.get(state.seen, key)
+          const maybeBucket = MutableHashMap.get(seen, key)
           const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
 
           const alreadySeen = Array.some(bucket, (candidate) =>
@@ -170,19 +165,17 @@ const collectWorkspaceSignals = <A>(
 
           const expandedBucket = Array.append(bucket, element)
 
-          MutableHashMap.set(state.seen, key, expandedBucket)
-          MutableList.append(state.elements, element)
+          MutableHashMap.set(seen, key, expandedBucket)
+          MutableList.append(elements, element)
         })
       })
-
-      return current
     })
 
   return pipe(
-    Effect.reduce(projects, states, collectProject),
-    Effect.map((completed) =>
+    Effect.forEach(projects, collectProject, { discard: true }),
+    Effect.map(() =>
       Array.map(wiring.checks, (check, checkIndex) => {
-        const detections = Array.fromIterable(completed[checkIndex].elements)
+        const detections = Array.fromIterable(elementsByCheck[checkIndex])
 
         return new Signal({
           name: check.name,
