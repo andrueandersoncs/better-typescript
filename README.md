@@ -116,8 +116,9 @@ This repository is an npm workspaces monorepo:
 
 ## Configuration and extension
 
-Better TypeScript exposes defining modules directly. Do not re-export
-across files, and do not import from package `src/` paths.
+Better TypeScript exposes one intentional public interface per Module through
+package exports. Re-exporting is valid when an entry module is that seam; callers
+must not bypass it through package `src/` or `internal/` paths.
 
 - `@better-typescript/core/engine/check`: `nodeCheck`, `fileCheck`,
   `checkFromSubscriptions`, `combineAll`, `nodeSubscriptions`,

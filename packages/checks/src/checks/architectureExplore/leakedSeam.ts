@@ -1,4 +1,4 @@
-import { Array, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   adviceLocation,
@@ -6,6 +6,7 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import { seamLeakageDataOf } from "./evidence.js"
 
 const minimumLeaks = 2
 
@@ -17,44 +18,47 @@ const leakedSeamAdvice = (
     (element) => element.name === "seam-leakage-evidence"
   )
 
-  const mappedPaths = Array.map(
+  const paths = pipe(
     leaks,
-    (element) => element.detection.location.path
+    Array.map((element) => element.detection.location.path),
+    Array.dedupe
   )
 
-  const paths = Array.dedupe(mappedPaths)
+  return Array.filterMap(paths, (filePath) => {
+    const atPath = Array.filter(
+      leaks,
+      (element) => element.detection.location.path === filePath
+    )
 
-  return pipe(
-    paths,
-    Array.filter((filePath) => {
-      const count = Array.filter(
-        leaks,
-        (element) => element.detection.location.path === filePath
-      ).length
+    if (atPath.length < minimumLeaks) {
+      return Option.none()
+    }
 
-      return count >= minimumLeaks
-    }),
-    Array.map((filePath) => {
-      const count = Array.filter(
-        leaks,
-        (element) => element.detection.location.path === filePath
-      ).length
+    const internalCount = pipe(
+      atPath,
+      Array.filterMap(seamLeakageDataOf),
+      Array.filter((data) => data.kind === "internal-path")
+    ).length
 
-      const location = adviceLocation(filePath)
-      const leakItem = evidenceItem("seam-leakage-evidence", count)
-      const evidence = Array.of(leakItem)
+    const sourceCount = atPath.length - internalCount
 
-      return new Advice({
-        location,
-        level: "file",
-        title: "leaked seam",
-        remediation:
-          "Modules leak across their seam via deep imports into internals. " +
-          "Route through a public interface at the seam so coupling stays intentional.",
-        evidence
-      })
+    const location = adviceLocation(filePath)
+    const internalItem = evidenceItem("internal-path-imports", internalCount)
+    const sourceItem = evidenceItem("source-path-imports", sourceCount)
+    const evidence = Array.make(internalItem, sourceItem)
+
+    const advice = new Advice({
+      location,
+      level: "file",
+      title: "leaked seam",
+      remediation:
+        "This Module repeatedly bypasses declared interfaces through internal or package-source imports. " +
+        "Route dependencies through one public seam so implementation paths remain local and replaceable.",
+      evidence
     })
-  )
+
+    return Option.some(advice)
+  })
 }
 
 export const leakedSeam = deriveSignals(leakedSeamAdvice)

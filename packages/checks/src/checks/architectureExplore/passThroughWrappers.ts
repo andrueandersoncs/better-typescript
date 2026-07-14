@@ -1,190 +1,292 @@
-import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Data, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import {
-  combineAll,
-  nodeSubscriptions
+  fileSubscriptions,
+  withProgramIndex
 } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
+import {
+  detection,
+  toRelativeFileName
+} from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
+
 import { PassThroughWrapperData } from "./data.js"
 import {
-  conciseArrowBody,
-  functionInitializer,
-  unwrapExpression
-} from "../support/tsNode.js"
+  ExportReferenceIndex,
+  ModuleEdge,
+  buildExportReferenceIndex,
+  buildModuleEdges,
+  usageFor
+} from "./programSymbols.js"
+import { unwrapExpression } from "../support/tsNode.js"
+
+class PassThroughIndex extends Data.Class<{
+  readonly references: ExportReferenceIndex
+  readonly edges: ReadonlyArray<ModuleEdge>
+  readonly projectRoot: string
+}> {}
 
 const reexportMessage =
-  "This Module is a Pass-through Wrapper — it only re-exports another Module."
+  "Pass-through Module evidence — this public file only re-exports other Modules."
 
 const reexportHint =
-  "Collapse the re-export into the defining Module, or give this Module real depth " +
-  "behind a smaller interface so the deletion test would concentrate complexity here."
+  "Use caller count in Architecture Explore Advice to apply the deletion test; a public entry Module with multiple callers may be earning its keep as the seam."
 
 const forwardingMessage =
-  "This export is a Pass-through Wrapper — it only forwards a single call."
+  "Pass-through export evidence — this operation forwards every parameter unchanged into one call."
 
 const forwardingHint =
-  "Inline the forwarder at its call sites, or deepen the Module so the interface hides real behaviour."
+  "Use caller count in Architecture Explore Advice: delete low-leverage indirection, but keep operations whose behaviour or naming would otherwise reappear across callers."
 
-const isExportKeyword = (modifier: ts.ModifierLike): boolean =>
-  modifier.kind === ts.SyntaxKind.ExportKeyword
+const isExpressionBody = (body: ts.ConciseBody): body is ts.Expression =>
+  !ts.isBlock(body)
 
-const implementationExpressionKinds = HashSet.make(
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ClassExpression
-)
+const callExpressionBody = (
+  node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
+): Option.Option<ts.CallExpression> =>
+  pipe(
+    Option.fromNullable(node.body),
+    Option.flatMap((body) => {
+      const expressionCall = pipe(
+        Option.liftPredicate(isExpressionBody)(body),
+        Option.map(unwrapExpression),
+        Option.filter(ts.isCallExpression)
+      )
 
-const compositionNames = HashSet.make("pipe", "flow")
+      const blockCall = pipe(
+        Option.liftPredicate(ts.isBlock)(body),
+        Option.flatMap((block) => Array.head(block.statements)),
+        Option.filter(ts.isReturnStatement),
+        Option.flatMap((statement) =>
+          pipe(
+            Option.fromNullable(statement.expression),
+            Option.map(unwrapExpression),
+            Option.filter(ts.isCallExpression)
+          )
+        )
+      )
 
-const isForwardingCall = (call: ts.CallExpression): boolean => {
-  const hasImplementation = Array.some(call.arguments, (argument) => {
-    const unwrapped = unwrapExpression(argument)
+      return pipe(expressionCall, Option.orElse(Function.constant(blockCall)))
+    })
+  )
 
-    return HashSet.has(implementationExpressionKinds, unwrapped.kind)
+const parameterIdentifiers = (
+  node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
+): Option.Option<ReadonlyArray<ts.Identifier>> => {
+  const identifiers = Array.filterMap(node.parameters, (parameter) => {
+    const initializer = Option.fromNullable(parameter.initializer)
+    const restToken = Option.fromNullable(parameter.dotDotDotToken)
+    const initializerMissing = Option.isNone(initializer)
+    const restTokenMissing = Option.isNone(restToken)
+    const omissions = Array.make(initializerMissing, restTokenMissing)
+    const unmodified = Array.every(omissions, Boolean)
+
+    const identifier = pipe(
+      Option.some(parameter.name),
+      Option.filter(ts.isIdentifier)
+    )
+
+    return pipe(identifier, Option.filter(Function.constant(unmodified)))
   })
 
-  const unwrappedCallee = unwrapExpression(call.expression)
+  return identifiers.length === node.parameters.length
+    ? Option.some(identifiers)
+    : Option.none()
+}
 
-  const fromIdentifier = pipe(
-    Option.liftPredicate(ts.isIdentifier)(unwrappedCallee),
-    Option.map(Struct.get("text"))
+const forwardingRootIdentifier = (
+  expression: ts.Expression
+): Option.Option<ts.Identifier> => {
+  const unwrapped = unwrapExpression(expression)
+  const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
+
+  const propertyRoot = pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
+    Option.flatMap((access) => forwardingRootIdentifier(access.expression))
   )
 
-  const fromProperty = pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(unwrappedCallee),
-    Option.map((access) => pipe(access.name, Struct.get("text")))
+  const elementRoot = pipe(
+    Option.liftPredicate(ts.isElementAccessExpression)(unwrapped),
+    Option.flatMap((access) => forwardingRootIdentifier(access.expression))
   )
 
-  const calleeName = pipe(
-    fromIdentifier,
-    Option.orElse(Function.constant(fromProperty))
+  return pipe(
+    identifier,
+    Option.orElse(Function.constant(propertyRoot)),
+    Option.orElse(Function.constant(elementRoot))
+  )
+}
+
+const consumedParameterNames = (
+  call: ts.CallExpression,
+  parameters: ReadonlyArray<ts.Identifier>
+): Option.Option<ReadonlyArray<string>> => {
+  const parameterNames = Array.map(parameters, Struct.get("text"))
+
+  const argumentNames = Array.filterMap(call.arguments, (argument) =>
+    pipe(
+      argument,
+      unwrapExpression,
+      Option.liftPredicate(ts.isIdentifier),
+      Option.map(Struct.get("text"))
+    )
   )
 
-  const isComposition = pipe(
-    calleeName,
-    Option.map((name) => HashSet.has(compositionNames, name)),
+  if (argumentNames.length !== call.arguments.length) {
+    return Option.none()
+  }
+
+  const receiverName = pipe(
+    forwardingRootIdentifier(call.expression),
+    Option.map(Struct.get("text")),
+    Option.filter((name) => Array.contains(parameterNames, name)),
+    Option.toArray
+  )
+
+  const consumedNames = Array.appendAll(receiverName, argumentNames)
+
+  return Option.some(consumedNames)
+}
+
+const isExactForwarder = (
+  node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
+): boolean =>
+  pipe(
+    parameterIdentifiers(node),
+    Option.flatMap((parameters) =>
+      pipe(
+        callExpressionBody(node),
+        Option.flatMap((call) => consumedParameterNames(call, parameters)),
+        Option.map((consumedNames) => {
+          const parameterNames = Array.map(parameters, Struct.get("text"))
+
+          return Array.match(consumedNames, {
+            onEmpty: () => parameterNames.length === 0,
+            onNonEmpty: () => {
+              const sameOrder = Array.every(
+                parameterNames,
+                (name, index) => consumedNames[index] === name
+              )
+
+              const sameLength = consumedNames.length === parameterNames.length
+
+              return sameOrder && sameLength
+            }
+          })
+        })
+      )
+    ),
     Option.getOrElse(Function.constant(false))
   )
 
-  const hasMultipleStages = call.arguments.length > 2
-  const multiStageChecks = Array.make(isComposition, hasMultipleStages)
-  const isMultiStage = Array.every(multiStageChecks, Boolean)
-  const opaqueChecks = Array.make(hasImplementation, isMultiStage)
-  const isOpaque = Array.some(opaqueChecks, Boolean)
-
-  return isOpaque === false
-}
-
-const isForwardingArrow = (arrow: ts.ArrowFunction): boolean => {
-  const body = conciseArrowBody(arrow)
-  const callBody = pipe(body, Option.filter(ts.isCallExpression))
-
-  return Option.exists(callBody, isForwardingCall)
-}
-
-const passThroughExportDeclarationElements = (context: CheckContext) => {
-  const element = detection(context)
-
-  const handler = (node: ts.ExportDeclaration): ReadonlyArray<Detection> => {
-    const hasModuleSpecifier = pipe(
-      Option.fromNullable(node.moduleSpecifier),
-      Option.isSome
-    )
-
-    const data = new PassThroughWrapperData({
-      kind: "reexport",
-      exportCount: 1
-    })
-
-    const reported = element({
-      node,
-      message: reexportMessage,
-      hint: reexportHint,
-      data
-    })
-
-    return hasModuleSpecifier ? Array.of(reported) : Array.empty()
-  }
-
-  return handler
-}
-
-const variableStatementElements = (context: CheckContext) => {
-  const element = detection(context)
-
-  const toDetection = (
-    declaration: ts.VariableDeclaration
-  ): Option.Option<Detection> => {
-    const isForwarding = pipe(
-      functionInitializer(declaration),
-      Option.filter(ts.isArrowFunction),
-      Option.map(isForwardingArrow),
-      Option.getOrElse(Function.constant(false))
-    )
-
-    const nameNode = pipe(
-      Option.fromNullable(declaration.name),
-      Option.filter(ts.isIdentifier),
-      Option.getOrElse(Function.constant(declaration))
-    )
-
-    const data = new PassThroughWrapperData({
-      kind: "forwarding-call",
-      exportCount: 1
-    })
-
-    const reported = element({
-      node: nameNode,
-      message: forwardingMessage,
-      hint: forwardingHint,
-      data
-    })
-
-    return isForwarding ? Option.some(reported) : Option.none()
-  }
-
-  const handler = (node: ts.VariableStatement): ReadonlyArray<Detection> => {
-    const isExported = pipe(
-      Option.fromNullable(node.modifiers),
-      Option.map((modifiers) => Array.some(modifiers, isExportKeyword)),
-      Option.getOrElse(Function.constant(false))
-    )
-
-    if (!isExported) {
-      return Array.empty()
-    }
-
-    const declarations = Array.fromIterable(node.declarationList.declarations)
-
-    return Array.filterMap(declarations, toDetection)
-  }
-
-  return handler
-}
-
-const exportDeclarationKinds = Array.of(ts.SyntaxKind.ExportDeclaration)
-
-const exportDeclarationListeners = nodeSubscriptions(exportDeclarationKinds)(
-  ts.isExportDeclaration
-)(passThroughExportDeclarationElements)
-
-const variableStatementKinds = Array.of(ts.SyntaxKind.VariableStatement)
-
-const variableStatementListeners = nodeSubscriptions(variableStatementKinds)(
-  ts.isVariableStatement
-)(variableStatementElements)
-
-const listeners = Array.make(
-  exportDeclarationListeners,
-  variableStatementListeners
+const hasModuleSpecifier = Function.flow(
+  Struct.get("moduleSpecifier"),
+  Option.fromNullable,
+  Option.isSome
 )
 
-export const passThroughWrappers: Check = combineAll(listeners)
+const reexportOnlyStatements = (
+  sourceFile: ts.SourceFile
+): ReadonlyArray<ts.ExportDeclaration> => {
+  const publicStatements = Array.filter(
+    sourceFile.statements,
+    (statement) => !ts.isImportDeclaration(statement)
+  )
 
-export const passThroughWrappersExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("pass-through-wrappers")
+  const reexports = Array.filter(publicStatements, ts.isExportDeclaration)
+
+  const allReexports = Array.every(reexports, hasModuleSpecifier)
+
+  const onlyReexports = reexports.length === publicStatements.length
+
+  return allReexports && onlyReexports ? reexports : Array.empty()
+}
+
+const passThroughElements =
+  (index: PassThroughIndex) =>
+  (context: CheckContext): ReadonlyArray<Detection> => {
+    const element = detection(context)
+    const sourceFile = context.sourceFile
+    const relative = toRelativeFileName(index.projectRoot)
+    const filePath = relative(sourceFile.fileName)
+
+    const forwarding = pipe(
+      index.references.entries,
+      Array.filter((entry) => entry.nameNode.getSourceFile() === sourceFile),
+      Array.filter((entry) => isExactForwarder(entry.functionNode)),
+      Array.map((entry) => {
+        const usage = usageFor(index.references)(entry)
+
+        const data = new PassThroughWrapperData({
+          kind: "forwarding-call",
+          exportCount: 1,
+          callerCount: usage.productionCallCount,
+          callerPaths: usage.productionPaths,
+          hasNonCallReference: usage.hasProductionNonCallReference
+        })
+
+        return element({
+          node: entry.nameNode,
+          message: forwardingMessage,
+          hint: forwardingHint,
+          data
+        })
+      })
+    )
+
+    const reexports = reexportOnlyStatements(sourceFile)
+
+    const inboundPaths = pipe(
+      index.edges,
+      Array.filter((edge) => edge.importedPath === filePath),
+      Array.filter((edge) => !edge.fromTest),
+      Array.map(Struct.get("importerPath")),
+      Array.dedupe
+    )
+
+    const reexportDetection = pipe(
+      Option.fromNullable(reexports[0]),
+      Option.map((node) => {
+        const data = new PassThroughWrapperData({
+          kind: "reexport",
+          exportCount: reexports.length,
+          callerCount: inboundPaths.length,
+          callerPaths: inboundPaths,
+          hasNonCallReference: false
+        })
+
+        return element({
+          node,
+          message: reexportMessage,
+          hint: reexportHint,
+          data
+        })
+      }),
+      Option.toArray
+    )
+
+    return Array.appendAll(forwarding, reexportDetection)
+  }
+
+const buildIndex = (context: ProgramContext): PassThroughIndex => {
+  const references = buildExportReferenceIndex(context)
+  const edges = buildModuleEdges(context)
+
+  return new PassThroughIndex({
+    references,
+    edges,
+    projectRoot: context.projectRoot
+  })
+}
+
+const passThroughSubscriptions = Function.compose(
+  passThroughElements,
+  fileSubscriptions
+)
+
+export const passThroughWrappers: Check = withProgramIndex(buildIndex)(
+  passThroughSubscriptions
+)

@@ -21,8 +21,6 @@
     "./preferCurriedDataLastFunctions/data": "./dist/checks/preferCurriedDataLastFunctions/data.js",
     "./imperativeStateManager": "./dist/checks/imperativeStateManager/imperativeStateManager.js",
     "./imperativeStateManager/data": "./dist/checks/imperativeStateManager/data.js",
-    "./noSingleUseCallee": "./dist/checks/noSingleUseCallee/noSingleUseCallee.js",
-    "./noSingleUseCallee/data": "./dist/checks/noSingleUseCallee/data.js",
     "./*": "./dist/checks/*.js",
     "./package.json": "./package.json"
   },

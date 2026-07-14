@@ -11,10 +11,6 @@ import {
   preferCurriedDataLastFunctionsExamples
 } from "../checks/preferCurriedDataLastFunctions/preferCurriedDataLastFunctions.js"
 import {
-  noAbstractClasses,
-  noAbstractClassesExamples
-} from "../checks/noAbstractClasses.js"
-import {
   noArraySpread,
   noArraySpreadExamples
 } from "../checks/noArraySpread.js"
@@ -27,10 +23,6 @@ import {
   noAsyncFunctionsExamples
 } from "../checks/noAsyncFunctions.js"
 import { noCallbacks, noCallbacksExamples } from "../checks/noCallbacks.js"
-import {
-  noClassMethodImplementations,
-  noClassMethodImplementationsExamples
-} from "../checks/noClassMethodImplementations.js"
 import {
   noDuplicateFunctionNames,
   noDuplicateFunctionNamesExamples
@@ -106,15 +98,6 @@ import {
   noRawObjectTypes,
   noRawObjectTypesExamples
 } from "../checks/noRawObjectTypes.js"
-import { noReexport, noReexportExamples } from "../checks/noReexport.js"
-import {
-  noRootLevelClasses,
-  noRootLevelClassesExamples
-} from "../checks/noRootLevelClasses.js"
-import {
-  noSingleUseCallee,
-  noSingleUseCalleeExamples
-} from "../checks/noSingleUseCallee/noSingleUseCallee.js"
 import {
   noSwitchStatements,
   noSwitchStatementsExamples
@@ -143,10 +126,6 @@ import {
   preferDataLastModule,
   preferDataLastModuleExamples
 } from "../checks/preferDataLastModule.js"
-import {
-  preferDedicatedDataStructureFiles,
-  preferDedicatedDataStructureFilesExamples
-} from "../checks/preferDedicatedDataStructureFiles.js"
 import {
   preferDirectBooleanReturn,
   preferDirectBooleanReturnExamples
@@ -326,12 +305,6 @@ const preferDataLastModuleCheck = namedCheck(
   preferDataLastModuleExamples
 )
 
-const preferDedicatedDataStructureFilesCheck = namedCheck(
-  "prefer-dedicated-data-structure-files",
-  preferDedicatedDataStructureFiles,
-  preferDedicatedDataStructureFilesExamples
-)
-
 const preferConditionalReturnCheck = namedCheck(
   "prefer-conditional-return",
   preferConditionalReturn,
@@ -400,12 +373,6 @@ const noVoidFunctionsCheck = namedCheck(
   "no-void-functions",
   noVoidFunctions,
   noVoidFunctionsExamples
-)
-
-const noRootLevelClassesCheck = namedCheck(
-  "no-root-level-classes",
-  noRootLevelClasses,
-  noRootLevelClassesExamples
 )
 
 const noMultiLineCommentsCheck = namedCheck(
@@ -566,28 +533,10 @@ const noMonomorphicStructGetCheck = namedCheck(
   noMonomorphicStructGetExamples
 )
 
-const noAbstractClassesCheck = namedCheck(
-  "no-abstract-classes",
-  noAbstractClasses,
-  noAbstractClassesExamples
-)
-
-const noClassMethodImplementationsCheck = namedCheck(
-  "no-class-method-implementations",
-  noClassMethodImplementations,
-  noClassMethodImplementationsExamples
-)
-
 const noRawObjectTypesCheck = namedCheck(
   "no-raw-object-types",
   noRawObjectTypes,
   noRawObjectTypesExamples
-)
-
-const noReexportCheck = namedCheck(
-  "no-reexport",
-  noReexport,
-  noReexportExamples
 )
 
 const noFirstPartySchemaDeclareCheck = namedCheck(
@@ -600,12 +549,6 @@ const noInstanceofCheck = namedCheck(
   "no-instanceof",
   noInstanceof,
   noInstanceofExamples
-)
-
-const noSingleUseCalleeCheck = namedCheck(
-  "no-single-use-callee",
-  noSingleUseCallee,
-  noSingleUseCalleeExamples
 )
 
 const preferHashSetCheck = namedCheck(
@@ -650,7 +593,6 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectArrayCheck,
   preferEffectArrayAppendAllCheck,
   preferDataLastModuleCheck,
-  preferDedicatedDataStructureFilesCheck,
   preferConditionalReturnCheck,
   preferDirectBooleanReturnCheck,
   preferDirectYieldCheck,
@@ -664,7 +606,6 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noUndefinedCheck,
   noUnusedCheck,
   noVoidFunctionsCheck,
-  noRootLevelClassesCheck,
   noMultiLineCommentsCheck,
   requireBecauseInCommentsCheck,
   requireBlankLinesAroundMultilineDeclarationsCheck,
@@ -692,13 +633,9 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noNestedCallsCheck,
   noManualTypeDispatchCheck,
   noMonomorphicStructGetCheck,
-  noAbstractClassesCheck,
-  noClassMethodImplementationsCheck,
   noRawObjectTypesCheck,
-  noReexportCheck,
   noFirstPartySchemaDeclareCheck,
   noInstanceofCheck,
-  noSingleUseCalleeCheck,
   preferHashSetCheck,
   preferHashMapCheck,
   preferOptionMatchCheck,

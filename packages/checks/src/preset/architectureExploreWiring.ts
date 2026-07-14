@@ -1,9 +1,5 @@
 import { Array, Stream, pipe } from "effect"
-import {
-  makeWiring,
-  namedCheck,
-  silentCheck
-} from "@better-typescript/core/engine/report"
+import { makeWiring, silentCheck } from "@better-typescript/core/engine/report"
 import type {
   NamedCheck,
   Signal,
@@ -14,34 +10,20 @@ import type {
   Advice,
   NamedDetection
 } from "@better-typescript/core/engine/derive/data"
-import {
-  passThroughWrappers,
-  passThroughWrappersExamples
-} from "../checks/architectureExplore/passThroughWrappers.js"
-import {
-  wideThinExports,
-  wideThinExportsExamples
-} from "../checks/architectureExplore/wideThinExports.js"
-import {
-  importCallGraph,
-  importCallGraphExamples
-} from "../checks/architectureExplore/importCallGraph.js"
-import {
-  singleUsePureExport,
-  singleUsePureExportExamples
-} from "../checks/architectureExplore/singleUsePureExport.js"
-import {
-  seamLeakageEvidence,
-  seamLeakageEvidenceExamples
-} from "../checks/architectureExplore/seamLeakageEvidence.js"
-import {
-  hardwiredDependencies,
-  hardwiredDependenciesExamples
-} from "../checks/architectureExplore/hardwiredDependencies.js"
+import { passThroughWrappers } from "../checks/architectureExplore/passThroughWrappers.js"
+import { interfaceBurden } from "../checks/architectureExplore/interfaceBurden.js"
+import { moduleGraph } from "../checks/architectureExplore/moduleGraph.js"
+import { testOnlyExports } from "../checks/architectureExplore/testOnlyExports.js"
+import { seamLeakageEvidence } from "../checks/architectureExplore/seamLeakageEvidence.js"
+import { externalDependencyConstruction } from "../checks/architectureExplore/externalDependencyConstruction.js"
+import { singleAdapterSeams } from "../checks/architectureExplore/singleAdapterSeams.js"
 import { deletionTestShallowness } from "../checks/architectureExplore/deletionTestShallowness.js"
+import { wideShallowInterface } from "../checks/architectureExplore/wideShallowInterface.js"
 import { bounceCluster } from "../checks/architectureExplore/bounceCluster.js"
 import { leakedSeam } from "../checks/architectureExplore/leakedSeam.js"
+import { testPastInterface } from "../checks/architectureExplore/testPastInterface.js"
 import { hardToTestHotspot } from "../checks/architectureExplore/hardToTestHotspot.js"
+import { hypotheticalSeam } from "../checks/architectureExplore/hypotheticalSeam.js"
 
 const nameArchitectureExploreDetections = (
   signal: Signal
@@ -56,69 +38,64 @@ const nameArchitectureExploreDetections = (
 
 const passThroughWrappersCheck = silentCheck(
   "pass-through-wrappers",
-  passThroughWrappers,
-  passThroughWrappersExamples
+  passThroughWrappers
 )
 
-const wideThinExportsCheck = silentCheck(
-  "wide-thin-exports",
-  wideThinExports,
-  wideThinExportsExamples
-)
+const interfaceBurdenCheck = silentCheck("interface-burden", interfaceBurden)
 
-const importCallGraphCheck = silentCheck(
-  "import-call-graph",
-  importCallGraph,
-  importCallGraphExamples
-)
+const moduleGraphCheck = silentCheck("module-graph", moduleGraph)
 
-const singleUsePureExportCheck = silentCheck(
-  "single-use-pure-export",
-  singleUsePureExport,
-  singleUsePureExportExamples
-)
+const testOnlyExportsCheck = silentCheck("test-only-exports", testOnlyExports)
 
 const seamLeakageEvidenceCheck = silentCheck(
   "seam-leakage-evidence",
-  seamLeakageEvidence,
-  seamLeakageEvidenceExamples
+  seamLeakageEvidence
 )
 
-const hardwiredDependenciesCheck = namedCheck(
-  "hardwired-dependencies",
-  hardwiredDependencies,
-  hardwiredDependenciesExamples
+const externalDependencyConstructionCheck = silentCheck(
+  "external-dependency-construction",
+  externalDependencyConstruction
+)
+
+const singleAdapterSeamsCheck = silentCheck(
+  "single-adapter-seams",
+  singleAdapterSeams
 )
 
 export const architectureExploreChecks: ReadonlyArray<NamedCheck> = Array.make(
   passThroughWrappersCheck,
-  wideThinExportsCheck,
-  importCallGraphCheck,
-  singleUsePureExportCheck,
+  interfaceBurdenCheck,
+  moduleGraphCheck,
+  testOnlyExportsCheck,
   seamLeakageEvidenceCheck,
-  hardwiredDependenciesCheck
+  externalDependencyConstructionCheck,
+  singleAdapterSeamsCheck
 )
 
 export const architectureExploreDerive = (
   signals: ReadonlyArray<Signal>
 ): Stream.Stream<Advice, Error> => {
-  const signalStream = Stream.fromIterable(signals)
-
   const namedElements = pipe(
-    signalStream,
+    Stream.fromIterable(signals),
     Stream.flatMap(nameArchitectureExploreDetections)
   )
 
   const deletionStream = deletionTestShallowness(namedElements)
+  const wideStream = wideShallowInterface(namedElements)
   const bounceStream = bounceCluster(namedElements)
   const leakedStream = leakedSeam(namedElements)
+  const testStream = testPastInterface(namedElements)
   const hardToTestStream = hardToTestHotspot(namedElements)
+  const hypotheticalStream = hypotheticalSeam(namedElements)
 
   const adviceStreams = Array.make(
     deletionStream,
+    wideStream,
     bounceStream,
     leakedStream,
-    hardToTestStream
+    testStream,
+    hardToTestStream,
+    hypotheticalStream
   )
 
   return pipe(Stream.fromIterable(adviceStreams), Stream.flatten())

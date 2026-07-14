@@ -1,47 +1,59 @@
 import { Schema } from "effect"
 
 const passThroughKind = Schema.Literal("reexport", "forwarding-call")
-const hardwiredKind = Schema.Literal("constructor", "module-scope-effect")
-const importedPathsArray = Schema.Array(Schema.String)
+const leakageKind = Schema.Literal("internal-path", "source-path")
+const stringArray = Schema.Array(Schema.String)
 
 export class PassThroughWrapperData extends Schema.Class<PassThroughWrapperData>(
   "PassThroughWrapperData"
 )({
   kind: passThroughKind,
-  exportCount: Schema.Number
-}) {}
-
-export class WideThinExportData extends Schema.Class<WideThinExportData>(
-  "WideThinExportData"
-)({
   exportCount: Schema.Number,
-  statementCount: Schema.Number
+  callerCount: Schema.Number,
+  callerPaths: stringArray,
+  hasNonCallReference: Schema.Boolean
 }) {}
 
-export class ImportCallGraphData extends Schema.Class<ImportCallGraphData>(
-  "ImportCallGraphData"
+export class InterfaceBurdenData extends Schema.Class<InterfaceBurdenData>(
+  "InterfaceBurdenData"
 )({
-  importCount: Schema.Number,
-  outgoingCallCount: Schema.Number,
-  importedPaths: importedPathsArray
+  operationCount: Schema.Number,
+  requiredParameterCount: Schema.Number
 }) {}
 
-export class SingleUsePureExportData extends Schema.Class<SingleUsePureExportData>(
-  "SingleUsePureExportData"
+export class ModuleGraphData extends Schema.Class<ModuleGraphData>(
+  "ModuleGraphData"
 )({
-  calleeCount: Schema.Number,
-  callerPath: Schema.String
+  importedPaths: stringArray
+}) {}
+
+export class TestOnlyExportData extends Schema.Class<TestOnlyExportData>(
+  "TestOnlyExportData"
+)({
+  testPaths: stringArray,
+  testCallCount: Schema.Number
 }) {}
 
 export class SeamLeakageData extends Schema.Class<SeamLeakageData>(
   "SeamLeakageData"
 )({
   importedPath: Schema.String,
-  depth: Schema.Number
+  depth: Schema.Number,
+  kind: leakageKind,
+  fromTest: Schema.Boolean
 }) {}
 
-export class HardwiredDependencyData extends Schema.Class<HardwiredDependencyData>(
-  "HardwiredDependencyData"
+export class ExternalDependencyConstructionData extends Schema.Class<ExternalDependencyConstructionData>(
+  "ExternalDependencyConstructionData"
 )({
-  kind: hardwiredKind
+  collaboratorName: Schema.String,
+  importedPath: Schema.String
+}) {}
+
+export class SingleAdapterSeamData extends Schema.Class<SingleAdapterSeamData>(
+  "SingleAdapterSeamData"
+)({
+  interfaceName: Schema.String,
+  productionAdapterCount: Schema.Number,
+  testAdapterCount: Schema.Number
 }) {}

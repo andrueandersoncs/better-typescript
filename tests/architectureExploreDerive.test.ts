@@ -7,18 +7,19 @@ import {
   architectureExploreWiring
 } from "@better-typescript/checks/preset/architectureExploreWiring"
 import {
-  ImportCallGraphData,
+  ExternalDependencyConstructionData,
+  InterfaceBurdenData,
+  ModuleGraphData,
   PassThroughWrapperData,
-  WideThinExportData
+  SeamLeakageData,
+  SingleAdapterSeamData,
+  TestOnlyExportData
 } from "@better-typescript/checks/architectureExplore/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/report/data"
 import { makeWiring } from "@better-typescript/core/engine/report"
-
-const range = (count: number): ReadonlyArray<number> =>
-  Array.from({ length: count }, (_, index) => index + 1)
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>
   new Detection({
@@ -33,11 +34,6 @@ const silentSignal = (
   detections: ReadonlyArray<Detection>
 ): Signal => new Signal({ name, reported: false, detections, examples: [] })
 
-const reportedSignal = (
-  name: string,
-  detections: ReadonlyArray<Detection>
-): Signal => new Signal({ name, reported: true, detections, examples: [] })
-
 const collectAdvice = (
   advice: Stream.Stream<Advice, Error>
 ): Promise<ReadonlyArray<Advice>> =>
@@ -50,161 +46,201 @@ const adviceWithTitle = (
   title: string
 ): ReadonlyArray<Advice> => advice.filter((item) => item.title === title)
 
-const adviceCount = (advice: ReadonlyArray<Advice>, title: string): number =>
-  adviceWithTitle(advice, title).length
+const wrapperData = (
+  callerCount: number,
+  hasNonCallReference = false
+): PassThroughWrapperData =>
+  new PassThroughWrapperData({
+    kind: "forwarding-call",
+    exportCount: 1,
+    callerCount,
+    callerPaths: callerCount === 0 ? [] : ["src/caller.ts"],
+    hasNonCallReference
+  })
 
-test("architectureExploreWiring is makeWiring-valid with unique check names", () => {
+test("architectureExploreWiring contains only relational silent evidence checks", () => {
   const names = architectureExploreChecks.map((check) => check.name)
-  const uniqueNames = new Set(names)
 
-  assert.equal(names.length, uniqueNames.size)
   assert.deepEqual(names, [
     "pass-through-wrappers",
-    "wide-thin-exports",
-    "import-call-graph",
-    "single-use-pure-export",
+    "interface-burden",
+    "module-graph",
+    "test-only-exports",
     "seam-leakage-evidence",
-    "hardwired-dependencies"
+    "external-dependency-construction",
+    "single-adapter-seams"
   ])
-
-  const wiring = makeWiring(architectureExploreWiring)
-  assert.equal(wiring.checks.length, 6)
+  assert.equal(new Set(names).size, names.length)
+  assert.equal(
+    architectureExploreChecks.every((check) => !check.reported),
+    true
+  )
+  assert.equal(makeWiring(architectureExploreWiring).checks.length, 7)
 })
 
-test("architectureExploreDerive emits deletion-test shallowness for thin wrappers", async () => {
+test("deletion test removes low-leverage exact forwarders", async () => {
   const path = "src/thin.ts"
-
-  const wrappers = [
-    detectionAt(
-      path,
-      1,
-      new PassThroughWrapperData({ kind: "reexport", exportCount: 1 })
-    )
-  ]
-
-  const wideThin = [
-    detectionAt(
-      path,
-      2,
-      new WideThinExportData({ exportCount: 5, statementCount: 5 })
-    )
-  ]
-
-  const graphs = [
-    detectionAt(
-      path,
-      3,
-      new ImportCallGraphData({
-        importCount: 2,
-        outgoingCallCount: 1,
-        importedPaths: ["./math.js", "./other.js"]
-      })
-    )
-  ]
-
   const advice = await collectAdvice(
     architectureExploreDerive([
-      silentSignal("pass-through-wrappers", wrappers),
-      silentSignal("wide-thin-exports", wideThin),
-      silentSignal("import-call-graph", graphs)
+      silentSignal("pass-through-wrappers", [
+        detectionAt(path, 1, wrapperData(1))
+      ])
     ])
   )
+  const deletion = adviceWithTitle(advice, "deletion-test shallowness")
 
-  const shallowness = adviceWithTitle(advice, "deletion-test shallowness")
-
-  assert.equal(adviceCount(advice, "deletion-test shallowness"), 1)
-  assert.equal(shallowness[0]?.location.path, path)
-  assert.equal(shallowness[0]?.level, "file")
+  assert.equal(deletion.length, 1)
+  assert.equal(deletion[0]?.location.path, path)
   assert.deepEqual(
-    shallowness[0]?.evidence.map((item) => item.measure),
-    ["pass-through-wrappers", "wide-thin-exports", "import-call-graph"]
+    deletion[0]?.evidence.map((item) => item.measure),
+    ["deletable-forwarders", "production-callers"]
   )
 })
 
-test("architectureExploreDerive does not emit shallowness for wrappers with only import-call-graph", async () => {
-  const path = "src/thin.ts"
-
-  const wrappers = [
-    detectionAt(
-      path,
-      1,
-      new PassThroughWrapperData({ kind: "reexport", exportCount: 1 })
-    )
-  ]
-
-  const graphs = [
-    detectionAt(
-      path,
-      2,
-      new ImportCallGraphData({
-        importCount: 2,
-        outgoingCallCount: 1,
-        importedPaths: ["./math.js", "./other.js"]
-      })
-    )
-  ]
-
+test("deletion test preserves caller leverage and non-call contracts", async () => {
   const advice = await collectAdvice(
     architectureExploreDerive([
-      silentSignal("pass-through-wrappers", wrappers),
-      silentSignal("import-call-graph", graphs)
-    ])
-  )
-
-  assert.equal(adviceCount(advice, "deletion-test shallowness"), 0)
-})
-
-test("architectureExploreDerive emits bounce cluster for thin module directories", async () => {
-  const wrappers = [
-    detectionAt("src/cluster/one.ts", 1),
-    detectionAt("src/cluster/two.ts", 1),
-    detectionAt("src/cluster/three.ts", 1)
-  ]
-
-  const advice = await collectAdvice(
-    architectureExploreDerive([silentSignal("pass-through-wrappers", wrappers)])
-  )
-
-  const bounce = adviceWithTitle(advice, "bounce cluster")
-
-  assert.equal(adviceCount(advice, "bounce cluster"), 1)
-  assert.equal(bounce[0]?.location.path, "src/cluster")
-  assert.equal(bounce[0]?.level, "directory")
-  assert.equal(bounce[0]?.evidence[0]?.measure, "thin-modules")
-  assert.equal(bounce[0]?.evidence[0]?.count, 3)
-})
-
-test("architectureExploreDerive emits hard-to-test hotspot on concentrated hardwiring", async () => {
-  const hardwired = range(2).map((line) => detectionAt("src/service.ts", line))
-
-  const advice = await collectAdvice(
-    architectureExploreDerive([
-      reportedSignal("hardwired-dependencies", hardwired)
-    ])
-  )
-
-  const hotspot = adviceWithTitle(advice, "hard-to-test hotspot")
-
-  assert.equal(adviceCount(advice, "hard-to-test hotspot"), 1)
-  assert.equal(hotspot[0]?.location.path, "src/service.ts")
-  assert.deepEqual(
-    hotspot[0]?.evidence.map((item) => item.measure),
-    ["hardwired-dependencies"]
-  )
-})
-
-test("architectureExploreDerive stays quiet below shallowness and bounce thresholds", async () => {
-  const advice = await collectAdvice(
-    architectureExploreDerive([
-      silentSignal("pass-through-wrappers", [detectionAt("src/only.ts", 1)]),
-      reportedSignal("hardwired-dependencies", [
-        detectionAt("src/service.ts", 1)
+      silentSignal("pass-through-wrappers", [
+        detectionAt("src/many.ts", 1, wrapperData(2)),
+        detectionAt("src/value.ts", 1, wrapperData(1, true))
       ])
     ])
   )
 
-  assert.equal(adviceCount(advice, "deletion-test shallowness"), 0)
-  assert.equal(adviceCount(advice, "bounce cluster"), 0)
-  assert.equal(adviceCount(advice, "hard-to-test hotspot"), 0)
-  assert.deepEqual(advice, [])
+  assert.equal(adviceWithTitle(advice, "deletion-test shallowness").length, 0)
+})
+
+test("wide shallow interface requires a forwarding-dominated burden", async () => {
+  const widePath = "src/client.ts"
+  const deepPath = "src/deep.ts"
+  const wideWrappers = [1, 2, 3].map((line) =>
+    detectionAt(widePath, line, wrapperData(1))
+  )
+  const deepWrappers = [1, 2, 3].map((line) =>
+    detectionAt(deepPath, line, wrapperData(1))
+  )
+  const wideBurden = detectionAt(
+    widePath,
+    1,
+    new InterfaceBurdenData({
+      operationCount: 4,
+      requiredParameterCount: 6
+    })
+  )
+  const deepBurden = detectionAt(
+    deepPath,
+    1,
+    new InterfaceBurdenData({
+      operationCount: 10,
+      requiredParameterCount: 12
+    })
+  )
+  const advice = await collectAdvice(
+    architectureExploreDerive([
+      silentSignal("pass-through-wrappers", [...wideWrappers, ...deepWrappers]),
+      silentSignal("interface-burden", [wideBurden, deepBurden])
+    ])
+  )
+  const wide = adviceWithTitle(advice, "wide shallow interface")
+
+  assert.equal(wide.length, 1)
+  assert.equal(wide[0]?.location.path, widePath)
+})
+
+test("bounce cluster requires connected shallow Modules", async () => {
+  const wrappers = ["one", "two", "three"].map((name, index) =>
+    detectionAt(`src/cluster/${name}.ts`, index + 1, wrapperData(1))
+  )
+  const graph = [
+    detectionAt(
+      "src/cluster/one.ts",
+      1,
+      new ModuleGraphData({ importedPaths: ["src/cluster/two.ts"] })
+    ),
+    detectionAt(
+      "src/cluster/two.ts",
+      1,
+      new ModuleGraphData({ importedPaths: ["src/cluster/three.ts"] })
+    )
+  ]
+  const connected = await collectAdvice(
+    architectureExploreDerive([
+      silentSignal("pass-through-wrappers", wrappers),
+      silentSignal("module-graph", graph)
+    ])
+  )
+  const disconnected = await collectAdvice(
+    architectureExploreDerive([silentSignal("pass-through-wrappers", wrappers)])
+  )
+
+  assert.equal(adviceWithTitle(connected, "bounce cluster").length, 1)
+  assert.equal(adviceWithTitle(disconnected, "bounce cluster").length, 0)
+})
+
+test("seam and test evidence derive public-interface advice", async () => {
+  const testOnly = detectionAt(
+    "src/order.ts",
+    3,
+    new TestOnlyExportData({
+      testPaths: ["tests/order.test.ts"],
+      testCallCount: 2
+    })
+  )
+  const testLeak = detectionAt(
+    "tests/order.test.ts",
+    1,
+    new SeamLeakageData({
+      importedPath: "../src/internal/order.js",
+      depth: 4,
+      kind: "internal-path",
+      fromTest: true
+    })
+  )
+  const productionLeaks = [1, 2].map((line) =>
+    detectionAt(
+      "src/consumer.ts",
+      line,
+      new SeamLeakageData({
+        importedPath: "./internal/order.js",
+        depth: 2,
+        kind: "internal-path",
+        fromTest: false
+      })
+    )
+  )
+  const advice = await collectAdvice(
+    architectureExploreDerive([
+      silentSignal("test-only-exports", [testOnly]),
+      silentSignal("seam-leakage-evidence", [testLeak, ...productionLeaks])
+    ])
+  )
+
+  assert.equal(adviceWithTitle(advice, "test past interface").length, 2)
+  assert.equal(adviceWithTitle(advice, "leaked seam").length, 1)
+})
+
+test("collaborator concentration and one adapter derive separate seam advice", async () => {
+  const collaboratorData = new ExternalDependencyConstructionData({
+    collaboratorName: "PaymentClient",
+    importedPath: "@acme/payments"
+  })
+  const seamData = new SingleAdapterSeamData({
+    interfaceName: "PaymentPort",
+    productionAdapterCount: 1,
+    testAdapterCount: 0
+  })
+  const advice = await collectAdvice(
+    architectureExploreDerive([
+      silentSignal("external-dependency-construction", [
+        detectionAt("src/order.ts", 3, collaboratorData),
+        detectionAt("src/order.ts", 8, collaboratorData)
+      ]),
+      silentSignal("single-adapter-seams", [
+        detectionAt("src/payment.ts", 1, seamData)
+      ])
+    ])
+  )
+
+  assert.equal(adviceWithTitle(advice, "hard-to-test hotspot").length, 1)
+  assert.equal(adviceWithTitle(advice, "hypothetical seam").length, 1)
 })

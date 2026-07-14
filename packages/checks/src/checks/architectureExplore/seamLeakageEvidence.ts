@@ -1,3 +1,4 @@
+import * as path from "node:path"
 import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
@@ -5,24 +6,55 @@ import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+
 import { SeamLeakageData } from "./data.js"
+import { isTestSourceFile } from "./programSymbols.js"
 
 const message =
-  "This import is Seam Leakage Evidence — it reaches past a public entry into another Module's internals."
+  "Seam leakage evidence — this import reaches through an internal or package-source path."
 
 const hint =
-  "Import through the neighbouring Module's public interface, or deepen a shared Module at the seam."
+  "Route callers and tests through the Module's declared public interface so implementation layout can change locally."
 
-const isDeepInternalPath = (specifier: string): boolean => {
-  const normalized = specifier.replaceAll("\\", "/")
+const leakageKind =
+  (context: CheckContext) =>
+  (specifier: string): Option.Option<"internal-path" | "source-path"> => {
+    const normalized = specifier.replaceAll("\\", "/")
+    const rawSegments = normalized.split("/")
 
-  return normalized.includes("/internal/")
-}
+    const segments = pipe(
+      rawSegments,
+      Array.filter((segment) => segment.length > 0),
+      Array.filter((segment) => segment !== "."),
+      Array.filter((segment) => segment !== "..")
+    )
+
+    if (Array.contains(segments, "internal")) {
+      return Option.some("internal-path")
+    }
+
+    const isRelative = normalized.startsWith(".")
+    const sourceDirectory = path.dirname(context.sourceFile.fileName)
+    const resolved = path.resolve(sourceDirectory, normalized)
+    const relativeToProject = path.relative(context.projectRoot, resolved)
+    const isParentDirectory = relativeToProject === ".."
+    const isParentPath = relativeToProject.startsWith(`..${path.sep}`)
+    const outsideConditions = Array.make(isParentDirectory, isParentPath)
+    const outsideProject = Array.some(outsideConditions, Boolean)
+    const isPackageSpecifier = !isRelative
+    const packageConditions = Array.make(isPackageSpecifier, outsideProject)
+    const isPackagePath = Array.some(packageConditions, Boolean)
+    const reachesSource = Array.contains(segments, "src")
+    const sourceLeakConditions = Array.make(isPackagePath, reachesSource)
+    const isSourceLeak = Array.every(sourceLeakConditions, Boolean)
+
+    return isSourceLeak ? Option.some("source-path") : Option.none()
+  }
 
 const importElements = (context: CheckContext) => {
   const element = detection(context)
+  const testClassifier = isTestSourceFile(context.projectRoot)
+  const fromTest = testClassifier(context.sourceFile)
 
   const handler = (node: ts.ImportDeclaration): ReadonlyArray<Detection> => {
     const specifier = pipe(
@@ -36,20 +68,26 @@ const importElements = (context: CheckContext) => {
       Option.getOrElse(Function.constant(""))
     )
 
-    const pathParts = importedPath.split("/")
-    const depth = Array.filter(pathParts, (part) => part.length > 0).length
-    const leaks = Option.exists(specifier, isDeepInternalPath)
+    const normalizedPath = importedPath.replaceAll("\\", "/")
+    const rawPathParts = normalizedPath.split("/")
 
-    const data = new SeamLeakageData({ importedPath, depth })
+    const pathParts = Array.filter(rawPathParts, (part) => part.length > 0)
 
-    const reported = element({
-      node,
-      message,
-      hint,
-      data
-    })
+    return pipe(
+      specifier,
+      Option.flatMap(leakageKind(context)),
+      Option.map((kind) => {
+        const data = new SeamLeakageData({
+          importedPath,
+          depth: pathParts.length,
+          kind,
+          fromTest
+        })
 
-    return leaks ? Array.of(reported) : Array.empty()
+        return element({ node, message, hint, data })
+      }),
+      Option.toArray
+    )
   }
 
   return handler
@@ -60,6 +98,3 @@ const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
 export const seamLeakageEvidence: Check = nodeCheck(importDeclarationKinds)(
   ts.isImportDeclaration
 )(importElements)
-
-export const seamLeakageEvidenceExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("seam-leakage-evidence")
