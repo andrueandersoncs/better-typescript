@@ -1,10 +1,12 @@
 import {
   Array,
+  Effect,
   Function,
   HashSet,
   Iterable,
   Match,
   Option,
+  Ref,
   Struct,
   Tuple,
   flow,
@@ -12,24 +14,43 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import { astNodesIn } from "@better-typescript/core/engine/sources"
-import { SourceComment } from "./commentsData.js"
+import { LatestCacheEntry, SourceComment } from "./commentsData.js"
 
-const memoizeWeak =
-  <Key extends object, Value>(cache: WeakMap<Key, Value>) =>
-  (load: (key: Key) => Value) =>
-  (key: Key): Value => {
-    const cached = cache.get(key)
+const memoizeLatest = <Key extends object, Value>(
+  load: (key: Key) => Value
+) => {
+  const emptyCache = Option.none<LatestCacheEntry<Key, Value>>()
+  const cache = Ref.unsafeMake(emptyCache)
 
-    const loadAndCache = (): Value => {
+  const memoized = (key: Key): Value => {
+    const readOrLoad = (
+      cached: Option.Option<LatestCacheEntry<Key, Value>>
+    ): readonly [Value, Option.Option<LatestCacheEntry<Key, Value>>] => {
+      const current = pipe(
+        cached,
+        Option.filter((entry) => entry.key === key)
+      )
+
+      if (Option.isSome(current)) {
+        const value = current.value.value
+
+        return Tuple.make(value, cached)
+      }
+
       const value = load(key)
+      const entry = new LatestCacheEntry({ key, value })
+      const updated = Option.some(entry)
 
-      cache.set(key, value)
-
-      return value
+      return Tuple.make(value, updated)
     }
 
-    return pipe(Option.fromNullable(cached), Option.getOrElse(loadAndCache))
+    const cachedValue = Ref.modify(cache, readOrLoad)
+
+    return Effect.runSync(cachedValue)
   }
+
+  return memoized
+}
 
 const commentSyntaxKinds = HashSet.make(
   ts.SyntaxKind.SingleLineCommentTrivia,
@@ -82,15 +103,9 @@ const scanSourceComments = (
   )
 }
 
-const commentsBySourceFile = new WeakMap<
-  ts.SourceFile,
-  ReadonlyArray<SourceComment>
->()
-
 export const sourceComments: (
   sourceFile: ts.SourceFile
-) => ReadonlyArray<SourceComment> =
-  memoizeWeak(commentsBySourceFile)(scanSourceComments)
+) => ReadonlyArray<SourceComment> = memoizeLatest(scanSourceComments)
 
 const emptyString = Function.constant("")
 type PresentJsDocComment = NonNullable<ts.JSDoc["comment"]>
@@ -236,16 +251,9 @@ const collectStructuredJsDocPositions = (
   })
 }
 
-const jsDocPositionsBySourceFile = new WeakMap<
-  ts.SourceFile,
-  HashSet.HashSet<number>
->()
-
 const structuredJsDocPositions: (
   sourceFile: ts.SourceFile
-) => HashSet.HashSet<number> = memoizeWeak(jsDocPositionsBySourceFile)(
-  collectStructuredJsDocPositions
-)
+) => HashSet.HashSet<number> = memoizeLatest(collectStructuredJsDocPositions)
 
 const commentAtPosition =
   (positions: HashSet.HashSet<number>) =>

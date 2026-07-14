@@ -43,6 +43,11 @@ export class FileSubscription extends Schema.Class<FileSubscription>(
 
 export type Subscription = NodeSubscription | FileSubscription
 
+export class CachedPlan extends Data.Class<{
+  readonly program: ts.Program
+  readonly subscriptions: ReadonlyArray<Subscription>
+}> {}
+
 export class Check extends Data.Class<{
   readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
 }> {}

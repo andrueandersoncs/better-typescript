@@ -12,7 +12,7 @@ import type { Advice } from "../derive/data.js"
 import type { RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 
-export type NonEmptyCheckPaths = readonly [string, ...Array<string>]
+export type NonEmptyCheckPaths = Array.NonEmptyReadonlyArray<string>
 
 export class NamedCheck extends Data.Class<{
   readonly name: string

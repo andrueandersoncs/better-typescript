@@ -1,27 +1,21 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import {
-  Tuple,
-  Array,
-  Effect,
-  Function,
-  flow,
-  pipe,
-  Option,
-  Struct
-} from "effect"
+import { Array, Effect, Function, flow, pipe, Option, Struct } from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring } from "../../engine/report/data.js"
 import { makeWiring } from "../../engine/report/report.js"
 import type { Check } from "../../engine/check/data.js"
 import type { RefactorExample } from "../../engine/example/data.js"
-import { configFileName, ProjectWiringError } from "./data.js"
+import {
+  ConfigExport,
+  type ConfigExportName,
+  configFileName,
+  ProjectWiringError
+} from "./data.js"
 
 const defaultExportName = "default"
 const wiringExportName = "wiring"
 
-type ConfigExportName = typeof defaultExportName | typeof wiringExportName
-type ConfigExport = readonly [name: ConfigExportName, value: unknown]
 type ModuleRecord = Readonly<Record<string, unknown>>
 type WiringFactory = () => unknown
 
@@ -69,7 +63,7 @@ const formatCause = (cause: unknown): string => {
 const configExport =
   (name: ConfigExportName) =>
   (value: unknown): ConfigExport =>
-    Tuple.make(name, value)
+    new ConfigExport({ name, value })
 
 const defaultConfigExport = configExport(defaultExportName)
 
@@ -171,7 +165,7 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
   moduleValue: unknown
 ) {
   const exported = yield* selectedExport(configPath, moduleValue)
-  const value = exported[1]
+  const value = exported.value
   const factoryOption = Option.liftPredicate(isFunctionValue)(value)
 
   const plainExport = Effect.succeed(value)
@@ -180,7 +174,7 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
     factoryOption,
     Option.match({
       onNone: Function.constant(plainExport),
-      onSome: (factory) => callFactory(configPath, exported[0], factory)
+      onSome: (factory) => callFactory(configPath, exported.name, factory)
     })
   )
 })

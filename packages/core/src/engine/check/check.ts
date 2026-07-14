@@ -1,10 +1,12 @@
 import {
   Array,
+  Effect,
   Function,
   Iterable,
-  MutableHashMap,
   MutableList,
   Option,
+  Ref,
+  Tuple,
   flow,
   pipe
 } from "effect"
@@ -14,6 +16,7 @@ import type { ProgramContext } from "../sources/data.js"
 import { astNodesIn, isProjectSourceFile } from "../sources/sources.js"
 import {
   ActiveNodeSubscription,
+  CachedPlan,
   Check,
   CheckContext,
   FileHandler,
@@ -23,11 +26,6 @@ import {
   PlannedNodeSubscription,
   type Subscription
 } from "./data.js"
-
-const plansByProgram = new WeakMap<
-  ts.Program,
-  MutableHashMap.MutableHashMap<object, ReadonlyArray<Subscription>>
->()
 
 export type CheckFilePredicate = (
   checkIndex: number,
@@ -227,42 +225,42 @@ export const combineAll: (
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
   (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check => {
+    const emptyPlanCache = Option.none<CachedPlan>()
+    const planCache = Ref.unsafeMake(emptyPlanCache)
+
     const plan: (context: ProgramContext) => ReadonlyArray<Subscription> = (
       context
     ) => {
-      const cachedPlanMap = plansByProgram.get(context.program)
+      const readOrBuild = (
+        cached: Option.Option<CachedPlan>
+      ): readonly [ReadonlyArray<Subscription>, Option.Option<CachedPlan>] => {
+        const current = pipe(
+          cached,
+          Option.filter((entry) => entry.program === context.program)
+        )
 
-      const createPlanMap = (): MutableHashMap.MutableHashMap<
-        object,
-        ReadonlyArray<Subscription>
-      > => {
-        const created = MutableHashMap.empty<
-          object,
-          ReadonlyArray<Subscription>
-        >()
+        if (Option.isSome(current)) {
+          const planned = current.value.subscriptions
 
-        plansByProgram.set(context.program, created)
+          return Tuple.make(planned, cached)
+        }
 
-        return created
-      }
-
-      const planMap = pipe(
-        Option.fromNullable(cachedPlanMap),
-        Option.getOrElse(createPlanMap)
-      )
-
-      const cached = MutableHashMap.get(planMap, plan)
-
-      const createPlan = (): ReadonlyArray<Subscription> => {
         const index = build(context)
         const planned = subscriptions(index)
 
-        MutableHashMap.set(planMap, plan, planned)
+        const entry = new CachedPlan({
+          program: context.program,
+          subscriptions: planned
+        })
 
-        return planned
+        const updated = Option.some(entry)
+
+        return Tuple.make(planned, updated)
       }
 
-      return pipe(cached, Option.getOrElse(createPlan))
+      const cachedPlan = Ref.modify(planCache, readOrBuild)
+
+      return Effect.runSync(cachedPlan)
     }
 
     return checkFromSubscriptions(plan)

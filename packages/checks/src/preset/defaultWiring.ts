@@ -32,10 +32,6 @@ import {
   noClassMethodImplementationsExamples
 } from "../checks/noClassMethodImplementations.js"
 import {
-  noDataTaggedClass,
-  noDataTaggedClassExamples
-} from "../checks/noDataTaggedClass.js"
-import {
   noDuplicateFunctionNames,
   noDuplicateFunctionNamesExamples
 } from "../checks/noDuplicateFunctionNames.js"
@@ -92,6 +88,7 @@ import {
   noMutableVariableDeclarationsExamples
 } from "../checks/noMutableVariableDeclarations.js"
 import { noMutation, noMutationExamples } from "../checks/noMutation.js"
+import { noWeakMap, noWeakMapExamples } from "../checks/noWeakMap.js"
 import {
   noNestedCalls,
   noNestedCallsExamples
@@ -465,6 +462,8 @@ const noMutationCheck = namedCheck(
   noMutationExamples
 )
 
+const noWeakMapCheck = namedCheck("no-weak-map", noWeakMap, noWeakMapExamples)
+
 const noNestedIfStatementsCheck = namedCheck(
   "no-nested-if-statements",
   noNestedIfStatements,
@@ -597,12 +596,6 @@ const noFirstPartySchemaDeclareCheck = namedCheck(
   noFirstPartySchemaDeclareExamples
 )
 
-const noDataTaggedClassCheck = namedCheck(
-  "no-data-tagged-class",
-  noDataTaggedClass,
-  noDataTaggedClassExamples
-)
-
 const noInstanceofCheck = namedCheck(
   "no-instanceof",
   noInstanceof,
@@ -681,6 +674,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noMutableArrayMethodsCheck,
   noMutableVariableDeclarationsCheck,
   noMutationCheck,
+  noWeakMapCheck,
   noNestedIfStatementsCheck,
   noNonNullAssertionCheck,
   noDuplicateIfBodiesCheck,
@@ -703,7 +697,6 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noRawObjectTypesCheck,
   noReexportCheck,
   noFirstPartySchemaDeclareCheck,
-  noDataTaggedClassCheck,
   noInstanceofCheck,
   noSingleUseCalleeCheck,
   preferHashSetCheck,

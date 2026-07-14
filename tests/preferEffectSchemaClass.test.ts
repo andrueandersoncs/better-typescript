@@ -32,8 +32,20 @@ const makeHint = (typeName: string): string =>
   `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
   "so every construction is validated. When the shape must hold non-serializable " +
   "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
-  `instead \u2014 class ${typeName} extends Data.Class<{ ... }> {} \u2014 the same ` +
-  "class-as-type-and-constructor discipline without schema validation."
+  "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
+  "preserve the class-as-type-and-constructor discipline without schema validation."
+
+const tupleTypeHint =
+  "Any tuple-shaped data can be converted to a class with named fields, making each " +
+  "value's meaning explicit instead of positional. Replace the tuple alias with an " +
+  "Effect Schema class — for example class ExampleClass extends " +
+  'Schema.Class<ExampleClass>("ExampleClass")({ myString: Schema.String, ' +
+  "myNumber: Schema.Number }) {} — or Schema.TaggedClass for a tagged variant. " +
+  "When fields hold non-serializable runtime values, use Data.Class — class " +
+  "ExampleClass extends Data.Class<{ readonly myString: string; readonly myNumber: number }> {} — " +
+  "or Data.TaggedClass for a runtime-only tagged variant — class " +
+  'ExampleClass extends Data.TaggedClass("ExampleClass")<{ readonly myString: string; ' +
+  "readonly myNumber: number }> {}."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
@@ -83,6 +95,22 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 13,
     message: makeMessage("Settings", "a type alias"),
     hint: makeHint("Settings")
+  },
+  {
+    name: "ExampleTuple.name",
+    fileName: "src/cases.ts",
+    line: 46,
+    column: 13,
+    message: "Avoid declaring ExampleTuple as a tuple type alias.",
+    hint: tupleTypeHint
+  },
+  {
+    name: "ReadonlyExampleTuple.name",
+    fileName: "src/cases.ts",
+    line: 50,
+    column: 13,
+    message: "Avoid declaring ReadonlyExampleTuple as a tuple type alias.",
+    hint: tupleTypeHint
   }
 ]
 

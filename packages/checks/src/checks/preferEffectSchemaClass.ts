@@ -1,4 +1,13 @@
-import { Tuple, Array, Function, HashMap, Option, Struct, pipe } from "effect"
+import {
+  Tuple,
+  Array,
+  Function,
+  HashMap,
+  Match,
+  Option,
+  Struct,
+  pipe
+} from "effect"
 import * as ts from "typescript"
 import {
   nodeSubscriptions,
@@ -350,8 +359,8 @@ const objectTypeDeclarationMatches =
               `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
               "so every construction is validated. When the shape must hold non-serializable " +
               "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
-              `instead — class ${typeName} extends Data.Class<{ ... }> {} — the same ` +
-              "class-as-type-and-constructor discipline without schema validation."
+              "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
+              "preserve the class-as-type-and-constructor discipline without schema validation."
           })
         }),
         Option.toArray
@@ -359,6 +368,70 @@ const objectTypeDeclarationMatches =
 
     return matches
   }
+
+const isReadonlyTypeOperator = (
+  node: ts.TypeNode
+): node is ts.TypeOperatorNode =>
+  pipe(
+    Option.liftPredicate(ts.isTypeOperatorNode)(node),
+    Option.exists(
+      (operator) => operator.operator === ts.SyntaxKind.ReadonlyKeyword
+    )
+  )
+
+const tupleTypeNode = (node: ts.TypeNode): Option.Option<ts.TupleTypeNode> =>
+  pipe(
+    Match.value(node),
+    Match.when(ts.isTupleTypeNode, Option.some<ts.TupleTypeNode>),
+    Match.when(ts.isParenthesizedTypeNode, (parenthesized) =>
+      tupleTypeNode(parenthesized.type)
+    ),
+    Match.when(isReadonlyTypeOperator, (operator) =>
+      tupleTypeNode(operator.type)
+    ),
+    Match.orElse(() => Option.none())
+  )
+
+const isTupleTypeAliasDeclaration = (
+  node: ts.Node
+): node is ts.TypeAliasDeclaration =>
+  pipe(
+    Option.liftPredicate(ts.isTypeAliasDeclaration)(node),
+    Option.flatMap((declaration) => tupleTypeNode(declaration.type)),
+    Option.isSome
+  )
+
+const tupleTypeHint =
+  "Any tuple-shaped data can be converted to a class with named fields, making each " +
+  "value's meaning explicit instead of positional. Replace the tuple alias with an " +
+  "Effect Schema class — for example class ExampleClass extends " +
+  'Schema.Class<ExampleClass>("ExampleClass")({ myString: Schema.String, ' +
+  "myNumber: Schema.Number }) {} — or Schema.TaggedClass for a tagged variant. " +
+  "When fields hold non-serializable runtime values, use Data.Class — class " +
+  "ExampleClass extends Data.Class<{ readonly myString: string; readonly myNumber: number }> {} — " +
+  "or Data.TaggedClass for a runtime-only tagged variant — class " +
+  'ExampleClass extends Data.TaggedClass("ExampleClass")<{ readonly myString: string; ' +
+  "readonly myNumber: number }> {}."
+
+const tupleTypeDeclarationMatches = (context: CheckContext) => {
+  const match = detection(context)
+
+  const matches = (
+    declaration: ts.TypeAliasDeclaration
+  ): ReadonlyArray<Detection> => {
+    const typeName = declaration.name.text
+
+    const reported = match({
+      node: declaration.name,
+      message: `Avoid declaring ${typeName} as a tuple type alias.`,
+      hint: tupleTypeHint
+    })
+
+    return Array.of(reported)
+  }
+
+  return matches
+}
 
 const isObjectTypeAliasDeclaration = (
   node: ts.Node
@@ -376,11 +449,19 @@ const schemaClassListeners = (
 
   const typeAliasDeclarationKinds = Array.of(ts.SyntaxKind.TypeAliasDeclaration)
 
-  const typeAliasListeners = nodeSubscriptions(typeAliasDeclarationKinds)(
+  const objectTypeAliasListeners = nodeSubscriptions(typeAliasDeclarationKinds)(
     isObjectTypeAliasDeclaration
   )(objectTypeDeclarationMatches(index))
 
-  return Array.appendAll(interfaceListeners, typeAliasListeners)
+  const tupleTypeAliasListeners = nodeSubscriptions(typeAliasDeclarationKinds)(
+    isTupleTypeAliasDeclaration
+  )(tupleTypeDeclarationMatches)
+
+  return pipe(
+    interfaceListeners,
+    Array.appendAll(objectTypeAliasListeners),
+    Array.appendAll(tupleTypeAliasListeners)
+  )
 }
 
 const check = withProgramIndex(buildConstructionIndex)(schemaClassListeners)

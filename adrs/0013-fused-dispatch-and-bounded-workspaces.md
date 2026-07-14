@@ -24,13 +24,13 @@ The bottleneck was architectural, not a local slow expression: the engine multip
 
 Checks are declarative subscription plans, not arbitrary stream transformers. A Check exposes a plan from `ProgramContext` to file and node subscriptions. The engine compiles all active plans together, dispatches node handlers by `SyntaxKind`, and traverses each source file once. Detection order remains file-major and subscription-major within each Check.
 
-Program-indexed plans are memoized in a `WeakMap` keyed by `ts.Program`. Program identity is snapshot identity in both loaded and watch paths, so unchanged snapshots reuse their indexes while superseded watch Programs remain collectible.
+Program-indexed plans are memoized in a latest-entry cache backed by an Effect `Ref`. Program identity remains snapshot identity in both loaded and watch paths, so repeated analyses of the current snapshot reuse their indexes while the single-entry bound releases a superseded Program as soon as the next snapshot is planned. Each indexed Check owns its cache instead of sharing module-global mutable state.
 
 One-shot solution workspaces are analyzed through `WorkspaceConfigs`. Project configs are deduplicated by resolved config path, and each `ts.Program` is constructed, analyzed, and released before the next config is loaded. The loaded-workspace interface remains for focused library and test callers. Watch batches cache one latest `ProgramContext` per project rather than materialized `AstNodeElement` chunks.
 
 AST traversal uses an explicit persistent stack. It preserves TypeScript's depth-first pre-order without depending on the JavaScript call stack. The report path no longer materializes per-node wrappers.
 
-Shared source-file indexes use weak identity caches. Comment Checks share one scanner-based lexical comment pass and one structured-JSDoc index per immutable `ts.SourceFile`.
+Shared source-file indexes use latest-entry caches backed by Effect `Ref` values. File-major fused dispatch makes one entry sufficient: comment Checks consume the same immutable `ts.SourceFile` contiguously, then the next file replaces it.
 
 The benchmark enforces a 100 ms mean report budget for its repeatable single-program fixture. Multi-project targets use one bounded sequential pass instead of eagerly loading or repeatedly rebuilding every Program.
 
@@ -65,7 +65,7 @@ This decision supersedes ADR-0006's independent Check stream-transformer represe
 ## Consequences
 
 - Check authors continue to use `nodeCheck`, `fileCheck`, `combineAll`, and `withProgramIndex`; the planner representation is internal to those constructors.
-- Expensive indexes are built once per Program snapshot and naturally invalidated by a new Program identity.
+- Expensive indexes are built once per current Program snapshot; Ref-backed latest-entry caches bound retention to one Program per indexed Check and invalidate on new identity.
 - Solution-style one-shot analysis has bounded Program lifetime and no longer OOMs on the vendored Effect repository.
 - A 20,000-level synthetic AST regression protects stack-safe traversal.
 - The benchmark is now a failing performance gate rather than informational output.

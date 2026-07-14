@@ -1,11 +1,15 @@
 import * as path from "node:path"
-import { Tuple, Array, Function, pipe, Option } from "effect"
+import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import {
   namedDetectionTarget,
   outermostTransparentWrapper
 } from "./support/tsNode.js"
+import {
+  DataStructureModule,
+  FunctionDefinition
+} from "./preferDataLastModuleData.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { hasCallSignature } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
@@ -21,10 +25,6 @@ type CheckedFunction =
   | ts.FunctionExpression
   | ts.ArrowFunction
   | ts.MethodDeclaration
-
-type FunctionDefinition = readonly [name: string, reportNode: ts.Node]
-
-type DataStructureModule = readonly [name: string, expectedModulePath: string]
 
 const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -74,7 +74,7 @@ const dataStructureModule = (name: string) => {
 
   const expectedModulePath = path.posix.join("modules", moduleFileName)
 
-  return Tuple.make(name, expectedModulePath)
+  return new DataStructureModule({ name, expectedModulePath })
 }
 
 const sameExpression =
@@ -167,9 +167,9 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
       const declarationIsDataStructure = Array.some(conditions, Boolean)
 
-      const declarationIsExpectedModule = isExpectedModule(dataStructure[1])(
-        declarationSourceFile.fileName
-      )
+      const declarationIsExpectedModule = isExpectedModule(
+        dataStructure.expectedModulePath
+      )(declarationSourceFile.fileName)
 
       const dataStructureModuleConditions = Array.make(
         sourceFileIsProject,
@@ -227,7 +227,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   ): FunctionDefinition => {
     const name = declaration.name.getText(sourceFile)
 
-    return Tuple.make(name, declaration.name)
+    return new FunctionDefinition({ name, reportNode: declaration.name })
   }
 
   const fromInitializer = (
@@ -315,16 +315,16 @@ const dataLastModuleMatches = (context: CheckContext) => {
     (definition: FunctionDefinition) =>
     (dataStructure: DataStructureModule): Option.Option<Detection> => {
       const ruleMatch = match({
-        node: definition[1],
+        node: definition.reportNode,
         message:
-          `Avoid defining ${definition[0]} outside ${dataStructure[1]} when ` +
-          `its last parameter is ${dataStructure[0]}.`,
+          `Avoid defining ${definition.name} outside ${dataStructure.expectedModulePath} when ` +
+          `its last parameter is ${dataStructure.name}.`,
         hint:
-          `Move ${definition[0]} to ${dataStructure[1]} so data-last ` +
-          `functions for ${dataStructure[0]} live with the ${dataStructure[0]} data structure.`
+          `Move ${definition.name} to ${dataStructure.expectedModulePath} so data-last ` +
+          `functions for ${dataStructure.name} live with the ${dataStructure.name} data structure.`
       })
 
-      return isExpectedModule(dataStructure[1])(fileName)
+      return isExpectedModule(dataStructure.expectedModulePath)(fileName)
         ? Option.none()
         : Option.some(ruleMatch)
     }
@@ -350,7 +350,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       )
 
       const reportNode = namedDetectionTarget(node)
-      const definition: FunctionDefinition = Tuple.make(name, reportNode)
+      const definition = new FunctionDefinition({ name, reportNode })
 
       return pipe(
         Option.some(definition),

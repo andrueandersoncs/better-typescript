@@ -41,3 +41,14 @@ export const node: Nil | Cons = { _tag: "Cons", head: 1 }
 // 6. Type alias with object literal body, constructed
 export type Settings = { readonly verbose: boolean }
 export const settings: Settings = { verbose: true }
+
+// 7. Tuple type alias
+export type ExampleTuple = [string, number]
+export const exampleTuple: ExampleTuple = ["Ada", 36]
+
+// 8. Readonly named tuple type alias
+export type ReadonlyExampleTuple = readonly [
+  myString: string,
+  myNumber: number
+]
+export const readonlyExampleTuple: ReadonlyExampleTuple = ["Grace", 37]

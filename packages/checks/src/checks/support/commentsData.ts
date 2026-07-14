@@ -6,3 +6,8 @@ export class SourceComment extends Data.Class<{
   readonly pos: number
   readonly end: number
 }> {}
+
+export class LatestCacheEntry<Key, Value> extends Data.Class<{
+  readonly key: Key
+  readonly value: Value
+}> {}

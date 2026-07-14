@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Array, Schema } from "effect"
 
 export class ExampleSnippet extends Schema.Class<ExampleSnippet>(
   "ExampleSnippet"
@@ -16,15 +16,10 @@ export class RefactorExample extends Schema.Class<RefactorExample>(
   good: exampleSnippetArray
 }) {}
 
-export type NonEmptyExampleTree = readonly [
-  ExampleSnippet,
-  ...Array<ExampleSnippet>
-]
+export type NonEmptyExampleTree = Array.NonEmptyReadonlyArray<ExampleSnippet>
 
-export type NonEmptyRefactorExamples = readonly [
-  RefactorExample,
-  ...Array<RefactorExample>
-]
+export type NonEmptyRefactorExamples =
+  Array.NonEmptyReadonlyArray<RefactorExample>
 
 export class ExampleLoadError extends Schema.TaggedError<ExampleLoadError>(
   "ExampleLoadError"
