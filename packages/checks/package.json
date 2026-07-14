@@ -10,6 +10,7 @@
     "./preset": "./dist/preset.js",
     "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
     "./preset/architectureExploreWiring": "./dist/preset/architectureExploreWiring.js",
+    "./preset/functionalCoreEffectWiring": "./dist/preset/functionalCoreEffectWiring.js",
     "./fixtureExamples": "./dist/fixtureExamples.js",
     "./pipelineHostile": "./dist/checks/pipelineHostile/pipelineHostile.js",
     "./pipelineHostile/data": "./dist/checks/pipelineHostile/data.js",
@@ -21,6 +22,9 @@
     "./preferCurriedDataLastFunctions/data": "./dist/checks/preferCurriedDataLastFunctions/data.js",
     "./imperativeStateManager": "./dist/checks/imperativeStateManager/imperativeStateManager.js",
     "./imperativeStateManager/data": "./dist/checks/imperativeStateManager/data.js",
+    "./functionalCoreEffect": "./dist/checks/functionalCoreEffect/functionalCoreEffect.js",
+    "./functionalCoreEffect/data": "./dist/checks/functionalCoreEffect/data.js",
+    "./functionalCoreEffect/policy": "./dist/checks/functionalCoreEffect/policy.js",
     "./*": "./dist/checks/*.js",
     "./package.json": "./package.json"
   },

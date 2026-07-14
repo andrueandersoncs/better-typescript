@@ -137,6 +137,12 @@ must not bypass it through package `src/` or `internal/` paths.
 - `@better-typescript/checks/preset`: default `report` / `watchReport` runners
 - `@better-typescript/checks/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
   `defaultWiring`
+- `@better-typescript/checks/preset/functionalCoreEffectWiring`: opt-in
+  functional-core boundary checks, derived architecture advice, and policy-aware
+  wiring factories
+- `@better-typescript/checks/functionalCoreEffect/policy`: conventional and
+  explicit architecture-role classifiers plus capability/resource policy
+  configuration
 - `@better-typescript/checks/<name>`: individual check modules
 
 ### Config resolution
@@ -297,6 +303,70 @@ export default makeWiring({
 Checks see the program only: their input stream contains AST-node elements with
 source file, program, and type-checker context. Checks should not read signals,
 depend on derived advice, or create check-to-check dependencies.
+
+### Opting into functional-core Effect architecture
+
+The functional-core preset is intentionally separate from `defaultWiring`
+because its rules encode project architecture, not universal TypeScript style.
+It classifies files as `domain`, `port`, `application`, `adapter`, `root`, or
+`test`; unclassified files are ignored. The default classifier recognizes those
+directory names and common aliases such as `infrastructure`, `use-cases`, and
+`entrypoints`, plus `main.ts`, `bootstrap.ts`, `wiring.ts`, `*.test.ts`, and
+`*.spec.ts`.
+
+Compose the preset with existing wiring so its reported boundary check and
+silent shape evidence share the completed signal batch:
+
+```ts
+import { Stream, pipe } from "effect"
+import { makeWiring } from "@better-typescript/core/engine/report"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+
+export default makeWiring({
+  checks: [...defaultWiring.checks, ...functionalCoreEffectWiring.checks],
+  derive: (signals) =>
+    pipe(
+      defaultWiring.derive(signals),
+      Stream.concat(functionalCoreEffectWiring.derive(signals))
+    )
+})
+```
+
+The boundary check enforces inward dependency direction, a pure domain, direct
+capability access only in adapters/roots/tests, runtime execution and dependency
+provisioning only at roots/tests, port/live-layer separation, infrastructure-free
+port contracts, tag-based dependency access instead of context service
+location, suspended adapter effects, scoped closeable resources, and service-owned
+runtime state. Silent evidence derives file advice for overgrown Effect
+orchestrators, business policy in adapters, thick composition roots, imperative
+application cores, and unnecessary pure services.
+
+API and module ownership is resolved through TypeScript symbols, including import
+aliases, path mappings, first-party barrels, and re-exports. Locally shadowed
+ambient names are ignored.
+
+For layouts without the conventional directory names, use explicit
+project-relative prefixes. The longest matching prefix wins:
+
+```ts
+import {
+  ArchitectureRolePath,
+  policyWithRolePrefixes
+} from "@better-typescript/checks/functionalCoreEffect/policy"
+import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+
+const policy = policyWithRolePrefixes([
+  new ArchitectureRolePath({ path: "src/model", role: "domain" }),
+  new ArchitectureRolePath({ path: "src/contracts", role: "port" }),
+  new ArchitectureRolePath({ path: "src/workflows", role: "application" }),
+  new ArchitectureRolePath({ path: "src/integrations", role: "adapter" }),
+  new ArchitectureRolePath({ path: "src/bootstrap", role: "root" }),
+  new ArchitectureRolePath({ path: "tests", role: "test" })
+])
+
+export default makeFunctionalCoreEffectWiring(policy)
+```
 
 ### Extending or cherry-picking the preset
 
