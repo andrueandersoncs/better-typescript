@@ -5,8 +5,11 @@ import { TsProgram } from "../../engine/tsSchema.js"
 /**
  * A discovered leaf project: its config location and parsed command line, with
  * no ts.Program built yet. Watch mode consumes configs directly.
+ * @modelRole shared
  * @remarks Program construction is deferred because watch mode starts from
  * configs and builds programs through the TypeScript watcher instead.
+ * This model remains explicit because its consumers need the documented contract;
+ * removing it would reintroduce that contract at each use site.
  */
 export class ProjectConfig extends Data.Class<{
   readonly configPath: string
@@ -14,11 +17,29 @@ export class ProjectConfig extends Data.Class<{
   readonly parsed: ts.ParsedCommandLine
 }> {}
 
+/**
+ * WorkspaceConfigs is the shared rootPath, projects contract used by
+ * reportFromWorkspaceConfigs, discoverWorkspace, and reportBlocksFromWorkspaceConfigs.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export class WorkspaceConfigs extends Data.Class<{
   readonly rootPath: string
   readonly projects: ReadonlyArray<ProjectConfig>
 }> {}
 
+/**
+ * LoadedProject is the shared program, configPath, rootPath contract used by
+ * loadedProjectsSchema, astNodes, and loadProjectConfig.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
   {
     program: TsProgram,
@@ -29,6 +50,15 @@ export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
 
 const loadedProjectsSchema = Schema.Array(LoadedProject)
 
+/**
+ * LoadedWorkspace is the shared rootPath, projects contract used by reportFromWiring,
+ * loadProject, and reportEventsFromWiring.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>(
   "LoadedWorkspace"
 )({
@@ -36,6 +66,14 @@ export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>(
   projects: loadedProjectsSchema
 }) {}
 
+/**
+ * MissingTsconfigError names the compiler syntax protocol handled by discoverWorkspace.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 export class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>(
   "MissingTsconfigError"
 )("MissingTsconfigError", {
@@ -46,12 +84,29 @@ export class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigErro
   }
 }
 
+/**
+ * InvalidTsconfigError names the compiler syntax protocol handled by discoverConfig.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 export class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>(
   "InvalidTsconfigError"
 )("InvalidTsconfigError", {
   message: Schema.String
 }) {}
 
+/**
+ * CircularProjectReferenceError names the compiler syntax protocol handled by
+ * discoverConfig.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 export class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectReferenceError>(
   "CircularProjectReferenceError"
 )("CircularProjectReferenceError", {

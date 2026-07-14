@@ -32,11 +32,11 @@ const hintFor = (
   dataStructureName: string,
   modulePath: string
 ): string =>
-  `Move ${functionName} to ${modulePath} so data-last functions for ${dataStructureName} ` +
-  `live with the ${dataStructureName} data structure.`
+  `Move ${functionName} under ${modulePath} so data-last functions for ${dataStructureName} ` +
+  `stay in the model's concept directory, beside rather than inside its dedicated data file.`
 
-const userModulePath = "modules/user.ts"
-const organizationModulePath = "modules/organization.ts"
+const userModulePath = "src/modules"
+const organizationModulePath = "src/modules"
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
@@ -89,43 +89,43 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "parseAge",
     fileName: "src/cases.ts",
-    line: 35,
+    line: 39,
     column: 7
   },
   {
     name: "countUsers",
     fileName: "src/cases.ts",
-    line: 37,
+    line: 41,
     column: 7
   },
   {
     name: "inspectOption",
     fileName: "src/cases.ts",
-    line: 39,
+    line: 43,
     column: 7
   },
   {
     name: "normalizeUserName",
     fileName: "src/cases.ts",
-    line: 41,
+    line: 46,
     column: 7
   },
   {
     name: "registerHandler",
     fileName: "src/cases.ts",
-    line: 43,
+    line: 48,
     column: 7
   },
   {
     name: "module.updateUser",
-    fileName: "src/modules/user.ts",
-    line: 6,
+    fileName: "src/modules/userOperations.ts",
+    line: 3,
     column: 14
   },
   {
     name: "module.renameUser",
-    fileName: "src/modules/user.ts",
-    line: 11,
+    fileName: "src/modules/userOperations.ts",
+    line: 8,
     column: 14
   }
 ]

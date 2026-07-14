@@ -1,17 +1,18 @@
-import {
-  Array,
-  Data,
-  HashSet,
-  MutableHashMap,
-  MutableList,
-  Schema,
-  Stream
-} from "effect"
+import { Array, Data, HashSet, Schema, Stream } from "effect"
 import type { Check } from "../check/data.js"
 import type { Advice } from "../derive/data.js"
 import type { RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 
+/**
+ * NamedCheck binds a stable check name and reporting policy to its executable
+ * check and remediation examples.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because preset wiring, check execution, and
+ * advice derivation must use the same check identity. Removing it would
+ * duplicate that contract across those consumers and risk mismatched names.
+ */
 export class NamedCheck extends Data.Class<{
   readonly name: string
   readonly check: Check
@@ -19,6 +20,14 @@ export class NamedCheck extends Data.Class<{
   readonly examples: ReadonlyArray<RefactorExample>
 }> {}
 
+/**
+ * Signal is the materialized result of one named check for one wiring scope.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because rendering and aggregate advice consume
+ * the same detections, reporting policy, and examples. Removing it would split
+ * those correlated values into parallel collections at every consumer.
+ */
 export class Signal extends Data.Class<{
   readonly name: string
   readonly reported: boolean
@@ -26,11 +35,14 @@ export class Signal extends Data.Class<{
   readonly examples: ReadonlyArray<RefactorExample>
 }> {}
 
-export class MutableDedupeState extends Data.Class<{
-  readonly seen: MutableHashMap.MutableHashMap<string, ReadonlyArray<Detection>>
-  readonly elements: MutableList.MutableList<Detection>
-}> {}
-
+/**
+ * Wiring defines the complete check set and advice derivation for one scope.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because configuration loading and report
+ * execution exchange checks with their matching derivation function. Removing
+ * it would let those two halves be configured independently and drift.
+ */
 export class Wiring extends Data.Class<{
   readonly checks: ReadonlyArray<NamedCheck>
   readonly derive: (
@@ -38,24 +50,49 @@ export class Wiring extends Data.Class<{
   ) => Stream.Stream<Advice, Error>
 }> {}
 
-export type NonEmptyFileGlobs = Array.NonEmptyReadonlyArray<string>
-
+/**
+ * WiringEntry associates one validated file scope with the wiring it activates.
+ *
+ * @modelRole boundary
+ * @remarks It remains explicit because configuration authors and the report
+ * engine need one stable scope-to-wiring contract. Removing it would recreate
+ * that pairing as positional arrays or anonymous objects at the boundary.
+ */
 export class WiringEntry extends Data.Class<{
-  readonly files: NonEmptyFileGlobs
+  readonly files: Array.NonEmptyReadonlyArray<string>
   readonly wiring: Wiring
 }> {}
 
+/**
+ * WiringConfig is the ordered configuration boundary consumed by reporting.
+ *
+ * @modelRole boundary
+ * @remarks It remains explicit because configuration loading, validation, and
+ * execution must preserve entry order. Removing it would repeat the collection
+ * contract at each interface and obscure that ordering requirement.
+ */
 export type WiringConfig = ReadonlyArray<WiringEntry>
 
+/**
+ * WiringSignals records whether one wiring matched and the signals it produced.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because collection and report derivation must
+ * distinguish an unmatched wiring from a matched wiring with no detections.
+ * Removing it would collapse those states or require parallel result arrays.
+ */
 export class WiringSignals extends Data.Class<{
   readonly matched: boolean
   readonly signals: ReadonlyArray<Signal>
 }> {}
 
 /**
- * Public stable identity for an advice report block.
- * @remarks Public because NDJSON and delta consumers key advice blocks by
- * this stable identity.
+ * AdviceReportKey is the stable wire identity for one aggregate advice block.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because NDJSON and delta consumers key advice
+ * blocks by the same tagged fields. Removing it would duplicate wire identity
+ * construction and parsing at every producer and consumer.
  */
 export class AdviceReportKey extends Schema.TaggedClass<AdviceReportKey>()(
   "advice",
@@ -67,10 +104,12 @@ export class AdviceReportKey extends Schema.TaggedClass<AdviceReportKey>()(
 ) {}
 
 /**
- * Public stable identity for a local detection report block. The `_tag: "rule"`
- * wire key is retained for report compatibility while checks are the engine model.
- * @remarks The wire tag stays `rule` because report consumers already depend
- * on that key while checks remain the engine model.
+ * RuleReportKey is the stable wire identity for one local detection block.
+ *
+ * @modelRole protocol
+ * @remarks The wire tag remains `rule` because existing report consumers depend
+ * on it while checks remain the engine model. Removing the named protocol would
+ * duplicate its compatibility contract at every event schema and renderer.
  */
 export class RuleReportKey extends Schema.TaggedClass<RuleReportKey>()("rule", {
   name: Schema.String,
@@ -78,16 +117,34 @@ export class RuleReportKey extends Schema.TaggedClass<RuleReportKey>()("rule", {
   hint: Schema.String
 }) {}
 
+/**
+ * ReportKey is the tagged identity protocol shared by all report block kinds.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because block construction, event schemas, and
+ * renderers must exhaust the same key variants. Removing it would repeat the
+ * union and allow consumers to accept different report identities.
+ */
 export type ReportKey = AdviceReportKey | RuleReportKey
 
+/**
+ * reportKeySchema is the runtime codec for the ReportKey wire boundary.
+ *
+ * @modelRole boundary
+ * @remarks It remains explicit because report blocks and watch events must
+ * validate the same tagged union. Removing it would duplicate schema assembly
+ * and let runtime validation drift from the TypeScript contract.
+ */
 export const reportKeySchema = Schema.Union(AdviceReportKey, RuleReportKey)
 
 /**
- * A rendered report block with a stable identity across batches: identity is
- * private delta state, key is the public NDJSON identity, text is what the
- * report prints, cleared is the one line printed when the block disappears.
- * @remarks Identity, key, text, and cleared are separated because deltas and
- * NDJSON consumers need different projections of the same block.
+ * ReportBlock carries one rendered block and both identities needed for stable
+ * delta updates and NDJSON output.
+ *
+ * @modelRole boundary
+ * @remarks It remains explicit because delta comparison, rendering, and wire
+ * events need different projections of the same block. Removing it would split
+ * those correlated values and duplicate projection logic across the pipeline.
  */
 export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
   identity: Schema.String,
@@ -98,6 +155,14 @@ export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
 
 const duplicateNameArray = Schema.Array(Schema.String)
 
+/**
+ * DuplicateCheckNamesError is the failure protocol for ambiguous check identity.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because wiring validation and CLI error handling
+ * need the same structured collision names. Removing it would reduce the error
+ * to prose and force consumers to parse an unstable message.
+ */
 export class DuplicateCheckNamesError extends Schema.TaggedError<DuplicateCheckNamesError>(
   "DuplicateCheckNamesError"
 )("DuplicateCheckNamesError", {
@@ -110,6 +175,14 @@ export class DuplicateCheckNamesError extends Schema.TaggedError<DuplicateCheckN
 
 const invalidWiringIndexArray = Schema.Array(Schema.Number)
 
+/**
+ * InvalidWiringFilesError is the failure protocol for invalid wiring file scopes.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because configuration validation and CLI error
+ * handling need the exact invalid entry indexes. Removing it would hide that
+ * structured evidence in prose and duplicate error parsing at the boundary.
+ */
 export class InvalidWiringFilesError extends Schema.TaggedError<InvalidWiringFilesError>(
   "InvalidWiringFilesError"
 )("InvalidWiringFilesError", {
@@ -122,6 +195,14 @@ export class InvalidWiringFilesError extends Schema.TaggedError<InvalidWiringFil
   }
 }
 
+/**
+ * DuplicateNameState is the accumulated identity state for wiring validation.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because the empty-state constructor, incremental
+ * reducer, and final validator must preserve first-seen order and collisions.
+ * Removing it would spread three synchronized collections across those owners.
+ */
 export class DuplicateNameState extends Data.Class<{
   readonly seen: HashSet.HashSet<string>
   readonly collisions: HashSet.HashSet<string>

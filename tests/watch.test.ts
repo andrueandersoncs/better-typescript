@@ -26,7 +26,6 @@ import {
 } from "@better-typescript/core/engine/report/data"
 import type {
   NamedCheck,
-  NonEmptyFileGlobs,
   ReportKey,
   Wiring,
   WiringConfig
@@ -127,7 +126,7 @@ const probeWiring: Wiring = {
 
 const configFor = (
   wiring: Wiring,
-  files: NonEmptyFileGlobs = ["src/cases.ts"]
+  files: WiringConfig[number]["files"] = ["src/cases.ts"]
 ): WiringConfig => defineConfig([{ files, wiring }])
 
 const probeConfig = configFor(probeWiring)

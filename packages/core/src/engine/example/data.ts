@@ -1,5 +1,14 @@
 import { Array, Schema } from "effect"
 
+/**
+ * ExampleSnippet is the shared filePath, code contract used by exampleSnippetArray,
+ * refactorExample, and NonEmptyExampleTree.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export class ExampleSnippet extends Schema.Class<ExampleSnippet>(
   "ExampleSnippet"
 )({
@@ -9,6 +18,15 @@ export class ExampleSnippet extends Schema.Class<ExampleSnippet>(
 
 const exampleSnippetArray = Schema.NonEmptyArray(ExampleSnippet)
 
+/**
+ * RefactorExample is the shared bad, good contract used by Signal, refactorExample, and
+ * loadRefactorExamplesAt.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export class RefactorExample extends Schema.Class<RefactorExample>(
   "RefactorExample"
 )({
@@ -16,11 +34,38 @@ export class RefactorExample extends Schema.Class<RefactorExample>(
   good: exampleSnippetArray
 }) {}
 
+/**
+ * NonEmptyExampleTree is the shared 0, length contract used by readExampleTree and
+ * refactorExampleTrees.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export type NonEmptyExampleTree = Array.NonEmptyReadonlyArray<ExampleSnippet>
 
+/**
+ * NonEmptyRefactorExamples is the shared 0, length contract used by
+ * loadRefactorExamplesAt and namedCheck.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export type NonEmptyRefactorExamples =
   Array.NonEmptyReadonlyArray<RefactorExample>
 
+/**
+ * ExampleLoadError is the shared message, name, stack, cause contract used by
+ * collectTypeScriptFiles, loadRefactorExamplesAt, and readExampleTree.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export class ExampleLoadError extends Schema.TaggedError<ExampleLoadError>(
   "ExampleLoadError"
 )("ExampleLoadError", {

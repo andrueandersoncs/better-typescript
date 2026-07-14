@@ -8,6 +8,15 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * FunctionKeywordNode is the shared modifiers, name, body, asteriskToken contract used
+ * by functionKeywordMatches and isFunctionKeywordNode.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>

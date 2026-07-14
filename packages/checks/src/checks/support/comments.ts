@@ -108,7 +108,6 @@ export const sourceComments: (
 ) => ReadonlyArray<SourceComment> = memoizeLatest(scanSourceComments)
 
 const emptyString = Function.constant("")
-type PresentJsDocComment = NonNullable<ts.JSDoc["comment"]>
 
 const commentFragmentsText: (comment: ts.NodeArray<ts.JSDocComment>) => string =
   flow(
@@ -119,8 +118,10 @@ const commentFragmentsText: (comment: ts.NodeArray<ts.JSDocComment>) => string =
 
 const stringDescription = (comment: string): string => comment
 
-const commentDescription: (comment: PresentJsDocComment) => string = pipe(
-  Match.type<PresentJsDocComment>(),
+const commentDescription: (
+  comment: NonNullable<ts.JSDoc["comment"]>
+) => string = pipe(
+  Match.type<NonNullable<ts.JSDoc["comment"]>>(),
   Match.withReturnType<string>(),
   Match.when(Match.string, stringDescription),
   Match.orElse(commentFragmentsText)

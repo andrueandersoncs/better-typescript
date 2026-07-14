@@ -28,22 +28,58 @@ import { hasExportModifier } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
 import { isTestSourceFile, resolvedSymbolAt } from "./programSymbols.js"
 
+/**
+ * SeamCandidate binds an exported behavioural interface declaration to its
+ * canonical compiler symbol.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because candidate discovery and adapter counting
+ * must preserve both syntax location and symbol identity. Removing it would
+ * repeat alias resolution or split those correlated values.
+ */
 class SeamCandidate extends Data.Class<{
   readonly declaration: ts.InterfaceDeclaration
   readonly symbol: ts.Symbol
 }> {}
 
+/**
+ * AdapterCount is the shared production-versus-test implementation tally for
+ * one injected interface symbol.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because accumulation and seam classification
+ * must update and compare both populations together. Removing it would use
+ * parallel maps whose entries could diverge.
+ */
 class AdapterCount extends Data.Class<{
   readonly production: number
   readonly test: number
 }> {}
 
+/**
+ * SingleAdapterIndex is the shared candidate, injection, and implementation
+ * evidence consumed by per-file seam reporting.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because project indexing and file subscriptions
+ * must exchange one internally consistent snapshot. Removing it would pass
+ * three synchronized collections and risk mixing index generations.
+ */
 class SingleAdapterIndex extends Data.Class<{
   readonly candidates: ReadonlyArray<SeamCandidate>
   readonly injected: HashSet.HashSet<ts.Symbol>
   readonly adapterCounts: HashMap.HashMap<ts.Symbol, AdapterCount>
 }> {}
 
+/**
+ * AdapterState is the accumulated injection and implementation evidence while
+ * traversing project syntax.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because the fold initializer and reducer must
+ * evolve the symbol set and count map as one state transition. Removing it
+ * would synchronize two mutable-looking accumulator parameters manually.
+ */
 class AdapterState extends Data.Class<{
   readonly injected: HashSet.HashSet<ts.Symbol>
   readonly adapterCounts: HashMap.HashMap<ts.Symbol, AdapterCount>
@@ -131,6 +167,15 @@ const exportedVariableStatement = (
     Option.filter(hasExportModifier)
   )
 
+/**
+ * ClassDependencyOwner is the compiler-node protocol that may own an injected
+ * constructor or method parameter.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because the type guard and export classifier
+ * must accept the same class-member syntax. Removing it would repeat the union
+ * and let their supported node kinds drift.
+ */
 type ClassDependencyOwner = ts.ConstructorDeclaration | ts.MethodDeclaration
 
 const classDependencyOwnerKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
@@ -141,6 +186,15 @@ const classDependencyOwnerKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const isClassDependencyOwner = (node: ts.Node): node is ClassDependencyOwner =>
   Array.contains(classDependencyOwnerKinds, node.kind)
 
+/**
+ * VariableDependencyOwner is the compiler-node protocol for exported variable
+ * functions that may own injected parameters.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because the type guard and variable-statement
+ * resolver must accept the same expression forms. Removing it would duplicate
+ * the union and allow their supported syntax to diverge.
+ */
 type VariableDependencyOwner = ts.ArrowFunction | ts.FunctionExpression
 
 const variableDependencyOwnerKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(

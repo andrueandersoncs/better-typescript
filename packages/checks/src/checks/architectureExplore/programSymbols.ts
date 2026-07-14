@@ -19,6 +19,15 @@ import {
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
+/**
+ * ExportedFunctionEntry binds one canonical symbol to the syntax nodes needed
+ * by architecture checks that inspect its declaration and implementation.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because reference indexing, forwarding analysis,
+ * and test-only export analysis need the same symbol identity and node views.
+ * Removing it would duplicate alias resolution and declaration correlation.
+ */
 export class ExportedFunctionEntry extends Data.Class<{
   readonly symbol: ts.Symbol
   readonly nameNode: ts.Identifier
@@ -27,6 +36,15 @@ export class ExportedFunctionEntry extends Data.Class<{
     ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 }> {}
 
+/**
+ * ExportUsage is the shared production-versus-test reference summary for one
+ * exported function symbol.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because deletion tests and forwarding checks
+ * distinguish calls, paths, and non-call references using one classification.
+ * Removing it would duplicate that reference partition in each consumer.
+ */
 export class ExportUsage extends Data.Class<{
   readonly productionCallCount: number
   readonly testCallCount: number
@@ -35,11 +53,28 @@ export class ExportUsage extends Data.Class<{
   readonly hasProductionNonCallReference: boolean
 }> {}
 
+/**
+ * ExportReferenceIndex joins exported function entries to usage summaries by
+ * canonical symbol.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because pass-through, deletion, and test-only
+ * checks need one consistent symbol inventory and usage map. Removing it would
+ * rebuild the same program index independently in every check.
+ */
 export class ExportReferenceIndex extends Data.Class<{
   readonly entries: ReadonlyArray<ExportedFunctionEntry>
   readonly usages: HashMap.HashMap<ts.Symbol, ExportUsage>
 }> {}
 
+/**
+ * ModuleEdge is the shared normalized import relation between two project files.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because graph evidence, seam leakage, and
+ * pass-through analysis all need importer, imported target, and test context.
+ * Removing it would duplicate path resolution and test classification.
+ */
 export class ModuleEdge extends Data.Class<{
   readonly importerPath: string
   readonly importedPath: string

@@ -12,6 +12,7 @@
     "./preset/architectureExploreWiring": "./dist/preset/architectureExploreWiring.js",
     "./fixtureExamples": "./dist/fixtureExamples.js",
     "./pipelineHostile": "./dist/checks/pipelineHostile/pipelineHostile.js",
+    "./conceptControl": "./dist/checks/conceptControl/conceptControl.js",
     "./pipelineHostile/data": "./dist/checks/pipelineHostile/data.js",
     "./hotSubsystem": "./dist/checks/hotSubsystem/hotSubsystem.js",
     "./hotSubsystem/data": "./dist/checks/hotSubsystem/data.js",

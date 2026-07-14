@@ -1,7 +1,26 @@
 import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
+/**
+ * FunctionInitializer is the shared modifiers, body, name, asteriskToken contract used
+ * by functionInitializer, isFunctionInitializer, and hasParameters.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
+/**
+ * ReturnTypeDeclaration is the shared name, typeParameters, parameters, type contract
+ * used by RawObjectTarget, isReturnTypeDeclaration, and
+ * isUndefinedReturnTypeDeclaration.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export type ReturnTypeDeclaration =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -75,6 +94,15 @@ export const transparentWrapperKinds = HashSet.make(
   ts.SyntaxKind.AsExpression
 )
 
+/**
+ * TransparentWrapper names the compiler syntax protocol handled by
+ * unwrapTransparentExpression.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type TransparentWrapper =
   ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 

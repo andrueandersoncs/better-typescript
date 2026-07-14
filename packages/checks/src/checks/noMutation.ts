@@ -33,6 +33,15 @@ const hint =
   "structure whose API contract requires assignment (process.exitCode, a WebSocket " +
   "handler slot, a React ref cell) is permitted."
 
+/**
+ * MutationNode is the shared MutationNode values contract used by isMutationCandidate
+ * and mutationMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type MutationNode =
   | ts.BinaryExpression
   | ts.PrefixUnaryExpression
@@ -169,6 +178,15 @@ const isUncontrolledTypeWithSeen =
       })
     )
 
+/**
+ * MutationScope is the shared length contract used by mutationMatches and
+ * fallbackLocalScope.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type MutationScope = "shared-state" | "local" | "builtin"
 
 const executionBoundaryKinds = HashSet.make(

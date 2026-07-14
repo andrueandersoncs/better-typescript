@@ -33,6 +33,15 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * ConstructionIndex is the shared ConstructionIndex values contract used by
+ * objectTypeDeclarationMatches, schemaClassListeners, and buildConstructionIndex.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
@@ -46,6 +55,15 @@ const namedPropertyText = (
 ): Option.Option<string> =>
   pipe(Option.fromNullable(property.name), Option.flatMap(propertyNameText))
 
+/**
+ * ObjectTypeDeclaration names the compiler syntax protocol handled by
+ * objectTypeDeclarationMatches.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type ObjectTypeDeclaration = ts.InterfaceDeclaration | ts.TypeAliasDeclaration
 
 const isProjectObjectTypeDeclaration = (

@@ -19,7 +19,6 @@ import { locateNode } from "@better-typescript/core/engine/location"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type {
   NamedCheck,
-  NonEmptyFileGlobs,
   Wiring,
   WiringConfig
 } from "@better-typescript/core/engine/report/data"
@@ -220,7 +219,7 @@ const testWiring = (
 
 const configFor = (
   wiring: Wiring,
-  files: NonEmptyFileGlobs = ["**/*"]
+  files: WiringConfig[number]["files"] = ["**/*"]
 ): WiringConfig => defineConfig([{ files, wiring }])
 
 const reportFromTestWiring = (wiring: Wiring) =>

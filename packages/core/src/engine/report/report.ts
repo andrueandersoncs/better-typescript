@@ -46,7 +46,6 @@ import {
   DuplicateCheckNamesError,
   DuplicateNameState,
   InvalidWiringFilesError,
-  MutableDedupeState,
   NamedCheck,
   ReportBlock,
   RuleReportKey,
@@ -102,18 +101,20 @@ const collectWorkspaceSignals = <A>(
     Array.map(entry.files, (pattern) => compileFileGlob(pattern, globOptions))
   )
 
-  const emptyState = (): MutableDedupeState => {
-    const seen = MutableHashMap.empty<string, ReadonlyArray<Detection>>()
-    const elements = MutableList.empty<Detection>()
-
-    return new MutableDedupeState({ seen, elements })
-  }
-
-  const statesByWiring = Array.map(config, (entry) =>
-    Array.makeBy(entry.wiring.checks.length, emptyState)
+  const seenByWiring = Array.map(config, (entry) =>
+    Array.makeBy(entry.wiring.checks.length, () =>
+      MutableHashMap.empty<string, ReadonlyArray<Detection>>()
+    )
   )
 
-  const states = Array.flatten(statesByWiring)
+  const elementsByWiring = Array.map(config, (entry) =>
+    Array.makeBy(entry.wiring.checks.length, () =>
+      MutableList.empty<Detection>()
+    )
+  )
+
+  const seenByCheck = Array.flatten(seenByWiring)
+  const elementsByCheck = Array.flatten(elementsByWiring)
 
   const checks = Array.flatMap(config, (entry) =>
     Array.map(entry.wiring.checks, Struct.get("check"))
@@ -125,10 +126,7 @@ const collectWorkspaceSignals = <A>(
 
   const matchedWiringIndexes = MutableHashSet.empty<number>()
 
-  const collectProject = (
-    current: ReadonlyArray<MutableDedupeState>,
-    project: A
-  ): Effect.Effect<ReadonlyArray<MutableDedupeState>> =>
+  const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
       const context = toContext(project)
 
@@ -201,7 +199,8 @@ const collectWorkspaceSignals = <A>(
             return
           }
 
-          const state = current[checkIndex]
+          const seen = seenByCheck[checkIndex]
+          const elements = elementsByCheck[checkIndex]
           const location = element.location
 
           const dedupeKeyParts = Array.make(
@@ -213,7 +212,7 @@ const collectWorkspaceSignals = <A>(
           )
 
           const key = JSON.stringify(dedupeKeyParts)
-          const maybeBucket = MutableHashMap.get(state.seen, key)
+          const maybeBucket = MutableHashMap.get(seen, key)
           const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
 
           const alreadySeen = Array.some(bucket, (candidate) =>
@@ -226,21 +225,19 @@ const collectWorkspaceSignals = <A>(
 
           const expandedBucket = Array.append(bucket, element)
 
-          MutableHashMap.set(state.seen, key, expandedBucket)
-          MutableList.append(state.elements, element)
+          MutableHashMap.set(seen, key, expandedBucket)
+          MutableList.append(elements, element)
         })
       })
-
-      return current
     })
 
   return pipe(
-    Effect.reduce(projects, states, collectProject),
+    Effect.forEach(projects, collectProject, { discard: true }),
     Effect.map(() =>
       Array.map(config, (entry, wiringIndex) => {
         const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
-          const state = statesByWiring[wiringIndex][checkIndex]
-          const detections = Array.fromIterable(state.elements)
+          const elements = elementsByWiring[wiringIndex][checkIndex]
+          const detections = Array.fromIterable(elements)
 
           return new Signal({
             name: check.name,

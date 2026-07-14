@@ -17,6 +17,15 @@ import type { ConfigExportName } from "./data.js"
 const defaultExportName = "default"
 const configExportName = "config"
 
+/**
+ * ModuleRecord is the shared ModuleRecord values contract used by hasNamedCheckFields,
+ * isRecord, and validateWiringShape.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type ModuleRecord = Readonly<Record<string, unknown>>
 type ConfigFactory = () => unknown
 

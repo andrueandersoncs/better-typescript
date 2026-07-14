@@ -83,6 +83,15 @@ const isContextualOnlyUse = (use: SymbolUse): boolean => {
   return Array.every(referenceConditions, Boolean)
 }
 
+/**
+ * CurriedDataLastCandidate is the shared modifiers, body, name, asteriskToken contract
+ * used by hasDisallowedParameterList, hasCurriedArrowBody, and runtimeParameters.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type CurriedDataLastCandidate =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -206,6 +215,15 @@ const symbolAtLocation =
       })
     )
 
+/**
+ * NamedFunctionDeclaration names the compiler syntax protocol handled by
+ * namedFunctionDeclarationName.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
 
 const namedFunctionDeclarationName = (
@@ -248,6 +266,14 @@ const foldCurriedDataLastDescendants = <A>(
 ) =>
   foldAst((current: A, currentNode: ts.Node): A => visit(currentNode)(current))
 
+/**
+ * NameDeclaration names the compiler syntax protocol handled by declarationHasName.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type NameDeclaration =
   ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 

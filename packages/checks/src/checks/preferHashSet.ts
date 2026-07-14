@@ -36,6 +36,15 @@ const typeRefHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
+/**
+ * SetRuleNode is the shared typeArguments contract used by setMatches and
+ * isSetRuleNode.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type SetRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
 const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>

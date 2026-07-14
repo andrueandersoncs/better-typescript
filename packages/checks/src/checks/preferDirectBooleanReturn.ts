@@ -44,6 +44,15 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
     Option.exists(isFalseKeyword)
   )
 
+/**
+ * BooleanReturnTarget is the shared BooleanReturnTarget values contract used by
+ * booleanReturnMatches and isBooleanReturnTarget.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {
