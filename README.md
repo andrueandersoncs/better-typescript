@@ -100,6 +100,24 @@ better-typescript
 By default, the CLI analyzes the current working directory once and exits after
 printing the initial report.
 
+### Link this checkout into another project
+
+Register the repository's `better-typescript` binary from this checkout, then
+link it into the consuming project:
+
+```sh
+# In this repository
+npm link
+
+# In the consuming project
+npm link better-typescript
+better-typescript --pretty
+```
+
+The first `npm link` runs the repository's `prepare` script and builds the CLI.
+Run `npm run build` after later source changes so the linked binary uses fresh
+`dist` output. Remove the consumer link with `npm unlink better-typescript`.
+
 ### Options
 
 - `--project <directory>`: analyze a specific project directory instead of the

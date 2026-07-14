@@ -1,5 +1,9 @@
 import * as assert from "node:assert/strict"
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
+import {
+  execFileSync,
+  spawn,
+  type ChildProcessWithoutNullStreams
+} from "node:child_process"
 import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -319,6 +323,65 @@ test("--pretty one-shot renders the empty report text and exits", async () => {
     assert.equal(result.signal, null)
     assertAnalyzingStatus(result.stderr, tempDir)
     assert.equal(result.stdout, `No signals in ${tempDir}.\n\n`)
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
+test("root package npm link exposes the CLI binary", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cli-link-"))
+  const consumerDir = path.join(tempDir, "consumer")
+  const npmPrefix = path.join(tempDir, "npm-prefix")
+  const npmCache = path.join(tempDir, "npm-cache")
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm"
+  const linkedCliCommand =
+    process.platform === "win32" ? "better-typescript.cmd" : "better-typescript"
+
+  await Promise.all([fs.mkdir(consumerDir), fs.mkdir(npmPrefix)])
+  await fs.writeFile(
+    path.join(consumerDir, "package.json"),
+    JSON.stringify({ name: "linked-consumer", private: true })
+  )
+
+  const npmEnv = {
+    ...process.env,
+    npm_config_audit: "false",
+    npm_config_cache: npmCache,
+    npm_config_fund: "false",
+    npm_config_prefix: npmPrefix
+  }
+
+  try {
+    execFileSync(npmCommand, ["link", "--ignore-scripts"], {
+      cwd: repoRoot,
+      env: npmEnv,
+      stdio: "pipe",
+      timeout: commandTimeoutMs
+    })
+    execFileSync(
+      npmCommand,
+      ["link", "better-typescript", "--ignore-scripts"],
+      {
+        cwd: consumerDir,
+        env: npmEnv,
+        stdio: "pipe",
+        timeout: commandTimeoutMs
+      }
+    )
+
+    const stdout = execFileSync(
+      path.join(consumerDir, "node_modules", ".bin", linkedCliCommand),
+      ["--help"],
+      {
+        cwd: consumerDir,
+        encoding: "utf8",
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: commandTimeoutMs
+      }
+    )
+
+    assert.match(stdout, /Better TypeScript 0\.0\.0/)
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }
