@@ -14,10 +14,12 @@ the code toward the shape this project enforces.
 
 The architecture is intentionally plain:
 
-- A check is any function that consumes the loaded AST-node stream and produces
-  an Effect `Stream` of `Detection` values.
-- The runner materializes each named check into one completed `Signal` for an
-  analysis batch: `{ name, reported, detections }`.
+- A check is a declarative subscription plan from a loaded `Program` to file
+  handlers and `SyntaxKind`-indexed node handlers. Handlers synchronously produce
+  `Detection` values.
+- The runner compiles every active plan into one fused AST traversal, then
+  materializes each named check into a completed `Signal`:
+  `{ name, reported, detections }`.
 - `reported` controls visibility only. Reported checks render local detection
   blocks; silent checks still run, still affect watch equivalence, and still feed
   derivation, but render no local block.
@@ -26,14 +28,14 @@ The architecture is intentionally plain:
 - The CLI renders derived `Advice` and reported local detections into the event
   stream.
 
-There are no suppressions, severities, or result-based exit gate. Per-check
-path scopes only limit where a check executes. If a signal appears, fix the cause
-in the code.
+There are no suppressions, severities, or result-based exit gate. The `files`
+globs on each config entry limit which source files its complete `Wiring`
+analyzes. If a signal appears, fix the cause in the code.
 
 ## What the CLI does
 
 1. Discovers the TypeScript project from its `tsconfig.json`.
-2. Loads the project's `Wiring` from `better-typescript.config.ts` or the
+2. Loads the project's `WiringConfig` from `better-typescript.config.ts` or the
    built-in preset.
 3. By default, analyzes the current snapshot once, emits the initial report, and
    exits `0`.
@@ -125,16 +127,26 @@ must not bypass it through package `src/` or `internal/` paths.
   `fileSubscriptions`, `withProgramIndex`
 - `@better-typescript/core/engine/check/data`: `Check`, `CheckContext`,
   `Subscription`
-- `@better-typescript/core/engine/location`: `Detection`, `Location`, `detection`,
-  `locateNode`
-- `@better-typescript/core/engine/derive`: `Advice`, `deriveSignals`,
-  `adviceLocation`, `evidenceItem`, and related derivation helpers
+- `@better-typescript/core/engine/location`: `detection`, `locateNode`,
+  `toRelativeFileName`
+- `@better-typescript/core/engine/location/data`: `Detection`,
+  `DetectionSource`, `Location`
+- `@better-typescript/core/engine/derive`: `deriveSignals`, `adviceLocation`,
+  `evidenceItem`, and related derivation helpers
+- `@better-typescript/core/engine/derive/data`: `Advice`, `EvidenceItem`,
+  `NamedDetection`, `FileDetections`, `CountSummary`
+- `@better-typescript/core/engine/example`: `exampleSnippet`,
+  `refactorExample`, `refactorExampleTrees`, `loadRefactorExamplesAt`
 - `@better-typescript/core/engine/report`: `namedCheck`, `silentCheck`,
   `signalOf`, `makeWiring`, `defineConfig`, `withFallbackAdvice`,
   `reportFromConfig`
 - `@better-typescript/core/engine/report/data`: `NamedCheck`, `Signal`,
   `Wiring`, `WiringEntry`, `WiringConfig`
-- `@better-typescript/core/engine/watch`: `watchReportFromConfig`, report events
+- `@better-typescript/core/engine/watch`: `watchReportFromConfig`,
+  `reportEventsFromConfig`, `reportEventsFromWorkspaceConfigs`,
+  `renderEventText`
+- `@better-typescript/core/engine/watch/data`: `ReportEvent`, `SignalEvent`,
+  `ClearedEvent`, `EmptyReportEvent`
 - `@better-typescript/core/engine/sources`: program/source stream helpers
 - `@better-typescript/core/project/loadWiringConfig`: project config loading
 - `@better-typescript/checks/preset`: default `report` / `watchReport` runners
@@ -325,9 +337,10 @@ const wiring = makeWiring({
 export default defineConfig([{ files: ["src/**/*.ts"], wiring }])
 ```
 
-Checks see the program only: their input stream contains AST-node elements with
-source file, program, and type-checker context. Checks should not read signals,
-depend on derived advice, or create check-to-check dependencies.
+Checks plan subscriptions from the loaded program. File and node handlers receive
+a `CheckContext` containing the source file, project root, `Program`, and type
+checker. Checks should not read signals, depend on derived advice, or create
+check-to-check dependencies.
 
 ### Opting into functional-core Effect architecture
 
@@ -344,11 +357,11 @@ silent shape evidence share the completed signal batch:
 
 ```ts
 import { Stream, pipe } from "effect"
-import { makeWiring } from "@better-typescript/core/engine/report"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { functionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
 
-export default makeWiring({
+const wiring = makeWiring({
   checks: [...defaultWiring.checks, ...functionalCoreEffectWiring.checks],
   derive: (signals) =>
     pipe(
@@ -356,6 +369,8 @@ export default makeWiring({
       Stream.concat(functionalCoreEffectWiring.derive(signals))
     )
 })
+
+export default defineConfig([{ files: ["**/*"], wiring }])
 ```
 
 The boundary check enforces inward dependency direction, a pure domain, direct
@@ -375,6 +390,7 @@ For layouts without the conventional directory names, use explicit
 project-relative prefixes. The longest matching prefix wins:
 
 ```ts
+import { defineConfig } from "@better-typescript/core/engine/report"
 import {
   ArchitectureRolePath,
   policyWithRolePrefixes
@@ -390,7 +406,9 @@ const policy = policyWithRolePrefixes([
   new ArchitectureRolePath({ path: "tests", role: "test" })
 ])
 
-export default makeFunctionalCoreEffectWiring(policy)
+const wiring = makeFunctionalCoreEffectWiring(policy)
+
+export default defineConfig([{ files: ["**/*"], wiring }])
 ```
 
 ### Extending or cherry-picking the preset
@@ -408,7 +426,7 @@ available through `signalOf(signals)(name)`.
 
 ```ts
 import { Stream, pipe } from "effect"
-import type { Detection } from "@better-typescript/core/engine/location"
+import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   adviceLocation,
@@ -545,10 +563,14 @@ good program and recovers when the config is fixed.
 
 ## Source topology
 
-Source checks and derivation helpers live under `src/checks/`. Execution,
-reporting, watch, source-loading, location, and TypeScript-schema infrastructure
-live under `src/engine/`. The public entrypoints remain the package exports;
-source paths are implementation details for maintainers.
+Built-in checks and their derivation helpers live under
+`packages/checks/src/checks/`; preset wiring lives under
+`packages/checks/src/preset/`. Execution, reporting, watch, source loading,
+location, and TypeScript-schema infrastructure live under
+`packages/core/src/engine/`; project loading lives under
+`packages/core/src/project/`, and the CLI lives under `packages/cli/src/`.
+Public package exports are the supported entrypoints; source paths are
+implementation details.
 
 ## Architecture notes
 
@@ -557,24 +579,32 @@ source paths are implementation details for maintainers.
   of per-check path scoping.
 - `adrs/0014-interface-depth-and-seam-evidence.md` records the evidence model
   for module leverage, locality, seam placement, and testability.
-- `adrs/0011-rules-and-advice-are-one-concept.md` records the current check,
-  signal, `reported`, and `derive` architecture. It supersedes ADR-0009's wiring
-  shape and separate visibility categories while preserving explicit reviewed
-  TypeScript configuration.
+- `adrs/0013-fused-dispatch-and-bounded-workspaces.md` records declarative Check
+  plans, fused `SyntaxKind` dispatch, stack-safe traversal, and bounded
+  one-project-at-a-time workspace analysis. It supersedes ADR-0006's independent
+  Check-stream representation and ADR-0007's materialized AST snapshot cache.
+- `adrs/0012-monorepo-core-checks-cli.md` records the split into core, checks,
+  and CLI workspace packages while preserving reviewed TypeScript
+  configuration.
+- `adrs/0011-rules-and-advice-are-one-concept.md` records the unified Check,
+  Signal, `reported`, and `derive` vocabulary. ADR-0013 supersedes its Check
+  execution representation, not those concepts.
 - `adrs/0010-one-shot-default-watch-opt-in.md` records the current CLI mode
-  decision: one-shot by default, `--watch` for continuous deltas. ADR-0011
-  preserves that wire behavior.
+  decision: one-shot by default, `--watch` for continuous deltas.
 - `adrs/0008-ndjson-event-output.md` records the NDJSON-by-default output
-  decision and the event schema. ADR-0011 preserves its event tags, report-key
+  decision and the event schema. Later ADRs preserve its event tags, report-key
   shapes, rendering order, and pretty-output projection.
 - `adrs/0009-user-fleets-are-report-wiring.md` remains historical context for
   one root TypeScript config, no discovery, no hot reload, and no plugin
   registry. ADR-0011 supersedes its public wiring shape.
 - `adrs/0007-continuous-watch-analysis.md` records the watch pipeline and its
-  change gates; its continuous-only/default claim is superseded by ADR-0010.
-- `adrs/0006-detection-is-streams-and-functions.md` records the direct
-  Effect-stream/function ontology that ADR-0011 preserves: no registry,
-  scheduler, ids, roles, severities, suppressions, or dependency metadata.
+  change gates. ADR-0010 supersedes its continuous-only default, and ADR-0013
+  supersedes its materialized AST snapshot cache.
+- `adrs/0006-detection-is-streams-and-functions.md` remains historical context
+  for stream-based derivation and reporting. ADR-0013 supersedes its independent
+  Check streams; its rejection of registries, schedulers, ids, roles,
+  severities, suppressions, and dependency metadata remains.
 - `adrs/0003-detectors-over-a-stratified-containment-tree.md` and
   `adrs/0005-detector-fleets-are-user-code.md` are superseded where they depend
-  on identity metadata, category labels, generated guides, or structured reports.
+  on identity metadata, category labels, generated guides, or structured
+  reports.
