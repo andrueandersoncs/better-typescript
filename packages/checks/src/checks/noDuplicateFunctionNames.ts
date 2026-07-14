@@ -20,6 +20,15 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * FunctionNameIndex is the shared FunctionNameIndex values contract used by
+ * buildFunctionNameIndex, declarationsForName, and duplicateNameListeners.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type FunctionNameIndex = HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
 
 const declaredFunction = (

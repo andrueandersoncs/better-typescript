@@ -47,6 +47,15 @@ const parameterTypeNode = (
   param: ts.ParameterDeclaration
 ): Option.Option<ts.TypeNode> => Option.fromNullable(param.type)
 
+/**
+ * RawObjectTarget is the shared name, type contract used by rawObjectTypeMatches and
+ * isRawObjectTarget.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
 const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
@@ -83,10 +92,11 @@ const rawObjectTypeMatches = (context: CheckContext) => {
         message:
           "Parameter uses an anonymous object type instead of a named type.",
         hint:
-          "Define a named type or interface that describes the data's domain meaning — " +
-          "for example ConnectionConfig instead of { host: string, port: number }. " +
-          "Name the type after what the data represents, not its structural role " +
-          "(avoid names like FooParameters or BarOptions)."
+          "Reuse a named data structure that already expresses this value's semantics. " +
+          "If none exists, reconsider whether this function is a real abstraction or a " +
+          "procedural seam that should be collapsed into its owner. Introduce a new model " +
+          "only when the data has meaning independent of this parameter list; never replace " +
+          "it with another anonymous object type."
       })
 
       return Array.of(reported)

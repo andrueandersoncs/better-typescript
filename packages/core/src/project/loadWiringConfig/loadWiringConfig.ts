@@ -2,37 +2,47 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { Array, Effect, Function, flow, pipe, Option, Struct } from "effect"
 import { createJiti } from "jiti"
-import { NamedCheck, Wiring } from "../../engine/report/data.js"
-import { makeWiring } from "../../engine/report/report.js"
+import { NamedCheck, Wiring, WiringEntry } from "../../engine/report/data.js"
+import type { WiringConfig } from "../../engine/report/data.js"
+import { defineConfig } from "../../engine/report/report.js"
 import type { Check } from "../../engine/check/data.js"
 import type { RefactorExample } from "../../engine/example/data.js"
 import {
   ConfigExport,
-  type ConfigExportName,
   configFileName,
-  ProjectWiringError
+  ProjectWiringConfigError
 } from "./data.js"
+import type { ConfigExportName } from "./data.js"
 
 const defaultExportName = "default"
-const wiringExportName = "wiring"
+const configExportName = "config"
 
+/**
+ * ModuleRecord is the shared ModuleRecord values contract used by hasNamedCheckFields,
+ * isRecord, and validateWiringShape.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type ModuleRecord = Readonly<Record<string, unknown>>
-type WiringFactory = () => unknown
+type ConfigFactory = () => unknown
 
-const projectWiringError = (
+const projectWiringConfigError = (
   configPath: string,
   reason: string
-): ProjectWiringError => {
+): ProjectWiringConfigError => {
   const fields = { configPath, reason }
 
-  return new ProjectWiringError(fields)
+  return new ProjectWiringConfigError(fields)
 }
 
 const failConfig = (
   configPath: string,
   reason: string
-): Effect.Effect<never, ProjectWiringError> =>
-  pipe(projectWiringError(configPath, reason), Effect.fail)
+): Effect.Effect<never, ProjectWiringConfigError> =>
+  pipe(projectWiringConfigError(configPath, reason), Effect.fail)
 
 const isRecord = (value: unknown): value is ModuleRecord => {
   const isObject = typeof value === "object"
@@ -42,7 +52,7 @@ const isRecord = (value: unknown): value is ModuleRecord => {
   return Array.every(conditions, Boolean)
 }
 
-const isFunctionValue = (value: unknown): value is WiringFactory =>
+const isFunctionValue = (value: unknown): value is ConfigFactory =>
   typeof value === "function"
 
 const isError = (cause: unknown): cause is Error => cause instanceof Error
@@ -82,8 +92,8 @@ const defaultOwnConfigExport = ownConfigExport(defaultExportName)(
   Struct.get(defaultExportName)
 )
 
-const wiringOwnConfigExport = ownConfigExport(wiringExportName)(
-  Struct.get(wiringExportName)
+const configOwnConfigExport = ownConfigExport(configExportName)(
+  Struct.get(configExportName)
 )
 
 const configExportFromRecord = (record: ModuleRecord): ConfigExport => {
@@ -91,7 +101,7 @@ const configExportFromRecord = (record: ModuleRecord): ConfigExport => {
   const directExport = defaultConfigExport(record)
 
   return pipe(
-    wiringOwnConfigExport(record),
+    configOwnConfigExport(record),
     Option.orElse(Function.constant(defaultOwn)),
     Option.getOrElse(Function.constant(directExport))
   )
@@ -124,7 +134,7 @@ const selectedExport = Effect.fn("selectedExport")(function* (
 
   const missingExport = failConfig(
     configPath,
-    "config must export a default wiring or named wiring"
+    "config must export a default configuration or named config"
   )
 
   return yield* pipe(
@@ -139,7 +149,7 @@ const selectedExport = Effect.fn("selectedExport")(function* (
 const callFactory = Effect.fn("callFactory")(function* (
   configPath: string,
   exportName: ConfigExportName,
-  factory: WiringFactory
+  factory: ConfigFactory
 ) {
   const hasParameters = factory.length > 0
 
@@ -155,7 +165,7 @@ const callFactory = Effect.fn("callFactory")(function* (
       const causeMessage = formatCause(cause)
       const reason = `${exportName} export factory failed: ${causeMessage}`
 
-      return projectWiringError(configPath, reason)
+      return projectWiringConfigError(configPath, reason)
     }
   })
 })
@@ -180,16 +190,7 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 })
 
 const checkShapeReason =
-  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExample[], paths?: string[] }"
-
-const isCheckPath = (value: unknown): value is string => {
-  const isString = typeof value === "string"
-
-  return isString && value.trim().length > 0
-}
-
-const isCheckPathArray = (value: unknown): value is ReadonlyArray<string> =>
-  Array.isArray(value) && Array.every(value, isCheckPath)
+  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExample[] }"
 
 const hasNamedCheckFields = (record: ModuleRecord): boolean => {
   const hasStringName = typeof record.name === "string"
@@ -223,24 +224,14 @@ const hasNamedCheckFields = (record: ModuleRecord): boolean => {
     })
   )
 
-  const paths = Object.hasOwn(record, "paths")
-    ? Option.some(record.paths)
-    : Option.none()
-
-  const hasValidPaths = pipe(
-    paths,
-    Option.match({
-      onNone: Function.constant(true),
-      onSome: isCheckPathArray
-    })
-  )
+  const hasNoLegacyPaths = !Object.hasOwn(record, "paths")
 
   const namedCheckShapeConditions = Array.make(
     hasStringName,
     hasCheckPlan,
     hasValidReported,
     hasValidExamples,
-    hasValidPaths
+    hasNoLegacyPaths
   )
 
   return Array.every(namedCheckShapeConditions, Boolean)
@@ -266,22 +257,19 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
     ? (record.examples as ReadonlyArray<RefactorExample>)
     : Array.empty()
 
-  const paths = Object.hasOwn(record, "paths")
-    ? (record.paths as ReadonlyArray<string>)
-    : Array.empty()
-
-  return new NamedCheck({ name, check, reported, examples, paths })
+  return new NamedCheck({ name, check, reported, examples })
 }
 
 const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
   configPath: string,
+  fieldPath: string,
   value: unknown
 ) {
   const isCheckArray = Array.isArray(value)
   const missingCheckArray = !isCheckArray
 
   if (missingCheckArray) {
-    const reason = `checks must be an array of ${checkShapeReason}`
+    const reason = `${fieldPath} must be an array of ${checkShapeReason}`
 
     return yield* failConfig(configPath, reason)
   }
@@ -296,7 +284,7 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
   const hasInvalidCheck = invalidIndex >= 0
 
   if (hasInvalidCheck) {
-    const reason = `checks[${invalidIndex}] must be ${checkShapeReason}`
+    const reason = `${fieldPath}[${invalidIndex}] must be ${checkShapeReason}`
 
     return yield* failConfig(configPath, reason)
   }
@@ -304,28 +292,34 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
   return Array.map(checks, namedCheckFrom)
 })
 
-const invalidWiringShapeReason =
-  "exported wiring must be an object with checks and derive"
-
-const deriveShapeReason = "derive must be a function"
-
 const validateWiringShape = Effect.fn("validateWiringShape")(function* (
   configPath: string,
+  fieldPath: string,
   value: unknown
 ) {
   const isWiringRecord = isRecord(value)
   const missingWiringRecord = !isWiringRecord
 
   if (missingWiringRecord) {
-    return yield* failConfig(configPath, invalidWiringShapeReason)
+    const reason = `${fieldPath} must be an object with checks and derive`
+
+    return yield* failConfig(configPath, reason)
   }
 
   const record = value as ModuleRecord
-  const checks = yield* validateNamedChecks(configPath, record.checks)
+
+  const checks = yield* validateNamedChecks(
+    configPath,
+    `${fieldPath}.checks`,
+    record.checks
+  )
+
   const deriveIsFunction = typeof record.derive === "function"
 
   if (!deriveIsFunction) {
-    return yield* failConfig(configPath, deriveShapeReason)
+    const reason = `${fieldPath}.derive must be a function`
+
+    return yield* failConfig(configPath, reason)
   }
 
   const derive = record.derive as Wiring["derive"]
@@ -333,49 +327,115 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
   return new Wiring({ checks, derive })
 })
 
-const loadExistingWiring = Effect.fn("loadExistingWiring")(function* (
-  configPath: string
+const isFileGlob = (value: unknown): value is string => {
+  const isString = typeof value === "string"
+
+  return isString && value.trim().length > 0
+}
+
+const isUnknownArray: (value: unknown) => value is ReadonlyArray<unknown> =
+  Array.isArray
+
+const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
+  configPath: string,
+  value: unknown,
+  index: number
 ) {
-  const moduleValue = yield* Effect.tryPromise({
-    try: () => {
-      const jiti = createJiti(import.meta.url)
+  const fieldPath = `config[${index}]`
+  const recordOption = Option.liftPredicate(isRecord)(value)
 
-      return jiti.import(configPath)
-    },
-    catch: (cause) => {
-      const causeMessage = formatCause(cause)
-      const reason = `failed to load config module: ${causeMessage}`
+  if (Option.isNone(recordOption)) {
+    const reason = `${fieldPath} must be an object with files and wiring`
 
-      return projectWiringError(configPath, reason)
-    }
-  })
+    return yield* failConfig(configPath, reason)
+  }
 
-  const exportValue = yield* resolvedExport(configPath, moduleValue)
-  const wiring = yield* validateWiringShape(configPath, exportValue)
+  const record = recordOption.value
+
+  const filesOption = pipe(
+    record.files,
+    Option.liftPredicate(isUnknownArray),
+    Option.filter(Array.every(isFileGlob)),
+    Option.filter(Array.isNonEmptyReadonlyArray)
+  )
+
+  if (Option.isNone(filesOption)) {
+    const reason = `${fieldPath}.files must be a non-empty array of non-empty glob strings`
+
+    return yield* failConfig(configPath, reason)
+  }
+
+  const files = filesOption.value
+
+  const wiring = yield* validateWiringShape(
+    configPath,
+    `${fieldPath}.wiring`,
+    record.wiring
+  )
+
+  return new WiringEntry({ files, wiring })
+})
+
+const validateWiringConfig = Effect.fn("validateWiringConfig")(function* (
+  configPath: string,
+  value: unknown
+) {
+  if (!Array.isArray(value)) {
+    return yield* failConfig(
+      configPath,
+      "exported config must be an array of { files: string[], wiring: { checks, derive } }"
+    )
+  }
+
+  const entries = yield* Effect.forEach(value, (entry, index) =>
+    validateWiringEntry(configPath, entry, index)
+  )
 
   return yield* Effect.try({
-    try: () => makeWiring(wiring),
+    try: () => defineConfig(entries),
     catch: (cause) => {
       const reason = formatCause(cause)
 
-      return projectWiringError(configPath, reason)
+      return projectWiringConfigError(configPath, reason)
     }
   })
 })
 
-export const loadWiring: (
-  projectDirectory: string,
-  fallback: Wiring
-) => Effect.Effect<Wiring, ProjectWiringError> = Effect.fn("loadWiring")(
-  function* (projectDirectory: string, fallback: Wiring) {
-    const configPath = path.resolve(projectDirectory, configFileName)
-    const exists = yield* Effect.sync(() => fs.existsSync(configPath))
-    const missingConfig = !exists
+const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(
+  function* (configPath: string) {
+    const moduleValue = yield* Effect.tryPromise({
+      try: () => {
+        const jiti = createJiti(import.meta.url)
 
-    if (missingConfig) {
-      return fallback
-    }
+        return jiti.import(configPath)
+      },
+      catch: (cause) => {
+        const causeMessage = formatCause(cause)
+        const reason = `failed to load config module: ${causeMessage}`
 
-    return yield* loadExistingWiring(configPath)
+        return projectWiringConfigError(configPath, reason)
+      }
+    })
+
+    const exportValue = yield* resolvedExport(configPath, moduleValue)
+
+    return yield* validateWiringConfig(configPath, exportValue)
   }
 )
+
+export const loadWiringConfig: (
+  projectDirectory: string,
+  fallback: WiringConfig
+) => Effect.Effect<WiringConfig, ProjectWiringConfigError> = Effect.fn(
+  "loadWiringConfig"
+)(function* (projectDirectory: string, fallback: WiringConfig) {
+  const configPath = path.resolve(projectDirectory, configFileName)
+  const exists = yield* Effect.sync(() => fs.existsSync(configPath))
+  const missingConfig = !exists
+
+  if (missingConfig) {
+    return fallback
+  }
+
+  return yield* loadExistingWiringConfig(configPath)
+})

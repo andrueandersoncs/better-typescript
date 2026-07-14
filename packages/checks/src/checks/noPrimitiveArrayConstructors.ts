@@ -39,6 +39,15 @@ const arrayLiteralMatches = (context: CheckContext) => {
   return matches
 }
 
+/**
+ * ArrayConstructorNode is the shared expression, typeArguments, arguments contract used
+ * by arrayConstructorMatches and isArrayConstructorNode.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type ArrayConstructorNode = ts.NewExpression | ts.CallExpression
 
 const isArrayConstructorNode = (node: ts.Node): node is ArrayConstructorNode =>

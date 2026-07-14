@@ -3,6 +3,15 @@ import * as ts from "typescript"
 import { isSameNode, outermostTransparentWrapper } from "./tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 
+/**
+ * CallLikeExpression is the shared expression, typeArguments, arguments contract used
+ * by resolvedCallSignature, argumentConsumingCall, and isCallLikeExpression.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export type CallLikeExpression = ts.CallExpression | ts.NewExpression
 
 export const isCallLikeExpression = (
@@ -178,6 +187,15 @@ export const constructionEscapesExternally =
     return isDirectExternalArgument || escapesThroughVariable
   }
 
+/**
+ * EscapeCarrier is the shared name, type, initializer contract used by
+ * isEscapeCarrierNode and escapeCarrier.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type EscapeCarrier = ts.VariableDeclaration | ts.ParameterDeclaration
 
 const isEscapeCarrierNode = (node: ts.Node): node is EscapeCarrier =>

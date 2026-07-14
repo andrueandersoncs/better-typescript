@@ -22,10 +22,10 @@
     "./engine/example": "./dist/engine/example/example.js",
     "./engine/example/data": "./dist/engine/example/data.js",
     "./project/loadProject": "./dist/project/loadProject/loadProject.js",
-    "./project/loadWiring": "./dist/project/loadWiring/loadWiring.js",
+    "./project/loadWiringConfig": "./dist/project/loadWiringConfig/loadWiringConfig.js",
     "./package.json": "./package.json",
     "./project/loadProject/data": "./dist/project/loadProject/data.js",
-    "./project/loadWiring/data": "./dist/project/loadWiring/data.js"
+    "./project/loadWiringConfig/data": "./dist/project/loadWiringConfig/data.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -33,7 +33,8 @@
   },
   "dependencies": {
     "effect": "^3.21.3",
-    "jiti": "^2.7.0"
+    "jiti": "^2.7.0",
+    "minimatch": "^10.2.5"
   },
   "peerDependencies": {
     "typescript": "^5.0.0 || ^6.0.0"

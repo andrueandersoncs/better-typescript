@@ -1,4 +1,4 @@
-import { Array, Data, Function, Option, pipe } from "effect"
+import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
@@ -17,12 +17,7 @@ const message =
 const hint =
   "Interface size is evidence, not a depth verdict. Architecture Explore combines it with low-leverage forwarding before recommending a smaller, deeper interface."
 
-class OperationSurface extends Data.Class<{
-  readonly operationCount: number
-  readonly requiredParameterCount: number
-}> {}
-
-const emptySurface = new OperationSurface({
+const emptySurface = new InterfaceBurdenData({
   operationCount: 0,
   requiredParameterCount: 0
 })
@@ -51,20 +46,20 @@ const callableSurface = (
     | ts.GetAccessorDeclaration
     | ts.SetAccessorDeclaration
     | ts.ConstructorDeclaration
-): OperationSurface => {
+): InterfaceBurdenData => {
   const requiredParameterCount = requiredParameters(node.parameters)
 
-  return new OperationSurface({
+  return new InterfaceBurdenData({
     operationCount: 1,
     requiredParameterCount
   })
 }
 
 const combineSurface = (
-  left: OperationSurface,
-  right: OperationSurface
-): OperationSurface =>
-  new OperationSurface({
+  left: InterfaceBurdenData,
+  right: InterfaceBurdenData
+): InterfaceBurdenData =>
+  new InterfaceBurdenData({
     operationCount: left.operationCount + right.operationCount,
     requiredParameterCount:
       left.requiredParameterCount + right.requiredParameterCount
@@ -88,6 +83,15 @@ const isPublicClassMember = (member: ts.ClassElement): boolean => {
   )
 }
 
+/**
+ * CallableClassMember is the compiler-node protocol accepted by class surface
+ * measurement.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because the type guard and surface calculator
+ * must agree on callable class syntax. Removing it would repeat the union and
+ * let their accepted node kinds drift.
+ */
 type CallableClassMember =
   | ts.MethodDeclaration
   | ts.GetAccessorDeclaration
@@ -106,7 +110,9 @@ const isCallableClassMember = (
 ): member is CallableClassMember =>
   Array.contains(callableClassMemberKinds, member.kind)
 
-const classSurface = (declaration: ts.ClassDeclaration): OperationSurface => {
+const classSurface = (
+  declaration: ts.ClassDeclaration
+): InterfaceBurdenData => {
   const publicMembers = Array.filter(declaration.members, isPublicClassMember)
 
   const memberSurfaces = pipe(
@@ -119,7 +125,7 @@ const classSurface = (declaration: ts.ClassDeclaration): OperationSurface => {
 
   const constructorSurface = hasConstructor
     ? emptySurface
-    : new OperationSurface({
+    : new InterfaceBurdenData({
         operationCount: 1,
         requiredParameterCount: 0
       })
@@ -129,7 +135,7 @@ const classSurface = (declaration: ts.ClassDeclaration): OperationSurface => {
 
 const objectLiteralSurface = (
   literal: ts.ObjectLiteralExpression
-): OperationSurface =>
+): InterfaceBurdenData =>
   pipe(
     literal.properties,
     Array.filterMap((member) => {
@@ -165,7 +171,7 @@ const objectLiteralSurface = (
 
 const variableStatementSurface = (
   statement: ts.VariableStatement
-): OperationSurface => {
+): InterfaceBurdenData => {
   if (!hasExportModifier(statement)) {
     return emptySurface
   }
@@ -194,7 +200,7 @@ const variableStatementSurface = (
   )
 }
 
-const statementSurface = (statement: ts.Statement): OperationSurface => {
+const statementSurface = (statement: ts.Statement): InterfaceBurdenData => {
   const variableSurface = pipe(
     Option.liftPredicate(ts.isVariableStatement)(statement),
     Option.map(variableStatementSurface)
@@ -241,10 +247,7 @@ const interfaceBurdenElements = (
     Option.getOrElse(Function.constant(context.sourceFile))
   )
 
-  const data = new InterfaceBurdenData({
-    operationCount: surface.operationCount,
-    requiredParameterCount: surface.requiredParameterCount
-  })
+  const data = surface
 
   const reported = element({
     node,

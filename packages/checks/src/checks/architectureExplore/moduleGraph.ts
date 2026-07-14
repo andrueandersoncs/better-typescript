@@ -15,6 +15,15 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import { ModuleGraphData } from "./data.js"
 import { ModuleEdge, buildModuleEdges } from "./programSymbols.js"
 
+/**
+ * ModuleGraphIndex couples resolved module edges with the root used to normalize
+ * their paths.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because index construction and per-file evidence
+ * lookup must use one path coordinate system. Removing it would pass parallel
+ * values and risk normalizing graph edges against a different root.
+ */
 class ModuleGraphIndex extends Data.Class<{
   readonly edges: ReadonlyArray<ModuleEdge>
   readonly projectRoot: string

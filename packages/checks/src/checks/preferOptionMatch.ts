@@ -9,6 +9,14 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+/**
+ * OptionGuardKind names the compiler syntax protocol handled by optionMatchMatches.
+ *
+ * @modelRole protocol
+ * @remarks It remains explicit because those algorithms must agree on the accepted
+ * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
+ * and let their accepted cases drift.
+ */
 type OptionGuardKind = "isSome" | "isNone"
 
 const guardMethodNames = HashSet.make("isSome", "isNone")

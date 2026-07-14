@@ -3,6 +3,11 @@ import { highSignalDensity } from "../checks/highSignalDensity.js"
 import { hotSubsystem } from "../checks/hotSubsystem/hotSubsystem.js"
 import { imperativeStateManager } from "../checks/imperativeStateManager/imperativeStateManager.js"
 import { pipelineHostile } from "../checks/pipelineHostile/pipelineHostile.js"
+import {
+  conceptControl,
+  conceptControlExamples
+} from "../checks/conceptControl/conceptControl.js"
+import { conceptProliferation } from "../checks/conceptControl/conceptProliferation.js"
 import { ruleDominance } from "../checks/ruleDominance.js"
 import { sideEffectLaundering } from "../checks/sideEffectLaundering.js"
 import { systemicHotspots } from "../checks/systemicHotspots/systemicHotspots.js"
@@ -207,6 +212,7 @@ import {
   preferPipeFunctionExamples
 } from "../checks/preferPipeFunction.js"
 import {
+  defineConfig,
   filterFallbackAdviceForUncoveredFiles,
   namedCheck,
   signalOf,
@@ -215,7 +221,8 @@ import {
 import type {
   NamedCheck,
   Signal,
-  Wiring
+  Wiring,
+  WiringConfig
 } from "@better-typescript/core/engine/report/data"
 import {
   collectSignals,
@@ -303,6 +310,12 @@ const preferDataLastModuleCheck = namedCheck(
   "prefer-data-last-module",
   preferDataLastModule,
   preferDataLastModuleExamples
+)
+
+const conceptControlCheck = namedCheck(
+  "concept-control",
+  conceptControl,
+  conceptControlExamples
 )
 
 const preferConditionalReturnCheck = namedCheck(
@@ -593,6 +606,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectArrayCheck,
   preferEffectArrayAppendAllCheck,
   preferDataLastModuleCheck,
+  conceptControlCheck,
   preferConditionalReturnCheck,
   preferDirectBooleanReturnCheck,
   preferDirectYieldCheck,
@@ -661,6 +675,7 @@ export const defaultDerive = (
 
   const noNestedCalls = elementsOf("no-nested-calls")
   const preferCurried = elementsOf("prefer-curried-data-last-functions")
+  const conceptSignals = elementsOf("concept-control")
 
   const imperativeAdvice = imperativeStateManager({
     noMutation,
@@ -671,6 +686,7 @@ export const defaultDerive = (
   })
 
   const launderingAdvice = sideEffectLaundering(namedElements)
+  const conceptAdvice = conceptProliferation(conceptSignals)
 
   const pipelineAdvice = pipelineHostile({
     noNestedCalls,
@@ -680,7 +696,8 @@ export const defaultDerive = (
   const specificAdviceStreamsSource = Array.make(
     imperativeAdvice,
     launderingAdvice,
-    pipelineAdvice
+    pipelineAdvice,
+    conceptAdvice
   )
 
   const specificAdviceStreams = Stream.fromIterable(specificAdviceStreamsSource)
@@ -731,3 +748,12 @@ export const defaultWiring: Wiring = {
   checks: defaultChecks,
   derive: defaultDerive
 }
+
+const defaultFiles = Array.of("**/*")
+
+const defaultConfigEntries: WiringConfig = Array.of({
+  files: defaultFiles,
+  wiring: defaultWiring
+})
+
+export const defaultConfig: WiringConfig = defineConfig(defaultConfigEntries)

@@ -10,14 +10,41 @@ const isTsTypeChecker = (input: unknown): input is ts.TypeChecker =>
 const isTsSourceFile = (input: unknown): input is ts.SourceFile =>
   Predicate.hasProperty(input, "languageVersion")
 
+/**
+ * TsProgram is the shared typeParameters, Type, Encoded, Context contract used by
+ * CheckContext, LoadedProject, and ProgramContext.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export const TsProgram = Schema.declare(isTsProgram).annotations({
   identifier: "ts.Program"
 })
 
+/**
+ * TsTypeChecker is the shared typeParameters, Type, Encoded, Context contract used by
+ * CheckContext and ProgramContext.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export const TsTypeChecker = Schema.declare(isTsTypeChecker).annotations({
   identifier: "ts.TypeChecker"
 })
 
+/**
+ * TsSourceFile is the shared typeParameters, Type, Encoded, Context contract used by
+ * CheckContext and AstNodeElement.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export const TsSourceFile = Schema.declare(isTsSourceFile).annotations({
   identifier: "ts.SourceFile"
 })
@@ -25,6 +52,15 @@ export const TsSourceFile = Schema.declare(isTsSourceFile).annotations({
 const isTsNode = (input: unknown): input is ts.Node =>
   Predicate.hasProperty(input, "kind")
 
+/**
+ * TsNode is the shared typeParameters, Type, Encoded, Context contract used by
+ * AstNodeElement and DetectionSource.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 export const TsNode = Schema.declare(isTsNode).annotations({
   identifier: "ts.Node"
 })

@@ -23,6 +23,15 @@ import {
 } from "./programSymbols.js"
 import { unwrapExpression } from "../support/tsNode.js"
 
+/**
+ * PassThroughIndex is the shared symbol, module-edge, and path context used to
+ * classify forwarding exports and re-export modules.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because index construction and both classifiers
+ * must query the same reference graph and project root. Removing it would pass
+ * three synchronized values through each consumer and invite graph drift.
+ */
 class PassThroughIndex extends Data.Class<{
   readonly references: ExportReferenceIndex
   readonly edges: ReadonlyArray<ModuleEdge>

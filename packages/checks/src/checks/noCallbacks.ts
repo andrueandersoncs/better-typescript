@@ -15,6 +15,15 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
+/**
+ * CallbackStyleDeclaration is the shared name, typeParameters, parameters, type
+ * contract used by isCallbackStyleCandidate and callbackStyleMatches.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because these independent owners need one stable
+ * vocabulary. Removing it would duplicate the field contract across consumers and let
+ * their representations drift.
+ */
 type CallbackStyleDeclaration =
   | ts.FunctionDeclaration
   | ts.FunctionExpression

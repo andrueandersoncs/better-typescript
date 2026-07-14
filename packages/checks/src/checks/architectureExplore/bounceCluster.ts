@@ -10,6 +10,14 @@ import { isDeletableWrapper, moduleGraphDataOf } from "./evidence.js"
 
 const minimumThinFiles = 3
 
+/**
+ * GraphEdge is the path pair shared by connected-component traversal.
+ *
+ * @modelRole shared
+ * @remarks It remains explicit because neighbor lookup, reachability, and
+ * component assembly must exchange the same normalized edge. Removing it would
+ * spread positional path pairs across all three graph operations.
+ */
 class GraphEdge extends Data.Class<{
   readonly from: string
   readonly to: string

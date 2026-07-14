@@ -1,18 +1,24 @@
 import * as path from "node:path"
+import { filter as compileFileGlob, makeRe } from "minimatch"
+import type { MinimatchOptions } from "minimatch"
 import {
   Array,
   Effect,
   Equal,
   flow,
   Function,
+  HashMap,
   HashSet,
   MutableHashMap,
+  MutableHashSet,
   MutableList,
   Option,
   Order,
+  Predicate,
   Record,
   Stream,
   Struct,
+  Tuple,
   pipe
 } from "effect"
 import type * as ts from "typescript"
@@ -33,45 +39,47 @@ import type {
   RefactorExample
 } from "../example/data.js"
 import type { Detection } from "../location/data.js"
-import { contextFor } from "../sources/sources.js"
+import { contextFor, isProjectSourceFile } from "../sources/sources.js"
 import type { ProgramContext } from "../sources/data.js"
 import {
   AdviceReportKey,
   DuplicateCheckNamesError,
   DuplicateNameState,
-  MutableDedupeState,
+  InvalidWiringFilesError,
   NamedCheck,
-  type NonEmptyCheckPaths,
   ReportBlock,
   RuleReportKey,
   Signal,
-  Wiring
+  Wiring,
+  WiringEntry,
+  WiringSignals
 } from "./data.js"
+import type { WiringConfig } from "./data.js"
 
 const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
 const includeEverySourceFile = Function.constant(true)
 
-const matchesPath = (
-  roots: ReadonlyArray<string>,
+const globOptions: MinimatchOptions = {
+  dot: true,
+  nonegate: true,
+  platform: "linux"
+}
+
+const hasNonWhitespace = (pattern: string): boolean => pattern.trim().length > 0
+
+const isFileGlob = Predicate.and(Predicate.isString, hasNonWhitespace)
+
+const relativeWorkspacePath = (
+  workspaceRoot: string,
+  projectRoot: string,
   candidatePath: string
-): boolean => {
-  const isUnscoped = roots.length === 0
+): string => {
+  const absoluteCandidatePath = path.resolve(projectRoot, candidatePath)
 
-  const isInsideConfiguredRoot = Array.some(roots, (rootPath) => {
-    const relative = path.relative(rootPath, candidatePath)
-    const isDirectParent = relative === ".."
-    const isNestedParent = relative.startsWith(`..${path.sep}`)
-    const isParent = isDirectParent || isNestedParent
-    const isDifferentRoot = path.isAbsolute(relative)
-    const isNotParent = !isParent
-    const isSameRoot = !isDifferentRoot
-    const isWithinRoot = isNotParent && isSameRoot
-
-    return isWithinRoot
-  })
-
-  return isUnscoped || isInsideConfiguredRoot
+  return path
+    .relative(workspaceRoot, absoluteCandidatePath)
+    .replaceAll(path.sep, "/")
 }
 
 const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
@@ -84,68 +92,115 @@ const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext =
   flow(loadProjectConfig, contextFromLoadedProject)
 
 const collectWorkspaceSignals = <A>(
-  wiring: Wiring,
+  config: WiringConfig,
   workspaceRoot: string,
   projects: ReadonlyArray<A>,
   toContext: (project: A) => ProgramContext
-): Effect.Effect<ReadonlyArray<Signal>, Error> => {
-  const checks = Array.map(wiring.checks, Struct.get("check"))
-
-  const resolveCheckPath = (checkPath: string): string =>
-    path.resolve(workspaceRoot, checkPath)
-
-  const rootsByCheck = Array.map(wiring.checks, (check) =>
-    Array.map(check.paths, resolveCheckPath)
+): Effect.Effect<ReadonlyArray<WiringSignals>, Error> => {
+  const matchersByWiring = Array.map(config, (entry) =>
+    Array.map(entry.files, (pattern) => compileFileGlob(pattern, globOptions))
   )
 
-  const emptyState = (): MutableDedupeState => {
-    const seen = MutableHashMap.empty<string, ReadonlyArray<Detection>>()
-    const elements = MutableList.empty<Detection>()
+  const seenByWiring = Array.map(config, (entry) =>
+    Array.makeBy(entry.wiring.checks.length, () =>
+      MutableHashMap.empty<string, ReadonlyArray<Detection>>()
+    )
+  )
 
-    return new MutableDedupeState({ seen, elements })
-  }
+  const elementsByWiring = Array.map(config, (entry) =>
+    Array.makeBy(entry.wiring.checks.length, () =>
+      MutableList.empty<Detection>()
+    )
+  )
 
-  const states = Array.makeBy(checks.length, emptyState)
+  const seenByCheck = Array.flatten(seenByWiring)
+  const elementsByCheck = Array.flatten(elementsByWiring)
 
-  const collectProject = (
-    current: ReadonlyArray<MutableDedupeState>,
-    project: A
-  ): Effect.Effect<ReadonlyArray<MutableDedupeState>> =>
+  const checks = Array.flatMap(config, (entry) =>
+    Array.map(entry.wiring.checks, Struct.get("check"))
+  )
+
+  const wiringIndexesByCheck = Array.flatMap(config, (entry, wiringIndex) =>
+    Array.makeBy(entry.wiring.checks.length, () => wiringIndex)
+  )
+
+  const matchedWiringIndexes = MutableHashSet.empty<number>()
+
+  const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
       const context = toContext(project)
+
+      const sourceFiles = pipe(
+        context.program.getSourceFiles(),
+        Array.filter(isProjectSourceFile)
+      )
+
+      const sourceMatches = Array.map(sourceFiles, (sourceFile) => {
+        const candidatePath = relativeWorkspacePath(
+          workspaceRoot,
+          context.projectRoot,
+          sourceFile.fileName
+        )
+
+        const matches = Array.map(matchersByWiring, (matchers) =>
+          Array.some(matchers, (matcher) => matcher(candidatePath))
+        )
+
+        return Tuple.make(sourceFile, matches)
+      })
+
+      Array.forEach(sourceMatches, ([, matches]) =>
+        Array.forEach(matches, (matched, wiringIndex) => {
+          if (matched) {
+            MutableHashSet.add(matchedWiringIndexes, wiringIndex)
+          }
+        })
+      )
+
+      const fileMatches = Array.map(sourceMatches, ([sourceFile, matches]) =>
+        Tuple.make(sourceFile.fileName, matches)
+      )
+
+      const matchesByFileName = HashMap.fromIterable(fileMatches)
 
       const includesSourceFile = (
         checkIndex: number,
         sourceFile: ts.SourceFile
       ): boolean => {
-        const candidatePath = path.resolve(
-          context.projectRoot,
+        const wiringIndex = wiringIndexesByCheck[checkIndex]
+
+        const matches = HashMap.unsafeGet(
+          matchesByFileName,
           sourceFile.fileName
         )
 
-        return matchesPath(rootsByCheck[checkIndex], candidatePath)
+        return matches[wiringIndex] ?? false
       }
 
-      const checksInScope = runChecks(checks)(includesSourceFile)
-      const detectionsByCheck = checksInScope(context)
+      const configuredChecks = runChecks(checks)(includesSourceFile)
+      const detectionsByCheck = configuredChecks(context)
 
       Array.forEach(detectionsByCheck, (detections, checkIndex) => {
+        const wiringIndex = wiringIndexesByCheck[checkIndex]
+        const matchers = matchersByWiring[wiringIndex]
+
         Array.forEach(detections, (element) => {
-          const detectionPath = path.resolve(
+          const detectionPath = relativeWorkspacePath(
+            workspaceRoot,
             context.projectRoot,
             element.location.path
           )
 
-          const isIncluded = matchesPath(
-            rootsByCheck[checkIndex],
-            detectionPath
+          const isIncluded = Array.some(matchers, (matcher) =>
+            matcher(detectionPath)
           )
 
           if (!isIncluded) {
             return
           }
 
-          const state = current[checkIndex]
+          const seen = seenByCheck[checkIndex]
+          const elements = elementsByCheck[checkIndex]
           const location = element.location
 
           const dedupeKeyParts = Array.make(
@@ -157,7 +212,7 @@ const collectWorkspaceSignals = <A>(
           )
 
           const key = JSON.stringify(dedupeKeyParts)
-          const maybeBucket = MutableHashMap.get(state.seen, key)
+          const maybeBucket = MutableHashMap.get(seen, key)
           const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
 
           const alreadySeen = Array.some(bucket, (candidate) =>
@@ -170,39 +225,51 @@ const collectWorkspaceSignals = <A>(
 
           const expandedBucket = Array.append(bucket, element)
 
-          MutableHashMap.set(state.seen, key, expandedBucket)
-          MutableList.append(state.elements, element)
+          MutableHashMap.set(seen, key, expandedBucket)
+          MutableList.append(elements, element)
         })
       })
-
-      return current
     })
 
   return pipe(
-    Effect.reduce(projects, states, collectProject),
-    Effect.map((completed) =>
-      Array.map(wiring.checks, (check, checkIndex) => {
-        const detections = Array.fromIterable(completed[checkIndex].elements)
+    Effect.forEach(projects, collectProject, { discard: true }),
+    Effect.map(() =>
+      Array.map(config, (entry, wiringIndex) => {
+        const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
+          const elements = elementsByWiring[wiringIndex][checkIndex]
+          const detections = Array.fromIterable(elements)
 
-        return new Signal({
-          name: check.name,
-          reported: check.reported,
-          detections,
-          examples: check.examples
+          return new Signal({
+            name: check.name,
+            reported: check.reported,
+            detections,
+            examples: check.examples
+          })
+        })
+
+        const matched = MutableHashSet.has(matchedWiringIndexes, wiringIndex)
+
+        return new WiringSignals({
+          matched,
+          signals
         })
       })
     )
   )
 }
 
-/** Run a complete check fleet over already-loaded program contexts. */
+/**
+ * Run every configured wiring over already-loaded program contexts.
+ * @remarks The workspace root stays explicit because glob candidates are
+ * normalized against one shared boundary.
+ */
 export const workspaceSignals =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (workspaceRoot: string) =>
   (
     contexts: ReadonlyArray<ProgramContext>
-  ): Effect.Effect<ReadonlyArray<Signal>, Error> =>
-    collectWorkspaceSignals(wiring, workspaceRoot, contexts, Function.identity)
+  ): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+    collectWorkspaceSignals(config, workspaceRoot, contexts, Function.identity)
 
 /**
  * Build and analyze workspace projects one at a time so solution-style roots do
@@ -211,10 +278,12 @@ export const workspaceSignals =
  * large solution workspace exhausts the JavaScript heap.
  */
 export const workspaceSignalsFromConfigs =
-  (wiring: Wiring) =>
-  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<Signal>, Error> =>
+  (config: WiringConfig) =>
+  (
+    workspace: WorkspaceConfigs
+  ): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
     collectWorkspaceSignals(
-      wiring,
+      config,
       workspace.rootPath,
       workspace.projects,
       contextFromProjectConfig
@@ -412,19 +481,34 @@ export const reportBlocks =
   }
 
 /**
- * One batch through the derivation stage into its keyed blocks; shared by the
- * snapshot report and the watch pipeline.
- * @remarks Shared so snapshot and watch reports stay identical because both
- * must render the same batch stages.
+ * One batch through every matched wiring's independent derivation stage.
+ * Advice is combined before rendering so aggregate blocks remain globally first,
+ * while local blocks retain configuration-entry and check order.
  */
 export const batchReportBlocks =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (
-    signals: ReadonlyArray<Signal>
+    wiringSignals: ReadonlyArray<WiringSignals>
   ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> => {
-    const advice = deriveAdvice(wiring)(signals)
+    const matchedEntries = pipe(
+      Array.zip(config, wiringSignals),
+      Array.filter(([, current]) => current.matched)
+    )
 
-    return Effect.map(advice, reportBlocks(signals))
+    const signals = Array.flatMap(
+      matchedEntries,
+      ([, current]) => current.signals
+    )
+
+    const advice = Effect.forEach(matchedEntries, ([entry, current]) =>
+      deriveAdvice(entry.wiring)(current.signals)
+    )
+
+    return pipe(
+      advice,
+      Effect.map(Array.flatten),
+      Effect.map(reportBlocks(signals))
+    )
   }
 
 const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
@@ -474,43 +558,43 @@ export const withFallbackAdvice = (
  * One loaded workspace through the batch stages the watch pipeline reuses.
  * Engine surface for callers that need keyed blocks instead of rendered text.
  */
-export const reportBlocksFromWiring =
-  (wiring: Wiring) =>
+export const reportBlocksFromConfig =
+  (config: WiringConfig) =>
   (
     workspace: LoadedWorkspace
   ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
     pipe(
       workspace.projects,
       Array.map(contextFromLoadedProject),
-      workspaceSignals(wiring)(workspace.rootPath),
-      Effect.flatMap(batchReportBlocks(wiring))
+      workspaceSignals(config)(workspace.rootPath),
+      Effect.flatMap(batchReportBlocks(config))
     )
 
 /** Analyze a discovered workspace while retaining at most one Program. */
 export const reportBlocksFromWorkspaceConfigs =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (
     workspace: WorkspaceConfigs
   ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
     pipe(
-      workspaceSignalsFromConfigs(wiring)(workspace),
-      Effect.flatMap(batchReportBlocks(wiring))
+      workspaceSignalsFromConfigs(config)(workspace),
+      Effect.flatMap(batchReportBlocks(config))
     )
 
-export const reportFromWiring =
-  (wiring: Wiring) =>
+export const reportFromConfig =
+  (config: WiringConfig) =>
   (workspace: LoadedWorkspace): Stream.Stream<string, Error> =>
     pipe(
-      reportBlocksFromWiring(wiring)(workspace),
+      reportBlocksFromConfig(config)(workspace),
       Stream.fromIterableEffect,
       Stream.map(Struct.get("text"))
     )
 
 export const reportFromWorkspaceConfigs =
-  (wiring: Wiring) =>
+  (config: WiringConfig) =>
   (workspace: WorkspaceConfigs): Stream.Stream<string, Error> =>
     pipe(
-      reportBlocksFromWorkspaceConfigs(wiring)(workspace),
+      reportBlocksFromWorkspaceConfigs(config)(workspace),
       Stream.fromIterableEffect,
       Stream.map(Struct.get("text"))
     )
@@ -532,8 +616,6 @@ export const signalOf =
     )
   }
 
-const unscopedCheckPaths = Array.empty<string>()
-
 export const namedCheck = (
   name: string,
   check: Check,
@@ -543,8 +625,7 @@ export const namedCheck = (
     name,
     check,
     reported: true,
-    examples,
-    paths: unscopedCheckPaths
+    examples
   })
 
 export const silentCheck = (
@@ -556,20 +637,8 @@ export const silentCheck = (
     name,
     check,
     reported: false,
-    examples,
-    paths: unscopedCheckPaths
+    examples
   })
-
-export const scopeCheck =
-  (paths: NonEmptyCheckPaths) =>
-  (check: NamedCheck): NamedCheck =>
-    new NamedCheck({
-      name: check.name,
-      check: check.check,
-      reported: check.reported,
-      examples: check.examples,
-      paths
-    })
 
 const emptyDuplicateNamesSeen = HashSet.empty<string>()
 const emptyDuplicateNameCollisions = HashSet.empty<string>()
@@ -614,19 +683,64 @@ const addDuplicateName = (
   })
 }
 
-export const makeWiring = (wiring: Wiring): Wiring => {
+const validateCheckNames = <A>(
+  checks: ReadonlyArray<NamedCheck>,
+  value: A
+): A => {
   const names = Array.reduce(
-    wiring.checks,
+    checks,
     emptyDuplicateNameState,
     addDuplicateName
   ).names
 
   if (names.length === 0) {
-    return wiring
+    return value
   }
 
   const duplicateNamesError = new DuplicateCheckNamesError({ names })
-  const failedWiring = Effect.fail(duplicateNamesError)
+  const failed = Effect.fail(duplicateNamesError)
 
-  return Effect.runSync(failedWiring)
+  return Effect.runSync(failed)
+}
+
+export const makeWiring = (wiring: Wiring): Wiring =>
+  validateCheckNames(wiring.checks, wiring)
+
+export const defineConfig = (config: WiringConfig): WiringConfig => {
+  const invalidIndexes = Array.filterMap(config, (entry, index) => {
+    const hasFiles = entry.files.length > 0
+
+    const hasOnlyNonEmptyPatterns = Array.every(entry.files, isFileGlob)
+
+    return hasFiles && hasOnlyNonEmptyPatterns
+      ? Option.none()
+      : Option.some(index)
+  })
+
+  if (invalidIndexes.length > 0) {
+    const invalidFilesError = new InvalidWiringFilesError({
+      indexes: invalidIndexes
+    })
+
+    const failed = Effect.fail(invalidFilesError)
+
+    return Effect.runSync(failed)
+  }
+
+  const entries = Array.map(config, (entry) => {
+    Array.forEach(entry.files, (pattern) => {
+      makeRe(pattern, globOptions)
+    })
+
+    const wiring = makeWiring(entry.wiring)
+
+    return new WiringEntry({
+      files: entry.files,
+      wiring
+    })
+  })
+
+  const checks = Array.flatMap(entries, (entry) => entry.wiring.checks)
+
+  return validateCheckNames(checks, entries)
 }

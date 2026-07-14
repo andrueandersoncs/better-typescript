@@ -2,7 +2,7 @@ import { Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import { type Detection } from "@better-typescript/core/engine/location/data"
+import type { Detection } from "@better-typescript/core/engine/location/data"
 import { detection } from "@better-typescript/core/engine/location"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -15,6 +15,7 @@ import {
   refactorExample
 } from "@better-typescript/core/engine/example"
 import {
+  defineConfig,
   makeWiring,
   namedCheck,
   signalOf
@@ -95,7 +96,7 @@ const consoleLogCheck = namedCheck(
   consoleLogExamples
 )
 
-export default makeWiring({
+const extendedWiring = makeWiring({
   checks: [...defaultWiring.checks, consoleLogCheck],
   derive: (signals) => {
     const elementsOf = signalOf(signals)
@@ -107,3 +108,5 @@ export default makeWiring({
     return pipe(presetAdvice, Stream.concat(localAdvice))
   }
 })
+
+export default defineConfig([{ files: ["**/*"], wiring: extendedWiring }])
