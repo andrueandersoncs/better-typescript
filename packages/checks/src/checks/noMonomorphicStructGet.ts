@@ -68,15 +68,19 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
     return Array.every(nonGenericCallableConditions, Boolean)
   }
 
-  const initializerIsGenericStructGet = (initializer: ts.Expression): boolean =>
+  const initializerIsStructGet = (initializer: ts.Expression): boolean =>
     pipe(
-      Option.gen(function* () {
-        const expression = unwrapTransparentExpression(initializer)
-        const call = yield* Option.liftPredicate(ts.isCallExpression)(expression)
-        const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
-        const symbolAtName = checker.getSymbolAtLocation(callee.name)
-        yield* pipe(
-          Option.fromNullable(symbolAtName),
+      initializer,
+      unwrapTransparentExpression,
+      Option.liftPredicate(ts.isCallExpression),
+      Option.filter((call) => call.arguments.length === 1),
+      Option.flatMap((call) =>
+        pipe(
+          call.expression,
+          Option.liftPredicate(ts.isPropertyAccessExpression),
+          Option.flatMap((callee) =>
+            pipe(checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
+          ),
           Option.map((symbol) => {
             const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
@@ -85,19 +89,8 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
           Option.filter((symbol) => symbol.name === "get"),
           Option.filter(symbolDeclaredInEffectStructModule)
         )
-        const resolvedSignature = checker.getResolvedSignature(call)
-        const signature = yield* Option.fromNullable(resolvedSignature)
-        const returnType = checker.getReturnTypeOfSignature(signature)
-
-        return returnType.getCallSignatures()
-      }),
-      Option.exists((returnSignatures) =>
-        Array.some(returnSignatures, (returnSignature) => {
-          const typeParameterCount = returnSignature.typeParameters?.length ?? 0
-
-          return typeParameterCount > 0
-        })
-      )
+      ),
+      Option.isSome
     )
 
   const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
@@ -108,10 +101,10 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
           : Option.some(declaration)
 
         yield* localDeclaration
-        const typeNode = yield* Option.fromNullable(declaration.type)
-        const initializer = yield* Option.fromNullable(declaration.initializer)
+        const typeNode = yield* Option.fromNullishOr(declaration.type)
+        const initializer = yield* Option.fromNullishOr(declaration.initializer)
         yield* Option.liftPredicate(typeNodeIsNonGenericCallable)(typeNode)
-        yield* Option.liftPredicate(initializerIsGenericStructGet)(initializer)
+        yield* Option.liftPredicate(initializerIsStructGet)(initializer)
 
         return match({ node: typeNode, message, hint })
       }),

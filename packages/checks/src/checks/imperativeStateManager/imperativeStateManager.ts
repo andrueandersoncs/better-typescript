@@ -6,7 +6,7 @@ import { Detection } from "@better-typescript/core/engine/location/data"
 import { ImperativeStateManagerInput, ImperativeStateSignals, MutationElementData } from "./data.js"
 
 const isSharedStateMutation = (element: Detection): boolean => {
-  const data = Option.fromNullable(element.data)
+  const data = Option.fromNullishOr(element.data)
 
   const sharedState = pipe(
     data,

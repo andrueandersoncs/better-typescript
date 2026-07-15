@@ -45,7 +45,7 @@ const sameExpression =
 const isVariableInitializer =
   (expression: ts.Expression) =>
   (declaration: ts.VariableDeclaration): boolean => {
-    const initializer = Option.fromNullable(declaration.initializer)
+    const initializer = Option.fromNullishOr(declaration.initializer)
 
     return Option.exists(initializer, sameExpression(expression))
   }
@@ -141,14 +141,14 @@ const dataLastModuleMatches = (context: CheckContext) => {
     parameter: ts.ParameterDeclaration
   ): Option.Option<DataStructureModule> => {
     const type = pipe(
-      Option.fromNullable(parameter.type),
+      Option.fromNullishOr(parameter.type),
       Option.map((node) => checker.getTypeFromTypeNode(node)),
       Option.getOrElse(() => checker.getTypeAtLocation(parameter))
     )
 
     const typeSymbol = type.getSymbol()
     const aliasOrSymbol = type.aliasSymbol ?? typeSymbol
-    const symbol = Option.fromNullable(aliasOrSymbol)
+    const symbol = Option.fromNullishOr(aliasOrSymbol)
 
     return pipe(symbol, Option.flatMap(structureForSymbol(type)))
   }
@@ -251,7 +251,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       }
 
       return pipe(
-        Option.fromNullable(node.parameters[node.parameters.length - 1]),
+        Option.fromNullishOr(node.parameters[node.parameters.length - 1]),
         Option.flatMap(parameterStructure),
         Option.flatMap(structureMatch(definition))
       )
@@ -267,7 +267,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
     if (isFunctionOrMethodDeclaration) {
       const name = pipe(
-        Option.fromNullable(node.name),
+        Option.fromNullishOr(node.name),
         Option.map((nameNode) => nameNode.getText(sourceFile)),
         Option.getOrElse(Function.constant("this function"))
       )

@@ -43,8 +43,7 @@ A named first-party model declaration, including:
 
 - an interface with data properties;
 - an object, tuple, union, or intersection type alias that carries data;
-- an Effect `Schema.Class`, `Schema.TaggedClass`, `Schema.TaggedError`, or `Schema.TaggedRequest`
-  declaration;
+- an Effect `Schema.Class`, `Schema.TaggedClass`, or `Schema.TaggedErrorClass` declaration;
 - an Effect `Data.Class` or tagged data-class declaration;
 - an enum or a first-party runtime schema value used as a named model.
 

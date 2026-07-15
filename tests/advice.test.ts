@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Chunk, Effect, Stream } from "effect"
+import { Effect, Stream } from "effect"
 import { highSignalDensity } from "@better-typescript/checks/highSignalDensity"
 import { hotSubsystem } from "@better-typescript/checks/hotSubsystem"
 import { imperativeStateManager } from "@better-typescript/checks/imperativeStateManager"
@@ -35,7 +35,7 @@ const signalStream = <A>(elements: ReadonlyArray<A>): Stream.Stream<A, Error> =>
   Stream.fromIterable(elements)
 
 const collectAdvice = (advice: Stream.Stream<Advice, Error>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray))
+  Effect.runPromise(Stream.runCollect(advice))
 
 const adviceTitles = (advice: ReadonlyArray<Advice>): ReadonlyArray<string> =>
   advice.map((item) => item.title)

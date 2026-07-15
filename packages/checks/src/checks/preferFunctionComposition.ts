@@ -22,7 +22,7 @@ const unwrapTowerCarrier = (expression: ts.Expression): ts.Expression =>
     ? unwrapTowerCarrier(expression.expression)
     : unwrapTransparentExpression(expression)
 
-const identifierText = Struct.get("text")
+const identifierText = Struct.get<ts.Identifier, "text">("text")
 
 const carrierIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> =>
   pipe(expression, unwrapTowerCarrier, Option.some, Option.filter(ts.isIdentifier))
@@ -44,7 +44,7 @@ const isSeedIdentifier =
     )
 
 const callFirstArgument = (call: ts.CallExpression): Option.Option<ts.Expression> =>
-  Option.fromNullable(call.arguments[0])
+  Option.fromNullishOr(call.arguments[0])
 
 const isUnaryCallTowerOver =
   (name: string) =>
@@ -81,8 +81,8 @@ const functionCompositionMatches = (context: CheckContext) => {
       Option.filter((body) => body.statements.length === 2),
       Option.flatMap((body) =>
         Option.gen(function* () {
-          const firstStatement = yield* Option.fromNullable(body.statements[0])
-          const secondStatement = yield* Option.fromNullable(body.statements[1])
+          const firstStatement = yield* Option.fromNullishOr(body.statements[0])
+          const secondStatement = yield* Option.fromNullishOr(body.statements[1])
 
           const declarationList = yield* pipe(
             Option.liftPredicate(ts.isVariableStatement)(firstStatement),
@@ -95,18 +95,18 @@ const functionCompositionMatches = (context: CheckContext) => {
           yield* Option.liftPredicate((value: boolean) => value)(isConstList)
           yield* Option.liftPredicate((value: boolean) => value)(hasOneDeclaration)
 
-          const binding = yield* Option.fromNullable(declarationList.declarations[0])
+          const binding = yield* Option.fromNullishOr(declarationList.declarations[0])
 
           yield* Option.liftPredicate(ts.isIdentifier)(binding.name)
 
-          const initializer = yield* Option.fromNullable(binding.initializer)
+          const initializer = yield* Option.fromNullishOr(binding.initializer)
           yield* Option.liftPredicate((value: ts.Expression) => !isFunctionInitializer(value))(
             initializer
           )
 
           const returned = yield* pipe(
             Option.liftPredicate(ts.isReturnStatement)(secondStatement),
-            Option.flatMap((statement) => Option.fromNullable(statement.expression))
+            Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
           )
 
           const name = identifierText(binding.name as ts.Identifier)

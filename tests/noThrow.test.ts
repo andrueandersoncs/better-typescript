@@ -16,8 +16,8 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-throw")
 const expectedMessage = "Avoid throwing errors with throw."
 const expectedHint =
-  "Create a custom error with Schema.TaggedError, then yield it instead, for example: " +
-  'class CustomError extends Schema.TaggedError<CustomError>("CustomError")("CustomError", {}) {}; yield* new CustomError().'
+  "Create a custom error with Schema.TaggedErrorClass, then yield it instead, for example: " +
+  'class CustomError extends Schema.TaggedErrorClass<CustomError>()("CustomError", {}) {}; yield* new CustomError().'
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {

@@ -42,7 +42,7 @@ const moduleGraphElements =
     const element = detection(context)
 
     const node = pipe(
-      Option.fromNullable(context.sourceFile.statements[0]),
+      Option.fromNullishOr(context.sourceFile.statements[0]),
       Option.getOrElse(Function.constant(context.sourceFile))
     )
 

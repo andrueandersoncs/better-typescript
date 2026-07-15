@@ -73,7 +73,7 @@ const constructionRootIdentifier = (expression: ts.Expression): Option.Option<ts
 const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> =>
   ts.isImportDeclaration(node)
     ? Option.some(node)
-    : pipe(Option.fromNullable(node.parent), Option.flatMap(importDeclarationAncestor))
+    : pipe(Option.fromNullishOr(node.parent), Option.flatMap(importDeclarationAncestor))
 
 const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 
@@ -84,7 +84,7 @@ const importedPathFor = (
   pipe(
     constructionRootIdentifier(expression),
     Option.flatMap((identifier) =>
-      pipe(checker.getSymbolAtLocation(identifier), Option.fromNullable)
+      pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
     ),
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
     Option.flatMap(Array.findFirst(hasImportDeclarationAncestor)),

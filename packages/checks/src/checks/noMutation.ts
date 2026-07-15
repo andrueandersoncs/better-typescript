@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Equal, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
 import { isUnseenType } from "./support/tsType.js"
@@ -113,7 +113,8 @@ const isUncontrolledTypeWithSeen =
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((candidate) => {
-        const nextSeen = HashSet.add(seen, candidate)
+        const candidateKey = Equal.byReferenceUnsafe(candidate)
+        const nextSeen = HashSet.add(seen, candidateKey)
         const checkMember = isUncontrolledTypeWithSeen(nextSeen)
 
         // Exempt a union only when every non-nullish member is uncontrolled because any member can occur at runtime.
@@ -135,7 +136,7 @@ const isUncontrolledTypeWithSeen =
         const isNullish = isNullishType(candidate)
 
         const hasUncontrolledSymbol = pipe(
-          Option.fromNullable(symbol),
+          Option.fromNullishOr(symbol),
           Option.exists(isUncontrolledSymbol)
         )
 
@@ -215,7 +216,7 @@ const mutationMatches = (context: CheckContext) => {
     const rootSymbol = checker.getSymbolAtLocation(root)
 
     return pipe(
-      Option.fromNullable(rootSymbol),
+      Option.fromNullishOr(rootSymbol),
       Option.map(resolveAlias(checker)),
       Option.map((symbol): MutationScope => {
         const declarations = symbol.getDeclarations() ?? Array.empty()
@@ -223,7 +224,7 @@ const mutationMatches = (context: CheckContext) => {
         const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
         const declaredScope = pipe(
-          Option.fromNullable(declarations[0]),
+          Option.fromNullishOr(declarations[0]),
           Option.map((declaration): MutationScope => {
             const declarationBoundary = enclosingExecutionBoundary(declaration.parent)
             const mutationBoundary = enclosingExecutionBoundary(root.parent)
@@ -265,7 +266,7 @@ const mutationMatches = (context: CheckContext) => {
           const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
 
           return pipe(
-            Option.fromNullable(bindingSymbol),
+            Option.fromNullishOr(bindingSymbol),
             Option.map(resolveAlias(checker)),
             Option.exists(isUncontrolledSymbol)
           )

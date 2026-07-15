@@ -1,4 +1,4 @@
-import { Array, HashSet, Option, pipe } from "effect"
+import { Array, Equal, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 
 export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
@@ -21,7 +21,7 @@ export const differentBaseConstraint =
   (type: ts.Type): Option.Option<ts.Type> =>
     pipe(
       checker.getBaseConstraintOfType(type),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.filter(isDifferentType(type))
     )
 
@@ -32,8 +32,11 @@ export const differentApparentType =
 
 export const isUnseenType =
   (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean =>
-    !HashSet.has(seen, type)
+  (type: ts.Type): boolean => {
+    const typeKey = Equal.byReferenceUnsafe(type)
+
+    return !HashSet.has(seen, typeKey)
+  }
 
 const isUnionOrIntersectionType = (type: ts.Type): type is ts.UnionOrIntersectionType =>
   type.isUnionOrIntersection()
@@ -45,7 +48,8 @@ const isArrayLikeTypeWithSeen =
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((type) => {
-        const nextSeen = HashSet.add(seen, type)
+        const typeKey = Equal.byReferenceUnsafe(type)
+        const nextSeen = HashSet.add(seen, typeKey)
         const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
         const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
 
@@ -95,7 +99,8 @@ const hasCallSignatureWithSeen =
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((type) => {
-        const nextSeen = HashSet.add(seen, type)
+        const typeKey = Equal.byReferenceUnsafe(type)
+        const nextSeen = HashSet.add(seen, typeKey)
         const hasDirectCallSignature = type.getCallSignatures().length > 0
 
         if (type.isUnionOrIntersection()) {

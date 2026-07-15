@@ -9,7 +9,7 @@ declare const Option: {
     option:
       { readonly _tag: "Some"; readonly value: A } | { readonly _tag: "None" }
   ) => option is { readonly _tag: "None" }
-  fromNullable: <A>(
+  fromNullishOr: <A>(
     value: A | null | undefined
   ) => { readonly _tag: "Some"; readonly value: A } | { readonly _tag: "None" }
 }
@@ -24,17 +24,17 @@ declare const checker: {
 declare const parameter: string
 
 // isSome ternary accessing .value in whenTrue
-const typeNode: OptionType<string> = Option.fromNullable("hello")
+const typeNode: OptionType<string> = Option.fromNullishOr("hello")
 const resolved = Option.isSome(typeNode)
   ? checker.getTypeFromTypeNode(typeNode.value)
   : checker.getTypeAtLocation(parameter)
 
 // isSome ternary with .value property access in whenTrue
-const nameNode: OptionType<{ getText: () => string }> = Option.fromNullable({
+const nameNode: OptionType<{ getText: () => string }> = Option.fromNullishOr({
   getText: () => "x"
 })
 const name = Option.isSome(nameNode) ? nameNode.value.getText() : "fallback"
 
 // isNone ternary accessing .value in whenFalse
-const cached: OptionType<number> = Option.fromNullable(42)
+const cached: OptionType<number> = Option.fromNullishOr(42)
 const result = Option.isNone(cached) ? 0 : cached.value + 1

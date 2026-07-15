@@ -23,14 +23,14 @@ const flowHint =
 
 const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 
-const identifierText = Struct.get("text")
+const identifierText = Struct.get<ts.Identifier, "text">("text")
 
 const etaReductionMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
   const symbolOption = (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(checker.getSymbolAtLocation(node), Option.fromNullable)
+    pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
   const resolvedSymbol = (node: ts.Node): Option.Option<ts.Symbol> =>
     pipe(
@@ -46,7 +46,7 @@ const etaReductionMatches = (context: CheckContext) => {
     const declarationList = symbol.getDeclarations()
 
     const declarations = pipe(
-      Option.fromNullable(declarationList),
+      Option.fromNullishOr(declarationList),
       Option.getOrElse(Function.constant(emptyDeclarations))
     )
 
@@ -128,7 +128,7 @@ const etaReductionMatches = (context: CheckContext) => {
         callOption,
         Option.flatMap((call) =>
           Option.gen(function* () {
-            const onlyArgument = yield* Option.fromNullable(call.arguments[0])
+            const onlyArgument = yield* Option.fromNullishOr(call.arguments[0])
             const argument = unwrapCarrier(onlyArgument)
             const callee = call.expression
             const mentionCount = referenceCount(parameterName)(callee)
@@ -162,10 +162,10 @@ const etaReductionMatches = (context: CheckContext) => {
         const hasOneParameter = arrowFunction.parameters.length === 1
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
-        const parameter = yield* Option.fromNullable(arrowFunction.parameters[0])
-        const hasRest = pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
-        const hasDefault = pipe(Option.fromNullable(parameter.initializer), Option.isSome)
-        const isOptional = pipe(Option.fromNullable(parameter.questionToken), Option.isSome)
+        const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])
+        const hasRest = pipe(Option.fromNullishOr(parameter.dotDotDotToken), Option.isSome)
+        const hasDefault = pipe(Option.fromNullishOr(parameter.initializer), Option.isSome)
+        const isOptional = pipe(Option.fromNullishOr(parameter.questionToken), Option.isSome)
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
         const isComplex = hasRestOrDefault || isOptional

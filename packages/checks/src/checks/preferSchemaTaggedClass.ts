@@ -21,7 +21,7 @@ const fieldsAreWireSafe =
   (checker: ts.TypeChecker) =>
   (heritage: ts.ExpressionWithTypeArguments): boolean =>
     pipe(
-      Option.fromNullable(heritage.typeArguments),
+      Option.fromNullishOr(heritage.typeArguments),
       Option.getOrElse(Array.empty),
       Array.head,
       Option.match({

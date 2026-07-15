@@ -16,8 +16,8 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-record-filter-map")
 const expectedMessage = "Avoid conditional object spreads."
 const expectedHint =
-  "Build a record of candidate properties and use Record.filterMap from Effect " +
-  "with Option.some/Option.none (or Option.fromNullable) to keep only present entries."
+  "Build a record of candidate properties and use Record.filterMap from Effect with " +
+  "Result.succeed/Result.fail (or Result.fromNullishOr) to keep only present entries."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {

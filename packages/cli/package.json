@@ -19,9 +19,8 @@
   "dependencies": {
     "@better-typescript/checks": "0.0.0",
     "@better-typescript/core": "0.0.0",
-    "@effect/cli": "^0.75.2",
-    "@effect/platform-node": "^0.107.0",
-    "effect": "^3.21.3"
+    "@effect/platform-node": "^4.0.0-beta.98",
+    "effect": "^4.0.0-beta.98"
   },
   "peerDependencies": {
     "typescript": "^5.0.0 || ^6.0.0"

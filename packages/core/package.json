@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "effect": "^3.21.3",
+    "effect": "^4.0.0-beta.98",
     "jiti": "^2.7.0",
     "minimatch": "^10.2.5"
   },

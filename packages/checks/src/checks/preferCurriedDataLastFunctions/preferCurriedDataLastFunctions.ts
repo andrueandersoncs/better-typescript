@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, HashSet, Option, pipe } from "effect"
+import { Array, Equal, Function, HashMap, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import {
   withProgramIndex,
@@ -27,10 +27,11 @@ const updateSymbolUse =
   (symbol: ts.Symbol) =>
   (update: (use: SymbolUse) => SymbolUse) =>
   (uses: SymbolUses): SymbolUses => {
-    const currentUse = pipe(HashMap.get(uses, symbol), Option.getOrElse(fallbackEmptySymbolUse))
+    const symbolKey = Equal.byReferenceUnsafe(symbol)
+    const currentUse = pipe(HashMap.get(uses, symbolKey), Option.getOrElse(fallbackEmptySymbolUse))
     const updatedUse = update(currentUse)
 
-    return HashMap.set(uses, symbol, updatedUse)
+    return HashMap.set(uses, symbolKey, updatedUse)
   }
 
 const markContextualReference = (use: SymbolUse): SymbolUse =>
@@ -80,7 +81,7 @@ const isRuntimeParameter = (parameter: ts.ParameterDeclaration): boolean => {
 }
 
 const parameterHasRestToken = (parameter: ts.ParameterDeclaration): boolean =>
-  pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
+  pipe(Option.fromNullishOr(parameter.dotDotDotToken), Option.isSome)
 
 const hasRestParameter = (declaration: ts.Node): boolean =>
   pipe(
@@ -129,7 +130,7 @@ const hasCurriedArrowBody = (declaration: ts.Node): boolean => {
 const contextualType =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): Option.Option<ts.Type> =>
-    pipe(checker.getContextualType(expression), Option.fromNullable)
+    pipe(checker.getContextualType(expression), Option.fromNullishOr)
 
 const isContextuallyTypedFunction =
   (checker: ts.TypeChecker) =>
@@ -146,7 +147,7 @@ const symbolAtLocation =
   (node: ts.Node): Option.Option<ts.Symbol> =>
     pipe(
       checker.getSymbolAtLocation(node),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.map((candidate) => {
         const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
 
@@ -168,7 +169,7 @@ export type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclara
 
 const namedFunctionDeclarationName = (
   declaration: NamedFunctionDeclaration
-): Option.Option<ts.Node> => Option.fromNullable(declaration.name)
+): Option.Option<ts.Node> => Option.fromNullishOr(declaration.name)
 
 const variableDeclarationIdentifierName = (
   declaration: ts.VariableDeclaration
@@ -242,7 +243,11 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
           return Array.every(reportableCurryChecks, Boolean)
         }),
         Option.flatMap(symbolForDeclaration(checker)),
-        Option.map((symbol) => HashSet.add(currentSymbols, symbol)),
+        Option.map((symbol) => {
+          const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+          return HashSet.add(currentSymbols, symbolKey)
+        }),
         Option.getOrElse(() => currentSymbols)
       )
 
@@ -261,7 +266,11 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
 
       return pipe(
         symbolAtLocation(checker)(node),
-        Option.filter((symbol) => HashSet.has(trackedSymbols, symbol)),
+        Option.filter((symbol) => {
+          const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+          return HashSet.has(trackedSymbols, symbolKey)
+        }),
         Option.map((symbol) => {
           const identifierParent = node.parent
 
@@ -317,7 +326,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
                   pipe(
                     resolvedCallSignature(checker)(call),
                     Option.flatMap((signature) =>
-                      Option.fromNullable(signature.parameters[position])
+                      Option.fromNullishOr(signature.parameters[position])
                     ),
                     Option.map((parameter) => checker.getTypeOfSymbolAtLocation(parameter, call))
                   )
@@ -376,7 +385,11 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
 
       const hasOnlyContextualUse = pipe(
         symbolForDeclaration(context.checker)(declaration),
-        Option.flatMap((symbol) => HashMap.get(symbolUses, symbol)),
+        Option.flatMap((symbol) => {
+          const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+          return HashMap.get(symbolUses, symbolKey)
+        }),
         Option.exists(isContextualOnlyUse)
       )
 

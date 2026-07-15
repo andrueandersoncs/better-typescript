@@ -15,7 +15,7 @@ const isInstanceofOperator = (expr: ts.BinaryExpression): boolean =>
 const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
   pipe(Option.liftPredicate(ts.isBinaryExpression)(node), Option.exists(isInstanceofOperator))
 
-const className = Struct.get("name")
+const className = Struct.get<ts.Symbol, "name">("name")
 
 const instanceofMatches = (context: CheckContext) => {
   const checker = context.checker
@@ -23,7 +23,7 @@ const instanceofMatches = (context: CheckContext) => {
 
   const matches = (expression: ts.BinaryExpression): ReadonlyArray<Detection> => {
     const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
-    const symbol = Option.fromNullable(symbolAtLocation)
+    const symbol = Option.fromNullishOr(symbolAtLocation)
 
     return pipe(
       symbol,

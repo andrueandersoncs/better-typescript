@@ -22,7 +22,7 @@ const isYieldStarOfIdentifier = (identifier: ts.Identifier): boolean =>
   pipe(
     Option.liftPredicate(ts.isYieldExpression)(identifier.parent),
     Option.filter((yieldExpression) =>
-      pipe(Option.fromNullable(yieldExpression.asteriskToken), Option.isSome)
+      pipe(Option.fromNullishOr(yieldExpression.asteriskToken), Option.isSome)
     ),
     Option.exists((yieldExpression) => yieldExpression.expression === identifier)
   )
@@ -45,7 +45,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
           )
         ),
         Option.flatMap((access) =>
-          pipe(checker.getSymbolAtLocation(access.name), Option.fromNullable)
+          pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
         ),
         Option.exists(symbolDeclaredInEffectPackage)
       )
@@ -63,16 +63,16 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
         const name = yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
 
-        yield* Option.fromNullable(declaration.initializer)
+        yield* Option.fromNullishOr(declaration.initializer)
 
         const generator = yield* pipe(
-          Option.fromNullable(declaration.parent),
+          Option.fromNullishOr(declaration.parent),
           Option.flatMap((start) => {
             const visit = (current: ts.Node): Option.Option<ts.FunctionExpression> => {
               const starredGenerator = pipe(
                 Option.liftPredicate(ts.isFunctionExpression)(current),
                 Option.filter((expression) =>
-                  pipe(Option.fromNullable(expression.asteriskToken), Option.isSome)
+                  pipe(Option.fromNullishOr(expression.asteriskToken), Option.isSome)
                 )
               )
 
@@ -105,7 +105,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
               const nonGeneratorFunctionExpression = pipe(
                 Option.liftPredicate(ts.isFunctionExpression)(current),
                 Option.filter((expression) =>
-                  pipe(Option.fromNullable(expression.asteriskToken), Option.isNone)
+                  pipe(Option.fromNullishOr(expression.asteriskToken), Option.isNone)
                 ),
                 Option.isSome
               )
@@ -121,7 +121,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
               return nestedNonGenerator
                 ? Option.none()
-                : pipe(Option.fromNullable(current.parent), Option.flatMap(visit))
+                : pipe(Option.fromNullishOr(current.parent), Option.flatMap(visit))
             }
 
             return visit(start)
@@ -129,7 +129,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
         )
 
         const symbolCandidate = checker.getSymbolAtLocation(name)
-        const symbol = yield* Option.fromNullable(symbolCandidate)
+        const symbol = yield* Option.fromNullishOr(symbolCandidate)
         const emptyReferences = Array.empty<ts.Identifier>()
 
         const appendMatchingReference = (
@@ -143,7 +143,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
             Option.flatMap((identifier) =>
               pipe(
                 checker.getSymbolAtLocation(identifier),
-                Option.fromNullable,
+                Option.fromNullishOr,
                 Option.filter((candidate) => candidate === symbol),
                 Option.map(() => Array.append(references, identifier))
               )
@@ -157,7 +157,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
         yield* Option.liftPredicate((value: boolean) => value)(hasOneReference)
 
-        const onlyReference = yield* Option.fromNullable(references[0])
+        const onlyReference = yield* Option.fromNullishOr(references[0])
         yield* Option.liftPredicate(isYieldStarOfIdentifier)(onlyReference)
 
         return match({

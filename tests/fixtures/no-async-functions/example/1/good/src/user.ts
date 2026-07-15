@@ -1,4 +1,4 @@
-import { HttpClient } from "@effect/platform"
+import { HttpClient } from "effect/unstable/http"
 import { Effect } from "effect"
 
 export const fetchUser = Effect.fn("fetchUser")(function* (id: string) {

@@ -66,7 +66,7 @@ const isOrHasBooleanOperatorAncestor = (parent: ts.Node): boolean => {
 }
 
 const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
-  const parent = Option.fromNullable(node.parent)
+  const parent = Option.fromNullishOr(node.parent)
 
   const isConditionEdge = pipe(
     parent,

@@ -19,18 +19,20 @@ const constructorMessage = "Avoid constructing a built-in Map."
 
 const constructorHint =
   'Use Effect\'s HashMap instead — for example HashMap.fromIterable([["a", 1]]) or ' +
-  "HashMap.empty(). HashMap integrates with Equal and Hash traits for structural equality. " +
-  "Constructing a Map is permitted only when it is handed to a third-party API that " +
-  "requires one."
+  "HashMap.empty(). HashMap uses Equal and Hash with structural equality by default; " +
+  "for reference-identity object keys (for example TypeScript checker symbols), wrap " +
+  "keys with Equal.byReferenceUnsafe at the creation boundary. Constructing a Map is " +
+  "permitted only when it is handed to a third-party API that requires one."
 
 const mapTypeMessage = "Avoid the built-in Map type."
 const readonlyMapTypeMessage = "Avoid the built-in ReadonlyMap type."
 
 const typeHint =
-  "Use HashMap.HashMap<K, V> from Effect instead. HashMap integrates with Equal and Hash " +
-  "traits for structural equality. Writing the built-in Map type is permitted only where " +
-  "it mirrors a third-party contract: ambient declarations and values that cross into a " +
-  "third-party call."
+  "Use HashMap.HashMap<K, V> from Effect instead. HashMap uses Equal and Hash with " +
+  "structural equality by default; wrap reference-identity object keys with " +
+  "Equal.byReferenceUnsafe at the creation boundary. Writing the built-in Map type is " +
+  "permitted only where it mirrors a third-party contract: ambient declarations and " +
+  "values that cross into a third-party call."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {

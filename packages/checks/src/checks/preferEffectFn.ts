@@ -29,7 +29,7 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
 }
 
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  block.statements.length === 1 ? Option.fromNullable(block.statements[0]) : Option.none()
+  block.statements.length === 1 ? Option.fromNullishOr(block.statements[0]) : Option.none()
 
 const isGenPropertyName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "gen"
@@ -45,12 +45,12 @@ const effectFnMatches = (context: CheckContext) => {
       Option.filter(hasParameters),
       Option.filter((initializer) => {
         const declaredSignature = checker.getSignatureFromDeclaration(initializer)
-        const signature = Option.fromNullable(declaredSignature)
+        const signature = Option.fromNullishOr(declaredSignature)
 
         return Option.exists(signature, (signature) => {
           const returnType = checker.getReturnTypeOfSignature(signature)
           const typeSymbol = returnType.getSymbol()
-          const symbol = Option.fromNullable(typeSymbol)
+          const symbol = Option.fromNullishOr(typeSymbol)
 
           return Option.exists(symbol, isEffectInterfaceSymbol)
         })
@@ -63,7 +63,7 @@ const effectFnMatches = (context: CheckContext) => {
           Option.liftPredicate(ts.isBlock)(body),
           Option.flatMap(singleBlockStatement),
           Option.filter(ts.isReturnStatement),
-          Option.flatMap((statement) => Option.fromNullable(statement.expression))
+          Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
         )
 
         const conciseResult = ts.isBlock(body) ? Option.none<ts.Expression>() : Option.some(body)
@@ -79,7 +79,7 @@ const effectFnMatches = (context: CheckContext) => {
           Option.exists((access) =>
             pipe(
               checker.getSymbolAtLocation(access.name),
-              Option.fromNullable,
+              Option.fromNullishOr,
               Option.exists(symbolDeclaredInEffectPackage)
             )
           )

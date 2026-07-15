@@ -303,7 +303,7 @@ const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
     record.files,
     Option.liftPredicate(isUnknownArray),
     Option.filter(Array.every(isFileGlob)),
-    Option.filter(Array.isNonEmptyReadonlyArray)
+    Option.filter(Array.isReadonlyArrayNonEmpty)
   )
 
   if (Option.isNone(filesOption)) {

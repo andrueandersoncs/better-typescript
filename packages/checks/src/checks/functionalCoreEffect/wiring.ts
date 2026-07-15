@@ -1,6 +1,6 @@
 import { Array } from "effect"
 import { makeWiring, namedCheck, silentCheck } from "@better-typescript/core/engine/report"
-import type { Wiring } from "@better-typescript/core/engine/report/data"
+import { Wiring } from "@better-typescript/core/engine/report/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { functionalCoreEffectDerive } from "./advice.js"
 import { makeFunctionalCoreEffect } from "./functionalCoreEffect.js"
@@ -17,10 +17,12 @@ export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolic
   const shapeCheck = silentCheck(functionalCoreShapeCheckName, shapeEvidence)
   const checks = Array.make(boundaryCheck, shapeCheck)
 
-  return makeWiring({
+  const wiring = new Wiring({
     checks,
     derive: functionalCoreEffectDerive
   })
+
+  return makeWiring(wiring)
 }
 
 export const functionalCoreEffectWiring: Wiring = makeFunctionalCoreEffectWiring(

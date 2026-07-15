@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from "effect"
+import { Array, Function, pipe, Result } from "effect"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -39,7 +39,7 @@ const testOnlyExportElements =
         const isTestOnly = hasTestUse && hasNoProductionUse
 
         if (!isTestOnly) {
-          return Option.none()
+          return Result.failVoid
         }
 
         const data = new TestOnlyExportData({
@@ -54,7 +54,7 @@ const testOnlyExportElements =
           data
         })
 
-        return Option.some(reported)
+        return Result.succeed(reported)
       })
     )
   }

@@ -1,4 +1,4 @@
-import { Effect, Stream, StreamEmit } from "effect"
+import { Effect, Queue, Stream } from "effect"
 
 interface Message {
   readonly data: string
@@ -15,17 +15,17 @@ declare const socket: MessageSocket
 
 type MessageListener = (msg: Message) => void
 
-type MessageEmit = StreamEmit.Emit<never, never, Message, void>
+type MessageQueue = Queue.Queue<Message>
 
 const emitMessage =
-  (emit: MessageEmit): MessageListener =>
+  (queue: MessageQueue): MessageListener =>
   (msg) => {
-    void emit.single(msg)
+    void Queue.offerUnsafe(queue, msg)
   }
 
 // Streaming: emits every event until the scope is closed.
-export const messages = Stream.async<Message>((emit) => {
-  socket.addEventListener("message", emitMessage(emit))
+export const messages = Stream.callback<Message>((queue) => {
+  socket.addEventListener("message", emitMessage(queue))
 
   return Effect.void
 })

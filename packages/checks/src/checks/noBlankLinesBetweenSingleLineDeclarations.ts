@@ -56,7 +56,7 @@ const parentContinuesFunctionSearch = (parent: ts.Node): boolean => {
 
 const isInsideFunction = (node: ts.Node): boolean =>
   pipe(
-    Option.fromNullable(node.parent),
+    Option.fromNullishOr(node.parent),
     Option.map((parent) => {
       const parentIsFunction = isFunctionLike(parent)
       const continueSearch = parentContinuesFunctionSearch(parent)

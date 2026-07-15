@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, Option, pipe } from "effect"
+import { Array, Function, HashMap, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { functionInitializer } from "./support/tsNode.js"
@@ -22,11 +22,14 @@ const declaredFunction = (declaration: ts.VariableDeclaration): Option.Option<ts
 
 const namedFunctionDeclaration = (
   declaration: ts.FunctionDeclaration
-): Option.Option<ts.Identifier> => Option.fromNullable(declaration.name)
+): Option.Option<ts.Identifier> => Option.fromNullishOr(declaration.name)
 
 const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => {
   const variableDeclarationFunctions = ts.isVariableStatement(statement)
-    ? Array.filterMap(statement.declarationList.declarations, declaredFunction)
+    ? Array.filterMap(
+        statement.declarationList.declarations,
+        Function.flow(declaredFunction, Result.fromOption(Function.constVoid))
+      )
     : Array.empty()
 
   const functionDeclarationNames = pipe(
@@ -85,7 +88,7 @@ const duplicateNameListeners = (
     const match = detection(context)
     const candidateFileName = context.sourceFile.fileName
 
-    return Array.filterMap(fileFunctions, (candidate): Option.Option<Detection> => {
+    return Array.filterMap(fileFunctions, (candidate) => {
       const declarations = declarationsForName(index)(candidate.text)
 
       // Compare mutual assignability because parameter renames preserve a copied signature while different domain data does not.
@@ -107,7 +110,7 @@ const duplicateNameListeners = (
       )
 
       if (otherFileNames.length === 0) {
-        return Option.none()
+        return Result.failVoid
       }
 
       const functionName = candidate.text
@@ -134,7 +137,7 @@ const duplicateNameListeners = (
           "account.ts#make) are module vocabulary, not duplicates."
       })
 
-      return Option.some(duplicateMatch)
+      return Result.succeed(duplicateMatch)
     })
   })
 

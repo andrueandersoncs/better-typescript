@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import * as path from "node:path"
-import { Command, Options } from "@effect/cli"
-import { NodeContext, NodeRuntime } from "@effect/platform-node"
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import { Console, Effect, Function, Option, Stream, pipe } from "effect"
+import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText, watchReportFromConfig } from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
@@ -14,16 +15,16 @@ import {
 
 const workingDirectory = process.cwd()
 
-const project = pipe(Options.directory("project"), Options.withDefault(workingDirectory))
+const project = pipe(Flag.directory("project"), Flag.withDefault(workingDirectory))
 
 const pretty = pipe(
-  Options.boolean("pretty"),
-  Options.withDescription("Render human-readable text blocks instead of NDJSON events.")
+  Flag.boolean("pretty"),
+  Flag.withDescription("Render human-readable text blocks instead of NDJSON events.")
 )
 
 const watch = pipe(
-  Options.boolean("watch"),
-  Options.withDescription("Continue watching for changes after the initial report.")
+  Flag.boolean("watch"),
+  Flag.withDescription("Continue watching for changes after the initial report.")
 )
 
 const setErrorExitCode = (): number => {
@@ -90,14 +91,13 @@ const rootCommand = Command.make(
   "better-typescript",
   { project, pretty, watch },
   ({ project: projectPath, pretty: prettyOutput, watch: watchForChanges }) =>
-    pipe(runCommand(projectPath, prettyOutput, watchForChanges), Effect.catchAll(reportError))
+    pipe(runCommand(projectPath, prettyOutput, watchForChanges), Effect.catch(reportError))
 )
 
-const command = rootCommand
-
-const cli = Command.run(command, {
-  name: "Better TypeScript",
-  version: "0.0.0"
-})
-
-pipe(cli(process.argv), Effect.provide(NodeContext.layer), NodeRuntime.runMain)
+pipe(
+  Command.run(rootCommand, {
+    version: "0.0.0"
+  }),
+  Effect.provide(NodeServices.layer),
+  NodeRuntime.runMain
+)

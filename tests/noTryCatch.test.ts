@@ -18,8 +18,8 @@ const fixturePath = path.join(testDirectory, "fixtures", "no-try-catch")
 const expectedMessage = "Avoid try/catch for error handling."
 const expectedHint =
   "Model effectful code that can fail as an Effect and declare its failures as explicit " +
-  'Schema.TaggedError classes, for example: class FetchError extends Schema.TaggedError<FetchError>("FetchError")("FetchError", {}) {}. ' +
-  "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catchAll) instead of catching inside a try block."
+  'Schema.TaggedErrorClass classes, for example: class FetchError extends Schema.TaggedErrorClass<FetchError>()("FetchError", {}) {}. ' +
+  "Recover with Effect.catchTag (or a variant such as Effect.catchTags / Effect.catch) instead of catching inside a try block."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {

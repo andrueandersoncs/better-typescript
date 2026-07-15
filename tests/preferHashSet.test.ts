@@ -19,18 +19,20 @@ const constructorMessage = "Avoid constructing a built-in Set."
 
 const constructorHint =
   "Use Effect's HashSet instead — for example HashSet.fromIterable([1, 2, 3]) or " +
-  "HashSet.empty(). HashSet integrates with Equal and Hash traits for structural equality. " +
-  "Constructing a Set is permitted only when it is handed to a third-party API that " +
-  "requires one."
+  "HashSet.empty(). HashSet uses Equal and Hash with structural equality by default; " +
+  "for reference-identity object members (for example TypeScript checker symbols), wrap " +
+  "values with Equal.byReferenceUnsafe at the creation boundary. Constructing a Set is " +
+  "permitted only when it is handed to a third-party API that requires one."
 
 const setTypeMessage = "Avoid the built-in Set type."
 const readonlySetTypeMessage = "Avoid the built-in ReadonlySet type."
 
 const typeHint =
-  "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
-  "traits for structural equality. Writing the built-in Set type is permitted only where " +
-  "it mirrors a third-party contract: ambient declarations and values that cross into a " +
-  "third-party call."
+  "Use HashSet.HashSet<T> from Effect instead. HashSet uses Equal and Hash with " +
+  "structural equality by default; wrap reference-identity object members with " +
+  "Equal.byReferenceUnsafe at the creation boundary. Writing the built-in Set type is " +
+  "permitted only where it mirrors a third-party contract: ambient declarations and " +
+  "values that cross into a third-party call."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {

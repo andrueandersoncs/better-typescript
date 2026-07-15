@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Chunk, Effect, Stream } from "effect"
+import { Effect, Stream } from "effect"
 import * as ts from "typescript"
 import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
 import { loadProject, checkableSourceFiles } from "@better-typescript/core/project/loadProject"
@@ -42,7 +42,7 @@ const sourceFileProblems =
 const projectProblems = async (project: LoadedProject): Promise<ReadonlyArray<string>> => {
   const sourceFiles = await Effect.runPromise(Stream.runCollect(checkableSourceFiles(project)))
 
-  return Chunk.toReadonlyArray(sourceFiles).flatMap(sourceFileProblems(project.program))
+  return sourceFiles.flatMap(sourceFileProblems(project.program))
 }
 
 const registerFixtureTest = (fixtureName: string): void => {

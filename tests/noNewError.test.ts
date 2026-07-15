@@ -16,7 +16,7 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-new-error")
 const expectedMessage = "Avoid using new Error() directly."
 const expectedHint =
-  "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+  "Declare a custom error with Effect Schema.TaggedErrorClass, then use new CustomError() " +
   "instead of bare new Error()."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [

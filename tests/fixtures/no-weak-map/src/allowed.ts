@@ -1,6 +1,6 @@
 import { Effect, HashMap, Ref } from "effect"
 
-const plansByProgram = Ref.unsafeMake(
+const plansByProgram = Ref.makeUnsafe(
   HashMap.empty<object, ReadonlyArray<string>>()
 )
 

@@ -8,7 +8,7 @@ declare const user: User | null
 declare const grantAccess: () => string
 
 export const accessToken = pipe(
-  Option.fromNullable(user),
+  Option.fromNullishOr(user),
   Option.filter(Struct.get("isActive")),
   Option.map(grantAccess)
 )

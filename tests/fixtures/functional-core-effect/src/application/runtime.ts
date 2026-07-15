@@ -1,10 +1,10 @@
 import { Context, Effect, Layer, ManagedRuntime, Ref } from "effect"
 import { DefaultPort } from "../ports/badPort.js"
 
-export class RuntimeConfig extends Context.Tag("RuntimeConfig")<
+export class RuntimeConfig extends Context.Service<
   RuntimeConfig,
   { readonly name: string }
->() {}
+>()("RuntimeConfig") {}
 
 const program = Effect.gen(function* () {
   const config = yield* RuntimeConfig
@@ -25,7 +25,7 @@ export const captured = Effect.context<RuntimeConfig>()
 export const readContext = (context: Context.Context<RuntimeConfig>): string =>
   Context.get(context, RuntimeConfig).name
 
-export const sharedState = Ref.unsafeMake(0)
+export const sharedState = Ref.makeUnsafe(0)
 
 export const callbackRun = Effect.runCallback(Effect.void)
 export const defaultLayer = DefaultPort.Default

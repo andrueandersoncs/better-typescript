@@ -36,7 +36,7 @@ const voidFunctionMatches = (context: CheckContext) => {
       ? checker.getContextualType(declaration)
       : undefined
 
-    const contextualType = Option.fromNullable(contextualTypeNode)
+    const contextualType = Option.fromNullishOr(contextualTypeNode)
 
     const isContextualVoidCallback = Option.exists(contextualType, (type) => {
       const callableType = checker.getNonNullableType(type)
@@ -54,7 +54,7 @@ const voidFunctionMatches = (context: CheckContext) => {
       Option.flatMap(objectLiteralParent),
       Option.exists((literal) => {
         const literalContextualTypeNode = checker.getContextualType(literal)
-        const literalContextualType = Option.fromNullable(literalContextualTypeNode)
+        const literalContextualType = Option.fromNullishOr(literalContextualTypeNode)
 
         return Option.isSome(literalContextualType)
       })
@@ -67,7 +67,7 @@ const voidFunctionMatches = (context: CheckContext) => {
     }
 
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
-    const signature = Option.fromNullable(declaredSignature)
+    const signature = Option.fromNullishOr(declaredSignature)
 
     const declarationReturnsVoid = Option.exists(signature, (resolved) =>
       pipe(checker.getReturnTypeOfSignature(resolved), isVoidType)

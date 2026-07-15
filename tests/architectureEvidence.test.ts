@@ -51,12 +51,12 @@ test("pass-through evidence requires exact forwarding and records caller leverag
   const forwarding = detections.filter((item) => item.location.path === "src/forwarding.ts")
   const byLine = new Map(forwarding.map((item) => [item.location.line, item] as const))
   const forwardData = pipe(
-    Option.fromNullable(byLine.get(5)),
+    Option.fromNullishOr(byLine.get(5)),
     Option.flatMap((item) => dataAs(Schema.is(PassThroughWrapperData), item)),
     Option.getOrThrow
   )
   const sharedData = pipe(
-    Option.fromNullable(byLine.get(8)),
+    Option.fromNullishOr(byLine.get(8)),
     Option.flatMap((item) => dataAs(Schema.is(PassThroughWrapperData), item)),
     Option.getOrThrow
   )
@@ -68,7 +68,7 @@ test("pass-through evidence requires exact forwarding and records caller leverag
 
   const reexport = detections.find((item) => item.location.path === "src/publicEntry.ts")
   const reexportData = pipe(
-    Option.fromNullable(reexport),
+    Option.fromNullishOr(reexport),
     Option.flatMap((item) => dataAs(Schema.is(PassThroughWrapperData), item)),
     Option.getOrThrow
   )
@@ -81,7 +81,7 @@ test("interface burden measures callable knowledge without implementation size",
   const detections = await runFixture(interfaceBurden)
   const burden = detections.find((item) => item.location.path === "src/burden.ts")
   const data = pipe(
-    Option.fromNullable(burden),
+    Option.fromNullishOr(burden),
     Option.flatMap((item) => dataAs(Schema.is(InterfaceBurdenData), item)),
     Option.getOrThrow
   )
@@ -94,7 +94,7 @@ test("module graph records resolved project edges", async () => {
   const detections = await runFixture(moduleGraph)
   const graph = detections.find((item) => item.location.path === "src/graph/one.ts")
   const data = pipe(
-    Option.fromNullable(graph),
+    Option.fromNullishOr(graph),
     Option.flatMap((item) => dataAs(Schema.is(ModuleGraphData), item)),
     Option.getOrThrow
   )
@@ -107,7 +107,7 @@ test("test-only exports distinguish production and test references", async () =>
   const testSurface = detections.filter((item) => item.location.path === "src/testSurface.ts")
   const publicOnly = detections.filter((item) => item.location.path === "src/publicOnly.ts")
   const data = pipe(
-    Option.fromNullable(testSurface[0]),
+    Option.fromNullishOr(testSurface[0]),
     Option.flatMap((item) => dataAs(Schema.is(TestOnlyExportData), item)),
     Option.getOrThrow
   )

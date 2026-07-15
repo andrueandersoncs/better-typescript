@@ -1,14 +1,14 @@
 import { Context, Effect, Layer } from "effect"
 
-export class Mode extends Context.Tag("Mode")<
+export class Mode extends Context.Service<
   Mode,
   { readonly value: string }
->() {}
+>()("Mode") {}
 
-export class Region extends Context.Tag("Region")<
+export class Region extends Context.Service<
   Region,
   { readonly value: string }
->() {}
+>()("Region") {}
 
 export const modeLive = Layer.effect(
   Mode,

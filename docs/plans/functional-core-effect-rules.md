@@ -141,22 +141,22 @@ Promise.
 
 ### 5. Provisioning stays at composition roots
 
-**Detection:** `Effect.provide*`, `Layer.provide*`, `ManagedRuntime.make`, or an `Effect.Service`
-`.Default` implementation selected outside root or test files.
+**Detection:** `Effect.provide*`, `Layer.provide*`, `ManagedRuntime.make`, or a `Context.Service`
+static `.Default`/`.layer` implementation selected outside root or test files.
 
-`Layer.effect`, `Layer.scoped`, and `Layer.succeed` remain legal in adapters because they define
-adapters; selecting and composing them belongs to the root.
+`Layer.effect` and `Layer.succeed` remain legal in adapters because they define adapters; selecting
+and composing them belongs to the root.
 
 ### 6. Ports and live implementations stay separate
 
 **Detection in port files:**
 
-- a class extends `Effect.Service` and therefore owns a default implementation;
-- `Layer.effect`, `Layer.scoped`, or `Layer.succeed` constructs a live adapter;
-- a service declaration embeds concrete `dependencies`.
+- a class extends `Context.Service` with a concrete `make` implementation;
+- `Layer.effect` or `Layer.succeed` constructs a live adapter;
+- a service declaration embeds a static `.Default` or `.layer` implementation.
 
-`Context.Tag` is the preferred port declaration. `Effect.Service` is not banned globally: it remains
-appropriate where co-locating a default implementation is an intentional module decision.
+`Context.Service` without `make` is the preferred port declaration. Co-locating `make` or a live
+Layer remains appropriate only where that implementation is an intentional module decision.
 
 ### 7. Service contracts do not leak infrastructure
 
@@ -180,7 +180,7 @@ Require individual tags through the Effect requirements channel.
 ### 9. Adapter foreign effects are suspended
 
 **Detection:** an adapter/root executes a known direct capability outside the lazy callback of
-`Effect.async`, `Effect.promise`, `Effect.suspend`, `Effect.sync`, `Effect.try`, or
+`Effect.callback`, `Effect.promise`, `Effect.suspend`, `Effect.sync`, `Effect.try`, or
 `Effect.tryPromise`.
 
 Explicitly catch eager forms such as:
@@ -194,9 +194,9 @@ Explicitly catch eager forms such as:
 
 **Detection:** a resource-like constructor/factory (`*Client`, `*Connection`, `*Pool`, `connect`,
 `createClient`, plus configured names) is not inside a lazy suspension callback nested within a
-scoped lifecycle: `Layer.scoped`, `Layer.scopedContext`, `Layer.scopedDiscard`,
+scoped lifecycle: `Layer.effect`, `Layer.effectContext`, `Layer.effectDiscard`,
 `Effect.acquireRelease`, `Effect.acquireReleaseInterruptible`, or `Effect.acquireUseRelease`. Merely
-passing an already-created resource to a scoped constructor remains eager and is reported.
+passing an already-created resource to a lifecycle constructor remains eager and is reported.
 
 Do not infer that every class is a resource. Require an imported collaborator and a resource name
 from the policy registry/suffix set.
@@ -205,8 +205,8 @@ from the policy registry/suffix set.
 
 **Detection:**
 
-- `Ref.unsafeMake`, `FiberRef.unsafeMake`, or equivalent eager state outside a lazy suspension
-  callback nested within the scoped lifecycles listed above;
+- `Ref.makeUnsafe`, `SynchronizedRef.makeUnsafe`, or equivalent eager state outside a lazy
+  suspension callback nested within the scoped lifecycles listed above;
 - state constructors in domain/port code;
 - a public port contract exposes mutable Effect state;
 - mutable runtime state is created during module initialization.
@@ -246,11 +246,9 @@ composition call; extracting composition into a name must not create evidence.
 
 ### Pure service candidate
 
-Evidence: a `Context.Tag`/`Effect.Service` surface contains only deterministic plain-value
-functions, has no Effect/Stream return, no state, and no setup. `Effect.Service` makers using
-`succeed`/`sync`, or `effect` wrapping `Effect.succeed`/`Effect.sync`, are inspected. Services with
-non-empty or dynamic `dependencies`, and scoped/effectful makers whose setup cannot be proven
-absent, are excluded.
+Evidence: a `Context.Service` surface contains only deterministic plain-value functions, has no
+Effect/Stream return, no state, and no setup. Service `make` options using `Effect.succeed` or
+`Effect.sync` are inspected. Makers whose setup cannot be proven absent are excluded.
 
 Remediation: prefer an ordinary pure function or explicit function parameter. This remains advisory
 because an injected policy/strategy can be a legitimate seam.

@@ -18,7 +18,7 @@ import { LatestCacheEntry, SourceComment } from "./commentsData.js"
 
 const memoizeLatest = <Key extends object, Value>(load: (key: Key) => Value) => {
   const emptyCache = Option.none<LatestCacheEntry<Key, Value>>()
-  const cache = Ref.unsafeMake(emptyCache)
+  const cache = Ref.makeUnsafe(emptyCache)
 
   const memoized = (key: Key): Value => {
     const readOrLoad = (
@@ -106,7 +106,7 @@ const emptyString = Function.constant("")
 
 const commentFragmentsText: (comment: ts.NodeArray<ts.JSDocComment>) => string = flow(
   ts.getTextOfJSDocComment,
-  Option.fromNullable,
+  Option.fromNullishOr,
   Option.getOrElse(emptyString)
 )
 
@@ -125,19 +125,19 @@ const hasJsDocTags = (tags: ts.NodeArray<ts.JSDocTag>): boolean => tags.length >
 
 const isStructuredJsDoc = (jsDoc: ts.JSDoc): boolean => {
   const hasDescription = pipe(
-    Option.fromNullable(jsDoc.comment),
+    Option.fromNullishOr(jsDoc.comment),
     Option.map(commentDescription),
     Option.exists(hasNonBlankText)
   )
 
-  const hasTags = pipe(Option.fromNullable(jsDoc.tags), Option.exists(hasJsDocTags))
+  const hasTags = pipe(Option.fromNullishOr(jsDoc.tags), Option.exists(hasJsDocTags))
 
   return hasDescription && hasTags
 }
 
 const emptyModifiers: ReadonlyArray<ts.Modifier> = Array.empty()
 const fallbackModifiers = Function.constant(emptyModifiers)
-const optionalModifiers = flow(ts.getModifiers, Option.fromNullable)
+const optionalModifiers = flow(ts.getModifiers, Option.fromNullishOr)
 
 const modifiersOf = (node: ts.Node): ReadonlyArray<ts.Modifier> =>
   pipe(
@@ -176,7 +176,7 @@ const parentFollowsExportPath = (node: ts.Node): boolean =>
   HashSet.has(parentKindsThatFollowParent, node.kind)
 
 const exportNodeStep = (current: ts.Node) => {
-  const parent = Option.fromNullable(current.parent)
+  const parent = Option.fromNullishOr(current.parent)
   const currentFollowsParent = HashSet.has(currentKindsThatFollowParent, current.kind)
   const parentFollowsParent = Option.exists(parent, parentFollowsExportPath)
   const followsParent = currentFollowsParent || parentFollowsParent
@@ -186,7 +186,7 @@ const exportNodeStep = (current: ts.Node) => {
     parent,
     Option.filter(ts.isObjectLiteralExpression),
     Option.map(Struct.get("parent")),
-    Option.flatMap(Option.fromNullable)
+    Option.flatMap(Option.fromNullishOr)
   )
 
   const useObjectParent = Function.constant(objectParent)

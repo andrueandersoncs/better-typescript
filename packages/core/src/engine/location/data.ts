@@ -1,6 +1,6 @@
-import { Function, Schema } from "effect"
+import { Effect, Schema, pipe } from "effect"
 
-const zeroPosition: () => number = Function.constant(0)
+const defaultPosition = Effect.succeed(0)
 
 /**
  * PositionSchema is the stable boundary representation exchanged with Location.
@@ -11,9 +11,11 @@ const zeroPosition: () => number = Function.constant(0)
  *   representations drift.
  * @modelRole boundary
  */
-export const positionSchema = Schema.optionalWith(Schema.Int, {
-  default: zeroPosition
-})
+export const positionSchema = pipe(
+  Schema.Int,
+  Schema.withDecodingDefaultType(defaultPosition),
+  Schema.withConstructorDefault(defaultPosition)
+)
 
 const optionalUnknown = Schema.optional(Schema.Unknown)
 

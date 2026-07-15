@@ -1,14 +1,14 @@
 import { Context, Layer } from "effect"
 
-export class PrimaryConfig extends Context.Tag("PrimaryConfig")<
+export class PrimaryConfig extends Context.Service<
   PrimaryConfig,
   { readonly value: string }
->() {}
+>()("PrimaryConfig") {}
 
-export class SecondaryConfig extends Context.Tag("SecondaryConfig")<
+export class SecondaryConfig extends Context.Service<
   SecondaryConfig,
   { readonly value: string }
->() {}
+>()("SecondaryConfig") {}
 
 const makePrimaryLayer = () =>
   Layer.succeed(PrimaryConfig, { value: "primary" })

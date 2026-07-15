@@ -93,7 +93,7 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
     }
 
     const expression = ts.isReturnStatement(node)
-      ? Option.fromNullable(node.expression)
+      ? Option.fromNullishOr(node.expression)
       : Option.liftPredicate(ts.isExpression)(node.body)
 
     const expressions = Option.toArray(expression)

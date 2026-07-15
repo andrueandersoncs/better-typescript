@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Chunk, Effect, Fiber, HashMap, Option, Queue, Stream, pipe } from "effect"
+import { Effect, Fiber, HashMap, Option, Queue, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { Location } from "@better-typescript/core/engine/location/data"
 import {
@@ -20,7 +20,7 @@ import type {
   Wiring,
   WiringConfig
 } from "@better-typescript/core/engine/report/data"
-import { defineConfig, namedCheck } from "@better-typescript/core/engine/report"
+import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/report"
 import { reportBlocksFromConfig } from "@better-typescript/core/project/loadProject"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -70,7 +70,7 @@ const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
 const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray))
+  Effect.runPromise(Stream.runCollect(stream))
 
 const loadFixtureProject = async (): Promise<LoadedProject> => {
   const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
@@ -93,10 +93,10 @@ const throwProbeCheck: Check = checkFromSubscriptions(() => [
 
 const throwProbeNamedCheck: NamedCheck = namedCheck(probeName, throwProbeCheck, probeExamples)
 
-const probeWiring: Wiring = {
+const probeWiring: Wiring = makeWiring({
   checks: [throwProbeNamedCheck],
   derive: () => Stream.empty
-}
+})
 
 const configFor = (
   wiring: Wiring,
@@ -300,10 +300,10 @@ test("signalUpdates and reportBlockUpdates derive one signal array and advice-fi
     remediation: "act on the probe evidence",
     evidence: [{ measure: "probe", count: 4 }]
   }
-  const adviceProbeWiring: Wiring = {
+  const adviceProbeWiring: Wiring = makeWiring({
     checks: [throwProbeNamedCheck],
     derive: () => Stream.fromIterable([fixedAdvice])
-  }
+  })
   const adviceProbeConfig = configFor(adviceProbeWiring)
 
   const batches = await collectStream(
@@ -398,7 +398,7 @@ test("watch pushes the initial report, updated blocks, and cleared events for fs
   await Effect.runPromise(
     Effect.gen(function* () {
       const queue = yield* Queue.unbounded<ReportEvent>()
-      const consumer = yield* Effect.fork(
+      const consumer = yield* Effect.forkChild(
         Stream.runForEach(stream, (event) => Queue.offer(queue, event))
       )
       const take = pipe(Queue.take(queue), Effect.timeout("30 seconds"))
@@ -467,7 +467,7 @@ test("watch emits the empty-report event for a signal-free workspace", async () 
   await Effect.runPromise(
     Effect.gen(function* () {
       const queue = yield* Queue.unbounded<ReportEvent>()
-      const consumer = yield* Effect.fork(
+      const consumer = yield* Effect.forkChild(
         Stream.runForEach(stream, (event) => Queue.offer(queue, event))
       )
       const first = yield* pipe(Queue.take(queue), Effect.timeout("30 seconds"))

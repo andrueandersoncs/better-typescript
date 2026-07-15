@@ -12,7 +12,7 @@ const message = "Avoid conditional object spreads."
 
 const hint =
   "Build a record of candidate properties and use Record.filterMap from Effect with " +
-  "Option.some/Option.none (or Option.fromNullable) to keep only present entries."
+  "Result.succeed/Result.fail (or Result.fromNullishOr) to keep only present entries."
 
 const objectLiteralPropertyCount = (expression: ts.Expression): number => {
   const unwrapped = unwrapExpression(expression)

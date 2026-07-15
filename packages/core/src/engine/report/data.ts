@@ -131,6 +131,8 @@ export class RuleReportKey extends Schema.TaggedClass<RuleReportKey>()("rule", {
  */
 export type ReportKey = AdviceReportKey | RuleReportKey
 
+const reportKeyMembers = Array.make(AdviceReportKey, RuleReportKey)
+
 /**
  * ReportKeySchema is the runtime codec for the ReportKey wire boundary.
  *
@@ -140,7 +142,7 @@ export type ReportKey = AdviceReportKey | RuleReportKey
  *   runtime validation drift from the TypeScript contract.
  * @modelRole boundary
  */
-export const reportKeySchema = Schema.Union(AdviceReportKey, RuleReportKey)
+export const reportKeySchema = Schema.Union(reportKeyMembers)
 
 /**
  * ReportBlock carries one rendered block and both identities needed for stable
@@ -171,11 +173,12 @@ const duplicateNameArray = Schema.Array(Schema.String)
  *   prose and force consumers to parse an unstable message.
  * @modelRole protocol
  */
-export class DuplicateCheckNamesError extends Schema.TaggedError<DuplicateCheckNamesError>(
-  "DuplicateCheckNamesError"
-)("DuplicateCheckNamesError", {
-  names: duplicateNameArray
-}) {
+export class DuplicateCheckNamesError extends Schema.TaggedErrorClass<DuplicateCheckNamesError>()(
+  "DuplicateCheckNamesError",
+  {
+    names: duplicateNameArray
+  }
+) {
   get message(): string {
     return `Duplicate check names: ${Array.join(this.names, ", ")}`
   }
@@ -193,11 +196,12 @@ const invalidWiringIndexArray = Schema.Array(Schema.Number)
  *   structured evidence in prose and duplicate error parsing at the boundary.
  * @modelRole protocol
  */
-export class InvalidWiringFilesError extends Schema.TaggedError<InvalidWiringFilesError>(
-  "InvalidWiringFilesError"
-)("InvalidWiringFilesError", {
-  indexes: invalidWiringIndexArray
-}) {
+export class InvalidWiringFilesError extends Schema.TaggedErrorClass<InvalidWiringFilesError>()(
+  "InvalidWiringFilesError",
+  {
+    indexes: invalidWiringIndexArray
+  }
+) {
   get message(): string {
     const indexes = Array.map(this.indexes, String)
 

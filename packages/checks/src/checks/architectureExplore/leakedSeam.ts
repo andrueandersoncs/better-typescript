@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Function, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -19,12 +19,12 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
     const atPath = Array.filter(leaks, (element) => element.detection.location.path === filePath)
 
     if (atPath.length < minimumLeaks) {
-      return Option.none()
+      return Result.failVoid
     }
 
     const internalCount = pipe(
       atPath,
-      Array.filterMap(seamLeakageDataOf),
+      Array.filterMap(Function.flow(seamLeakageDataOf, Result.fromOption(Function.constVoid))),
       Array.filter((data) => data.kind === "internal-path")
     ).length
 
@@ -44,7 +44,7 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
       evidence
     })
 
-    return Option.some(advice)
+    return Result.succeed(advice)
   })
 }
 

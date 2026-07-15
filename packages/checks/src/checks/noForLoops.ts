@@ -13,9 +13,9 @@ const forLoopElements = (context: CheckContext) => {
   const element = detection(context)
 
   const matches = (node: ts.ForStatement): ReadonlyArray<Detection> => {
-    const hasStopCondition = pipe(Option.fromNullable(node.condition), Option.isSome)
-    const hasInitializer = pipe(Option.fromNullable(node.initializer), Option.isSome)
-    const hasIncrementor = pipe(Option.fromNullable(node.incrementor), Option.isSome)
+    const hasStopCondition = pipe(Option.fromNullishOr(node.condition), Option.isSome)
+    const hasInitializer = pipe(Option.fromNullishOr(node.initializer), Option.isSome)
+    const hasIncrementor = pipe(Option.fromNullishOr(node.incrementor), Option.isSome)
     const iteratorParts = Array.make(hasInitializer, hasIncrementor)
     const hasIterator = Array.some(iteratorParts, Boolean)
     const iteratorForLoopConditions = Array.make(hasStopCondition, hasIterator)

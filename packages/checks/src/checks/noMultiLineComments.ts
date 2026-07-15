@@ -1,4 +1,4 @@
-import { Array, Option, Struct } from "effect"
+import { Array, Result, Struct } from "effect"
 import * as ts from "typescript"
 import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location/data"
@@ -25,7 +25,7 @@ const hint =
   "@remarks). For architectural decisions that require longer explanation, create an " +
   "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
 
-const commentPosition = Struct.get("pos")
+const commentPosition = Struct.get<{ readonly pos: number }, "pos">("pos")
 
 const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile
@@ -51,7 +51,7 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
       isAdjacentLine(sourceFile)(current)(singleLineComments[index + 1])
 
     if (index === 0) {
-      return hasNextAdjacent ? Option.some(current.pos) : Option.none()
+      return hasNextAdjacent ? Result.succeed(current.pos) : Result.failVoid
     }
 
     const previousComment = singleLineComments[index - 1]
@@ -60,7 +60,7 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
     const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
     const shouldFlag = isRunStart && hasNextAdjacent
 
-    return shouldFlag ? Option.some(current.pos) : Option.none()
+    return shouldFlag ? Result.succeed(current.pos) : Result.failVoid
   })
 
   const positions = Array.appendAll(blockPositions, adjacentRunPositions)

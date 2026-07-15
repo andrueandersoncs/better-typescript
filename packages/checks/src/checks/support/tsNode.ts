@@ -117,14 +117,14 @@ export type ReturnTypeDeclaration =
   | ts.GetAccessorDeclaration
 
 export const namedDetectionTarget = (node: ts.NamedDeclaration): ts.Node =>
-  pipe(Option.fromNullable(node.name), Option.getOrElse(Function.constant(node)))
+  pipe(Option.fromNullishOr(node.name), Option.getOrElse(Function.constant(node)))
 
 export const resolvedSymbolAt =
   (checker: ts.TypeChecker) =>
   (node: ts.Node): Option.Option<ts.Symbol> =>
     pipe(
       checker.getSymbolAtLocation(node),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.map((symbol) => {
         const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
@@ -208,11 +208,11 @@ export const singleReturnExpression = (
   definition: FunctionDefinition
 ): Option.Option<ts.Expression> =>
   pipe(
-    Option.fromNullable(definition.body),
+    Option.fromNullishOr(definition.body),
     Option.filter(ts.isBlock),
     Option.map((body) => Array.filter(body.statements, ts.isReturnStatement)),
     Option.filter((returns) => returns.length === 1),
-    Option.flatMap((returns) => Option.fromNullable(returns[0].expression))
+    Option.flatMap((returns) => Option.fromNullishOr(returns[0].expression))
   )
 
 export const returnedExpression = (
@@ -253,7 +253,7 @@ export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclar
 export const functionInitializer = (
   declaration: ts.VariableDeclaration
 ): Option.Option<FunctionInitializer> =>
-  pipe(Option.fromNullable(declaration.initializer), Option.filter(isFunctionInitializer))
+  pipe(Option.fromNullishOr(declaration.initializer), Option.filter(isFunctionInitializer))
 
 export const conciseArrowBody = (arrowFunction: ts.ArrowFunction): Option.Option<ts.Expression> =>
   ts.isBlock(arrowFunction.body) ? Option.none() : Option.some(arrowFunction.body)
@@ -336,7 +336,7 @@ export const alwaysExitsScope = (statement: ts.Statement): boolean => {
   if (ts.isBlock(statement)) {
     const statements = statement.statements
     const lastIndex = statements.length - 1
-    const lastStmt = Option.fromNullable(statements[lastIndex])
+    const lastStmt = Option.fromNullishOr(statements[lastIndex])
 
     return Option.exists(lastStmt, alwaysExitsScope)
   }
@@ -385,7 +385,7 @@ export const isInAmbientContext = (node: ts.Node): boolean => {
     : Array.empty()
 
   const hasDeclareModifier = Array.some(modifiers, isDeclareKeyword)
-  const parent = Option.fromNullable<ts.Node>(node.parent)
+  const parent = Option.fromNullishOr<ts.Node>(node.parent)
   const parentIsAmbient = Option.exists(parent, isInAmbientContext)
 
   const ambientConditions = Array.make(
@@ -420,7 +420,7 @@ export const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boo
   Option.exists(typeNode, containsUndefinedKeyword)
 
 export const hasUndefinedReturnType = (decl: ReturnTypeDeclaration): boolean =>
-  pipe(Option.fromNullable(decl.type), containsUndefinedType)
+  pipe(Option.fromNullishOr(decl.type), containsUndefinedType)
 
 export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
   const returnTypeDecl = Option.liftPredicate(isReturnTypeDeclaration)(node)
@@ -431,10 +431,10 @@ export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnT
 const containsAnyKeyword = (node: ts.Node): boolean => {
   const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
   const anyChild = ts.forEachChild(node, (child) => (containsAnyKeyword(child) ? child : void 0))
-  const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
+  const hasAnyDescendant = pipe(Option.fromNullishOr(anyChild), Option.isSome)
   const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)
   return Array.some(ambientConditions, Boolean)
 }
 
 export const hasAnyReturnType = (decl: ReturnTypeDeclaration): boolean =>
-  pipe(Option.fromNullable(decl.type), Option.exists(containsAnyKeyword))
+  pipe(Option.fromNullishOr(decl.type), Option.exists(containsAnyKeyword))

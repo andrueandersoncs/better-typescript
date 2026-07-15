@@ -1,6 +1,5 @@
 import {
   Array,
-  Chunk,
   Effect,
   Function,
   HashMap,
@@ -16,22 +15,16 @@ import { Location } from "../location/data.js"
 import { AdviceReportKey, ReportBlock } from "../report/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
-export const collectSignals = <A>(
+export const collectSignals: <A>(
   signals: Stream.Stream<A, Error>
-): Effect.Effect<ReadonlyArray<A>, Error> =>
-  pipe(Stream.runCollect(signals), Effect.map(Chunk.toReadonlyArray))
+) => Effect.Effect<ReadonlyArray<A>, Error> = Stream.runCollect
 
 export const deriveSignals =
   <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
   (signals: Stream.Stream<A, Error>): Stream.Stream<B, Error> =>
-    pipe(
-      collectSignals(signals),
-      Effect.map(derive),
-      Effect.map(Stream.fromIterable),
-      Stream.unwrap
-    )
+    pipe(collectSignals(signals), Effect.map(derive), Stream.fromArrayEffect)
 
-const namedDetectionName = Struct.get("name")
+const namedDetectionName = Struct.get<NamedDetection, "name">("name")
 
 export const countAt =
   (counts: HashMap.HashMap<string, number>) =>
@@ -107,14 +100,14 @@ export const countSummary = (elements: ReadonlyArray<NamedDetection>): CountSumm
   })
 }
 
-const descendingNumber = Order.reverse(Order.number)
+const descendingNumber = Order.flip(Order.Number)
 
 const byCountDescending: Order.Order<EvidenceItem> = Order.mapInput(
   descendingNumber,
   Struct.get("count")
 )
 
-const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.string, Struct.get("measure"))
+const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.String, Struct.get("measure"))
 
 export const evidenceOrder: Order.Order<EvidenceItem> = Order.combine(byCountDescending, byMeasure)
 
@@ -146,7 +139,7 @@ const collisionEvidence = (
   const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
   const nameList = Array.fromIterable(distinct)
-  const sortedNames = Array.sort(nameList, Order.string)
+  const sortedNames = Array.sort(nameList, Order.String)
   const measure = `line ${entry[0]}: ${Array.join(sortedNames, " + ")}`
 
   return evidenceItem(measure, entry[1].length)
@@ -192,8 +185,8 @@ export const adviceLevelRank = (advice: Advice): number => adviceLevelRanks[advi
 export const advicePath = (advice: Advice): string =>
   advice.level === "project" ? "project" : advice.location.path
 
-const byAdviceLevel = Order.mapInput(Order.number, adviceLevelRank)
-const byAdvicePath = Order.mapInput(Order.string, advicePath)
+const byAdviceLevel = Order.mapInput(Order.Number, adviceLevelRank)
+const byAdvicePath = Order.mapInput(Order.String, advicePath)
 export const adviceOrder = Order.combine(byAdviceLevel, byAdvicePath)
 
 export const adviceHeader = (advice: Advice): string => {

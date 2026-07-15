@@ -14,6 +14,7 @@ import {
   Option,
   Predicate,
   Record,
+  Result,
   Stream,
   Struct,
   Tuple,
@@ -91,7 +92,7 @@ const collectWorkspaceSignals = <A>(
   )
 
   const elementsByWiring = Array.map(config, (entry) =>
-    Array.makeBy(entry.wiring.checks.length, () => MutableList.empty<Detection>())
+    Array.makeBy(entry.wiring.checks.length, () => MutableList.make<Detection>())
   )
 
   const seenByCheck = Array.flatten(seenByWiring)
@@ -110,7 +111,8 @@ const collectWorkspaceSignals = <A>(
   const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
       const context = toContext(project)
-      const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+      const allSourceFiles = context.program.getSourceFiles()
+      const sourceFiles = Array.filter(allSourceFiles, isProjectSourceFile)
 
       const sourceMatches = Array.map(sourceFiles, (sourceFile) => {
         const candidatePath = relativeWorkspacePath(
@@ -142,7 +144,7 @@ const collectWorkspaceSignals = <A>(
 
       const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile): boolean => {
         const wiringIndex = wiringIndexesByCheck[checkIndex]
-        const matches = HashMap.unsafeGet(matchesByFileName, sourceFile.fileName)
+        const matches = HashMap.getUnsafe(matchesByFileName, sourceFile.fileName)
 
         return matches[wiringIndex] ?? false
       }
@@ -205,7 +207,7 @@ const collectWorkspaceSignals = <A>(
       Array.map(config, (entry, wiringIndex) => {
         const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
           const elements = elementsByWiring[wiringIndex][checkIndex]
-          const detections = Array.fromIterable(elements)
+          const detections = MutableList.toArray(elements)
 
           return new Signal({
             name: check.name,
@@ -414,7 +416,7 @@ export const withFallbackAdvice = (
     Stream.unwrap
   )
 
-const detectionsEquivalence = Array.getEquivalence(detectionEquals)
+const detectionsEquivalence = Array.makeEquivalence(detectionEquals)
 
 export const signalEquals = (a: Signal, b: Signal): boolean => {
   const sameName = a.name === b.name
@@ -423,7 +425,7 @@ export const signalEquals = (a: Signal, b: Signal): boolean => {
   return sameName && sameDetections
 }
 
-const signalArrayEquivalence = Array.getEquivalence(signalEquals)
+const signalArrayEquivalence = Array.makeEquivalence(signalEquals)
 
 export const wiringSignalsEquals = (a: WiringSignals, b: WiringSignals): boolean => {
   const sameMatchState = a.matched === b.matched
@@ -432,7 +434,7 @@ export const wiringSignalsEquals = (a: WiringSignals, b: WiringSignals): boolean
   return sameMatchState && sameSignals
 }
 
-export const wiringSignalsArrayEquivalence = Array.getEquivalence(wiringSignalsEquals)
+export const wiringSignalsArrayEquivalence = Array.makeEquivalence(wiringSignalsEquals)
 
 export const blockSignalEvent = (block: ReportBlock): SignalEvent =>
   new SignalEvent({ key: block.key, text: block.text })
@@ -540,14 +542,19 @@ const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A =
   return Effect.runSync(failed)
 }
 
-export const makeWiring = (wiring: Wiring): Wiring => validateCheckNames(wiring.checks, wiring)
+export const makeWiring = (definition: Pick<Wiring, "checks" | "derive">): Wiring => {
+  const wiring = new Wiring(definition)
+  return validateCheckNames(wiring.checks, wiring)
+}
 
-export const defineConfig = (config: WiringConfig): WiringConfig => {
+export const defineConfig = (
+  config: ReadonlyArray<Pick<WiringEntry, "files" | "wiring">>
+): WiringConfig => {
   const invalidIndexes = Array.filterMap(config, (entry, index) => {
     const hasFiles = entry.files.length > 0
     const hasOnlyNonEmptyPatterns = Array.every(entry.files, isFileGlob)
 
-    return hasFiles && hasOnlyNonEmptyPatterns ? Option.none() : Option.some(index)
+    return hasFiles && hasOnlyNonEmptyPatterns ? Result.failVoid : Result.succeed(index)
   })
 
   if (invalidIndexes.length > 0) {

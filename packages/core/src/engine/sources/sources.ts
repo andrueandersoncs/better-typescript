@@ -5,9 +5,9 @@ import {
   Function,
   HashMap,
   Iterable,
-  List,
   MutableList,
   Option,
+  Queue,
   Ref,
   Stream,
   pipe
@@ -46,6 +46,9 @@ export const contextFor =
     return new ProgramContext({ program, checker, projectRoot })
   }
 
+const mutableLists = <A>(count: number): Array<MutableList.MutableList<A>> =>
+  count <= 0 ? Array.empty() : Array.makeBy(count, () => MutableList.make<A>())
+
 /**
  * Compile all active subscriptions for one program and dispatch every AST node
  * once by SyntaxKind. Result arrays stay aligned with the input check order.
@@ -58,7 +61,8 @@ export const runChecks =
   (checks: ReadonlyArray<Check>) =>
   (includesSourceFile: CheckFilePredicate) =>
   (context: ProgramContext): ReadonlyArray<ReadonlyArray<Detection>> => {
-    const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+    const allSourceFiles = context.program.getSourceFiles()
+    const sourceFiles = Array.filter(allSourceFiles, isProjectSourceFile)
 
     const plans = Array.map(checks, (check, checkIndex) => {
       const isActive = Array.some(sourceFiles, (sourceFile) =>
@@ -83,11 +87,11 @@ export const runChecks =
       emptyDispatch,
       (dispatch, planned, subscriptionIndex) =>
         Array.reduce(planned.subscription.kinds, dispatch, (current, kind) =>
-          Array.modify(current, kind, Array.append(subscriptionIndex))
+          pipe(current, Array.modify(kind, Array.append(subscriptionIndex)), Option.getOrThrow)
         )
     )
 
-    const detectionsByCheck = Array.makeBy(checks.length, () => MutableList.empty<Detection>())
+    const detectionsByCheck = mutableLists<Detection>(checks.length)
 
     Array.forEach(sourceFiles, (sourceFile) => {
       const checkContext = new CheckContext({
@@ -105,7 +109,7 @@ export const runChecks =
             Array.forEach((subscription) => {
               const found = subscription.handler(checkContext)
 
-              Array.reduce(found, detectionsByCheck[checkIndex], MutableList.append)
+              MutableList.appendAll(detectionsByCheck[checkIndex], found)
             })
           )
         }
@@ -119,7 +123,7 @@ export const runChecks =
           }
 
           const handle = planned.subscription.handler(checkContext)
-          const detections = MutableList.empty<Detection>()
+          const detections = MutableList.make<Detection>()
 
           const active = new ActiveNodeSubscription({
             checkIndex: planned.checkIndex,
@@ -140,30 +144,28 @@ export const runChecks =
           if (Option.isSome(active)) {
             const found = active.value.handle(node)
 
-            Array.reduce(found, active.value.detections, MutableList.append)
+            MutableList.appendAll(active.value.detections, found)
           }
         })
       })
 
       Array.forEach(activeNodeSubscriptions, (active) => {
         if (Option.isSome(active)) {
-          Iterable.reduce(
-            active.value.detections,
-            detectionsByCheck[active.value.checkIndex],
-            MutableList.append
-          )
+          const detections = MutableList.toArray(active.value.detections)
+
+          MutableList.appendAll(detectionsByCheck[active.value.checkIndex], detections)
         }
       })
     })
 
-    return Array.map(detectionsByCheck, Array.fromIterable)
+    return Array.map(detectionsByCheck, MutableList.toArray)
   }
 
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
   (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check => {
     const emptyPlanCache = Option.none<CachedPlan>()
-    const planCache = Ref.unsafeMake(emptyPlanCache)
+    const planCache = Ref.makeUnsafe(emptyPlanCache)
 
     const plan: (context: ProgramContext) => ReadonlyArray<Subscription> = (context) => {
       const readOrBuild = (
@@ -202,7 +204,7 @@ export const withProgramIndex =
   }
 
 export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
-  const children = MutableList.empty<ts.Node>()
+  const children = MutableList.make<ts.Node>()
 
   ts.forEachChild(node, (child) => {
     MutableList.append(children, child)
@@ -210,7 +212,7 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
     return false
   })
 
-  return Array.fromIterable(children)
+  return MutableList.toArray(children)
 }
 
 /**
@@ -221,22 +223,18 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
  *   JavaScript call stack.
  */
 export const astNodesIn = (root: ts.Node): Iterable<ts.Node> => {
-  const initial = List.of(root)
+  const initial: ReadonlyArray<ts.Node> = Array.of(root)
 
-  return Iterable.unfold<List.List<ts.Node>, ts.Node>(initial, (pending) => {
-    if (List.isNil(pending)) {
+  return Iterable.unfold(initial, (pending) => {
+    if (Array.isReadonlyArrayEmpty(pending)) {
       return Option.none()
     }
 
-    const node = pending.head
+    const node = pending[0]
     const children = astChildren(node)
-
-    const next = Array.reduceRight(children, pending.tail, (stack, child) =>
-      List.prepend(stack, child)
-    )
-
+    const rest = Array.drop(pending, 1)
+    const next: ReadonlyArray<ts.Node> = Array.appendAll(children, rest)
     const entry = Tuple.make(node, next)
-
     return Option.some(entry)
   })
 }
@@ -252,10 +250,12 @@ export const foldAst =
 
 export const astNodesFromContext = (
   context: ProgramContext
-): Stream.Stream<AstNodeElement, Error> =>
-  pipe(
-    context.program.getSourceFiles(),
-    Array.filter(isProjectSourceFile),
+): Stream.Stream<AstNodeElement, Error> => {
+  const sourceFiles = context.program.getSourceFiles()
+  const projectSourceFiles = Array.filter(sourceFiles, isProjectSourceFile)
+
+  return pipe(
+    projectSourceFiles,
     Stream.fromIterable,
     Stream.flatMap((sourceFile) =>
       pipe(
@@ -265,6 +265,7 @@ export const astNodesFromContext = (
       )
     )
   )
+}
 
 // Reporter diagnostics stay silent because the watcher must retain the last valid program through a transient config failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
@@ -286,7 +287,14 @@ export const programUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
 ): Stream.Stream<ProgramContext, Error> =>
-  Stream.asyncPush<ProgramContext, Error>((emit) => {
+  Stream.callback<ProgramContext, Error>((queue) => {
+    const onProgramCreate = (builder: ts.BuilderProgram): boolean => {
+      const program = builder.getProgram()
+      const context = contextFor(config.rootPath)(program)
+
+      return Queue.offerUnsafe(queue, context)
+    }
+
     const acquire = Effect.sync(() => {
       const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
 
@@ -300,15 +308,8 @@ export const programUpdates = (
         watchOptionsToExtend
       )
 
-      // Assign the handler after construction because createWatchProgram emits the initial program synchronously and asyncPush buffers it.
-      const afterProgramCreate = (builder: ts.BuilderProgram): boolean => {
-        const program = builder.getProgram()
-        const context = contextFor(config.rootPath)(program)
-
-        return emit.single(context)
-      }
-
-      host.afterProgramCreate = afterProgramCreate
+      // Assign the handler after construction because createWatchProgram emits the initial program synchronously and the callback queue buffers it.
+      host.afterProgramCreate = onProgramCreate
 
       return ts.createWatchProgram(host)
     })
@@ -333,8 +334,10 @@ const fileIndexEntry = (sourceFile: ts.SourceFile): readonly [string, ts.SourceF
 export const diffCheckableFiles =
   (previous: HashMap.HashMap<string, ts.SourceFile>) =>
   (context: ProgramContext): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
-    const currentFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-    const next = pipe(currentFiles, Array.map(fileIndexEntry), HashMap.fromIterable)
+    const allSourceFiles = context.program.getSourceFiles()
+    const currentFiles = Array.filter(allSourceFiles, isProjectSourceFile)
+    const entries = Array.map(currentFiles, fileIndexEntry)
+    const next = HashMap.fromIterable(entries)
 
     const changed = Array.filter(currentFiles, (sourceFile) =>
       pipe(
@@ -372,5 +375,9 @@ export const sourceUpdates = (
 ): Stream.Stream<SourceUpdate, Error> =>
   pipe(
     programUpdates(config, watchOptions),
-    Stream.mapAccum(emptyFileIndex, (previous, context) => diffCheckableFiles(previous)(context))
+    Stream.mapAccum(Function.constant(emptyFileIndex), (previous, context) => {
+      const [next, update] = diffCheckableFiles(previous)(context)
+      const updates = Array.of(update)
+      return Tuple.make(next, updates)
+    })
   )

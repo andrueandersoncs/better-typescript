@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-class NotFound extends Schema.TaggedError<NotFound>("NotFound")(
+class NotFound extends Schema.TaggedErrorClass<NotFound>()(
   "NotFound",
   {}
 ) {}

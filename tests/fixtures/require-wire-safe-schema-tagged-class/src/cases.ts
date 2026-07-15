@@ -14,17 +14,17 @@ export class UnknownEnvelope extends Schema.TaggedClass<UnknownEnvelope>()(
 
 export class DateEnvelope extends Schema.TaggedClass<DateEnvelope>()(
   "DateEnvelope",
-  { createdAt: Schema.DateFromSelf }
+  { createdAt: Schema.Date }
 ) {}
 
 export class SymbolEnvelope extends Schema.TaggedClass<SymbolEnvelope>()(
   "SymbolEnvelope",
-  { token: Schema.SymbolFromSelf }
+  { token: Schema.Symbol }
 ) {}
 
 export class BigIntEnvelope extends Schema.TaggedClass<BigIntEnvelope>()(
   "BigIntEnvelope",
-  { count: Schema.BigIntFromSelf }
+  { count: Schema.BigInt }
 ) {}
 
 export class UndefinedEnvelope extends Schema.TaggedClass<UndefinedEnvelope>()(

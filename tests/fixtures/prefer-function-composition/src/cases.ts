@@ -19,7 +19,7 @@ declare const Array: {
 }
 
 declare const Option: {
-  readonly fromNullable: <A>(value: A | null | undefined) => A | null
+  readonly fromNullishOr: <A>(value: A | null | undefined) => A | null
 }
 
 declare const pipe: {
@@ -46,11 +46,11 @@ const combineAllLike = (
 const unaryWrap = (symbol: string | null): string | null => {
   const value = symbol
 
-  return Option.fromNullable(value)
+  return Option.fromNullishOr(value)
 }
 
 const pipeAfterBinding = (symbol: string | null): string | null => {
-  const value = Option.fromNullable(symbol)
+  const value = Option.fromNullishOr(symbol)
 
   return pipe(value, (current) => current)
 }
