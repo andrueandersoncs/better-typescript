@@ -2,7 +2,12 @@ import { Array, Effect, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { PipelineHostileInput, PipelineSignals } from "./data.js"
+
+export const pipelineHostileExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("pipeline-hostile")
 
 const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advice> => {
   const isPipelineHostile = (path: string): boolean => {
@@ -38,7 +43,8 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
           "This file composes inside-out because its functions are not data-last: call sites " +
           "cannot pipe, so results nest. Fix the signatures first — curry configuration ahead " +
           "of the data argument — and the nested-call signals dissolve at the call sites.",
-        evidence
+        evidence,
+        examples: pipelineHostileExamples
       })
     })
   )

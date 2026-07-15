@@ -31,6 +31,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "colliding fixes on shared expressions",
     wiring: defaultWiring
+  },
+  {
+    fixtureId: "pipeline-hostile",
+    pairId: "1",
+    title: "pipeline-hostile module",
+    wiring: defaultWiring
   }
 ]
 
