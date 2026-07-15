@@ -23,7 +23,7 @@ const pipeMethodCallMatches = (context: CheckContext) => {
       Option.filter((access) =>
         pipe(
           checker.getSymbolAtLocation(access.name),
-          Option.fromNullable,
+          Option.fromNullishOr,
           Option.exists(symbolDeclaredInEffectPackage)
         )
       ),

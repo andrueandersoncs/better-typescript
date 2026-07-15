@@ -43,7 +43,7 @@ const addLineTotalCents = (total: number, line: OrderLine): number => total + li
 export const computedAmountCents = (order: Order): number =>
   order.lines.reduce(addLineTotalCents, 0)
 
-const lineSku = Struct.get("sku")
+const lineSku = Struct.get<OrderLine, "sku">("sku")
 
 export const skusForOrder = (order: Order): ReadonlyArray<string> => order.lines.map(lineSku)
 

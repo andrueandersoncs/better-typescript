@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Chunk, Effect, Stream } from "effect"
+import { Effect, Stream } from "effect"
 import {
   architectureExploreChecks,
   architectureExploreDerive,
@@ -33,7 +33,7 @@ const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signa
   new Signal({ name, reported: false, detections, examples: [] })
 
 const collectAdvice = (advice: Stream.Stream<Advice, Error>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray))
+  Effect.runPromise(Stream.runCollect(advice))
 
 const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
   advice.filter((item) => item.title === title)

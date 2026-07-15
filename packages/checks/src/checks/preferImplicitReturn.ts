@@ -20,7 +20,7 @@ const implicitReturnMatches = (context: CheckContext) => {
       hasOneStatement &&
       pipe(
         Option.liftPredicate(ts.isReturnStatement)(firstStatement),
-        Option.flatMap((statement) => Option.fromNullable(statement.expression)),
+        Option.flatMap((statement) => Option.fromNullishOr(statement.expression)),
         Option.isSome
       )
 

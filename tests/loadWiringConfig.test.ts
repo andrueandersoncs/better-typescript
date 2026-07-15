@@ -3,8 +3,8 @@ import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Chunk, Effect, Stream } from "effect"
-import { defineConfig } from "@better-typescript/core/engine/report"
+import { Effect, Stream } from "effect"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
 import { reportFromConfig } from "@better-typescript/core/project/loadProject"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/report/data"
 import { loadProject } from "@better-typescript/core/project/loadProject"
@@ -15,16 +15,13 @@ import { checkFromSubscriptions, fileCheck, locateNode } from "@better-typescrip
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
 
-const fallbackWiring: Wiring = {
-  checks: [],
-  derive: () => Stream.empty
-}
+const fallbackWiring: Wiring = makeWiring({ checks: [], derive: () => Stream.empty })
 
 const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
 
 const emptyCheckConfigPreamble = [
   'import { Stream } from "effect"',
-  "",
+  'import { checkFromSubscriptions } from "@better-typescript/core/engine/check"',
   "",
   "const emptyCheck = checkFromSubscriptions(() => [])",
   ""
@@ -71,7 +68,7 @@ const loadConfigFailure = (projectDirectory: string): Promise<ProjectWiringConfi
   Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig)))
 
 const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray))
+  Effect.runPromise(Stream.runCollect(stream))
 
 test("loadWiringConfig returns fallback config when a project has no config", async () => {
   await runInTempProject(async (projectDirectory) => {
@@ -181,7 +178,7 @@ test("loaded glob config drives the report end to end", async () => {
         'import { Stream } from "effect"',
         "",
         'import { Detection } from "@better-typescript/core/engine/location/data"',
-        "",
+        'import { fileCheck, locateNode } from "@better-typescript/core/engine/check"',
         "",
         "export default [",
         "  {",

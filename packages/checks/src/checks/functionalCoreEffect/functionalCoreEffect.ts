@@ -30,7 +30,8 @@ import {
   capabilitySubjectAt,
   classExtendsEffectApi,
   effectApiMember,
-  effectServiceDependencyProperty,
+  contextServiceLayerProperty,
+  effectServiceConfigObject,
   hasScopedLifecycleAncestor,
   hasSuspensionBoundary,
   importHasRuntimeValue,
@@ -65,9 +66,9 @@ const messageByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
   "unsuspended-adapter-effect":
     "Suspend the foreign operation before composing it into an Effect program.",
   "unscoped-resource":
-    "Acquire this external resource in a scoped Layer or acquireRelease lifecycle.",
+    "Acquire this external resource in a Layer.effect or acquireRelease lifecycle.",
   "escaping-runtime-state":
-    "Create shared Effect state inside a scoped service Layer instead of letting it escape."
+    "Create shared Effect state inside a Layer.effect service instead of letting it escape."
 }
 
 const hintByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
@@ -76,23 +77,23 @@ const hintByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
   "domain-effect-program":
     "Return an immutable domain decision from a plain function; let application code translate the decision into Effect operations.",
   "direct-capability":
-    "Declare a Context.Tag port with domain inputs and outputs, then implement it with a Layer in an adapter.",
+    "Declare a Context.Service port with domain inputs and outputs, then implement it with a Layer in an adapter.",
   "runtime-execution":
     "Return the Effect value with its requirements visible; provide and run it once in main, bootstrap, wiring, or a test boundary.",
   "dependency-provisioning":
     "Leave the R channel open through application code and compose Layers where the application starts.",
   "port-live-implementation":
-    "Use Context.Tag for the port and export Layer.effect, Layer.scoped, or Layer.succeed from an adapter Module.",
+    "Use Context.Service for the port and export Layer.effect or Layer.succeed from an adapter Module.",
   "infrastructure-contract":
     "Expose domain-owned values, errors, Effect, or Stream; keep SDK clients, Promise, Runtime, Ref, Queue, and PubSub private to the adapter.",
   "service-locator":
-    "Yield the precise Context.Tag requirement where it is used; never pass Context.Context or a Runtime as a dependency bag.",
+    "Yield the precise Context.Service requirement where it is used; never pass Context.Context or a Runtime as a dependency bag.",
   "unsuspended-adapter-effect":
-    "Use Effect.sync, Effect.try, Effect.tryPromise, or Effect.async around the lazy foreign call; Effect.succeed does not suspend work.",
+    "Use Effect.sync, Effect.try, Effect.tryPromise, or Effect.callback around the lazy foreign call; Effect.succeed does not suspend work.",
   "unscoped-resource":
-    "Pair acquisition and release with Effect.acquireRelease and expose the implementation through Layer.scoped.",
+    "Pair acquisition and release with Effect.acquireRelease and expose the implementation through Layer.effect.",
   "escaping-runtime-state":
-    "Use Ref.make or the appropriate Queue/PubSub constructor while building a scoped service and keep the handle out of the port surface."
+    "Use Ref.make or the appropriate Queue/PubSub constructor while building a Layer.effect service and keep the handle out of the port surface."
 }
 
 const emptyPath: ReadonlyArray<string> = Array.empty()
@@ -215,7 +216,7 @@ const forbiddenDomainNamespaces: Readonly<Record<string, true>> = {
   Queue: true,
   PubSub: true,
   SubscriptionRef: true,
-  FiberRef: true,
+  References: true,
   Runtime: true,
   ManagedRuntime: true,
   Scope: true
@@ -233,7 +234,7 @@ const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<st
   const isEffectModule = moduleSpecifier === "effect"
 
   const namespaceForbidden = pipe(
-    Option.fromNullable(path[0]),
+    Option.fromNullishOr(path[0]),
     Option.match({
       onNone: Function.constTrue,
       onSome: namespaceIsForbidden
@@ -313,7 +314,7 @@ const namespaceBindingSubject = (
   identifier: ts.Identifier
 ): Option.Option<string> => {
   const symbolAtIdentifier = context.checker.getSymbolAtLocation(identifier)
-  const bindingSymbolOption = Option.fromNullable(symbolAtIdentifier)
+  const bindingSymbolOption = Option.fromNullishOr(symbolAtIdentifier)
   const binding = importedMemberAt(context.checker, identifier)
 
   return pipe(
@@ -394,15 +395,15 @@ const forbiddenDomainMemberAt = (
 const importBindingIdentifiers = (
   declaration: ts.ImportDeclaration
 ): ReadonlyArray<ts.Identifier> => {
-  const importClauseOption = Option.fromNullable(declaration.importClause)
+  const importClauseOption = Option.fromNullishOr(declaration.importClause)
 
   if (Option.isNone(importClauseOption)) {
     return emptyIdentifiers
   }
 
   const importClause = importClauseOption.value
-  const defaultBinding = pipe(Option.fromNullable(importClause.name), Option.toArray)
-  const namedBindingsOption = Option.fromNullable(importClause.namedBindings)
+  const defaultBinding = pipe(Option.fromNullishOr(importClause.name), Option.toArray)
+  const namedBindingsOption = Option.fromNullishOr(importClause.namedBindings)
 
   if (Option.isNone(namedBindingsOption)) {
     return defaultBinding
@@ -511,7 +512,7 @@ const architectureImportElements =
 const exportBindingIdentifiers = (
   declaration: ts.ExportDeclaration
 ): ReadonlyArray<ts.Identifier> => {
-  const exportClauseOption = Option.fromNullable(declaration.exportClause)
+  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
 
   if (Option.isNone(exportClauseOption)) {
     return emptyIdentifiers
@@ -530,7 +531,7 @@ const forbiddenDomainExport = (
   context: CheckContext,
   declaration: ts.ExportDeclaration
 ): Option.Option<string> => {
-  const exportClauseOption = Option.fromNullable(declaration.exportClause)
+  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
 
   if (Option.isNone(exportClauseOption)) {
     return pipe(
@@ -555,7 +556,7 @@ const exportClauseAllowsRuntime = (exportClause: ts.NamedExportBindings): boolea
 
 const exportHasRuntimeValue = (declaration: ts.ExportDeclaration): boolean => {
   const isValueExport = declaration.isTypeOnly === false
-  const exportClauseOption = Option.fromNullable(declaration.exportClause)
+  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
 
   const clauseAllowsRuntime = Option.match(exportClauseOption, {
     onNone: Function.constTrue,
@@ -571,7 +572,7 @@ const architectureExportElements =
   (context: CheckContext) =>
   (node: ts.ExportDeclaration): ReadonlyArray<Detection> => {
     const role = roleForSourceFile(index, context.sourceFile)
-    const moduleSpecifierOption = Option.fromNullable(node.moduleSpecifier)
+    const moduleSpecifierOption = Option.fromNullishOr(node.moduleSpecifier)
     const exportInputs = Option.all({ role, moduleSpecifier: moduleSpecifierOption })
 
     if (Option.isNone(exportInputs)) {
@@ -663,7 +664,7 @@ const serviceLocatorEffectNames = Array.make("context", "contextWith", "contextW
 
 const serviceLocatorContextNames = Array.make("get", "getOption", "getOrElse", "unsafeGet")
 
-const portLayerNames = Array.make("effect", "scoped", "succeed")
+const portLayerNames = Array.make("effect", "succeed")
 
 const managedRuntimeMakeNames = Array.of("make")
 
@@ -678,9 +679,8 @@ const platformRuntimePrefixes = Array.make(
 )
 
 const stateConstructors: Readonly<Record<string, ReadonlyArray<string>>> = {
-  Ref: Array.of("unsafeMake"),
-  SynchronizedRef: Array.of("unsafeMake"),
-  FiberRef: Array.of("unsafeMake")
+  Ref: Array.of("makeUnsafe"),
+  SynchronizedRef: Array.of("makeUnsafe")
 }
 
 const stateConstructorEntries = EffectRecord.toEntries(stateConstructors)
@@ -1072,7 +1072,7 @@ const propertyAccessElements =
       ),
       Option.flatMap((access) => {
         const expressionSymbol = context.checker.getSymbolAtLocation(access.expression)
-        const symbolOption = Option.fromNullable(expressionSymbol)
+        const symbolOption = Option.fromNullishOr(expressionSymbol)
 
         const resolvedSymbol = pipe(
           symbolOption,
@@ -1093,7 +1093,7 @@ const propertyAccessElements =
         return Array.findFirst(declarations, ts.isClassDeclaration)
       }),
       Option.filter((declaration) =>
-        classExtendsEffectApi(context.checker, declaration, "Effect", "Service")
+        classExtendsEffectApi(context.checker, declaration, "Context", "Service")
       ),
       Option.filter(Function.constant(resolvedRole !== "root")),
       Option.map(() => {
@@ -1123,14 +1123,15 @@ const classDeclarationElements =
       return emptyDetections
     }
 
-    const liveService = classExtendsEffectApi(context.checker, node, "Effect", "Service")
+    const serviceConfig = effectServiceConfigObject(context.checker, node)
+    const liveService = Option.isSome(serviceConfig)
 
     if (!liveService) {
       return emptyDetections
     }
 
     const nodeFallback = Function.constant(node)
-    const target = pipe(Option.fromNullable(node.name), Option.getOrElse(nodeFallback))
+    const target = pipe(Option.fromNullishOr(node.name), Option.getOrElse(nodeFallback))
     const targetText = target.getText()
 
     const liveImplementation = boundaryDetection(
@@ -1141,10 +1142,10 @@ const classDeclarationElements =
       targetText
     )
 
-    const embeddedDependencies = pipe(
-      effectServiceDependencyProperty(context.checker, node),
+    const embeddedLayer = pipe(
+      contextServiceLayerProperty(node),
       Option.map((property) => {
-        const subject = `${targetText}.dependencies`
+        const subject = `${targetText}.${property.name.getText()}`
         return boundaryDetection(
           context,
           property.name,
@@ -1156,7 +1157,7 @@ const classDeclarationElements =
       Option.toArray
     )
 
-    return Array.prepend(embeddedDependencies, liveImplementation)
+    return Array.prepend(embeddedLayer, liveImplementation)
   }
 
 const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
@@ -1165,7 +1166,7 @@ const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
   Queue: true,
   PubSub: true,
   SubscriptionRef: true,
-  FiberRef: true,
+  References: true,
   Runtime: true,
   ManagedRuntime: true
 }
@@ -1219,7 +1220,7 @@ const typeReferenceSubject = (
   }
 
   const typeNameSymbol = context.checker.getSymbolAtLocation(node.typeName)
-  const symbolOption = Option.fromNullable(typeNameSymbol)
+  const symbolOption = Option.fromNullishOr(typeNameSymbol)
 
   return pipe(
     symbolOption,
@@ -1256,7 +1257,7 @@ const typeIsServiceLocator = (
   )
 
   const typeNameSymbol = context.checker.getSymbolAtLocation(node.typeName)
-  const unresolvedSymbolOption = Option.fromNullable(typeNameSymbol)
+  const unresolvedSymbolOption = Option.fromNullishOr(typeNameSymbol)
 
   const symbolOption = pipe(
     unresolvedSymbolOption,

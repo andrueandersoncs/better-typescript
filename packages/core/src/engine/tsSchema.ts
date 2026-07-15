@@ -20,7 +20,7 @@ const isTsSourceFile = (input: unknown): input is ts.SourceFile =>
  *   and let their representations drift.
  * @modelRole shared
  */
-export const TsProgram = Schema.declare(isTsProgram).annotations({
+export const TsProgram = Schema.declare(isTsProgram, {
   identifier: "ts.Program"
 })
 
@@ -34,7 +34,7 @@ export const TsProgram = Schema.declare(isTsProgram).annotations({
  *   and let their representations drift.
  * @modelRole shared
  */
-export const TsTypeChecker = Schema.declare(isTsTypeChecker).annotations({
+export const TsTypeChecker = Schema.declare(isTsTypeChecker, {
   identifier: "ts.TypeChecker"
 })
 
@@ -48,7 +48,7 @@ export const TsTypeChecker = Schema.declare(isTsTypeChecker).annotations({
  *   and let their representations drift.
  * @modelRole shared
  */
-export const TsSourceFile = Schema.declare(isTsSourceFile).annotations({
+export const TsSourceFile = Schema.declare(isTsSourceFile, {
   identifier: "ts.SourceFile"
 })
 
@@ -64,6 +64,6 @@ const isTsNode = (input: unknown): input is ts.Node => Predicate.hasProperty(inp
  *   and let their representations drift.
  * @modelRole shared
  */
-export const TsNode = Schema.declare(isTsNode).annotations({
+export const TsNode = Schema.declare(isTsNode, {
   identifier: "ts.Node"
 })

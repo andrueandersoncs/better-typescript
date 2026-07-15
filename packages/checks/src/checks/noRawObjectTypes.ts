@@ -35,7 +35,7 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
 }
 
 const parameterTypeNode = (param: ts.ParameterDeclaration): Option.Option<ts.TypeNode> =>
-  Option.fromNullable(param.type)
+  Option.fromNullishOr(param.type)
 
 /**
  * RawObjectTarget is the syntax contract shared by raw-object candidate
@@ -57,7 +57,7 @@ const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
   ) ||
   pipe(
     Option.liftPredicate(isReturnTypeDeclaration)(node),
-    Option.flatMap((decl) => Option.fromNullable(decl.type)),
+    Option.flatMap((decl) => Option.fromNullishOr(decl.type)),
     Option.exists(containsRawObjectType)
   )
 

@@ -162,7 +162,8 @@ import {
   filterFallbackAdviceForUncoveredFiles,
   namedCheck,
   signalOf,
-  silentCheck
+  silentCheck,
+  makeWiring
 } from "@better-typescript/core/engine/report"
 import type {
   NamedCheck,
@@ -634,14 +635,11 @@ export const defaultDerive = (signals: ReadonlyArray<Signal>): Stream.Stream<Adv
   return pipe(materializedAdvice, Stream.unwrap)
 }
 
-export const defaultWiring: Wiring = {
-  checks: defaultChecks,
-  derive: defaultDerive
-}
+export const defaultWiring: Wiring = makeWiring({ checks: defaultChecks, derive: defaultDerive })
 
 const defaultFiles = Array.of("**/*")
 
-const defaultConfigEntries: WiringConfig = Array.of({
+const defaultConfigEntries = Array.of({
   files: defaultFiles,
   wiring: defaultWiring
 })

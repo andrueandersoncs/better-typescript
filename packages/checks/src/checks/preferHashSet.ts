@@ -19,19 +19,21 @@ const constructorMessage = "Avoid constructing a built-in Set."
 
 const constructorHint =
   "Use Effect's HashSet instead — for example HashSet.fromIterable([1, 2, 3]) or " +
-  "HashSet.empty(). HashSet integrates with Equal and Hash traits for structural equality. " +
-  "Constructing a Set is permitted only when it is handed to a third-party API that " +
-  "requires one."
+  "HashSet.empty(). HashSet uses Equal and Hash with structural equality by default; " +
+  "for reference-identity object members (for example TypeScript checker symbols), wrap " +
+  "values with Equal.byReferenceUnsafe at the creation boundary. Constructing a Set is " +
+  "permitted only when it is handed to a third-party API that requires one."
 
 const setTypeNames: ReadonlyArray<string> = Array.make("Set", "ReadonlySet")
 
 const isSetTypeName = (id: ts.Identifier): boolean => Array.contains(setTypeNames, id.text)
 
 const typeRefHint =
-  "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
-  "traits for structural equality. Writing the built-in Set type is permitted only where " +
-  "it mirrors a third-party contract: ambient declarations and values that cross into a " +
-  "third-party call."
+  "Use HashSet.HashSet<T> from Effect instead. HashSet uses Equal and Hash with " +
+  "structural equality by default; wrap reference-identity object members with " +
+  "Equal.byReferenceUnsafe at the creation boundary. Writing the built-in Set type is " +
+  "permitted only where it mirrors a third-party contract: ambient declarations and " +
+  "values that cross into a third-party call."
 
 const effectModuleName = "effect"
 
@@ -129,7 +131,7 @@ const mutableHashSetImportMatches = (context: CheckContext) => {
             (moduleName) => moduleName === effectModuleName,
             () =>
               pipe(
-                Option.fromNullable(declaration.importClause?.namedBindings),
+                Option.fromNullishOr(declaration.importClause?.namedBindings),
                 Option.filter(ts.isNamedImports),
                 Option.map((bindings): ReadonlyArray<ts.Node> =>
                   Array.filter(
@@ -172,7 +174,7 @@ const mutableHashSetNamespaceMatches = (context: CheckContext) => {
     const isEffectNamespace = pipe(
       Option.liftPredicate(ts.isIdentifier)(access.expression),
       Option.flatMap((identifier) =>
-        pipe(context.checker.getSymbolAtLocation(identifier), Option.fromNullable)
+        pipe(context.checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
       ),
       Option.exists((symbol) =>
         Array.some(symbol.declarations ?? emptyDeclarations, (declaration) =>

@@ -2,13 +2,13 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { Chunk, Effect, Option, Schema, Stream, pipe, Array } from "effect"
+import { Effect, Option, Schema, Stream, pipe, Array } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/report/data"
 import {
   functionalCoreEffectWiring,
-  makeFunctionalCoreEffectChecks
+  makeFunctionalCoreEffectWiring
 } from "@better-typescript/checks/functionalCoreEffect/wiring"
 import {
   FunctionalCoreBoundaryData,
@@ -53,13 +53,7 @@ const signalNamed = (signals: ReadonlyArray<Signal>, name: string): Signal => {
 }
 
 const collectAdvice = (signals: ReadonlyArray<Signal>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(
-    pipe(
-      functionalCoreEffectWiring.derive(signals),
-      Stream.runCollect,
-      Effect.map(Chunk.toReadonlyArray)
-    )
-  )
+  Effect.runPromise(pipe(functionalCoreEffectWiring.derive(signals), Stream.runCollect))
 
 const boundaryDataOf = (detection: Detection): FunctionalCoreBoundaryData => {
   assert.ok(Schema.is(FunctionalCoreBoundaryData)(detection.data))
@@ -121,7 +115,7 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
       "src/adapters/foreign.ts:15:unsuspended-adapter-effect:node:fs:readFileSync",
       "src/adapters/foreign.ts:26:unscoped-resource:@acme/sdk:PaymentClient",
       "src/adapters/foreign.ts:44:unscoped-resource:@acme/sdk:createClient",
-      "src/adapters/foreign.ts:57:escaping-runtime-state:effect:Ref.unsafeMake",
+      "src/adapters/foreign.ts:57:escaping-runtime-state:effect:Ref.makeUnsafe",
       "src/application/badDependency.ts:1:dependency-direction:application -> adapter",
       "src/application/badReexport.ts:1:dependency-direction:application -> adapter",
       "src/application/barrelRuntime.ts:3:runtime-execution:effect:Effect.runSync",
@@ -133,7 +127,7 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
       "src/application/runtime.ts:23:service-locator:effect:Effect.context",
       "src/application/runtime.ts:25:service-locator:Context.Context",
       "src/application/runtime.ts:26:service-locator:effect:Context.get",
-      "src/application/runtime.ts:28:escaping-runtime-state:effect:Ref.unsafeMake",
+      "src/application/runtime.ts:28:escaping-runtime-state:effect:Ref.makeUnsafe",
       "src/application/runtime.ts:30:runtime-execution:effect:Effect.runCallback",
       "src/application/runtime.ts:31:dependency-provisioning:DefaultPort.Default",
       "src/application/runtime.ts:33:dependency-provisioning:effect:ManagedRuntime.make",
@@ -148,12 +142,14 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
       "src/ports/badPort.ts:8:infrastructure-contract:effect:Ref.Ref",
       "src/ports/badPort.ts:9:infrastructure-contract:@acme/sdk:PaymentClient",
       "src/ports/badPort.ts:10:service-locator:Context.Context",
-      "src/ports/badPort.ts:15:port-live-implementation:DefaultPort.dependencies",
-      "src/ports/badPort.ts:34:infrastructure-contract:@acme/sdk:PaymentClient",
-      "src/ports/badPort.ts:37:service-locator:Context.Context",
-      "src/ports/badPort.ts:41:service-locator:AliasedContextContract",
+      "src/ports/badPort.ts:19:port-live-implementation:DefaultPort.Default",
+      "src/ports/badPort.ts:19:port-live-implementation:effect:Layer.effect",
+      "src/ports/badPort.ts:20:dependency-provisioning:effect:Layer.provide",
+      "src/ports/badPort.ts:37:infrastructure-contract:@acme/sdk:PaymentClient",
+      "src/ports/badPort.ts:40:service-locator:Context.Context",
+      "src/ports/badPort.ts:44:service-locator:AliasedContextContract",
       "src/ports/badPort.ts:14:port-live-implementation:DefaultPort",
-      "src/ports/badPort.ts:26:port-live-implementation:effect:Layer.succeed"
+      "src/ports/badPort.ts:29:port-live-implementation:effect:Layer.succeed"
     ].sort()
   )
 
@@ -209,7 +205,8 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/application/orchestrator.ts:13:pure-service:0:1:1:0:0",
     "src/application/orchestrator.ts:23:effect-orchestrator:2:1:2:2:0",
     "src/application/transformOrchestrator.ts:17:effect-orchestrator:0:1:2:2:3",
-    "src/entrypoints/thick.ts:1:thick-composition-root:2:2:0:0:0"
+    "src/entrypoints/thick.ts:1:thick-composition-root:2:2:0:0:0",
+    "src/ports/badPort.ts:14:pure-service:0:1:1:0:0"
   ])
 
   const advice = await collectAdvice(signals)
@@ -222,12 +219,13 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/application/orchestrator.ts:pure service candidate",
     "src/application/runtime.ts:imperative core",
     "src/application/transformOrchestrator.ts:overgrown Effect orchestrator",
-    "src/entrypoints/thick.ts:thick composition root"
+    "src/entrypoints/thick.ts:thick composition root",
+    "src/ports/badPort.ts:pure service candidate"
   ])
 })
 
 test("wiring exposes one reported policy check and silent shape evidence", () => {
-  const checks = makeFunctionalCoreEffectChecks(defaultFunctionalCoreEffectPolicy)
+  const checks = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).checks
 
   assert.deepEqual(
     checks.map((check) => [check.name, check.reported]),

@@ -25,7 +25,7 @@ const resumeWithMessage =
   }
 
 // One-shot: resolves on the first event, then the Effect completes.
-export const onMessage = Effect.async<Message>((resume) => {
+export const onMessage = Effect.callback<Message>((resume) => {
   socket.addEventListener("message", resumeWithMessage(resume))
 
   return Effect.void

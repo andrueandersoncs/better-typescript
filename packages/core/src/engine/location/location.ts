@@ -37,7 +37,9 @@ export const detectionEquals = (a: Detection, b: Detection): boolean => {
   const sameColumn = a.location.column === b.location.column
   const sameMessage = a.message === b.message
   const sameHint = a.hint === b.hint
-  const sameData = Equal.equals(a.data, b.data)
+  const bothStructural = Equal.isEqual(a.data) && Equal.isEqual(b.data)
+  const identical = a.data === b.data
+  const sameData = bothStructural ? Equal.equals(a.data, b.data) : identical
   const conditions = Array.make(samePath, sameLine, sameColumn, sameMessage, sameHint, sameData)
 
   return Array.every(conditions, Boolean)

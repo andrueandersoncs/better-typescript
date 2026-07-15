@@ -47,7 +47,7 @@ const isEligibleFunction = (node: ts.Node): boolean =>
           const nodeWithModifiers = yield* Option.liftPredicate(ts.canHaveModifiers)(initializer)
           const modifiers = ts.getModifiers(nodeWithModifiers)
 
-          return yield* Option.fromNullable(modifiers)
+          return yield* Option.fromNullishOr(modifiers)
         }),
         Option.getOrElse(fallbackModifiers)
       )
@@ -60,13 +60,13 @@ const isEligibleFunction = (node: ts.Node): boolean =>
             initializer
           )
 
-          return yield* Option.fromNullable(functionExpression.asteriskToken)
+          return yield* Option.fromNullishOr(functionExpression.asteriskToken)
         }),
         Option.isSome
       )
 
       const hasTypeParameters = pipe(
-        Option.fromNullable(initializer.typeParameters),
+        Option.fromNullishOr(initializer.typeParameters),
         Option.exists(hasElements)
       )
 
@@ -85,10 +85,10 @@ const isEligibleFunction = (node: ts.Node): boolean =>
 const blockReturnedExpression = (body: ts.Block): Option.Option<ts.Expression> =>
   Option.gen(function* () {
     yield* Option.liftPredicate(hasSingleElement)(body.statements)
-    const statement = yield* Option.fromNullable(body.statements[0])
+    const statement = yield* Option.fromNullishOr(body.statements[0])
     const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(statement)
 
-    return yield* Option.fromNullable(returnStatement.expression)
+    return yield* Option.fromNullishOr(returnStatement.expression)
   })
 
 const constantThunkReturnedExpression = (node: ts.Node): Option.Option<ts.Expression> => {
@@ -158,12 +158,12 @@ const functionConstantMatches = (context: CheckContext) => {
             pipe(
               Option.gen(function* () {
                 const symbolCandidate = context.checker.getSymbolAtLocation(identifier)
-                const symbol = yield* Option.fromNullable(symbolCandidate)
+                const symbol = yield* Option.fromNullishOr(symbolCandidate)
                 const declarationCandidates = symbol.getDeclarations()
-                const declarations = yield* Option.fromNullable(declarationCandidates)
+                const declarations = yield* Option.fromNullishOr(declarationCandidates)
 
                 yield* Option.liftPredicate(hasSingleElement)(declarations)
-                const declaration = yield* Option.fromNullable(declarations[0])
+                const declaration = yield* Option.fromNullishOr(declarations[0])
 
                 const variableDeclaration = yield* Option.liftPredicate(ts.isVariableDeclaration)(
                   declaration

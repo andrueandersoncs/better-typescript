@@ -60,7 +60,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
 
   if (isValueDeclaration) {
     const isTypeAnnotation = parent.type === typeNode
-    const initializer = Option.fromNullable(parent.initializer)
+    const initializer = Option.fromNullishOr(parent.initializer)
     const isNotRuntimeFunction = !Option.exists(initializer, isRuntimeFunctionLike)
 
     return isTypeAnnotation && isNotRuntimeFunction
@@ -94,7 +94,7 @@ const callbackStyleMatches = (context: CheckContext) => {
     }
 
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
-    const signature = Option.fromNullable(declaredSignature)
+    const signature = Option.fromNullishOr(declaredSignature)
 
     const isCallback = Option.exists(signature, (resolvedSignature) => {
       const returnType = checker.getReturnTypeOfSignature(resolvedSignature)
@@ -103,14 +103,14 @@ const callbackStyleMatches = (context: CheckContext) => {
       const hasFunctionArgument = Array.some(declaration.parameters, (parameter) => {
         const parameterType = checker.getTypeAtLocation(parameter)
         const parameterHasCallSignature = hasCallSignature(checker)(parameterType)
-        const restToken = Option.fromNullable(parameter.dotDotDotToken)
+        const restToken = Option.fromNullishOr(parameter.dotDotDotToken)
 
         if (Option.isNone(restToken)) {
           return parameterHasCallSignature
         }
 
         const indexType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-        const elementType = Option.fromNullable(indexType)
+        const elementType = Option.fromNullishOr(indexType)
         const elementHasCallSignature = Option.exists(elementType, callSignatureCheck(checker))
 
         const callSignatureIndicators = Array.make(

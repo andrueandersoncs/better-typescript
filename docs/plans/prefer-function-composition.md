@@ -114,7 +114,7 @@ Not chosen:
      `nodeCheck`, `combineAll`; consider inner `withProgramIndex` plan as
      `flow(build, subscriptions)`)
    - Refactor the other ~30 matched sites in `packages/**` the same way (typical
-     `Option.fromNullable` / `Option.isSome` / `Effect.fail` / `Stream.runCollect` threads → `pipe`
+     `Option.fromNullishOr` / `Option.isSome` / `Effect.fail` / `Stream.runCollect` threads → `pipe`
      / `flow`)
 
 ## Regression coverage
@@ -127,7 +127,7 @@ Not chosen:
 | ----------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `fileCheck`-like  | `const xs = f(input); return g(Function.constant(xs))`                                                              |
 | `combineAll`-like | `const xs = Array.flatten(groups); return g(Function.constant(xs))`                                                 |
-| unary wrap        | `const symbol = getSymbol(node); return Option.fromNullable(symbol)`                                                |
+| unary wrap        | `const symbol = getSymbol(node); return Option.fromNullishOr(symbol)`                                               |
 | seed as callee    | `const run = makeRun(config); return run(input)` only if this still fits the unary-tower definition; otherwise drop |
 
 `src/allowed.ts` must-not-report:

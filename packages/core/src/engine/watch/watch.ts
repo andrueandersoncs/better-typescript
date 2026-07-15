@@ -24,7 +24,7 @@ import {
   workspaceSignals
 } from "../report/report.js"
 import type { ReportBlock, WiringConfig, WiringSignals } from "../report/data.js"
-import { EmptyReportEvent, WorkspaceUpdate } from "./data.js"
+import { ClearedEvent, EmptyReportEvent, SignalEvent, WorkspaceUpdate } from "./data.js"
 import type { ReportEvent } from "./data.js"
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty()
@@ -56,7 +56,7 @@ export const workspaceUpdates = (
   const applyUpdate = (
     cache: HashMap.HashMap<number, ProgramContext>,
     indexed: readonly [number, SourceUpdate]
-  ): readonly [HashMap.HashMap<number, ProgramContext>, Option.Option<WorkspaceUpdate>] => {
+  ): readonly [HashMap.HashMap<number, ProgramContext>, ReadonlyArray<WorkspaceUpdate>] => {
     const [index, update] = indexed
     const hasArrived = HashMap.has(cache, index)
     const hasNoChanges = update.changed.length === 0
@@ -65,18 +65,18 @@ export const workspaceUpdates = (
     const isQuietRebuild = arrivedWithoutChanges && hasNoRemovals
 
     if (isQuietRebuild) {
-      const noUpdate = Option.none<WorkspaceUpdate>()
+      const emptyUpdates = Array.empty<WorkspaceUpdate>()
 
-      return Tuple.make(cache, noUpdate)
+      return Tuple.make(cache, emptyUpdates)
     }
 
     const nextCache = HashMap.set(cache, index, update.context)
     const isWarm = HashMap.size(nextCache) === projectCount
 
     if (!isWarm) {
-      const noUpdate = Option.none<WorkspaceUpdate>()
+      const emptyUpdates = Array.empty<WorkspaceUpdate>()
 
-      return Tuple.make(nextCache, noUpdate)
+      return Tuple.make(nextCache, emptyUpdates)
     }
 
     const contexts = Array.makeBy(projectCount, (order: number) =>
@@ -91,16 +91,12 @@ export const workspaceUpdates = (
       contexts
     })
 
-    const updateOption = Option.some(emitted)
+    const emittedUpdates = Array.of(emitted)
 
-    return Tuple.make(nextCache, updateOption)
+    return Tuple.make(nextCache, emittedUpdates)
   }
 
-  return pipe(
-    merged,
-    Stream.mapAccum(emptyContextCache, applyUpdate),
-    Stream.filterMap(Function.identity)
-  )
+  return pipe(merged, Stream.mapAccum(Function.constant(emptyContextCache), applyUpdate))
 }
 
 /**
@@ -164,8 +160,8 @@ const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${ev
 export const renderEventText = (event: ReportEvent): string =>
   pipe(
     Match.value(event),
-    Match.tag("signal", Struct.get("text")),
-    Match.tag("cleared", Struct.get("text")),
+    Match.tag("signal", Struct.get<SignalEvent, "text">("text")),
+    Match.tag("cleared", Struct.get<ClearedEvent, "text">("text")),
     Match.tag("empty", emptyReportText),
     Match.exhaustive
   )
@@ -227,7 +223,7 @@ export const blockDeltas =
   (blocks: Stream.Stream<ReadonlyArray<ReportBlock>, Error>): Stream.Stream<ReportEvent, Error> =>
     pipe(
       blocks,
-      Stream.mapAccum(initialDeltaState, (previous, current) => {
+      Stream.mapAccum(Function.constant(initialDeltaState), (previous, current) => {
         const events = pipe(
           previous,
           Option.match({
@@ -236,10 +232,10 @@ export const blockDeltas =
           })
         )
 
-        const nested5 = Option.some(current)
-        return Tuple.make(nested5, events)
-      }),
-      Stream.flattenIterables
+        const nextState = Option.some(current)
+
+        return Tuple.make(nextState, events)
+      })
     )
 
 /**

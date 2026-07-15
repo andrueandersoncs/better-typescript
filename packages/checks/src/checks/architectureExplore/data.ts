@@ -1,7 +1,12 @@
-import { Schema } from "effect"
+import { Array, Schema } from "effect"
 
-const passThroughKind = Schema.Literal("reexport", "forwarding-call")
-const leakageKind = Schema.Literal("internal-path", "source-path")
+const passThroughKinds = Array.make<["reexport", "forwarding-call"]>("reexport", "forwarding-call")
+
+const passThroughKind = Schema.Literals(passThroughKinds)
+
+const leakageKinds = Array.make<["internal-path", "source-path"]>("internal-path", "source-path")
+
+const leakageKind = Schema.Literals(leakageKinds)
 const stringArray = Schema.Array(Schema.String)
 
 /**

@@ -350,7 +350,7 @@ test("root package npm link exposes the CLI binary", async () => {
       }
     )
 
-    assert.match(stdout, /Better TypeScript 0\.0\.0/)
+    assert.match(stdout, /USAGE\s+better-typescript \[flags\]/)
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }

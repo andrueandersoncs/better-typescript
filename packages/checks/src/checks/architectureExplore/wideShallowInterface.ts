@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Result, Function } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -24,7 +24,7 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
     )
 
     if (forwarders.length < minimumForwarders) {
-      return Option.none()
+      return Result.failVoid
     }
 
     return pipe(
@@ -46,7 +46,8 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
             "Collapse the forwarders and expose the smaller domain operation that hides configuration, ordering, and adapter details.",
           evidence
         })
-      })
+      }),
+      Result.fromOption(Function.constVoid)
     )
   })
 }

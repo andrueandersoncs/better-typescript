@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from "effect"
+import { Array, Function, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -23,9 +23,9 @@ const emptySurface = new InterfaceBurdenData({
 
 const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>): number =>
   Array.filter(parameters, (parameter) => {
-    const optional = Option.fromNullable(parameter.questionToken)
-    const defaulted = Option.fromNullable(parameter.initializer)
-    const rest = Option.fromNullable(parameter.dotDotDotToken)
+    const optional = Option.fromNullishOr(parameter.questionToken)
+    const defaulted = Option.fromNullishOr(parameter.initializer)
+    const rest = Option.fromNullishOr(parameter.dotDotDotToken)
     const optionalMissing = Option.isNone(optional)
     const defaultMissing = Option.isNone(defaulted)
     const restMissing = Option.isNone(rest)
@@ -65,7 +65,7 @@ const isPublicClassMember = (member: ts.ClassElement): boolean => {
   const modifiers = pipe(
     Option.liftPredicate(ts.canHaveModifiers)(member),
     Option.map(ts.getModifiers),
-    Option.flatMap(Option.fromNullable),
+    Option.flatMap(Option.fromNullishOr),
     Option.getOrElse(Array.empty)
   )
 
@@ -144,7 +144,11 @@ const objectLiteralSurface = (literal: ts.ObjectLiteralExpression): InterfaceBur
         )
       )
 
-      return pipe(methodSurface, Option.orElse(Function.constant(propertySurface)))
+      return pipe(
+        methodSurface,
+        Option.orElse(Function.constant(propertySurface)),
+        Result.fromOption(Function.constVoid)
+      )
     }),
     Array.reduce(emptySurface, combineSurface)
   )
@@ -160,7 +164,7 @@ const variableStatementSurface = (statement: ts.VariableStatement): InterfaceBur
       const directFunction = pipe(functionInitializer(declaration), Option.map(callableSurface))
 
       const objectModule = pipe(
-        Option.fromNullable(declaration.initializer),
+        Option.fromNullishOr(declaration.initializer),
         Option.filter(ts.isObjectLiteralExpression),
         Option.map(objectLiteralSurface)
       )
@@ -216,7 +220,7 @@ const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection
   }
 
   const node = pipe(
-    Option.fromNullable(statements[0]),
+    Option.fromNullishOr(statements[0]),
     Option.getOrElse(Function.constant(context.sourceFile))
   )
 

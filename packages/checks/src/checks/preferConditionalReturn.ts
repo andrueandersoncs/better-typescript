@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Result, Function } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -47,7 +47,7 @@ const conditionalReturnDetections = (context: CheckContext) => {
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(statement)
       const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)
-      const expression = yield* Option.fromNullable(returnStatement.expression)
+      const expression = yield* Option.fromNullishOr(returnStatement.expression)
 
       return yield* Option.liftPredicate((expression: ts.Expression) => {
         const text = expression.getText(sourceFile)
@@ -70,14 +70,14 @@ const conditionalReturnDetections = (context: CheckContext) => {
 
   const matches = (block: ts.Block): ReadonlyArray<Detection> =>
     Array.filterMap(block.statements, (statement, index) => {
-      const nextStatement = Option.fromNullable(block.statements[index + 1])
+      const nextStatement = Option.fromNullishOr(block.statements[index + 1])
 
       return pipe(
         Option.liftPredicate(ts.isIfStatement)(statement),
         Option.flatMap((ifStatement) =>
           Option.gen(function* () {
             const thenExpression = yield* returnExpression(ifStatement.thenStatement)
-            const elseStatement = Option.fromNullable(ifStatement.elseStatement)
+            const elseStatement = Option.fromNullishOr(ifStatement.elseStatement)
             const fallbackStatement = Option.isSome(elseStatement) ? elseStatement : nextStatement
             const fallbackExpression = yield* Option.flatMap(fallbackStatement, returnExpression)
             const unwrappedCondition = unwrapExpression(ifStatement.expression)
@@ -100,7 +100,8 @@ const conditionalReturnDetections = (context: CheckContext) => {
               hint: `Return a conditional expression instead: return ${returnText}.`
             })
           })
-        )
+        ),
+        Result.fromOption(Function.constVoid)
       )
     })
 

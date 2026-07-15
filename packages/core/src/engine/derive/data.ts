@@ -1,4 +1,4 @@
-import { HashMap, Schema } from "effect"
+import { Array, HashMap, Schema } from "effect"
 import { Detection, Location } from "../location/data.js"
 
 /**
@@ -28,7 +28,13 @@ export class EvidenceItem extends Schema.Class<EvidenceItem>("EvidenceItem")({
   count: Schema.Number
 }) {}
 
-const adviceLevelSchema = Schema.Literal("file", "directory", "project")
+const adviceLevelValues = Array.make<["file", "directory", "project"]>(
+  "file",
+  "directory",
+  "project"
+)
+
+const adviceLevelSchema = Schema.Literals(adviceLevelValues)
 const evidenceArraySchema = Schema.Array(EvidenceItem)
 
 /**

@@ -32,7 +32,7 @@ export const discoverWorkspace: (projectPath: string) => Effect.Effect<Workspace
   Effect.fn("discoverWorkspace")(function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
     const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
-    const configPath = Option.fromNullable(foundConfigPath)
+    const configPath = Option.fromNullishOr(foundConfigPath)
 
     if (Option.isNone(configPath)) {
       return yield* new MissingTsconfigError({ rootPath })
@@ -175,7 +175,7 @@ const discoverConfig: (
   }
 
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
-  const configError = Option.fromNullable(configFile.error)
+  const configError = Option.fromNullishOr(configFile.error)
 
   if (Option.isSome(configError)) {
     const diagnostics2 = Array.of(configError.value)

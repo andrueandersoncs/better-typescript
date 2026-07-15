@@ -66,7 +66,7 @@ export type NonEmptyRefactorExamples = Array.NonEmptyReadonlyArray<RefactorExamp
  *   and let their representations drift.
  * @modelRole shared
  */
-export class ExampleLoadError extends Schema.TaggedError<ExampleLoadError>("ExampleLoadError")(
+export class ExampleLoadError extends Schema.TaggedErrorClass<ExampleLoadError>()(
   "ExampleLoadError",
   {
     message: Schema.String

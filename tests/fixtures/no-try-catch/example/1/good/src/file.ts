@@ -1,6 +1,6 @@
 import { Effect, Schema, pipe } from "effect"
 
-class ReadError extends Schema.TaggedError<ReadError>("ReadError")(
+class ReadError extends Schema.TaggedErrorClass<ReadError>()(
   "ReadError",
   {}
 ) {}

@@ -1,4 +1,4 @@
-import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe } from "effect"
+import { Tuple, Array, Equal, Function, HashMap, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
@@ -17,7 +17,7 @@ const schemaPropertyNameText = (name: ts.PropertyName): Option.Option<string> =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
 
 const namedPropertyText = (property: ts.ObjectLiteralElementLike): Option.Option<string> =>
-  pipe(Option.fromNullable(property.name), Option.flatMap(schemaPropertyNameText))
+  pipe(Option.fromNullishOr(property.name), Option.flatMap(schemaPropertyNameText))
 
 const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
@@ -38,10 +38,10 @@ const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean => {
 
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
-  const directSymbol = pipe(Option.fromNullable(symbol), Option.filter(isProjectObjectTypeSymbol))
+  const directSymbol = pipe(Option.fromNullishOr(symbol), Option.filter(isProjectObjectTypeSymbol))
 
   const aliasSymbol = pipe(
-    Option.fromNullable(type.aliasSymbol),
+    Option.fromNullishOr(type.aliasSymbol),
     Option.filter(isProjectObjectTypeSymbol)
   )
 
@@ -73,8 +73,11 @@ const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (li
 const addConstructionEntry = (
   index: HashMap.HashMap<ts.Symbol, string>,
   entry: readonly [ts.Symbol, string]
-): HashMap.HashMap<ts.Symbol, string> =>
-  HashMap.has(index, entry[0]) ? index : HashMap.set(index, entry[0], entry[1])
+): HashMap.HashMap<ts.Symbol, string> => {
+  const symbolKey = Equal.byReferenceUnsafe(entry[0])
+
+  return HashMap.has(index, symbolKey) ? index : HashMap.set(index, symbolKey, entry[1])
+}
 
 const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Symbol, string> => {
   const emptyIndex = HashMap.empty<ts.Symbol, string>()
@@ -84,7 +87,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
     (type: ts.Type) =>
     (name: string): boolean => {
       const declaredProperty = type.getProperty(name)
-      const property = Option.fromNullable(declaredProperty)
+      const property = Option.fromNullishOr(declaredProperty)
 
       return Option.isSome(property)
     }
@@ -92,7 +95,10 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
   const matchesLiteralShape =
     (literal: ts.ObjectLiteralExpression) =>
     (type: ts.Type): boolean => {
-      const propertyNames = Array.filterMap(literal.properties, namedPropertyText)
+      const propertyNames = Array.filterMap(
+        literal.properties,
+        Function.flow(namedPropertyText, Result.fromOption(Function.constVoid))
+      )
 
       return Array.every(propertyNames, typeHasProperty(type))
     }
@@ -122,7 +128,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
     (reference: ts.TypeReference): Option.Option<ts.Type> => {
       const typeArguments = checker.getTypeArguments(reference)
 
-      return Option.fromNullable(typeArguments[parameterPosition])
+      return Option.fromNullishOr(typeArguments[parameterPosition])
     }
 
   const referenceTypeArgument =
@@ -145,7 +151,10 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
         sameTypeReferenceTarget(declaredMember)
       )
 
-      return Array.filterMap(matchingMembers, typeArgumentAt(parameterPosition))
+      return Array.filterMap(
+        matchingMembers,
+        Function.flow(typeArgumentAt(parameterPosition), Result.fromOption(Function.constVoid))
+      )
     }
 
   const memberExtractions =
@@ -186,7 +195,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
     (signature: ts.Signature): ReadonlyArray<ts.Type> => {
       const emptyTypes = Array.empty()
       return pipe(
-        Option.fromNullable(signature.parameters[argumentPosition]),
+        Option.fromNullishOr(signature.parameters[argumentPosition]),
         Option.map(declaredParameterType),
         Option.filter(isSignatureTypeParameter),
         Option.map(boxedExtraction(signature)(contextual)),
@@ -196,14 +205,17 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
 
   const symbolFileEntry =
     (fileName: string) =>
-    (symbol: ts.Symbol): readonly [ts.Symbol, string] =>
-      Tuple.make(symbol, fileName)
+    (symbol: ts.Symbol): readonly [ts.Symbol, string] => {
+      const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+      return Tuple.make(symbolKey, fileName)
+    }
 
   const literalConstructionEntries =
     (fileName: string) =>
     (literal: ts.ObjectLiteralExpression): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
-      const directContextualType = Option.fromNullable(contextualType)
+      const directContextualType = Option.fromNullishOr(contextualType)
       const emptyBoxedTypes = Array.empty()
 
       const boxedTypes = pipe(
@@ -217,7 +229,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
           )
 
           const callContextualType = checker.getContextualType(call)
-          const contextual = yield* Option.fromNullable(callContextualType)
+          const contextual = yield* Option.fromNullishOr(callContextualType)
           const signatures = checker.getTypeAtLocation(call.expression).getCallSignatures()
 
           return Array.flatMap(signatures, signatureBoxedTypes(argumentPosition)(contextual))
@@ -231,7 +243,11 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
       )
 
       const targetTypes = Array.flatMap(contextualCandidates, candidateTypes(literal))
-      const objectTypeSymbols = Array.filterMap(targetTypes, typeObjectTypeSymbol)
+
+      const objectTypeSymbols = Array.filterMap(
+        targetTypes,
+        Function.flow(typeObjectTypeSymbol, Result.fromOption(Function.constVoid))
+      )
 
       return Array.map(objectTypeSymbols, symbolFileEntry(fileName))
     }
@@ -263,8 +279,12 @@ const objectTypeDeclarationMatches =
     ): ReadonlyArray<Detection> =>
       pipe(
         checker.getSymbolAtLocation(declaration.name),
-        Option.fromNullable,
-        Option.flatMap((symbol) => HashMap.get(index, symbol)),
+        Option.fromNullishOr,
+        Option.flatMap((symbol) => {
+          const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+          return HashMap.get(index, symbolKey)
+        }),
         Option.map((constructionFileName) => {
           const typeName = declaration.name.text
           const exampleFile = toRelative(constructionFileName)

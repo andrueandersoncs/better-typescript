@@ -1,14 +1,11 @@
-import { Array, Function, HashSet, Match, Option, Struct, pipe } from "effect"
+import { Array, Equal, Function, HashSet, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "./support/tsNode.js"
 import { differentBaseConstraint } from "./support/tsType.js"
 
-const effectDataModuleSuffixes = Array.make("/effect/dist/dts/Data.d.ts", "/effect/src/Data.ts")
+const effectDataModuleSuffixes = Array.make("/effect/dist/Data.d.ts", "/effect/src/Data.ts")
 
-const effectSchemaModuleSuffixes = Array.make(
-  "/effect/dist/dts/Schema.d.ts",
-  "/effect/src/Schema.ts"
-)
+const effectSchemaModuleSuffixes = Array.make("/effect/dist/Schema.d.ts", "/effect/src/Schema.ts")
 
 const taggedClassSymbolNode = (expression: ts.Expression): Option.Option<ts.Node> => {
   if (ts.isPropertyAccessExpression(expression)) {
@@ -33,7 +30,7 @@ const symbolIsEffectTaggedClass =
 
     const declarations = pipe(
       symbol.getDeclarations(),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.getOrElse(() => Array.empty<ts.Declaration>())
     )
 
@@ -106,8 +103,11 @@ const typeIsRejectedWireValue = typeHasAnyFlags(rejectedWireTypeFlags)
 
 const typeWasSeen =
   (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean =>
-    HashSet.has(seen, type)
+  (type: ts.Type): boolean => {
+    const typeKey = Equal.byReferenceUnsafe(type)
+
+    return HashSet.has(seen, typeKey)
+  }
 
 const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
   Array.filter(type.types, (member) => (member.flags & ts.TypeFlags.Undefined) === 0)
@@ -126,7 +126,7 @@ const propertyTypeIsWireSafe =
       Match.orElse((namedProperty) => {
         const propertyLocation = pipe(
           namedProperty.getDeclarations(),
-          Option.fromNullable,
+          Option.fromNullishOr,
           Option.flatMap(Array.head),
           Option.getOrElse(Function.constant(location))
         )
@@ -179,7 +179,7 @@ const collectionTypeIsWireSafe =
   (type: ts.ObjectType): boolean =>
     pipe(
       checker.getIndexTypeOfType(type, ts.IndexKind.Number),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.exists(checkType)
     )
 
@@ -195,7 +195,7 @@ const structuralObjectTypeIsWireSafe =
     const stringIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.String)
     const numberIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.Number)
     const possibleIndexTypes = Array.make(stringIndexType, numberIndexType)
-    const indexTypes = Array.filterMap(possibleIndexTypes, Option.fromNullable)
+    const indexTypes = Array.filterMap(possibleIndexTypes, Result.fromNullishOr(Function.constVoid))
     const indexTypesAreWireSafe = Array.every(indexTypes, checkType)
     const properties = checker.getPropertiesOfType(type)
     const hasStructuralMembers = properties.length + indexTypes.length > 0
@@ -260,7 +260,8 @@ const typeIsWireSafeWithSeen =
   (location: ts.Node) =>
   (seen: HashSet.HashSet<ts.Type>) =>
   (type: ts.Type): boolean => {
-    const nextSeen = HashSet.add(seen, type)
+    const typeKey = Equal.byReferenceUnsafe(type)
+    const nextSeen = HashSet.add(seen, typeKey)
     const checkType = typeIsWireSafeWithSeen(checker)(location)(nextSeen)
 
     const checkConstrainedOrStructural =
@@ -303,11 +304,11 @@ export const schemaTaggedClassEncodedType =
       Option.flatMap(() =>
         pipe(
           declaration.name,
-          Option.fromNullable,
+          Option.fromNullishOr,
           Option.flatMap(resolvedSymbolAt(checker)),
           Option.map((symbol) => checker.getTypeOfSymbolAtLocation(symbol, declaration)),
           Option.flatMap((staticType) =>
-            pipe(staticType.getProperty("Encoded"), Option.fromNullable)
+            pipe(staticType.getProperty("Encoded"), Option.fromNullishOr)
           ),
           Option.map((encoded) => checker.getTypeOfSymbolAtLocation(encoded, declaration))
         )

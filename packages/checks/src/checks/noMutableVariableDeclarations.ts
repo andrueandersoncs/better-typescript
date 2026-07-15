@@ -36,7 +36,7 @@ const mutableDeclarationMatches = (context: CheckContext) => {
   const matches = (declarationList: ts.VariableDeclarationList): ReadonlyArray<Detection> =>
     pipe(
       declarationList.getFirstToken(sourceFile),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.flatMap(tokenMutableKind),
       Option.map((kind) =>
         match({

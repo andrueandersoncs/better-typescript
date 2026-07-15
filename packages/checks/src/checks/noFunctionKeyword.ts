@@ -31,21 +31,21 @@ const functionKeywordMatches = (context: CheckContext) => {
   const match = detection(context)
 
   const matches = (node: FunctionKeywordNode): ReadonlyArray<Detection> => {
-    const asteriskToken = Option.fromNullable(node.asteriskToken)
+    const asteriskToken = Option.fromNullishOr(node.asteriskToken)
     const isNotGenerator = !Option.isSome(asteriskToken)
 
     const declarationWithBody = ts.isFunctionDeclaration(node)
-      ? pipe(Option.fromNullable(node.body), Option.as(node))
+      ? pipe(Option.fromNullishOr(node.body), Option.as(node))
       : Option.none()
 
     const isDisallowedKind =
       ts.isFunctionExpression(node) ||
       Option.exists(declarationWithBody, (declaration) => {
         const declarations = Option.gen(function* () {
-          const name = yield* Option.fromNullable(declaration.name)
+          const name = yield* Option.fromNullishOr(declaration.name)
           const nameSymbol = checker.getSymbolAtLocation(name)
-          const symbol = yield* Option.fromNullable(nameSymbol)
-          const decls = yield* Option.fromNullable(symbol.declarations)
+          const symbol = yield* Option.fromNullishOr(nameSymbol)
+          const decls = yield* Option.fromNullishOr(symbol.declarations)
 
           return Array.filter(decls, ts.isFunctionDeclaration)
         })
@@ -53,7 +53,7 @@ const functionKeywordMatches = (context: CheckContext) => {
         return !Option.exists(declarations, (decls) =>
           Array.some(decls, (candidate) => {
             const isImplementation = candidate === declaration
-            const body = Option.fromNullable(candidate.body)
+            const body = Option.fromNullishOr(candidate.body)
             const hasNoBody = Option.isNone(body)
             const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
 

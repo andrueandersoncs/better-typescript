@@ -1,4 +1,4 @@
-import { Array, HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe, Result, Function } from "effect"
 import * as ts from "typescript"
 import { fileSubscriptions } from "@better-typescript/core/engine/check"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
@@ -44,14 +44,14 @@ const unusedListeners = (unusedProgram: ts.Program): ReadonlyArray<Subscription>
     const toRelative = toRelativeFileName(context.projectRoot)
 
     return pipe(
-      Option.fromNullable(unusedSourceFile),
+      Option.fromNullishOr(unusedSourceFile),
       Option.map((sourceFile) => {
         const diagnostics = unusedProgram.getSemanticDiagnostics(sourceFile)
         const unusedDiagnostics = Array.filter(diagnostics, isUnusedDiagnostic)
 
         return Array.filterMap(unusedDiagnostics, (diagnostic) => {
-          const fileOption = Option.fromNullable(diagnostic.file)
-          const startOption = Option.fromNullable(diagnostic.start)
+          const fileOption = Option.fromNullishOr(diagnostic.file)
+          const startOption = Option.fromNullishOr(diagnostic.start)
 
           return pipe(
             Option.all({
@@ -73,7 +73,8 @@ const unusedListeners = (unusedProgram: ts.Program): ReadonlyArray<Subscription>
                 message,
                 hint
               })
-            })
+            }),
+            Result.fromOption(Function.constVoid)
           )
         })
       }),

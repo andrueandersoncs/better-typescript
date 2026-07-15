@@ -50,9 +50,9 @@ const isSchemaTagComparison = (node: ts.Node): node is ts.BinaryExpression =>
   )
 
 const constituentIsFirstParty = (type: ts.Type): boolean => {
-  const aliasSymbol = Option.fromNullable(type.aliasSymbol)
+  const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
   const typeSymbol = type.getSymbol()
-  const ownSymbol = Option.fromNullable(typeSymbol)
+  const ownSymbol = Option.fromNullishOr(typeSymbol)
   const symbol = Option.orElse(aliasSymbol, Function.constant(ownSymbol))
 
   return Option.exists(symbol, isFirstPartySymbol)

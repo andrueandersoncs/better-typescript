@@ -1,14 +1,14 @@
 import { Context, Effect } from "effect"
 
-export class Catalog extends Context.Tag("Catalog")<
+export class Catalog extends Context.Service<
   Catalog,
   { readonly size: Effect.Effect<number> }
->() {}
+>()("Catalog") {}
 
-export class Shipping extends Context.Tag("Shipping")<
+export class Shipping extends Context.Service<
   Shipping,
   { readonly fee: Effect.Effect<number> }
->() {}
+>()("Shipping") {}
 
 const double = (value: number): number => value * 2
 const bump = (value: number): number => value + 1

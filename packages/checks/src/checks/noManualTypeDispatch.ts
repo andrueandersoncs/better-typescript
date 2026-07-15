@@ -16,7 +16,7 @@ const isDispatchGuard = (statement: ts.Statement): statement is ts.IfStatement =
   pipe(
     Option.liftPredicate(ts.isIfStatement)(statement),
     Option.exists((ifStatement) => {
-      const elseBranch = Option.fromNullable(ifStatement.elseStatement)
+      const elseBranch = Option.fromNullishOr(ifStatement.elseStatement)
       const isBranchless = Option.isNone(elseBranch)
 
       return isBranchless && alwaysExitsScope(ifStatement.thenStatement)
@@ -46,7 +46,7 @@ const siblingDispatchGuard =
     return pipe(
       Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
       Option.map((index) => index + offset),
-      Option.flatMap((index) => Option.fromNullable(block.statements[index])),
+      Option.flatMap((index) => Option.fromNullishOr(block.statements[index])),
       Option.filter(isDispatchGuard)
     )
   }

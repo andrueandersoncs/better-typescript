@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe } from "effect"
+import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -24,7 +24,7 @@ const isNonBooleanLiteral = (expression: ts.Expression): boolean =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
 
 const returnStatementExpression = (statement: ts.ReturnStatement): Option.Option<ts.Expression> =>
-  Option.fromNullable(statement.expression)
+  Option.fromNullishOr(statement.expression)
 
 const isFalseKeyword = (expression: ts.Expression): boolean =>
   unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
@@ -141,7 +141,7 @@ const booleanReturnMatches = (context: CheckContext) => {
             unwrappedStatement
           )
 
-          const expression = yield* Option.fromNullable(returnStatement.expression)
+          const expression = yield* Option.fromNullishOr(returnStatement.expression)
 
           return yield* booleanLiteralValue(expression)
         }),
@@ -151,13 +151,13 @@ const booleanReturnMatches = (context: CheckContext) => {
     }
 
     return Array.filterMap(node.statements, (statement, index) => {
-      const nextStatement = Option.fromNullable(node.statements[index + 1])
+      const nextStatement = Option.fromNullishOr(node.statements[index + 1])
 
       return pipe(
         Option.liftPredicate(ts.isIfStatement)(statement),
         Option.flatMap((ifStatement) =>
           Option.gen(function* () {
-            const elseBranch = Option.fromNullable(ifStatement.elseStatement)
+            const elseBranch = Option.fromNullishOr(ifStatement.elseStatement)
             yield* Option.liftPredicate(Option.isNone)(elseBranch)
 
             const thenStatement = ifStatement.thenStatement
@@ -172,7 +172,7 @@ const booleanReturnMatches = (context: CheckContext) => {
               onSome: (block) => {
                 const blockStatements = block.statements
                 const lastIndex = blockStatements.length - 1
-                const lastThenStatement = Option.fromNullable(blockStatements[lastIndex])
+                const lastThenStatement = Option.fromNullishOr(blockStatements[lastIndex])
 
                 return pipe(
                   lastThenStatement,
@@ -187,7 +187,8 @@ const booleanReturnMatches = (context: CheckContext) => {
 
             return andFalseMatch(ifStatement)
           })
-        )
+        ),
+        Result.fromOption(Function.constVoid)
       )
     })
   }

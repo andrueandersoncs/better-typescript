@@ -1,4 +1,4 @@
-import { Data, HashMap, HashSet, Option, Schema } from "effect"
+import { Array, Data, HashMap, HashSet, Option, Schema } from "effect"
 import type * as ts from "typescript"
 import type { FunctionDefinition } from "../support/tsNode.js"
 
@@ -20,7 +20,15 @@ export type DataStructureDeclaration =
 
 export type { FunctionDefinition }
 
-const modelRoleSchema = Schema.Literal("shared", "boundary", "invariant", "protocol", "recursive")
+const modelRoles = Array.make<["shared", "boundary", "invariant", "protocol", "recursive"]>(
+  "shared",
+  "boundary",
+  "invariant",
+  "protocol",
+  "recursive"
+)
+
+const modelRoleSchema = Schema.Literals(modelRoles)
 
 /**
  * ModelRole is the shared length contract used by ConceptIndex,
@@ -34,7 +42,19 @@ const modelRoleSchema = Schema.Literal("shared", "boundary", "invariant", "proto
  */
 export type ModelRole = typeof modelRoleSchema.Type
 
-const conceptSignalKindSchema = Schema.Literal(
+const conceptSignalKinds = Array.make<
+  [
+    "closed-abstraction",
+    "duplicate-shape",
+    "function-derived-model",
+    "missing-rationale",
+    "parameter-bag",
+    "pass-through-conversion",
+    "redundant-alias",
+    "speculative-export",
+    "unused-field"
+  ]
+>(
   "closed-abstraction",
   "duplicate-shape",
   "function-derived-model",
@@ -45,6 +65,8 @@ const conceptSignalKindSchema = Schema.Literal(
   "speculative-export",
   "unused-field"
 )
+
+const conceptSignalKindSchema = Schema.Literals(conceptSignalKinds)
 
 /**
  * ConceptSignalKind is the shared length contract used by proliferationKinds

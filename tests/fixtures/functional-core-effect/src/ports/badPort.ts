@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Ref } from "effect"
 import type { PaymentClient } from "@acme/sdk"
 
-export class LeakyPort extends Context.Tag("LeakyPort")<
+export class LeakyPort extends Context.Service<
   LeakyPort,
   {
     readonly request: () => Promise<string>
@@ -9,19 +9,22 @@ export class LeakyPort extends Context.Tag("LeakyPort")<
     readonly client: PaymentClient
     readonly context: Context.Context<never>
   }
->() {}
+>()("LeakyPort") {}
 
-export class DefaultPort extends Effect.Service<DefaultPort>()("DefaultPort", {
-  dependencies: [Layer.empty],
-  succeed: {
+export class DefaultPort extends Context.Service<DefaultPort>()("DefaultPort", {
+  make: Effect.succeed({
     read: () => "value"
-  }
-}) {}
+  })
+}) {
+  static readonly Default = Layer.effect(DefaultPort, DefaultPort.make).pipe(
+    Layer.provide(Layer.empty)
+  )
+}
 
-export class SimplePort extends Context.Tag("SimplePort")<
+export class SimplePort extends Context.Service<
   SimplePort,
   { readonly read: Effect.Effect<string> }
->() {}
+>()("SimplePort") {}
 
 export const simpleLive = Layer.succeed(SimplePort, {
   read: Effect.succeed("value")
@@ -29,14 +32,14 @@ export const simpleLive = Layer.succeed(SimplePort, {
 
 type AliasedClientContract = { readonly client: PaymentClient }
 
-export class AliasedClientPort extends Context.Tag("AliasedClientPort")<
+export class AliasedClientPort extends Context.Service<
   AliasedClientPort,
   AliasedClientContract
->() {}
+>()("AliasedClientPort") {}
 
 type AliasedContextContract = Context.Context<never>
 
-export class AliasedContextPort extends Context.Tag("AliasedContextPort")<
+export class AliasedContextPort extends Context.Service<
   AliasedContextPort,
   AliasedContextContract
->() {}
+>()("AliasedContextPort") {}

@@ -6,7 +6,7 @@ interface Profile {
 
 declare const profile: Profile
 
-const maybeName = Option.fromNullable(profile.name)
+const maybeName = Option.fromNullishOr(profile.name)
 
 export const displayName = Option.getOrElse(maybeName, () => "anonymous")
 

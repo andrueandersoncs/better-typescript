@@ -78,11 +78,12 @@ export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorksp
  *   matcher and let their accepted cases drift.
  * @modelRole protocol
  */
-export class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigError>(
-  "MissingTsconfigError"
-)("MissingTsconfigError", {
-  rootPath: Schema.String
-}) {
+export class MissingTsconfigError extends Schema.TaggedErrorClass<MissingTsconfigError>()(
+  "MissingTsconfigError",
+  {
+    rootPath: Schema.String
+  }
+) {
   get message(): string {
     return `Could not find tsconfig.json from ${this.rootPath}`
   }
@@ -98,11 +99,12 @@ export class MissingTsconfigError extends Schema.TaggedError<MissingTsconfigErro
  *   matcher and let their accepted cases drift.
  * @modelRole protocol
  */
-export class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigError>(
-  "InvalidTsconfigError"
-)("InvalidTsconfigError", {
-  message: Schema.String
-}) {}
+export class InvalidTsconfigError extends Schema.TaggedErrorClass<InvalidTsconfigError>()(
+  "InvalidTsconfigError",
+  {
+    message: Schema.String
+  }
+) {}
 
 /**
  * CircularProjectReferenceError names the compiler syntax protocol handled by
@@ -114,11 +116,12 @@ export class InvalidTsconfigError extends Schema.TaggedError<InvalidTsconfigErro
  *   matcher and let their accepted cases drift.
  * @modelRole protocol
  */
-export class CircularProjectReferenceError extends Schema.TaggedError<CircularProjectReferenceError>(
-  "CircularProjectReferenceError"
-)("CircularProjectReferenceError", {
-  configPath: Schema.String
-}) {
+export class CircularProjectReferenceError extends Schema.TaggedErrorClass<CircularProjectReferenceError>()(
+  "CircularProjectReferenceError",
+  {
+    configPath: Schema.String
+  }
+) {
   get message(): string {
     return `Circular project reference involving ${this.configPath}`
   }

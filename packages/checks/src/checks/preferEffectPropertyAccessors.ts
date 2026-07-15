@@ -21,13 +21,13 @@ const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
-  ts.isReturnStatement(statement) ? Option.fromNullable(statement.expression) : Option.none()
+  ts.isReturnStatement(statement) ? Option.fromNullishOr(statement.expression) : Option.none()
 
 const singleReturnExpression = (body: ts.Block): Option.Option<ts.Expression> => {
   const hasSingleStatement = body.statements.length === 1
 
   const statement = hasSingleStatement
-    ? Option.fromNullable(body.statements[0])
+    ? Option.fromNullishOr(body.statements[0])
     : Option.none<ts.Statement>()
 
   return pipe(statement, Option.flatMap(returnExpression))
@@ -46,10 +46,10 @@ const identifierParameterName = (parameter: ts.ParameterDeclaration): Option.Opt
 
 const hasIndexSignature = (type: ts.Type): boolean => {
   const stringIndex = type.getStringIndexType()
-  const stringIndexType = Option.fromNullable(stringIndex)
+  const stringIndexType = Option.fromNullishOr(stringIndex)
   const hasStringIndex = Option.isSome(stringIndexType)
   const numberIndex = type.getNumberIndexType()
-  const numberIndexType = Option.fromNullable(numberIndex)
+  const numberIndexType = Option.fromNullishOr(numberIndex)
   const hasNumberIndex = Option.isSome(numberIndexType)
 
   return hasStringIndex || hasNumberIndex
@@ -82,7 +82,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
 
       const name = pipe(
         definition,
-        Option.flatMap((functionDefinition) => Option.fromNullable(functionDefinition.name)),
+        Option.flatMap((functionDefinition) => Option.fromNullishOr(functionDefinition.name)),
         Option.map(propertyNameText),
         Option.orElse(() =>
           pipe(
@@ -119,7 +119,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
     const hasSingleParam = node.parameters.length === 1
 
     const singleParam = hasSingleParam
-      ? Option.fromNullable(node.parameters[0])
+      ? Option.fromNullishOr(node.parameters[0])
       : Option.none<ts.ParameterDeclaration>()
 
     const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
@@ -133,7 +133,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
         )
 
         const blockExpression = pipe(
-          Option.fromNullable(node.body),
+          Option.fromNullishOr(node.body),
           Option.filter(ts.isBlock),
           Option.flatMap(singleReturnExpression)
         )

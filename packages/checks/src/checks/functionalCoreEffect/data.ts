@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Array, Schema } from "effect"
 
 /**
  * ArchitectureRole is the protocol vocabulary for functional-core module
@@ -12,7 +12,7 @@ import { Schema } from "effect"
  */
 export type ArchitectureRole = "domain" | "port" | "application" | "adapter" | "root" | "test"
 
-const architectureRoleSchema = Schema.Literal(
+const architectureRoles = Array.make<["domain", "port", "application", "adapter", "root", "test"]>(
   "domain",
   "port",
   "application",
@@ -20,6 +20,8 @@ const architectureRoleSchema = Schema.Literal(
   "root",
   "test"
 )
+
+const architectureRoleSchema = Schema.Literals(architectureRoles)
 
 const optionalArchitectureRoleSchema = Schema.optional(architectureRoleSchema)
 
@@ -46,7 +48,21 @@ export type FunctionalCoreBoundaryKind =
   | "unscoped-resource"
   | "escaping-runtime-state"
 
-const boundaryKindSchema = Schema.Literal(
+const boundaryKinds = Array.make<
+  [
+    "dependency-direction",
+    "domain-effect-program",
+    "direct-capability",
+    "runtime-execution",
+    "dependency-provisioning",
+    "port-live-implementation",
+    "infrastructure-contract",
+    "service-locator",
+    "unsuspended-adapter-effect",
+    "unscoped-resource",
+    "escaping-runtime-state"
+  ]
+>(
   "dependency-direction",
   "domain-effect-program",
   "direct-capability",
@@ -59,6 +75,8 @@ const boundaryKindSchema = Schema.Literal(
   "unscoped-resource",
   "escaping-runtime-state"
 )
+
+const boundaryKindSchema = Schema.Literals(boundaryKinds)
 
 /**
  * FunctionalCoreBoundaryData is the boundary payload attached to boundary
@@ -90,12 +108,11 @@ export class FunctionalCoreBoundaryData extends Schema.Class<FunctionalCoreBound
 export type FunctionalCoreShapeKind =
   "effect-orchestrator" | "adapter-business-logic" | "thick-composition-root" | "pure-service"
 
-const shapeKindSchema = Schema.Literal(
-  "effect-orchestrator",
-  "adapter-business-logic",
-  "thick-composition-root",
-  "pure-service"
-)
+const shapeKinds = Array.make<
+  ["effect-orchestrator", "adapter-business-logic", "thick-composition-root", "pure-service"]
+>("effect-orchestrator", "adapter-business-logic", "thick-composition-root", "pure-service")
+
+const shapeKindSchema = Schema.Literals(shapeKinds)
 
 /**
  * FunctionalCoreShapeData is the boundary payload attached to shape evidence.

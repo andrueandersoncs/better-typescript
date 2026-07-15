@@ -19,14 +19,14 @@ const hint =
 
 const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 
-const identifierText = Struct.get("text")
+const identifierText = Struct.get<ts.Identifier, "text">("text")
 
 const functionFlipMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
   const symbolOption = (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(checker.getSymbolAtLocation(node), Option.fromNullable)
+    pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
   const resolvedSymbol = (node: ts.Node): Option.Option<ts.Symbol> =>
     pipe(
@@ -42,7 +42,7 @@ const functionFlipMatches = (context: CheckContext) => {
     const declarationList = symbol.getDeclarations()
 
     const declarations = pipe(
-      Option.fromNullable(declarationList),
+      Option.fromNullishOr(declarationList),
       Option.getOrElse(Function.constant(emptyDeclarations))
     )
 
@@ -118,7 +118,7 @@ const functionFlipMatches = (context: CheckContext) => {
       Option.filter((call) => call.arguments.length === 1),
       Option.filter((call) =>
         pipe(
-          Option.fromNullable(call.arguments[0]),
+          Option.fromNullishOr(call.arguments[0]),
           Option.exists((argument) => !ts.isSpreadElement(argument))
         )
       )
@@ -130,10 +130,10 @@ const functionFlipMatches = (context: CheckContext) => {
         const hasOneParameter = arrowFunction.parameters.length === 1
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
-        const parameter = yield* Option.fromNullable(arrowFunction.parameters[0])
-        const hasRest = pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
-        const hasDefault = pipe(Option.fromNullable(parameter.initializer), Option.isSome)
-        const isOptional = pipe(Option.fromNullable(parameter.questionToken), Option.isSome)
+        const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])
+        const hasRest = pipe(Option.fromNullishOr(parameter.dotDotDotToken), Option.isSome)
+        const hasDefault = pipe(Option.fromNullishOr(parameter.initializer), Option.isSome)
+        const isOptional = pipe(Option.fromNullishOr(parameter.questionToken), Option.isSome)
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
         const isComplex = hasRestOrDefault || isOptional
@@ -145,14 +145,14 @@ const functionFlipMatches = (context: CheckContext) => {
         const parameterName = identifierText(parameter.name as ts.Identifier)
         const body = yield* conciseArrowBody(arrowFunction)
         const outerCall = yield* unaryCall(body)
-        const outerArgument = yield* Option.fromNullable(outerCall.arguments[0])
+        const outerArgument = yield* Option.fromNullishOr(outerCall.arguments[0])
         const outerParameterRefs = referenceCount(parameterName)(outerArgument)
         const outerMentionsParameter = outerParameterRefs > 0
 
         yield* Option.liftPredicate((value: boolean) => !value)(outerMentionsParameter)
 
         const innerCall = yield* unaryCall(outerCall.expression)
-        const innerArgument = yield* Option.fromNullable(innerCall.arguments[0])
+        const innerArgument = yield* Option.fromNullishOr(innerCall.arguments[0])
         const innerArgumentCarrier = unwrapCarrier(innerArgument)
         const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(innerArgumentCarrier)
 

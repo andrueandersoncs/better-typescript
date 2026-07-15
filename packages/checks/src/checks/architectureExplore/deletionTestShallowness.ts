@@ -1,4 +1,4 @@
-import { Array, pipe } from "effect"
+import { Array, Function, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -22,7 +22,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 
     const callerCount = pipe(
       atPath,
-      Array.filterMap(passThroughDataOf),
+      Array.filterMap(Function.flow(passThroughDataOf, Result.fromOption(Function.constVoid))),
       Array.reduce(0, (total, data) => total + data.callerCount)
     )
 

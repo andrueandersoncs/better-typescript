@@ -63,7 +63,7 @@ export const calleeText =
 export const resolvedCallSignature =
   (checker: ts.TypeChecker) =>
   (call: CallLikeExpression): Option.Option<ts.Signature> =>
-    pipe(checker.getResolvedSignature(call), Option.fromNullable)
+    pipe(checker.getResolvedSignature(call), Option.fromNullishOr)
 
 const signatureDeclarationIsExternal = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
@@ -75,13 +75,13 @@ const signatureDeclarationIsExternal = (declaration: ts.Declaration): boolean =>
 export const signatureIsExternal = (signature: ts.Signature): boolean =>
   pipe(
     signature.getDeclaration(),
-    Option.fromNullable,
+    Option.fromNullishOr,
     Option.map(signatureDeclarationIsExternal),
     Option.getOrElse(Function.constant(true))
   )
 
 const signatureDeclarationOption = (signature: ts.Signature): Option.Option<ts.Declaration> =>
-  pipe(signature.getDeclaration(), Option.fromNullable)
+  pipe(signature.getDeclaration(), Option.fromNullishOr)
 
 // Missing declarations do not grant an escape because exemptions require a proven external boundary.
 const hasExternalDeclaration = (signature: ts.Signature): boolean =>
@@ -146,7 +146,7 @@ const isExternalArgumentPosition =
 const symbolAtNode =
   (checker: ts.TypeChecker) =>
   (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(checker.getSymbolAtLocation(node), Option.fromNullable)
+    pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
 const nameNodeEscapes =
   (checker: ts.TypeChecker) =>
@@ -237,7 +237,7 @@ const escapeCarrier = (node: ts.Node): Option.Option<EscapeCarrier> => {
 }
 
 const functionDeclarationName = (declaration: ts.FunctionDeclaration): Option.Option<ts.Node> =>
-  Option.fromNullable(declaration.name)
+  Option.fromNullishOr(declaration.name)
 
 // A written Map or Set type escapes because its carrier crosses an external boundary.
 export const typeReferenceEscapesExternally =

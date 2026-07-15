@@ -22,7 +22,7 @@ const newErrorElements = (context: CheckContext) => {
       node,
       message: "Avoid using new Error() directly.",
       hint:
-        "Declare a custom error with Effect Schema.TaggedError, then use new CustomError() " +
+        "Declare a custom error with Effect Schema.TaggedErrorClass, then use new CustomError() " +
         "instead of bare new Error()."
     })
 

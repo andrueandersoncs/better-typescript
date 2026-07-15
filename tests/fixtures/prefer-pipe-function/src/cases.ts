@@ -10,7 +10,7 @@ const value = Option.some(42).pipe(
 )
 
 // chained method pipe
-const chained = Option.fromNullable("hello").pipe(Option.map((s) => s.length))
+const chained = Option.fromNullishOr("hello").pipe(Option.map((s) => s.length))
 
 // method pipe on a variable
 const opt = Option.some(10)

@@ -48,8 +48,8 @@ export const formatRefactorExample = (example: RefactorExample): string => {
   return Array.join(joinedParts, "\n")
 }
 
-const byPath = Order.string
-const byPairName = Order.string
+const byPath = Order.String
+const byPairName = Order.String
 
 const readDirectoryEntries = (
   directory: string

@@ -9,7 +9,7 @@ export const isError = value instanceof Error
 export const isDate = value instanceof Date
 
 // Allowed: Schema.is type guard (no instanceof)
-class NotFoundError extends Schema.TaggedError<NotFoundError>()(
+class NotFoundError extends Schema.TaggedErrorClass<NotFoundError>()(
   "NotFoundError",
   { message: Schema.String }
 ) {}

@@ -132,7 +132,7 @@ export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (proje
 }
 
 const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
-  Order.reverse(Order.number),
+  Order.flip(Order.Number),
   (entry) => normalizePath(entry.path).length
 )
 

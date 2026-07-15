@@ -1,4 +1,4 @@
-import { Array, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -36,7 +36,7 @@ const testPastInterfaceAdvice = (
 
     const testCallCount = pipe(
       exportsAtPath,
-      Array.filterMap(testOnlyExportDataOf),
+      Array.filterMap(Function.flow(testOnlyExportDataOf, Result.fromOption(Function.constVoid))),
       Array.reduce(0, (total, data) => total + data.testCallCount)
     )
 

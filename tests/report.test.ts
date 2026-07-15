@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Chunk, Effect, Stream, pipe, Array } from "effect"
+import { Effect, Stream, pipe, Array } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
@@ -65,7 +65,7 @@ const loadFixtureProject = async (name: string): Promise<LoadedProject> => {
 }
 
 const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray))
+  Effect.runPromise(Stream.runCollect(stream))
 
 const relativeFileName = (project: LoadedProject, sourceFile: ts.SourceFile): string =>
   path.relative(project.rootPath, sourceFile.fileName).replaceAll(path.sep, "/")
@@ -194,7 +194,7 @@ const fixedCheck = (elements: ReadonlyArray<Detection>): Check =>
 const testWiring = (
   checks: ReadonlyArray<NamedCheck>,
   derive: Wiring["derive"] = noDerive
-): Wiring => ({ checks, derive })
+): Wiring => makeWiring({ checks, derive })
 
 const configFor = (wiring: Wiring, files: WiringConfig[number]["files"] = ["**/*"]): WiringConfig =>
   defineConfig([{ files, wiring }])
@@ -679,18 +679,17 @@ test("reportFromConfig lets silent checks influence advice without rendering loc
           }
         ]
       : []
-  const silentInfluencedWiring: Wiring = {
+  const silentInfluencedWiring: Wiring = makeWiring({
     checks: [throwProbeNamedCheck, silentProbeNamedCheck],
     derive: (signals) =>
       pipe(
         signalOf(signals)(silentProbeNamedCheck.name),
         Stream.runCollect,
-        Effect.map(Chunk.toReadonlyArray),
         Effect.map(silentInfluencedAdvice),
         Effect.map(Stream.fromIterable),
         Stream.unwrap
       )
-  }
+  })
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(reportFromTestWiring(silentInfluencedWiring)(workspace))
   const headers = firstLines(blocks)

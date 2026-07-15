@@ -31,7 +31,7 @@ const containingIfStatementFrom =
       return Option.none()
     }
 
-    const grandparent = Option.fromNullable(parentNode.parent)
+    const grandparent = Option.fromNullishOr(parentNode.parent)
 
     if (!ts.isIfStatement(parentNode)) {
       return containingIfStatementFrom(parentNode)(grandparent)
@@ -48,7 +48,7 @@ const nestedIfMatches = (context: CheckContext) => {
   const match = detection(context)
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
-    const parentOption = Option.fromNullable(ifStatement.parent)
+    const parentOption = Option.fromNullishOr(ifStatement.parent)
     const containingIf = containingIfStatementFrom(ifStatement)(parentOption)
 
     const reported = match({

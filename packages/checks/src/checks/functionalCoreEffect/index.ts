@@ -1,4 +1,4 @@
-import { Array, Data, HashMap, Option, Tuple, pipe } from "effect"
+import { Array, Data, HashMap, Option, Tuple, pipe, Result, Function } from "effect"
 import type * as ts from "typescript"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
@@ -26,16 +26,17 @@ export const buildFunctionalCoreEffectIndex =
   (policy: FunctionalCoreEffectPolicy) =>
   (context: ProgramContext): FunctionalCoreEffectIndex => {
     const relative = toRelativeFileName(context.projectRoot)
+    const sourceFiles = context.program.getSourceFiles()
 
     const entries = pipe(
-      context.program.getSourceFiles(),
-      Array.filter(isProjectSourceFile),
+      Array.filter(sourceFiles, isProjectSourceFile),
       Array.filterMap((sourceFile) =>
         pipe(
           sourceFile.fileName,
           relative,
           policy.roleOf,
-          Option.map((role) => Tuple.make(sourceFile.fileName, role))
+          Option.map((role) => Tuple.make(sourceFile.fileName, role)),
+          Result.fromOption(Function.constVoid)
         )
       )
     )

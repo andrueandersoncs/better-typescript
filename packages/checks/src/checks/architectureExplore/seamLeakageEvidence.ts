@@ -57,7 +57,7 @@ const importElements = (context: CheckContext) => {
 
   const handler = (node: ts.ImportDeclaration): ReadonlyArray<Detection> => {
     const specifier = pipe(
-      Option.fromNullable(node.moduleSpecifier),
+      Option.fromNullishOr(node.moduleSpecifier),
       Option.filter(ts.isStringLiteral),
       Option.map(Struct.get("text"))
     )

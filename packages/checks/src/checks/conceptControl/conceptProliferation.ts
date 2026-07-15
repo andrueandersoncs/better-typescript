@@ -8,7 +8,8 @@ import {
   Schema,
   Struct,
   Tuple,
-  pipe
+  pipe,
+  Result
 } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -39,7 +40,7 @@ const immediateDirectory = (filePath: string): string => {
 }
 
 const signalData = (element: Detection): Option.Option<ConceptSignalData> =>
-  pipe(element.data, Option.fromNullable, Option.filter(Schema.is(ConceptSignalData)))
+  pipe(element.data, Option.fromNullishOr, Option.filter(Schema.is(ConceptSignalData)))
 
 const signalKindCount = (
   counts: HashMap.HashMap<string, number>,
@@ -72,7 +73,10 @@ const proliferationAdvice = (
   directory: string,
   elements: ReadonlyArray<Detection>
 ): Option.Option<Advice> => {
-  const data = Array.filterMap(elements, signalData)
+  const data = Array.filterMap(
+    elements,
+    Function.flow(signalData, Result.fromOption(Function.constVoid))
+  )
 
   const concepts = pipe(
     data,
@@ -117,7 +121,8 @@ const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Adv
   const typed = Array.filterMap(elements, (element) =>
     pipe(
       signalData(element),
-      Option.map((data) => Tuple.make(element, data))
+      Option.map((data) => Tuple.make(element, data)),
+      Result.fromOption(Function.constVoid)
     )
   )
 
@@ -139,7 +144,11 @@ const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Adv
 
   const proliferation = pipe(
     Record.toEntries(byDirectory),
-    Array.filterMap(([directory, grouped]) => proliferationAdvice(directory, grouped))
+    Array.filterMap(([directory, grouped]) => {
+      const advice = proliferationAdvice(directory, grouped)
+
+      return Result.fromOption(advice, Function.constVoid)
+    })
   )
 
   return Array.appendAll(closed, proliferation)

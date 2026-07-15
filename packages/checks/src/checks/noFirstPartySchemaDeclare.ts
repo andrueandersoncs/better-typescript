@@ -8,7 +8,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-const accessExpression = Struct.get("expression")
+const accessExpression = Struct.get<ts.PropertyAccessExpression, "expression">("expression")
 
 const declarePropertyAccess = (
   call: ts.CallExpression
@@ -26,13 +26,13 @@ const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
   )
 
 const typePredicateAssertedType = (predicate: ts.TypePredicate): Option.Option<ts.Type> =>
-  Option.fromNullable(predicate.type)
+  Option.fromNullishOr(predicate.type)
 
 const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> =>
   pipe(
-    Option.fromNullable(type.aliasSymbol),
+    Option.fromNullishOr(type.aliasSymbol),
     Option.orElse(() =>
-      pipe(type, (candidate: ts.Type) => candidate.getSymbol(), Option.fromNullable)
+      pipe(type, (candidate: ts.Type) => candidate.getSymbol(), Option.fromNullishOr)
     )
   )
 
@@ -47,7 +47,7 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   return Array.every(ambientConditions, Boolean)
 }
 
-const symbolName = Struct.get("name")
+const symbolName = Struct.get<ts.Symbol, "name">("name")
 
 const fallbackTypeName: () => string = Function.constant("unknown")
 
@@ -66,12 +66,12 @@ const schemaDeclareMatches = (context: CheckContext) => {
     const signatures = type.getCallSignatures()
 
     return pipe(
-      Option.fromNullable(signatures[0]),
+      Option.fromNullishOr(signatures[0]),
       Option.flatMap((signature) =>
         pipe(
           signature,
           (candidate) => checker.getTypePredicateOfSignature(candidate),
-          Option.fromNullable
+          Option.fromNullishOr
         )
       ),
       Option.flatMap(typePredicateAssertedType)
@@ -87,7 +87,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
 
     const declareMatch = isDeclareOnSchema
       ? pipe(
-          Option.fromNullable(call.arguments[0]),
+          Option.fromNullishOr(call.arguments[0]),
           Option.flatMap(assertedType),
           Option.filter(isFirstPartyDataStructure),
           Option.map((type) => {

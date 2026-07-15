@@ -1,4 +1,15 @@
-import { Array, Function, HashMap, HashSet, Option, Struct, Tuple, pipe } from "effect"
+import {
+  Array,
+  Equal,
+  Function,
+  HashMap,
+  HashSet,
+  Option,
+  Struct,
+  Tuple,
+  pipe,
+  Result
+} from "effect"
 import * as ts from "typescript"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -25,9 +36,9 @@ const hint =
 const typeSymbol =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): Option.Option<ts.Symbol> => {
-    const aliasSymbol = Option.fromNullable(type.aliasSymbol)
+    const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
     const symbol = type.getSymbol()
-    const directSymbol = Option.fromNullable(symbol)
+    const directSymbol = Option.fromNullishOr(symbol)
 
     return pipe(
       aliasSymbol,
@@ -79,7 +90,8 @@ const seamCandidates =
               resolvedSymbolAt(context.checker)(declaration.name),
               Option.map((symbol) => Tuple.make(declaration, symbol))
             )
-          )
+          ),
+          Result.fromOption(Function.constVoid)
         )
       )
     )
@@ -160,9 +172,11 @@ const implementedSymbols =
     )
 
     return Array.flatMap(implementsClauses, (clause) =>
-      Array.filterMap(clause.types, (implemented) =>
-        resolvedSymbolAt(checker)(implemented.expression)
-      )
+      Array.filterMap(clause.types, (implemented) => {
+        const resolvedSymbol = resolvedSymbolAt(checker)(implemented.expression)
+
+        return Result.fromOption(resolvedSymbol, Function.constVoid)
+      })
     )
   }
 
@@ -171,7 +185,7 @@ const contextualInterfaceSymbol =
   (literal: ts.ObjectLiteralExpression): Option.Option<ts.Symbol> =>
     pipe(
       checker.getContextualType(literal),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.flatMap(typeSymbol(checker))
     )
 
@@ -181,11 +195,12 @@ const incrementAdapter =
   (
     counts: HashMap.HashMap<ts.Symbol, readonly [number, number]>
   ): HashMap.HashMap<ts.Symbol, readonly [number, number]> => {
-    const current = pipe(HashMap.get(counts, symbol), Option.getOrElse(emptyAdapterCount))
+    const symbolKey = Equal.byReferenceUnsafe(symbol)
+    const current = pipe(HashMap.get(counts, symbolKey), Option.getOrElse(emptyAdapterCount))
     const production = fromTest ? current[0] : current[0] + 1
     const test = fromTest ? current[1] + 1 : current[1]
     const updated = Tuple.make(production, test)
-    return HashMap.set(counts, symbol, updated)
+    return HashMap.set(counts, symbolKey, updated)
   }
 
 const buildIndex = (
@@ -200,7 +215,7 @@ const buildIndex = (
 
   const candidateSymbols = pipe(
     candidates,
-    Array.map((candidate) => candidate[1]),
+    Array.map((candidate) => Equal.byReferenceUnsafe(candidate[1])),
     HashSet.fromIterable
   )
 
@@ -235,9 +250,14 @@ const buildIndex = (
             Option.filter(isExportedDependencyParameter),
             Option.map((parameter) => context.checker.getTypeAtLocation(parameter)),
             Option.flatMap(typeSymbol(context.checker)),
-            Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
+            Option.filter((candidate) => {
+              const candidateKey = Equal.byReferenceUnsafe(candidate)
+
+              return HashSet.has(candidateSymbols, candidateKey)
+            }),
             Option.map((candidate) => {
-              const injected = HashSet.add(current[0], candidate)
+              const candidateKey = Equal.byReferenceUnsafe(candidate)
+              const injected = HashSet.add(current[0], candidateKey)
 
               return Tuple.make(injected, current[1])
             }),
@@ -249,7 +269,11 @@ const buildIndex = (
             Option.map((declaration) => {
               const symbols = pipe(
                 implementedSymbols(context.checker)(declaration),
-                Array.filter((symbol) => HashSet.has(candidateSymbols, symbol))
+                Array.filter((symbol) => {
+                  const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+                  return HashSet.has(candidateSymbols, symbolKey)
+                })
               )
 
               const adapterCounts = Array.reduce(symbols, parameterState[1], (counts, symbol) =>
@@ -264,7 +288,11 @@ const buildIndex = (
           const objectState = pipe(
             Option.liftPredicate(ts.isObjectLiteralExpression)(node),
             Option.flatMap(contextualInterfaceSymbol(context.checker)),
-            Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
+            Option.filter((candidate) => {
+              const candidateKey = Equal.byReferenceUnsafe(candidate)
+
+              return HashSet.has(candidateSymbols, candidateKey)
+            }),
             Option.map((candidate) => {
               const adapterCounts = incrementAdapter(fromTest)(candidate)(classState[1])
 
@@ -308,10 +336,16 @@ const singleAdapterElements =
     return pipe(
       index[0],
       Array.filter((candidate) => candidate[0].getSourceFile() === context.sourceFile),
-      Array.filter((candidate) => HashSet.has(index[1], candidate[1])),
+      Array.filter((candidate) => {
+        const candidateKey = Equal.byReferenceUnsafe(candidate[1])
+
+        return HashSet.has(index[1], candidateKey)
+      }),
       Array.filterMap((candidate) => {
+        const candidateKey = Equal.byReferenceUnsafe(candidate[1])
+
         const counts = pipe(
-          HashMap.get(index[2], candidate[1]),
+          HashMap.get(index[2], candidateKey),
           Option.getOrElse(emptyAdapterCount)
         )
 
@@ -337,7 +371,8 @@ const singleAdapterElements =
             })
 
             return reported
-          })
+          }),
+          Result.fromOption(Function.constVoid)
         )
       })
     )

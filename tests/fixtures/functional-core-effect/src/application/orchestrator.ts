@@ -1,24 +1,24 @@
 import { Context, Effect } from "effect"
 
-export class Inventory extends Context.Tag("Inventory")<
+export class Inventory extends Context.Service<
   Inventory,
   { readonly available: Effect.Effect<number> }
->() {}
+>()("Inventory") {}
 
-export class Pricing extends Context.Tag("Pricing")<
+export class Pricing extends Context.Service<
   Pricing,
   { readonly amount: Effect.Effect<number> }
->() {}
+>()("Pricing") {}
 
-export class PurePolicy extends Context.Tag("PurePolicy")<
+export class PurePolicy extends Context.Service<
   PurePolicy,
   { readonly decide: (inventory: number, price: number) => "accept" | "reject" }
->() {}
+>()("PurePolicy") {}
 
-export class EffectfulPolicy extends Context.Tag("EffectfulPolicy")<
+export class EffectfulPolicy extends Context.Service<
   EffectfulPolicy,
   { readonly decide: (inventory: number) => Effect.Effect<boolean> }
->() {}
+>()("EffectfulPolicy") {}
 
 export const placeOrder = Effect.gen(function* () {
   const inventory = yield* Inventory

@@ -39,12 +39,13 @@ export class ConfigExport extends Data.Class<{
  *   prose and force boundary consumers to parse an unstable message.
  * @modelRole protocol
  */
-export class ProjectWiringConfigError extends Schema.TaggedError<ProjectWiringConfigError>(
-  "ProjectWiringConfigError"
-)("ProjectWiringConfigError", {
-  configPath: Schema.String,
-  reason: Schema.String
-}) {
+export class ProjectWiringConfigError extends Schema.TaggedErrorClass<ProjectWiringConfigError>()(
+  "ProjectWiringConfigError",
+  {
+    configPath: Schema.String,
+    reason: Schema.String
+  }
+) {
   get message(): string {
     return `Invalid ${configFileName} at ${this.configPath}: ${this.reason}`
   }

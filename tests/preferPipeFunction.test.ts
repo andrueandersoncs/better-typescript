@@ -42,7 +42,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     name: "chained method pipe",
     fileName: "src/cases.ts",
     line: 13,
-    column: 46,
+    column: 47,
     message,
     hint
   },

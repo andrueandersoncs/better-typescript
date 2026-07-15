@@ -16,7 +16,7 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-undefined")
 const expectedHint =
   "Use Effect's Option module to model optional values, and convert nullable boundaries " +
-  "with Option.fromNullable (incoming) and Option.getOrUndefined (outgoing). When a " +
+  "with Option.fromNullishOr (incoming) and Option.getOrUndefined (outgoing). When a " +
   "third-party signature forces undefined on a callback, keep the callback inline or " +
   "annotate it with the library's own callback type so the undefined stays in the " +
   "library's declaration, not yours."

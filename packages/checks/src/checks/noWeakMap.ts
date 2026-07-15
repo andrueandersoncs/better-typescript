@@ -29,7 +29,7 @@ const weakMapMatches = (context: CheckContext) => {
   const matches = (identifier: ts.Identifier): ReadonlyArray<Detection> =>
     pipe(
       checker.getSymbolAtLocation(identifier),
-      Option.fromNullable,
+      Option.fromNullishOr,
       Option.filter((symbol) => !isFirstPartySymbol(symbol)),
       Option.map(() =>
         match({

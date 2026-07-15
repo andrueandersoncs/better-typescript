@@ -19,7 +19,6 @@ import type { FunctionalCoreEffectPolicy } from "./policy.js"
 import {
   classExtendsEffectApi,
   effectServiceConfigObject,
-  effectServiceDependencyProperty,
   enclosingFunctionLike,
   importedEffectApiAt,
   importedMemberAt,
@@ -130,7 +129,7 @@ const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
   Queue: true,
   PubSub: true,
   SubscriptionRef: true,
-  FiberRef: true,
+  References: true,
   Runtime: true,
   ManagedRuntime: true,
   Scope: true,
@@ -152,7 +151,7 @@ const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration): b
       Option.liftPredicate((value: boolean) => value === false)(atBoundary),
       Option.map(() => {
         const isYield = ts.isYieldExpression(current)
-        const parentNested = pipe(Option.fromNullable(current.parent), Option.exists(visit))
+        const parentNested = pipe(Option.fromNullishOr(current.parent), Option.exists(visit))
         const yieldFlags = Array.make(isYield, parentNested)
 
         return Array.some(yieldFlags, Boolean)
@@ -161,7 +160,7 @@ const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration): b
     )
   }
 
-  return pipe(Option.fromNullable(node.parent), Option.exists(visit))
+  return pipe(Option.fromNullishOr(node.parent), Option.exists(visit))
 }
 
 const namespaceIsEffectControlRuntime = (namespace: string): boolean =>
@@ -179,14 +178,14 @@ const callOwnedByEffectControlRuntime = (
           member.moduleSpecifier
         ),
         Option.map((specifier) => specifier.slice("effect/".length).split("/")[0]),
-        Option.flatMap(Option.fromNullable),
+        Option.flatMap(Option.fromNullishOr),
         Option.exists(namespaceIsEffectControlRuntime)
       )
 
       const fromBarrel = pipe(
         Option.liftPredicate((specifier: string) => specifier === "effect")(member.moduleSpecifier),
         Option.map(() => member.path[0]),
-        Option.flatMap(Option.fromNullable),
+        Option.flatMap(Option.fromNullishOr),
         Option.exists(namespaceIsEffectControlRuntime)
       )
 
@@ -214,9 +213,8 @@ const isQualifyingTransformationCall = (
 
 const compositionLayerNames = Array.make(
   "effect",
-  "scoped",
-  "scopedDiscard",
-  "scopedContext",
+  "effectDiscard",
+  "effectContext",
   "succeed",
   "provide",
   "provideMerge"
@@ -293,19 +291,19 @@ const nestedInRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.Node
       Option.exists((call) => callIsRecognizedCompositionApi(checker, call))
     )
 
-    const parentNested = pipe(Option.fromNullable(current.parent), Option.exists(visit))
+    const parentNested = pipe(Option.fromNullishOr(current.parent), Option.exists(visit))
     const nestedFlags = Array.make(matchingCall, parentNested)
 
     return Array.some(nestedFlags, Boolean)
   }
 
-  return pipe(Option.fromNullable(node.parent), Option.exists(visit))
+  return pipe(Option.fromNullishOr(node.parent), Option.exists(visit))
 }
 
 const resolvedSymbolAt = (checker: ts.TypeChecker, node: ts.Node): Option.Option<ts.Symbol> =>
   pipe(
     checker.getSymbolAtLocation(node),
-    Option.fromNullable,
+    Option.fromNullishOr,
     Option.map((symbol) => {
       const alias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
@@ -317,26 +315,15 @@ const isServiceTagExpression = (checker: ts.TypeChecker, expression: ts.Expressi
   pipe(
     resolvedSymbolAt(checker, expression),
     Option.map((symbol) =>
-      pipe(Option.fromNullable(symbol.declarations), Option.getOrElse(Array.empty))
+      pipe(Option.fromNullishOr(symbol.declarations), Option.getOrElse(Array.empty))
     ),
     Option.exists((declarations) =>
       Array.some(declarations, (declaration) =>
         pipe(
           Option.liftPredicate(ts.isClassDeclaration)(declaration),
-          Option.exists((classDeclaration) => {
-            const contextTag = classExtendsEffectApi(checker, classDeclaration, "Context", "Tag")
-
-            const effectService = classExtendsEffectApi(
-              checker,
-              classDeclaration,
-              "Effect",
-              "Service"
-            )
-
-            const serviceFlags = Array.make(contextTag, effectService)
-
-            return Array.some(serviceFlags, Boolean)
-          })
+          Option.exists((classDeclaration) =>
+            classExtendsEffectApi(checker, classDeclaration, "Context", "Service")
+          )
         )
       )
     )
@@ -350,14 +337,14 @@ const serviceYieldName = (
   node: ts.YieldExpression
 ): Option.Option<string> =>
   pipe(
-    Option.fromNullable(node.asteriskToken),
-    Option.flatMap(() => Option.fromNullable(node.expression)),
+    Option.fromNullishOr(node.asteriskToken),
+    Option.flatMap(() => Option.fromNullishOr(node.expression)),
     Option.filter((expr) => isServiceTagExpression(checker, expr)),
     Option.map((expr) => expr.getText())
   )
 
 const collectOrchestratorMetrics = (context: CheckContext, owner: ts.FunctionLikeDeclaration) => {
-  const root = pipe(Option.fromNullable(owner.body), Option.getOrElse(Function.constant(owner)))
+  const root = pipe(Option.fromNullishOr(owner.body), Option.getOrElse(Function.constant(owner)))
 
   return foldAst((metrics: typeof emptyOrchestratorMetrics, node: ts.Node) =>
     pipe(
@@ -482,7 +469,7 @@ const orchestratorElements =
 
 const functionResultExpression = (node: ts.FunctionLikeDeclaration): Option.Option<ts.Expression> =>
   pipe(
-    Option.fromNullable(node.body),
+    Option.fromNullishOr(node.body),
     Option.flatMap((bodyNode) => {
       if (!ts.isBlock(bodyNode)) {
         return Option.some(bodyNode)
@@ -493,7 +480,7 @@ const functionResultExpression = (node: ts.FunctionLikeDeclaration): Option.Opti
         Array.head,
         Option.filter(Function.constant(bodyNode.statements.length === 1)),
         Option.filter(ts.isReturnStatement),
-        Option.flatMap((statement) => Option.fromNullable(statement.expression))
+        Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
       )
     })
   )
@@ -614,11 +601,11 @@ const findContextTagTypeArgument = (expression: ts.Expression): Option.Option<ts
     Option.liftPredicate(ts.isCallExpression)(expression),
     Option.flatMap((call) => {
       const arguments_ = pipe(
-        Option.fromNullable(call.typeArguments),
+        Option.fromNullishOr(call.typeArguments),
         Option.getOrElse(Array.empty)
       )
 
-      const second = Option.fromNullable(arguments_[1])
+      const second = Option.fromNullishOr(arguments_[1])
 
       return Option.orElse(second, () => findContextTagTypeArgument(call.expression))
     })
@@ -628,16 +615,16 @@ const contextServiceTypeNode = (
   context: CheckContext,
   declaration: ts.ClassDeclaration
 ): Option.Option<ts.TypeNode> => {
-  const tagNames = Array.of("Tag")
+  const serviceNames = Array.of("Service")
 
   return pipe(
-    Option.fromNullable(declaration.heritageClauses),
+    Option.fromNullishOr(declaration.heritageClauses),
     Option.getOrElse(Array.empty),
     Array.flatMap((clause) => Array.fromIterable(clause.types)),
     Array.findFirst((heritage) => {
       const callee = unwrapCallee(heritage.expression)
 
-      return importedEffectApiAt(context.checker, callee, "Context", tagNames)
+      return importedEffectApiAt(context.checker, callee, "Context", serviceNames)
     }),
     Option.flatMap((heritage) => findContextTagTypeArgument(heritage.expression))
   )
@@ -669,7 +656,7 @@ const objectReturnedBy = (expression: ts.Expression): Option.Option<ts.ObjectLit
 
 const effectSucceedSyncNames = Array.make("succeed", "sync")
 
-const effectEffectNames = Array.of("effect")
+const effectMakeNames = Array.of("make")
 
 const effectWrappedServiceObject = (
   context: CheckContext,
@@ -688,31 +675,16 @@ const effectWrappedServiceObject = (
 const effectServiceObject = (
   context: CheckContext,
   declaration: ts.ClassDeclaration
-): Option.Option<ts.ObjectLiteralExpression> => {
-  const dependency = effectServiceDependencyProperty(context.checker, declaration)
-
-  return Option.match(dependency, {
-    onSome: () => Option.none(),
-    onNone: () =>
+): Option.Option<ts.ObjectLiteralExpression> =>
+  pipe(
+    effectServiceConfigObject(context.checker, declaration),
+    Option.flatMap((config) =>
       pipe(
-        effectServiceConfigObject(context.checker, declaration),
-        Option.flatMap((config) =>
-          pipe(
-            propertyAssignmentNamed(config, effectSucceedSyncNames),
-            Option.flatMap((property) => objectReturnedBy(property.initializer)),
-            Option.orElse(() =>
-              pipe(
-                propertyAssignmentNamed(config, effectEffectNames),
-                Option.flatMap((property) =>
-                  effectWrappedServiceObject(context, property.initializer)
-                )
-              )
-            )
-          )
-        )
+        propertyAssignmentNamed(config, effectMakeNames),
+        Option.flatMap((property) => effectWrappedServiceObject(context, property.initializer))
       )
-  })
-}
+    )
+  )
 
 const typeLooksEffectful = (checker: ts.TypeChecker, type: ts.Type): boolean => {
   const rendered = checker.typeToString(type)
@@ -810,7 +782,7 @@ const pureServiceElements =
             })
 
             const target = pipe(
-              Option.fromNullable(node.name),
+              Option.fromNullishOr(node.name),
               Option.getOrElse(Function.constant(node))
             )
 

@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
+import { Array, Function, Option, Struct, Tuple, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
@@ -36,7 +36,7 @@ const callExpressionBody = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ): Option.Option<ts.CallExpression> =>
   pipe(
-    Option.fromNullable(node.body),
+    Option.fromNullishOr(node.body),
     Option.flatMap((body) => {
       const expressionCall = pipe(
         Option.liftPredicate(isExpressionBody)(body),
@@ -50,7 +50,7 @@ const callExpressionBody = (
         Option.filter(ts.isReturnStatement),
         Option.flatMap((statement) =>
           pipe(
-            Option.fromNullable(statement.expression),
+            Option.fromNullishOr(statement.expression),
             Option.map(unwrapExpression),
             Option.filter(ts.isCallExpression)
           )
@@ -65,15 +65,19 @@ const parameterIdentifiers = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ): Option.Option<ReadonlyArray<ts.Identifier>> => {
   const identifiers = Array.filterMap(node.parameters, (parameter) => {
-    const initializer = Option.fromNullable(parameter.initializer)
-    const restToken = Option.fromNullable(parameter.dotDotDotToken)
+    const initializer = Option.fromNullishOr(parameter.initializer)
+    const restToken = Option.fromNullishOr(parameter.dotDotDotToken)
     const initializerMissing = Option.isNone(initializer)
     const restTokenMissing = Option.isNone(restToken)
     const omissions = Array.make(initializerMissing, restTokenMissing)
     const unmodified = Array.every(omissions, Boolean)
     const identifier = pipe(Option.some(parameter.name), Option.filter(ts.isIdentifier))
 
-    return pipe(identifier, Option.filter(Function.constant(unmodified)))
+    return pipe(
+      identifier,
+      Option.filter(Function.constant(unmodified)),
+      Result.fromOption(Function.constVoid)
+    )
   })
 
   return identifiers.length === node.parameters.length ? Option.some(identifiers) : Option.none()
@@ -111,7 +115,8 @@ const consumedParameterNames = (
       argument,
       unwrapExpression,
       Option.liftPredicate(ts.isIdentifier),
-      Option.map(Struct.get("text"))
+      Option.map(Struct.get("text")),
+      Result.fromOption(Function.constVoid)
     )
   )
 
@@ -163,8 +168,8 @@ const isExactForwarder = (
   )
 
 const hasModuleSpecifier = Function.flow(
-  Struct.get("moduleSpecifier"),
-  Option.fromNullable,
+  Struct.get<ts.ExportDeclaration, "moduleSpecifier">("moduleSpecifier"),
+  Option.fromNullishOr,
   Option.isSome
 )
 
@@ -225,7 +230,7 @@ const passThroughElements =
     )
 
     const reexportDetection = pipe(
-      Option.fromNullable(reexports[0]),
+      Option.fromNullishOr(reexports[0]),
       Option.map((node) => {
         const data = new PassThroughWrapperData({
           kind: "reexport",

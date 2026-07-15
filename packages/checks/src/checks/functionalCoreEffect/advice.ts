@@ -1,4 +1,4 @@
-import { Array, Option, Record, Schema, Stream, Struct, Tuple, pipe } from "effect"
+import { Array, Option, Record, Schema, Stream, Struct, Tuple, pipe, Result } from "effect"
 import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
@@ -57,7 +57,7 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
     const data = element.data
 
     if (!Schema.is(FunctionalCoreShapeData)(data)) {
-      return Option.none()
+      return Result.failVoid
     }
 
     const evidence = shapeEvidence(data)
@@ -70,7 +70,7 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
       evidence
     })
 
-    return Option.some(advice)
+    return Result.succeed(advice)
   })
 
 const boundaryPairs = (
@@ -80,12 +80,12 @@ const boundaryPairs = (
     const isBoundary = Schema.is(FunctionalCoreBoundaryData)(element.data)
 
     if (!isBoundary) {
-      return Option.none()
+      return Result.failVoid
     }
 
     const pair = Tuple.make(element, element.data)
 
-    return Option.some(pair)
+    return Result.succeed(pair)
   })
 
 const countKind = (
@@ -132,7 +132,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
         level: "file",
         title: "imperative core",
         remediation:
-          "Several independent boundary violations concentrate in this core Module. Extract a pure decision function, express external needs as domain-owned Context.Tag ports, and leave Layer selection plus runtime execution at the composition root.",
+          "Several independent boundary violations concentrate in this core Module. Extract a pure decision function, express external needs as domain-owned Context.Service ports, and leave Layer selection plus runtime execution at the composition root.",
         evidence
       })
 

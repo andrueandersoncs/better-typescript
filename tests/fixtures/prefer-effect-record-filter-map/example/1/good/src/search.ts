@@ -1,4 +1,4 @@
-import { Option, Record } from "effect"
+import { Function, Record, Result } from "effect"
 
 declare const params: {
   readonly query: string | null
@@ -10,5 +10,5 @@ export const queryParameters = Record.filterMap(
     query: params.query,
     page: params.page
   },
-  Option.fromNullable
+  Result.fromNullishOr(Function.constVoid)
 )

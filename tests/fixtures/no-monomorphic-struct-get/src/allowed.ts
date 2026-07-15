@@ -17,7 +17,7 @@ type GenericNameGetter = <S extends { readonly name?: unknown }>(
   item: S
 ) => S["name"] | undefined
 
-const inferredText = Struct.get("text")
+const inferredText = Struct.get<SignalEvent, "text">("text")
 
 const genericName: GenericNameGetter = Struct.get("name")
 
@@ -26,7 +26,7 @@ const satisfiedName = Struct.get("name") satisfies (item: NamedItem) => string
 export const exportedText: (event: SignalEvent) => string = Struct.get("text")
 
 const byEvidenceCount: Order.Order<EvidenceItem> = Order.mapInput(
-  Order.number,
+  Order.Number,
   Struct.get("count")
 )
 

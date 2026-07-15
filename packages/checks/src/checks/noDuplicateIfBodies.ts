@@ -14,7 +14,7 @@ const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatemen
     Option.liftPredicate(ts.isIfStatement)(statement),
     Option.exists(
       Function.flow(
-        (ifStatement: ts.IfStatement) => Option.fromNullable(ifStatement.elseStatement),
+        (ifStatement: ts.IfStatement) => Option.fromNullishOr(ifStatement.elseStatement),
         Option.isNone
       )
     )
@@ -103,7 +103,7 @@ const duplicateIfMatches = (context: CheckContext) => {
             pipe(
               Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
               Option.flatMap((statementIndex) =>
-                Option.fromNullable(block.statements[statementIndex - 1])
+                Option.fromNullishOr(block.statements[statementIndex - 1])
               )
             )
           ),
