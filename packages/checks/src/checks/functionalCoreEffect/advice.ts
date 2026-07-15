@@ -24,7 +24,8 @@ const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
 const shapeAdviceExamples: Readonly<
   Partial<Record<FunctionalCoreShapeKind, NonEmptyRefactorExamples>>
 > = {
-  "effect-orchestrator": fixtureRefactorExamples("effect-orchestrator")
+  "effect-orchestrator": fixtureRefactorExamples("effect-orchestrator"),
+  "adapter-business-logic": fixtureRefactorExamples("adapter-business-logic")
 }
 
 const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>> = {

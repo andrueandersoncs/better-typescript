@@ -123,6 +123,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "overgrown Effect orchestrator",
     wiring: functionalCoreEffectWiring
+  },
+  {
+    fixtureId: "adapter-business-logic",
+    pairId: "1",
+    title: "business logic in an adapter",
+    wiring: functionalCoreEffectWiring
   }
 ]
 
