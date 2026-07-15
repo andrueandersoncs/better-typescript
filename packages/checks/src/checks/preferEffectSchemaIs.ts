@@ -19,22 +19,15 @@ const strictTagComparisonOperators = HashSet.make(
 const hasTagPropertyName = (expression: ts.PropertyAccessExpression): boolean =>
   expression.name.text === tagPropertyName
 
-const tagPropertyAccess = (
-  expression: ts.Expression
-): Option.Option<ts.PropertyAccessExpression> =>
+const tagPropertyAccess = (expression: ts.Expression): Option.Option<ts.PropertyAccessExpression> =>
   pipe(
     unwrapExpression(expression),
     Option.liftPredicate(ts.isPropertyAccessExpression),
     Option.filter(hasTagPropertyName)
   )
 
-const stringLiteralExpression = (
-  expression: ts.Expression
-): Option.Option<ts.StringLiteralLike> =>
-  pipe(
-    unwrapExpression(expression),
-    Option.liftPredicate(ts.isStringLiteralLike)
-  )
+const stringLiteralExpression = (expression: ts.Expression): Option.Option<ts.StringLiteralLike> =>
+  pipe(unwrapExpression(expression), Option.liftPredicate(ts.isStringLiteralLike))
 
 const hasTagPropertyOperand = (expression: ts.Expression): boolean =>
   pipe(tagPropertyAccess(expression), Option.isSome)
@@ -43,16 +36,11 @@ const hasStringLiteralOperand = (expression: ts.Expression): boolean =>
   pipe(stringLiteralExpression(expression), Option.isSome)
 
 const isSchemaTagComparisonBinary = (node: ts.BinaryExpression): boolean => {
-  const isStrictComparison = HashSet.has(
-    strictTagComparisonOperators,
-    node.operatorToken.kind
-  )
+  const isStrictComparison = HashSet.has(strictTagComparisonOperators, node.operatorToken.kind)
 
-  const leftTagRightString =
-    hasTagPropertyOperand(node.left) && hasStringLiteralOperand(node.right)
+  const leftTagRightString = hasTagPropertyOperand(node.left) && hasStringLiteralOperand(node.right)
 
-  const leftStringRightTag =
-    hasStringLiteralOperand(node.left) && hasTagPropertyOperand(node.right)
+  const leftStringRightTag = hasStringLiteralOperand(node.left) && hasTagPropertyOperand(node.right)
 
   const hasTagComparison = leftTagRightString || leftStringRightTag
 
@@ -79,9 +67,7 @@ const schemaIsMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
 
-  const matches = (
-    expression: ts.BinaryExpression
-  ): ReadonlyArray<Detection> => {
+  const matches = (expression: ts.BinaryExpression): ReadonlyArray<Detection> => {
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
     const accessOptions = Array.make(leftAccess, rightAccess)
@@ -90,9 +76,7 @@ const schemaIsMatches = (context: CheckContext) => {
     const isFirstParty = Option.exists(tagAccess, (access) => {
       const checkedType = context.checker.getTypeAtLocation(access.expression)
 
-      const constituents = checkedType.isUnion()
-        ? checkedType.types
-        : Array.of(checkedType)
+      const constituents = checkedType.isUnion() ? checkedType.types : Array.of(checkedType)
 
       return Array.every(constituents, constituentIsFirstParty)
     })
@@ -120,9 +104,7 @@ const schemaIsMatches = (context: CheckContext) => {
 
     const schemaIsCheck = `Schema.is($schema)(${valueText})`
 
-    const isNegated =
-      expression.operatorToken.kind ===
-      ts.SyntaxKind.ExclamationEqualsEqualsToken
+    const isNegated = expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
 
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
@@ -142,9 +124,7 @@ const schemaIsMatches = (context: CheckContext) => {
 
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
-const check = nodeCheck(binaryExpressionKinds)(isSchemaTagComparison)(
-  schemaIsMatches
-)
+const check = nodeCheck(binaryExpressionKinds)(isSchemaTagComparison)(schemaIsMatches)
 
 export const preferEffectSchemaIs: Check = check
 

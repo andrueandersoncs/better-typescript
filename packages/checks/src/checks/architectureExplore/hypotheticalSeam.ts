@@ -1,19 +1,10 @@
 import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 
-const hypotheticalSeamAdvice = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
-  const seams = Array.filter(
-    elements,
-    (element) => element.name === "single-adapter-seams"
-  )
+const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const seams = Array.filter(elements, (element) => element.name === "single-adapter-seams")
 
   const paths = pipe(
     seams,

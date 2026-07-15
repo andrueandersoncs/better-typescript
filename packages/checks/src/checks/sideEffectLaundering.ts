@@ -8,9 +8,7 @@ import {
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 
-const collidingFileAdvice = (
-  signals: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
+const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const files = byFile(signals)
 
   return Array.flatMap(files, (file) => {

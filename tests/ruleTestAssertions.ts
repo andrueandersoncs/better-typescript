@@ -29,21 +29,15 @@ const locationKey = (location: SourceLocation): string =>
   [location.fileName, location.line, location.column].join(":")
 
 const detectionLocationKey = (element: Detection): string =>
-  [element.location.path, element.location.line, element.location.column].join(
-    ":"
-  )
+  [element.location.path, element.location.line, element.location.column].join(":")
 
-const compareLocations = (
-  left: SourceLocation,
-  right: SourceLocation
-): number =>
+const compareLocations = (left: SourceLocation, right: SourceLocation): number =>
   left.fileName.localeCompare(right.fileName) ||
   left.line - right.line ||
   left.column - right.column
 
-const sortByLocation = <T extends SourceLocation>(
-  items: ReadonlyArray<T>
-): ReadonlyArray<T> => [...items].sort(compareLocations)
+const sortByLocation = <T extends SourceLocation>(items: ReadonlyArray<T>): ReadonlyArray<T> =>
+  [...items].sort(compareLocations)
 
 const maybeSorted = <T extends SourceLocation>(
   items: ReadonlyArray<T>,
@@ -58,9 +52,7 @@ const detectionDetails = (element: Detection): DetectionDetails => ({
   hint: element.hint
 })
 
-const expectedDetectionDetails = (
-  expectedElement: ExpectedDetection
-): DetectionDetails => ({
+const expectedDetectionDetails = (expectedElement: ExpectedDetection): DetectionDetails => ({
   fileName: expectedElement.fileName,
   line: expectedElement.line,
   column: expectedElement.column,
@@ -75,16 +67,9 @@ export const assertDisallowedFixtureItems = (
 ): void => {
   const shouldSort = options.sort === true
   const actual = maybeSorted(elements.map(detectionDetails), shouldSort)
-  const expected = maybeSorted(
-    disallowedFixtureItems.map(expectedDetectionDetails),
-    shouldSort
-  )
+  const expected = maybeSorted(disallowedFixtureItems.map(expectedDetectionDetails), shouldSort)
 
-  assert.deepEqual(
-    actual,
-    expected,
-    "expected only disallowed fixture items to be reported"
-  )
+  assert.deepEqual(actual, expected, "expected only disallowed fixture items to be reported")
 }
 
 export const assertAllowedFixtureItems = (

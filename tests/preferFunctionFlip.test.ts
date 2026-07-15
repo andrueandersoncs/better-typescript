@@ -15,8 +15,7 @@ import {
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-function-flip")
-const expectedMessage =
-  "Avoid lambdas that only flip the order of a curried application."
+const expectedMessage = "Avoid lambdas that only flip the order of a curried application."
 const expectedHint =
   "Reorder the curried parameters so the fixed argument comes first " +
   "(data-last), then pass the partial f(y) directly — or use " +
@@ -73,9 +72,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferFunctionFlipFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferFunctionFlipFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

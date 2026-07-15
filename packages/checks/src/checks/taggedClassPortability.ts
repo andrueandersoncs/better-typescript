@@ -1,25 +1,16 @@
 import { Array, Function, HashSet, Match, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  isExtendsClause,
-  resolvedSymbolAt,
-  unwrapCallee
-} from "./support/tsNode.js"
+import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "./support/tsNode.js"
 import { differentBaseConstraint } from "./support/tsType.js"
 
-const effectDataModuleSuffixes = Array.make(
-  "/effect/dist/dts/Data.d.ts",
-  "/effect/src/Data.ts"
-)
+const effectDataModuleSuffixes = Array.make("/effect/dist/dts/Data.d.ts", "/effect/src/Data.ts")
 
 const effectSchemaModuleSuffixes = Array.make(
   "/effect/dist/dts/Schema.d.ts",
   "/effect/src/Schema.ts"
 )
 
-const taggedClassSymbolNode = (
-  expression: ts.Expression
-): Option.Option<ts.Node> => {
+const taggedClassSymbolNode = (expression: ts.Expression): Option.Option<ts.Node> => {
   if (ts.isPropertyAccessExpression(expression)) {
     return Option.some(expression.name)
   }
@@ -48,18 +39,13 @@ const symbolIsEffectTaggedClass =
       Option.getOrElse(() => Array.empty<ts.Declaration>())
     )
 
-    return Array.some(
-      declarations,
-      declarationComesFromEffectModule(moduleSuffixes)
-    )
+    return Array.some(declarations, declarationComesFromEffectModule(moduleSuffixes))
   }
 
 const taggedClassHeritage =
   (moduleSuffixes: ReadonlyArray<string>) =>
   (checker: ts.TypeChecker) =>
-  (
-    declaration: ts.ClassDeclaration
-  ): Option.Option<ts.ExpressionWithTypeArguments> => {
+  (declaration: ts.ClassDeclaration): Option.Option<ts.ExpressionWithTypeArguments> => {
     const clauses = declaration.heritageClauses ?? Array.empty()
     const extendsClauses = Array.filter(clauses, isExtendsClause)
     const heritageTypes = Array.flatMap(extendsClauses, Struct.get("types"))
@@ -75,13 +61,9 @@ const taggedClassHeritage =
     })
   }
 
-export const dataTaggedClassHeritage = taggedClassHeritage(
-  effectDataModuleSuffixes
-)
+export const dataTaggedClassHeritage = taggedClassHeritage(effectDataModuleSuffixes)
 
-export const schemaTaggedClassHeritage = taggedClassHeritage(
-  effectSchemaModuleSuffixes
-)
+export const schemaTaggedClassHeritage = taggedClassHeritage(effectSchemaModuleSuffixes)
 
 const wirePrimitiveTypeFlags =
   ts.TypeFlags.StringLike |
@@ -110,8 +92,7 @@ const typeIsObject = (type: ts.Type): type is ts.ObjectType =>
 
 const typeIsUnion = (type: ts.Type): type is ts.UnionType => type.isUnion()
 
-const typeIsIntersection = (type: ts.Type): type is ts.IntersectionType =>
-  type.isIntersection()
+const typeIsIntersection = (type: ts.Type): type is ts.IntersectionType => type.isIntersection()
 
 const typeIsWirePrimitive = typeHasAnyFlags(wirePrimitiveTypeFlags)
 
@@ -123,10 +104,7 @@ const typeWasSeen =
     HashSet.has(seen, type)
 
 const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
-  Array.filter(
-    type.types,
-    (member) => (member.flags & ts.TypeFlags.Undefined) === 0
-  )
+  Array.filter(type.types, (member) => (member.flags & ts.TypeFlags.Undefined) === 0)
 
 const propertyHasCompilerName = (property: ts.Symbol): boolean =>
   property.getName().startsWith("__@")
@@ -147,17 +125,13 @@ const propertyTypeIsWireSafe =
           Option.getOrElse(Function.constant(location))
         )
 
-        const propertyType = checker.getTypeOfSymbolAtLocation(
-          namedProperty,
-          propertyLocation
-        )
+        const propertyType = checker.getTypeOfSymbolAtLocation(namedProperty, propertyLocation)
 
         const isOptional = (namedProperty.flags & ts.SymbolFlags.Optional) !== 0
 
         const optionalUnion = isOptional && propertyType.isUnion()
-        const members = optionalUnion
-          ? definedUnionMembers(propertyType)
-          : Array.of(propertyType)
+
+        const members = optionalUnion ? definedUnionMembers(propertyType) : Array.of(propertyType)
 
         const checkType = typeIsWireSafeWithSeen(checker)(location)(seen)
         const hasDefinedMember = members.length > 0
@@ -185,10 +159,8 @@ const intersectionTypeIsWireSafe =
 const objectTypeHasSignatures = (type: ts.ObjectType): boolean => {
   const callSignatureCount = type.getCallSignatures().length
   const constructSignatureCount = type.getConstructSignatures().length
-  const signatureCounts = Array.make(
-    callSignatureCount,
-    constructSignatureCount
-  )
+
+  const signatureCounts = Array.make(callSignatureCount, constructSignatureCount)
 
   return Array.some(signatureCounts, (count) => count > 0)
 }
@@ -221,15 +193,9 @@ const structuralObjectTypeIsWireSafe =
   (seen: HashSet.HashSet<ts.Type>) =>
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.ObjectType): boolean => {
-    const stringIndexType = checker.getIndexTypeOfType(
-      type,
-      ts.IndexKind.String
-    )
+    const stringIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.String)
 
-    const numberIndexType = checker.getIndexTypeOfType(
-      type,
-      ts.IndexKind.Number
-    )
+    const numberIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.Number)
 
     const possibleIndexTypes = Array.make(stringIndexType, numberIndexType)
     const indexTypes = Array.filterMap(possibleIndexTypes, Option.fromNullable)
@@ -239,6 +205,7 @@ const structuralObjectTypeIsWireSafe =
     const hasStructuralMembers = properties.length + indexTypes.length > 0
     const checkProperty = propertyTypeIsWireSafe(checker)(location)(seen)
     const propertiesAreWireSafe = Array.every(properties, checkProperty)
+
     const structuralChecks = Array.make(
       indexTypesAreWireSafe,
       hasStructuralMembers,
@@ -257,14 +224,9 @@ const objectTypeIsWireSafe =
     pipe(
       Match.value(type),
       Match.when(objectTypeHasSignatures, Function.constFalse),
-      Match.when(
-        objectTypeIsCollection(checker),
-        collectionTypeIsWireSafe(checker)(checkType)
-      ),
+      Match.when(objectTypeIsCollection(checker), collectionTypeIsWireSafe(checker)(checkType)),
       Match.when(objectTypeIsClass, Function.constFalse),
-      Match.orElse(
-        structuralObjectTypeIsWireSafe(checker)(location)(seen)(checkType)
-      )
+      Match.orElse(structuralObjectTypeIsWireSafe(checker)(location)(seen)(checkType))
     )
 
 const unconstrainedTypeIsWireSafe =
@@ -275,10 +237,7 @@ const unconstrainedTypeIsWireSafe =
   (type: ts.Type): boolean =>
     pipe(
       Match.value(type),
-      Match.when(
-        typeIsObject,
-        objectTypeIsWireSafe(checker)(location)(seen)(checkType)
-      ),
+      Match.when(typeIsObject, objectTypeIsWireSafe(checker)(location)(seen)(checkType)),
       Match.orElse(Function.constFalse)
     )
 
@@ -289,8 +248,8 @@ const constrainedOrStructuralTypeIsWireSafe =
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.Type): boolean => {
     const baseConstraint = differentBaseConstraint(checker)(type)
-    const checkUnconstrained =
-      unconstrainedTypeIsWireSafe(checker)(location)(seen)(checkType)
+
+    const checkUnconstrained = unconstrainedTypeIsWireSafe(checker)(location)(seen)(checkType)
 
     return pipe(
       baseConstraint,
@@ -308,10 +267,9 @@ const typeIsWireSafeWithSeen =
   (type: ts.Type): boolean => {
     const nextSeen = HashSet.add(seen, type)
     const checkType = typeIsWireSafeWithSeen(checker)(location)(nextSeen)
+
     const checkConstrainedOrStructural =
-      constrainedOrStructuralTypeIsWireSafe(checker)(location)(nextSeen)(
-        checkType
-      )
+      constrainedOrStructuralTypeIsWireSafe(checker)(location)(nextSeen)(checkType)
 
     return pipe(
       Match.value(type),
@@ -327,7 +285,8 @@ const typeIsWireSafeWithSeen =
 /**
  * Proves that a type belongs to the portable wire-value algebra because every
  * reachable value has a faithful primitive, collection, or structural-record
- * representation; opaque runtime identities and unresolved values are rejected.
+ * representation; opaque runtime identities and unresolved values are
+ * rejected.
  *
  * @returns Whether the complete encoded type is portable.
  */
@@ -351,15 +310,11 @@ export const schemaTaggedClassEncodedType =
           declaration.name,
           Option.fromNullable,
           Option.flatMap(resolvedSymbolAt(checker)),
-          Option.map((symbol) =>
-            checker.getTypeOfSymbolAtLocation(symbol, declaration)
-          ),
+          Option.map((symbol) => checker.getTypeOfSymbolAtLocation(symbol, declaration)),
           Option.flatMap((staticType) =>
             pipe(staticType.getProperty("Encoded"), Option.fromNullable)
           ),
-          Option.map((encoded) =>
-            checker.getTypeOfSymbolAtLocation(encoded, declaration)
-          )
+          Option.map((encoded) => checker.getTypeOfSymbolAtLocation(encoded, declaration))
         )
       )
     )

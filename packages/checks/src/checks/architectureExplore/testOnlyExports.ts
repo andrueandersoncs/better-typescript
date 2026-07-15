@@ -1,8 +1,5 @@
 import { Array, Function, Option, pipe } from "effect"
-import {
-  fileSubscriptions,
-  withProgramIndex
-} from "@better-typescript/core/engine/check"
+import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -33,9 +30,7 @@ const testOnlyExportElements =
 
     return pipe(
       index.entries,
-      Array.filter(
-        (entry) => entry.nameNode.getSourceFile() === context.sourceFile
-      ),
+      Array.filter((entry) => entry.nameNode.getSourceFile() === context.sourceFile),
       Array.filterMap((entry) => {
         const usage = usageFor(index)(entry)
         const hasTestUse = usage.testPaths.length > 0
@@ -64,11 +59,8 @@ const testOnlyExportElements =
     )
   }
 
-const testOnlyExportSubscriptions = Function.compose(
-  testOnlyExportElements,
-  fileSubscriptions
-)
+const testOnlyExportSubscriptions = Function.compose(testOnlyExportElements, fileSubscriptions)
 
-export const testOnlyExports: Check = withProgramIndex(
-  buildExportReferenceIndex
-)(testOnlyExportSubscriptions)
+export const testOnlyExports: Check = withProgramIndex(buildExportReferenceIndex)(
+  testOnlyExportSubscriptions
+)

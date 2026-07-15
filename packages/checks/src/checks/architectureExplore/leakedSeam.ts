@@ -1,22 +1,13 @@
 import { Array, Option, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { seamLeakageDataOf } from "./evidence.js"
 
 const minimumLeaks = 2
 
-const leakedSeamAdvice = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
-  const leaks = Array.filter(
-    elements,
-    (element) => element.name === "seam-leakage-evidence"
-  )
+const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const leaks = Array.filter(elements, (element) => element.name === "seam-leakage-evidence")
 
   const paths = pipe(
     leaks,
@@ -25,10 +16,7 @@ const leakedSeamAdvice = (
   )
 
   return Array.filterMap(paths, (filePath) => {
-    const atPath = Array.filter(
-      leaks,
-      (element) => element.detection.location.path === filePath
-    )
+    const atPath = Array.filter(leaks, (element) => element.detection.location.path === filePath)
 
     if (atPath.length < minimumLeaks) {
       return Option.none()

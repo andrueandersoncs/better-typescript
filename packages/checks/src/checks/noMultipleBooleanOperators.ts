@@ -12,38 +12,25 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * BooleanOperatorExpression is the shared BooleanOperatorExpression values contract
- * used by isBooleanOperatorExpression and multipleBooleanOperatorMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * BooleanOperatorExpression is the syntax contract shared by boolean-expression
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted expressions drift.
  */
 type BooleanOperatorExpression =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
 
-const isBooleanOperatorExpression = (
-  node: ts.Node
-): node is BooleanOperatorExpression => {
+const isBooleanOperatorExpression = (node: ts.Node): node is BooleanOperatorExpression => {
   const isBinaryBooleanOperator =
-    ts.isBinaryExpression(node) &&
-    HashSet.has(booleanBinaryOperatorKinds, node.operatorToken.kind)
+    ts.isBinaryExpression(node) && HashSet.has(booleanBinaryOperatorKinds, node.operatorToken.kind)
 
-  const unaryOperator = ts.isPrefixUnaryExpression(node)
-    ? node.operator
-    : undefined
+  const unaryOperator = ts.isPrefixUnaryExpression(node) ? node.operator : undefined
 
-  const isUnaryBooleanOperator =
-    unaryOperator === ts.SyntaxKind.ExclamationToken
+  const isUnaryBooleanOperator = unaryOperator === ts.SyntaxKind.ExclamationToken
 
   const isTernaryOperator = ts.isConditionalExpression(node)
 
-  const checks = Array.make(
-    isBinaryBooleanOperator,
-    isUnaryBooleanOperator,
-    isTernaryOperator
-  )
+  const checks = Array.make(isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator)
 
   return Array.some(checks, Boolean)
 }
@@ -87,10 +74,7 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
     Option.exists((conditional) => conditional.condition === node)
   )
 
-  const hasCountedAncestor = Option.exists(
-    parent,
-    isOrHasBooleanOperatorAncestor
-  )
+  const hasCountedAncestor = Option.exists(parent, isOrHasBooleanOperatorAncestor)
 
   const checks = Array.make(!isConditionEdge, hasCountedAncestor)
   return Array.every(checks, Boolean)
@@ -112,11 +96,8 @@ const nestedExpressionBoundaryKinds = HashSet.make(
 const multipleBooleanOperatorMatches = (context: CheckContext) => {
   const match = detection(context)
 
-  const matches = (
-    expression: BooleanOperatorExpression
-  ): ReadonlyArray<Detection> => {
-    const expressionUsesBooleanOperator =
-      isBooleanOperatorExpression(expression)
+  const matches = (expression: BooleanOperatorExpression): ReadonlyArray<Detection> => {
+    const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
 
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
@@ -131,8 +112,7 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
 
     const detection = match({
       node: expression,
-      message:
-        "Avoid combining more than one boolean operator in a single expression.",
+      message: "Avoid combining more than one boolean operator in a single expression.",
       hint:
         "Declare multiple constant variables instead of combining operators into a " +
         "single expression."
@@ -150,11 +130,10 @@ const kinds = Array.make(
   ts.SyntaxKind.ConditionalExpression
 )
 
-const check = nodeCheck(kinds)(isBooleanOperatorExpression)(
-  multipleBooleanOperatorMatches
-)
+const check = nodeCheck(kinds)(isBooleanOperatorExpression)(multipleBooleanOperatorMatches)
 
 export const noMultipleBooleanOperators: Check = check
 
-export const noMultipleBooleanOperatorsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-multiple-boolean-operators")
+export const noMultipleBooleanOperatorsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "no-multiple-boolean-operators"
+)

@@ -11,55 +11,58 @@ const isTsSourceFile = (input: unknown): input is ts.SourceFile =>
   Predicate.hasProperty(input, "languageVersion")
 
 /**
- * TsProgram is the shared typeParameters, Type, Encoded, Context contract used by
- * CheckContext, LoadedProject, and ProgramContext.
+ * TsProgram is the shared typeParameters, Type, Encoded, Context contract used
+ * by CheckContext, LoadedProject, and ProgramContext.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export const TsProgram = Schema.declare(isTsProgram).annotations({
   identifier: "ts.Program"
 })
 
 /**
- * TsTypeChecker is the shared typeParameters, Type, Encoded, Context contract used by
- * CheckContext and ProgramContext.
+ * TsTypeChecker is the shared typeParameters, Type, Encoded, Context contract
+ * used by CheckContext and ProgramContext.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export const TsTypeChecker = Schema.declare(isTsTypeChecker).annotations({
   identifier: "ts.TypeChecker"
 })
 
 /**
- * TsSourceFile is the shared typeParameters, Type, Encoded, Context contract used by
- * CheckContext and AstNodeElement.
+ * TsSourceFile is the shared typeParameters, Type, Encoded, Context contract
+ * used by CheckContext and AstNodeElement.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export const TsSourceFile = Schema.declare(isTsSourceFile).annotations({
   identifier: "ts.SourceFile"
 })
 
-const isTsNode = (input: unknown): input is ts.Node =>
-  Predicate.hasProperty(input, "kind")
+const isTsNode = (input: unknown): input is ts.Node => Predicate.hasProperty(input, "kind")
 
 /**
  * TsNode is the shared typeParameters, Type, Encoded, Context contract used by
  * AstNodeElement and DetectionSource.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export const TsNode = Schema.declare(isTsNode).annotations({
   identifier: "ts.Node"

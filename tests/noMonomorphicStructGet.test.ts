@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-monomorphic-struct-get"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-monomorphic-struct-get")
 
 const message = "Avoid monomorphizing Struct.get at its declaration."
 

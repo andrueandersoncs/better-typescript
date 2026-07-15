@@ -14,24 +14,12 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-data-last-module"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-data-last-module")
 
-const messageFor = (
-  functionName: string,
-  dataStructureName: string,
-  modulePath: string
-): string =>
+const messageFor = (functionName: string, dataStructureName: string, modulePath: string): string =>
   `Avoid defining ${functionName} outside ${modulePath} when its last parameter is ${dataStructureName}.`
 
-const hintFor = (
-  functionName: string,
-  dataStructureName: string,
-  modulePath: string
-): string =>
+const hintFor = (functionName: string, dataStructureName: string, modulePath: string): string =>
   `Move ${functionName} under ${modulePath} so data-last functions for ${dataStructureName} ` +
   `stay in the model's concept directory, beside rather than inside its dedicated data file.`
 
@@ -76,11 +64,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     fileName: "src/cases.ts",
     line: 31,
     column: 7,
-    message: messageFor(
-      "updateOrganization",
-      "Organization",
-      organizationModulePath
-    ),
+    message: messageFor("updateOrganization", "Organization", organizationModulePath),
     hint: hintFor("updateOrganization", "Organization", organizationModulePath)
   }
 ]

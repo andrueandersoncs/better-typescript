@@ -1,10 +1,6 @@
 import { Array, Effect, pipe, Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  collectSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import { SystemicHotspotsInput, SystemicSignals } from "./data.js"
 
 const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
@@ -14,15 +10,9 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const isSystemic = Array.every(hotSubsystemEvidence, Boolean)
   const location = adviceLocation("project")
 
-  const subsystemItem = evidenceItem(
-    "hot-subsystem",
-    signals.hotSubsystem.length
-  )
+  const subsystemItem = evidenceItem("hot-subsystem", signals.hotSubsystem.length)
 
-  const densityItem = evidenceItem(
-    "high-signal-density",
-    signals.highSignalDensity.length
-  )
+  const densityItem = evidenceItem("high-signal-density", signals.highSignalDensity.length)
 
   const evidence = Array.make(subsystemItem, densityItem)
 
@@ -41,9 +31,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   return isSystemic ? Array.of(advice) : Array.empty()
 }
 
-export const systemicHotspots = (
-  input: SystemicHotspotsInput
-): Stream.Stream<Advice, Error> => {
+export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice, Error> => {
   const hotSubsystem = collectSignals(input.hotSubsystem)
   const highSignalDensity = collectSignals(input.highSignalDensity)
 

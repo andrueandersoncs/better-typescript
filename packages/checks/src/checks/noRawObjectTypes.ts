@@ -1,10 +1,7 @@
 import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  isReturnTypeDeclaration,
-  namedDetectionTarget
-} from "./support/tsNode.js"
+import { isReturnTypeDeclaration, namedDetectionTarget } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -19,8 +16,7 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isObjectKeyword = typeNode.kind === ts.SyntaxKind.ObjectKeyword
   const isUnionType = ts.isUnionTypeNode(typeNode)
 
-  const unionContainsRaw =
-    isUnionType && Array.some(typeNode.types, containsRawObjectType)
+  const unionContainsRaw = isUnionType && Array.some(typeNode.types, containsRawObjectType)
 
   const isIntersectionType = ts.isIntersectionTypeNode(typeNode)
 
@@ -29,8 +25,7 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
 
   const isParenthesizedType = ts.isParenthesizedTypeNode(typeNode)
 
-  const parenthesizedContainsRaw =
-    isParenthesizedType && containsRawObjectType(typeNode.type)
+  const parenthesizedContainsRaw = isParenthesizedType && containsRawObjectType(typeNode.type)
 
   const conditions = Array.make(
     isTypeLiteral,
@@ -43,18 +38,14 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   return Array.some(conditions, Boolean)
 }
 
-const parameterTypeNode = (
-  param: ts.ParameterDeclaration
-): Option.Option<ts.TypeNode> => Option.fromNullable(param.type)
+const parameterTypeNode = (param: ts.ParameterDeclaration): Option.Option<ts.TypeNode> =>
+  Option.fromNullable(param.type)
 
 /**
- * RawObjectTarget is the shared name, type contract used by rawObjectTypeMatches and
- * isRawObjectTarget.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * RawObjectTarget is the syntax contract shared by raw-object candidate
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted declarations drift.
  */
 type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
@@ -89,8 +80,7 @@ const rawObjectTypeMatches = (context: CheckContext) => {
     if (ts.isParameter(node)) {
       const reported = match({
         node,
-        message:
-          "Parameter uses an anonymous object type instead of a named type.",
+        message: "Parameter uses an anonymous object type instead of a named type.",
         hint:
           "Reuse a named data structure that already expresses this value's semantics. " +
           "If none exists, reconsider whether this function is a real abstraction or a " +
@@ -106,8 +96,7 @@ const rawObjectTypeMatches = (context: CheckContext) => {
 
     const reported2 = match({
       node: reportNode,
-      message:
-        "Return type uses an anonymous object type instead of a named type.",
+      message: "Return type uses an anonymous object type instead of a named type.",
       hint:
         "Define a named type or interface that describes the data's domain meaning — " +
         "for example UserProfile instead of { name: string, age: number }. " +
@@ -121,8 +110,7 @@ const rawObjectTypeMatches = (context: CheckContext) => {
   return matches
 }
 
-const check =
-  nodeCheck(rawObjectTargetKinds)(isRawObjectTarget)(rawObjectTypeMatches)
+const check = nodeCheck(rawObjectTargetKinds)(isRawObjectTarget)(rawObjectTypeMatches)
 
 export const noRawObjectTypes: Check = check
 

@@ -33,11 +33,7 @@ import { runChecks } from "../check/check.js"
 import type { Check } from "../check/data.js"
 import { collectSignals } from "../derive/derive.js"
 import type { Advice, EvidenceItem } from "../derive/data.js"
-import type {
-  ExampleSnippet,
-  NonEmptyRefactorExamples,
-  RefactorExample
-} from "../example/data.js"
+import type { ExampleSnippet, NonEmptyRefactorExamples, RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 import { contextFor, isProjectSourceFile } from "../sources/sources.js"
 import type { ProgramContext } from "../sources/data.js"
@@ -77,9 +73,7 @@ const relativeWorkspacePath = (
 ): string => {
   const absoluteCandidatePath = path.resolve(projectRoot, candidatePath)
 
-  return path
-    .relative(workspaceRoot, absoluteCandidatePath)
-    .replaceAll(path.sep, "/")
+  return path.relative(workspaceRoot, absoluteCandidatePath).replaceAll(path.sep, "/")
 }
 
 const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
@@ -88,8 +82,10 @@ const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
   return createContext(project.program)
 }
 
-const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext =
-  flow(loadProjectConfig, contextFromLoadedProject)
+const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext = flow(
+  loadProjectConfig,
+  contextFromLoadedProject
+)
 
 const collectWorkspaceSignals = <A>(
   config: WiringConfig,
@@ -108,9 +104,7 @@ const collectWorkspaceSignals = <A>(
   )
 
   const elementsByWiring = Array.map(config, (entry) =>
-    Array.makeBy(entry.wiring.checks.length, () =>
-      MutableList.empty<Detection>()
-    )
+    Array.makeBy(entry.wiring.checks.length, () => MutableList.empty<Detection>())
   )
 
   const seenByCheck = Array.flatten(seenByWiring)
@@ -130,10 +124,7 @@ const collectWorkspaceSignals = <A>(
     Effect.sync(() => {
       const context = toContext(project)
 
-      const sourceFiles = pipe(
-        context.program.getSourceFiles(),
-        Array.filter(isProjectSourceFile)
-      )
+      const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
       const sourceMatches = Array.map(sourceFiles, (sourceFile) => {
         const candidatePath = relativeWorkspacePath(
@@ -163,16 +154,10 @@ const collectWorkspaceSignals = <A>(
 
       const matchesByFileName = HashMap.fromIterable(fileMatches)
 
-      const includesSourceFile = (
-        checkIndex: number,
-        sourceFile: ts.SourceFile
-      ): boolean => {
+      const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile): boolean => {
         const wiringIndex = wiringIndexesByCheck[checkIndex]
 
-        const matches = HashMap.unsafeGet(
-          matchesByFileName,
-          sourceFile.fileName
-        )
+        const matches = HashMap.unsafeGet(matchesByFileName, sourceFile.fileName)
 
         return matches[wiringIndex] ?? false
       }
@@ -191,9 +176,7 @@ const collectWorkspaceSignals = <A>(
             element.location.path
           )
 
-          const isIncluded = Array.some(matchers, (matcher) =>
-            matcher(detectionPath)
-          )
+          const isIncluded = Array.some(matchers, (matcher) => matcher(detectionPath))
 
           if (!isIncluded) {
             return
@@ -260,28 +243,28 @@ const collectWorkspaceSignals = <A>(
 
 /**
  * Run every configured wiring over already-loaded program contexts.
- * @remarks The workspace root stays explicit because glob candidates are
- * normalized against one shared boundary.
+ *
+ * @remarks
+ *   The workspace root stays explicit because glob candidates are normalized
+ *   against one shared boundary.
  */
 export const workspaceSignals =
   (config: WiringConfig) =>
   (workspaceRoot: string) =>
-  (
-    contexts: ReadonlyArray<ProgramContext>
-  ): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+  (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
     collectWorkspaceSignals(config, workspaceRoot, contexts, Function.identity)
 
 /**
  * Build and analyze workspace projects one at a time so solution-style roots do
  * not retain every TypeScript Program simultaneously.
- * @remarks Sequential loading is required because retaining every Program in a
- * large solution workspace exhausts the JavaScript heap.
+ *
+ * @remarks
+ *   Sequential loading is required because retaining every Program in a large
+ *   solution workspace exhausts the JavaScript heap.
  */
 export const workspaceSignalsFromConfigs =
   (config: WiringConfig) =>
-  (
-    workspace: WorkspaceConfigs
-  ): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
     collectWorkspaceSignals(
       config,
       workspace.rootPath,
@@ -291,14 +274,14 @@ export const workspaceSignalsFromConfigs =
 
 /**
  * Within one batch, derivation consumes the complete materialized signal array.
- * @remarks Full-array input is required because advice must see every signal
- * from the same batch, not a partial stream.
+ *
+ * @remarks
+ *   Full-array input is required because advice must see every signal from the
+ *   same batch, not a partial stream.
  */
 export const deriveAdvice =
   (wiring: Wiring) =>
-  (
-    signals: ReadonlyArray<Signal>
-  ): Effect.Effect<ReadonlyArray<Advice>, Error> =>
+  (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, Error> =>
     pipe(wiring.derive(signals), collectSignals)
 
 export const runCheckOnProject =
@@ -313,13 +296,11 @@ export const runCheckOnProject =
       return pipe(detections, Array.head, Option.getOrElse(noDetections))
     })
 
-const evidenceText = (item: EvidenceItem): string =>
-  `  evidence: ${item.measure}: ${item.count}`
+const evidenceText = (item: EvidenceItem): string => `  evidence: ${item.measure}: ${item.count}`
 
 const adviceLevelRanks = { file: 0, directory: 1, project: 2 } as const
 
-const adviceLevelRank = (advice: Advice): number =>
-  adviceLevelRanks[advice.level]
+const adviceLevelRank = (advice: Advice): number => adviceLevelRanks[advice.level]
 
 const advicePath = (advice: Advice): string =>
   advice.level === "project" ? "project" : advice.location.path
@@ -369,12 +350,12 @@ const adviceReportBlock = (advice: Advice): ReportBlock => {
 /**
  * Keyed advice blocks in report order: file advice first, then directory, then
  * project, each sorted by path.
- * @remarks Stable sort order is part of the report contract because consumers
- * rely on file-then-directory-then-project presentation.
+ *
+ * @remarks
+ *   Stable sort order is part of the report contract because consumers rely on
+ *   file-then-directory-then-project presentation.
  */
-export const adviceReportBlocks = (
-  advice: ReadonlyArray<Advice>
-): ReadonlyArray<ReportBlock> =>
+export const adviceReportBlocks = (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> =>
   pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
 
 const detectionBlockKey = (element: Detection): string => {
@@ -410,8 +391,10 @@ const formatRefactorExample = (example: RefactorExample): string => {
 /**
  * Keyed local detection blocks, one per distinct message and hint, groups in
  * insertion order. The key kind remains `rule` for NDJSON compatibility.
- * @remarks The `rule` key kind is retained because existing NDJSON consumers
- * already key local blocks that way.
+ *
+ * @remarks
+ *   The `rule` key kind is retained because existing NDJSON consumers already key
+ *   local blocks that way.
  */
 export const checkReportBlocks =
   (name: string) =>
@@ -461,8 +444,10 @@ export const checkReportBlocks =
 /**
  * One batch's full keyed report: advice blocks first, then reported local
  * blocks in wiring order. Silent signals still ran and fed derivation.
- * @remarks Silent signals stay in the batch because derivation still needs
- * them even when they do not render.
+ *
+ * @remarks
+ *   Silent signals stay in the batch because derivation still needs them even
+ *   when they do not render.
  */
 export const reportBlocks =
   (signals: ReadonlyArray<Signal>) =>
@@ -472,18 +457,16 @@ export const reportBlocks =
     const signalBlocks = pipe(
       signals,
       Array.filter(Struct.get("reported")),
-      Array.flatMap((signal) =>
-        checkReportBlocks(signal.name)(signal.examples)(signal.detections)
-      )
+      Array.flatMap((signal) => checkReportBlocks(signal.name)(signal.examples)(signal.detections))
     )
 
     return Array.appendAll(adviceBlocks, signalBlocks)
   }
 
 /**
- * One batch through every matched wiring's independent derivation stage.
- * Advice is combined before rendering so aggregate blocks remain globally first,
- * while local blocks retain configuration-entry and check order.
+ * One batch through every matched wiring's independent derivation stage. Advice
+ * is combined before rendering so aggregate blocks remain globally first, while
+ * local blocks retain configuration-entry and check order.
  */
 export const batchReportBlocks =
   (config: WiringConfig) =>
@@ -495,20 +478,13 @@ export const batchReportBlocks =
       Array.filter(([, current]) => current.matched)
     )
 
-    const signals = Array.flatMap(
-      matchedEntries,
-      ([, current]) => current.signals
-    )
+    const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
 
     const advice = Effect.forEach(matchedEntries, ([entry, current]) =>
       deriveAdvice(entry.wiring)(current.signals)
     )
 
-    return pipe(
-      advice,
-      Effect.map(Array.flatten),
-      Effect.map(reportBlocks(signals))
-    )
+    return pipe(advice, Effect.map(Array.flatten), Effect.map(reportBlocks(signals)))
   }
 
 const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
@@ -517,9 +493,7 @@ const fileAdvicePath = (advice: Advice): string => advice.location.path
 
 export const filterFallbackAdviceForUncoveredFiles =
   (specific: ReadonlyArray<Advice>) =>
-  (
-    fallbackAdvice: Stream.Stream<Advice, Error>
-  ): Stream.Stream<Advice, Error> => {
+  (fallbackAdvice: Stream.Stream<Advice, Error>): Stream.Stream<Advice, Error> => {
     const fileAdvice = Array.filter(specific, isFileLevelAdvice)
     const paths = Array.map(fileAdvice, fileAdvicePath)
     const coveredFiles = HashSet.fromIterable(paths)
@@ -536,8 +510,10 @@ export const filterFallbackAdviceForUncoveredFiles =
  * Fallback suppression: file-level fallback advice is emitted only for files
  * where no file-level specific advice fired. Specific advice is collected once
  * and emitted before the applicable fallback advice.
- * @remarks Suppression is required because fallback must not duplicate
- * file-level advice that a specific rule already covered.
+ *
+ * @remarks
+ *   Suppression is required because fallback must not duplicate file-level advice
+ *   that a specific rule already covered.
  */
 export const withFallbackAdvice = (
   specificAdvice: Stream.Stream<Advice, Error>,
@@ -546,8 +522,7 @@ export const withFallbackAdvice = (
   pipe(
     collectSignals(specificAdvice),
     Effect.map((specific) => {
-      const fallback =
-        filterFallbackAdviceForUncoveredFiles(specific)(fallbackAdvice)
+      const fallback = filterFallbackAdviceForUncoveredFiles(specific)(fallbackAdvice)
 
       return pipe(Stream.fromIterable(specific), Stream.concat(fallback))
     }),
@@ -560,9 +535,7 @@ export const withFallbackAdvice = (
  */
 export const reportBlocksFromConfig =
   (config: WiringConfig) =>
-  (
-    workspace: LoadedWorkspace
-  ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
     pipe(
       workspace.projects,
       Array.map(contextFromLoadedProject),
@@ -573,13 +546,8 @@ export const reportBlocksFromConfig =
 /** Analyze a discovered workspace while retaining at most one Program. */
 export const reportBlocksFromWorkspaceConfigs =
   (config: WiringConfig) =>
-  (
-    workspace: WorkspaceConfigs
-  ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
-    pipe(
-      workspaceSignalsFromConfigs(config)(workspace),
-      Effect.flatMap(batchReportBlocks(config))
-    )
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+    pipe(workspaceSignalsFromConfigs(config)(workspace), Effect.flatMap(batchReportBlocks(config)))
 
 export const reportFromConfig =
   (config: WiringConfig) =>
@@ -602,10 +570,7 @@ export const reportFromWorkspaceConfigs =
 export const signalOf =
   (signals: ReadonlyArray<Signal>) =>
   (name: string): Stream.Stream<Detection, Error> => {
-    const namedSignal = Array.findFirst(
-      signals,
-      (signal) => signal.name === name
-    )
+    const namedSignal = Array.findFirst(signals, (signal) => signal.name === name)
 
     const detections = pipe(namedSignal, Option.map(Struct.get("detections")))
 
@@ -651,10 +616,7 @@ const emptyDuplicateNameState: DuplicateNameState = new DuplicateNameState({
   names: emptyDuplicateNames
 })
 
-const addDuplicateName = (
-  state: DuplicateNameState,
-  check: NamedCheck
-): DuplicateNameState => {
+const addDuplicateName = (state: DuplicateNameState, check: NamedCheck): DuplicateNameState => {
   const name = check.name
   const alreadySeen = HashSet.has(state.seen, name)
   const alreadyCollision = HashSet.has(state.collisions, name)
@@ -683,15 +645,8 @@ const addDuplicateName = (
   })
 }
 
-const validateCheckNames = <A>(
-  checks: ReadonlyArray<NamedCheck>,
-  value: A
-): A => {
-  const names = Array.reduce(
-    checks,
-    emptyDuplicateNameState,
-    addDuplicateName
-  ).names
+const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A => {
+  const names = Array.reduce(checks, emptyDuplicateNameState, addDuplicateName).names
 
   if (names.length === 0) {
     return value
@@ -703,8 +658,7 @@ const validateCheckNames = <A>(
   return Effect.runSync(failed)
 }
 
-export const makeWiring = (wiring: Wiring): Wiring =>
-  validateCheckNames(wiring.checks, wiring)
+export const makeWiring = (wiring: Wiring): Wiring => validateCheckNames(wiring.checks, wiring)
 
 export const defineConfig = (config: WiringConfig): WiringConfig => {
   const invalidIndexes = Array.filterMap(config, (entry, index) => {
@@ -712,9 +666,7 @@ export const defineConfig = (config: WiringConfig): WiringConfig => {
 
     const hasOnlyNonEmptyPatterns = Array.every(entry.files, isFileGlob)
 
-    return hasFiles && hasOnlyNonEmptyPatterns
-      ? Option.none()
-      : Option.some(index)
+    return hasFiles && hasOnlyNonEmptyPatterns ? Option.none() : Option.some(index)
   })
 
   if (invalidIndexes.length > 0) {

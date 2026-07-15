@@ -3,11 +3,7 @@ import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import {
-  commentText,
-  isJsDocComment,
-  sourceComments
-} from "./support/comments.js"
+import { commentText, isJsDocComment, sourceComments } from "./support/comments.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
@@ -21,12 +17,9 @@ const hint =
   "exported API (description plus at least one tag) is exempt because it documents an " +
   "API contract."
 
-const becauseWord =
-  /(?<![\p{L}\p{M}\p{N}\p{Pc}])because(?![\p{L}\p{M}\p{N}\p{Pc}])/iu
+const becauseWord = /(?<![\p{L}\p{M}\p{N}\p{Pc}])because(?![\p{L}\p{M}\p{N}\p{Pc}])/iu
 
-const commentsWithoutBecause = (
-  context: CheckContext
-): ReadonlyArray<Detection> => {
+const commentsWithoutBecause = (context: CheckContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
@@ -59,5 +52,6 @@ const commentsWithoutBecause = (
 
 export const requireBecauseInComments: Check = fileCheck(commentsWithoutBecause)
 
-export const requireBecauseInCommentsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("require-because-in-comments")
+export const requireBecauseInCommentsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "require-because-in-comments"
+)

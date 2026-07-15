@@ -14,10 +14,7 @@ const isInstanceofOperator = (expr: ts.BinaryExpression): boolean =>
   expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
 
 const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
-  pipe(
-    Option.liftPredicate(ts.isBinaryExpression)(node),
-    Option.exists(isInstanceofOperator)
-  )
+  pipe(Option.liftPredicate(ts.isBinaryExpression)(node), Option.exists(isInstanceofOperator))
 
 const className = Struct.get("name")
 
@@ -25,9 +22,7 @@ const instanceofMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const matches = (
-    expression: ts.BinaryExpression
-  ): ReadonlyArray<Detection> => {
+  const matches = (expression: ts.BinaryExpression): ReadonlyArray<Detection> => {
     const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
     const symbol = Option.fromNullable(symbolAtLocation)
 
@@ -55,9 +50,7 @@ const instanceofMatches = (context: CheckContext) => {
 
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
-const check = nodeCheck(binaryExpressionKinds)(isInstanceofExpression)(
-  instanceofMatches
-)
+const check = nodeCheck(binaryExpressionKinds)(isInstanceofExpression)(instanceofMatches)
 
 export const noInstanceof: Check = check
 

@@ -25,9 +25,7 @@ const isYieldStarOfIdentifier = (identifier: ts.Identifier): boolean =>
     Option.filter((yieldExpression) =>
       pipe(Option.fromNullable(yieldExpression.asteriskToken), Option.isSome)
     ),
-    Option.exists(
-      (yieldExpression) => yieldExpression.expression === identifier
-    )
+    Option.exists((yieldExpression) => yieldExpression.expression === identifier)
   )
 
 const preferDirectYieldMatches = (context: CheckContext) => {
@@ -53,38 +51,29 @@ const preferDirectYieldMatches = (context: CheckContext) => {
         Option.exists(symbolDeclaredInEffectPackage)
       )
 
-  const matches = (
-    declaration: ts.VariableDeclaration
-  ): ReadonlyArray<Detection> =>
+  const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
-        const declarationList = yield* Option.liftPredicate(
-          ts.isVariableDeclarationList
-        )(declaration.parent)
+        const declarationList = yield* Option.liftPredicate(ts.isVariableDeclarationList)(
+          declaration.parent
+        )
 
         const isConstList = (declarationList.flags & ts.NodeFlags.Const) !== 0
 
         yield* Option.liftPredicate((value: boolean) => value)(isConstList)
 
-        const name = yield* Option.liftPredicate(ts.isIdentifier)(
-          declaration.name
-        )
+        const name = yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
 
         yield* Option.fromNullable(declaration.initializer)
 
         const generator = yield* pipe(
           Option.fromNullable(declaration.parent),
           Option.flatMap((start) => {
-            const visit = (
-              current: ts.Node
-            ): Option.Option<ts.FunctionExpression> => {
+            const visit = (current: ts.Node): Option.Option<ts.FunctionExpression> => {
               const starredGenerator = pipe(
                 Option.liftPredicate(ts.isFunctionExpression)(current),
                 Option.filter((expression) =>
-                  pipe(
-                    Option.fromNullable(expression.asteriskToken),
-                    Option.isSome
-                  )
+                  pipe(Option.fromNullable(expression.asteriskToken), Option.isSome)
                 )
               )
 
@@ -95,10 +84,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
                   currentGenerator.parent
                 )
 
-                const isGenArgument = pipe(
-                  parentCall,
-                  Option.exists(isEffectPropertyCall("gen"))
-                )
+                const isGenArgument = pipe(parentCall, Option.exists(isEffectPropertyCall("gen")))
 
                 const isFnArgument = pipe(
                   parentCall,
@@ -110,9 +96,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
                 const wrapFlags = Array.make(isGenArgument, isFnArgument)
                 const wrapsEffectGenerator = Array.some(wrapFlags, Boolean)
 
-                return wrapsEffectGenerator
-                  ? Option.some(currentGenerator)
-                  : Option.none()
+                return wrapsEffectGenerator ? Option.some(currentGenerator) : Option.none()
               }
 
               const isArrow = ts.isArrowFunction(current)
@@ -122,10 +106,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
               const nonGeneratorFunctionExpression = pipe(
                 Option.liftPredicate(ts.isFunctionExpression)(current),
                 Option.filter((expression) =>
-                  pipe(
-                    Option.fromNullable(expression.asteriskToken),
-                    Option.isNone
-                  )
+                  pipe(Option.fromNullable(expression.asteriskToken), Option.isNone)
                 ),
                 Option.isSome
               )
@@ -137,19 +118,13 @@ const preferDirectYieldMatches = (context: CheckContext) => {
                 nonGeneratorFunctionExpression
               )
 
-              const nestedNonGenerator = Array.some(
-                nestedFunctionFlags,
-                Boolean
-              )
+              const nestedNonGenerator = Array.some(nestedFunctionFlags, Boolean)
 
               if (nestedNonGenerator) {
                 return Option.none()
               }
 
-              return pipe(
-                Option.fromNullable(current.parent),
-                Option.flatMap(visit)
-              )
+              return pipe(Option.fromNullable(current.parent), Option.flatMap(visit))
             }
 
             return visit(start)

@@ -16,9 +16,7 @@ import * as ts from "typescript"
 import { astNodesIn } from "@better-typescript/core/engine/sources"
 import { LatestCacheEntry, SourceComment } from "./commentsData.js"
 
-const memoizeLatest = <Key extends object, Value>(
-  load: (key: Key) => Value
-) => {
+const memoizeLatest = <Key extends object, Value>(load: (key: Key) => Value) => {
   const emptyCache = Option.none<LatestCacheEntry<Key, Value>>()
   const cache = Ref.unsafeMake(emptyCache)
 
@@ -71,9 +69,7 @@ const sourceCommentFrom = (scanner: ts.Scanner): SourceComment => {
   return new SourceComment({ kind, pos, end })
 }
 
-const scanSourceComments = (
-  sourceFile: ts.SourceFile
-): ReadonlyArray<SourceComment> => {
+const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComment> => {
   const sourceText = sourceFile.getFullText()
 
   const scanner = ts.createScanner(
@@ -103,24 +99,20 @@ const scanSourceComments = (
   )
 }
 
-export const sourceComments: (
-  sourceFile: ts.SourceFile
-) => ReadonlyArray<SourceComment> = memoizeLatest(scanSourceComments)
+export const sourceComments: (sourceFile: ts.SourceFile) => ReadonlyArray<SourceComment> =
+  memoizeLatest(scanSourceComments)
 
 const emptyString = Function.constant("")
 
-const commentFragmentsText: (comment: ts.NodeArray<ts.JSDocComment>) => string =
-  flow(
-    ts.getTextOfJSDocComment,
-    Option.fromNullable,
-    Option.getOrElse(emptyString)
-  )
+const commentFragmentsText: (comment: ts.NodeArray<ts.JSDocComment>) => string = flow(
+  ts.getTextOfJSDocComment,
+  Option.fromNullable,
+  Option.getOrElse(emptyString)
+)
 
 const stringDescription = (comment: string): string => comment
 
-const commentDescription: (
-  comment: NonNullable<ts.JSDoc["comment"]>
-) => string = pipe(
+const commentDescription: (comment: NonNullable<ts.JSDoc["comment"]>) => string = pipe(
   Match.type<NonNullable<ts.JSDoc["comment"]>>(),
   Match.withReturnType<string>(),
   Match.when(Match.string, stringDescription),
@@ -129,8 +121,7 @@ const commentDescription: (
 
 const hasNonBlankText = (text: string): boolean => text.trim().length > 0
 
-const hasJsDocTags = (tags: ts.NodeArray<ts.JSDocTag>): boolean =>
-  tags.length > 0
+const hasJsDocTags = (tags: ts.NodeArray<ts.JSDocTag>): boolean => tags.length > 0
 
 const isStructuredJsDoc = (jsDoc: ts.JSDoc): boolean => {
   const hasDescription = pipe(
@@ -139,10 +130,7 @@ const isStructuredJsDoc = (jsDoc: ts.JSDoc): boolean => {
     Option.exists(hasNonBlankText)
   )
 
-  const hasTags = pipe(
-    Option.fromNullable(jsDoc.tags),
-    Option.exists(hasJsDocTags)
-  )
+  const hasTags = pipe(Option.fromNullable(jsDoc.tags), Option.exists(hasJsDocTags))
 
   return hasDescription && hasTags
 }
@@ -190,10 +178,7 @@ const parentFollowsExportPath = (node: ts.Node): boolean =>
 const exportNodeStep = (current: ts.Node) => {
   const parent = Option.fromNullable(current.parent)
 
-  const currentFollowsParent = HashSet.has(
-    currentKindsThatFollowParent,
-    current.kind
-  )
+  const currentFollowsParent = HashSet.has(currentKindsThatFollowParent, current.kind)
 
   const parentFollowsParent = Option.exists(parent, parentFollowsExportPath)
   const followsParent = currentFollowsParent || parentFollowsParent
@@ -223,9 +208,7 @@ const isExportedApiNode = (node: ts.Node): boolean => {
   return Iterable.some(candidates, hasExportModifier)
 }
 
-const collectStructuredJsDocPositions = (
-  sourceFile: ts.SourceFile
-): HashSet.HashSet<number> => {
+const collectStructuredJsDocPositions = (sourceFile: ts.SourceFile): HashSet.HashSet<number> => {
   const nodes = astNodesIn(sourceFile)
   const initial = HashSet.empty<number>()
 
@@ -246,15 +229,12 @@ const collectStructuredJsDocPositions = (
 
     const structured = Array.filter(jsDocs, isStructuredJsDoc)
 
-    return Array.reduce(structured, current, (set, doc) =>
-      HashSet.add(set, doc.pos)
-    )
+    return Array.reduce(structured, current, (set, doc) => HashSet.add(set, doc.pos))
   })
 }
 
-const structuredJsDocPositions: (
-  sourceFile: ts.SourceFile
-) => HashSet.HashSet<number> = memoizeLatest(collectStructuredJsDocPositions)
+const structuredJsDocPositions: (sourceFile: ts.SourceFile) => HashSet.HashSet<number> =
+  memoizeLatest(collectStructuredJsDocPositions)
 
 const commentAtPosition =
   (positions: HashSet.HashSet<number>) =>

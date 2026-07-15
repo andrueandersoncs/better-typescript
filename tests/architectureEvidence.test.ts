@@ -25,18 +25,12 @@ import {
 } from "@better-typescript/checks/architectureExplore/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "architecture-evidence"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")
 
 const runFixture = async (check: Check): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(check)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(check)(project)))
   )
 
   return projectDetections.flat()
@@ -53,12 +47,8 @@ const dataAs = <A>(
 
 test("pass-through evidence requires exact forwarding and records caller leverage", async () => {
   const detections = await runFixture(passThroughWrappers)
-  const forwarding = detections.filter(
-    (item) => item.location.path === "src/forwarding.ts"
-  )
-  const byLine = new Map(
-    forwarding.map((item) => [item.location.line, item] as const)
-  )
+  const forwarding = detections.filter((item) => item.location.path === "src/forwarding.ts")
+  const byLine = new Map(forwarding.map((item) => [item.location.line, item] as const))
   const forwardData = pipe(
     Option.fromNullable(byLine.get(5)),
     Option.flatMap((item) => dataAs(Schema.is(PassThroughWrapperData), item)),
@@ -75,9 +65,7 @@ test("pass-through evidence requires exact forwarding and records caller leverag
   assert.equal(byLine.has(13), false)
   assert.equal(byLine.has(15), false)
 
-  const reexport = detections.find(
-    (item) => item.location.path === "src/publicEntry.ts"
-  )
+  const reexport = detections.find((item) => item.location.path === "src/publicEntry.ts")
   const reexportData = pipe(
     Option.fromNullable(reexport),
     Option.flatMap((item) => dataAs(Schema.is(PassThroughWrapperData), item)),
@@ -90,9 +78,7 @@ test("pass-through evidence requires exact forwarding and records caller leverag
 
 test("interface burden measures callable knowledge without implementation size", async () => {
   const detections = await runFixture(interfaceBurden)
-  const burden = detections.find(
-    (item) => item.location.path === "src/burden.ts"
-  )
+  const burden = detections.find((item) => item.location.path === "src/burden.ts")
   const data = pipe(
     Option.fromNullable(burden),
     Option.flatMap((item) => dataAs(Schema.is(InterfaceBurdenData), item)),
@@ -105,9 +91,7 @@ test("interface burden measures callable knowledge without implementation size",
 
 test("module graph records resolved project edges", async () => {
   const detections = await runFixture(moduleGraph)
-  const graph = detections.find(
-    (item) => item.location.path === "src/graph/one.ts"
-  )
+  const graph = detections.find((item) => item.location.path === "src/graph/one.ts")
   const data = pipe(
     Option.fromNullable(graph),
     Option.flatMap((item) => dataAs(Schema.is(ModuleGraphData), item)),
@@ -119,12 +103,8 @@ test("module graph records resolved project edges", async () => {
 
 test("test-only exports distinguish production and test references", async () => {
   const detections = await runFixture(testOnlyExports)
-  const testSurface = detections.filter(
-    (item) => item.location.path === "src/testSurface.ts"
-  )
-  const publicOnly = detections.filter(
-    (item) => item.location.path === "src/publicOnly.ts"
-  )
+  const testSurface = detections.filter((item) => item.location.path === "src/testSurface.ts")
+  const publicOnly = detections.filter((item) => item.location.path === "src/publicOnly.ts")
   const data = pipe(
     Option.fromNullable(testSurface[0]),
     Option.flatMap((item) => dataAs(Schema.is(TestOnlyExportData), item)),
@@ -139,9 +119,7 @@ test("test-only exports distinguish production and test references", async () =>
 
 test("seam leakage distinguishes internal and package-source test imports", async () => {
   const detections = await runFixture(seamLeakageEvidence)
-  const testLeaks = detections.filter(
-    (item) => item.location.path === "tests/surface.ts"
-  )
+  const testLeaks = detections.filter((item) => item.location.path === "tests/surface.ts")
   const payloads = testLeaks.flatMap((item) =>
     Option.toArray(dataAs(Schema.is(SeamLeakageData), item))
   )
@@ -187,10 +165,7 @@ test("single-adapter seams count production and test adapters", async () => {
     Option.toArray(dataAs(Schema.is(SingleAdapterSeamData), item))
   )
 
-  assert.deepEqual(payloads.map((data) => data.interfaceName).sort(), [
-    "PaymentPort",
-    "Reader"
-  ])
+  assert.deepEqual(payloads.map((data) => data.interfaceName).sort(), ["PaymentPort", "Reader"])
   assert.equal(
     payloads.some((data) => data.interfaceName === "StablePort"),
     false

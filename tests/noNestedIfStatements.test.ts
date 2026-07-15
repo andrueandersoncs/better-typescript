@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-nested-if-statements"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-nested-if-statements")
 const expectedMessage = "Avoid nesting if statements."
 const expectedHint =
   "Combine related conditions with boolean operators, or use an early return so this " +
@@ -86,9 +82,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoNestedIfStatementsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoNestedIfStatementsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

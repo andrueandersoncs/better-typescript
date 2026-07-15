@@ -29,18 +29,13 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
   const declarations = symbol.declarations ?? Array.empty()
 
-  const hasEffectModuleDeclaration = Array.some(
-    declarations,
-    isEffectModuleDeclaration
-  )
+  const hasEffectModuleDeclaration = Array.some(declarations, isEffectModuleDeclaration)
 
   return isNamedEffect && hasEffectModuleDeclaration
 }
 
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  block.statements.length === 1
-    ? Option.fromNullable(block.statements[0])
-    : Option.none()
+  block.statements.length === 1 ? Option.fromNullable(block.statements[0]) : Option.none()
 
 const isGenPropertyName = (access: ts.PropertyAccessExpression): boolean =>
   access.name.text === "gen"
@@ -50,15 +45,12 @@ const effectFnMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
 
-  const matches = (
-    declaration: ts.VariableDeclaration
-  ): ReadonlyArray<Detection> =>
+  const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
     pipe(
       functionInitializer(declaration),
       Option.filter(hasParameters),
       Option.filter((initializer) => {
-        const declaredSignature =
-          checker.getSignatureFromDeclaration(initializer)
+        const declaredSignature = checker.getSignatureFromDeclaration(initializer)
 
         const signature = Option.fromNullable(declaredSignature)
 
@@ -79,19 +71,12 @@ const effectFnMatches = (context: CheckContext) => {
           Option.liftPredicate(ts.isBlock)(body),
           Option.flatMap(singleBlockStatement),
           Option.filter(ts.isReturnStatement),
-          Option.flatMap((statement) =>
-            Option.fromNullable(statement.expression)
-          )
+          Option.flatMap((statement) => Option.fromNullable(statement.expression))
         )
 
-        const conciseResult = ts.isBlock(body)
-          ? Option.none<ts.Expression>()
-          : Option.some(body)
+        const conciseResult = ts.isBlock(body) ? Option.none<ts.Expression>() : Option.some(body)
 
-        const resultExpression = Option.orElse(
-          blockResult,
-          Function.constant(conciseResult)
-        )
+        const resultExpression = Option.orElse(blockResult, Function.constant(conciseResult))
 
         const unwrapped = Option.map(resultExpression, unwrapExpression)
 
@@ -131,9 +116,7 @@ const effectFnMatches = (context: CheckContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(
-  effectFnMatches
-)
+const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(effectFnMatches)
 
 export const preferEffectFn: Check = check
 

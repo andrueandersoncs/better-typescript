@@ -13,12 +13,7 @@ import {
   pipe
 } from "effect"
 import { Detection, Location } from "../location/data.js"
-import {
-  CountSummary,
-  EvidenceItem,
-  FileDetections,
-  NamedDetection
-} from "./data.js"
+import { CountSummary, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
 export const collectSignals = <A>(
   signals: Stream.Stream<A, Error>
@@ -44,9 +39,7 @@ export const countAt =
 
 const addCount =
   (key: string) =>
-  (
-    counts: HashMap.HashMap<string, number>
-  ): HashMap.HashMap<string, number> => {
+  (counts: HashMap.HashMap<string, number>): HashMap.HashMap<string, number> => {
     const next = countAt(counts)(key) + 1
 
     return HashMap.set(counts, key, next)
@@ -57,16 +50,12 @@ export const namedDetection =
   (detection: Detection): NamedDetection =>
     new NamedDetection({ name, detection })
 
-const detectionPath = (named: NamedDetection): string =>
-  named.detection.location.path
+const detectionPath = (named: NamedDetection): string => named.detection.location.path
 
-const fileDetections = (
-  entry: readonly [string, ReadonlyArray<NamedDetection>]
-): FileDetections => new FileDetections({ path: entry[0], elements: entry[1] })
+const fileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]): FileDetections =>
+  new FileDetections({ path: entry[0], elements: entry[1] })
 
-export const byFile = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<FileDetections> => {
+export const byFile = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<FileDetections> => {
   const grouped = Array.groupBy(elements, detectionPath)
   const entries = Record.toEntries(grouped)
 
@@ -108,9 +97,7 @@ const addFileCheckCounts = (
   return Array.reduce(distinctNames, counts, addNameCount)
 }
 
-export const countSummary = (
-  elements: ReadonlyArray<NamedDetection>
-): CountSummary => {
+export const countSummary = (elements: ReadonlyArray<NamedDetection>): CountSummary => {
   const files = byFile(elements)
   const emptyCounts = HashMap.empty<string, number>()
   const countsByCheck = Array.reduce(elements, emptyCounts, addDetectionCount)
@@ -131,15 +118,9 @@ const byCountDescending: Order.Order<EvidenceItem> = Order.mapInput(
   Struct.get("count")
 )
 
-const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(
-  Order.string,
-  Struct.get("measure")
-)
+const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.string, Struct.get("measure"))
 
-export const evidenceOrder: Order.Order<EvidenceItem> = Order.combine(
-  byCountDescending,
-  byMeasure
-)
+export const evidenceOrder: Order.Order<EvidenceItem> = Order.combine(byCountDescending, byMeasure)
 
 export const evidenceItem = (measure: string, count: number): EvidenceItem =>
   new EvidenceItem({ measure, count })
@@ -167,18 +148,11 @@ const countEntryEvidence = (entry: readonly [string, number]): EvidenceItem =>
 export const evidenceFromCounts = (
   counts: HashMap.HashMap<string, number>
 ): ReadonlyArray<EvidenceItem> =>
-  pipe(
-    HashMap.toEntries(counts),
-    Array.map(countEntryEvidence),
-    Array.sort(evidenceOrder)
-  )
+  pipe(HashMap.toEntries(counts), Array.map(countEntryEvidence), Array.sort(evidenceOrder))
 
-const lineKey = (named: NamedDetection): string =>
-  `${named.detection.location.line}`
+const lineKey = (named: NamedDetection): string => `${named.detection.location.line}`
 
-const hasDistinctChecks = (
-  entry: readonly [string, ReadonlyArray<NamedDetection>]
-): boolean => {
+const hasDistinctChecks = (entry: readonly [string, ReadonlyArray<NamedDetection>]): boolean => {
   const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
 

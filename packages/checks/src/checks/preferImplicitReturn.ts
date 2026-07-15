@@ -12,9 +12,7 @@ import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const implicitReturnMatches = (context: CheckContext) => {
   const match = detection(context)
 
-  const matches = (
-    arrowFunction: ts.ArrowFunction
-  ): ReadonlyArray<Detection> => {
+  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
     if (!ts.isBlock(arrowFunction.body)) return Array.empty()
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
@@ -23,9 +21,7 @@ const implicitReturnMatches = (context: CheckContext) => {
       hasOneStatement &&
       pipe(
         Option.liftPredicate(ts.isReturnStatement)(firstStatement),
-        Option.flatMap((statement) =>
-          Option.fromNullable(statement.expression)
-        ),
+        Option.flatMap((statement) => Option.fromNullable(statement.expression)),
         Option.isSome
       )
 
@@ -45,9 +41,7 @@ const implicitReturnMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
-  implicitReturnMatches
-)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(implicitReturnMatches)
 
 export const preferImplicitReturn: Check = check
 

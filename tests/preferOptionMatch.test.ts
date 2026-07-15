@@ -16,8 +16,7 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-option-match")
 
-const message =
-  "Avoid using Option.isSome/isNone in a ternary to unwrap an Option."
+const message = "Avoid using Option.isSome/isNone in a ternary to unwrap an Option."
 
 const hint =
   "Use Option.match(option, { onNone: () => fallback, onSome: (value) => ... }) " +
@@ -77,9 +76,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferOptionMatchFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferOptionMatchFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

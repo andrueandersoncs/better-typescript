@@ -14,13 +14,8 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-inline-boolean-expressions"
-)
-const expectedMessage =
-  "Avoid boolean operators inline in an if statement condition."
+const fixturePath = path.join(testDirectory, "fixtures", "no-inline-boolean-expressions")
+const expectedMessage = "Avoid boolean operators inline in an if statement condition."
 const expectedHint =
   "Extract the expression into a well-named const variable declaration above the if " +
   "statement and use that variable in the if condition."
@@ -73,9 +68,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoInlineBooleanExpressionsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoInlineBooleanExpressionsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

@@ -20,9 +20,7 @@ export const locateNode =
     const start = node.getStart(sourceFile)
     const position = sourceFile.getLineAndCharacterOfPosition(start)
 
-    const fileName = toRelativeFileName(context.projectRoot)(
-      sourceFile.fileName
-    )
+    const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
 
     return new Location({
       path: fileName,

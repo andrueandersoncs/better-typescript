@@ -24,14 +24,9 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const expression = unwrapExpression(ifStatement.expression)
 
-    const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
-      expression
-    )
+    const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
 
-    const isLogicalOperatorExpression = Option.exists(
-      binaryExpression,
-      hasLogicalOperator
-    )
+    const isLogicalOperatorExpression = Option.exists(binaryExpression, hasLogicalOperator)
 
     const reported = match({
       node: expression,
@@ -49,11 +44,10 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(
-  inlineBooleanConditionMatches
-)
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(inlineBooleanConditionMatches)
 
 export const noInlineBooleanExpressions: Check = check
 
-export const noInlineBooleanExpressionsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-inline-boolean-expressions")
+export const noInlineBooleanExpressionsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "no-inline-boolean-expressions"
+)

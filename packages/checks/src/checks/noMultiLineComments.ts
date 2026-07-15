@@ -4,11 +4,7 @@ import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import {
-  commentText,
-  isJsDocComment,
-  sourceComments
-} from "./support/comments.js"
+import { commentText, isJsDocComment, sourceComments } from "./support/comments.js"
 import type { SourceComment } from "./support/commentsData.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -59,29 +55,25 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const blockPositions = Array.map(blockComments, commentPosition)
   const singleLineComments = Array.filter(comments, isSingleLineComment)
 
-  const adjacentRunPositions = Array.filterMap(
-    singleLineComments,
-    (current, index) => {
-      const hasNextAdjacent =
-        index < singleLineComments.length - 1 &&
-        isAdjacentLine(sourceFile)(current)(singleLineComments[index + 1])
+  const adjacentRunPositions = Array.filterMap(singleLineComments, (current, index) => {
+    const hasNextAdjacent =
+      index < singleLineComments.length - 1 &&
+      isAdjacentLine(sourceFile)(current)(singleLineComments[index + 1])
 
-      if (index === 0) {
-        return hasNextAdjacent ? Option.some(current.pos) : Option.none()
-      }
-
-      const previousComment = singleLineComments[index - 1]
-
-      const isNotAdjacentToPrevious =
-        !isAdjacentLine(sourceFile)(previousComment)(current)
-
-      const previousIsNotSingleLine = !isSingleLineComment(previousComment)
-      const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
-      const shouldFlag = isRunStart && hasNextAdjacent
-
-      return shouldFlag ? Option.some(current.pos) : Option.none()
+    if (index === 0) {
+      return hasNextAdjacent ? Option.some(current.pos) : Option.none()
     }
-  )
+
+    const previousComment = singleLineComments[index - 1]
+
+    const isNotAdjacentToPrevious = !isAdjacentLine(sourceFile)(previousComment)(current)
+
+    const previousIsNotSingleLine = !isSingleLineComment(previousComment)
+    const isRunStart = isNotAdjacentToPrevious || previousIsNotSingleLine
+    const shouldFlag = isRunStart && hasNextAdjacent
+
+    return shouldFlag ? Option.some(current.pos) : Option.none()
+  })
 
   const positions = Array.appendAll(blockPositions, adjacentRunPositions)
 

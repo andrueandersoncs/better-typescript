@@ -1,9 +1,6 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  combineAll,
-  nodeSubscriptions
-} from "@better-typescript/core/engine/check"
+import { combineAll, nodeSubscriptions } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -12,8 +9,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const isArrayIdentifier = (identifier: ts.Identifier): boolean =>
-  identifier.text === "Array"
+const isArrayIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Array"
 
 const message = "Avoid primitive Array constructors."
 
@@ -40,13 +36,11 @@ const arrayLiteralMatches = (context: CheckContext) => {
 }
 
 /**
- * ArrayConstructorNode is the shared expression, typeArguments, arguments contract used
- * by arrayConstructorMatches and isArrayConstructorNode.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * ArrayConstructorNode is the syntax contract shared by array-constructor
+ * candidate detection and matching. @modelRole shared @remarks It remains
+ * explicit because both owners need one stable compiler-node vocabulary;
+ * removing it would duplicate the union and let their accepted expressions
+ * drift.
  */
 type ArrayConstructorNode = ts.NewExpression | ts.CallExpression
 
@@ -82,27 +76,18 @@ const arrayConstructorMatches = (context: CheckContext) => {
 
 const arrayLiteralKinds = Array.of(ts.SyntaxKind.ArrayLiteralExpression)
 
-const arrayLiteralListeners = nodeSubscriptions(arrayLiteralKinds)(
-  ts.isArrayLiteralExpression
-)(arrayLiteralMatches)
-
-const arrayConstructorKinds = Array.make(
-  ts.SyntaxKind.NewExpression,
-  ts.SyntaxKind.CallExpression
+const arrayLiteralListeners = nodeSubscriptions(arrayLiteralKinds)(ts.isArrayLiteralExpression)(
+  arrayLiteralMatches
 )
 
-const arrayConstructorListeners = nodeSubscriptions(arrayConstructorKinds)(
-  isArrayConstructorNode
-)(arrayConstructorMatches)
+const arrayConstructorKinds = Array.make(ts.SyntaxKind.NewExpression, ts.SyntaxKind.CallExpression)
 
-const arrayConstructorSubscriptions = Array.make(
-  arrayLiteralListeners,
-  arrayConstructorListeners
-)
+const arrayConstructorListeners =
+  nodeSubscriptions(arrayConstructorKinds)(isArrayConstructorNode)(arrayConstructorMatches)
 
-export const noPrimitiveArrayConstructors: Check = combineAll(
-  arrayConstructorSubscriptions
-)
+const arrayConstructorSubscriptions = Array.make(arrayLiteralListeners, arrayConstructorListeners)
+
+export const noPrimitiveArrayConstructors: Check = combineAll(arrayConstructorSubscriptions)
 
 export const noPrimitiveArrayConstructorsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-primitive-array-constructors")

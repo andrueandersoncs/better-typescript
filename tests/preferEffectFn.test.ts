@@ -94,9 +94,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEffectFnFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferEffectFnFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

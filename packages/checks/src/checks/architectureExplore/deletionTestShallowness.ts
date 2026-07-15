@@ -1,16 +1,10 @@
 import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { isDeletableWrapper, passThroughDataOf } from "./evidence.js"
 
-const deletionAdvice = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
+const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const wrappers = pipe(
     elements,
     Array.filter((element) => element.name === "pass-through-wrappers"),
@@ -24,10 +18,7 @@ const deletionAdvice = (
   )
 
   return Array.map(paths, (filePath) => {
-    const atPath = Array.filter(
-      wrappers,
-      (element) => element.detection.location.path === filePath
-    )
+    const atPath = Array.filter(wrappers, (element) => element.detection.location.path === filePath)
 
     const callerCount = pipe(
       atPath,

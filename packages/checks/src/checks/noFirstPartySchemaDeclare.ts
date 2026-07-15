@@ -26,19 +26,14 @@ const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
     Option.exists(hasDeclareText)
   )
 
-const typePredicateAssertedType = (
-  predicate: ts.TypePredicate
-): Option.Option<ts.Type> => Option.fromNullable(predicate.type)
+const typePredicateAssertedType = (predicate: ts.TypePredicate): Option.Option<ts.Type> =>
+  Option.fromNullable(predicate.type)
 
 const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> =>
   pipe(
     Option.fromNullable(type.aliasSymbol),
     Option.orElse(() =>
-      pipe(
-        type,
-        (candidate: ts.Type) => candidate.getSymbol(),
-        Option.fromNullable
-      )
+      pipe(type, (candidate: ts.Type) => candidate.getSymbol(), Option.fromNullable)
     )
   )
 
@@ -49,11 +44,7 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
   const isConcreteType = !type.isTypeParameter()
 
-  const ambientConditions = Array.make(
-    isFirstParty,
-    isDataStructure,
-    isConcreteType
-  )
+  const ambientConditions = Array.make(isFirstParty, isDataStructure, isConcreteType)
 
   return Array.every(ambientConditions, Boolean)
 }
@@ -123,10 +114,10 @@ const schemaDeclareMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check =
-  nodeCheck(callExpressionKinds)(isDeclareCall)(schemaDeclareMatches)
+const check = nodeCheck(callExpressionKinds)(isDeclareCall)(schemaDeclareMatches)
 
 export const noFirstPartySchemaDeclare: Check = check
 
-export const noFirstPartySchemaDeclareExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-first-party-schema-declare")
+export const noFirstPartySchemaDeclareExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "no-first-party-schema-declare"
+)

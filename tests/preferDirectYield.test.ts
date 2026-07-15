@@ -112,9 +112,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferDirectYieldFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferDirectYieldFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

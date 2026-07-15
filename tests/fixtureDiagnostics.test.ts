@@ -40,25 +40,17 @@ const sourceFileProblems =
     )
   }
 
-const projectProblems = async (
-  project: LoadedProject
-): Promise<ReadonlyArray<string>> => {
-  const sourceFiles = await Effect.runPromise(
-    Stream.runCollect(checkableSourceFiles(project))
-  )
+const projectProblems = async (project: LoadedProject): Promise<ReadonlyArray<string>> => {
+  const sourceFiles = await Effect.runPromise(Stream.runCollect(checkableSourceFiles(project)))
 
-  return Chunk.toReadonlyArray(sourceFiles).flatMap(
-    sourceFileProblems(project.program)
-  )
+  return Chunk.toReadonlyArray(sourceFiles).flatMap(sourceFileProblems(project.program))
 }
 
 const registerFixtureTest = (fixtureName: string): void => {
   test(`fixture compiles: ${fixtureName}`, async () => {
     const fixturePath = path.join(fixturesRoot, fixtureName)
     const workspace = await Effect.runPromise(loadProject(fixturePath))
-    const problems = (
-      await Promise.all(workspace.projects.map(projectProblems))
-    ).flat()
+    const problems = (await Promise.all(workspace.projects.map(projectProblems))).flat()
 
     assert.deepEqual(
       problems,

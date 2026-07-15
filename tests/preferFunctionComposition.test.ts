@@ -14,13 +14,8 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-function-composition"
-)
-const expectedMessage =
-  "Avoid block bodies that only bind a value and thread it into a call."
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-function-composition")
+const expectedMessage = "Avoid block bodies that only bind a value and thread it into a call."
 const expectedHint =
   "Use pipe, flow, or Function.compose (or a related Function combinator) so the " +
   "steps compose as an expression instead of a manually threaded local. Do not nest " +
@@ -118,9 +113,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferFunctionCompositionFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferFunctionCompositionFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

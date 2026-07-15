@@ -13,9 +13,7 @@ export const fixturesRoot = path.join(repoRoot, "tests", "fixtures")
 export const fixtureExampleRoot = (fixtureId: string): string =>
   path.join(fixturesRoot, fixtureId, "example")
 
-export const fixtureRefactorExamples = (
-  fixtureId: string
-): NonEmptyRefactorExamples => {
+export const fixtureRefactorExamples = (fixtureId: string): NonEmptyRefactorExamples => {
   const exampleRoot = fixtureExampleRoot(fixtureId)
   const loadExamples = loadRefactorExamplesAt(exampleRoot)
 

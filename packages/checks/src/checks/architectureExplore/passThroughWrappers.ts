@@ -1,13 +1,7 @@
 import { Array, Data, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  fileSubscriptions,
-  withProgramIndex
-} from "@better-typescript/core/engine/check"
-import {
-  detection,
-  toRelativeFileName
-} from "@better-typescript/core/engine/location"
+import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
+import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -25,12 +19,10 @@ import { unwrapExpression } from "../support/tsNode.js"
 
 /**
  * PassThroughIndex is the shared symbol, module-edge, and path context used to
- * classify forwarding exports and re-export modules.
- *
- * @modelRole shared
- * @remarks It remains explicit because index construction and both classifiers
- * must query the same reference graph and project root. Removing it would pass
- * three synchronized values through each consumer and invite graph drift.
+ * classify forwarding exports and re-export modules. @modelRole shared @remarks
+ * It remains explicit because index construction and both classifiers must
+ * query the same reference graph and project root; removing it would pass three
+ * synchronized values through every consumer.
  */
 class PassThroughIndex extends Data.Class<{
   readonly references: ExportReferenceIndex
@@ -50,8 +42,7 @@ const forwardingMessage =
 const forwardingHint =
   "Use caller count in Architecture Explore Advice: delete low-leverage indirection, but keep operations whose behaviour or naming would otherwise reappear across callers."
 
-const isExpressionBody = (body: ts.ConciseBody): body is ts.Expression =>
-  !ts.isBlock(body)
+const isExpressionBody = (body: ts.ConciseBody): body is ts.Expression => !ts.isBlock(body)
 
 const callExpressionBody = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
@@ -93,22 +84,15 @@ const parameterIdentifiers = (
     const omissions = Array.make(initializerMissing, restTokenMissing)
     const unmodified = Array.every(omissions, Boolean)
 
-    const identifier = pipe(
-      Option.some(parameter.name),
-      Option.filter(ts.isIdentifier)
-    )
+    const identifier = pipe(Option.some(parameter.name), Option.filter(ts.isIdentifier))
 
     return pipe(identifier, Option.filter(Function.constant(unmodified)))
   })
 
-  return identifiers.length === node.parameters.length
-    ? Option.some(identifiers)
-    : Option.none()
+  return identifiers.length === node.parameters.length ? Option.some(identifiers) : Option.none()
 }
 
-const forwardingRootIdentifier = (
-  expression: ts.Expression
-): Option.Option<ts.Identifier> => {
+const forwardingRootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> => {
   const unwrapped = unwrapExpression(expression)
   const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
 
@@ -197,9 +181,7 @@ const hasModuleSpecifier = Function.flow(
   Option.isSome
 )
 
-const reexportOnlyStatements = (
-  sourceFile: ts.SourceFile
-): ReadonlyArray<ts.ExportDeclaration> => {
+const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.ExportDeclaration> => {
   const publicStatements = Array.filter(
     sourceFile.statements,
     (statement) => !ts.isImportDeclaration(statement)
@@ -291,11 +273,6 @@ const buildIndex = (context: ProgramContext): PassThroughIndex => {
   })
 }
 
-const passThroughSubscriptions = Function.compose(
-  passThroughElements,
-  fileSubscriptions
-)
+const passThroughSubscriptions = Function.compose(passThroughElements, fileSubscriptions)
 
-export const passThroughWrappers: Check = withProgramIndex(buildIndex)(
-  passThroughSubscriptions
-)
+export const passThroughWrappers: Check = withProgramIndex(buildIndex)(passThroughSubscriptions)

@@ -14,8 +14,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const isSetIdentifier = (identifier: ts.Identifier): boolean =>
-  identifier.text === "Set"
+const isSetIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Set"
 
 const constructorMessage = "Avoid constructing a built-in Set."
 
@@ -27,8 +26,7 @@ const constructorHint =
 
 const setTypeNames: ReadonlyArray<string> = Array.make("Set", "ReadonlySet")
 
-const isSetTypeName = (id: ts.Identifier): boolean =>
-  Array.contains(setTypeNames, id.text)
+const isSetTypeName = (id: ts.Identifier): boolean => Array.contains(setTypeNames, id.text)
 
 const typeRefHint =
   "Use HashSet.HashSet<T> from Effect instead. HashSet integrates with Equal and Hash " +
@@ -37,13 +35,10 @@ const typeRefHint =
   "third-party call."
 
 /**
- * SetRuleNode is the shared typeArguments contract used by setMatches and
- * isSetRuleNode.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * SetRuleNode is the syntax contract shared by Set candidate detection and
+ * matching. @modelRole shared @remarks It remains explicit because constructor
+ * and type-reference syntax need one compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted expressions drift.
  */
 type SetRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
@@ -51,9 +46,7 @@ const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.flatMap((ref) =>
-      Option.liftPredicate(ts.isIdentifier)(ref.typeName)
-    ),
+    Option.flatMap((ref) => Option.liftPredicate(ts.isIdentifier)(ref.typeName)),
     Option.exists(isSetTypeName)
   )
 
@@ -64,18 +57,13 @@ const setMatches = (context: CheckContext) => {
 
   const matches = (node: SetRuleNode): ReadonlyArray<Detection> => {
     if (ts.isNewExpression(node)) {
-      const expressionOption = Option.liftPredicate(ts.isIdentifier)(
-        node.expression
-      )
+      const expressionOption = Option.liftPredicate(ts.isIdentifier)(node.expression)
 
       const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)
 
       const escapesExternally = isSetConstruction && constructionEscapes(node)
 
-      const reportableConditions = Array.make(
-        isSetConstruction,
-        !escapesExternally
-      )
+      const reportableConditions = Array.make(isSetConstruction, !escapesExternally)
 
       const isReportable = Array.every(reportableConditions, Boolean)
 
@@ -116,10 +104,7 @@ const setMatches = (context: CheckContext) => {
   return matches
 }
 
-const setRuleNodeKinds = Array.make(
-  ts.SyntaxKind.NewExpression,
-  ts.SyntaxKind.TypeReference
-)
+const setRuleNodeKinds = Array.make(ts.SyntaxKind.NewExpression, ts.SyntaxKind.TypeReference)
 
 const check = nodeCheck(setRuleNodeKinds)(isSetRuleNode)(setMatches)
 

@@ -11,24 +11,13 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * MutableArrayMethod is the shared length contract used by mutableArrayMatches and
- * mutableArrayMethods.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * MutableArrayMethod is the method-name vocabulary shared by mutable-array
+ * detection and policy. @modelRole shared @remarks It remains explicit because
+ * both owners must classify the same methods; removing it would duplicate the
+ * literal union and let their policies drift.
  */
 type MutableArrayMethod =
-  | "copyWithin"
-  | "fill"
-  | "pop"
-  | "push"
-  | "reverse"
-  | "shift"
-  | "sort"
-  | "splice"
-  | "unshift"
+  "copyWithin" | "fill" | "pop" | "push" | "reverse" | "shift" | "sort" | "splice" | "unshift"
 
 const mutableArrayMethods = HashSet.make(
   "copyWithin" as MutableArrayMethod,
@@ -47,9 +36,7 @@ const mutableArrayMatches = (context: CheckContext) => {
   const isReceiverArrayType = isArrayLikeType(checker)
   const match = detection(context)
 
-  const matches = (
-    callExpression: ts.CallExpression
-  ): ReadonlyArray<Detection> => {
+  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return Array.empty()
     }
@@ -69,9 +56,7 @@ const mutableArrayMatches = (context: CheckContext) => {
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
 
-    const methodCall = isReceiverArrayType(receiverType)
-      ? methodName
-      : Option.none()
+    const methodCall = isReceiverArrayType(receiverType) ? methodName : Option.none()
 
     return pipe(
       methodCall,
@@ -95,11 +80,10 @@ const mutableArrayMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
-  mutableArrayMatches
-)
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(mutableArrayMatches)
 
 export const noMutableArrayMethods: Check = check
 
-export const noMutableArrayMethodsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-mutable-array-methods")
+export const noMutableArrayMethodsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "no-mutable-array-methods"
+)

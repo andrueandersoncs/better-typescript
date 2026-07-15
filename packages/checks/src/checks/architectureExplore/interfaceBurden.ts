@@ -22,9 +22,7 @@ const emptySurface = new InterfaceBurdenData({
   requiredParameterCount: 0
 })
 
-const requiredParameters = (
-  parameters: ts.NodeArray<ts.ParameterDeclaration>
-): number =>
+const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>): number =>
   Array.filter(parameters, (parameter) => {
     const optional = Option.fromNullable(parameter.questionToken)
     const defaulted = Option.fromNullable(parameter.initializer)
@@ -61,8 +59,7 @@ const combineSurface = (
 ): InterfaceBurdenData =>
   new InterfaceBurdenData({
     operationCount: left.operationCount + right.operationCount,
-    requiredParameterCount:
-      left.requiredParameterCount + right.requiredParameterCount
+    requiredParameterCount: left.requiredParameterCount + right.requiredParameterCount
   })
 
 const isPublicClassMember = (member: ts.ClassElement): boolean => {
@@ -73,24 +70,16 @@ const isPublicClassMember = (member: ts.ClassElement): boolean => {
     Option.getOrElse(Array.empty)
   )
 
-  const hiddenKinds = Array.make(
-    ts.SyntaxKind.PrivateKeyword,
-    ts.SyntaxKind.ProtectedKeyword
-  )
+  const hiddenKinds = Array.make(ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.ProtectedKeyword)
 
-  return !Array.some(modifiers, (modifier) =>
-    Array.contains(hiddenKinds, modifier.kind)
-  )
+  return !Array.some(modifiers, (modifier) => Array.contains(hiddenKinds, modifier.kind))
 }
 
 /**
  * CallableClassMember is the compiler-node protocol accepted by class surface
- * measurement.
- *
- * @modelRole protocol
- * @remarks It remains explicit because the type guard and surface calculator
- * must agree on callable class syntax. Removing it would repeat the union and
- * let their accepted node kinds drift.
+ * measurement. @modelRole protocol @remarks It remains explicit because the
+ * type guard and surface calculator must agree on callable class syntax;
+ * removing it would repeat the union and let their accepted node kinds drift.
  */
 type CallableClassMember =
   | ts.MethodDeclaration
@@ -105,14 +94,10 @@ const callableClassMemberKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.Constructor
 )
 
-const isCallableClassMember = (
-  member: ts.ClassElement
-): member is CallableClassMember =>
+const isCallableClassMember = (member: ts.ClassElement): member is CallableClassMember =>
   Array.contains(callableClassMemberKinds, member.kind)
 
-const classSurface = (
-  declaration: ts.ClassDeclaration
-): InterfaceBurdenData => {
+const classSurface = (declaration: ts.ClassDeclaration): InterfaceBurdenData => {
   const publicMembers = Array.filter(declaration.members, isPublicClassMember)
 
   const memberSurfaces = pipe(
@@ -133,9 +118,7 @@ const classSurface = (
   return Array.reduce(memberSurfaces, constructorSurface, combineSurface)
 }
 
-const objectLiteralSurface = (
-  literal: ts.ObjectLiteralExpression
-): InterfaceBurdenData =>
+const objectLiteralSurface = (literal: ts.ObjectLiteralExpression): InterfaceBurdenData =>
   pipe(
     literal.properties,
     Array.filterMap((member) => {
@@ -150,28 +133,20 @@ const objectLiteralSurface = (
           pipe(
             Option.some(property.initializer),
             Option.filter(
-              (
-                initializer
-              ): initializer is ts.ArrowFunction | ts.FunctionExpression =>
-                ts.isArrowFunction(initializer) ||
-                ts.isFunctionExpression(initializer)
+              (initializer): initializer is ts.ArrowFunction | ts.FunctionExpression =>
+                ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)
             ),
             Option.map(callableSurface)
           )
         )
       )
 
-      return pipe(
-        methodSurface,
-        Option.orElse(Function.constant(propertySurface))
-      )
+      return pipe(methodSurface, Option.orElse(Function.constant(propertySurface)))
     }),
     Array.reduce(emptySurface, combineSurface)
   )
 
-const variableStatementSurface = (
-  statement: ts.VariableStatement
-): InterfaceBurdenData => {
+const variableStatementSurface = (statement: ts.VariableStatement): InterfaceBurdenData => {
   if (!hasExportModifier(statement)) {
     return emptySurface
   }
@@ -179,10 +154,7 @@ const variableStatementSurface = (
   return pipe(
     statement.declarationList.declarations,
     Array.map((declaration) => {
-      const directFunction = pipe(
-        functionInitializer(declaration),
-        Option.map(callableSurface)
-      )
+      const directFunction = pipe(functionInitializer(declaration), Option.map(callableSurface))
 
       const objectModule = pipe(
         Option.fromNullable(declaration.initializer),
@@ -226,9 +198,7 @@ const statementSurface = (statement: ts.Statement): InterfaceBurdenData => {
   )
 }
 
-const interfaceBurdenElements = (
-  context: CheckContext
-): ReadonlyArray<Detection> => {
+const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection> => {
   const element = detection(context)
   const statements = context.sourceFile.statements
 

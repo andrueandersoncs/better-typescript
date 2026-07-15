@@ -8,13 +8,9 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { namedDetectionTarget } from "./support/tsNode.js"
-import {
-  dataTaggedClassHeritage,
-  typeIsWireSafe
-} from "./taggedClassPortability.js"
+import { dataTaggedClassHeritage, typeIsWireSafe } from "./taggedClassPortability.js"
 
-const message =
-  "Prefer Schema.TaggedClass when every field has a portable wire representation."
+const message = "Prefer Schema.TaggedClass when every field has a portable wire representation."
 
 const hint =
   "This Data.TaggedClass contains only wire-safe structural fields. Define those fields " +
@@ -36,10 +32,7 @@ const fieldsAreWireSafe =
 
           return explicitEmptyFields
             ? true
-            : pipe(
-                checker.getTypeFromTypeNode(fieldsNode),
-                typeIsWireSafe(checker)(fieldsNode)
-              )
+            : pipe(checker.getTypeFromTypeNode(fieldsNode), typeIsWireSafe(checker)(fieldsNode))
         }
       })
     )
@@ -48,9 +41,7 @@ const portableDataTaggedClassMatches = (context: CheckContext) => {
   const { checker } = context
   const match = detection(context)
 
-  const matches = (
-    declaration: ts.ClassDeclaration
-  ): ReadonlyArray<Detection> =>
+  const matches = (declaration: ts.ClassDeclaration): ReadonlyArray<Detection> =>
     pipe(
       dataTaggedClassHeritage(checker)(declaration),
       Option.filter(fieldsAreWireSafe(checker)),
@@ -73,5 +64,6 @@ export const preferSchemaTaggedClass: Check = nodeCheck(classDeclarationKinds)(
   ts.isClassDeclaration
 )(portableDataTaggedClassMatches)
 
-export const preferSchemaTaggedClassExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-schema-tagged-class")
+export const preferSchemaTaggedClassExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "prefer-schema-tagged-class"
+)

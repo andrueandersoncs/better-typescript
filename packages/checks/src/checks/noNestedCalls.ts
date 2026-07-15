@@ -89,9 +89,7 @@ const nestedCallMatches = (context: CheckContext) => {
 
         const callerExpression = consumer.expression
 
-        const callerName = ts.isIdentifier(callerExpression)
-          ? callerExpression.text
-          : undefined
+        const callerName = ts.isIdentifier(callerExpression) ? callerExpression.text : undefined
 
         const isPipeName = callerName === "pipe"
         const isCallConsumer = ts.isCallExpression(consumer)
@@ -120,13 +118,9 @@ const nestedCallMatches = (context: CheckContext) => {
   return matches
 }
 
-const callExpressionKinds = Array.make(
-  ts.SyntaxKind.CallExpression,
-  ts.SyntaxKind.NewExpression
-)
+const callExpressionKinds = Array.make(ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression)
 
-const check =
-  nodeCheck(callExpressionKinds)(isCallLikeExpression)(nestedCallMatches)
+const check = nodeCheck(callExpressionKinds)(isCallLikeExpression)(nestedCallMatches)
 
 export const noNestedCalls: Check = check
 

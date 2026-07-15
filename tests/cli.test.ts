@@ -1,9 +1,5 @@
 import * as assert from "node:assert/strict"
-import {
-  execFileSync,
-  spawn,
-  type ChildProcessWithoutNullStreams
-} from "node:child_process"
+import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -29,9 +25,7 @@ interface CloseResult {
   readonly signal: NodeJS.Signals | null
 }
 
-const spawnCli = (
-  args: ReadonlyArray<string>
-): ChildProcessWithoutNullStreams => {
+const spawnCli = (args: ReadonlyArray<string>): ChildProcessWithoutNullStreams => {
   const nodeArgs = ["--import", "tsx", "packages/cli/src/index.ts", ...args]
 
   const child = spawn(process.execPath, nodeArgs, {
@@ -110,17 +104,12 @@ const createSignalFreeFixture = async (): Promise<string> => {
 
   await fs.rm(sourceDir, { recursive: true, force: true })
   await fs.mkdir(sourceDir, { recursive: true })
-  await fs.writeFile(
-    path.join(sourceDir, "index.ts"),
-    "export const value = 1\n"
-  )
+  await fs.writeFile(path.join(sourceDir, "index.ts"), "export const value = 1\n")
 
   return tempDir
 }
 
-const parseNdjson = (
-  stdout: string
-): ReadonlyArray<Record<string, unknown>> => {
+const parseNdjson = (stdout: string): ReadonlyArray<Record<string, unknown>> => {
   const lines = stdout.split(/\r?\n/).filter((line) => line.length > 0)
 
   assert.ok(lines.length > 0, "expected stdout to contain NDJSON events")
@@ -184,10 +173,7 @@ const waitForOutput = async (
     const onError = (error: Error): void => {
       fail(error)
     }
-    const onClose = (
-      status: number | null,
-      signal: NodeJS.Signals | null
-    ): void => {
+    const onClose = (status: number | null, signal: NodeJS.Signals | null): void => {
       fail(
         new Error(
           `${description} was not observed before CLI closed with status ${status} and signal ${signal}`
@@ -204,14 +190,9 @@ const waitForOutput = async (
   })
 }
 
-const waitForFirstStdoutLine = async (
-  child: ChildProcessWithoutNullStreams
-): Promise<string> => {
-  const output = await waitForOutput(
-    child,
-    child.stdout,
-    "initial stdout event",
-    (text) => /\r?\n/.test(text)
+const waitForFirstStdoutLine = async (child: ChildProcessWithoutNullStreams): Promise<string> => {
+  const output = await waitForOutput(child, child.stdout, "initial stdout event", (text) =>
+    /\r?\n/.test(text)
   )
   const [firstLine] = output.split(/\r?\n/)
 
@@ -233,11 +214,8 @@ const terminateChild = async (
   child.kill("SIGTERM")
 
   try {
-    await withTimeout(
-      close,
-      "watch CLI termination",
-      terminationTimeoutMs,
-      () => child.kill("SIGKILL")
+    await withTimeout(close, "watch CLI termination", terminationTimeoutMs, () =>
+      child.kill("SIGKILL")
     )
   } catch (error) {
     child.kill("SIGKILL")
@@ -260,10 +238,7 @@ test("default CLI emits NDJSON initial signal events and exits", async () => {
     assert.ok(events.length > 0, "expected the fixture to emit signal events")
     assert.ok(events.every((event) => event._tag === "signal"))
     assert.ok(
-      events.some(
-        (event) =>
-          typeof event.text === "string" && event.text.includes("no-throw")
-      ),
+      events.some((event) => typeof event.text === "string" && event.text.includes("no-throw")),
       "expected one initial signal event to describe the no-throw rule"
     )
   } finally {
@@ -280,9 +255,7 @@ test("default CLI emits one empty NDJSON event and exits for a signal-free proje
     assert.equal(result.status, 0)
     assert.equal(result.signal, null)
     assertAnalyzingStatus(result.stderr, tempDir)
-    assert.deepEqual(parseNdjson(result.stdout), [
-      { rootPath: tempDir, _tag: "empty" }
-    ])
+    assert.deepEqual(parseNdjson(result.stdout), [{ rootPath: tempDir, _tag: "empty" }])
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }
@@ -358,16 +331,12 @@ test("root package npm link exposes the CLI binary", async () => {
       stdio: "pipe",
       timeout: commandTimeoutMs
     })
-    execFileSync(
-      npmCommand,
-      ["link", "better-typescript", "--ignore-scripts"],
-      {
-        cwd: consumerDir,
-        env: npmEnv,
-        stdio: "pipe",
-        timeout: commandTimeoutMs
-      }
-    )
+    execFileSync(npmCommand, ["link", "better-typescript", "--ignore-scripts"], {
+      cwd: consumerDir,
+      env: npmEnv,
+      stdio: "pipe",
+      timeout: commandTimeoutMs
+    })
 
     const stdout = execFileSync(
       path.join(consumerDir, "node_modules", ".bin", linkedCliCommand),

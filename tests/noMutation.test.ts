@@ -31,11 +31,7 @@ const hint =
   "structure whose API contract requires assignment (process.exitCode, a WebSocket " +
   "handler slot, a React ref cell) is permitted."
 
-const expectedSignal = (
-  name: string,
-  line: number,
-  column: number
-): ExpectedDetection => ({
+const expectedSignal = (name: string, line: number, column: number): ExpectedDetection => ({
   name,
   fileName: "src/cases.ts",
   line,
@@ -126,9 +122,7 @@ const runNoMutationFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noMutation)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noMutation)(project)))
   )
 
   return projectElements.flat()

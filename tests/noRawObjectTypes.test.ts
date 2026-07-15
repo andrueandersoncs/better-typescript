@@ -16,8 +16,7 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-raw-object-types")
 
-const parameterMessage =
-  "Parameter uses an anonymous object type instead of a named type."
+const parameterMessage = "Parameter uses an anonymous object type instead of a named type."
 const parameterHint =
   "Reuse a named data structure that already expresses this value's semantics. " +
   "If none exists, reconsider whether this function is a real abstraction or a " +
@@ -25,8 +24,7 @@ const parameterHint =
   "only when the data has meaning independent of this parameter list; never replace " +
   "it with another anonymous object type."
 
-const returnMessage =
-  "Return type uses an anonymous object type instead of a named type."
+const returnMessage = "Return type uses an anonymous object type instead of a named type."
 const returnHint =
   "Define a named type or interface that describes the data's domain meaning — " +
   "for example UserProfile instead of { name: string, age: number }. " +
@@ -173,9 +171,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoRawObjectTypesFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoRawObjectTypesFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

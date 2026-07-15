@@ -9,15 +9,10 @@ import {
   RefactorExample
 } from "./data.js"
 
-export const exampleSnippet = (
-  filePath: string,
-  code: string
-): ExampleSnippet => new ExampleSnippet({ filePath, code })
+export const exampleSnippet = (filePath: string, code: string): ExampleSnippet =>
+  new ExampleSnippet({ filePath, code })
 
-export const refactorExample = (
-  bad: ExampleSnippet,
-  good: ExampleSnippet
-): RefactorExample => {
+export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet): RefactorExample => {
   const badExamples = Array.of(bad)
   const goodExamples = Array.of(good)
 
@@ -54,78 +49,74 @@ const directoryExists = (absolutePath: string): boolean => {
 
 const collectTypeScriptFiles: (
   directory: string
-) => Effect.Effect<ReadonlyArray<string>, ExampleLoadError> = Effect.fn(
-  "collectTypeScriptFiles"
-)(function* (directory: string) {
-  const entries = yield* readDirectoryEntries(directory)
+) => Effect.Effect<ReadonlyArray<string>, ExampleLoadError> = Effect.fn("collectTypeScriptFiles")(
+  function* (directory: string) {
+    const entries = yield* readDirectoryEntries(directory)
 
-  const nested = yield* Effect.forEach(entries, (entry) => {
-    const absolute = path.join(directory, entry.name)
+    const nested = yield* Effect.forEach(entries, (entry) => {
+      const absolute = path.join(directory, entry.name)
 
-    if (entry.isDirectory()) {
-      return collectTypeScriptFiles(absolute)
-    }
+      if (entry.isDirectory()) {
+        return collectTypeScriptFiles(absolute)
+      }
 
-    const typescript = entry.name.endsWith(".ts")
-    const declaration = entry.name.endsWith(".d.ts")
-    const notDeclaration = !declaration
-    const isSource = typescript && notDeclaration
-    const keep = entry.isFile() && isSource
+      const typescript = entry.name.endsWith(".ts")
+      const declaration = entry.name.endsWith(".d.ts")
+      const notDeclaration = !declaration
+      const isSource = typescript && notDeclaration
+      const keep = entry.isFile() && isSource
 
-    const paths = keep ? Array.of(absolute) : Array.empty()
+      const paths = keep ? Array.of(absolute) : Array.empty()
 
-    return Effect.succeed(paths)
-  })
+      return Effect.succeed(paths)
+    })
 
-  const flattened = Array.flatten(nested)
+    const flattened = Array.flatten(nested)
 
-  return Array.sort(flattened, byPath)
-})
+    return Array.sort(flattened, byPath)
+  }
+)
 
-const readExampleTree: (
-  treeRoot: string
-) => Effect.Effect<NonEmptyExampleTree, ExampleLoadError> = Effect.fn(
-  "readExampleTree"
-)(function* (treeRoot: string) {
-  const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
+const readExampleTree: (treeRoot: string) => Effect.Effect<NonEmptyExampleTree, ExampleLoadError> =
+  Effect.fn("readExampleTree")(function* (treeRoot: string) {
+    const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
 
-  const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
-    Effect.gen(function* () {
-      const code = yield* Effect.try({
-        try: () => {
-          const text = fs.readFileSync(absoluteFile, "utf8")
+    const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
+      Effect.gen(function* () {
+        const code = yield* Effect.try({
+          try: () => {
+            const text = fs.readFileSync(absoluteFile, "utf8")
 
-          return text.endsWith("\n") ? text.slice(0, -1) : text
-        },
-        catch: () =>
-          new ExampleLoadError({
-            message: `Unable to read example file: ${absoluteFile}`
-          })
+            return text.endsWith("\n") ? text.slice(0, -1) : text
+          },
+          catch: () =>
+            new ExampleLoadError({
+              message: `Unable to read example file: ${absoluteFile}`
+            })
+        })
+
+        const relative = path.relative(treeRoot, absoluteFile)
+        const segments = relative.split(path.sep)
+        const filePath = Array.join(segments, "/")
+
+        return exampleSnippet(filePath, code)
       })
+    )
 
-      const relative = path.relative(treeRoot, absoluteFile)
-      const segments = relative.split(path.sep)
-      const filePath = Array.join(segments, "/")
-
-      return exampleSnippet(filePath, code)
-    })
-  )
-
-  return yield* pipe(
-    snippets,
-    Array.matchLeft({
-      onEmpty: () =>
-        pipe(
-          new ExampleLoadError({
-            message: `Example tree has no TypeScript files: ${treeRoot}`
-          }),
-          Effect.fail
-        ),
-      onNonEmpty: (first, rest) =>
-        pipe(Array.prepend(rest, first), Effect.succeed)
-    })
-  )
-})
+    return yield* pipe(
+      snippets,
+      Array.matchLeft({
+        onEmpty: () =>
+          pipe(
+            new ExampleLoadError({
+              message: `Example tree has no TypeScript files: ${treeRoot}`
+            }),
+            Effect.fail
+          ),
+        onNonEmpty: (first, rest) => pipe(Array.prepend(rest, first), Effect.succeed)
+      })
+    )
+  })
 
 export const loadRefactorExamplesAt: (
   exampleRoot: string
@@ -179,8 +170,7 @@ export const loadRefactorExamplesAt: (
           }),
           Effect.fail
         ),
-      onNonEmpty: (first, rest) =>
-        pipe(Array.prepend(rest, first), Effect.succeed)
+      onNonEmpty: (first, rest) => pipe(Array.prepend(rest, first), Effect.succeed)
     })
   )
 })

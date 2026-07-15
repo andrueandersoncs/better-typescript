@@ -14,13 +14,8 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-conditional-return"
-)
-const expectedMessage =
-  "Avoid if statements that only choose between two return values."
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-conditional-return")
+const expectedMessage = "Avoid if statements that only choose between two return values."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
@@ -112,9 +107,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferConditionalReturnFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferConditionalReturnFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

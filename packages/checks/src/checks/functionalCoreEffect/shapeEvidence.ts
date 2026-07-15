@@ -8,10 +8,7 @@ import {
 import { detection } from "@better-typescript/core/engine/location"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type {
-  Check,
-  Subscription
-} from "@better-typescript/core/engine/check/data"
+import type { Check, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { FunctionalCoreShapeData, type ArchitectureRole } from "./data.js"
 import {
@@ -69,8 +66,7 @@ const emptyServiceSurfaceMetrics = new ServiceSurfaceMetrics({
   effectfulMemberCount: 0
 })
 
-const shapeMessage =
-  "Functional-core architecture shape evidence for derived advice."
+const shapeMessage = "Functional-core architecture shape evidence for derived advice."
 
 const shapeHint =
   "Use this silent evidence only after the structural threshold is met; do not treat one branch or helper as a local defect."
@@ -85,10 +81,7 @@ const isBranchNode = (node: ts.Node): boolean => {
   return Array.some(checks, Boolean)
 }
 
-const belongsToFunction = (
-  node: ts.Node,
-  owner: ts.FunctionLikeDeclaration
-): boolean =>
+const belongsToFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration): boolean =>
   pipe(
     enclosingFunctionLike(node),
     Option.exists((declaration) => declaration === owner)
@@ -117,10 +110,7 @@ const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
   Exit: true
 }
 
-const nestedBeneathYield = (
-  node: ts.Node,
-  owner: ts.FunctionLikeDeclaration
-): boolean => {
+const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration): boolean => {
   const visit = (current: ts.Node): boolean => {
     if (current === owner || current === owner.body) {
       return false
@@ -144,9 +134,8 @@ const callOwnedByEffectControlRuntime = (
     importedMemberAt(checker, node.expression),
     Option.exists((member) => {
       if (member.moduleSpecifier.startsWith("effect/")) {
-        const namespace = member.moduleSpecifier
-          .slice("effect/".length)
-          .split("/")[0]
+        const namespace = member.moduleSpecifier.slice("effect/".length).split("/")[0]
+
         return effectControlRuntimeNamespaces[namespace] === true
       }
 
@@ -155,10 +144,7 @@ const callOwnedByEffectControlRuntime = (
       }
 
       const namespace = member.path[0]
-      return (
-        namespace !== undefined &&
-        effectControlRuntimeNamespaces[namespace] === true
-      )
+      return namespace !== undefined && effectControlRuntimeNamespaces[namespace] === true
     })
   )
 
@@ -209,44 +195,28 @@ const callIsRecognizedCompositionApi = (
   checker: ts.TypeChecker,
   node: ts.CallExpression
 ): boolean => {
-  const layer = importedEffectApiAt(
-    checker,
-    node.expression,
-    "Layer",
-    compositionLayerNames
-  )
-  const effect = importedEffectApiAt(
-    checker,
-    node.expression,
-    "Effect",
-    compositionEffectNames
-  )
-  const runtime = importedEffectApiAt(
-    checker,
-    node.expression,
-    "Runtime",
-    compositionRuntimeNames
-  )
+  const layer = importedEffectApiAt(checker, node.expression, "Layer", compositionLayerNames)
+
+  const effect = importedEffectApiAt(checker, node.expression, "Effect", compositionEffectNames)
+
+  const runtime = importedEffectApiAt(checker, node.expression, "Runtime", compositionRuntimeNames)
+
   const managedRuntime = importedEffectApiAt(
     checker,
     node.expression,
     "ManagedRuntime",
     Array.append(compositionRuntimeNames, "make")
   )
+
   const managedRuntimeMethod =
     ts.isPropertyAccessExpression(node.expression) &&
-    isManagedRuntimeMethodAccess(
-      checker,
-      node.expression,
-      compositionRuntimeNames
-    )
+    isManagedRuntimeMethodAccess(checker, node.expression, compositionRuntimeNames)
+
   const runMain = pipe(
     importedMemberAt(checker, node.expression),
     Option.exists((member) => {
-      const name = pipe(
-        Array.last(member.path),
-        Option.getOrElse(Function.constant(""))
-      )
+      const name = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
+
       const platformRuntime =
         member.moduleSpecifier.startsWith("@effect/platform-node") ||
         member.moduleSpecifier.startsWith("@effect/platform-bun") ||
@@ -256,25 +226,12 @@ const callIsRecognizedCompositionApi = (
     })
   )
 
-  return (
-    layer ||
-    effect ||
-    runtime ||
-    managedRuntime ||
-    managedRuntimeMethod ||
-    runMain
-  )
+  return layer || effect || runtime || managedRuntime || managedRuntimeMethod || runMain
 }
 
-const nestedInRecognizedCompositionApi = (
-  checker: ts.TypeChecker,
-  node: ts.Node
-): boolean => {
+const nestedInRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.Node): boolean => {
   const visit = (current: ts.Node): boolean => {
-    if (
-      ts.isCallExpression(current) &&
-      callIsRecognizedCompositionApi(checker, current)
-    ) {
+    if (ts.isCallExpression(current) && callIsRecognizedCompositionApi(checker, current)) {
       return true
     }
 
@@ -284,10 +241,7 @@ const nestedInRecognizedCompositionApi = (
   return pipe(Option.fromNullable(node.parent), Option.exists(visit))
 }
 
-const resolvedSymbolAt = (
-  checker: ts.TypeChecker,
-  node: ts.Node
-): Option.Option<ts.Symbol> =>
+const resolvedSymbolAt = (checker: ts.TypeChecker, node: ts.Node): Option.Option<ts.Symbol> =>
   pipe(
     checker.getSymbolAtLocation(node),
     Option.fromNullable,
@@ -297,10 +251,7 @@ const resolvedSymbolAt = (
     })
   )
 
-const isServiceTagExpression = (
-  checker: ts.TypeChecker,
-  expression: ts.Expression
-): boolean =>
+const isServiceTagExpression = (checker: ts.TypeChecker, expression: ts.Expression): boolean =>
   pipe(
     resolvedSymbolAt(checker, expression),
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
@@ -310,28 +261,16 @@ const isServiceTagExpression = (
           return false
         }
 
-        const contextTag = classExtendsEffectApi(
-          checker,
-          declaration,
-          "Context",
-          "Tag"
-        )
-        const effectService = classExtendsEffectApi(
-          checker,
-          declaration,
-          "Effect",
-          "Service"
-        )
+        const contextTag = classExtendsEffectApi(checker, declaration, "Context", "Tag")
+
+        const effectService = classExtendsEffectApi(checker, declaration, "Effect", "Service")
 
         return contextTag || effectService
       })
     )
   )
 
-const addServiceName = (
-  names: ReadonlyArray<string>,
-  name: string
-): ReadonlyArray<string> =>
+const addServiceName = (names: ReadonlyArray<string>, name: string): ReadonlyArray<string> =>
   Array.contains(names, name) ? names : Array.append(names, name)
 
 const collectOrchestratorMetrics = (
@@ -350,10 +289,7 @@ const collectOrchestratorMetrics = (
       })
     }
 
-    if (
-      ts.isCallExpression(node) &&
-      isQualifyingTransformationCall(context, owner, node)
-    ) {
+    if (ts.isCallExpression(node) && isQualifyingTransformationCall(context, owner, node)) {
       return new OrchestratorMetrics({
         ...metrics,
         transformationCount: metrics.transformationCount + 1
@@ -372,10 +308,7 @@ const collectOrchestratorMetrics = (
     return new OrchestratorMetrics({
       ...metrics,
       yieldCount: metrics.yieldCount + 1,
-      serviceNames: addServiceName(
-        metrics.serviceNames,
-        node.expression.getText()
-      )
+      serviceNames: addServiceName(metrics.serviceNames, node.expression.getText())
     })
   })(owner.body ?? owner)(emptyOrchestratorMetrics)
 
@@ -388,10 +321,7 @@ const orchestratorFunction = (
       ts.isArrowFunction(argument) || ts.isFunctionExpression(argument)
   )
 
-const callIsEffectOrchestrator = (
-  context: CheckContext,
-  node: ts.CallExpression
-): boolean => {
+const callIsEffectOrchestrator = (context: CheckContext, node: ts.CallExpression): boolean => {
   const callee = unwrapCallee(node.expression)
 
   return importedEffectApiAt(
@@ -406,18 +336,15 @@ const shapeDetection = (
   context: CheckContext,
   node: ts.Node,
   data: FunctionalCoreShapeData
-): Detection =>
-  detection(context)({ node, message: shapeMessage, hint: shapeHint, data })
+): Detection => detection(context)({ node, message: shapeMessage, hint: shapeHint, data })
 
 const orchestratorElements =
   (index: FunctionalCoreEffectIndex) =>
   (context: CheckContext) =>
   (node: ts.CallExpression): ReadonlyArray<Detection> => {
     const role = roleForSourceFile(index, context.sourceFile)
-    const applicationRole = Option.exists(
-      role,
-      (value) => value === "application"
-    )
+
+    const applicationRole = Option.exists(role, (value) => value === "application")
 
     if (!applicationRole || !callIsEffectOrchestrator(context, node)) {
       return Array.empty()
@@ -431,10 +358,7 @@ const orchestratorElements =
         const hasSeveralBranches = metrics.branchCount >= 2
         const hasSeveralTransformations = metrics.transformationCount >= 3
 
-        if (
-          !hasSeveralServices ||
-          !(hasSeveralBranches || hasSeveralTransformations)
-        ) {
+        if (!hasSeveralServices || !(hasSeveralBranches || hasSeveralTransformations)) {
           return Array.empty<Detection>()
         }
 
@@ -472,9 +396,7 @@ const functionResultExpression = (
     Array.head,
     Option.filter(() => body.statements.length === 1),
     Option.flatMap((statement) =>
-      ts.isReturnStatement(statement)
-        ? Option.fromNullable(statement.expression)
-        : Option.none()
+      ts.isReturnStatement(statement) ? Option.fromNullable(statement.expression) : Option.none()
     )
   )
 }
@@ -488,22 +410,20 @@ const functionReturnsComposition = (
     Option.map(unwrapTransparentExpression),
     Option.exists(
       (expression) =>
-        ts.isCallExpression(expression) &&
-        callIsRecognizedCompositionApi(checker, expression)
+        ts.isCallExpression(expression) && callIsRecognizedCompositionApi(checker, expression)
     )
   )
 
-const collectFileShape = (
-  context: CheckContext,
-  role: ArchitectureRole
-): FileShapeMetrics =>
+const collectFileShape = (context: CheckContext, role: ArchitectureRole): FileShapeMetrics =>
   foldAst((metrics: FileShapeMetrics, node: ts.Node) => {
     const nestedComposition =
       role === "root" && nestedInRecognizedCompositionApi(context.checker, node)
+
     const returnedComposition =
       role === "root" &&
       isRuntimeFunctionLike(node) &&
       functionReturnsComposition(context.checker, node)
+
     const excludeComposition = nestedComposition || returnedComposition
 
     if (excludeComposition) {
@@ -533,16 +453,14 @@ const fileShapeData = (
 ): Option.Option<FunctionalCoreShapeData> => {
   const adapterEvidence =
     role === "adapter" && metrics.branchCount >= 3 && metrics.functionCount >= 2
-  const rootEvidence =
-    role === "root" && (metrics.branchCount >= 2 || metrics.functionCount >= 2)
+
+  const rootEvidence = role === "root" && (metrics.branchCount >= 2 || metrics.functionCount >= 2)
 
   if (!adapterEvidence && !rootEvidence) {
     return Option.none()
   }
 
-  const kind = adapterEvidence
-    ? "adapter-business-logic"
-    : "thick-composition-root"
+  const kind = adapterEvidence ? "adapter-business-logic" : "thick-composition-root"
 
   return Option.some(
     new FunctionalCoreShapeData({
@@ -563,9 +481,7 @@ const fileShapeElements =
     pipe(
       roleForSourceFile(index, context.sourceFile),
       Option.filter((role) => role === "adapter" || role === "root"),
-      Option.flatMap((role) =>
-        fileShapeData(role, collectFileShape(context, role))
-      ),
+      Option.flatMap((role) => fileShapeData(role, collectFileShape(context, role))),
       Option.map((data) => shapeDetection(context, context.sourceFile, data)),
       Option.toArray
     )
@@ -581,17 +497,10 @@ const contextServiceTypeNode = (
     Array.flatMap((clause) => Array.fromIterable(clause.types)),
     Array.findFirst((heritage) => {
       const callee = unwrapCallee(heritage.expression)
-      return importedEffectApiAt(
-        context.checker,
-        callee,
-        "Context",
-        Array.of("Tag")
-      )
+      return importedEffectApiAt(context.checker, callee, "Context", Array.of("Tag"))
     }),
     Option.flatMap((heritage) => {
-      const findTypeArgument = (
-        expression: ts.Expression
-      ): Option.Option<ts.TypeNode> => {
+      const findTypeArgument = (expression: ts.Expression): Option.Option<ts.TypeNode> => {
         if (ts.isCallExpression(expression)) {
           const arguments_ = expression.typeArguments ?? Array.empty()
 
@@ -610,9 +519,7 @@ const contextServiceTypeNode = (
   )
 }
 
-const objectReturnedBy = (
-  expression: ts.Expression
-): Option.Option<ts.ObjectLiteralExpression> => {
+const objectReturnedBy = (expression: ts.Expression): Option.Option<ts.ObjectLiteralExpression> => {
   const unwrapped = unwrapTransparentExpression(expression)
 
   if (ts.isObjectLiteralExpression(unwrapped)) {
@@ -655,9 +562,7 @@ const effectServiceObject = (
   context: CheckContext,
   declaration: ts.ClassDeclaration
 ): Option.Option<ts.ObjectLiteralExpression> => {
-  if (
-    Option.isSome(effectServiceDependencyProperty(context.checker, declaration))
-  ) {
+  if (Option.isSome(effectServiceDependencyProperty(context.checker, declaration))) {
     return Option.none()
   }
 
@@ -674,9 +579,7 @@ const effectServiceObject = (
         Option.orElse(() =>
           pipe(
             propertyAssignmentNamed(config, Array.of("effect")),
-            Option.flatMap((property) =>
-              effectWrappedServiceObject(context, property.initializer)
-            )
+            Option.flatMap((property) => effectWrappedServiceObject(context, property.initializer))
           )
         )
       )
@@ -684,20 +587,10 @@ const effectServiceObject = (
   )
 }
 
-const typeLooksEffectful = (
-  checker: ts.TypeChecker,
-  type: ts.Type
-): boolean => {
+const typeLooksEffectful = (checker: ts.TypeChecker, type: ts.Type): boolean => {
   const rendered = checker.typeToString(type)
-  const markers = Array.make(
-    "Effect<",
-    "Stream<",
-    "Channel<",
-    "Sink<",
-    "Ref<",
-    "Queue<",
-    "PubSub<"
-  )
+
+  const markers = Array.make("Effect<", "Stream<", "Channel<", "Sink<", "Ref<", "Queue<", "PubSub<")
 
   return Array.some(markers, (marker) => rendered.includes(marker))
 }
@@ -707,37 +600,34 @@ const serviceSurfaceMetrics = (
   type: ts.Type,
   location: ts.Node
 ): ServiceSurfaceMetrics =>
-  Array.reduce(
-    type.getProperties(),
-    emptyServiceSurfaceMetrics,
-    (metrics, property) => {
-      const propertyType = checker.getTypeOfSymbolAtLocation(property, location)
-      const signatures = propertyType.getCallSignatures()
+  Array.reduce(type.getProperties(), emptyServiceSurfaceMetrics, (metrics, property) => {
+    const propertyType = checker.getTypeOfSymbolAtLocation(property, location)
+    const signatures = propertyType.getCallSignatures()
 
-      if (signatures.length === 0) {
-        return new ServiceSurfaceMetrics({
-          ...metrics,
-          nonFunctionCount: metrics.nonFunctionCount + 1
-        })
-      }
-
-      const effectful = Array.some(signatures, (signature) =>
-        typeLooksEffectful(checker, signature.getReturnType())
-      )
-
+    if (signatures.length === 0) {
       return new ServiceSurfaceMetrics({
-        functionCount: metrics.functionCount + 1,
-        nonFunctionCount: metrics.nonFunctionCount,
-        effectfulMemberCount: metrics.effectfulMemberCount + (effectful ? 1 : 0)
+        ...metrics,
+        nonFunctionCount: metrics.nonFunctionCount + 1
       })
     }
-  )
+
+    const effectful = Array.some(signatures, (signature) =>
+      typeLooksEffectful(checker, signature.getReturnType())
+    )
+
+    return new ServiceSurfaceMetrics({
+      functionCount: metrics.functionCount + 1,
+      nonFunctionCount: metrics.nonFunctionCount,
+      effectfulMemberCount: metrics.effectfulMemberCount + (effectful ? 1 : 0)
+    })
+  })
 
 const pureServiceElements =
   (index: FunctionalCoreEffectIndex) =>
   (context: CheckContext) =>
   (node: ts.ClassDeclaration): ReadonlyArray<Detection> => {
     const role = roleForSourceFile(index, context.sourceFile)
+
     const relevantRole = pipe(
       role,
       Option.filter((value) => value === "port" || value === "application")
@@ -753,19 +643,13 @@ const pureServiceElements =
     const surface = pipe(
       contextTypeNode,
       Option.map((typeNode) =>
-        Tuple.make(
-          context.checker.getTypeFromTypeNode(typeNode),
-          typeNode as ts.Node
-        )
+        Tuple.make(context.checker.getTypeFromTypeNode(typeNode), typeNode as ts.Node)
       ),
       Option.orElse(() =>
         pipe(
           serviceObject,
           Option.map((object) =>
-            Tuple.make(
-              context.checker.getTypeAtLocation(object),
-              object as ts.Node
-            )
+            Tuple.make(context.checker.getTypeAtLocation(object), object as ts.Node)
           )
         )
       )
@@ -773,9 +657,7 @@ const pureServiceElements =
 
     return pipe(
       surface,
-      Option.map(([type, location]) =>
-        serviceSurfaceMetrics(context.checker, type, location)
-      ),
+      Option.map(([type, location]) => serviceSurfaceMetrics(context.checker, type, location)),
       Option.filter((metrics) => {
         const hasFunctions = metrics.functionCount > 0
         const allFunctions = metrics.nonFunctionCount === 0
@@ -792,6 +674,7 @@ const pureServiceElements =
           effectfulMemberCount: metrics.effectfulMemberCount,
           transformationCount: 0
         })
+
         const target = pipe(
           Option.fromNullable(node.name),
           Option.getOrElse(Function.constant(node))
@@ -806,22 +689,14 @@ const pureServiceElements =
 const callKinds = Array.of(ts.SyntaxKind.CallExpression)
 const classKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-const subscriptionsFor = (
-  index: FunctionalCoreEffectIndex
-): ReadonlyArray<Subscription> =>
+const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subscription> =>
   Array.flatten(
     Array.make(
-      nodeSubscriptions(callKinds)(ts.isCallExpression)(
-        orchestratorElements(index)
-      ),
-      nodeSubscriptions(classKinds)(ts.isClassDeclaration)(
-        pureServiceElements(index)
-      ),
+      nodeSubscriptions(callKinds)(ts.isCallExpression)(orchestratorElements(index)),
+      nodeSubscriptions(classKinds)(ts.isClassDeclaration)(pureServiceElements(index)),
       fileSubscriptions(fileShapeElements(index))
     )
   )
 
-export const makeFunctionalCoreShapeEvidence = (
-  policy: FunctionalCoreEffectPolicy
-): Check =>
+export const makeFunctionalCoreShapeEvidence = (policy: FunctionalCoreEffectPolicy): Check =>
   withProgramIndex(buildFunctionalCoreEffectIndex(policy))(subscriptionsFor)

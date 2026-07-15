@@ -18,9 +18,7 @@ const hint =
 const objectLiteralPropertyCount = (expression: ts.Expression): number => {
   const unwrapped = unwrapExpression(expression)
 
-  return ts.isObjectLiteralExpression(unwrapped)
-    ? unwrapped.properties.length
-    : 0
+  return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
 }
 
 const hasNoProperties = (expression: ts.Expression): boolean =>
@@ -39,28 +37,16 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
     const emptyWhenTrue = hasNoProperties(expression.whenTrue)
     const nonEmptyWhenFalse = hasSomeProperties(expression.whenFalse)
 
-    const emptyThenNonEmptyConditions = Array.make(
-      emptyWhenTrue,
-      nonEmptyWhenFalse
-    )
+    const emptyThenNonEmptyConditions = Array.make(emptyWhenTrue, nonEmptyWhenFalse)
 
-    const emptyThenNonEmptyElse = Array.every(
-      emptyThenNonEmptyConditions,
-      Boolean
-    )
+    const emptyThenNonEmptyElse = Array.every(emptyThenNonEmptyConditions, Boolean)
 
     const nonEmptyWhenTrue = hasSomeProperties(expression.whenTrue)
     const emptyWhenFalse = hasNoProperties(expression.whenFalse)
 
-    const nonEmptyThenEmptyConditions = Array.make(
-      nonEmptyWhenTrue,
-      emptyWhenFalse
-    )
+    const nonEmptyThenEmptyConditions = Array.make(nonEmptyWhenTrue, emptyWhenFalse)
 
-    const nonEmptyThenEmptyElse = Array.every(
-      nonEmptyThenEmptyConditions,
-      Boolean
-    )
+    const nonEmptyThenEmptyElse = Array.every(nonEmptyThenEmptyConditions, Boolean)
 
     const checks = Array.make(emptyThenNonEmptyElse, nonEmptyThenEmptyElse)
     const detection = match({ node: spread, message, hint })
@@ -72,9 +58,7 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
 
 const kinds = Array.of(ts.SyntaxKind.SpreadAssignment)
 
-const check = nodeCheck(kinds)(ts.isSpreadAssignment)(
-  conditionalObjectSpreadMatches
-)
+const check = nodeCheck(kinds)(ts.isSpreadAssignment)(conditionalObjectSpreadMatches)
 
 export const preferEffectRecordFilterMap: Check = check
 

@@ -50,20 +50,14 @@ test("concept-control reports structural concept debt before accepting rationale
   ]
 
   const details = signals.map(
-    (signal) =>
-      `${signal.location.path}:${signal.location.line} ${kindOf(signal)}`
+    (signal) => `${signal.location.path}:${signal.location.line} ${kindOf(signal)}`
   )
 
   for (const expected of expectedKinds) {
-    assert.ok(
-      kinds.includes(expected),
-      `missing ${expected}: ${details.join(", ")}`
-    )
+    assert.ok(kinds.includes(expected), `missing ${expected}: ${details.join(", ")}`)
   }
 
-  const allowedSignals = signals.filter((signal) =>
-    signal.location.path.includes("src/allowed/")
-  )
+  const allowedSignals = signals.filter((signal) => signal.location.path.includes("src/allowed/"))
 
   assert.deepEqual(allowedSignals, [])
 })

@@ -24,11 +24,7 @@ import {
 } from "@better-typescript/checks/functionalCoreEffect/policy"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "functional-core-effect"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "functional-core-effect")
 
 const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
@@ -57,9 +53,7 @@ const signalNamed = (signals: ReadonlyArray<Signal>, name: string): Signal => {
   return signal
 }
 
-const collectAdvice = (
-  signals: ReadonlyArray<Signal>
-): Promise<ReadonlyArray<Advice>> =>
+const collectAdvice = (signals: ReadonlyArray<Signal>): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(
     pipe(
       functionalCoreEffectWiring.derive(signals),
@@ -104,9 +98,7 @@ test("conventional and explicit role classifiers are deterministic", () => {
     Option.some("test")
   )
   assert.equal(
-    Option.isNone(
-      conventionalArchitectureRoleOf("packages/orders/src/shared/order.ts")
-    ),
+    Option.isNone(conventionalArchitectureRoleOf("packages/orders/src/shared/order.ts")),
     true
   )
 
@@ -190,27 +182,19 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
     false
   )
   assert.equal(
-    boundary.detections.some(
-      (item) => item.location.path === "src/domain/pure.ts"
-    ),
+    boundary.detections.some((item) => item.location.path === "src/domain/pure.ts"),
     false
   )
   assert.equal(
-    boundary.detections.some(
-      (item) => item.location.path === "src/adapters/orderLive.ts"
-    ),
+    boundary.detections.some((item) => item.location.path === "src/adapters/orderLive.ts"),
     false
   )
   assert.equal(
-    boundary.detections.some(
-      (item) => item.location.path === "src/domain/shadowedPromise.ts"
-    ),
+    boundary.detections.some((item) => item.location.path === "src/domain/shadowedPromise.ts"),
     false
   )
   assert.equal(
-    boundary.detections.some(
-      (item) => item.location.path === "src/domain/namespacePure.ts"
-    ),
+    boundary.detections.some((item) => item.location.path === "src/domain/namespacePure.ts"),
     false
   )
 })
@@ -230,9 +214,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
   ])
 
   const advice = await collectAdvice(signals)
-  const actualAdvice = advice
-    .map((item) => `${item.location.path}:${item.title}`)
-    .sort()
+  const actualAdvice = advice.map((item) => `${item.location.path}:${item.title}`).sort()
 
   assert.deepEqual(actualAdvice, [
     "src/adapters/businessPolicy.ts:business logic in an adapter",
@@ -246,9 +228,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
 })
 
 test("wiring exposes one reported policy check and silent shape evidence", () => {
-  const checks = makeFunctionalCoreEffectChecks(
-    defaultFunctionalCoreEffectPolicy
-  )
+  const checks = makeFunctionalCoreEffectChecks(defaultFunctionalCoreEffectPolicy)
 
   assert.deepEqual(
     checks.map((check) => [check.name, check.reported]),

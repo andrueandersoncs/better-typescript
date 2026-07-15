@@ -31,9 +31,8 @@ const throwStatementElements = (context: CheckContext) => {
 
 const throwStatementKinds = Array.of(throwStatementKind)
 
-export const noThrow: Check = nodeCheck(throwStatementKinds)(
-  ts.isThrowStatement
-)(throwStatementElements)
+export const noThrow: Check = nodeCheck(throwStatementKinds)(ts.isThrowStatement)(
+  throwStatementElements
+)
 
-export const noThrowExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-throw")
+export const noThrowExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-throw")

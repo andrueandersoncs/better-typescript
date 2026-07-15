@@ -11,8 +11,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const message =
-  "Avoid wrapping a function call that only forwards its argument."
+const message = "Avoid wrapping a function call that only forwards its argument."
 
 const etaHint =
   "Eta-reduce this arrow to the function value itself (pass f instead of " +
@@ -62,16 +61,11 @@ const etaReductionMatches = (context: CheckContext) => {
     return isModule || ambientOrModule
   }
 
-  const propertyAccessRequiresThis = (
-    propertyAccess: ts.PropertyAccessExpression
-  ): boolean => {
+  const propertyAccessRequiresThis = (propertyAccess: ts.PropertyAccessExpression): boolean => {
     const namedSymbol = symbolOption(propertyAccess.name)
     const accessSymbol = symbolOption(propertyAccess)
 
-    const propertySymbol = pipe(
-      namedSymbol,
-      Option.orElse(Function.constant(accessSymbol))
-    )
+    const propertySymbol = pipe(namedSymbol, Option.orElse(Function.constant(accessSymbol)))
 
     const isMethod = pipe(
       propertySymbol,
@@ -103,9 +97,7 @@ const etaReductionMatches = (context: CheckContext) => {
     const isFree = isCall || isIdentifier
     const isPropertyAccess = ts.isPropertyAccessExpression(unwrapped)
 
-    const propertyNeedsThis = isPropertyAccess
-      ? propertyAccessRequiresThis(unwrapped)
-      : true
+    const propertyNeedsThis = isPropertyAccess ? propertyAccessRequiresThis(unwrapped) : true
 
     const isBound = isFree === false
     const boundCalleeNeedsThis = isBound && propertyNeedsThis
@@ -128,9 +120,7 @@ const etaReductionMatches = (context: CheckContext) => {
 
   const unaryCalleeTower =
     (parameterName: string) =>
-    (
-      expression: ts.Expression
-    ): Option.Option<ReadonlyArray<ts.Expression>> => {
+    (expression: ts.Expression): Option.Option<ReadonlyArray<ts.Expression>> => {
       const unwrapped = unwrapCarrier(expression)
 
       const callOption = pipe(
@@ -148,13 +138,9 @@ const etaReductionMatches = (context: CheckContext) => {
             const mentionCount = referenceCount(parameterName)(callee)
             const calleeMentionsParameter = mentionCount > 0
 
-            yield* Option.liftPredicate((value: boolean) => !value)(
-              calleeMentionsParameter
-            )
+            yield* Option.liftPredicate((value: boolean) => !value)(calleeMentionsParameter)
 
-            const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(
-              argument
-            )
+            const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(argument)
 
             const argumentIsParameter = pipe(
               argumentIdentifier,
@@ -180,24 +166,13 @@ const etaReductionMatches = (context: CheckContext) => {
         const hasOneParameter = arrowFunction.parameters.length === 1
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
-        const parameter = yield* Option.fromNullable(
-          arrowFunction.parameters[0]
-        )
+        const parameter = yield* Option.fromNullable(arrowFunction.parameters[0])
 
-        const hasRest = pipe(
-          Option.fromNullable(parameter.dotDotDotToken),
-          Option.isSome
-        )
+        const hasRest = pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
 
-        const hasDefault = pipe(
-          Option.fromNullable(parameter.initializer),
-          Option.isSome
-        )
+        const hasDefault = pipe(Option.fromNullable(parameter.initializer), Option.isSome)
 
-        const isOptional = pipe(
-          Option.fromNullable(parameter.questionToken),
-          Option.isSome
-        )
+        const isOptional = pipe(Option.fromNullable(parameter.questionToken), Option.isSome)
 
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
@@ -212,10 +187,7 @@ const etaReductionMatches = (context: CheckContext) => {
         const callees = yield* unaryCalleeTower(parameterName)(body)
         const hasSteps = Array.length(callees) > 0
 
-        const freeCallees = Array.every(
-          callees,
-          (callee) => !calleeRequiresThis(callee)
-        )
+        const freeCallees = Array.every(callees, (callee) => !calleeRequiresThis(callee))
 
         yield* Option.liftPredicate((value: boolean) => value)(hasSteps)
         yield* Option.liftPredicate((value: boolean) => value)(freeCallees)
@@ -236,9 +208,7 @@ const etaReductionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
-  etaReductionMatches
-)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(etaReductionMatches)
 
 export const preferEtaReduction: Check = check
 

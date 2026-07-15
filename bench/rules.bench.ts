@@ -14,31 +14,22 @@ import {
   architectureExploreChecks,
   architectureExploreDerive
 } from "@better-typescript/checks/preset/architectureExploreWiring"
-import {
-  discoverWorkspace,
-  loadProject
-} from "@better-typescript/core/project/loadProject"
+import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
 
 const benchDir = path.dirname(fileURLToPath(import.meta.url))
 const cliArguments = process.argv.slice(2)
 const targetPath =
-  cliArguments.find((argument) => !argument.startsWith("--")) ??
-  path.join(benchDir, "fixtures")
+  cliArguments.find((argument) => !argument.startsWith("--")) ?? path.join(benchDir, "fixtures")
 const maximumMeanLatencyMs = 100
 
 const benchmarkWiring = makeWiring({
   checks: [...defaultWiring.checks, ...architectureExploreChecks],
   derive: (signals) =>
-    pipe(
-      defaultWiring.derive(signals),
-      Stream.concat(architectureExploreDerive(signals))
-    )
+    pipe(defaultWiring.derive(signals), Stream.concat(architectureExploreDerive(signals)))
 })
 
-const benchmarkConfig = defineConfig([
-  { files: ["**/*"], wiring: benchmarkWiring }
-])
+const benchmarkConfig = defineConfig([{ files: ["**/*"], wiring: benchmarkWiring }])
 
 interface TaskStatistics {
   readonly latency: Statistics
@@ -51,9 +42,7 @@ const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
 const runLoadedBenchmark = async (): Promise<void> => {
   const workspace = await Effect.runPromise(loadProject(targetPath))
   const collectReport = () =>
-    Effect.runPromise(
-      Stream.runCollect(reportFromConfig(benchmarkConfig)(workspace))
-    )
+    Effect.runPromise(Stream.runCollect(reportFromConfig(benchmarkConfig)(workspace)))
 
   const warmed = await collectReport()
   const bench = new Bench({ time: 1000 })
@@ -74,9 +63,7 @@ const runLoadedBenchmark = async (): Promise<void> => {
       task: task.name,
       "mean (ms/pass)": meanLatencyMs(task.name).toFixed(3),
       margin: `±${(taskStatistics(task)?.latency.rme ?? 0).toFixed(2)}%`,
-      "ops/sec": Math.round(
-        taskStatistics(task)?.throughput.mean ?? 0
-      ).toLocaleString("en-US")
+      "ops/sec": Math.round(taskStatistics(task)?.throughput.mean ?? 0).toLocaleString("en-US")
     }))
   )
 
@@ -88,9 +75,7 @@ const runLoadedBenchmark = async (): Promise<void> => {
   }
 }
 
-const runBoundedWorkspacePass = async (
-  workspace: WorkspaceConfigs
-): Promise<void> => {
+const runBoundedWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
   const started = performance.now()
   const blocks = await Effect.runPromise(
     Stream.runCollect(reportFromWorkspaceConfigs(benchmarkConfig)(workspace))

@@ -16,19 +16,14 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-schema-tagged-class"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-schema-tagged-class")
 const processBoundFixturePath = path.join(
   testDirectory,
   "fixtures",
   "default-allows-data-tagged-class"
 )
 
-const message =
-  "Prefer Schema.TaggedClass when every field has a portable wire representation."
+const message = "Prefer Schema.TaggedClass when every field has a portable wire representation."
 
 const hint =
   "This Data.TaggedClass contains only wire-safe structural fields. Define those fields " +
@@ -88,9 +83,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runCheckFixture = async (
-  rootPath: string
-): Promise<ReadonlyArray<Detection>> => {
+const runCheckFixture = async (rootPath: string): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(rootPath))
 
   const projectElements = await Promise.all(
@@ -103,9 +96,7 @@ const runCheckFixture = async (
 }
 
 const runDefaultFixture = async (): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(
-    loadProject(processBoundFixturePath)
-  )
+  const workspace = await Effect.runPromise(loadProject(processBoundFixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.flatMap((project) =>

@@ -20,8 +20,7 @@ const fixturePath = path.join(
   "require-blank-lines-around-multiline-declarations"
 )
 
-const message =
-  "Multi-line declarations must have a blank line above and below."
+const message = "Multi-line declarations must have a blank line above and below."
 
 const hint =
   "Insert an empty line before and after this declaration so its multi-line shape " +
@@ -89,22 +88,19 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runRequireBlankLinesAroundMultilineDeclarationsFixture =
-  async (): Promise<ReadonlyArray<Detection>> => {
-    const workspace = await Effect.runPromise(loadProject(fixturePath))
+const runRequireBlankLinesAroundMultilineDeclarationsFixture = async (): Promise<
+  ReadonlyArray<Detection>
+> => {
+  const workspace = await Effect.runPromise(loadProject(fixturePath))
 
-    const projectElements = await Promise.all(
-      workspace.projects.map((project) =>
-        Effect.runPromise(
-          runCheckOnProject(requireBlankLinesAroundMultilineDeclarations)(
-            project
-          )
-        )
-      )
+  const projectElements = await Promise.all(
+    workspace.projects.map((project) =>
+      Effect.runPromise(runCheckOnProject(requireBlankLinesAroundMultilineDeclarations)(project))
     )
+  )
 
-    return projectElements.flat()
-  }
+  return projectElements.flat()
+}
 
 test("require-blank-lines-around-multiline-declarations reports disallowed and permits allowed fixture items", async () => {
   const signals = await runRequireBlankLinesAroundMultilineDeclarationsFixture()

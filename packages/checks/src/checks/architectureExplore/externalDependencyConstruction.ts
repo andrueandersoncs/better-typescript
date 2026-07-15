@@ -54,9 +54,7 @@ const collaboratorName = (expression: ts.Expression): Option.Option<string> => {
   )
 }
 
-const constructionRootIdentifier = (
-  expression: ts.Expression
-): Option.Option<ts.Identifier> => {
+const constructionRootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> => {
   const unwrapped = unwrapExpression(expression)
 
   if (ts.isIdentifier(unwrapped)) {
@@ -73,23 +71,15 @@ const constructionRootIdentifier = (
   )
 }
 
-const importDeclarationAncestor = (
-  node: ts.Node
-): Option.Option<ts.ImportDeclaration> => {
+const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> => {
   if (ts.isImportDeclaration(node)) {
     return Option.some(node)
   }
 
-  return pipe(
-    Option.fromNullable(node.parent),
-    Option.flatMap(importDeclarationAncestor)
-  )
+  return pipe(Option.fromNullable(node.parent), Option.flatMap(importDeclarationAncestor))
 }
 
-const hasImportDeclarationAncestor = Function.compose(
-  importDeclarationAncestor,
-  Option.isSome
-)
+const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 
 const importedPathFor = (
   checker: ts.TypeChecker,
@@ -111,9 +101,7 @@ const importedPathFor = (
 const isCollaboratorName = (name: string): boolean => {
   const knownName = HashSet.has(collaboratorNames, name)
 
-  const knownSuffix = Array.some(collaboratorSuffixes, (suffix) =>
-    name.endsWith(suffix)
-  )
+  const knownSuffix = Array.some(collaboratorSuffixes, (suffix) => name.endsWith(suffix))
 
   return knownName || knownSuffix
 }
@@ -187,6 +175,6 @@ const constructionElements = (context: CheckContext) => {
 
 const newExpressionKinds = Array.of(ts.SyntaxKind.NewExpression)
 
-export const externalDependencyConstruction: Check = nodeCheck(
-  newExpressionKinds
-)(ts.isNewExpression)(constructionElements)
+export const externalDependencyConstruction: Check = nodeCheck(newExpressionKinds)(
+  ts.isNewExpression
+)(constructionElements)

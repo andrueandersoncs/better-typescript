@@ -10,20 +10,15 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const isPipeName = (access: ts.PropertyAccessExpression): boolean =>
-  access.name.text === "pipe"
+const isPipeName = (access: ts.PropertyAccessExpression): boolean => access.name.text === "pipe"
 
 const pipeMethodCallMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const matches = (
-    callExpression: ts.CallExpression
-  ): ReadonlyArray<Detection> =>
+  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> =>
     pipe(
-      Option.liftPredicate(ts.isPropertyAccessExpression)(
-        callExpression.expression
-      ),
+      Option.liftPredicate(ts.isPropertyAccessExpression)(callExpression.expression),
       Option.filter(isPipeName),
       // Rewrite only Effect's Pipeable.pipe because Node streams and RxJS observables retain different pipe semantics.
       Option.filter((access) =>
@@ -50,9 +45,7 @@ const pipeMethodCallMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
-  pipeMethodCallMatches
-)
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(pipeMethodCallMatches)
 
 export const preferPipeFunction: Check = check
 

@@ -86,9 +86,7 @@ const runNoThrowFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noThrow)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noThrow)(project)))
   )
 
   return projectElements.flat()

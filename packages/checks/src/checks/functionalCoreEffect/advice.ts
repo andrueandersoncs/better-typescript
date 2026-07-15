@@ -1,18 +1,5 @@
-import {
-  Array,
-  Data,
-  Option,
-  Record,
-  Schema,
-  Stream,
-  Struct,
-  Tuple,
-  pipe
-} from "effect"
-import {
-  adviceLocation,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Array, Data, Option, Record, Schema, Stream, Struct, Tuple, pipe } from "effect"
+import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -23,19 +10,14 @@ import {
   type FunctionalCoreBoundaryKind,
   type FunctionalCoreShapeKind
 } from "./data.js"
-import {
-  functionalCoreBoundaryCheckName,
-  functionalCoreShapeCheckName
-} from "./names.js"
+import { functionalCoreBoundaryCheckName, functionalCoreShapeCheckName } from "./names.js"
 
 class ShapeAdviceCopy extends Data.Class<{
   readonly title: string
   readonly remediation: string
 }> {}
 
-const shapeAdviceCopy: Readonly<
-  Record<FunctionalCoreShapeKind, ShapeAdviceCopy>
-> = {
+const shapeAdviceCopy: Readonly<Record<FunctionalCoreShapeKind, ShapeAdviceCopy>> = {
   "effect-orchestrator": new ShapeAdviceCopy({
     title: "overgrown Effect orchestrator",
     remediation:
@@ -58,19 +40,14 @@ const shapeAdviceCopy: Readonly<
   })
 }
 
-const detectionsOf = (
-  signals: ReadonlyArray<Signal>,
-  name: string
-): ReadonlyArray<Detection> =>
+const detectionsOf = (signals: ReadonlyArray<Signal>, name: string): ReadonlyArray<Detection> =>
   pipe(
     Array.findFirst(signals, (signal) => signal.name === name),
     Option.map(Struct.get("detections")),
     Option.getOrElse(Array.empty<Detection>)
   )
 
-const shapeEvidence = (
-  data: FunctionalCoreShapeData
-): ReadonlyArray<EvidenceItem> => {
+const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceItem> => {
   const measurements = Array.make(
     Tuple.make("branches", data.branchCount),
     Tuple.make("functions", data.functionCount),
@@ -86,9 +63,7 @@ const shapeEvidence = (
   )
 }
 
-const shapeAdvice = (
-  detections: ReadonlyArray<Detection>
-): ReadonlyArray<Advice> =>
+const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> =>
   Array.filterMap(detections, (element) => {
     const data = element.data
 
@@ -123,15 +98,12 @@ const countKind = (
   kind: FunctionalCoreBoundaryKind
 ): number => Array.filter(elements, ([, data]) => data.kind === kind).length
 
-const imperativeCoreAdvice = (
-  detections: ReadonlyArray<Detection>
-): ReadonlyArray<Advice> => {
+const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
   const relevant = pipe(
     boundaryPairs(detections),
-    Array.filter(
-      ([, data]) => data.role === "domain" || data.role === "application"
-    )
+    Array.filter(([, data]) => data.role === "domain" || data.role === "application")
   )
+
   const grouped = Array.groupBy(relevant, ([element]) => element.location.path)
 
   return pipe(
@@ -147,9 +119,7 @@ const imperativeCoreAdvice = (
         return Array.empty<Advice>()
       }
 
-      const evidence = Array.map(kinds, (kind) =>
-        evidenceItem(kind, countKind(elements, kind))
-      )
+      const evidence = Array.map(kinds, (kind) => evidenceItem(kind, countKind(elements, kind)))
 
       return Array.of(
         new Advice({
@@ -168,16 +138,11 @@ const imperativeCoreAdvice = (
 export const functionalCoreEffectDerive = (
   signals: ReadonlyArray<Signal>
 ): Stream.Stream<Advice, Error> => {
-  const boundaryDetections = detectionsOf(
-    signals,
-    functionalCoreBoundaryCheckName
-  )
+  const boundaryDetections = detectionsOf(signals, functionalCoreBoundaryCheckName)
+
   const shapeDetections = detectionsOf(signals, functionalCoreShapeCheckName)
   const localShapeAdvice = shapeAdvice(shapeDetections)
   const aggregateAdvice = imperativeCoreAdvice(boundaryDetections)
 
-  return pipe(
-    Array.appendAll(localShapeAdvice, aggregateAdvice),
-    Stream.fromIterable
-  )
+  return pipe(Array.appendAll(localShapeAdvice, aggregateAdvice), Stream.fromIterable)
 }

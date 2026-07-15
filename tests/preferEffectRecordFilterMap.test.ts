@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-record-filter-map"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-record-filter-map")
 const expectedMessage = "Avoid conditional object spreads."
 const expectedHint =
   "Build a record of candidate properties and use Record.filterMap from Effect " +

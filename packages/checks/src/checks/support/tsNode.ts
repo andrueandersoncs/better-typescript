@@ -1,25 +1,28 @@
 import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 /**
- * FunctionInitializer is the shared modifiers, body, name, asteriskToken contract used
- * by functionInitializer, isFunctionInitializer, and hasParameters.
+ * FunctionInitializer is the shared modifiers, body, name, asteriskToken
+ * contract used by functionInitializer, isFunctionInitializer, and
+ * hasParameters.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
 /**
- * ReturnTypeDeclaration is the shared name, typeParameters, parameters, type contract
- * used by RawObjectTarget, isReturnTypeDeclaration, and
+ * ReturnTypeDeclaration is the shared name, typeParameters, parameters, type
+ * contract used by RawObjectTarget, isReturnTypeDeclaration, and
  * isUndefinedReturnTypeDeclaration.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export type ReturnTypeDeclaration =
   | ts.FunctionDeclaration
@@ -32,10 +35,7 @@ export type ReturnTypeDeclaration =
   | ts.GetAccessorDeclaration
 
 export const namedDetectionTarget = (node: ts.NamedDeclaration): ts.Node =>
-  pipe(
-    Option.fromNullable(node.name),
-    Option.getOrElse(Function.constant(node))
-  )
+  pipe(Option.fromNullable(node.name), Option.getOrElse(Function.constant(node)))
 
 export const resolvedSymbolAt =
   (checker: ts.TypeChecker) =>
@@ -50,14 +50,10 @@ export const resolvedSymbolAt =
       })
     )
 
-export const isFunctionInitializer = (
-  node: ts.Node
-): node is FunctionInitializer =>
+export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
 
-export const isReturnTypeDeclaration = (
-  node: ts.Node
-): node is ReturnTypeDeclaration => {
+export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
   const isFunctionDeclaration = ts.isFunctionDeclaration(node)
   const isFunctionExpression = ts.isFunctionExpression(node)
   const isArrowFunction = ts.isArrowFunction(node)
@@ -84,22 +80,13 @@ export const isReturnTypeDeclaration = (
 export const functionInitializer = (
   declaration: ts.VariableDeclaration
 ): Option.Option<FunctionInitializer> =>
-  pipe(
-    Option.fromNullable(declaration.initializer),
-    Option.filter(isFunctionInitializer)
-  )
+  pipe(Option.fromNullable(declaration.initializer), Option.filter(isFunctionInitializer))
 
-export const conciseArrowBody = (
-  arrowFunction: ts.ArrowFunction
-): Option.Option<ts.Expression> =>
-  ts.isBlock(arrowFunction.body)
-    ? Option.none()
-    : Option.some(arrowFunction.body)
+export const conciseArrowBody = (arrowFunction: ts.ArrowFunction): Option.Option<ts.Expression> =>
+  ts.isBlock(arrowFunction.body) ? Option.none() : Option.some(arrowFunction.body)
 
 export const unwrapExpression = (expression: ts.Expression): ts.Expression =>
-  ts.isParenthesizedExpression(expression)
-    ? unwrapExpression(expression.expression)
-    : expression
+  ts.isParenthesizedExpression(expression) ? unwrapExpression(expression.expression) : expression
 
 export const transparentWrapperKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
@@ -108,20 +95,15 @@ export const transparentWrapperKinds = HashSet.make(
 )
 
 /**
- * TransparentWrapper names the compiler syntax protocol handled by
- * unwrapTransparentExpression.
- *
- * @modelRole protocol
- * @remarks It remains explicit because those algorithms must agree on the accepted
- * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
- * and let their accepted cases drift.
+ * TransparentWrapper is the compiler syntax protocol handled by
+ * transparent-expression unwrapping. @modelRole protocol @remarks It remains
+ * explicit because parenthesized, satisfies, and assertion expressions share
+ * one recursive operation; removing it would repeat the union and let accepted
+ * cases drift.
  */
-type TransparentWrapper =
-  ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
+type TransparentWrapper = ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 
-export const unwrapTransparentExpression = (
-  expression: ts.Expression
-): ts.Expression =>
+export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expression =>
   HashSet.has(transparentWrapperKinds, expression.kind)
     ? unwrapTransparentExpression((expression as TransparentWrapper).expression)
     : expression
@@ -140,9 +122,7 @@ export const unwrapCallee = (expression: ts.Expression): ts.Expression => {
   })
 }
 
-export const outermostTransparentWrapper = (
-  expression: ts.Expression
-): ts.Expression => {
+export const outermostTransparentWrapper = (expression: ts.Expression): ts.Expression => {
   const parent = expression.parent
   const parentIsTransparent = HashSet.has(transparentWrapperKinds, parent.kind)
 
@@ -158,9 +138,7 @@ export const outermostTransparentWrapper = (
   })
 }
 
-export const unwrapSingleStatementBlock = (
-  statement: ts.Statement
-): ts.Statement => {
+export const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
   if (!ts.isBlock(statement)) {
     return statement
   }
@@ -198,9 +176,7 @@ export const isProjectFile = (sourceFile: ts.SourceFile): boolean =>
 export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
 
-  const sourceFiles = Array.map(declarations, (declaration) =>
-    declaration.getSourceFile()
-  )
+  const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
 
   return Array.some(sourceFiles, isProjectFile)
 }

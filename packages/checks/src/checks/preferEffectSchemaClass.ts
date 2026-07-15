@@ -1,32 +1,10 @@
-import {
-  Tuple,
-  Array,
-  Function,
-  HashMap,
-  Match,
-  Option,
-  Struct,
-  pipe
-} from "effect"
+import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  nodeSubscriptions,
-  withProgramIndex
-} from "@better-typescript/core/engine/check"
+import { nodeSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
-import {
-  foldAst,
-  isProjectSourceFile,
-  type AstFold
-} from "@better-typescript/core/engine/sources"
-import {
-  detection,
-  toRelativeFileName
-} from "@better-typescript/core/engine/location"
-import type {
-  CheckContext,
-  Subscription
-} from "@better-typescript/core/engine/check/data"
+import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
+import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
+import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
@@ -34,48 +12,34 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 /**
- * ConstructionIndex is the shared ConstructionIndex values contract used by
- * objectTypeDeclarationMatches, schemaClassListeners, and buildConstructionIndex.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * ConstructionIndex maps model symbols to construction sites for schema-class
+ * indexing and detection. @modelRole shared @remarks It remains explicit
+ * because the builder, listeners, and matcher need one stable lookup contract;
+ * removing it would duplicate the representation across consumers.
  */
 type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
 
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
-  pipe(
-    Option.liftPredicate(ts.isIdentifier)(name),
-    Option.map(Struct.get("text"))
-  )
+  pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
 
-const namedPropertyText = (
-  property: ts.ObjectLiteralElementLike
-): Option.Option<string> =>
+const namedPropertyText = (property: ts.ObjectLiteralElementLike): Option.Option<string> =>
   pipe(Option.fromNullable(property.name), Option.flatMap(propertyNameText))
 
 /**
- * ObjectTypeDeclaration names the compiler syntax protocol handled by
- * objectTypeDeclarationMatches.
- *
- * @modelRole protocol
- * @remarks It remains explicit because those algorithms must agree on the accepted
- * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
- * and let their accepted cases drift.
+ * ObjectTypeDeclaration is the compiler syntax protocol handled by object-type
+ * matching. @modelRole protocol @remarks It remains explicit because interfaces
+ * and type aliases share one matcher contract; removing it would repeat the
+ * union and let accepted cases drift.
  */
 type ObjectTypeDeclaration = ts.InterfaceDeclaration | ts.TypeAliasDeclaration
 
-const isProjectObjectTypeDeclaration = (
-  declaration: ts.Declaration
-): boolean => {
+const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
 
   const isInterfaceDeclaration = ts.isInterfaceDeclaration(declaration)
   const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(declaration)
 
-  const isTypeLiteralAlias =
-    isTypeAliasDeclaration && ts.isTypeLiteralNode(declaration.type)
+  const isTypeLiteralAlias = isTypeAliasDeclaration && ts.isTypeLiteralNode(declaration.type)
 
   const conditions = Array.make(isInterfaceDeclaration, isTypeLiteralAlias)
   const isRelevantDeclaration = Array.some(conditions, Boolean)
@@ -92,10 +56,7 @@ const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean => {
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
 
-  const directSymbol = pipe(
-    Option.fromNullable(symbol),
-    Option.filter(isProjectObjectTypeSymbol)
-  )
+  const directSymbol = pipe(Option.fromNullable(symbol), Option.filter(isProjectObjectTypeSymbol))
 
   const aliasSymbol = pipe(
     Option.fromNullable(type.aliasSymbol),
@@ -122,13 +83,9 @@ const isTypeReference = (type: ts.Type): type is ts.TypeReference => {
 const typeMembers = (type: ts.Type): ReadonlyArray<ts.Type> =>
   type.isUnion() ? type.types : Array.of(type)
 
-const isSignatureTypeParameter = (type: ts.Type): boolean =>
-  type.isTypeParameter()
+const isSignatureTypeParameter = (type: ts.Type): boolean => type.isTypeParameter()
 
-const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (
-  literals,
-  node
-) =>
+const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (literals, node) =>
   ts.isObjectLiteralExpression(node) ? Array.append(literals, node) : literals
 
 const addConstructionEntry = (
@@ -153,10 +110,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   const matchesLiteralShape =
     (literal: ts.ObjectLiteralExpression) =>
     (type: ts.Type): boolean => {
-      const propertyNames = Array.filterMap(
-        literal.properties,
-        namedPropertyText
-      )
+      const propertyNames = Array.filterMap(literal.properties, namedPropertyText)
 
       return Array.every(propertyNames, typeHasProperty(type))
     }
@@ -178,10 +132,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
     (contextualMember: ts.Type): contextualMember is ts.TypeReference => {
       const reference = Option.liftPredicate(isTypeReference)(contextualMember)
 
-      return Option.exists(
-        reference,
-        hasTypeReferenceTarget(declaredMember.target)
-      )
+      return Option.exists(reference, hasTypeReferenceTarget(declaredMember.target))
     }
 
   const typeArgumentAt =
@@ -199,10 +150,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
       const typeArguments = checker.getTypeArguments(declaredMember)
 
       const parameterPosition = pipe(
-        Array.findFirstIndex(
-          typeArguments,
-          (candidate) => candidate === typeParameter
-        ),
+        Array.findFirstIndex(typeArguments, (candidate) => candidate === typeParameter),
         Option.getOrElse(() => -1)
       )
 
@@ -272,9 +220,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
 
   const literalConstructionEntries =
     (fileName: string) =>
-    (
-      literal: ts.ObjectLiteralExpression
-    ): ReadonlyArray<readonly [ts.Symbol, string]> => {
+    (literal: ts.ObjectLiteralExpression): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullable(contextualType)
 
@@ -284,9 +230,7 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         Option.gen(function* () {
           const argument = outermostTransparentWrapper(literal)
 
-          const call = yield* Option.liftPredicate(ts.isCallExpression)(
-            argument.parent
-          )
+          const call = yield* Option.liftPredicate(ts.isCallExpression)(argument.parent)
 
           const argumentPosition = yield* Array.findFirstIndex(
             call.arguments,
@@ -296,14 +240,9 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
           const callContextualType = checker.getContextualType(call)
           const contextual = yield* Option.fromNullable(callContextualType)
 
-          const signatures = checker
-            .getTypeAtLocation(call.expression)
-            .getCallSignatures()
+          const signatures = checker.getTypeAtLocation(call.expression).getCallSignatures()
 
-          return Array.flatMap(
-            signatures,
-            signatureBoxedTypes(argumentPosition)(contextual)
-          )
+          return Array.flatMap(signatures, signatureBoxedTypes(argumentPosition)(contextual))
         }),
         Option.getOrElse(Function.constant(emptyBoxedTypes))
       )
@@ -313,15 +252,9 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
         Array.appendAll(boxedTypes)
       )
 
-      const targetTypes = Array.flatMap(
-        contextualCandidates,
-        candidateTypes(literal)
-      )
+      const targetTypes = Array.flatMap(contextualCandidates, candidateTypes(literal))
 
-      const objectTypeSymbols = Array.filterMap(
-        targetTypes,
-        typeObjectTypeSymbol
-      )
+      const objectTypeSymbols = Array.filterMap(targetTypes, typeObjectTypeSymbol)
 
       return Array.map(objectTypeSymbols, symbolFileEntry(fileName))
     }
@@ -342,77 +275,62 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   return Array.reduce(flatMapped, emptyIndex, addConstructionEntry)
 }
 
-const objectTypeDeclarationMatches =
-  (index: ConstructionIndex) => (context: CheckContext) => {
-    const checker = context.checker
-    const toRelative = toRelativeFileName(context.projectRoot)
-    const match = detection(context)
+const objectTypeDeclarationMatches = (index: ConstructionIndex) => (context: CheckContext) => {
+  const checker = context.checker
+  const toRelative = toRelativeFileName(context.projectRoot)
+  const match = detection(context)
 
-    const matches = (
-      declaration: ObjectTypeDeclaration
-    ): ReadonlyArray<Detection> =>
-      pipe(
-        checker.getSymbolAtLocation(declaration.name),
-        Option.fromNullable,
-        Option.flatMap((symbol) => HashMap.get(index, symbol)),
-        Option.map((constructionFileName) => {
-          const typeName = declaration.name.text
-          const exampleFile = toRelative(constructionFileName)
+  const matches = (declaration: ObjectTypeDeclaration): ReadonlyArray<Detection> =>
+    pipe(
+      checker.getSymbolAtLocation(declaration.name),
+      Option.fromNullable,
+      Option.flatMap((symbol) => HashMap.get(index, symbol)),
+      Option.map((constructionFileName) => {
+        const typeName = declaration.name.text
+        const exampleFile = toRelative(constructionFileName)
 
-          const kindLabel = ts.isInterfaceDeclaration(declaration)
-            ? "an interface"
-            : "a type alias"
+        const kindLabel = ts.isInterfaceDeclaration(declaration) ? "an interface" : "a type alias"
 
-          return match({
-            node: declaration.name,
-            message:
-              `Avoid declaring ${typeName} as ${kindLabel} when this project constructs ` +
-              "its values.",
-            hint:
-              `Object literals of this shape are built in ${exampleFile}, so ${typeName} is a ` +
-              "data definition rather than a boundary type. Replace it with an Effect " +
-              `Schema class — class ${typeName} extends ` +
-              `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
-              "for tagged variants). The class is both the type and the constructor: keep using " +
-              `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
-              "so every construction is validated. When the shape must hold process-bound " +
-              "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
-              "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
-              "preserve the class-as-type-and-constructor discipline without schema validation."
-          })
-        }),
-        Option.toArray
-      )
+        return match({
+          node: declaration.name,
+          message:
+            `Avoid declaring ${typeName} as ${kindLabel} when this project constructs ` +
+            "its values.",
+          hint:
+            `Object literals of this shape are built in ${exampleFile}, so ${typeName} is a ` +
+            "data definition rather than a boundary type. Replace it with an Effect " +
+            `Schema class — class ${typeName} extends ` +
+            `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
+            "for tagged variants). The class is both the type and the constructor: keep using " +
+            `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
+            "so every construction is validated. When the shape must hold process-bound " +
+            "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
+            "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
+            "preserve the class-as-type-and-constructor discipline without schema validation."
+        })
+      }),
+      Option.toArray
+    )
 
-    return matches
-  }
+  return matches
+}
 
-const isReadonlyTypeOperator = (
-  node: ts.TypeNode
-): node is ts.TypeOperatorNode =>
+const isReadonlyTypeOperator = (node: ts.TypeNode): node is ts.TypeOperatorNode =>
   pipe(
     Option.liftPredicate(ts.isTypeOperatorNode)(node),
-    Option.exists(
-      (operator) => operator.operator === ts.SyntaxKind.ReadonlyKeyword
-    )
+    Option.exists((operator) => operator.operator === ts.SyntaxKind.ReadonlyKeyword)
   )
 
 const tupleTypeNode = (node: ts.TypeNode): Option.Option<ts.TupleTypeNode> =>
   pipe(
     Match.value(node),
     Match.when(ts.isTupleTypeNode, Option.some<ts.TupleTypeNode>),
-    Match.when(ts.isParenthesizedTypeNode, (parenthesized) =>
-      tupleTypeNode(parenthesized.type)
-    ),
-    Match.when(isReadonlyTypeOperator, (operator) =>
-      tupleTypeNode(operator.type)
-    ),
+    Match.when(ts.isParenthesizedTypeNode, (parenthesized) => tupleTypeNode(parenthesized.type)),
+    Match.when(isReadonlyTypeOperator, (operator) => tupleTypeNode(operator.type)),
     Match.orElse(() => Option.none())
   )
 
-const isTupleTypeAliasDeclaration = (
-  node: ts.Node
-): node is ts.TypeAliasDeclaration =>
+const isTupleTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclaration =>
   pipe(
     Option.liftPredicate(ts.isTypeAliasDeclaration)(node),
     Option.flatMap((declaration) => tupleTypeNode(declaration.type)),
@@ -434,9 +352,7 @@ const tupleTypeHint =
 const tupleTypeDeclarationMatches = (context: CheckContext) => {
   const match = detection(context)
 
-  const matches = (
-    declaration: ts.TypeAliasDeclaration
-  ): ReadonlyArray<Detection> => {
+  const matches = (declaration: ts.TypeAliasDeclaration): ReadonlyArray<Detection> => {
     const typeName = declaration.name.text
 
     const reported = match({
@@ -451,14 +367,10 @@ const tupleTypeDeclarationMatches = (context: CheckContext) => {
   return matches
 }
 
-const isObjectTypeAliasDeclaration = (
-  node: ts.Node
-): node is ts.TypeAliasDeclaration =>
+const isObjectTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclaration =>
   ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)
 
-const schemaClassListeners = (
-  index: ConstructionIndex
-): ReadonlyArray<Subscription> => {
+const schemaClassListeners = (index: ConstructionIndex): ReadonlyArray<Subscription> => {
   const interfaceDeclarationKinds = Array.of(ts.SyntaxKind.InterfaceDeclaration)
 
   const interfaceListeners = nodeSubscriptions(interfaceDeclarationKinds)(
@@ -486,5 +398,6 @@ const check = withProgramIndex(buildConstructionIndex)(schemaClassListeners)
 
 export const preferEffectSchemaClass: Check = check
 
-export const preferEffectSchemaClassExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-schema-class")
+export const preferEffectSchemaClassExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "prefer-effect-schema-class"
+)

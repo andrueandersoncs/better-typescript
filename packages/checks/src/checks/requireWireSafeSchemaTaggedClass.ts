@@ -8,13 +8,9 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { namedDetectionTarget } from "./support/tsNode.js"
-import {
-  schemaTaggedClassEncodedType,
-  typeIsWireSafe
-} from "./taggedClassPortability.js"
+import { schemaTaggedClassEncodedType, typeIsWireSafe } from "./taggedClassPortability.js"
 
-const message =
-  "Require Schema.TaggedClass to have a portable encoded representation."
+const message = "Require Schema.TaggedClass to have a portable encoded representation."
 
 const hint =
   "At least one encoded field is not provably composed of strings, numbers, booleans, " +
@@ -27,14 +23,10 @@ const schemaTaggedClassMatches = (context: CheckContext) => {
   const { checker } = context
   const match = detection(context)
 
-  const matches = (
-    declaration: ts.ClassDeclaration
-  ): ReadonlyArray<Detection> =>
+  const matches = (declaration: ts.ClassDeclaration): ReadonlyArray<Detection> =>
     pipe(
       schemaTaggedClassEncodedType(checker)(declaration),
-      Option.filter(
-        (encodedType) => !typeIsWireSafe(checker)(declaration)(encodedType)
-      ),
+      Option.filter((encodedType) => !typeIsWireSafe(checker)(declaration)(encodedType)),
       Option.map(() =>
         match({
           node: namedDetectionTarget(declaration),
@@ -50,9 +42,9 @@ const schemaTaggedClassMatches = (context: CheckContext) => {
 
 const classDeclarationKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-export const requireWireSafeSchemaTaggedClass: Check = nodeCheck(
-  classDeclarationKinds
-)(ts.isClassDeclaration)(schemaTaggedClassMatches)
+export const requireWireSafeSchemaTaggedClass: Check = nodeCheck(classDeclarationKinds)(
+  ts.isClassDeclaration
+)(schemaTaggedClassMatches)
 
 export const requireWireSafeSchemaTaggedClassExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("require-wire-safe-schema-tagged-class")

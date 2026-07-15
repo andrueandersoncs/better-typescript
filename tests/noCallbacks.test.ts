@@ -144,9 +144,7 @@ const runNoCallbacksFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noCallbacks)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noCallbacks)(project)))
   )
 
   return projectElements.flat()

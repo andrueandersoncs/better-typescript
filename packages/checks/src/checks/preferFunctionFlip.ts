@@ -11,8 +11,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const message =
-  "Avoid lambdas that only flip the order of a curried application."
+const message = "Avoid lambdas that only flip the order of a curried application."
 
 const hint =
   "Reorder the curried parameters so the fixed argument comes first " +
@@ -58,16 +57,11 @@ const functionFlipMatches = (context: CheckContext) => {
     return isModule || ambientOrModule
   }
 
-  const propertyAccessRequiresThis = (
-    propertyAccess: ts.PropertyAccessExpression
-  ): boolean => {
+  const propertyAccessRequiresThis = (propertyAccess: ts.PropertyAccessExpression): boolean => {
     const namedSymbol = symbolOption(propertyAccess.name)
     const accessSymbol = symbolOption(propertyAccess)
 
-    const propertySymbol = pipe(
-      namedSymbol,
-      Option.orElse(Function.constant(accessSymbol))
-    )
+    const propertySymbol = pipe(namedSymbol, Option.orElse(Function.constant(accessSymbol)))
 
     const isMethod = pipe(
       propertySymbol,
@@ -99,9 +93,7 @@ const functionFlipMatches = (context: CheckContext) => {
     const isFree = isCall || isIdentifier
     const isPropertyAccess = ts.isPropertyAccessExpression(unwrapped)
 
-    const propertyNeedsThis = isPropertyAccess
-      ? propertyAccessRequiresThis(unwrapped)
-      : true
+    const propertyNeedsThis = isPropertyAccess ? propertyAccessRequiresThis(unwrapped) : true
 
     const isBound = isFree === false
     const boundCalleeNeedsThis = isBound && propertyNeedsThis
@@ -122,9 +114,7 @@ const functionFlipMatches = (context: CheckContext) => {
       )
     )(0)
 
-  const unaryCall = (
-    expression: ts.Expression
-  ): Option.Option<ts.CallExpression> =>
+  const unaryCall = (expression: ts.Expression): Option.Option<ts.CallExpression> =>
     pipe(
       expression,
       unwrapCarrier,
@@ -144,24 +134,13 @@ const functionFlipMatches = (context: CheckContext) => {
         const hasOneParameter = arrowFunction.parameters.length === 1
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
-        const parameter = yield* Option.fromNullable(
-          arrowFunction.parameters[0]
-        )
+        const parameter = yield* Option.fromNullable(arrowFunction.parameters[0])
 
-        const hasRest = pipe(
-          Option.fromNullable(parameter.dotDotDotToken),
-          Option.isSome
-        )
+        const hasRest = pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
 
-        const hasDefault = pipe(
-          Option.fromNullable(parameter.initializer),
-          Option.isSome
-        )
+        const hasDefault = pipe(Option.fromNullable(parameter.initializer), Option.isSome)
 
-        const isOptional = pipe(
-          Option.fromNullable(parameter.questionToken),
-          Option.isSome
-        )
+        const isOptional = pipe(Option.fromNullable(parameter.questionToken), Option.isSome)
 
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
@@ -178,17 +157,13 @@ const functionFlipMatches = (context: CheckContext) => {
         const outerParameterRefs = referenceCount(parameterName)(outerArgument)
         const outerMentionsParameter = outerParameterRefs > 0
 
-        yield* Option.liftPredicate((value: boolean) => !value)(
-          outerMentionsParameter
-        )
+        yield* Option.liftPredicate((value: boolean) => !value)(outerMentionsParameter)
 
         const innerCall = yield* unaryCall(outerCall.expression)
         const innerArgument = yield* Option.fromNullable(innerCall.arguments[0])
         const innerArgumentCarrier = unwrapCarrier(innerArgument)
 
-        const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(
-          innerArgumentCarrier
-        )
+        const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(innerArgumentCarrier)
 
         const argumentIsParameter = pipe(
           argumentIdentifier,
@@ -196,17 +171,13 @@ const functionFlipMatches = (context: CheckContext) => {
           Option.exists((text) => text === parameterName)
         )
 
-        yield* Option.liftPredicate((value: boolean) => value)(
-          argumentIsParameter
-        )
+        yield* Option.liftPredicate((value: boolean) => value)(argumentIsParameter)
 
         const innerCallee = innerCall.expression
         const calleeParameterRefs = referenceCount(parameterName)(innerCallee)
         const calleeMentionsParameter = calleeParameterRefs > 0
 
-        yield* Option.liftPredicate((value: boolean) => !value)(
-          calleeMentionsParameter
-        )
+        yield* Option.liftPredicate((value: boolean) => !value)(calleeMentionsParameter)
 
         const needsThis = calleeRequiresThis(innerCallee)
         yield* Option.liftPredicate((value: boolean) => !value)(needsThis)
@@ -230,9 +201,7 @@ const functionFlipMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
-  functionFlipMatches
-)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(functionFlipMatches)
 
 export const preferFunctionFlip: Check = check
 

@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-mutable-variable-declarations"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-mutable-variable-declarations")
 
 const expectedHint =
   "Declare multiple const values to represent each state instead of mutating a single " +
@@ -113,9 +109,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(noMutableVariableDeclarations)(project)
-      )
+      Effect.runPromise(runCheckOnProject(noMutableVariableDeclarations)(project))
     )
   )
 

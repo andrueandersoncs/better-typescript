@@ -9,43 +9,28 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 /**
- * MutableVariableDeclarationKind is the shared length contract used by nested6,
- * nested7, and tokenMutableKind.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * MutableVariableDeclarationKind is the mutable binding vocabulary shared by
+ * token classification. @modelRole shared @remarks It remains explicit because
+ * syntax-kind tuples and token lookup must exchange the same literal contract;
+ * removing it would duplicate that contract across consumers.
  */
 type MutableVariableDeclarationKind = "let" | "var"
 
-const nested6 = Tuple.make(
-  ts.SyntaxKind.LetKeyword,
-  "let" as MutableVariableDeclarationKind
-)
+const nested6 = Tuple.make(ts.SyntaxKind.LetKeyword, "let" as MutableVariableDeclarationKind)
 
-const nested7 = Tuple.make(
-  ts.SyntaxKind.VarKeyword,
-  "var" as MutableVariableDeclarationKind
-)
+const nested7 = Tuple.make(ts.SyntaxKind.VarKeyword, "var" as MutableVariableDeclarationKind)
 
-const mutableKeywordKinds: HashMap.HashMap<
-  ts.SyntaxKind,
-  MutableVariableDeclarationKind
-> = HashMap.make(nested6, nested7)
+const mutableKeywordKinds: HashMap.HashMap<ts.SyntaxKind, MutableVariableDeclarationKind> =
+  HashMap.make(nested6, nested7)
 
-const tokenMutableKind = (
-  firstToken: ts.Node
-): Option.Option<MutableVariableDeclarationKind> =>
+const tokenMutableKind = (firstToken: ts.Node): Option.Option<MutableVariableDeclarationKind> =>
   HashMap.get(mutableKeywordKinds, firstToken.kind)
 
 const mutableDeclarationMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
 
-  const matches = (
-    declarationList: ts.VariableDeclarationList
-  ): ReadonlyArray<Detection> =>
+  const matches = (declarationList: ts.VariableDeclarationList): ReadonlyArray<Detection> =>
     pipe(
       declarationList.getFirstToken(sourceFile),
       Option.fromNullable,
@@ -67,13 +52,11 @@ const mutableDeclarationMatches = (context: CheckContext) => {
   return matches
 }
 
-const variableDeclarationListKinds = Array.of(
-  ts.SyntaxKind.VariableDeclarationList
-)
+const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationList)
 
-const check = nodeCheck(variableDeclarationListKinds)(
-  ts.isVariableDeclarationList
-)(mutableDeclarationMatches)
+const check = nodeCheck(variableDeclarationListKinds)(ts.isVariableDeclarationList)(
+  mutableDeclarationMatches
+)
 
 export const noMutableVariableDeclarations: Check = check
 

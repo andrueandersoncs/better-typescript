@@ -58,9 +58,7 @@ const runNoForLoopsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noForLoops)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noForLoops)(project)))
   )
 
   return projectElements.flat()

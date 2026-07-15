@@ -4,14 +4,8 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
-import {
-  defineConfig,
-  reportFromConfig
-} from "@better-typescript/core/engine/report"
-import type {
-  Wiring,
-  WiringConfig
-} from "@better-typescript/core/engine/report/data"
+import { defineConfig, reportFromConfig } from "@better-typescript/core/engine/report"
+import type { Wiring, WiringConfig } from "@better-typescript/core/engine/report/data"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
@@ -24,9 +18,7 @@ const fallbackWiring: Wiring = {
   derive: () => Stream.empty
 }
 
-const fallbackConfig: WiringConfig = defineConfig([
-  { files: ["**/*"], wiring: fallbackWiring }
-])
+const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
 
 const emptyCheckConfigPreamble = [
   'import { Stream } from "effect"',
@@ -52,9 +44,7 @@ const tsconfig = {
 const runInTempProject = async (
   run: (projectDirectory: string) => Promise<void>
 ): Promise<void> => {
-  const projectDirectory = await fs.mkdtemp(
-    path.join(testDirectory, ".tmp-load-wiring-config-")
-  )
+  const projectDirectory = await fs.mkdtemp(path.join(testDirectory, ".tmp-load-wiring-config-"))
 
   try {
     await fs.mkdir(path.join(projectDirectory, "src"), { recursive: true })
@@ -75,25 +65,15 @@ const runInTempProject = async (
 const writeConfig = (projectDirectory: string, source: string): Promise<void> =>
   fs.writeFile(path.join(projectDirectory, configFileName), source)
 
-const loadConfigFailure = (
-  projectDirectory: string
-): Promise<ProjectWiringConfigError> =>
-  Effect.runPromise(
-    Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig))
-  )
+const loadConfigFailure = (projectDirectory: string): Promise<ProjectWiringConfigError> =>
+  Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig)))
 
-const collectStream = <A>(
-  stream: Stream.Stream<A, Error>
-): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(
-    Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray)
-  )
+const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
+  Effect.runPromise(Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray))
 
 test("loadWiringConfig returns fallback config when a project has no config", async () => {
   await runInTempProject(async (projectDirectory) => {
-    const config = await Effect.runPromise(
-      loadWiringConfig(projectDirectory, fallbackConfig)
-    )
+    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
 
     assert.equal(config, fallbackConfig)
   })
@@ -125,9 +105,7 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
       ].join("\n")
     )
 
-    const config = await Effect.runPromise(
-      loadWiringConfig(projectDirectory, fallbackConfig)
-    )
+    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
 
     assert.equal(config.length, 2)
     assert.deepEqual(config[0]?.files, ["src/**/*.{ts,tsx}", "scripts/*.mts"])
@@ -162,9 +140,7 @@ test("loadWiringConfig accepts a named zero-argument config factory", async () =
       ].join("\n")
     )
 
-    const config = await Effect.runPromise(
-      loadWiringConfig(projectDirectory, fallbackConfig)
-    )
+    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
 
     assert.equal(config[0]?.wiring.checks[0]?.name, "named-factory-check")
   })
@@ -189,9 +165,7 @@ test("loadWiringConfig accepts a default zero-argument config factory", async ()
       ].join("\n")
     )
 
-    const config = await Effect.runPromise(
-      loadWiringConfig(projectDirectory, fallbackConfig)
-    )
+    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
 
     assert.equal(config[0]?.wiring.checks[0]?.name, "default-factory-check")
   })
@@ -231,9 +205,7 @@ test("loaded glob config drives the report end to end", async () => {
       ].join("\n")
     )
 
-    const config = await Effect.runPromise(
-      loadWiringConfig(projectDirectory, fallbackConfig)
-    )
+    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
     const workspace = await Effect.runPromise(loadProject(projectDirectory))
     const blocks = await collectStream(reportFromConfig(config)(workspace))
 
@@ -400,10 +372,7 @@ test("loadWiringConfig rejects invalid wiring entry shapes", async () => {
 
     const error = await loadConfigFailure(projectDirectory)
 
-    assert.match(
-      error.message,
-      /config\[0\]\.wiring must be an object with checks and derive/
-    )
+    assert.match(error.message, /config\[0\]\.wiring must be an object with checks and derive/)
   })
 })
 
@@ -411,12 +380,7 @@ test("loadWiringConfig rejects throwing config factories", async () => {
   await runInTempProject(async (projectDirectory) => {
     await writeConfig(
       projectDirectory,
-      [
-        "export default () => {",
-        '  throw new Error("factory boom")',
-        "}",
-        ""
-      ].join("\n")
+      ["export default () => {", '  throw new Error("factory boom")', "}", ""].join("\n")
     )
 
     const error = await loadConfigFailure(projectDirectory)

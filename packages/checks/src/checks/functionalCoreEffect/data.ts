@@ -1,7 +1,6 @@
 import { Schema } from "effect"
 
-export type ArchitectureRole =
-  "domain" | "port" | "application" | "adapter" | "root" | "test"
+export type ArchitectureRole = "domain" | "port" | "application" | "adapter" | "root" | "test"
 
 export const architectureRoleSchema = Schema.Literal(
   "domain",
@@ -49,10 +48,7 @@ export class FunctionalCoreBoundaryData extends Schema.Class<FunctionalCoreBound
 }) {}
 
 export type FunctionalCoreShapeKind =
-  | "effect-orchestrator"
-  | "adapter-business-logic"
-  | "thick-composition-root"
-  | "pure-service"
+  "effect-orchestrator" | "adapter-business-logic" | "thick-composition-root" | "pure-service"
 
 const shapeKindSchema = Schema.Literal(
   "effect-orchestrator",

@@ -29,27 +29,16 @@ const detectionAt = (path: string, line: number, data?: unknown): Detection =>
     ...(data === undefined ? {} : { data })
   })
 
-const silentSignal = (
-  name: string,
-  detections: ReadonlyArray<Detection>
-): Signal => new Signal({ name, reported: false, detections, examples: [] })
+const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
+  new Signal({ name, reported: false, detections, examples: [] })
 
-const collectAdvice = (
-  advice: Stream.Stream<Advice, Error>
-): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(
-    Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray)
-  )
+const collectAdvice = (advice: Stream.Stream<Advice, Error>): Promise<ReadonlyArray<Advice>> =>
+  Effect.runPromise(Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray))
 
-const adviceWithTitle = (
-  advice: ReadonlyArray<Advice>,
-  title: string
-): ReadonlyArray<Advice> => advice.filter((item) => item.title === title)
+const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
+  advice.filter((item) => item.title === title)
 
-const wrapperData = (
-  callerCount: number,
-  hasNonCallReference = false
-): PassThroughWrapperData =>
+const wrapperData = (callerCount: number, hasNonCallReference = false): PassThroughWrapperData =>
   new PassThroughWrapperData({
     kind: "forwarding-call",
     exportCount: 1,
@@ -82,9 +71,7 @@ test("deletion test removes low-leverage exact forwarders", async () => {
   const path = "src/thin.ts"
   const advice = await collectAdvice(
     architectureExploreDerive([
-      silentSignal("pass-through-wrappers", [
-        detectionAt(path, 1, wrapperData(1))
-      ])
+      silentSignal("pass-through-wrappers", [detectionAt(path, 1, wrapperData(1))])
     ])
   )
   const deletion = adviceWithTitle(advice, "deletion-test shallowness")
@@ -113,12 +100,8 @@ test("deletion test preserves caller leverage and non-call contracts", async () 
 test("wide shallow interface requires a forwarding-dominated burden", async () => {
   const widePath = "src/client.ts"
   const deepPath = "src/deep.ts"
-  const wideWrappers = [1, 2, 3].map((line) =>
-    detectionAt(widePath, line, wrapperData(1))
-  )
-  const deepWrappers = [1, 2, 3].map((line) =>
-    detectionAt(deepPath, line, wrapperData(1))
-  )
+  const wideWrappers = [1, 2, 3].map((line) => detectionAt(widePath, line, wrapperData(1)))
+  const deepWrappers = [1, 2, 3].map((line) => detectionAt(deepPath, line, wrapperData(1)))
   const wideBurden = detectionAt(
     widePath,
     1,
@@ -235,9 +218,7 @@ test("collaborator concentration and one adapter derive separate seam advice", a
         detectionAt("src/order.ts", 3, collaboratorData),
         detectionAt("src/order.ts", 8, collaboratorData)
       ]),
-      silentSignal("single-adapter-seams", [
-        detectionAt("src/payment.ts", 1, seamData)
-      ])
+      silentSignal("single-adapter-seams", [detectionAt("src/payment.ts", 1, seamData)])
     ])
   )
 

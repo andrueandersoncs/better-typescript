@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "require-because-in-comments"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "require-because-in-comments")
 
 const message = 'Comments must include the word "because".'
 
@@ -154,9 +150,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runRequireBecauseInCommentsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runRequireBecauseInCommentsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>

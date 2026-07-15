@@ -51,9 +51,8 @@ const asyncFunctionElements = (context: CheckContext) => {
 
 const asyncKeywordKinds = Array.of(asyncKeywordKind)
 
-export const noAsyncFunctions: Check = nodeCheck(asyncKeywordKinds)(
-  isAsyncFunctionModifier
-)(asyncFunctionElements)
+export const noAsyncFunctions: Check =
+  nodeCheck(asyncKeywordKinds)(isAsyncFunctionModifier)(asyncFunctionElements)
 
 export const noAsyncFunctionsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-async-functions")

@@ -1,13 +1,4 @@
-import {
-  Array,
-  Data,
-  Function,
-  Option,
-  Predicate,
-  Struct,
-  Tuple,
-  pipe
-} from "effect"
+import { Array, Data, Function, Option, Predicate, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -36,17 +27,12 @@ type ExpressionPath = readonly [ts.Identifier, ReadonlyArray<string>]
 
 type ImportOrExportDeclaration = ts.ImportDeclaration | ts.ExportDeclaration
 
-const moduleDeclarationAncestor = (
-  node: ts.Node
-): Option.Option<ImportOrExportDeclaration> => {
+const moduleDeclarationAncestor = (node: ts.Node): Option.Option<ImportOrExportDeclaration> => {
   if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
     return Option.some(node)
   }
 
-  return pipe(
-    Option.fromNullable(node.parent),
-    Option.flatMap(moduleDeclarationAncestor)
-  )
+  return pipe(Option.fromNullable(node.parent), Option.flatMap(moduleDeclarationAncestor))
 }
 
 export const moduleSpecifierText = (
@@ -58,9 +44,7 @@ export const moduleSpecifierText = (
     Option.map(Struct.get("text"))
   )
 
-const expressionPath = (
-  expression: ts.Expression
-): Option.Option<ExpressionPath> => {
+const expressionPath = (expression: ts.Expression): Option.Option<ExpressionPath> => {
   const unwrapped = unwrapTransparentExpression(expression)
 
   if (ts.isIdentifier(unwrapped)) {
@@ -70,9 +54,7 @@ const expressionPath = (
   if (ts.isPropertyAccessExpression(unwrapped)) {
     return pipe(
       expressionPath(unwrapped.expression),
-      Option.map(([root, members]) =>
-        Tuple.make(root, Array.append(members, unwrapped.name.text))
-      )
+      Option.map(([root, members]) => Tuple.make(root, Array.append(members, unwrapped.name.text)))
     )
   }
 
@@ -103,14 +85,10 @@ const entityNamePath = (name: ts.EntityName): ExpressionPath => {
   return Tuple.make(root, Array.append(members, name.right.text))
 }
 
-const bindingFromDeclaration = (
-  declaration: ts.Declaration
-): Option.Option<ImportBinding> => {
+const bindingFromDeclaration = (declaration: ts.Declaration): Option.Option<ImportBinding> => {
   const moduleDeclaration = moduleDeclarationAncestor(declaration)
-  const moduleSpecifier = pipe(
-    moduleDeclaration,
-    Option.flatMap(moduleSpecifierText)
-  )
+
+  const moduleSpecifier = pipe(moduleDeclaration, Option.flatMap(moduleSpecifierText))
 
   if (Option.isNone(moduleSpecifier)) {
     return Option.none()
@@ -166,14 +144,12 @@ const resolvedBarrelBinding = (
       pipe(
         Option.fromNullable(moduleDeclaration.moduleSpecifier),
         Option.flatMap((moduleSpecifier) =>
-          pipe(
-            checker.getSymbolAtLocation(moduleSpecifier),
-            Option.fromNullable
-          )
+          pipe(checker.getSymbolAtLocation(moduleSpecifier), Option.fromNullable)
         )
       )
     )
   )
+
   const firstPartyModule = pipe(
     moduleSymbol,
     Option.exists((symbol) =>
@@ -187,27 +163,21 @@ const resolvedBarrelBinding = (
     return binding
   }
 
-  const importedName = pipe(
-    Array.head(binding.path),
-    Option.getOrElse(Function.constant(""))
-  )
+  const importedName = pipe(Array.head(binding.path), Option.getOrElse(Function.constant("")))
+
   const next = pipe(
     checker.getExportsOfModule(moduleSymbol.value),
     Array.findFirst((symbol) => symbol.name === importedName),
     Option.flatMap((symbol) =>
       pipe(
         symbol.declarations ?? Array.empty(),
-        Array.findFirst((candidate) =>
-          Option.isSome(bindingFromDeclaration(candidate))
-        )
+        Array.findFirst((candidate) => Option.isSome(bindingFromDeclaration(candidate)))
       )
     ),
     Option.flatMap((candidate) =>
       pipe(
         bindingFromDeclaration(candidate),
-        Option.map((candidateBinding) =>
-          Tuple.make(candidate, candidateBinding)
-        )
+        Option.map((candidateBinding) => Tuple.make(candidate, candidateBinding))
       )
     )
   )
@@ -218,17 +188,13 @@ const resolvedBarrelBinding = (
 
   const [nextDeclaration, nextBinding] = next.value
   const remainingPath = Array.drop(binding.path, 1)
+
   const completeNextBinding = new ImportBinding({
     moduleSpecifier: nextBinding.moduleSpecifier,
     path: Array.appendAll(nextBinding.path, remainingPath)
   })
 
-  return resolvedBarrelBinding(
-    checker,
-    nextDeclaration,
-    completeNextBinding,
-    depth - 1
-  )
+  return resolvedBarrelBinding(checker, nextDeclaration, completeNextBinding, depth - 1)
 }
 
 const importBindingAt = (
@@ -241,9 +207,7 @@ const importBindingAt = (
     Option.fromNullable,
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
     Option.flatMap(
-      Array.findFirst((declaration) =>
-        Option.isSome(bindingFromDeclaration(declaration))
-      )
+      Array.findFirst((declaration) => Option.isSome(bindingFromDeclaration(declaration)))
     ),
     Option.flatMap((declaration) =>
       pipe(
@@ -254,12 +218,7 @@ const importBindingAt = (
             path: Array.appendAll(binding.path, members)
           })
 
-          return resolvedBarrelBinding(
-            checker,
-            declaration,
-            completeBinding,
-            maximumBarrelDepth
-          )
+          return resolvedBarrelBinding(checker, declaration, completeBinding, maximumBarrelDepth)
         })
       )
     )
@@ -295,20 +254,15 @@ export const importedMemberAt = (
 export const importedTypeMemberAt = (
   checker: ts.TypeChecker,
   name: ts.EntityName
-): Option.Option<ImportedMember> =>
-  importedMemberFromPath(checker, entityNamePath(name))
+): Option.Option<ImportedMember> => importedMemberFromPath(checker, entityNamePath(name))
 
-const typeReferencesWithin = (
-  node: ts.Node
-): ReadonlyArray<ts.TypeReferenceNode> =>
+const typeReferencesWithin = (node: ts.Node): ReadonlyArray<ts.TypeReferenceNode> =>
   foldAst(
     (
       references: ReadonlyArray<ts.TypeReferenceNode>,
       current: ts.Node
     ): ReadonlyArray<ts.TypeReferenceNode> =>
-      ts.isTypeReferenceNode(current)
-        ? Array.append(references, current)
-        : references
+      ts.isTypeReferenceNode(current) ? Array.append(references, current) : references
   )(node)(Array.empty())
 
 export const localTypeReferenceTargets = (
@@ -319,9 +273,7 @@ export const localTypeReferenceTargets = (
     checker.getSymbolAtLocation(node.typeName),
     Option.fromNullable,
     Option.map((symbol) =>
-      (symbol.flags & ts.SymbolFlags.Alias) !== 0
-        ? checker.getAliasedSymbol(symbol)
-        : symbol
+      (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol
     ),
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
     Option.map(
@@ -367,12 +319,10 @@ export const effectApiMember = (
   namespace: string,
   names: ReadonlyArray<string>
 ): boolean => {
-  const last = pipe(
-    Array.last(member.path),
-    Option.getOrElse(Function.constant(""))
-  )
-  const fromBarrel =
-    member.moduleSpecifier === "effect" && member.path[0] === namespace
+  const last = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
+
+  const fromBarrel = member.moduleSpecifier === "effect" && member.path[0] === namespace
+
   const fromSubpath = member.moduleSpecifier === `effect/${namespace}`
 
   return (fromBarrel || fromSubpath) && Array.contains(names, last)
@@ -391,9 +341,10 @@ export const importedEffectApiAt = (
 
 const isEffectManagedRuntimeSource = (sourceFile: ts.SourceFile): boolean => {
   const normalized = sourceFile.fileName.replaceAll("\\", "/")
+
   const installed =
-    normalized.includes("/node_modules/effect/") &&
-    normalized.endsWith("/ManagedRuntime.d.ts")
+    normalized.includes("/node_modules/effect/") && normalized.endsWith("/ManagedRuntime.d.ts")
+
   const vendored = normalized.endsWith("/packages/effect/src/ManagedRuntime.ts")
 
   return installed || vendored
@@ -443,12 +394,7 @@ export const classExtendsEffectApi = (
   return Array.some(clauses, (clause) =>
     Array.some(clause.types, (heritage) => {
       const callee = unwrapCallee(heritage.expression)
-      return importedEffectApiAt(
-        checker,
-        callee,
-        namespace,
-        Array.of(memberName)
-      )
+      return importedEffectApiAt(checker, callee, namespace, Array.of(memberName))
     })
   )
 }
@@ -465,9 +411,7 @@ const effectServiceMakerObject = (
     Option.filter(ts.isObjectLiteralExpression)
   )
 
-  return Option.isSome(maker)
-    ? maker
-    : effectServiceMakerObject(expression.expression)
+  return Option.isSome(maker) ? maker : effectServiceMakerObject(expression.expression)
 }
 
 export const effectServiceConfigObject = (
@@ -486,16 +430,11 @@ export const effectServiceConfigObject = (
   )
 
 const propertyNameText = (name: ts.PropertyName): Option.Option<string> => {
-  if (
-    ts.isIdentifier(name) ||
-    ts.isStringLiteralLike(name) ||
-    ts.isNumericLiteral(name)
-  ) {
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)) {
     return Option.some(name.text)
   }
 
-  return ts.isComputedPropertyName(name) &&
-    ts.isStringLiteralLike(name.expression)
+  return ts.isComputedPropertyName(name) && ts.isStringLiteralLike(name.expression)
     ? Option.some(name.expression.text)
     : Option.none()
 }
@@ -514,8 +453,7 @@ export const propertyAssignmentNamed = (
       )
   )
 
-type ObjectValueProperty =
-  ts.PropertyAssignment | ts.ShorthandPropertyAssignment
+type ObjectValueProperty = ts.PropertyAssignment | ts.ShorthandPropertyAssignment
 
 const objectValuePropertyNamed = (
   object: ts.ObjectLiteralExpression,
@@ -524,8 +462,7 @@ const objectValuePropertyNamed = (
   Array.findFirst(
     object.properties,
     (property): property is ObjectValueProperty =>
-      (ts.isPropertyAssignment(property) ||
-        ts.isShorthandPropertyAssignment(property)) &&
+      (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
       pipe(
         propertyNameText(property.name),
         Option.exists((propertyName) => propertyName === name)
@@ -538,9 +475,7 @@ export const effectServiceDependencyProperty = (
 ): Option.Option<ObjectValueProperty> =>
   pipe(
     effectServiceConfigObject(checker, declaration),
-    Option.flatMap((config) =>
-      objectValuePropertyNamed(config, "dependencies")
-    ),
+    Option.flatMap((config) => objectValuePropertyNamed(config, "dependencies")),
     Option.filter(
       (property) =>
         !ts.isPropertyAssignment(property) ||
@@ -552,8 +487,7 @@ export const effectServiceDependencyProperty = (
 export const sourceFileRole = (
   index: FunctionalCoreEffectIndex,
   context: CheckContext
-): Option.Option<ArchitectureRole> =>
-  roleForSourceFile(index, context.sourceFile)
+): Option.Option<ArchitectureRole> => roleForSourceFile(index, context.sourceFile)
 
 export const resolvedModuleSourceFile = (
   context: CheckContext,
@@ -594,10 +528,7 @@ export const resolvedModuleSourceFile = (
       return Option.fromNullable(resolution.resolvedModule)
     }),
     Option.flatMap((resolved) =>
-      pipe(
-        context.program.getSourceFile(resolved.resolvedFileName),
-        Option.fromNullable
-      )
+      pipe(context.program.getSourceFile(resolved.resolvedFileName), Option.fromNullable)
     )
   )
 }
@@ -609,15 +540,13 @@ export const moduleMatchesPolicyPrefix = (
   Array.some(policy.capabilityModulePrefixes, (prefix) => {
     const namespacePrefix = prefix.endsWith(":")
     const namespaceMatch = namespacePrefix && moduleSpecifier.startsWith(prefix)
-    const packageMatch =
-      moduleSpecifier === prefix || moduleSpecifier.startsWith(`${prefix}/`)
+
+    const packageMatch = moduleSpecifier === prefix || moduleSpecifier.startsWith(`${prefix}/`)
 
     return namespaceMatch || packageMatch
   })
 
-export const importHasRuntimeValue = (
-  declaration: ts.ImportDeclaration
-): boolean => {
+export const importHasRuntimeValue = (declaration: ts.ImportDeclaration): boolean => {
   const clause = declaration.importClause
 
   if (clause === undefined) {
@@ -641,16 +570,14 @@ export const importHasRuntimeValue = (
   return Array.some(bindings.elements, (specifier) => !specifier.isTypeOnly)
 }
 
-const symbolIsAmbient = (
-  checker: ts.TypeChecker,
-  identifier: ts.Identifier
-): boolean =>
+const symbolIsAmbient = (checker: ts.TypeChecker, identifier: ts.Identifier): boolean =>
   pipe(
     checker.getSymbolAtLocation(identifier),
     Option.fromNullable,
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
     Option.exists((declarations) => {
       const hasDeclaration = declarations.length > 0
+
       const hasProjectDeclaration = Array.some(declarations, (declaration) =>
         isProjectFile(declaration.getSourceFile())
       )
@@ -677,6 +604,7 @@ const ambientCallSubject = (
     ambientPathAt(checker, expression),
     Option.filter((path) => {
       const joined = Array.join(path, ".")
+
       const directNames = Array.make(
         "fetch",
         "setTimeout",
@@ -684,17 +612,16 @@ const ambientCallSubject = (
         "setImmediate",
         "queueMicrotask"
       )
-      const exactMembers = Array.make(
-        "Date.now",
-        "Math.random",
-        "crypto.randomUUID"
-      )
-      const directMatch =
-        path.length === 1 && Array.contains(directNames, joined)
+
+      const exactMembers = Array.make("Date.now", "Math.random", "crypto.randomUUID")
+
+      const directMatch = path.length === 1 && Array.contains(directNames, joined)
+
       const exactMatch = Array.contains(exactMembers, joined)
       const receiver = path[0]
-      const storageMatch =
-        receiver === "localStorage" || receiver === "sessionStorage"
+
+      const storageMatch = receiver === "localStorage" || receiver === "sessionStorage"
+
       const consoleMatch = receiver === "console"
 
       return directMatch || exactMatch || storageMatch || consoleMatch
@@ -728,9 +655,7 @@ export const capabilitySubjectAt = (
 
   return pipe(
     importedMemberAt(context.checker, node.expression),
-    Option.filter((member) =>
-      moduleMatchesPolicyPrefix(policy, member.moduleSpecifier)
-    ),
+    Option.filter((member) => moduleMatchesPolicyPrefix(policy, member.moduleSpecifier)),
     Option.map((member) => {
       const memberPath = Array.join(member.path, ".")
       return `${member.moduleSpecifier}:${memberPath}`
@@ -748,14 +673,7 @@ export const ambientCapabilityPropertySubject = (
     Option.map(Array.join("."))
   )
 
-const suspensionNames = Array.make(
-  "async",
-  "promise",
-  "suspend",
-  "sync",
-  "try",
-  "tryPromise"
-)
+const suspensionNames = Array.make("async", "promise", "suspend", "sync", "try", "tryPromise")
 
 const effectLifecycleNames = Array.make(
   "acquireRelease",
@@ -763,15 +681,9 @@ const effectLifecycleNames = Array.make(
   "acquireUseRelease"
 )
 
-const layerLifecycleNames = Array.make(
-  "scoped",
-  "scopedContext",
-  "scopedDiscard"
-)
+const layerLifecycleNames = Array.make("scoped", "scopedContext", "scopedDiscard")
 
-export const isRuntimeFunctionLike = (
-  node: ts.Node
-): node is ts.FunctionLikeDeclaration => {
+export const isRuntimeFunctionLike = (node: ts.Node): node is ts.FunctionLikeDeclaration => {
   const checks = Array.make(
     ts.isArrowFunction(node),
     ts.isFunctionExpression(node),
@@ -792,16 +704,9 @@ const functionIsSuspensionCallback = (
   const parent = declaration.parent
 
   if (ts.isCallExpression(parent)) {
-    const isArgument = Array.contains(
-      parent.arguments,
-      declaration as ts.Expression
-    )
-    const isSuspension = importedEffectApiAt(
-      checker,
-      parent.expression,
-      "Effect",
-      suspensionNames
-    )
+    const isArgument = Array.contains(parent.arguments, declaration as ts.Expression)
+
+    const isSuspension = importedEffectApiAt(checker, parent.expression, "Effect", suspensionNames)
 
     return isArgument && isSuspension
   }
@@ -811,9 +716,8 @@ const functionIsSuspensionCallback = (
   }
 
   const propertyName =
-    ts.isIdentifier(parent.name) || ts.isStringLiteralLike(parent.name)
-      ? parent.name.text
-      : ""
+    ts.isIdentifier(parent.name) || ts.isStringLiteralLike(parent.name) ? parent.name.text : ""
+
   const isTryProperty = propertyName === "try"
   const objectLiteral = parent.parent
   const call = objectLiteral.parent
@@ -826,23 +730,12 @@ const functionIsSuspensionCallback = (
     return false
   }
 
-  return importedEffectApiAt(
-    checker,
-    call.expression,
-    "Effect",
-    Array.make("try", "tryPromise")
-  )
+  return importedEffectApiAt(checker, call.expression, "Effect", Array.make("try", "tryPromise"))
 }
 
-export const hasSuspensionBoundary = (
-  checker: ts.TypeChecker,
-  node: ts.Node
-): boolean => {
+export const hasSuspensionBoundary = (checker: ts.TypeChecker, node: ts.Node): boolean => {
   const visit = (current: ts.Node): boolean => {
-    if (
-      isRuntimeFunctionLike(current) &&
-      functionIsSuspensionCallback(checker, current)
-    ) {
+    if (isRuntimeFunctionLike(current) && functionIsSuspensionCallback(checker, current)) {
       return true
     }
 
@@ -863,9 +756,7 @@ export const hasEffectCallAncestor = (
       ts.isCallExpression(current) &&
       importedEffectApiAt(checker, current.expression, namespace, names)
 
-    return matchingCall
-      ? true
-      : pipe(Option.fromNullable(current.parent), Option.exists(visit))
+    return matchingCall ? true : pipe(Option.fromNullable(current.parent), Option.exists(visit))
   }
 
   return visit(node)
@@ -878,9 +769,7 @@ const externalImportedMemberAt = (
   pipe(
     importedMemberAt(checker, expression),
     Option.filter(
-      (member) =>
-        !member.moduleSpecifier.startsWith(".") &&
-        !member.moduleSpecifier.startsWith("/")
+      (member) => !member.moduleSpecifier.startsWith(".") && !member.moduleSpecifier.startsWith("/")
     )
   )
 
@@ -892,14 +781,11 @@ export const resourceSubjectAt = (
   pipe(
     externalImportedMemberAt(context.checker, node.expression),
     Option.filter((member) => {
-      const name = pipe(
-        Array.last(member.path),
-        Option.getOrElse(Function.constant(""))
-      )
+      const name = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
+
       const factoryMatch = Array.contains(policy.resourceFactoryNames, name)
-      const suffixMatch = Array.some(policy.resourceTypeSuffixes, (suffix) =>
-        name.endsWith(suffix)
-      )
+
+      const suffixMatch = Array.some(policy.resourceTypeSuffixes, (suffix) => name.endsWith(suffix))
 
       return factoryMatch || (ts.isNewExpression(node) && suffixMatch)
     }),
@@ -909,42 +795,25 @@ export const resourceSubjectAt = (
     })
   )
 
-export const hasScopedLifecycleAncestor = (
-  checker: ts.TypeChecker,
-  node: ts.Node
-): boolean => {
-  const scopedEffect = hasEffectCallAncestor(
-    checker,
-    node,
-    "Effect",
-    effectLifecycleNames
-  )
-  const scopedLayer = hasEffectCallAncestor(
-    checker,
-    node,
-    "Layer",
-    layerLifecycleNames
-  )
+export const hasScopedLifecycleAncestor = (checker: ts.TypeChecker, node: ts.Node): boolean => {
+  const scopedEffect = hasEffectCallAncestor(checker, node, "Effect", effectLifecycleNames)
+
+  const scopedLayer = hasEffectCallAncestor(checker, node, "Layer", layerLifecycleNames)
+
   const scoped = scopedEffect || scopedLayer
 
   return scoped && hasSuspensionBoundary(checker, node)
 }
 
-export const enclosingFunctionLike = (
-  node: ts.Node
-): Option.Option<ts.FunctionLikeDeclaration> =>
+export const enclosingFunctionLike = (node: ts.Node): Option.Option<ts.FunctionLikeDeclaration> =>
   pipe(
     Option.fromNullable(node.parent),
     Option.flatMap((parent) =>
-      isRuntimeFunctionLike(parent)
-        ? Option.some(parent)
-        : enclosingFunctionLike(parent)
+      isRuntimeFunctionLike(parent) ? Option.some(parent) : enclosingFunctionLike(parent)
     )
   )
 
-const enclosingVariableNameNode = (
-  node: ts.Node
-): Option.Option<ts.Identifier> =>
+const enclosingVariableNameNode = (node: ts.Node): Option.Option<ts.Identifier> =>
   pipe(
     Option.fromNullable(node.parent),
     Option.flatMap((parent) => {
@@ -968,10 +837,7 @@ const declarationNameNode = (
     ts.isFunctionExpression(declaration) ||
     ts.isMethodDeclaration(declaration)
   ) {
-    const directName = pipe(
-      Option.fromNullable(declaration.name),
-      Option.filter(ts.isIdentifier)
-    )
+    const directName = pipe(Option.fromNullable(declaration.name), Option.filter(ts.isIdentifier))
 
     if (Option.isSome(directName) || ts.isMethodDeclaration(declaration)) {
       return directName
@@ -981,16 +847,11 @@ const declarationNameNode = (
   return enclosingVariableNameNode(declaration)
 }
 
-export const sourceFileScopesFunction = (
-  context: CheckContext,
-  node: ts.Node
-): boolean => {
+export const sourceFileScopesFunction = (context: CheckContext, node: ts.Node): boolean => {
   const functionSymbol = pipe(
     enclosingFunctionLike(node),
     Option.flatMap(declarationNameNode),
-    Option.flatMap((name) =>
-      pipe(context.checker.getSymbolAtLocation(name), Option.fromNullable)
-    )
+    Option.flatMap((name) => pipe(context.checker.getSymbolAtLocation(name), Option.fromNullable))
   )
 
   if (Option.isNone(functionSymbol)) {
@@ -1008,6 +869,7 @@ export const sourceFileScopesFunction = (
       "Layer",
       layerLifecycleNames
     )
+
     const scopedEffect = importedEffectApiAt(
       context.checker,
       current.expression,
@@ -1032,10 +894,7 @@ export const sourceFileScopesFunction = (
 
 export const isTopLevelExportedDeclaration = (node: ts.Node): boolean => {
   const visit = (current: ts.Node): boolean => {
-    if (
-      ts.isStatement(current) &&
-      current.parent.kind === ts.SyntaxKind.SourceFile
-    ) {
+    if (ts.isStatement(current) && current.parent.kind === ts.SyntaxKind.SourceFile) {
       return hasExportModifier(current)
     }
 

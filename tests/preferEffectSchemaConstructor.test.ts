@@ -14,16 +14,11 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-schema-constructor"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-constructor")
 
 const untaggedMessage = "Avoid returning a raw object literal."
 
-const taggedMessage = (tag: string): string =>
-  `Avoid returning a raw "${tag}" object literal.`
+const taggedMessage = (tag: string): string => `Avoid returning a raw "${tag}" object literal.`
 
 const untaggedHint =
   "Reuse an existing Effect Schema whose semantics match this result and construct it through " +
@@ -126,9 +121,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(preferEffectSchemaConstructor)(project)
-      )
+      Effect.runPromise(runCheckOnProject(preferEffectSchemaConstructor)(project))
     )
   )
 

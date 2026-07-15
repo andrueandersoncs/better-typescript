@@ -15,8 +15,7 @@ import {
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-eta-reduction")
-const expectedMessage =
-  "Avoid wrapping a function call that only forwards its argument."
+const expectedMessage = "Avoid wrapping a function call that only forwards its argument."
 const etaHint =
   "Eta-reduce this arrow to the function value itself (pass f instead of " +
   "(x) => f(x)). If the callee is already partially applied, use that partial " +
@@ -97,9 +96,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEtaReductionFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferEtaReductionFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

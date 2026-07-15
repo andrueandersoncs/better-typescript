@@ -40,5 +40,4 @@ export const buildFunctionalCoreEffectIndex =
 export const roleForSourceFile = (
   index: FunctionalCoreEffectIndex,
   sourceFile: ts.SourceFile
-): Option.Option<ArchitectureRole> =>
-  HashMap.get(index.roles, sourceFile.fileName)
+): Option.Option<ArchitectureRole> => HashMap.get(index.roles, sourceFile.fileName)

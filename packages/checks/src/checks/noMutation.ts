@@ -1,13 +1,4 @@
-import {
-  Array,
-  Function,
-  HashSet,
-  Match,
-  Option,
-  Predicate,
-  Struct,
-  pipe
-} from "effect"
+import { Array, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
@@ -34,19 +25,13 @@ const hint =
   "handler slot, a React ref cell) is permitted."
 
 /**
- * MutationNode is the shared MutationNode values contract used by isMutationCandidate
- * and mutationMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * MutationNode is the syntax contract shared by mutation candidate detection
+ * and matching. @modelRole shared @remarks It remains explicit because both
+ * owners need one stable compiler-node vocabulary; removing it would duplicate
+ * the union and let their accepted expressions drift.
  */
 type MutationNode =
-  | ts.BinaryExpression
-  | ts.PrefixUnaryExpression
-  | ts.PostfixUnaryExpression
-  | ts.DeleteExpression
+  ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression | ts.DeleteExpression
 
 const hasAssignmentOperator = (expression: ts.BinaryExpression): boolean =>
   expression.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
@@ -57,29 +42,19 @@ const incrementDecrementKinds = HashSet.make(
   ts.SyntaxKind.MinusMinusToken
 )
 
-const mutatesOperand = (
-  unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression
-): boolean => HashSet.has(incrementDecrementKinds, unary.operator)
+const mutatesOperand = (unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression): boolean =>
+  HashSet.has(incrementDecrementKinds, unary.operator)
 
-const binaryAssignmentTarget = (
-  expression: ts.BinaryExpression
-): Option.Option<ts.Expression> =>
-  pipe(
-    Option.liftPredicate(hasAssignmentOperator)(expression),
-    Option.map(Struct.get("left"))
-  )
+const binaryAssignmentTarget = (expression: ts.BinaryExpression): Option.Option<ts.Expression> =>
+  pipe(Option.liftPredicate(hasAssignmentOperator)(expression), Option.map(Struct.get("left")))
 
 const unaryMutationTarget = (
   unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression
 ): Option.Option<ts.Expression> =>
-  pipe(
-    Option.liftPredicate(mutatesOperand)(unary),
-    Option.map(Struct.get("operand"))
-  )
+  pipe(Option.liftPredicate(mutatesOperand)(unary), Option.map(Struct.get("operand")))
 
-const deleteExpressionTarget = (
-  expression: ts.DeleteExpression
-): Option.Option<ts.Expression> => Option.some(expression.expression)
+const deleteExpressionTarget = (expression: ts.DeleteExpression): Option.Option<ts.Expression> =>
+  Option.some(expression.expression)
 
 // Recognize only ECMAScript default-library values as built-ins because host environments and packages remain external.
 const ecmaScriptLibPrefixes: ReadonlyArray<string> = Array.make(
@@ -93,18 +68,14 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
   const separatorIndex = normalized.lastIndexOf("/")
   const baseName = normalized.slice(separatorIndex + 1)
 
-  return Array.some(ecmaScriptLibPrefixes, (prefix) =>
-    baseName.startsWith(prefix)
-  )
+  return Array.some(ecmaScriptLibPrefixes, (prefix) => baseName.startsWith(prefix))
 }
 
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
 
-  const sourceFiles = Array.map(declarations, (declaration) =>
-    declaration.getSourceFile()
-  )
+  const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
 
   const hasDeclarations = sourceFiles.length > 0
   const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
@@ -129,11 +100,9 @@ const resolveAlias =
   }
 
 // Avoid checker.getNonNullableType because it stack-overflows on Effect type parameters like Struct.evolve's O.
-const nullishTypeFlags =
-  ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
+const nullishTypeFlags = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
 
-const isNullishType = (type: ts.Type): boolean =>
-  (type.flags & nullishTypeFlags) !== 0
+const isNullishType = (type: ts.Type): boolean => (type.flags & nullishTypeFlags) !== 0
 
 const emptyTypeSeen: HashSet.HashSet<ts.Type> = HashSet.empty()
 
@@ -169,23 +138,17 @@ const isUncontrolledTypeWithSeen =
           Option.exists(isUncontrolledSymbol)
         )
 
-        const nullishSymbolConditions = Array.make(
-          isNullish,
-          hasUncontrolledSymbol
-        )
+        const nullishSymbolConditions = Array.make(isNullish, hasUncontrolledSymbol)
 
         return Array.some(nullishSymbolConditions, Boolean)
       })
     )
 
 /**
- * MutationScope is the shared length contract used by mutationMatches and
- * fallbackLocalScope.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * MutationScope classifies mutation ownership for matching and fallback scope
+ * selection. @modelRole shared @remarks It remains explicit because both owners
+ * must exchange the same policy vocabulary; removing it would duplicate the
+ * literal union and let their classifications drift.
  */
 type MutationScope = "shared-state" | "local" | "builtin"
 
@@ -201,17 +164,14 @@ const executionBoundaryKinds = HashSet.make(
 )
 
 const enclosingExecutionBoundary = (node: ts.Node): ts.Node =>
-  HashSet.has(executionBoundaryKinds, node.kind)
-    ? node
-    : enclosingExecutionBoundary(node.parent)
+  HashSet.has(executionBoundaryKinds, node.kind) ? node : enclosingExecutionBoundary(node.parent)
 
 // Use the root receiver because x.y[0].z writes into whatever x names.
 const rootReceiver = (expression: ts.Expression): ts.Expression => {
   const unwrapped = unwrapExpression(expression)
 
   const isAccess =
-    ts.isPropertyAccessExpression(unwrapped) ||
-    ts.isElementAccessExpression(unwrapped)
+    ts.isPropertyAccessExpression(unwrapped) || ts.isElementAccessExpression(unwrapped)
 
   return isAccess ? rootReceiver(unwrapped.expression) : unwrapped
 }
@@ -256,27 +216,21 @@ const mutationMatches = (context: CheckContext) => {
       Option.map((symbol): MutationScope => {
         const declarations = symbol.getDeclarations() ?? Array.empty()
 
-        const sourceFiles = Array.map(declarations, (declaration) =>
-          declaration.getSourceFile()
-        )
+        const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
 
         const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
         const declaredScope = pipe(
           Option.fromNullable(declarations[0]),
           Option.map((declaration): MutationScope => {
-            const declarationBoundary = enclosingExecutionBoundary(
-              declaration.parent
-            )
+            const declarationBoundary = enclosingExecutionBoundary(declaration.parent)
 
             const mutationBoundary = enclosingExecutionBoundary(root.parent)
             const isModuleScoped = ts.isSourceFile(declarationBoundary)
             const isCaptured = declarationBoundary !== mutationBoundary
 
             const sharedStateConditions = Array.make(isModuleScoped, isCaptured)
-            return Array.some(sharedStateConditions, Boolean)
-              ? "shared-state"
-              : "local"
+            return Array.some(sharedStateConditions, Boolean) ? "shared-state" : "local"
           }),
           Option.getOrElse(fallbackLocalScope)
         )
@@ -298,8 +252,7 @@ const mutationMatches = (context: CheckContext) => {
           const unwrapped = unwrapExpression(target)
 
           const isAccess =
-            ts.isPropertyAccessExpression(unwrapped) ||
-            ts.isElementAccessExpression(unwrapped)
+            ts.isPropertyAccessExpression(unwrapped) || ts.isElementAccessExpression(unwrapped)
 
           // Judge the receiver because property and element assignments write into its data structure.
           if (isAccess) {
@@ -338,5 +291,4 @@ const check = nodeCheck(mutationNodeKinds)(isMutationCandidate)(mutationMatches)
 
 export const noMutation: Check = check
 
-export const noMutationExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-mutation")
+export const noMutationExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-mutation")

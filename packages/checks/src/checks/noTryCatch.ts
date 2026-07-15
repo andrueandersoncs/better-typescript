@@ -32,9 +32,6 @@ const tryCatchElements = (context: CheckContext) => {
 
 const tryStatementKinds = Array.of(tryStatementKind)
 
-export const noTryCatch: Check = nodeCheck(tryStatementKinds)(
-  ts.isTryStatement
-)(tryCatchElements)
+export const noTryCatch: Check = nodeCheck(tryStatementKinds)(ts.isTryStatement)(tryCatchElements)
 
-export const noTryCatchExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-try-catch")
+export const noTryCatchExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-try-catch")

@@ -8,10 +8,7 @@ import {
   evidenceFromCounts,
   evidenceItem
 } from "@better-typescript/core/engine/derive"
-import type {
-  FileDetections,
-  NamedDetection
-} from "@better-typescript/core/engine/derive/data"
+import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
 
 const densityAdvice = (file: FileDetections): Advice => {
   const summary = countSummary(file.elements)
@@ -33,9 +30,7 @@ const densityAdvice = (file: FileDetections): Advice => {
   })
 }
 
-const denseFileAdvice = (
-  signals: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> =>
+const denseFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> =>
   pipe(
     byFile(signals),
     Array.filter((file) => file.elements.length >= 10),

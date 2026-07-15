@@ -12,10 +12,7 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import type {
-  LoadedProject,
-  ProjectConfig
-} from "../../project/loadProject/data.js"
+import type { LoadedProject, ProjectConfig } from "../../project/loadProject/data.js"
 import { AstNodeElement, ProgramContext, SourceUpdate } from "./data.js"
 
 export type AstFold<A> = (accumulator: A, node: ts.Node) => A
@@ -36,14 +33,8 @@ export const contextFor =
     return new ProgramContext({ program, checker, projectRoot })
   }
 
-export const checkableSourceFiles = (
-  project: LoadedProject
-): Stream.Stream<ts.SourceFile, Error> =>
-  pipe(
-    project.program.getSourceFiles(),
-    Array.filter(isProjectSourceFile),
-    Stream.fromIterable
-  )
+export const checkableSourceFiles = (project: LoadedProject): Stream.Stream<ts.SourceFile, Error> =>
+  pipe(project.program.getSourceFiles(), Array.filter(isProjectSourceFile), Stream.fromIterable)
 
 export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
   const children = MutableList.empty<ts.Node>()
@@ -59,8 +50,10 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
 
 /**
  * Depth-first pre-order traversal backed by an explicit persistent stack.
- * @remarks TypeScript trees can be arbitrarily deep, so traversal must not use
- * the JavaScript call stack.
+ *
+ * @remarks
+ *   TypeScript trees can be arbitrarily deep, so traversal must not use the
+ *   JavaScript call stack.
  */
 export const astNodesIn = (root: ts.Node): Iterable<ts.Node> => {
   const initial = List.of(root)
@@ -108,17 +101,13 @@ export const astNodesFromContext = (
     )
   )
 
-export const astNodes = (
-  project: LoadedProject
-): Stream.Stream<AstNodeElement, Error> =>
+export const astNodes = (project: LoadedProject): Stream.Stream<AstNodeElement, Error> =>
   pipe(project.program, contextFor(project.rootPath), astNodesFromContext)
 
 // Reporter diagnostics stay silent because the watcher must retain the last valid program through a transient config failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 
-const stopWatch = (
-  watch: ts.WatchOfConfigFile<ts.BuilderProgram>
-): Effect.Effect<void> =>
+const stopWatch = (watch: ts.WatchOfConfigFile<ts.BuilderProgram>): Effect.Effect<void> =>
   Effect.sync(() => {
     watch.close()
   })
@@ -126,8 +115,10 @@ const stopWatch = (
 /**
  * The project-level root signal: one fresh ProgramContext per watch rebuild,
  * covering file edits, adds, deletes, and leaf tsconfig edits.
- * @remarks Fresh contexts per rebuild are required because downstream diffs
- * and checks must observe the program TypeScript just produced.
+ *
+ * @remarks
+ *   Fresh contexts per rebuild are required because downstream diffs and checks
+ *   must observe the program TypeScript just produced.
  */
 export const programUpdates = (
   config: ProjectConfig,
@@ -165,33 +156,24 @@ export const programUpdates = (
 
 const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
 
-const fileIndexEntry = (
-  sourceFile: ts.SourceFile
-): readonly [string, ts.SourceFile] =>
+const fileIndexEntry = (sourceFile: ts.SourceFile): readonly [string, ts.SourceFile] =>
   Tuple.make(sourceFile.fileName, sourceFile)
 
 /**
  * Pure diff of one rebuilt program against the previous file index. Identity
  * diffing may over-report changed files (a redundant recompute at worst); it
  * never under-reports.
- * @remarks Over-reporting is acceptable because missing a changed file would
- * leave stale detections, while an extra recompute is only wasted work.
+ *
+ * @remarks
+ *   Over-reporting is acceptable because missing a changed file would leave stale
+ *   detections, while an extra recompute is only wasted work.
  */
 export const diffCheckableFiles =
   (previous: HashMap.HashMap<string, ts.SourceFile>) =>
-  (
-    context: ProgramContext
-  ): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
-    const currentFiles = pipe(
-      context.program.getSourceFiles(),
-      Array.filter(isProjectSourceFile)
-    )
+  (context: ProgramContext): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
+    const currentFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
-    const next = pipe(
-      currentFiles,
-      Array.map(fileIndexEntry),
-      HashMap.fromIterable
-    )
+    const next = pipe(currentFiles, Array.map(fileIndexEntry), HashMap.fromIterable)
 
     const changed = Array.filter(currentFiles, (sourceFile) =>
       pipe(
@@ -216,10 +198,12 @@ export const diffCheckableFiles =
   }
 
 /**
- * The file-level root signal: per rebuild, which checkable source files
- * changed and which paths disappeared (first emission: all checkable files).
- * @remarks Changed and deleted paths are emitted together because workspace
- * caching must drop removed files as well as refresh edited ones.
+ * The file-level root signal: per rebuild, which checkable source files changed
+ * and which paths disappeared (first emission: all checkable files).
+ *
+ * @remarks
+ *   Changed and deleted paths are emitted together because workspace caching must
+ *   drop removed files as well as refresh edited ones.
  */
 export const sourceUpdates = (
   config: ProjectConfig,
@@ -227,7 +211,5 @@ export const sourceUpdates = (
 ): Stream.Stream<SourceUpdate, Error> =>
   pipe(
     programUpdates(config, watchOptions),
-    Stream.mapAccum(emptyFileIndex, (previous, context) =>
-      diffCheckableFiles(previous)(context)
-    )
+    Stream.mapAccum(emptyFileIndex, (previous, context) => diffCheckableFiles(previous)(context))
   )

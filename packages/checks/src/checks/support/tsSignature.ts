@@ -4,33 +4,30 @@ import { isSameNode, outermostTransparentWrapper } from "./tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 
 /**
- * CallLikeExpression is the shared expression, typeArguments, arguments contract used
- * by resolvedCallSignature, argumentConsumingCall, and isCallLikeExpression.
+ * CallLikeExpression is the shared expression, typeArguments, arguments
+ * contract used by resolvedCallSignature, argumentConsumingCall, and
+ * isCallLikeExpression.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export type CallLikeExpression = ts.CallExpression | ts.NewExpression
 
-export const isCallLikeExpression = (
-  node: ts.Node
-): node is CallLikeExpression =>
+export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
   ts.isCallExpression(node) || ts.isNewExpression(node)
 
-export const callArguments = (
-  call: CallLikeExpression
-): ReadonlyArray<ts.Expression> => call.arguments ?? Array.empty()
+export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
+  call.arguments ?? Array.empty()
 
 export const resolvedCallSignature =
   (checker: ts.TypeChecker) =>
   (call: CallLikeExpression): Option.Option<ts.Signature> =>
     pipe(checker.getResolvedSignature(call), Option.fromNullable)
 
-const signatureDeclarationIsExternal = (
-  declaration: ts.Declaration
-): boolean => {
+const signatureDeclarationIsExternal = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
 
   return !isProjectSourceFile(sourceFile)
@@ -45,17 +42,12 @@ export const signatureIsExternal = (signature: ts.Signature): boolean =>
     Option.getOrElse(Function.constant(true))
   )
 
-const signatureDeclarationOption = (
-  signature: ts.Signature
-): Option.Option<ts.Declaration> =>
+const signatureDeclarationOption = (signature: ts.Signature): Option.Option<ts.Declaration> =>
   pipe(signature.getDeclaration(), Option.fromNullable)
 
 // Missing declarations do not grant an escape because exemptions require a proven external boundary.
 const hasExternalDeclaration = (signature: ts.Signature): boolean =>
-  pipe(
-    signatureDeclarationOption(signature),
-    Option.exists(signatureDeclarationIsExternal)
-  )
+  pipe(signatureDeclarationOption(signature), Option.exists(signatureDeclarationIsExternal))
 
 const argumentForwardingKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedExpression,
@@ -66,9 +58,7 @@ const argumentForwardingKinds = HashSet.make(
   ts.SyntaxKind.ArrayLiteralExpression
 )
 
-export const argumentConsumingCall = (
-  node: ts.Node
-): Option.Option<CallLikeExpression> => {
+export const argumentConsumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
   const parent = node.parent
 
   if (isCallLikeExpression(parent)) {
@@ -100,8 +90,7 @@ export const isExternalPackageArgument =
         return Option.exists(declarationFile, (sourceFile) => {
           const isExternal = !isProjectSourceFile(sourceFile)
 
-          const isDefaultLibrary =
-            program.isSourceFileDefaultLibrary(sourceFile)
+          const isDefaultLibrary = program.isSourceFileDefaultLibrary(sourceFile)
 
           const ambientConditions = Array.make(isExternal, !isDefaultLibrary)
           return Array.every(ambientConditions, Boolean)
@@ -142,8 +131,7 @@ const nameNodeEscapes =
                 (candidateSymbol) => candidateSymbol === symbol
               )
 
-              const isExternalArgument =
-                isExternalArgumentPosition(checker)(identifier)
+              const isExternalArgument = isExternalArgumentPosition(checker)(identifier)
 
               const escapeConditions = Array.make(
                 !isDeclarationName,
@@ -155,9 +143,7 @@ const nameNodeEscapes =
             })
           )
 
-          const childMatch = isEscapingReference
-            ? true
-            : ts.forEachChild(candidate, findMatch)
+          const childMatch = isEscapingReference ? true : ts.forEachChild(candidate, findMatch)
 
           return childMatch === true
         }
@@ -172,8 +158,7 @@ export const constructionEscapesExternally =
   (expression: ts.Expression): boolean => {
     const outermost = outermostTransparentWrapper(expression)
 
-    const isDirectExternalArgument =
-      isExternalArgumentPosition(checker)(outermost)
+    const isDirectExternalArgument = isExternalArgumentPosition(checker)(outermost)
 
     const sourceFile = expression.getSourceFile()
 
@@ -188,13 +173,11 @@ export const constructionEscapesExternally =
   }
 
 /**
- * EscapeCarrier is the shared name, type, initializer contract used by
- * isEscapeCarrierNode and escapeCarrier.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * EscapeCarrier is the syntax contract shared by external-escape carrier
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because variable and parameter declarations need one compiler-node
+ * vocabulary; removing it would duplicate the union and let their accepted
+ * declarations drift.
  */
 type EscapeCarrier = ts.VariableDeclaration | ts.ParameterDeclaration
 
@@ -216,9 +199,8 @@ const escapeCarrier = (node: ts.Node): Option.Option<EscapeCarrier> => {
   )
 }
 
-const functionDeclarationName = (
-  declaration: ts.FunctionDeclaration
-): Option.Option<ts.Node> => Option.fromNullable(declaration.name)
+const functionDeclarationName = (declaration: ts.FunctionDeclaration): Option.Option<ts.Node> =>
+  Option.fromNullable(declaration.name)
 
 // A written Map or Set type escapes because its carrier crosses an external boundary.
 export const typeReferenceEscapesExternally =
@@ -231,8 +213,7 @@ export const typeReferenceEscapesExternally =
           const enclosing = carrier.parent
           const sourceFile = carrier.getSourceFile()
 
-          const isDirectExternalArgument =
-            isExternalArgumentPosition(checker)(enclosing)
+          const isDirectExternalArgument = isExternalArgumentPosition(checker)(enclosing)
 
           const variableName = pipe(
             Option.liftPredicate(ts.isVariableDeclaration)(enclosing.parent),
@@ -244,15 +225,9 @@ export const typeReferenceEscapesExternally =
             Option.flatMap(functionDeclarationName)
           )
 
-          const nameNode = pipe(
-            variableName,
-            Option.orElse(Function.constant(functionName))
-          )
+          const nameNode = pipe(variableName, Option.orElse(Function.constant(functionName)))
 
-          const escapesThroughName = Option.exists(
-            nameNode,
-            nameNodeEscapes(checker)(sourceFile)
-          )
+          const escapesThroughName = Option.exists(nameNode, nameNodeEscapes(checker)(sourceFile))
 
           return isDirectExternalArgument || escapesThroughName
         }
@@ -272,9 +247,7 @@ const declarationInEffectPackage = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
 
-  return Array.some(effectPackagePathSegments, (segment) =>
-    fileName.includes(segment)
-  )
+  return Array.some(effectPackagePathSegments, (segment) => fileName.includes(segment))
 }
 
 export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol): boolean => {

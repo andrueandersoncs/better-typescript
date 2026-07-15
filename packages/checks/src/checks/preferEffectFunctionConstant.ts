@@ -10,13 +10,11 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 /**
- * ConstantThunk is the shared modifiers, body, name, asteriskToken contract used by
- * isEligibleFunction, functionConstantMatches, and constantThunkReturnedExpression.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * ConstantThunk is the syntax contract shared by constant-function eligibility,
+ * matching, and returned-expression analysis. @modelRole shared @remarks It
+ * remains explicit because all three owners need one stable compiler-node
+ * vocabulary; removing it would duplicate the union and let their accepted
+ * expressions drift.
  */
 type ConstantThunk = ts.ArrowFunction | ts.FunctionExpression
 
@@ -50,15 +48,12 @@ const modifierIsAsync = (modifier: ts.ModifierLike): boolean =>
 
 const hasElements = (items: ReadonlyArray<unknown>): boolean => items.length > 0
 
-const hasSingleElement = (items: ReadonlyArray<unknown>): boolean =>
-  items.length === 1
+const hasSingleElement = (items: ReadonlyArray<unknown>): boolean => items.length === 1
 
 const isEligibleFunction = (node: ConstantThunk): boolean => {
   const modifiers = pipe(
     Option.gen(function* () {
-      const nodeWithModifiers = yield* Option.liftPredicate(
-        ts.canHaveModifiers
-      )(node)
+      const nodeWithModifiers = yield* Option.liftPredicate(ts.canHaveModifiers)(node)
 
       const modifiers = ts.getModifiers(nodeWithModifiers)
 
@@ -71,9 +66,7 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
 
   const hasGenerator = pipe(
     Option.gen(function* () {
-      const functionExpression = yield* Option.liftPredicate(
-        ts.isFunctionExpression
-      )(node)
+      const functionExpression = yield* Option.liftPredicate(ts.isFunctionExpression)(node)
 
       return yield* Option.fromNullable(functionExpression.asteriskToken)
     }),
@@ -95,23 +88,17 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
   return Array.every(nodeText, Boolean)
 }
 
-const blockReturnedExpression = (
-  body: ts.Block
-): Option.Option<ts.Expression> =>
+const blockReturnedExpression = (body: ts.Block): Option.Option<ts.Expression> =>
   Option.gen(function* () {
     yield* Option.liftPredicate(hasSingleElement)(body.statements)
     const statement = yield* Option.fromNullable(body.statements[0])
 
-    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
-      statement
-    )
+    const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(statement)
 
     return yield* Option.fromNullable(returnStatement.expression)
   })
 
-const constantThunkReturnedExpression = (
-  node: ConstantThunk
-): Option.Option<ts.Expression> =>
+const constantThunkReturnedExpression = (node: ConstantThunk): Option.Option<ts.Expression> =>
   ts.isArrowFunction(node)
     ? pipe(
         conciseArrowBody(node),
@@ -131,21 +118,16 @@ const isPrimitiveLiteralExpression = (expression: ts.Expression): boolean => {
   return HashSet.has(primitiveLiteralKinds, unwrapped.kind)
 }
 
-const declarationNameIsIdentifier = (
-  declaration: ts.VariableDeclaration
-): boolean => ts.isIdentifier(declaration.name)
+const declarationNameIsIdentifier = (declaration: ts.VariableDeclaration): boolean =>
+  ts.isIdentifier(declaration.name)
 
 const variableDeclarationList = (
   declaration: ts.VariableDeclaration
 ): Option.Option<ts.VariableDeclarationList> =>
-  pipe(
-    Option.some(declaration.parent),
-    Option.filter(ts.isVariableDeclarationList)
-  )
+  pipe(Option.some(declaration.parent), Option.filter(ts.isVariableDeclarationList))
 
-const declarationListIsConst = (
-  declarationList: ts.VariableDeclarationList
-): boolean => (declarationList.flags & ts.NodeFlags.Const) !== 0
+const declarationListIsConst = (declarationList: ts.VariableDeclarationList): boolean =>
+  (declarationList.flags & ts.NodeFlags.Const) !== 0
 
 const declarationListHasSingleDeclaration = (
   declarationList: ts.VariableDeclarationList
@@ -177,30 +159,25 @@ const functionConstantMatches = (context: CheckContext) => {
           Option.exists((identifier: ts.Identifier): boolean =>
             pipe(
               Option.gen(function* () {
-                const symbolCandidate =
-                  context.checker.getSymbolAtLocation(identifier)
+                const symbolCandidate = context.checker.getSymbolAtLocation(identifier)
 
                 const symbol = yield* Option.fromNullable(symbolCandidate)
                 const declarationCandidates = symbol.getDeclarations()
 
-                const declarations = yield* Option.fromNullable(
-                  declarationCandidates
-                )
+                const declarations = yield* Option.fromNullable(declarationCandidates)
 
                 yield* Option.liftPredicate(hasSingleElement)(declarations)
                 const declaration = yield* Option.fromNullable(declarations[0])
 
-                const variableDeclaration = yield* Option.liftPredicate(
-                  ts.isVariableDeclaration
-                )(declaration)
+                const variableDeclaration = yield* Option.liftPredicate(ts.isVariableDeclaration)(
+                  declaration
+                )
 
                 yield* Option.liftPredicate(
                   (candidate: ts.Declaration): boolean =>
                     candidate.getSourceFile() === context.sourceFile
                 )(variableDeclaration)
-                yield* Option.liftPredicate(declarationNameIsIdentifier)(
-                  variableDeclaration
-                )
+                yield* Option.liftPredicate(declarationNameIsIdentifier)(variableDeclaration)
                 yield* Option.liftPredicate(
                   (candidate: ts.VariableDeclaration): boolean =>
                     candidate.end <= node.getStart(context.sourceFile)
@@ -239,9 +216,7 @@ const functionConstantMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(constantThunkKinds)(isConstantThunk)(
-  functionConstantMatches
-)
+const check = nodeCheck(constantThunkKinds)(isConstantThunk)(functionConstantMatches)
 
 export const preferEffectFunctionConstant: Check = check
 

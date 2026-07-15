@@ -14,13 +14,8 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-multiple-boolean-operators"
-)
-const expectedMessage =
-  "Avoid combining more than one boolean operator in a single expression."
+const fixturePath = path.join(testDirectory, "fixtures", "no-multiple-boolean-operators")
+const expectedMessage = "Avoid combining more than one boolean operator in a single expression."
 const expectedHint =
   "Declare multiple constant variables instead of combining operators into a " +
   "single expression."

@@ -63,10 +63,7 @@ const importElements = (context: CheckContext) => {
       Option.map(Struct.get("text"))
     )
 
-    const importedPath = pipe(
-      specifier,
-      Option.getOrElse(Function.constant(""))
-    )
+    const importedPath = pipe(specifier, Option.getOrElse(Function.constant("")))
 
     const normalizedPath = importedPath.replaceAll("\\", "/")
     const rawPathParts = normalizedPath.split("/")
@@ -95,6 +92,6 @@ const importElements = (context: CheckContext) => {
 
 const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
 
-export const seamLeakageEvidence: Check = nodeCheck(importDeclarationKinds)(
-  ts.isImportDeclaration
-)(importElements)
+export const seamLeakageEvidence: Check = nodeCheck(importDeclarationKinds)(ts.isImportDeclaration)(
+  importElements
+)

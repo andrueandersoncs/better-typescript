@@ -3,10 +3,7 @@ import { highSignalDensity } from "../checks/highSignalDensity.js"
 import { hotSubsystem } from "../checks/hotSubsystem/hotSubsystem.js"
 import { imperativeStateManager } from "../checks/imperativeStateManager/imperativeStateManager.js"
 import { pipelineHostile } from "../checks/pipelineHostile/pipelineHostile.js"
-import {
-  conceptControl,
-  conceptControlExamples
-} from "../checks/conceptControl/conceptControl.js"
+import { conceptControl, conceptControlExamples } from "../checks/conceptControl/conceptControl.js"
 import { conceptProliferation } from "../checks/conceptControl/conceptProliferation.js"
 import { ruleDominance } from "../checks/ruleDominance.js"
 import { sideEffectLaundering } from "../checks/sideEffectLaundering.js"
@@ -23,31 +20,19 @@ import {
   requireWireSafeSchemaTaggedClass,
   requireWireSafeSchemaTaggedClassExamples
 } from "../checks/requireWireSafeSchemaTaggedClass.js"
-import {
-  noArraySpread,
-  noArraySpreadExamples
-} from "../checks/noArraySpread.js"
+import { noArraySpread, noArraySpreadExamples } from "../checks/noArraySpread.js"
 import {
   noPrimitiveArrayConstructors,
   noPrimitiveArrayConstructorsExamples
 } from "../checks/noPrimitiveArrayConstructors.js"
-import {
-  noAsyncFunctions,
-  noAsyncFunctionsExamples
-} from "../checks/noAsyncFunctions.js"
+import { noAsyncFunctions, noAsyncFunctionsExamples } from "../checks/noAsyncFunctions.js"
 import { noCallbacks, noCallbacksExamples } from "../checks/noCallbacks.js"
 import {
   noDuplicateFunctionNames,
   noDuplicateFunctionNamesExamples
 } from "../checks/noDuplicateFunctionNames.js"
-import {
-  noDuplicateIfBodies,
-  noDuplicateIfBodiesExamples
-} from "../checks/noDuplicateIfBodies.js"
-import {
-  noExplicitAnyReturn,
-  noExplicitAnyReturnExamples
-} from "../checks/noExplicitAnyReturn.js"
+import { noDuplicateIfBodies, noDuplicateIfBodiesExamples } from "../checks/noDuplicateIfBodies.js"
+import { noExplicitAnyReturn, noExplicitAnyReturnExamples } from "../checks/noExplicitAnyReturn.js"
 import {
   noFirstPartySchemaDeclare,
   noFirstPartySchemaDeclareExamples
@@ -55,18 +40,12 @@ import {
 import { noForInLoops, noForInLoopsExamples } from "../checks/noForInLoops.js"
 import { noForLoops, noForLoopsExamples } from "../checks/noForLoops.js"
 import { noForOfLoops, noForOfLoopsExamples } from "../checks/noForOfLoops.js"
-import {
-  noFunctionKeyword,
-  noFunctionKeywordExamples
-} from "../checks/noFunctionKeyword.js"
+import { noFunctionKeyword, noFunctionKeywordExamples } from "../checks/noFunctionKeyword.js"
 import {
   noInlineBooleanExpressions,
   noInlineBooleanExpressionsExamples
 } from "../checks/noInlineBooleanExpressions.js"
-import {
-  noInlineClosures,
-  noInlineClosuresExamples
-} from "../checks/noInlineClosures.js"
+import { noInlineClosures, noInlineClosuresExamples } from "../checks/noInlineClosures.js"
 import { noInstanceof, noInstanceofExamples } from "../checks/noInstanceof.js"
 import {
   noManualTypeDispatch,
@@ -76,10 +55,7 @@ import {
   noMonomorphicStructGet,
   noMonomorphicStructGetExamples
 } from "../checks/noMonomorphicStructGet.js"
-import {
-  noMultiLineComments,
-  noMultiLineCommentsExamples
-} from "../checks/noMultiLineComments.js"
+import { noMultiLineComments, noMultiLineCommentsExamples } from "../checks/noMultiLineComments.js"
 import {
   noMultipleBooleanOperators,
   noMultipleBooleanOperatorsExamples
@@ -94,35 +70,20 @@ import {
 } from "../checks/noMutableVariableDeclarations.js"
 import { noMutation, noMutationExamples } from "../checks/noMutation.js"
 import { noWeakMap, noWeakMapExamples } from "../checks/noWeakMap.js"
-import {
-  noNestedCalls,
-  noNestedCallsExamples
-} from "../checks/noNestedCalls.js"
+import { noNestedCalls, noNestedCallsExamples } from "../checks/noNestedCalls.js"
 import {
   noNestedIfStatements,
   noNestedIfStatementsExamples
 } from "../checks/noNestedIfStatements.js"
 import { noNewError, noNewErrorExamples } from "../checks/noNewError.js"
-import {
-  noNonNullAssertion,
-  noNonNullAssertionExamples
-} from "../checks/noNonNullAssertion.js"
-import {
-  noRawObjectTypes,
-  noRawObjectTypesExamples
-} from "../checks/noRawObjectTypes.js"
-import {
-  noSwitchStatements,
-  noSwitchStatementsExamples
-} from "../checks/noSwitchStatements.js"
+import { noNonNullAssertion, noNonNullAssertionExamples } from "../checks/noNonNullAssertion.js"
+import { noRawObjectTypes, noRawObjectTypesExamples } from "../checks/noRawObjectTypes.js"
+import { noSwitchStatements, noSwitchStatementsExamples } from "../checks/noSwitchStatements.js"
 import { noThrow, noThrowExamples } from "../checks/noThrow.js"
 import { noTryCatch, noTryCatchExamples } from "../checks/noTryCatch.js"
 import { noUndefined, noUndefinedExamples } from "../checks/noUndefined.js"
 import { noUnused, noUnusedExamples } from "../checks/noUnused.js"
-import {
-  noVoidFunctions,
-  noVoidFunctionsExamples
-} from "../checks/noVoidFunctions.js"
+import { noVoidFunctions, noVoidFunctionsExamples } from "../checks/noVoidFunctions.js"
 import {
   requireBecauseInComments,
   requireBecauseInCommentsExamples
@@ -143,22 +104,13 @@ import {
   preferDirectBooleanReturn,
   preferDirectBooleanReturnExamples
 } from "../checks/preferDirectBooleanReturn.js"
-import {
-  preferDirectYield,
-  preferDirectYieldExamples
-} from "../checks/preferDirectYield.js"
-import {
-  preferEffectArray,
-  preferEffectArrayExamples
-} from "../checks/preferEffectArray.js"
+import { preferDirectYield, preferDirectYieldExamples } from "../checks/preferDirectYield.js"
+import { preferEffectArray, preferEffectArrayExamples } from "../checks/preferEffectArray.js"
 import {
   preferEffectArrayAppendAll,
   preferEffectArrayAppendAllExamples
 } from "../checks/preferEffectArrayAppendAll.js"
-import {
-  preferEffectFn,
-  preferEffectFnExamples
-} from "../checks/preferEffectFn.js"
+import { preferEffectFn, preferEffectFnExamples } from "../checks/preferEffectFn.js"
 import {
   preferEffectFunctionConstant,
   preferEffectFunctionConstantExamples
@@ -187,38 +139,20 @@ import {
   preferEffectSchemaIs,
   preferEffectSchemaIsExamples
 } from "../checks/preferEffectSchemaIs.js"
-import {
-  preferHashMap,
-  preferHashMapExamples
-} from "../checks/preferHashMap.js"
-import {
-  preferHashSet,
-  preferHashSetExamples
-} from "../checks/preferHashSet.js"
+import { preferHashMap, preferHashMapExamples } from "../checks/preferHashMap.js"
+import { preferHashSet, preferHashSetExamples } from "../checks/preferHashSet.js"
 import {
   preferFunctionComposition,
   preferFunctionCompositionExamples
 } from "../checks/preferFunctionComposition.js"
-import {
-  preferEtaReduction,
-  preferEtaReductionExamples
-} from "../checks/preferEtaReduction.js"
-import {
-  preferFunctionFlip,
-  preferFunctionFlipExamples
-} from "../checks/preferFunctionFlip.js"
+import { preferEtaReduction, preferEtaReductionExamples } from "../checks/preferEtaReduction.js"
+import { preferFunctionFlip, preferFunctionFlipExamples } from "../checks/preferFunctionFlip.js"
 import {
   preferImplicitReturn,
   preferImplicitReturnExamples
 } from "../checks/preferImplicitReturn.js"
-import {
-  preferOptionMatch,
-  preferOptionMatchExamples
-} from "../checks/preferOptionMatch.js"
-import {
-  preferPipeFunction,
-  preferPipeFunctionExamples
-} from "../checks/preferPipeFunction.js"
+import { preferOptionMatch, preferOptionMatchExamples } from "../checks/preferOptionMatch.js"
+import { preferPipeFunction, preferPipeFunctionExamples } from "../checks/preferPipeFunction.js"
 import {
   defineConfig,
   filterFallbackAdviceForUncoveredFiles,
@@ -232,24 +166,13 @@ import type {
   Wiring,
   WiringConfig
 } from "@better-typescript/core/engine/report/data"
-import {
-  collectSignals,
-  namedDetection
-} from "@better-typescript/core/engine/derive"
-import type {
-  Advice,
-  NamedDetection
-} from "@better-typescript/core/engine/derive/data"
+import { collectSignals, namedDetection } from "@better-typescript/core/engine/derive"
+import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 
-const nameDetections = (
-  signal: Signal
-): Stream.Stream<NamedDetection, Error> => {
+const nameDetections = (signal: Signal): Stream.Stream<NamedDetection, Error> => {
   const toNamedDetection = namedDetection(signal.name)
 
-  return pipe(
-    Stream.fromIterable(signal.detections),
-    Stream.map(toNamedDetection)
-  )
+  return pipe(Stream.fromIterable(signal.detections), Stream.map(toNamedDetection))
 }
 
 const replayAdvice = Stream.fromIterable
@@ -278,11 +201,7 @@ const preferEffectSchemaClassCheck = namedCheck(
   preferEffectSchemaClassExamples
 )
 
-const preferEffectFnCheck = namedCheck(
-  "prefer-effect-fn",
-  preferEffectFn,
-  preferEffectFnExamples
-)
+const preferEffectFnCheck = namedCheck("prefer-effect-fn", preferEffectFn, preferEffectFnExamples)
 
 const preferEffectFunctionConstantCheck = namedCheck(
   "prefer-effect-function-constant",
@@ -332,11 +251,7 @@ const requireWireSafeSchemaTaggedClassCheck = namedCheck(
   requireWireSafeSchemaTaggedClassExamples
 )
 
-const conceptControlCheck = namedCheck(
-  "concept-control",
-  conceptControl,
-  conceptControlExamples
-)
+const conceptControlCheck = namedCheck("concept-control", conceptControl, conceptControlExamples)
 
 const preferConditionalReturnCheck = namedCheck(
   "prefer-conditional-return",
@@ -382,23 +297,11 @@ const preferImplicitReturnCheck = namedCheck(
 
 const noThrowCheck = namedCheck("no-throw", noThrow, noThrowExamples)
 
-const noNewErrorCheck = namedCheck(
-  "no-new-error",
-  noNewError,
-  noNewErrorExamples
-)
+const noNewErrorCheck = namedCheck("no-new-error", noNewError, noNewErrorExamples)
 
-const noTryCatchCheck = namedCheck(
-  "no-try-catch",
-  noTryCatch,
-  noTryCatchExamples
-)
+const noTryCatchCheck = namedCheck("no-try-catch", noTryCatch, noTryCatchExamples)
 
-const noUndefinedCheck = namedCheck(
-  "no-undefined",
-  noUndefined,
-  noUndefinedExamples
-)
+const noUndefinedCheck = namedCheck("no-undefined", noUndefined, noUndefinedExamples)
 
 const noUnusedCheck = namedCheck("no-unused", noUnused, noUnusedExamples)
 
@@ -456,11 +359,7 @@ const noMutableVariableDeclarationsCheck = namedCheck(
   noMutableVariableDeclarationsExamples
 )
 
-const noMutationCheck = namedCheck(
-  "no-mutation",
-  noMutation,
-  noMutationExamples
-)
+const noMutationCheck = namedCheck("no-mutation", noMutation, noMutationExamples)
 
 const noWeakMapCheck = namedCheck("no-weak-map", noWeakMap, noWeakMapExamples)
 
@@ -488,11 +387,7 @@ const noDuplicateFunctionNamesCheck = namedCheck(
   noDuplicateFunctionNamesExamples
 )
 
-const noCallbacksCheck = namedCheck(
-  "no-callbacks",
-  noCallbacks,
-  noCallbacksExamples
-)
+const noCallbacksCheck = namedCheck("no-callbacks", noCallbacks, noCallbacksExamples)
 
 const noAsyncFunctionsCheck = namedCheck(
   "no-async-functions",
@@ -500,11 +395,7 @@ const noAsyncFunctionsCheck = namedCheck(
   noAsyncFunctionsExamples
 )
 
-const noArraySpreadCheck = namedCheck(
-  "no-array-spread",
-  noArraySpread,
-  noArraySpreadExamples
-)
+const noArraySpreadCheck = namedCheck("no-array-spread", noArraySpread, noArraySpreadExamples)
 
 const noPrimitiveArrayConstructorsCheck = namedCheck(
   "no-primitive-array-constructors",
@@ -512,23 +403,11 @@ const noPrimitiveArrayConstructorsCheck = namedCheck(
   noPrimitiveArrayConstructorsExamples
 )
 
-const noForInLoopsCheck = namedCheck(
-  "no-for-in-loops",
-  noForInLoops,
-  noForInLoopsExamples
-)
+const noForInLoopsCheck = namedCheck("no-for-in-loops", noForInLoops, noForInLoopsExamples)
 
-const noForLoopsCheck = namedCheck(
-  "no-for-loops",
-  noForLoops,
-  noForLoopsExamples
-)
+const noForLoopsCheck = namedCheck("no-for-loops", noForLoops, noForLoopsExamples)
 
-const noForOfLoopsCheck = namedCheck(
-  "no-for-of-loops",
-  noForOfLoops,
-  noForOfLoopsExamples
-)
+const noForOfLoopsCheck = namedCheck("no-for-of-loops", noForOfLoops, noForOfLoopsExamples)
 
 const noSwitchStatementsCheck = namedCheck(
   "no-switch-statements",
@@ -548,11 +427,7 @@ const noInlineClosuresCheck = namedCheck(
   noInlineClosuresExamples
 )
 
-const noNestedCallsCheck = namedCheck(
-  "no-nested-calls",
-  noNestedCalls,
-  noNestedCallsExamples
-)
+const noNestedCallsCheck = namedCheck("no-nested-calls", noNestedCalls, noNestedCallsExamples)
 
 const noManualTypeDispatchCheck = namedCheck(
   "no-manual-type-dispatch",
@@ -578,23 +453,11 @@ const noFirstPartySchemaDeclareCheck = namedCheck(
   noFirstPartySchemaDeclareExamples
 )
 
-const noInstanceofCheck = namedCheck(
-  "no-instanceof",
-  noInstanceof,
-  noInstanceofExamples
-)
+const noInstanceofCheck = namedCheck("no-instanceof", noInstanceof, noInstanceofExamples)
 
-const preferHashSetCheck = namedCheck(
-  "prefer-hash-set",
-  preferHashSet,
-  preferHashSetExamples
-)
+const preferHashSetCheck = namedCheck("prefer-hash-set", preferHashSet, preferHashSetExamples)
 
-const preferHashMapCheck = namedCheck(
-  "prefer-hash-map",
-  preferHashMap,
-  preferHashMapExamples
-)
+const preferHashMapCheck = namedCheck("prefer-hash-map", preferHashMap, preferHashMapExamples)
 
 const preferOptionMatchCheck = namedCheck(
   "prefer-option-match",
@@ -679,9 +542,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferCurriedDataLastFunctionsCheck
 )
 
-export const defaultDerive = (
-  signals: ReadonlyArray<Signal>
-): Stream.Stream<Advice, Error> => {
+export const defaultDerive = (signals: ReadonlyArray<Signal>): Stream.Stream<Advice, Error> => {
   const elementsOf = signalOf(signals)
   const reportedSignals = Array.filter(signals, Struct.get("reported"))
   const signalStream = Stream.fromIterable(reportedSignals)
@@ -691,9 +552,7 @@ export const defaultDerive = (
   const preferHashSet = elementsOf("prefer-hash-set")
   const noMutableArrayMethods = elementsOf("no-mutable-array-methods")
 
-  const noMutableVariableDeclarations = elementsOf(
-    "no-mutable-variable-declarations"
-  )
+  const noMutableVariableDeclarations = elementsOf("no-mutable-variable-declarations")
 
   const noNestedCalls = elementsOf("no-nested-calls")
   const preferCurried = elementsOf("prefer-curried-data-last-functions")

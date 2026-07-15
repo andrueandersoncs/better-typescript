@@ -2,10 +2,7 @@ import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
-import {
-  hasExportModifier,
-  unwrapTransparentExpression
-} from "./support/tsNode.js"
+import { hasExportModifier, unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -23,14 +20,9 @@ const effectPackagePathSegments: ReadonlyArray<string> = Array.make(
   "/node_modules/@effect/"
 )
 
-const structModuleSuffixes: ReadonlyArray<string> = Array.make(
-  "/Struct.d.ts",
-  "/Struct.ts"
-)
+const structModuleSuffixes: ReadonlyArray<string> = Array.make("/Struct.d.ts", "/Struct.ts")
 
-const declarationIsEffectStructModule = (
-  declaration: ts.Declaration
-): boolean => {
+const declarationIsEffectStructModule = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
 
@@ -38,14 +30,9 @@ const declarationIsEffectStructModule = (
     fileName.includes(segment)
   )
 
-  const isStructModule = Array.some(structModuleSuffixes, (suffix) =>
-    fileName.endsWith(suffix)
-  )
+  const isStructModule = Array.some(structModuleSuffixes, (suffix) => fileName.endsWith(suffix))
 
-  const effectStructModuleConditions = Array.make(
-    inEffectPackage,
-    isStructModule
-  )
+  const effectStructModuleConditions = Array.make(inEffectPackage, isStructModule)
 
   return Array.every(effectStructModuleConditions, Boolean)
 }
@@ -60,9 +47,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const declarationIsExported = (
-    declaration: ts.VariableDeclaration
-  ): boolean =>
+  const declarationIsExported = (declaration: ts.VariableDeclaration): boolean =>
     pipe(
       Option.some(declaration.parent.parent),
       Option.filter(ts.isVariableStatement),
@@ -80,10 +65,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return typeParameterCount > 0
     })
 
-    const nonGenericCallableConditions = Array.make(
-      hasCallSignature,
-      hasNoGenericSignature
-    )
+    const nonGenericCallableConditions = Array.make(hasCallSignature, hasNoGenericSignature)
 
     return Array.every(nonGenericCallableConditions, Boolean)
   }
@@ -93,13 +75,9 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       Option.gen(function* () {
         const expression = unwrapTransparentExpression(initializer)
 
-        const call = yield* Option.liftPredicate(ts.isCallExpression)(
-          expression
-        )
+        const call = yield* Option.liftPredicate(ts.isCallExpression)(expression)
 
-        const callee = yield* Option.liftPredicate(
-          ts.isPropertyAccessExpression
-        )(call.expression)
+        const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
 
         const symbolAtName = checker.getSymbolAtLocation(callee.name)
         yield* pipe(
@@ -127,9 +105,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       )
     )
 
-  const matches = (
-    declaration: ts.VariableDeclaration
-  ): ReadonlyArray<Detection> =>
+  const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
         const localDeclaration = declarationIsExported(declaration)
@@ -158,5 +134,6 @@ const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(
 
 export const noMonomorphicStructGet: Check = check
 
-export const noMonomorphicStructGetExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-monomorphic-struct-get")
+export const noMonomorphicStructGetExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "no-monomorphic-struct-get"
+)

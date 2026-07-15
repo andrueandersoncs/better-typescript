@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-function-constant"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-function-constant")
 
 const message = "Avoid a handwritten constant thunk."
 
@@ -232,16 +228,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEffectFunctionConstantFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferEffectFunctionConstantFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(preferEffectFunctionConstant)(project)
-      )
+      Effect.runPromise(runCheckOnProject(preferEffectFunctionConstant)(project))
     )
   )
 

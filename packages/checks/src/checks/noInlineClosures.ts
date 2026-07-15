@@ -22,15 +22,11 @@ const effectiveParent = (node: ts.Node): ts.Node =>
     : node.parent
 
 const arrowFunctionMatches = (context: CheckContext) => {
-  const isExternalArgument = isExternalPackageArgument(context.checker)(
-    context.program
-  )
+  const isExternalArgument = isExternalPackageArgument(context.checker)(context.program)
 
   const match = detection(context)
 
-  const matches = (
-    arrowFunction: ts.ArrowFunction
-  ): ReadonlyArray<Detection> => {
+  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
     const parent = effectiveParent(arrowFunction)
     const hasSanctionedParent = HashSet.has(sanctionedParentKinds, parent.kind)
     const isExternalCallback = isExternalArgument(arrowFunction)
@@ -56,9 +52,7 @@ const arrowFunctionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
-  arrowFunctionMatches
-)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(arrowFunctionMatches)
 
 export const noInlineClosures: Check = check
 

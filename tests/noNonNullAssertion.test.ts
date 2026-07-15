@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-non-null-assertion"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-non-null-assertion")
 
 const expectedMessage = "Avoid non-null assertions."
 
@@ -62,9 +58,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoNonNullAssertionFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoNonNullAssertionFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

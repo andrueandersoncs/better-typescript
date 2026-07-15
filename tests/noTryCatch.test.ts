@@ -110,9 +110,7 @@ const runNoTryCatchFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noTryCatch)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noTryCatch)(project)))
   )
 
   return projectElements.flat()

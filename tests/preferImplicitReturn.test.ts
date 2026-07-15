@@ -14,13 +14,8 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-implicit-return"
-)
-const expectedMessage =
-  "Avoid arrow function block bodies that only return a value."
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-implicit-return")
+const expectedMessage = "Avoid arrow function block bodies that only return a value."
 const expectedHint =
   "Replace this with an implicit return by removing the return statement and function " +
   "body braces. Wrap object literals in parentheses when needed."
@@ -107,9 +102,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferImplicitReturnFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferImplicitReturnFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

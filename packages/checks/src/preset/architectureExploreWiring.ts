@@ -1,15 +1,8 @@
 import { Array, Stream, pipe } from "effect"
 import { makeWiring, silentCheck } from "@better-typescript/core/engine/report"
-import type {
-  NamedCheck,
-  Signal,
-  Wiring
-} from "@better-typescript/core/engine/report/data"
+import type { NamedCheck, Signal, Wiring } from "@better-typescript/core/engine/report/data"
 import { namedDetection } from "@better-typescript/core/engine/derive"
-import type {
-  Advice,
-  NamedDetection
-} from "@better-typescript/core/engine/derive/data"
+import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { passThroughWrappers } from "../checks/architectureExplore/passThroughWrappers.js"
 import { interfaceBurden } from "../checks/architectureExplore/interfaceBurden.js"
 import { moduleGraph } from "../checks/architectureExplore/moduleGraph.js"
@@ -30,16 +23,10 @@ const nameArchitectureExploreDetections = (
 ): Stream.Stream<NamedDetection, Error> => {
   const toNamedDetection = namedDetection(signal.name)
 
-  return pipe(
-    Stream.fromIterable(signal.detections),
-    Stream.map(toNamedDetection)
-  )
+  return pipe(Stream.fromIterable(signal.detections), Stream.map(toNamedDetection))
 }
 
-const passThroughWrappersCheck = silentCheck(
-  "pass-through-wrappers",
-  passThroughWrappers
-)
+const passThroughWrappersCheck = silentCheck("pass-through-wrappers", passThroughWrappers)
 
 const interfaceBurdenCheck = silentCheck("interface-burden", interfaceBurden)
 
@@ -47,20 +34,14 @@ const moduleGraphCheck = silentCheck("module-graph", moduleGraph)
 
 const testOnlyExportsCheck = silentCheck("test-only-exports", testOnlyExports)
 
-const seamLeakageEvidenceCheck = silentCheck(
-  "seam-leakage-evidence",
-  seamLeakageEvidence
-)
+const seamLeakageEvidenceCheck = silentCheck("seam-leakage-evidence", seamLeakageEvidence)
 
 const externalDependencyConstructionCheck = silentCheck(
   "external-dependency-construction",
   externalDependencyConstruction
 )
 
-const singleAdapterSeamsCheck = silentCheck(
-  "single-adapter-seams",
-  singleAdapterSeams
-)
+const singleAdapterSeamsCheck = silentCheck("single-adapter-seams", singleAdapterSeams)
 
 export const architectureExploreChecks: ReadonlyArray<NamedCheck> = Array.make(
   passThroughWrappersCheck,

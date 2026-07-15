@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-direct-boolean-return"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-direct-boolean-return")
 
 const andFalseHint =
   "Use && instead of branching to false (`cond && value`). When the false " +
@@ -149,9 +145,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferDirectBooleanReturnFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferDirectBooleanReturnFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

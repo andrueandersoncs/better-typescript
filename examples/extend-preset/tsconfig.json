@@ -11,21 +11,15 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "@better-typescript/core/engine/check": [
-        "../../packages/core/src/engine/check/check.ts"
-      ],
-      "@better-typescript/core/engine/check/data": [
-        "../../packages/core/src/engine/check/data.ts"
-      ],
+      "@better-typescript/core/engine/check": ["../../packages/core/src/engine/check/check.ts"],
+      "@better-typescript/core/engine/check/data": ["../../packages/core/src/engine/check/data.ts"],
       "@better-typescript/core/engine/location": [
         "../../packages/core/src/engine/location/location.ts"
       ],
       "@better-typescript/core/engine/location/data": [
         "../../packages/core/src/engine/location/data.ts"
       ],
-      "@better-typescript/core/engine/derive": [
-        "../../packages/core/src/engine/derive/derive.ts"
-      ],
+      "@better-typescript/core/engine/derive": ["../../packages/core/src/engine/derive/derive.ts"],
       "@better-typescript/core/engine/derive/data": [
         "../../packages/core/src/engine/derive/data.ts"
       ],
@@ -35,27 +29,19 @@
       "@better-typescript/core/engine/example/data": [
         "../../packages/core/src/engine/example/data.ts"
       ],
-      "@better-typescript/core/engine/report": [
-        "../../packages/core/src/engine/report/report.ts"
-      ],
+      "@better-typescript/core/engine/report": ["../../packages/core/src/engine/report/report.ts"],
       "@better-typescript/core/engine/report/data": [
         "../../packages/core/src/engine/report/data.ts"
       ],
-      "@better-typescript/core/engine/watch": [
-        "../../packages/core/src/engine/watch/watch.ts"
-      ],
-      "@better-typescript/core/engine/watch/data": [
-        "../../packages/core/src/engine/watch/data.ts"
-      ],
+      "@better-typescript/core/engine/watch": ["../../packages/core/src/engine/watch/watch.ts"],
+      "@better-typescript/core/engine/watch/data": ["../../packages/core/src/engine/watch/data.ts"],
       "@better-typescript/core/engine/sources": [
         "../../packages/core/src/engine/sources/sources.ts"
       ],
       "@better-typescript/core/engine/sources/data": [
         "../../packages/core/src/engine/sources/data.ts"
       ],
-      "@better-typescript/checks/preset": [
-        "../../packages/checks/src/preset.ts"
-      ],
+      "@better-typescript/checks/preset": ["../../packages/checks/src/preset.ts"],
       "@better-typescript/checks/preset/defaultWiring": [
         "../../packages/checks/src/preset/defaultWiring.ts"
       ]

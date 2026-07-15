@@ -15,8 +15,7 @@ import {
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-array-spread")
-const expectedMessage =
-  "Avoid the array-spread operator when constructing arrays."
+const expectedMessage = "Avoid the array-spread operator when constructing arrays."
 const expectedHint =
   "Use Effect's Array module instead: Array.append or Array.prepend to add a " +
   "single element, Array.appendAll or Array.prependAll to combine two arrays, " +

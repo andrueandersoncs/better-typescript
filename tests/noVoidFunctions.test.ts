@@ -139,9 +139,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoVoidFunctionsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoVoidFunctionsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

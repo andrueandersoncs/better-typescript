@@ -39,33 +39,22 @@ const immediateDirectory = (filePath: string): string => {
 }
 
 const signalData = (element: Detection): Option.Option<ConceptSignalData> =>
-  pipe(
-    element.data,
-    Option.fromNullable,
-    Option.filter(Schema.is(ConceptSignalData))
-  )
+  pipe(element.data, Option.fromNullable, Option.filter(Schema.is(ConceptSignalData)))
 
 const signalKindCount = (
   counts: HashMap.HashMap<string, number>,
   data: ConceptSignalData
 ): HashMap.HashMap<string, number> => {
-  const current = pipe(
-    HashMap.get(counts, data.kind),
-    Option.getOrElse(Function.constant(0))
-  )
+  const current = pipe(HashMap.get(counts, data.kind), Option.getOrElse(Function.constant(0)))
 
   return HashMap.set(counts, data.kind, current + 1)
 }
 
-const closedAbstractionAdvice = (
-  element: Detection,
-  data: ConceptSignalData
-): Advice => {
+const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): Advice => {
   const externalCallers = evidenceItem("external callers", data.externalCallers)
-  const independentOwners = evidenceItem(
-    "independent model owners",
-    data.independentOwners
-  )
+
+  const independentOwners = evidenceItem("independent model owners", data.independentOwners)
+
   const evidence = Array.make(externalCallers, independentOwners)
 
   return new Advice({
@@ -86,11 +75,13 @@ const proliferationAdvice = (
   elements: ReadonlyArray<Detection>
 ): Option.Option<Advice> => {
   const data = Array.filterMap(elements, signalData)
+
   const concepts = pipe(
     data,
     Array.flatMap((item) => Array.prepend(item.relatedConcepts, item.concept)),
     HashSet.fromIterable
   )
+
   const enoughSignals = data.length >= 2
   const enoughConcepts = HashSet.size(concepts) >= 2
   const conditions = Array.make(enoughSignals, enoughConcepts)
@@ -99,18 +90,13 @@ const proliferationAdvice = (
     return Option.none()
   }
 
-  const kindCounts = Array.reduce(
-    data,
-    HashMap.empty<string, number>(),
-    signalKindCount
-  )
+  const kindCounts = Array.reduce(data, HashMap.empty<string, number>(), signalKindCount)
+
   const counts = evidenceFromCounts(kindCounts)
   const conceptCount = evidenceItem("distinct concepts", HashSet.size(concepts))
   const signalCount = evidenceItem("concept-control signals", data.length)
-  const evidence = Array.prepend(
-    Array.prepend(counts, signalCount),
-    conceptCount
-  )
+
+  const evidence = Array.prepend(Array.prepend(counts, signalCount), conceptCount)
 
   return Option.some(
     new Advice({
@@ -127,33 +113,33 @@ const proliferationAdvice = (
   )
 }
 
-const conceptAdviceFor = (
-  elements: ReadonlyArray<Detection>
-): ReadonlyArray<Advice> => {
+const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
   const typed = Array.filterMap(elements, (element) =>
     pipe(
       signalData(element),
       Option.map((data) => [element, data] as const)
     )
   )
+
   const closed = pipe(
     typed,
     Array.filter((entry) => entry[1].kind === "closed-abstraction"),
     Array.map((entry) => closedAbstractionAdvice(entry[0], entry[1]))
   )
+
   const proliferationElements = pipe(
     typed,
     Array.filter((entry) => HashSet.has(proliferationKinds, entry[1].kind)),
     Array.map(Struct.get(0))
   )
+
   const byDirectory = Array.groupBy(proliferationElements, (element) =>
     immediateDirectory(element.location.path)
   )
+
   const proliferation = pipe(
     Record.toEntries(byDirectory),
-    Array.filterMap(([directory, grouped]) =>
-      proliferationAdvice(directory, grouped)
-    )
+    Array.filterMap(([directory, grouped]) => proliferationAdvice(directory, grouped))
   )
 
   return Array.appendAll(closed, proliferation)

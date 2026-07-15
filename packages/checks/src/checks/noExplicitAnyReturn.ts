@@ -25,9 +25,7 @@ const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const containsAnyKeyword = (node: ts.Node): boolean => {
   const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
 
-  const anyChild = ts.forEachChild(node, (child) =>
-    containsAnyKeyword(child) ? child : void 0
-  )
+  const anyChild = ts.forEachChild(node, (child) => (containsAnyKeyword(child) ? child : void 0))
 
   const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
 
@@ -39,10 +37,7 @@ const explicitAnyReturnElements = (context: CheckContext) => {
   const element = detection(context)
 
   const matches = (node: ReturnTypeDeclaration): ReadonlyArray<Detection> => {
-    const hasAnyReturnType = pipe(
-      Option.fromNullable(node.type),
-      Option.exists(containsAnyKeyword)
-    )
+    const hasAnyReturnType = pipe(Option.fromNullable(node.type), Option.exists(containsAnyKeyword))
 
     const reported = element({
       node,

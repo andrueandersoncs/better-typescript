@@ -1,10 +1,6 @@
 import { Array, Data, Function, Option, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { isDeletableWrapper, moduleGraphDataOf } from "./evidence.js"
 
@@ -13,20 +9,16 @@ const minimumThinFiles = 3
 /**
  * GraphEdge is the path pair shared by connected-component traversal.
  *
- * @modelRole shared
- * @remarks It remains explicit because neighbor lookup, reachability, and
- * component assembly must exchange the same normalized edge. Removing it would
- * spread positional path pairs across all three graph operations.
+ * @modelRole shared @remarks It remains explicit because neighbor lookup,
+ * reachability, and component assembly must exchange the same normalized edge;
+ * removing it would spread positional path pairs across all three operations.
  */
 class GraphEdge extends Data.Class<{
   readonly from: string
   readonly to: string
 }> {}
 
-const neighborsOf = (
-  edges: ReadonlyArray<GraphEdge>,
-  path: string
-): ReadonlyArray<string> =>
+const neighborsOf = (edges: ReadonlyArray<GraphEdge>, path: string): ReadonlyArray<string> =>
   pipe(
     edges,
     Array.flatMap((edge) => {
@@ -79,17 +71,12 @@ const connectedComponents = (
     remaining: ReadonlyArray<string>,
     components: ReadonlyArray<ReadonlyArray<string>>
   ): ReadonlyArray<ReadonlyArray<string>> => {
-    const collectSeed = (
-      seed: string
-    ): ReadonlyArray<ReadonlyArray<string>> => {
+    const collectSeed = (seed: string): ReadonlyArray<ReadonlyArray<string>> => {
       const frontier = Array.of(seed)
       const visited = Array.empty<string>()
       const component = reachable(edges, frontier, visited)
 
-      const rest = Array.filter(
-        remaining,
-        (path) => !Array.contains(component, path)
-      )
+      const rest = Array.filter(remaining, (path) => !Array.contains(component, path))
 
       const nextComponents = Array.append(components, component)
 
@@ -122,10 +109,7 @@ const commonDirectory = (paths: ReadonlyArray<string>): string => {
   const allSegments = Array.map(paths, directorySegments)
   const fallback = Array.of(".")
 
-  const first = pipe(
-    Array.head(allSegments),
-    Option.getOrElse(Function.constant(fallback))
-  )
+  const first = pipe(Array.head(allSegments), Option.getOrElse(Function.constant(fallback)))
 
   const remaining = Array.drop(allSegments, 1)
 
@@ -136,9 +120,7 @@ const commonDirectory = (paths: ReadonlyArray<string>): string => {
   return common.length === 0 ? "." : Array.join(common, "/")
 }
 
-const bounceAdvice = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
+const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const shallowPaths = pipe(
     elements,
     Array.filter((element) => element.name === "pass-through-wrappers"),
@@ -147,10 +129,7 @@ const bounceAdvice = (
     Array.dedupe
   )
 
-  const graphElements = Array.filter(
-    elements,
-    (element) => element.name === "module-graph"
-  )
+  const graphElements = Array.filter(elements, (element) => element.name === "module-graph")
 
   const edges = Array.flatMap(graphElements, (element) => {
     const from = element.detection.location.path

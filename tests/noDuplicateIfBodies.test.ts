@@ -14,13 +14,8 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-duplicate-if-bodies"
-)
-const expectedMessage =
-  "Avoid if branches that repeat the body of the branch before them."
+const fixturePath = path.join(testDirectory, "fixtures", "no-duplicate-if-bodies")
+const expectedMessage = "Avoid if branches that repeat the body of the branch before them."
 
 const hintFor = (combinedCondition: string): string =>
   "These branches are pseudo-duplicates: the bodies are identical and only the " +
@@ -123,9 +118,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoDuplicateIfBodiesFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoDuplicateIfBodiesFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

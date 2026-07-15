@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-mutable-array-methods"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-mutable-array-methods")
 
 const expectedHint =
   "This is a sign that you're doing something fundamentally procedural when you should " +
@@ -140,9 +136,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoMutableArrayMethodsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoMutableArrayMethodsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

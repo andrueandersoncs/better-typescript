@@ -5,15 +5,8 @@ import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { detection } from "@better-typescript/core/engine/location"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
-import {
-  exampleSnippet,
-  refactorExample
-} from "@better-typescript/core/engine/example"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import {
   defineConfig,
   makeWiring,
@@ -36,32 +29,27 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   )
 }
 
-const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(
-  ts.isCallExpression
-)((context) => {
-  const element = detection(context)
+const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+  (context) => {
+    const element = detection(context)
 
-  return (node): ReadonlyArray<Detection> =>
-    isConsoleLogCall(node)
-      ? [
-          element({
-            node,
-            message: "Avoid console.log in runtime code.",
-            hint: "Return data to the caller or use this project's structured logger at the boundary."
-          })
-        ]
-      : []
-})
+    return (node): ReadonlyArray<Detection> =>
+      isConsoleLogCall(node)
+        ? [
+            element({
+              node,
+              message: "Avoid console.log in runtime code.",
+              hint: "Return data to the caller or use this project's structured logger at the boundary."
+            })
+          ]
+        : []
+  }
+)
 
-const countAtPath = (
-  path: string,
-  detections: ReadonlyArray<Detection>
-): number =>
+const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number =>
   detections.filter((element) => element.location.path === path).length
 
-const detectionPaths = (
-  detections: ReadonlyArray<Detection>
-): ReadonlyArray<string> =>
+const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
   Array.from(new Set(detections.map((element) => element.location.path))).sort()
 
 const consoleLogBoundaryAdvice = (
@@ -76,9 +64,7 @@ const consoleLogBoundaryAdvice = (
           title: "console logging in runtime code",
           remediation:
             "Replace console.log with the project's structured logger or return data to the caller.",
-          evidence: [
-            evidenceItem("console.log calls", countAtPath(path, elements))
-          ]
+          evidence: [evidenceItem("console.log calls", countAtPath(path, elements))]
         })
     )
   )(detections)
@@ -90,20 +76,14 @@ const consoleLogExamples = [
   )
 ] as const
 
-const consoleLogCheck = namedCheck(
-  "acme/no-console-log",
-  noConsoleLog,
-  consoleLogExamples
-)
+const consoleLogCheck = namedCheck("acme/no-console-log", noConsoleLog, consoleLogExamples)
 
 const extendedWiring = makeWiring({
   checks: [...defaultWiring.checks, consoleLogCheck],
   derive: (signals) => {
     const elementsOf = signalOf(signals)
     const presetAdvice = defaultWiring.derive(signals)
-    const localAdvice = consoleLogBoundaryAdvice(
-      elementsOf("acme/no-console-log")
-    )
+    const localAdvice = consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
 
     return pipe(presetAdvice, Stream.concat(localAdvice))
   }

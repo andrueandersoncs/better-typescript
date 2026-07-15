@@ -14,14 +14,9 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-manual-type-dispatch"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-manual-type-dispatch")
 
-const message =
-  "Avoid dispatching on a value with a chain of if statements that each return."
+const message = "Avoid dispatching on a value with a chain of if statements that each return."
 
 const hint =
   "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
@@ -82,9 +77,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runNoManualTypeDispatchFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runNoManualTypeDispatchFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

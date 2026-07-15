@@ -7,17 +7,10 @@ import { loadProject } from "@better-typescript/core/project/loadProject"
 import { preferCurriedDataLastFunctions } from "@better-typescript/checks/preferCurriedDataLastFunctions"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { runCheckOnProject } from "@better-typescript/core/engine/report"
-import {
-  assertAllowedFixtureItems,
-  type FixtureItem
-} from "./ruleTestAssertions.js"
+import { assertAllowedFixtureItems, type FixtureItem } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-curried-data-last-functions"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-curried-data-last-functions")
 
 const disallowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
@@ -103,16 +96,12 @@ const fixtureItemLocation = (item: FixtureItem) => ({
   column: item.column
 })
 
-const runPreferCurriedDataLastFunctionsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferCurriedDataLastFunctionsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(preferCurriedDataLastFunctions)(project)
-      )
+      Effect.runPromise(runCheckOnProject(preferCurriedDataLastFunctions)(project))
     )
   )
 

@@ -5,13 +5,14 @@ import type { ProgramContext } from "../sources/data.js"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
 
 /**
- * CheckContext is the shared program, checker, projectRoot, sourceFile contract used by
- * NodeHandler, runChecks, and nodeSubscriptions.
+ * CheckContext is the shared program, checker, projectRoot, sourceFile contract
+ * used by NodeHandler, runChecks, and nodeSubscriptions.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
   program: TsProgram,
@@ -20,9 +21,7 @@ export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
   sourceFile: TsSourceFile
 }) {}
 
-export type NodeHandler = (
-  context: CheckContext
-) => (node: ts.Node) => ReadonlyArray<Detection>
+export type NodeHandler = (context: CheckContext) => (node: ts.Node) => ReadonlyArray<Detection>
 
 export type FileHandler = (context: CheckContext) => ReadonlyArray<Detection>
 
@@ -31,17 +30,16 @@ const syntaxKinds = Schema.Array(Schema.Number)
 const onFileKind = Schema.Literal("OnFile")
 
 /**
- * NodeSubscription is the shared kinds, handler contract used by isNodeSubscription,
- * PlannedNodeSubscription, and Subscription.
+ * NodeSubscription is the shared kinds, handler contract used by
+ * isNodeSubscription, PlannedNodeSubscription, and Subscription.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
-export class NodeSubscription extends Schema.Class<NodeSubscription>(
-  "NodeSubscription"
-)({
+export class NodeSubscription extends Schema.Class<NodeSubscription>("NodeSubscription")({
   kind: onNodeKind,
   kinds: syntaxKinds,
   handler: Schema.Any
@@ -54,14 +52,13 @@ export class NodeSubscription extends Schema.Class<NodeSubscription>(
  * FileSubscription is the shared handler contract used by isFileSubscription,
  * Subscription, and fileSubscription.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
-export class FileSubscription extends Schema.Class<FileSubscription>(
-  "FileSubscription"
-)({
+export class FileSubscription extends Schema.Class<FileSubscription>("FileSubscription")({
   kind: onFileKind,
   handler: Schema.Any
 }) {
@@ -69,23 +66,26 @@ export class FileSubscription extends Schema.Class<FileSubscription>(
 }
 
 /**
- * Subscription is the shared handler contract used by isNodeSubscription, combineAll,
- * and runChecks.
+ * Subscription is the shared handler contract used by isNodeSubscription,
+ * combineAll, and runChecks.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export type Subscription = NodeSubscription | FileSubscription
 
 /**
- * CachedPlan is the stable boundary representation exchanged with withProgramIndex.
+ * CachedPlan is the stable boundary representation exchanged with
+ * withProgramIndex.
  *
+ * @remarks
+ *   It remains explicit because callers need one named contract for program,
+ *   subscriptions. Removing it would duplicate boundary translation and let
+ *   wire and in-memory representations drift.
  * @modelRole boundary
- * @remarks It remains explicit because callers need one named contract for program,
- * subscriptions. Removing it would duplicate boundary translation and let wire and
- * in-memory representations drift.
  */
 export class CachedPlan extends Data.Class<{
   readonly program: ts.Program
@@ -93,12 +93,14 @@ export class CachedPlan extends Data.Class<{
 }> {}
 
 /**
- * Check is the shared plan contract used by combineAll, runChecks, and silentCheck.
+ * Check is the shared plan contract used by combineAll, runChecks, and
+ * silentCheck.
  *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
  * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
  */
 export class Check extends Data.Class<{
   readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
@@ -108,10 +110,11 @@ export class Check extends Data.Class<{
  * PlannedNodeSubscription is the stable boundary representation exchanged with
  * runChecks.
  *
+ * @remarks
+ *   It remains explicit because callers need one named contract for checkIndex,
+ *   subscription. Removing it would duplicate boundary translation and let wire
+ *   and in-memory representations drift.
  * @modelRole boundary
- * @remarks It remains explicit because callers need one named contract for checkIndex,
- * subscription. Removing it would duplicate boundary translation and let wire and
- * in-memory representations drift.
  */
 export class PlannedNodeSubscription extends Data.Class<{
   readonly checkIndex: number
@@ -122,10 +125,11 @@ export class PlannedNodeSubscription extends Data.Class<{
  * ActiveNodeSubscription is the stable boundary representation exchanged with
  * runChecks.
  *
+ * @remarks
+ *   It remains explicit because callers need one named contract for checkIndex,
+ *   handle, detections. Removing it would duplicate boundary translation and
+ *   let wire and in-memory representations drift.
  * @modelRole boundary
- * @remarks It remains explicit because callers need one named contract for checkIndex,
- * handle, detections. Removing it would duplicate boundary translation and let wire and
- * in-memory representations drift.
  */
 export class ActiveNodeSubscription extends Data.Class<{
   readonly checkIndex: number

@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-array-append-all"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-array-append-all")
 const expectedMessage = "Avoid conditional array spreads."
 const expectedHint =
   "Use Array.appendAll from Effect to combine arrays instead of spreading a " +

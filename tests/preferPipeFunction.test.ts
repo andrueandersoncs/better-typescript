@@ -96,9 +96,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferPipeFunctionFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferPipeFunctionFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(

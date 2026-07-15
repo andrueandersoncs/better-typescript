@@ -25,8 +25,7 @@ const expectedHint =
 const parameterMessage = "Avoid function parameters that accept undefined."
 const returnTypeMessage = "Avoid function return types that include undefined."
 const returnExpressionMessage = "Avoid returning undefined from functions."
-const typeDeclarationMessage =
-  "Avoid optional or undefined properties in type declarations."
+const typeDeclarationMessage = "Avoid optional or undefined properties in type declarations."
 const comparisonMessage = "Avoid comparing values against undefined."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
@@ -162,9 +161,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noUndefined)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noUndefined)(project)))
   )
 
   return projectElements.flat()

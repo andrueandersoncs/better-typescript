@@ -9,9 +9,7 @@ import {
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 
-const dominanceAdvice = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
+const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const summary = countSummary(elements)
   const dominantEvidence = dominantCheckEvidence(2)(5)(5)(summary)
   const hasEnoughSignals = summary.total >= 25

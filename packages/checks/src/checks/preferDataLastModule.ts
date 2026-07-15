@@ -2,14 +2,8 @@ import * as path from "node:path"
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  namedDetectionTarget,
-  outermostTransparentWrapper
-} from "./support/tsNode.js"
-import {
-  DataStructureModule,
-  FunctionDefinition
-} from "./preferDataLastModuleData.js"
+import { namedDetectionTarget, outermostTransparentWrapper } from "./support/tsNode.js"
+import { DataStructureModule, FunctionDefinition } from "./preferDataLastModuleData.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { hasCallSignature } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
@@ -21,19 +15,13 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * CheckedFunction is the shared modifiers, body, name, asteriskToken contract used by
- * isCheckedFunction and dataLastModuleMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * CheckedFunction is the syntax contract shared by data-last candidate
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted declarations drift.
  */
 type CheckedFunction =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration
+  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
 
 const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -90,16 +78,10 @@ const isVariableInitializer =
 const firstDefinition =
   (initializer: Option.Option<FunctionDefinition>) =>
   (callArgument: Option.Option<FunctionDefinition>) =>
-  (
-    curried: Option.Option<FunctionDefinition>
-  ): Option.Option<FunctionDefinition> => {
-    const initializerOrCallArgument = Option.isSome(initializer)
-      ? initializer
-      : callArgument
+  (curried: Option.Option<FunctionDefinition>): Option.Option<FunctionDefinition> => {
+    const initializerOrCallArgument = Option.isSome(initializer) ? initializer : callArgument
 
-    return Option.isSome(initializerOrCallArgument)
-      ? initializerOrCallArgument
-      : curried
+    return Option.isSome(initializerOrCallArgument) ? initializerOrCallArgument : curried
   }
 
 const dataLastModuleMatches = (context: CheckContext) => {
@@ -142,16 +124,16 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const isDataStructureDeclaration = (declaration: ts.Declaration): boolean => {
     const sourceFile = declaration.getSourceFile()
     const sourceFileIsProject = isProjectSourceFile(sourceFile)
+
     const declarationKinds = Array.make(
       ts.isInterfaceDeclaration(declaration),
       ts.isTypeAliasDeclaration(declaration),
       ts.isClassDeclaration(declaration)
     )
+
     const declarationIsDataStructure = Array.some(declarationKinds, Boolean)
-    const conditions = Array.make(
-      sourceFileIsProject,
-      declarationIsDataStructure
-    )
+
+    const conditions = Array.make(sourceFileIsProject, declarationIsDataStructure)
 
     return Array.every(conditions, Boolean)
   }
@@ -160,17 +142,18 @@ const dataLastModuleMatches = (context: CheckContext) => {
     (type: ts.Type) =>
     (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
       const declarations = symbol.declarations ?? Array.empty()
-      const declaration = Array.findFirst(
-        declarations,
-        isDataStructureDeclaration
-      )
+
+      const declaration = Array.findFirst(declarations, isDataStructureDeclaration)
+
       const isStructured = type.isUnionOrIntersection()
         ? Array.every(type.types, isMember)
         : isMember(type)
+
       const sourceFile = pipe(
         declaration,
         Option.map((candidate) => candidate.getSourceFile())
       )
+
       const dataStructure = pipe(
         sourceFile,
         Option.map(
@@ -201,17 +184,13 @@ const dataLastModuleMatches = (context: CheckContext) => {
     return pipe(symbol, Option.flatMap(structureForSymbol(type)))
   }
 
-  const declarationDefinition = (
-    declaration: ts.VariableDeclaration
-  ): FunctionDefinition => {
+  const declarationDefinition = (declaration: ts.VariableDeclaration): FunctionDefinition => {
     const name = declaration.name.getText(sourceFile)
 
     return new FunctionDefinition({ name, reportNode: declaration.name })
   }
 
-  const fromInitializer = (
-    expression: ts.Expression
-  ): Option.Option<FunctionDefinition> => {
+  const fromInitializer = (expression: ts.Expression): Option.Option<FunctionDefinition> => {
     const parent = expression.parent
 
     if (!ts.isVariableDeclaration(parent)) {
@@ -220,35 +199,24 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
     const definition = declarationDefinition(parent)
 
-    return isVariableInitializer(expression)(parent)
-      ? Option.some(definition)
-      : Option.none()
+    return isVariableInitializer(expression)(parent) ? Option.some(definition) : Option.none()
   }
 
-  const fromCallable = (
-    declaration: ts.VariableDeclaration
-  ): Option.Option<FunctionDefinition> => {
+  const fromCallable = (declaration: ts.VariableDeclaration): Option.Option<FunctionDefinition> => {
     const definition = declarationDefinition(declaration)
     const declarationType = checker.getTypeAtLocation(declaration.name)
 
-    return hasCallSignature(checker)(declarationType)
-      ? Option.some(definition)
-      : Option.none()
+    return hasCallSignature(checker)(declarationType) ? Option.some(definition) : Option.none()
   }
 
-  const fromCallArgument = (
-    expression: ts.Expression
-  ): Option.Option<FunctionDefinition> => {
+  const fromCallArgument = (expression: ts.Expression): Option.Option<FunctionDefinition> => {
     const parent = expression.parent
 
     if (!ts.isCallExpression(parent)) {
       return Option.none()
     }
 
-    const hasMatchingArgument = Array.some(
-      parent.arguments,
-      sameExpression(expression)
-    )
+    const hasMatchingArgument = Array.some(parent.arguments, sameExpression(expression))
 
     if (!hasMatchingArgument) {
       return Option.none()
@@ -265,13 +233,10 @@ const dataLastModuleMatches = (context: CheckContext) => {
     return pipe(declaration, Option.flatMap(fromCallable))
   }
 
-  const findCurriedLazy = (
-    arrowParent: ts.ArrowFunction
-  ): Option.Option<FunctionDefinition> => pipe(arrowParent, findCurried)
+  const findCurriedLazy = (arrowParent: ts.ArrowFunction): Option.Option<FunctionDefinition> =>
+    pipe(arrowParent, findCurried)
 
-  const fromConcise = (
-    expression: ts.Expression
-  ): Option.Option<FunctionDefinition> =>
+  const fromConcise = (expression: ts.Expression): Option.Option<FunctionDefinition> =>
     pipe(
       expression.parent,
       Option.liftPredicate(ts.isArrowFunction),
@@ -279,9 +244,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       Option.flatMap(findCurriedLazy)
     )
 
-  const findCurried = (
-    arrowParent: ts.ArrowFunction
-  ): Option.Option<FunctionDefinition> => {
+  const findCurried = (arrowParent: ts.ArrowFunction): Option.Option<FunctionDefinition> => {
     const parentExpression = outermostTransparentWrapper(arrowParent)
     const initializer = fromInitializer(parentExpression)
     const callArgument = fromCallArgument(parentExpression)
@@ -293,12 +256,10 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const structureMatch =
     (definition: FunctionDefinition) =>
     (dataStructure: DataStructureModule): Option.Option<Detection> => {
-      const relativeDirectory = path.relative(
-        projectRoot,
-        dataStructure.moduleDirectory
-      )
-      const displayDirectory =
-        relativeDirectory.length > 0 ? relativeDirectory : "."
+      const relativeDirectory = path.relative(projectRoot, dataStructure.moduleDirectory)
+
+      const displayDirectory = relativeDirectory.length > 0 ? relativeDirectory : "."
+
       const ruleMatch = match({
         node: definition.reportNode,
         message:
@@ -308,9 +269,8 @@ const dataLastModuleMatches = (context: CheckContext) => {
           `Move ${definition.name} under ${displayDirectory} so data-last functions ` +
           `for ${dataStructure.name} stay in the model's concept directory, beside rather than inside its dedicated data file.`
       })
-      const insideModule = isInsideModule(dataStructure.moduleDirectory)(
-        fileName
-      )
+
+      const insideModule = isInsideModule(dataStructure.moduleDirectory)(fileName)
 
       return insideModule ? Option.none() : Option.some(ruleMatch)
     }
@@ -338,11 +298,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       const reportNode = namedDetectionTarget(node)
       const definition = new FunctionDefinition({ name, reportNode })
 
-      return pipe(
-        Option.some(definition),
-        Option.flatMap(matchForDefinition(node)),
-        Option.toArray
-      )
+      return pipe(Option.some(definition), Option.flatMap(matchForDefinition(node)), Option.toArray)
     }
 
     const expression = outermostTransparentWrapper(node)
@@ -360,9 +316,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(checkedFunctionKinds)(isCheckedFunction)(
-  dataLastModuleMatches
-)
+const check = nodeCheck(checkedFunctionKinds)(isCheckedFunction)(dataLastModuleMatches)
 
 export const preferDataLastModule: Check = check
 

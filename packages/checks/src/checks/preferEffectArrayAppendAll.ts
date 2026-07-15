@@ -39,20 +39,14 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
     const emptyWhenTrue = isEmptyArrayLiteral(expression.whenTrue)
     const nonEmptyWhenFalse = isNonEmptyArrayBranch(expression.whenFalse)
 
-    const emptyThenNonEmptyConditions = Array.make(
-      emptyWhenTrue,
-      nonEmptyWhenFalse
-    )
+    const emptyThenNonEmptyConditions = Array.make(emptyWhenTrue, nonEmptyWhenFalse)
 
     const emptyThenNonEmpty = Array.every(emptyThenNonEmptyConditions, Boolean)
 
     const nonEmptyWhenTrue = isNonEmptyArrayBranch(expression.whenTrue)
     const emptyWhenFalse = isEmptyArrayLiteral(expression.whenFalse)
 
-    const nonEmptyThenEmptyConditions = Array.make(
-      nonEmptyWhenTrue,
-      emptyWhenFalse
-    )
+    const nonEmptyThenEmptyConditions = Array.make(nonEmptyWhenTrue, emptyWhenFalse)
 
     const nonEmptyThenEmpty = Array.every(nonEmptyThenEmptyConditions, Boolean)
 
@@ -66,11 +60,10 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
 
 const kinds = Array.of(ts.SyntaxKind.SpreadElement)
 
-const check = nodeCheck(kinds)(ts.isSpreadElement)(
-  conditionalArraySpreadMatches
-)
+const check = nodeCheck(kinds)(ts.isSpreadElement)(conditionalArraySpreadMatches)
 
 export const preferEffectArrayAppendAll: Check = check
 
-export const preferEffectArrayAppendAllExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-array-append-all")
+export const preferEffectArrayAppendAllExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "prefer-effect-array-append-all"
+)

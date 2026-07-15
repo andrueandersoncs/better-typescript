@@ -33,9 +33,9 @@ const nonNullAssertionElements = (context: CheckContext) => {
 
 const nonNullExpressionKinds = Array.of(nonNullExpressionKind)
 
-export const noNonNullAssertion: Check = nodeCheck(nonNullExpressionKinds)(
-  ts.isNonNullExpression
-)(nonNullAssertionElements)
+export const noNonNullAssertion: Check = nodeCheck(nonNullExpressionKinds)(ts.isNonNullExpression)(
+  nonNullAssertionElements
+)
 
 export const noNonNullAssertionExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-non-null-assertion")

@@ -1,18 +1,6 @@
-import {
-  Array,
-  Data,
-  Function,
-  HashMap,
-  HashSet,
-  Option,
-  Struct,
-  pipe
-} from "effect"
+import { Array, Data, Function, HashMap, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  fileSubscriptions,
-  withProgramIndex
-} from "@better-typescript/core/engine/check"
+import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -20,10 +8,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { SingleAdapterSeamData } from "./data.js"
-import {
-  foldAst,
-  isProjectSourceFile
-} from "@better-typescript/core/engine/sources"
+import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { hasExportModifier } from "../support/tsNode.js"
 import { resolvedSymbolAt } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
@@ -31,12 +16,10 @@ import { isTestSourceFile } from "./programSymbols.js"
 
 /**
  * SeamCandidate binds an exported behavioural interface declaration to its
- * canonical compiler symbol.
- *
- * @modelRole shared
- * @remarks It remains explicit because candidate discovery and adapter counting
- * must preserve both syntax location and symbol identity. Removing it would
- * repeat alias resolution or split those correlated values.
+ * canonical compiler symbol. @modelRole shared @remarks It remains explicit
+ * because candidate discovery and adapter counting must preserve syntax
+ * location and symbol identity; removing it would repeat alias resolution or
+ * split those correlated values.
  */
 class SeamCandidate extends Data.Class<{
   readonly declaration: ts.InterfaceDeclaration
@@ -45,12 +28,10 @@ class SeamCandidate extends Data.Class<{
 
 /**
  * AdapterCount is the shared production-versus-test implementation tally for
- * one injected interface symbol.
- *
- * @modelRole shared
- * @remarks It remains explicit because accumulation and seam classification
- * must update and compare both populations together. Removing it would use
- * parallel maps whose entries could diverge.
+ * one injected interface symbol. @modelRole shared @remarks It remains explicit
+ * because accumulation and seam classification must update and compare both
+ * populations together; removing it would use parallel maps whose entries could
+ * diverge.
  */
 class AdapterCount extends Data.Class<{
   readonly production: number
@@ -59,12 +40,10 @@ class AdapterCount extends Data.Class<{
 
 /**
  * SingleAdapterIndex is the shared candidate, injection, and implementation
- * evidence consumed by per-file seam reporting.
- *
- * @modelRole shared
- * @remarks It remains explicit because project indexing and file subscriptions
- * must exchange one internally consistent snapshot. Removing it would pass
- * three synchronized collections and risk mixing index generations.
+ * evidence consumed by per-file seam reporting. @modelRole shared @remarks It
+ * remains explicit because project indexing and file subscriptions must
+ * exchange one internally consistent snapshot; removing it would risk mixing
+ * index generations.
  */
 class SingleAdapterIndex extends Data.Class<{
   readonly candidates: ReadonlyArray<SeamCandidate>
@@ -74,20 +53,17 @@ class SingleAdapterIndex extends Data.Class<{
 
 /**
  * AdapterState is the accumulated injection and implementation evidence while
- * traversing project syntax.
- *
- * @modelRole shared
- * @remarks It remains explicit because the fold initializer and reducer must
- * evolve the symbol set and count map as one state transition. Removing it
- * would synchronize two mutable-looking accumulator parameters manually.
+ * traversing project syntax. @modelRole shared @remarks It remains explicit
+ * because the fold initializer and reducer must evolve the symbol set and count
+ * map as one state transition; removing it would synchronize two accumulator
+ * parameters manually.
  */
 class AdapterState extends Data.Class<{
   readonly injected: HashSet.HashSet<ts.Symbol>
   readonly adapterCounts: HashMap.HashMap<ts.Symbol, AdapterCount>
 }> {}
 
-const emptyAdapterCount = (): AdapterCount =>
-  new AdapterCount({ production: 0, test: 0 })
+const emptyAdapterCount = (): AdapterCount => new AdapterCount({ production: 0, test: 0 })
 
 const message =
   "Single-adapter seam evidence — this injected behavioural interface has one production adapter and no test adapter."
@@ -143,10 +119,7 @@ const seamCandidates =
           Option.filter(hasExportModifier),
           Option.filter((declaration) => declaration.members.length > 0),
           Option.filter((declaration) =>
-            Array.every(
-              declaration.members,
-              isBehaviouralMember(context.checker)
-            )
+            Array.every(declaration.members, isBehaviouralMember(context.checker))
           ),
           Option.flatMap((declaration) =>
             pipe(
@@ -170,12 +143,10 @@ const exportedVariableStatement = (
 
 /**
  * ClassDependencyOwner is the compiler-node protocol that may own an injected
- * constructor or method parameter.
- *
- * @modelRole protocol
- * @remarks It remains explicit because the type guard and export classifier
- * must accept the same class-member syntax. Removing it would repeat the union
- * and let their supported node kinds drift.
+ * constructor or method parameter. @modelRole protocol @remarks It remains
+ * explicit because the type guard and export classifier must accept the same
+ * class-member syntax; removing it would repeat the union and let their
+ * supported node kinds drift.
  */
 type ClassDependencyOwner = ts.ConstructorDeclaration | ts.MethodDeclaration
 
@@ -189,12 +160,10 @@ const isClassDependencyOwner = (node: ts.Node): node is ClassDependencyOwner =>
 
 /**
  * VariableDependencyOwner is the compiler-node protocol for exported variable
- * functions that may own injected parameters.
- *
- * @modelRole protocol
- * @remarks It remains explicit because the type guard and variable-statement
- * resolver must accept the same expression forms. Removing it would duplicate
- * the union and allow their supported syntax to diverge.
+ * functions that may own injected parameters. @modelRole protocol @remarks It
+ * remains explicit because the type guard and variable-statement resolver must
+ * accept the same expression forms; removing it would duplicate the union and
+ * let their supported syntax diverge.
  */
 type VariableDependencyOwner = ts.ArrowFunction | ts.FunctionExpression
 
@@ -203,14 +172,10 @@ const variableDependencyOwnerKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionExpression
 )
 
-const isVariableDependencyOwner = (
-  node: ts.Node
-): node is VariableDependencyOwner =>
+const isVariableDependencyOwner = (node: ts.Node): node is VariableDependencyOwner =>
   Array.contains(variableDependencyOwnerKinds, node.kind)
 
-const isExportedDependencyParameter = (
-  parameter: ts.ParameterDeclaration
-): boolean => {
+const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration): boolean => {
   const owner = parameter.parent
 
   const functionExport = pipe(
@@ -274,13 +239,8 @@ const contextualInterfaceSymbol =
 const incrementAdapter =
   (fromTest: boolean) =>
   (symbol: ts.Symbol) =>
-  (
-    counts: HashMap.HashMap<ts.Symbol, AdapterCount>
-  ): HashMap.HashMap<ts.Symbol, AdapterCount> => {
-    const current = pipe(
-      HashMap.get(counts, symbol),
-      Option.getOrElse(emptyAdapterCount)
-    )
+  (counts: HashMap.HashMap<ts.Symbol, AdapterCount>): HashMap.HashMap<ts.Symbol, AdapterCount> => {
+    const current = pipe(HashMap.get(counts, symbol), Option.getOrElse(emptyAdapterCount))
 
     const production = fromTest ? current.production : current.production + 1
     const test = fromTest ? current.test + 1 : current.test
@@ -289,18 +249,11 @@ const incrementAdapter =
   }
 
 const buildIndex = (context: ProgramContext): SingleAdapterIndex => {
-  const sourceFiles = pipe(
-    context.program.getSourceFiles(),
-    Array.filter(isProjectSourceFile)
-  )
+  const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   const candidates = seamCandidates(context)(sourceFiles)
 
-  const candidateSymbols = pipe(
-    candidates,
-    Array.map(Struct.get("symbol")),
-    HashSet.fromIterable
-  )
+  const candidateSymbols = pipe(candidates, Array.map(Struct.get("symbol")), HashSet.fromIterable)
 
   const classifyTestSource = isTestSourceFile(context.projectRoot)
 
@@ -313,13 +266,9 @@ const buildIndex = (context: ProgramContext): SingleAdapterIndex => {
         const parameterState = pipe(
           Option.liftPredicate(ts.isParameter)(node),
           Option.filter(isExportedDependencyParameter),
-          Option.map((parameter) =>
-            context.checker.getTypeAtLocation(parameter)
-          ),
+          Option.map((parameter) => context.checker.getTypeAtLocation(parameter)),
           Option.flatMap(typeSymbol(context.checker)),
-          Option.filter((candidate) =>
-            HashSet.has(candidateSymbols, candidate)
-          ),
+          Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
           Option.map((candidate) => {
             const injected = HashSet.add(current.injected, candidate)
 
@@ -356,13 +305,9 @@ const buildIndex = (context: ProgramContext): SingleAdapterIndex => {
         const objectState = pipe(
           Option.liftPredicate(ts.isObjectLiteralExpression)(node),
           Option.flatMap(contextualInterfaceSymbol(context.checker)),
-          Option.filter((candidate) =>
-            HashSet.has(candidateSymbols, candidate)
-          ),
+          Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
           Option.map((candidate) => {
-            const adapterCounts = incrementAdapter(fromTest)(candidate)(
-              classState.adapterCounts
-            )
+            const adapterCounts = incrementAdapter(fromTest)(candidate)(classState.adapterCounts)
 
             return new AdapterState({
               injected: classState.injected,
@@ -398,13 +343,8 @@ const singleAdapterElements =
 
     return pipe(
       index.candidates,
-      Array.filter(
-        (candidate) =>
-          candidate.declaration.getSourceFile() === context.sourceFile
-      ),
-      Array.filter((candidate) =>
-        HashSet.has(index.injected, candidate.symbol)
-      ),
+      Array.filter((candidate) => candidate.declaration.getSourceFile() === context.sourceFile),
+      Array.filter((candidate) => HashSet.has(index.injected, candidate.symbol)),
       Array.filterMap((candidate) => {
         const counts = pipe(
           HashMap.get(index.adapterCounts, candidate.symbol),
@@ -416,9 +356,7 @@ const singleAdapterElements =
 
         const isHypothetical = hasOneProductionAdapter && hasNoTestAdapter
 
-        const hypotheticalCandidate = isHypothetical
-          ? Option.some(candidate)
-          : Option.none()
+        const hypotheticalCandidate = isHypothetical ? Option.some(candidate) : Option.none()
 
         return pipe(
           hypotheticalCandidate,
@@ -443,11 +381,6 @@ const singleAdapterElements =
     )
   }
 
-const singleAdapterSubscriptions = Function.compose(
-  singleAdapterElements,
-  fileSubscriptions
-)
+const singleAdapterSubscriptions = Function.compose(singleAdapterElements, fileSubscriptions)
 
-export const singleAdapterSeams: Check = withProgramIndex(buildIndex)(
-  singleAdapterSubscriptions
-)
+export const singleAdapterSeams: Check = withProgramIndex(buildIndex)(singleAdapterSubscriptions)

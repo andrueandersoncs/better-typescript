@@ -18,34 +18,20 @@ const detectionAt = (path: string, line: number, data?: unknown): Detection =>
     ...(data === undefined ? {} : { data })
   })
 
-const detectionsAt = (
-  path: string,
-  count: number,
-  data?: unknown
-): ReadonlyArray<Detection> =>
+const detectionsAt = (path: string, count: number, data?: unknown): ReadonlyArray<Detection> =>
   range(count).map((line) => detectionAt(path, line, data))
 
-const reportedSignal = (
-  name: string,
-  detections: ReadonlyArray<Detection>
-): Signal => new Signal({ name, reported: true, detections, examples: [] })
+const reportedSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
+  new Signal({ name, reported: true, detections, examples: [] })
 
-const silentSignal = (
-  name: string,
-  detections: ReadonlyArray<Detection>
-): Signal => new Signal({ name, reported: false, detections, examples: [] })
+const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
+  new Signal({ name, reported: false, detections, examples: [] })
 
-const collectAdvice = (
-  advice: Stream.Stream<Advice, Error>
-): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(
-    Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray)
-  )
+const collectAdvice = (advice: Stream.Stream<Advice, Error>): Promise<ReadonlyArray<Advice>> =>
+  Effect.runPromise(Effect.map(Stream.runCollect(advice), Chunk.toReadonlyArray))
 
-const adviceWithTitle = (
-  advice: ReadonlyArray<Advice>,
-  title: string
-): ReadonlyArray<Advice> => advice.filter((item) => item.title === title)
+const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
+  advice.filter((item) => item.title === title)
 
 const adviceCount = (advice: ReadonlyArray<Advice>, title: string): number =>
   adviceWithTitle(advice, title).length
@@ -63,15 +49,10 @@ test("defaultDerive feeds systemic hotspots density after fallback suppression",
   const sharedState = { target: "shared-state" }
   const mcpFiles = ["src/mcp/one.ts", "src/mcp/two.ts", "src/mcp/three.ts"]
   const suppressedDensityFiles = [...mcpFiles, "src/specific.ts"]
-  const noMutation = suppressedDensityFiles.flatMap((path) =>
-    detectionsAt(path, 10, sharedState)
-  )
+  const noMutation = suppressedDensityFiles.flatMap((path) => detectionsAt(path, 10, sharedState))
   const noThrow = detectionsAt("src/dense.ts", 10)
   const advice = await collectAdvice(
-    defaultDerive([
-      reportedSignal("no-mutation", noMutation),
-      reportedSignal("no-throw", noThrow)
-    ])
+    defaultDerive([reportedSignal("no-mutation", noMutation), reportedSignal("no-throw", noThrow)])
   )
   const densityAdvice = adviceWithTitle(advice, "high signal density")
 

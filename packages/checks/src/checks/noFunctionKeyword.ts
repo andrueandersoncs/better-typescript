@@ -9,13 +9,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 /**
- * FunctionKeywordNode is the shared modifiers, name, body, asteriskToken contract used
- * by functionKeywordMatches and isFunctionKeywordNode.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * FunctionKeywordNode is the syntax contract shared by keyword candidate
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted declarations drift.
  */
 type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
@@ -56,10 +53,7 @@ const functionKeywordMatches = (context: CheckContext) => {
             const body = Option.fromNullable(candidate.body)
             const hasNoBody = Option.isNone(body)
 
-            const overloadSiblingConditions = Array.make(
-              !isImplementation,
-              hasNoBody
-            )
+            const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
 
             return Array.every(overloadSiblingConditions, Boolean)
           })
@@ -99,9 +93,7 @@ const functionKeywordNodeKinds = Array.make(
   ts.SyntaxKind.FunctionExpression
 )
 
-const check = nodeCheck(functionKeywordNodeKinds)(isFunctionKeywordNode)(
-  functionKeywordMatches
-)
+const check = nodeCheck(functionKeywordNodeKinds)(isFunctionKeywordNode)(functionKeywordMatches)
 
 export const noFunctionKeyword: Check = check
 

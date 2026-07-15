@@ -1,22 +1,13 @@
 import { Array, Option, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { interfaceBurdenDataOf, isDeletableWrapper } from "./evidence.js"
 
 const minimumForwarders = 3
 
-const wideShallowAdvice = (
-  elements: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
-  const burden = Array.filter(
-    elements,
-    (element) => element.name === "interface-burden"
-  )
+const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const burden = Array.filter(elements, (element) => element.name === "interface-burden")
 
   const wrappers = pipe(
     elements,
@@ -42,26 +33,13 @@ const wideShallowAdvice = (
       Option.map((data) => {
         const location = adviceLocation(filePath)
 
-        const operationsItem = evidenceItem(
-          "interface-operations",
-          data.operationCount
-        )
+        const operationsItem = evidenceItem("interface-operations", data.operationCount)
 
-        const parametersItem = evidenceItem(
-          "required-parameters",
-          data.requiredParameterCount
-        )
+        const parametersItem = evidenceItem("required-parameters", data.requiredParameterCount)
 
-        const forwardersItem = evidenceItem(
-          "deletable-forwarders",
-          forwarders.length
-        )
+        const forwardersItem = evidenceItem("deletable-forwarders", forwarders.length)
 
-        const evidence = Array.make(
-          operationsItem,
-          parametersItem,
-          forwardersItem
-        )
+        const evidence = Array.make(operationsItem, parametersItem, forwardersItem)
 
         return new Advice({
           location,

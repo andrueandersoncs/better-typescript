@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-first-party-schema-declare"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-first-party-schema-declare")
 
 const hint =
   "Schema.declare is meant for integrating third-party types you do not control. " +

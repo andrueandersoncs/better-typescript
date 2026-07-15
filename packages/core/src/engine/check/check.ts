@@ -27,10 +27,7 @@ import {
   type Subscription
 } from "./data.js"
 
-export type CheckFilePredicate = (
-  checkIndex: number,
-  sourceFile: ts.SourceFile
-) => boolean
+export type CheckFilePredicate = (checkIndex: number, sourceFile: ts.SourceFile) => boolean
 
 export const nodeSubscription =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
@@ -40,13 +37,11 @@ export const nodeSubscription =
 export const fileSubscription = (handler: FileHandler): Subscription =>
   new FileSubscription({ kind: "OnFile", handler })
 
-const isNodeSubscription = (
-  subscription: Subscription
-): subscription is NodeSubscription => subscription.kind === "OnNode"
+const isNodeSubscription = (subscription: Subscription): subscription is NodeSubscription =>
+  subscription.kind === "OnNode"
 
-const isFileSubscription = (
-  subscription: Subscription
-): subscription is FileSubscription => subscription.kind === "OnFile"
+const isFileSubscription = (subscription: Subscription): subscription is FileSubscription =>
+  subscription.kind === "OnFile"
 
 export const checkFromSubscriptions = (
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
@@ -55,17 +50,16 @@ export const checkFromSubscriptions = (
 /**
  * Compile all active subscriptions for one program and dispatch every AST node
  * once by SyntaxKind. Result arrays stay aligned with the input check order.
- * @remarks Fused dispatch is required because independent AST streams multiply
- * traversal and allocation costs by the number of checks.
+ *
+ * @remarks
+ *   Fused dispatch is required because independent AST streams multiply traversal
+ *   and allocation costs by the number of checks.
  */
 export const runChecks =
   (checks: ReadonlyArray<Check>) =>
   (includesSourceFile: CheckFilePredicate) =>
   (context: ProgramContext): ReadonlyArray<ReadonlyArray<Detection>> => {
-    const sourceFiles = pipe(
-      context.program.getSourceFiles(),
-      Array.filter(isProjectSourceFile)
-    )
+    const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
     const plans = Array.map(checks, (check, checkIndex) => {
       const isActive = Array.some(sourceFiles, (sourceFile) =>
@@ -75,22 +69,15 @@ export const runChecks =
       return isActive ? check.plan(context) : Array.empty<Subscription>()
     })
 
-    const plannedNodeSubscriptions = Array.flatMap(
-      plans,
-      (subscriptions, checkIndex) =>
-        pipe(
-          subscriptions,
-          Array.filter(isNodeSubscription),
-          Array.map(
-            (subscription) =>
-              new PlannedNodeSubscription({ checkIndex, subscription })
-          )
-        )
+    const plannedNodeSubscriptions = Array.flatMap(plans, (subscriptions, checkIndex) =>
+      pipe(
+        subscriptions,
+        Array.filter(isNodeSubscription),
+        Array.map((subscription) => new PlannedNodeSubscription({ checkIndex, subscription }))
+      )
     )
 
-    const emptyDispatch = Array.makeBy(ts.SyntaxKind.Count, () =>
-      Array.empty<number>()
-    )
+    const emptyDispatch = Array.makeBy(ts.SyntaxKind.Count, () => Array.empty<number>())
 
     const nodeDispatch = Array.reduce(
       plannedNodeSubscriptions,
@@ -101,9 +88,7 @@ export const runChecks =
         )
     )
 
-    const detectionsByCheck = Array.makeBy(checks.length, () =>
-      MutableList.empty<Detection>()
-    )
+    const detectionsByCheck = Array.makeBy(checks.length, () => MutableList.empty<Detection>())
 
     Array.forEach(sourceFiles, (sourceFile) => {
       const checkContext = new CheckContext({
@@ -121,11 +106,7 @@ export const runChecks =
             Array.forEach((subscription) => {
               const found = subscription.handler(checkContext)
 
-              Array.reduce(
-                found,
-                detectionsByCheck[checkIndex],
-                MutableList.append
-              )
+              Array.reduce(found, detectionsByCheck[checkIndex], MutableList.append)
             })
           )
         }
@@ -206,21 +187,12 @@ export const fileSubscriptions = (
 export const nodeCheck =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) =>
-    flow(
-      nodeSubscriptions(kinds)(refine),
-      Function.constant,
-      checkFromSubscriptions
-    )
+    flow(nodeSubscriptions(kinds)(refine), Function.constant, checkFromSubscriptions)
 
-export const fileCheck = flow(
-  fileSubscriptions,
-  Function.constant,
-  checkFromSubscriptions
-)
+export const fileCheck = flow(fileSubscriptions, Function.constant, checkFromSubscriptions)
 
-export const combineAll: (
-  subscriptionGroups: ReadonlyArray<ReadonlyArray<Subscription>>
-) => Check = flow(Array.flatten, Function.constant, checkFromSubscriptions)
+export const combineAll: (subscriptionGroups: ReadonlyArray<ReadonlyArray<Subscription>>) => Check =
+  flow(Array.flatten, Function.constant, checkFromSubscriptions)
 
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
@@ -228,9 +200,7 @@ export const withProgramIndex =
     const emptyPlanCache = Option.none<CachedPlan>()
     const planCache = Ref.unsafeMake(emptyPlanCache)
 
-    const plan: (context: ProgramContext) => ReadonlyArray<Subscription> = (
-      context
-    ) => {
+    const plan: (context: ProgramContext) => ReadonlyArray<Subscription> = (context) => {
       const readOrBuild = (
         cached: Option.Option<CachedPlan>
       ): readonly [ReadonlyArray<Subscription>, Option.Option<CachedPlan>] => {

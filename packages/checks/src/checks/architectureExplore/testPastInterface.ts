@@ -1,20 +1,13 @@
 import { Array, Option, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  deriveSignals,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { seamLeakageDataOf, testOnlyExportDataOf } from "./evidence.js"
 
 const testPastInterfaceAdvice = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
-  const testOnlyExports = Array.filter(
-    elements,
-    (element) => element.name === "test-only-exports"
-  )
+  const testOnlyExports = Array.filter(elements, (element) => element.name === "test-only-exports")
 
   const testImports = pipe(
     elements,

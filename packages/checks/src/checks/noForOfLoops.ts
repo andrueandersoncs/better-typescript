@@ -31,9 +31,9 @@ const forOfLoopElements = (context: CheckContext) => {
 
 const forOfStatementKinds = Array.of(forOfStatementKind)
 
-export const noForOfLoops: Check = nodeCheck(forOfStatementKinds)(
-  ts.isForOfStatement
-)(forOfLoopElements)
+export const noForOfLoops: Check = nodeCheck(forOfStatementKinds)(ts.isForOfStatement)(
+  forOfLoopElements
+)
 
 export const noForOfLoopsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-for-of-loops")

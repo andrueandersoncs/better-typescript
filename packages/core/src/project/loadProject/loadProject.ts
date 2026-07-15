@@ -11,17 +11,11 @@ import {
   WorkspaceConfigs
 } from "./data.js"
 
-export const discoverWorkspace: (
-  projectPath: string
-) => Effect.Effect<WorkspaceConfigs, Error> = Effect.fn("discoverWorkspace")(
-  function* (projectPath: string) {
+export const discoverWorkspace: (projectPath: string) => Effect.Effect<WorkspaceConfigs, Error> =
+  Effect.fn("discoverWorkspace")(function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
 
-    const foundConfigPath = ts.findConfigFile(
-      rootPath,
-      ts.sys.fileExists,
-      "tsconfig.json"
-    )
+    const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
 
     const configPath = Option.fromNullable(foundConfigPath)
 
@@ -31,10 +25,7 @@ export const discoverWorkspace: (
 
     const rootAncestorPaths = HashSet.empty<string>()
 
-    const discoveredProjects = yield* discoverConfig(
-      configPath.value,
-      rootAncestorPaths
-    )
+    const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
 
     const projects = Array.dedupeWith(
       discoveredProjects,
@@ -44,8 +35,7 @@ export const discoverWorkspace: (
     const workspaceRootPath = path.dirname(configPath.value)
 
     return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
-  }
-)
+  })
 
 export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   const program = ts.createProgram({
@@ -61,23 +51,21 @@ export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   })
 }
 
-export const loadProject: (
-  projectPath: string
-) => Effect.Effect<LoadedWorkspace, Error> = Effect.fn("loadProject")(
-  function* (projectPath: string) {
+export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
+  Effect.fn("loadProject")(function* (projectPath: string) {
     const workspace = yield* discoverWorkspace(projectPath)
     const projects = Array.map(workspace.projects, loadProjectConfig)
 
     return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
-  }
-)
+  })
 
 const discoverConfig: (
   configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
-) => Effect.Effect<ReadonlyArray<ProjectConfig>, Error> = Effect.fn(
-  "discoverConfig"
-)(function* (configPath: string, ancestorConfigPaths: HashSet.HashSet<string>) {
+) => Effect.Effect<ReadonlyArray<ProjectConfig>, Error> = Effect.fn("discoverConfig")(function* (
+  configPath: string,
+  ancestorConfigPaths: HashSet.HashSet<string>
+) {
   if (HashSet.has(ancestorConfigPaths, configPath)) {
     return yield* new CircularProjectReferenceError({ configPath })
   }
@@ -94,11 +82,7 @@ const discoverConfig: (
 
   const configDirectory = path.dirname(configPath)
 
-  const parsedConfig = ts.parseJsonConfigFileContent(
-    configFile.config,
-    ts.sys,
-    configDirectory
-  )
+  const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, configDirectory)
 
   if (parsedConfig.errors.length > 0) {
     const message = formatDiagnostics(parsedConfig.errors)

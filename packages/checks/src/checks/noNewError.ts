@@ -35,9 +35,6 @@ const newErrorElements = (context: CheckContext) => {
 
 const newExpressionKinds = Array.of(newExpressionKind)
 
-export const noNewError: Check = nodeCheck(newExpressionKinds)(
-  ts.isNewExpression
-)(newErrorElements)
+export const noNewError: Check = nodeCheck(newExpressionKinds)(ts.isNewExpression)(newErrorElements)
 
-export const noNewErrorExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-new-error")
+export const noNewErrorExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-new-error")

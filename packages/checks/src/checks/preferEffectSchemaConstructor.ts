@@ -20,26 +20,18 @@ const shortCircuitOperatorKinds = HashSet.make(
 const hasShortCircuitOperator = (expression: ts.BinaryExpression): boolean =>
   HashSet.has(shortCircuitOperatorKinds, expression.operatorToken.kind)
 
-const isShortCircuitExpression = (
-  expression: ts.Expression
-): expression is ts.BinaryExpression => {
-  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(
-    expression
-  )
+const isShortCircuitExpression = (expression: ts.Expression): expression is ts.BinaryExpression => {
+  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
 
   return Option.exists(binaryExpression, hasShortCircuitOperator)
 }
 
-const ternaryBranches = (
-  conditional: ts.ConditionalExpression
-): ReadonlyArray<ts.Expression> => {
+const ternaryBranches = (conditional: ts.ConditionalExpression): ReadonlyArray<ts.Expression> => {
   const ternaryArms = Array.make(conditional.whenTrue, conditional.whenFalse)
   return Array.flatMap(ternaryArms, branchExpressions)
 }
 
-const branchExpressions = (
-  expression: ts.Expression
-): ReadonlyArray<ts.Expression> => {
+const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapTransparentExpression(expression)
 
   const ternaryBranchOption = pipe(
@@ -56,26 +48,19 @@ const branchExpressions = (
   const branches = Array.make(ternaryBranchOption, shortCircuitBranchOption)
 
   const leafBranches = Array.of(unwrapped)
-  return pipe(
-    Option.firstSomeOf(branches),
-    Option.getOrElse(Function.constant(leafBranches))
-  )
+  return pipe(Option.firstSomeOf(branches), Option.getOrElse(Function.constant(leafBranches)))
 }
 
 const hasProperties = (literal: ts.ObjectLiteralExpression): boolean =>
   literal.properties.length > 0
 
-const hasTagText = (identifier: ts.Identifier): boolean =>
-  identifier.text === tagPropertyName
+const hasTagText = (identifier: ts.Identifier): boolean => identifier.text === tagPropertyName
 
 const isTagAssignment = (
   property: ts.ObjectLiteralElementLike
 ): property is ts.PropertyAssignment =>
   ts.isPropertyAssignment(property) &&
-  pipe(
-    Option.liftPredicate(ts.isIdentifier)(property.name),
-    Option.exists(hasTagText)
-  )
+  pipe(Option.liftPredicate(ts.isIdentifier)(property.name), Option.exists(hasTagText))
 
 const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> =>
   pipe(
@@ -84,8 +69,7 @@ const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> =>
     Option.map(Struct.get("text"))
   )
 
-const taggedMessage = (tag: string): string =>
-  `Avoid returning a raw "${tag}" object literal.`
+const taggedMessage = (tag: string): string => `Avoid returning a raw "${tag}" object literal.`
 
 const untaggedMessage = "Avoid returning a raw object literal."
 
@@ -102,13 +86,11 @@ const untaggedHint =
   "when the returned data has meaning independent of this object literal."
 
 /**
- * ReturnCandidate is the shared ReturnCandidate values contract used by
- * isReturnCandidate and objectLiteralReturnMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * ReturnCandidate is the syntax contract shared by object-literal return
+ * candidate detection and matching. @modelRole shared @remarks It remains
+ * explicit because return statements and concise arrows need one compiler-node
+ * vocabulary; removing it would duplicate the union and let their accepted
+ * expressions drift.
  */
 type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 
@@ -155,14 +137,9 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
   return matches
 }
 
-const returnCandidateKinds = Array.make(
-  ts.SyntaxKind.ReturnStatement,
-  ts.SyntaxKind.ArrowFunction
-)
+const returnCandidateKinds = Array.make(ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(returnCandidateKinds)(isReturnCandidate)(
-  objectLiteralReturnMatches
-)
+const check = nodeCheck(returnCandidateKinds)(isReturnCandidate)(objectLiteralReturnMatches)
 
 export const preferEffectSchemaConstructor: Check = check
 

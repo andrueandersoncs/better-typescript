@@ -1,19 +1,10 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  fileSubscriptions,
-  withProgramIndex
-} from "@better-typescript/core/engine/check"
+import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import {
-  Detection,
-  Location
-} from "@better-typescript/core/engine/location/data"
+import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import type {
-  CheckContext,
-  Subscription
-} from "@better-typescript/core/engine/check/data"
+import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
@@ -25,15 +16,7 @@ const hint =
   "Delete the unused import, variable, function, type, or parameter. " +
   "If a parameter is required by a signature but intentionally unused, prefix its name with an underscore."
 
-const unusedDiagnosticCodes = HashSet.make(
-  6133,
-  6192,
-  6196,
-  6138,
-  6198,
-  6199,
-  6205
-)
+const unusedDiagnosticCodes = HashSet.make(6133, 6192, 6196, 6138, 6198, 6199, 6205)
 
 const isUnusedDiagnostic = (diagnostic: ts.Diagnostic): boolean =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
@@ -53,9 +36,7 @@ const buildUnusedProgram = (context: ProgramContext): ts.Program => {
   })
 }
 
-const unusedListeners = (
-  unusedProgram: ts.Program
-): ReadonlyArray<Subscription> => {
+const unusedListeners = (unusedProgram: ts.Program): ReadonlyArray<Subscription> => {
   const matches = (context: CheckContext): ReadonlyArray<Detection> => {
     const sourceFileName = context.sourceFile.fileName
     const unusedSourceFile = unusedProgram.getSourceFile(sourceFileName)
@@ -102,8 +83,6 @@ const unusedListeners = (
   return fileSubscriptions(matches)
 }
 
-export const noUnused: Check =
-  withProgramIndex(buildUnusedProgram)(unusedListeners)
+export const noUnused: Check = withProgramIndex(buildUnusedProgram)(unusedListeners)
 
-export const noUnusedExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-unused")
+export const noUnusedExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-unused")

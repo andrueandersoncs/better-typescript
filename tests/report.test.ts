@@ -11,17 +11,10 @@ import {
   nodeCheck
 } from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import {
-  Detection,
-  Location
-} from "@better-typescript/core/engine/location/data"
+import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import { locateNode } from "@better-typescript/core/engine/location"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import type {
-  NamedCheck,
-  Wiring,
-  WiringConfig
-} from "@better-typescript/core/engine/report/data"
+import type { NamedCheck, Wiring, WiringConfig } from "@better-typescript/core/engine/report/data"
 import {
   defineConfig,
   makeWiring,
@@ -33,16 +26,10 @@ import {
   silentCheck,
   withFallbackAdvice
 } from "@better-typescript/core/engine/report"
-import {
-  exampleSnippet,
-  refactorExample
-} from "@better-typescript/core/engine/example"
+import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { report } from "@better-typescript/checks/preset"
 import { astNodes, foldAst } from "@better-typescript/core/engine/sources"
-import {
-  discoverWorkspace,
-  loadProject
-} from "@better-typescript/core/project/loadProject"
+import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type {
   LoadedProject,
   LoadedWorkspace
@@ -56,8 +43,7 @@ const probeExamples = [
 ] as const
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = (name: string): string =>
-  path.join(testDirectory, "fixtures", name)
+const fixturePath = (name: string): string => path.join(testDirectory, "fixtures", name)
 const noThrowFixturePath = fixturePath("no-throw")
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
@@ -74,17 +60,10 @@ const loadFixtureProject = async (name: string): Promise<LoadedProject> => {
   return project
 }
 
-const collectStream = <A>(
-  stream: Stream.Stream<A, Error>
-): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(
-    Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray)
-  )
+const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
+  Effect.runPromise(Effect.map(Stream.runCollect(stream), Chunk.toReadonlyArray))
 
-const relativeFileName = (
-  project: LoadedProject,
-  sourceFile: ts.SourceFile
-): string =>
+const relativeFileName = (project: LoadedProject, sourceFile: ts.SourceFile): string =>
   path.relative(project.rootPath, sourceFile.fileName).replaceAll(path.sep, "/")
 
 const nodeSignature =
@@ -96,9 +75,7 @@ const nodeSignature =
     readonly sourceFile: ts.SourceFile
     readonly node: ts.Node
   }): string => {
-    const position = sourceFile.getLineAndCharacterOfPosition(
-      node.getStart(sourceFile)
-    )
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
 
     return [
       relativeFileName(project, sourceFile),
@@ -108,23 +85,21 @@ const nodeSignature =
     ].join(":")
   }
 
-const collectAstSignatures = async (
-  project: LoadedProject
-): Promise<ReadonlyArray<string>> => {
+const collectAstSignatures = async (project: LoadedProject): Promise<ReadonlyArray<string>> => {
   const nodes = await collectStream(astNodes(project))
 
   return nodes.map(nodeSignature(project))
 }
 
-const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(
-  ts.isThrowStatement
-)((context) => (node) => [
-  new Detection({
-    location: locateNode(context)(node),
-    message: probeMessage,
-    hint: probeHint
-  })
-])
+const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
+  (context) => (node) => [
+    new Detection({
+      location: locateNode(context)(node),
+      message: probeMessage,
+      hint: probeHint
+    })
+  ]
+)
 
 const throwProbeNamedCheck: NamedCheck = namedCheck(
   "probe throw statements",
@@ -217,21 +192,16 @@ const testWiring = (
   derive: Wiring["derive"] = noDerive
 ): Wiring => ({ checks, derive })
 
-const configFor = (
-  wiring: Wiring,
-  files: WiringConfig[number]["files"] = ["**/*"]
-): WiringConfig => defineConfig([{ files, wiring }])
+const configFor = (wiring: Wiring, files: WiringConfig[number]["files"] = ["**/*"]): WiringConfig =>
+  defineConfig([{ files, wiring }])
 
-const reportFromTestWiring = (wiring: Wiring) =>
-  reportFromConfig(configFor(wiring))
+const reportFromTestWiring = (wiring: Wiring) => reportFromConfig(configFor(wiring))
 
 const noOpCheck: Check = checkFromSubscriptions(() => [])
 
-const namedNoOpCheck = (name: string): NamedCheck =>
-  namedCheck(name, noOpCheck, probeExamples)
+const namedNoOpCheck = (name: string): NamedCheck => namedCheck(name, noOpCheck, probeExamples)
 
-const silentNoOpCheck = (name: string): NamedCheck =>
-  silentCheck(name, noOpCheck)
+const silentNoOpCheck = (name: string): NamedCheck => silentCheck(name, noOpCheck)
 
 const thrownError = (run: () => unknown): Error => {
   try {
@@ -250,15 +220,8 @@ test("astNodes emits fixture AST elements in stable traversal order", async () =
   const firstRun = await collectAstSignatures(project)
   const secondRun = await collectAstSignatures(project)
 
-  assert.ok(
-    firstRun.length > 0,
-    "expected the fixture project to emit AST nodes"
-  )
-  assert.deepEqual(
-    secondRun,
-    firstRun,
-    "expected AST traversal order to be deterministic"
-  )
+  assert.ok(firstRun.length > 0, "expected the fixture project to emit AST nodes")
+  assert.deepEqual(secondRun, firstRun, "expected AST traversal order to be deterministic")
 })
 
 test("foldAst traverses deeply nested trees without call stack recursion", () => {
@@ -274,9 +237,7 @@ test("foldAst traverses deeply nested trees without call stack recursion", () =>
 
 test("runCheckOnProject applies probe subscriptions to matching fixture nodes", async () => {
   const project = await loadFixtureProject("no-throw")
-  const elements = await Effect.runPromise(
-    runCheckOnProject(throwProbeCheck)(project)
-  )
+  const elements = await Effect.runPromise(runCheckOnProject(throwProbeCheck)(project))
 
   assert.deepEqual(
     elements.map(detectionRecord),
@@ -293,15 +254,9 @@ test("glob config runs every wiring whose file patterns match", async () => {
       hint: "run each wiring only on matching files"
     })
   ])
-  const alphaWiring = testWiring([
-    namedCheck("alpha files", fileProbe, probeExamples)
-  ])
-  const betaWiring = testWiring([
-    namedCheck("beta file", fileProbe, probeExamples)
-  ])
-  const allPackagesWiring = testWiring([
-    namedCheck("all package files", fileProbe, probeExamples)
-  ])
+  const alphaWiring = testWiring([namedCheck("alpha files", fileProbe, probeExamples)])
+  const betaWiring = testWiring([namedCheck("beta file", fileProbe, probeExamples)])
+  const allPackagesWiring = testWiring([namedCheck("all package files", fileProbe, probeExamples)])
   const config = defineConfig([
     {
       files: ["packages/*/src/alpha.?s"],
@@ -319,20 +274,10 @@ test("glob config runs every wiring whose file patterns match", async () => {
   const workspace = await loadFixtureWorkspace("glob-wirings")
   const blocks = await collectStream(reportFromConfig(config)(workspace))
 
-  assert.deepEqual(firstLines(blocks), [
-    "alpha files",
-    "beta file",
-    "all package files"
-  ])
+  assert.deepEqual(firstLines(blocks), ["alpha files", "beta file", "all package files"])
   assert.deepEqual(
-    blocks.map((block) =>
-      block.split("\n").filter((line) => line.endsWith(":1:1"))
-    ),
-    [
-      ["  src/alpha.ts:1:1"],
-      ["  src/beta.ts:1:1"],
-      ["  src/alpha.ts:1:1", "  src/beta.ts:1:1"]
-    ]
+    blocks.map((block) => block.split("\n").filter((line) => line.endsWith(":1:1"))),
+    [["  src/alpha.ts:1:1"], ["  src/beta.ts:1:1"], ["  src/alpha.ts:1:1", "  src/beta.ts:1:1"]]
   )
 })
 
@@ -359,9 +304,7 @@ test("each glob wiring derives from only its matching files", async () => {
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
-      return Stream.fromIterable([
-        advice("directory", "packages/beta", `beta detections ${count}`)
-      ])
+      return Stream.fromIterable([advice("directory", "packages/beta", `beta detections ${count}`)])
     }
   )
   const config = defineConfig([
@@ -391,9 +334,7 @@ test("reportFromWorkspaceConfigs analyzes referenced projects sequentially", asy
     ]),
     probeExamples
   )
-  const workspace = await Effect.runPromise(
-    discoverWorkspace(fixturePath("glob-wirings"))
-  )
+  const workspace = await Effect.runPromise(discoverWorkspace(fixturePath("glob-wirings")))
   const blocks = await collectStream(
     reportFromWorkspaceConfigs(configFor(testWiring([check])))(workspace)
   )
@@ -409,12 +350,9 @@ test("an unmatched glob wiring invokes neither checks nor derive", async () => {
   const mustNotRun: Check = checkFromSubscriptions(() => {
     throw new Error("check ran")
   })
-  const wiring = testWiring(
-    [namedCheck("absent files", mustNotRun, probeExamples)],
-    () => {
-      throw new Error("derive ran")
-    }
-  )
+  const wiring = testWiring([namedCheck("absent files", mustNotRun, probeExamples)], () => {
+    throw new Error("derive ran")
+  })
   const config = configFor(wiring, ["missing/**/*.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(reportFromConfig(config)(workspace))
@@ -428,11 +366,7 @@ test("glob wiring drops detections outside its matched files", async () => {
     message: "outside configured glob",
     hint: "drop this detection"
   })
-  const check = namedCheck(
-    "outside detection",
-    fixedCheck([outsideDetection]),
-    probeExamples
-  )
+  const check = namedCheck("outside detection", fixedCheck([outsideDetection]), probeExamples)
   const config = configFor(testWiring([check]), ["src/cases.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(reportFromConfig(config)(workspace))
@@ -451,9 +385,7 @@ test("reportFromConfig collapses duplicate workspace detections by check and loc
     projects: [project, project]
   }
   const blocks = await collectStream(
-    reportFromTestWiring(testWiring([throwProbeNamedCheck]))(
-      duplicatedWorkspace
-    )
+    reportFromTestWiring(testWiring([throwProbeNamedCheck]))(duplicatedWorkspace)
   )
 
   assert.equal(blocks.length, 1)
@@ -488,13 +420,7 @@ test("reportFromConfig preserves two distinct detections emitted at the same AST
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
     reportFromTestWiring(
-      testWiring([
-        namedCheck(
-          "two messages on one node",
-          doubleDetectionCheck,
-          probeExamples
-        )
-      ])
+      testWiring([namedCheck("two messages on one node", doubleDetectionCheck, probeExamples)])
     )(workspace)
   )
 
@@ -526,9 +452,7 @@ test("reportFromConfig renders advice header, remediation, and evidence lines", 
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromTestWiring(
-      testWiring([], () => Stream.fromIterable([fixedAdvice]))
-    )(workspace)
+    reportFromTestWiring(testWiring([], () => Stream.fromIterable([fixedAdvice])))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -559,9 +483,7 @@ test("reportFromConfig groups locations under the check prose name, message, and
     probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(
-    reportFromTestWiring(testWiring([groupedCheck]))(workspace)
-  )
+  const blocks = await collectStream(reportFromTestWiring(testWiring([groupedCheck]))(workspace))
 
   assert.deepEqual(blocks, [
     [
@@ -606,9 +528,7 @@ test("reportFromConfig splits one check into distinct message and hint groups", 
     probeExamples
   )
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(
-    reportFromTestWiring(testWiring([splitCheck]))(workspace)
-  )
+  const blocks = await collectStream(reportFromTestWiring(testWiring([splitCheck]))(workspace))
 
   assert.deepEqual(blocks, [
     [
@@ -665,9 +585,7 @@ test("reportFromConfig orders advice before check blocks and sorts advice by lev
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
-    reportFromTestWiring(testWiring([groupedCheck], () => fixedAdvice))(
-      workspace
-    )
+    reportFromTestWiring(testWiring([groupedCheck], () => fixedAdvice))(workspace)
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -729,10 +647,7 @@ test("report stream emits check blocks and omits silent checks", async () => {
   const blocks = await collectStream(report(workspace))
   const headers = firstLines(blocks)
 
-  assert.ok(
-    headers.includes("no-throw"),
-    "expected the no-throw check to emit a report block"
-  )
+  assert.ok(headers.includes("no-throw"), "expected the no-throw check to emit a report block")
   assert.equal(
     headers.includes("prefer-curried-data-last-functions"),
     false,
@@ -773,9 +688,7 @@ test("reportFromConfig lets silent checks influence advice without rendering loc
       )
   }
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(
-    reportFromTestWiring(silentInfluencedWiring)(workspace)
-  )
+  const blocks = await collectStream(reportFromTestWiring(silentInfluencedWiring)(workspace))
   const headers = firstLines(blocks)
 
   assert.ok(
@@ -850,9 +763,7 @@ test("withFallbackAdvice emits specific advice before applicable fallback and ru
 
 test("makeWiring rejects duplicate reported check names and reports the collisions", () => {
   const error = thrownError(() =>
-    makeWiring(
-      testWiring([namedNoOpCheck("same-check"), namedNoOpCheck("same-check")])
-    )
+    makeWiring(testWiring([namedNoOpCheck("same-check"), namedNoOpCheck("same-check")]))
   )
 
   assert.match(error.message, /Duplicate check names: same-check/)
@@ -860,9 +771,7 @@ test("makeWiring rejects duplicate reported check names and reports the collisio
 
 test("makeWiring rejects duplicate silent check names and reports the collisions", () => {
   const error = thrownError(() =>
-    makeWiring(
-      testWiring([silentNoOpCheck("same-check"), silentNoOpCheck("same-check")])
-    )
+    makeWiring(testWiring([silentNoOpCheck("same-check"), silentNoOpCheck("same-check")]))
   )
 
   assert.match(error.message, /Duplicate check names: same-check/)
@@ -870,12 +779,7 @@ test("makeWiring rejects duplicate silent check names and reports the collisions
 
 test("makeWiring rejects duplicate names across reported and silent checks", () => {
   const error = thrownError(() =>
-    makeWiring(
-      testWiring([
-        namedNoOpCheck("shared-name"),
-        silentNoOpCheck("shared-name")
-      ])
-    )
+    makeWiring(testWiring([namedNoOpCheck("shared-name"), silentNoOpCheck("shared-name")]))
   )
 
   assert.match(error.message, /Duplicate check names: shared-name/)

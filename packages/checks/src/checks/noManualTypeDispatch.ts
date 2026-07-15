@@ -13,9 +13,7 @@ import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const minimumChainLength = 3
 
 // Treat branchless exiting if statements as guards because successive guards form a flat dispatch ladder.
-const isDispatchGuard = (
-  statement: ts.Statement
-): statement is ts.IfStatement =>
+const isDispatchGuard = (statement: ts.Statement): statement is ts.IfStatement =>
   pipe(
     Option.liftPredicate(ts.isIfStatement)(statement),
     Option.exists((ifStatement) => {
@@ -47,10 +45,7 @@ const siblingDispatchGuard =
     }
 
     return pipe(
-      Array.findFirstIndex(
-        block.statements,
-        (statement) => statement === ifStatement
-      ),
+      Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
       Option.map((index) => index + offset),
       Option.flatMap((index) => Option.fromNullable(block.statements[index])),
       Option.filter(isDispatchGuard)
@@ -66,9 +61,7 @@ const continuesChain =
         const firstDiscriminants = discriminants(ifStatement)
         const secondDiscriminants = discriminants(sibling)
 
-        return HashSet.some(firstDiscriminants, (name) =>
-          HashSet.has(secondDiscriminants, name)
-        )
+        return HashSet.some(firstDiscriminants, (name) => HashSet.has(secondDiscriminants, name))
       })
     )
 
@@ -80,8 +73,7 @@ const isChainHead = (ifStatement: ts.IfStatement): boolean => {
   return precedesAnotherGuard && startsTheChain
 }
 
-const oneMoreThanRest = (next: ts.IfStatement): number =>
-  1 + chainLengthFrom(next)
+const oneMoreThanRest = (next: ts.IfStatement): number => 1 + chainLengthFrom(next)
 
 const chainLengthFrom = (ifStatement: ts.IfStatement): number =>
   continuesChain(1)(ifStatement)
@@ -94,8 +86,7 @@ const chainLengthFrom = (ifStatement: ts.IfStatement): number =>
 
 const returnsOne: () => number = Function.constant(1)
 
-const isLongEnough = (head: ts.IfStatement): boolean =>
-  chainLengthFrom(head) >= minimumChainLength
+const isLongEnough = (head: ts.IfStatement): boolean => chainLengthFrom(head) >= minimumChainLength
 
 const manualTypeDispatchMatches = (context: CheckContext) => {
   const match = detection(context)
@@ -108,8 +99,7 @@ const manualTypeDispatchMatches = (context: CheckContext) => {
       Option.map((node) =>
         match({
           node,
-          message:
-            "Avoid dispatching on a value with a chain of if statements that each return.",
+          message: "Avoid dispatching on a value with a chain of if statements that each return.",
           hint:
             "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
             "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
@@ -124,9 +114,7 @@ const manualTypeDispatchMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(
-  manualTypeDispatchMatches
-)
+const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(manualTypeDispatchMatches)
 
 export const noManualTypeDispatch: Check = check
 

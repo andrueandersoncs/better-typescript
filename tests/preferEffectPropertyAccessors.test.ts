@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-property-accessors"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-property-accessors")
 
 // The hint suffix is the same for all signals
 const hintSuffix =
@@ -114,16 +110,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   }
 ]
 
-const runPreferEffectPropertyAccessorsFixture = async (): Promise<
-  ReadonlyArray<Detection>
-> => {
+const runPreferEffectPropertyAccessorsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(preferEffectPropertyAccessors)(project)
-      )
+      Effect.runPromise(runCheckOnProject(preferEffectPropertyAccessors)(project))
     )
   )
 

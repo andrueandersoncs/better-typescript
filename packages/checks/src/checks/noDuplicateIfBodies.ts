@@ -1,10 +1,7 @@
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  alwaysExitsScope,
-  unwrapSingleStatementBlock
-} from "./support/tsNode.js"
+import { alwaysExitsScope, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -13,15 +10,12 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const isGuardIfStatement = (
-  statement: ts.Statement
-): statement is ts.IfStatement =>
+const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatement =>
   pipe(
     Option.liftPredicate(ts.isIfStatement)(statement),
     Option.exists(
       Function.flow(
-        (ifStatement: ts.IfStatement) =>
-          Option.fromNullable(ifStatement.elseStatement),
+        (ifStatement: ts.IfStatement) => Option.fromNullable(ifStatement.elseStatement),
         Option.isNone
       )
     )
@@ -38,9 +32,7 @@ const tokenTexts =
     const isLeafToken = children.length === 0
 
     const nodeText = node.getText(sourceFile)
-    return isLeafToken
-      ? Array.of(nodeText)
-      : Array.flatMap(children, tokenTexts(sourceFile))
+    return isLeafToken ? Array.of(nodeText) : Array.flatMap(children, tokenTexts(sourceFile))
   }
 
 const duplicateIfMatches = (context: CheckContext) => {
@@ -59,8 +51,7 @@ const duplicateIfMatches = (context: CheckContext) => {
   const sameBody =
     (firstIfStatement: ts.IfStatement) =>
     (secondIfStatement: ts.IfStatement): boolean =>
-      fingerprint(firstIfStatement.thenStatement) ===
-      fingerprint(secondIfStatement.thenStatement)
+      fingerprint(firstIfStatement.thenStatement) === fingerprint(secondIfStatement.thenStatement)
 
   const combineConditions =
     (firstIfStatement: ts.IfStatement) =>
@@ -78,22 +69,13 @@ const duplicateIfMatches = (context: CheckContext) => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
 
-      const mergeableDuplicateConditions = Array.make(
-        hasDuplicateBody,
-        bodyExitsScope
-      )
+      const mergeableDuplicateConditions = Array.make(hasDuplicateBody, bodyExitsScope)
 
-      const isMergeableDuplicate = Array.every(
-        mergeableDuplicateConditions,
-        Boolean
-      )
+      const isMergeableDuplicate = Array.every(mergeableDuplicateConditions, Boolean)
 
-      const combinedCondition =
-        combineConditions(previousIfStatement)(ifStatement)
+      const combinedCondition = combineConditions(previousIfStatement)(ifStatement)
 
-      return isMergeableDuplicate
-        ? Option.some(combinedCondition)
-        : Option.none()
+      return isMergeableDuplicate ? Option.some(combinedCondition) : Option.none()
     }
 
   const parentDup =
@@ -101,8 +83,7 @@ const duplicateIfMatches = (context: CheckContext) => {
     (parentIfStatement: ts.IfStatement): Option.Option<string> => {
       const hasDuplicateBody = sameBody(parentIfStatement)(ifStatement)
 
-      const combinedCondition =
-        combineConditions(parentIfStatement)(ifStatement)
+      const combinedCondition = combineConditions(parentIfStatement)(ifStatement)
 
       return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
     }
@@ -114,8 +95,7 @@ const duplicateIfMatches = (context: CheckContext) => {
     (combinedCondition: string): Detection =>
       match({
         node: ifStatement,
-        message:
-          "Avoid if branches that repeat the body of the branch before them.",
+        message: "Avoid if branches that repeat the body of the branch before them.",
         hint:
           "These branches are pseudo-duplicates: the bodies are identical and only the " +
           "conditions differ. Combine them into a single branch: " +
@@ -128,10 +108,7 @@ const duplicateIfMatches = (context: CheckContext) => {
           Option.liftPredicate(ts.isBlock)(ifStatement.parent),
           Option.flatMap((block: ts.Block) =>
             pipe(
-              Array.findFirstIndex(
-                block.statements,
-                (statement) => statement === ifStatement
-              ),
+              Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
               Option.flatMap((statementIndex) =>
                 Option.fromNullable(block.statements[statementIndex - 1])
               )
@@ -146,10 +123,7 @@ const duplicateIfMatches = (context: CheckContext) => {
       ? guardDuplicateMatch
       : pipe(
           Option.liftPredicate(ts.isIfStatement)(ifStatement.parent),
-          Option.filter(
-            (parent: ts.IfStatement): boolean =>
-              parent.elseStatement === ifStatement
-          ),
+          Option.filter((parent: ts.IfStatement): boolean => parent.elseStatement === ifStatement),
           Option.flatMap(parentDup(ifStatement))
         )
 

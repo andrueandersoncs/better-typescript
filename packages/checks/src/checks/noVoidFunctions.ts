@@ -1,10 +1,7 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  isFunctionInitializer,
-  namedDetectionTarget
-} from "./support/tsNode.js"
+import { isFunctionInitializer, namedDetectionTarget } from "./support/tsNode.js"
 import { isVoidType, permitsVoid } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -15,19 +12,13 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * VoidableFunction is the shared modifiers, body, name, asteriskToken contract used by
- * isVoidableFunction and voidFunctionMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * VoidableFunction is the syntax contract shared by void-function candidate
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted declarations drift.
  */
 type VoidableFunction =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration
+  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
 
 const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -77,8 +68,7 @@ const voidFunctionMatches = (context: CheckContext) => {
       )
     })
 
-    const isContextualVoid =
-      isFunctionInitializer(declaration) && isContextualVoidCallback
+    const isContextualVoid = isFunctionInitializer(declaration) && isContextualVoidCallback
 
     const isContextualMethod = pipe(
       Option.liftPredicate(ts.isMethodDeclaration)(declaration),
@@ -86,9 +76,7 @@ const voidFunctionMatches = (context: CheckContext) => {
       Option.exists((literal) => {
         const literalContextualTypeNode = checker.getContextualType(literal)
 
-        const literalContextualType = Option.fromNullable(
-          literalContextualTypeNode
-        )
+        const literalContextualType = Option.fromNullable(literalContextualTypeNode)
 
         return Option.isSome(literalContextualType)
       })
@@ -130,9 +118,7 @@ const voidFunctionMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(voidableFunctionKinds)(isVoidableFunction)(
-  voidFunctionMatches
-)
+const check = nodeCheck(voidableFunctionKinds)(isVoidableFunction)(voidFunctionMatches)
 
 export const noVoidFunctions: Check = check
 

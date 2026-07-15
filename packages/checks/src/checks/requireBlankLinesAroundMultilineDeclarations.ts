@@ -10,13 +10,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * DeclarationStatement is the shared modifiers contract used by isDeclarationStatement
- * and blankLineMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * DeclarationStatement is the syntax contract shared by declaration detection
+ * and blank-line matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted declarations drift.
  */
 type DeclarationStatement =
   | ts.VariableStatement
@@ -28,13 +25,10 @@ type DeclarationStatement =
   | ts.ModuleDeclaration
 
 /**
- * StatementContainer names the compiler syntax protocol handled by
- * isStatementContainer.
- *
- * @modelRole protocol
- * @remarks It remains explicit because those algorithms must agree on the accepted
- * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
- * and let their accepted cases drift.
+ * StatementContainer is the compiler syntax protocol handled by
+ * declaration-neighbor lookup. @modelRole protocol @remarks It remains explicit
+ * because source, block, and clause containers share one operation; removing it
+ * would repeat the union and let accepted cases drift.
  */
 type StatementContainer =
   ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
@@ -59,8 +53,7 @@ const statementContainerKinds = HashSet.make(
   ts.SyntaxKind.DefaultClause
 )
 
-const message =
-  "Multi-line declarations must have a blank line above and below."
+const message = "Multi-line declarations must have a blank line above and below."
 
 const hint =
   "Insert an empty line before and after this declaration so its multi-line shape " +
@@ -158,9 +151,7 @@ const blankLineMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(declarationKindList)(isDeclarationStatement)(
-  blankLineMatches
-)
+const check = nodeCheck(declarationKindList)(isDeclarationStatement)(blankLineMatches)
 
 export const requireBlankLinesAroundMultilineDeclarations: Check = check
 

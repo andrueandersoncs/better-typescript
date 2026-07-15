@@ -23,9 +23,7 @@ const arraySpreadElements = (context: CheckContext) => {
         "and Array.fromIterable to materialize an iterable."
     })
 
-    return ts.isArrayLiteralExpression(node.parent)
-      ? Array.of(reported)
-      : Array.empty()
+    return ts.isArrayLiteralExpression(node.parent) ? Array.of(reported) : Array.empty()
   }
 
   return matches
@@ -33,9 +31,9 @@ const arraySpreadElements = (context: CheckContext) => {
 
 const spreadElementKinds = Array.of(spreadElementKind)
 
-export const noArraySpread: Check = nodeCheck(spreadElementKinds)(
-  ts.isSpreadElement
-)(arraySpreadElements)
+export const noArraySpread: Check = nodeCheck(spreadElementKinds)(ts.isSpreadElement)(
+  arraySpreadElements
+)
 
 export const noArraySpreadExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-array-spread")

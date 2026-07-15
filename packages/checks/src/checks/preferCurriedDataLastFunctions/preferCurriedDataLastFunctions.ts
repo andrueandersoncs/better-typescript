@@ -1,9 +1,6 @@
 import { Array, Function, HashMap, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  nodeSubscriptions,
-  withProgramIndex
-} from "@better-typescript/core/engine/check"
+import { nodeSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/location"
 import {
   conciseArrowBody,
@@ -12,39 +9,22 @@ import {
   outermostTransparentWrapper,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
-import {
-  foldAst,
-  isProjectSourceFile
-} from "@better-typescript/core/engine/sources"
-import {
-  resolvedCallSignature,
-  signatureIsExternal
-} from "../support/tsSignature.js"
+import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { resolvedCallSignature, signatureIsExternal } from "../support/tsSignature.js"
 import { hasCallSignature } from "../support/tsType.js"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import type {
-  CheckContext,
-  Subscription
-} from "@better-typescript/core/engine/check/data"
+import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
-import {
-  SymbolUse,
-  type SymbolUses,
-  emptySymbolUses,
-  fallbackEmptySymbolUse
-} from "./data.js"
+import { SymbolUse, type SymbolUses, emptySymbolUses, fallbackEmptySymbolUse } from "./data.js"
 
 const updateSymbolUse =
   (symbol: ts.Symbol) =>
   (update: (use: SymbolUse) => SymbolUse) =>
   (uses: SymbolUses): SymbolUses => {
-    const currentUse = pipe(
-      HashMap.get(uses, symbol),
-      Option.getOrElse(fallbackEmptySymbolUse)
-    )
+    const currentUse = pipe(HashMap.get(uses, symbol), Option.getOrElse(fallbackEmptySymbolUse))
 
     const updatedUse = update(currentUse)
 
@@ -84,19 +64,14 @@ const isContextualOnlyUse = (use: SymbolUse): boolean => {
 }
 
 /**
- * CurriedDataLastCandidate is the shared modifiers, body, name, asteriskToken contract
- * used by hasDisallowedParameterList, hasCurriedArrowBody, and runtimeParameters.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * CurriedDataLastCandidate is the syntax contract shared by parameter,
+ * arrow-body, and runtime-parameter analysis. @modelRole shared @remarks It
+ * remains explicit because all three owners need one stable compiler-node
+ * vocabulary; removing it would duplicate the union and let their accepted
+ * declarations drift.
  */
 type CurriedDataLastCandidate =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration
+  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
 
 const candidateKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -105,9 +80,7 @@ const candidateKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.MethodDeclaration
 )
 
-const isCurriedDataLastCandidate = (
-  node: ts.Node
-): node is CurriedDataLastCandidate => {
+const isCurriedDataLastCandidate = (node: ts.Node): node is CurriedDataLastCandidate => {
   const isFunctionDeclaration = ts.isFunctionDeclaration(node)
   const isFunctionExpression = ts.isFunctionExpression(node)
   const isArrowFunction = ts.isArrowFunction(node)
@@ -141,31 +114,21 @@ const runtimeParameters = (
 ): ReadonlyArray<ts.ParameterDeclaration> =>
   Array.filter(declaration.parameters, isRuntimeParameter)
 
-const hasDisallowedParameterList = (
-  declaration: CurriedDataLastCandidate
-): boolean => {
+const hasDisallowedParameterList = (declaration: CurriedDataLastCandidate): boolean => {
   const declarationHasRestParameter = hasRestParameter(declaration)
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
 
-  const conditions = Array.make(
-    declarationHasRestParameter,
-    hasMultipleRuntimeParameters
-  )
+  const conditions = Array.make(declarationHasRestParameter, hasMultipleRuntimeParameters)
 
   return Array.some(conditions, Boolean)
 }
 
-const hasCurriedArrowBody = (
-  declaration: CurriedDataLastCandidate
-): boolean => {
+const hasCurriedArrowBody = (declaration: CurriedDataLastCandidate): boolean => {
   const parameters = runtimeParameters(declaration)
   const hasSingleRuntimeParameter = parameters.length === 1
   const hasNoRestParameter = !hasRestParameter(declaration)
 
-  const parameterChecks = Array.make(
-    hasSingleRuntimeParameter,
-    hasNoRestParameter
-  )
+  const parameterChecks = Array.make(hasSingleRuntimeParameter, hasNoRestParameter)
 
   const hasCurriedParameterList = Array.every(parameterChecks, Boolean)
 
@@ -176,10 +139,7 @@ const hasCurriedArrowBody = (
     Option.exists(isFunctionInitializer)
   )
 
-  const curriedInitializerChecks = Array.make(
-    hasCurriedParameterList,
-    bodyIsFunctionInitializer
-  )
+  const curriedInitializerChecks = Array.make(hasCurriedParameterList, bodyIsFunctionInitializer)
 
   return Array.every(curriedInitializerChecks, Boolean)
 }
@@ -195,10 +155,7 @@ const isContextuallyTypedFunction =
     pipe(
       Option.liftPredicate(isFunctionInitializer)(declaration),
       Option.exists((expression) =>
-        pipe(
-          contextualType(checker)(expression),
-          Option.exists(hasCallSignature(checker))
-        )
+        pipe(contextualType(checker)(expression), Option.exists(hasCallSignature(checker)))
       )
     )
 
@@ -216,13 +173,10 @@ const symbolAtLocation =
     )
 
 /**
- * NamedFunctionDeclaration names the compiler syntax protocol handled by
- * namedFunctionDeclarationName.
- *
- * @modelRole protocol
- * @remarks It remains explicit because those algorithms must agree on the accepted
- * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
- * and let their accepted cases drift.
+ * NamedFunctionDeclaration is the compiler syntax protocol handled by
+ * declaration-name lookup. @modelRole protocol @remarks It remains explicit
+ * because function and method declarations share one naming operation; removing
+ * it would repeat the union and let accepted cases drift.
  */
 type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
 
@@ -233,10 +187,7 @@ const namedFunctionDeclarationName = (
 const variableDeclarationIdentifierName = (
   declaration: ts.VariableDeclaration
 ): Option.Option<ts.Identifier> =>
-  pipe(
-    Option.some(declaration.name),
-    Option.flatMap(Option.liftPredicate(ts.isIdentifier))
-  )
+  pipe(Option.some(declaration.name), Option.flatMap(Option.liftPredicate(ts.isIdentifier)))
 
 const symbolForDeclaration =
   (checker: ts.TypeChecker) =>
@@ -261,21 +212,16 @@ const symbolForDeclaration =
     return pipe(declarationName, Option.flatMap(symbolAtLocation(checker)))
   }
 
-const foldCurriedDataLastDescendants = <A>(
-  visit: (node: ts.Node) => (accumulator: A) => A
-) =>
+const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulator: A) => A) =>
   foldAst((current: A, currentNode: ts.Node): A => visit(currentNode)(current))
 
 /**
- * NameDeclaration names the compiler syntax protocol handled by declarationHasName.
- *
- * @modelRole protocol
- * @remarks It remains explicit because those algorithms must agree on the accepted
- * syntax vocabulary. Removing it would repeat the compiler-node union in each matcher
- * and let their accepted cases drift.
+ * NameDeclaration is the compiler syntax protocol handled by declaration-name
+ * comparison. @modelRole protocol @remarks It remains explicit because
+ * variable, function, and method declarations share one lookup operation;
+ * removing it would repeat the union and let accepted cases drift.
  */
-type NameDeclaration =
-  ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
+type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
 const declarationHasName =
   (identifier: ts.Identifier) =>
@@ -293,8 +239,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
       pipe(
         Option.liftPredicate(isCurriedDataLastCandidate)(node),
         Option.filter((declaration) => {
-          const hasDisallowedParameters =
-            hasDisallowedParameterList(declaration)
+          const hasDisallowedParameters = hasDisallowedParameterList(declaration)
 
           const hasCurriedBody = hasCurriedArrowBody(declaration)
 
@@ -315,11 +260,8 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
 
   const emptyTrackedSymbols = HashSet.empty<ts.Symbol>()
 
-  const trackedSymbols = Array.reduce(
-    sourceFiles,
-    emptyTrackedSymbols,
-    (symbols, sourceFile) =>
-      foldCurriedDataLastDescendants(collectTrackedSymbol)(sourceFile)(symbols)
+  const trackedSymbols = Array.reduce(sourceFiles, emptyTrackedSymbols, (symbols, sourceFile) =>
+    foldCurriedDataLastDescendants(collectTrackedSymbol)(sourceFile)(symbols)
   )
 
   const classifyNode =
@@ -350,11 +292,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             Option.exists(declarationHasName(node))
           )
 
-          const declarationNameChecks = Array.make(
-            isVariableName,
-            isFunctionName,
-            isMethodName
-          )
+          const declarationNameChecks = Array.make(isVariableName, isFunctionName, isMethodName)
 
           const isDeclaration = Array.some(declarationNameChecks, Boolean)
 
@@ -374,18 +312,12 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             return updateSymbolUse(symbol)(markDirectCall)(currentUses)
           }
 
-          const parentCall = Option.liftPredicate(ts.isCallExpression)(
-            expression.parent
-          )
+          const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
 
-          const isSameExpression = (candidate: ts.Expression): boolean =>
-            candidate === expression
+          const isSameExpression = (candidate: ts.Expression): boolean => candidate === expression
 
           const index = ts.isCallExpression(expression.parent)
-            ? Array.findFirstIndex(
-                expression.parent.arguments,
-                isSameExpression
-              )
+            ? Array.findFirstIndex(expression.parent.arguments, isSameExpression)
             : Option.none()
 
           const expressionContextualType = contextualType(checker)(expression)
@@ -401,36 +333,24 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
                     Option.flatMap((signature) =>
                       Option.fromNullable(signature.parameters[position])
                     ),
-                    Option.map((parameter) =>
-                      checker.getTypeOfSymbolAtLocation(parameter, call)
-                    )
+                    Option.map((parameter) => checker.getTypeOfSymbolAtLocation(parameter, call))
                   )
                 )
               )
             )
           )
 
-          const optionHasCallableType = (
-            type: Option.Option<ts.Type>
-          ): boolean => Option.exists(type, hasCallSignature(checker))
+          const optionHasCallableType = (type: Option.Option<ts.Type>): boolean =>
+            Option.exists(type, hasCallSignature(checker))
 
-          const contextualTypes = Array.make(
-            expressionContextualType,
-            signatureType
-          )
+          const contextualTypes = Array.make(expressionContextualType, signatureType)
 
-          const hasCallableContext = Array.some(
-            contextualTypes,
-            optionHasCallableType
-          )
+          const hasCallableContext = Array.some(contextualTypes, optionHasCallableType)
 
           const hasExternalCallbackBoundary = pipe(
             parentCall,
             Option.exists((call) =>
-              pipe(
-                resolvedCallSignature(checker)(call),
-                Option.exists(signatureIsExternal)
-              )
+              pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
             )
           )
 
@@ -439,10 +359,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             hasExternalCallbackBoundary
           )
 
-          const isContextualArgument = Array.every(
-            contextualArgumentChecks,
-            Boolean
-          )
+          const isContextualArgument = Array.every(contextualArgumentChecks, Boolean)
 
           const referenceUpdate = isContextualArgument
             ? markContextualReference
@@ -459,21 +376,15 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
   )
 }
 
-const curriedDataLastListeners = (
-  symbolUses: SymbolUses
-): ReadonlyArray<Subscription> => {
+const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscription> => {
   const elements = (context: CheckContext) => {
     const makeElement = detection(context)
 
-    const matches = (
-      declaration: CurriedDataLastCandidate
-    ): ReadonlyArray<Detection> => {
+    const matches = (declaration: CurriedDataLastCandidate): ReadonlyArray<Detection> => {
       const hasDisallowedParameters = hasDisallowedParameterList(declaration)
       const hasCurriedBody = hasCurriedArrowBody(declaration)
 
-      const isContextual = isContextuallyTypedFunction(context.checker)(
-        declaration
-      )
+      const isContextual = isContextuallyTypedFunction(context.checker)(declaration)
 
       const hasOnlyContextualUse = pipe(
         symbolForDeclaration(context.checker)(declaration),

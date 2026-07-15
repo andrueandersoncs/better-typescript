@@ -1,13 +1,4 @@
-import {
-  Array,
-  Data,
-  Function,
-  HashSet,
-  Option,
-  Order,
-  Struct,
-  pipe
-} from "effect"
+import { Array, Data, Function, HashSet, Option, Order, Struct, pipe } from "effect"
 import type { ArchitectureRole } from "./data.js"
 
 export type ArchitectureRoleClassifier = (
@@ -38,12 +29,7 @@ const rootDirectoryNames = HashSet.make(
   "composition-root"
 )
 
-const adapterDirectoryNames = HashSet.make(
-  "adapter",
-  "adapters",
-  "infrastructure",
-  "infra"
-)
+const adapterDirectoryNames = HashSet.make("adapter", "adapters", "infrastructure", "infra")
 
 const portDirectoryNames = HashSet.make("port", "ports")
 
@@ -66,12 +52,7 @@ const rootFileNames = HashSet.make(
   "wiring.tsx"
 )
 
-const testSuffixes = Array.make(
-  ".test.ts",
-  ".test.tsx",
-  ".spec.ts",
-  ".spec.tsx"
-)
+const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
 
 const containsSegment =
   (segments: ReadonlyArray<string>) =>
@@ -81,15 +62,12 @@ const containsSegment =
 const hasTestSuffix = (fileName: string): boolean =>
   Array.some(testSuffixes, (suffix) => fileName.endsWith(suffix))
 
-export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (
-  projectRelativePath
-) => {
+export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (projectRelativePath) => {
   const normalized = normalizePath(projectRelativePath)
   const segments = normalized.split("/")
-  const fileName = pipe(
-    Array.last(segments),
-    Option.getOrElse(Function.constant(normalized))
-  )
+
+  const fileName = pipe(Array.last(segments), Option.getOrElse(Function.constant(normalized)))
+
   const contains = containsSegment(segments)
 
   if (contains(testDirectoryNames) || hasTestSuffix(fileName)) {
@@ -124,9 +102,7 @@ const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
   (entry) => normalizePath(entry.path).length
 )
 
-const normalizedRolePath = (
-  entry: ArchitectureRolePath
-): ArchitectureRolePath =>
+const normalizedRolePath = (entry: ArchitectureRolePath): ArchitectureRolePath =>
   new ArchitectureRolePath({
     path: normalizePath(entry.path),
     role: entry.role
@@ -138,11 +114,7 @@ const pathContains = (prefix: string, candidate: string): boolean =>
 export const roleByPrefixes = (
   rolePaths: ReadonlyArray<ArchitectureRolePath>
 ): ArchitectureRoleClassifier => {
-  const ordered = pipe(
-    rolePaths,
-    Array.map(normalizedRolePath),
-    Array.sort(pathLengthOrder)
-  )
+  const ordered = pipe(rolePaths, Array.map(normalizedRolePath), Array.sort(pathLengthOrder))
 
   return (projectRelativePath) => {
     const normalized = normalizePath(projectRelativePath)
@@ -186,14 +158,12 @@ const defaultResourceTypeSuffixes = Array.make(
   "Database"
 )
 
-export const defaultFunctionalCoreEffectPolicy = new FunctionalCoreEffectPolicy(
-  {
-    roleOf: conventionalArchitectureRoleOf,
-    capabilityModulePrefixes: defaultCapabilityModulePrefixes,
-    resourceFactoryNames: defaultResourceFactoryNames,
-    resourceTypeSuffixes: defaultResourceTypeSuffixes
-  }
-)
+export const defaultFunctionalCoreEffectPolicy = new FunctionalCoreEffectPolicy({
+  roleOf: conventionalArchitectureRoleOf,
+  capabilityModulePrefixes: defaultCapabilityModulePrefixes,
+  resourceFactoryNames: defaultResourceFactoryNames,
+  resourceTypeSuffixes: defaultResourceTypeSuffixes
+})
 
 export const policyWithRolePrefixes = (
   rolePaths: ReadonlyArray<ArchitectureRolePath>

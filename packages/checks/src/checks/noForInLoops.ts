@@ -31,9 +31,9 @@ const forInLoopElements = (context: CheckContext) => {
 
 const forInStatementKinds = Array.of(forInStatementKind)
 
-export const noForInLoops: Check = nodeCheck(forInStatementKinds)(
-  ts.isForInStatement
-)(forInLoopElements)
+export const noForInLoops: Check = nodeCheck(forInStatementKinds)(ts.isForInStatement)(
+  forInLoopElements
+)
 
 export const noForInLoopsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-for-in-loops")

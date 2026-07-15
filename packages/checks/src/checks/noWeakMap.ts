@@ -51,5 +51,4 @@ const check = nodeCheck(identifierKinds)(weakMapIdentifier)(weakMapMatches)
 
 export const noWeakMap: Check = check
 
-export const noWeakMapExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-weak-map")
+export const noWeakMapExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-weak-map")

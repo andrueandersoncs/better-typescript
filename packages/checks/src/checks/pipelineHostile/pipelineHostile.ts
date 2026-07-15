@@ -8,28 +8,19 @@ import {
 } from "@better-typescript/core/engine/derive"
 import { PipelineHostileInput, PipelineSignals } from "./data.js"
 
-const pipelineHostileAdviceFor = (
-  signals: PipelineSignals
-): ReadonlyArray<Advice> => {
+const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advice> => {
   const isPipelineHostile = (path: string): boolean => {
-    const hasNestedCalls =
-      countDetectionsAtPath(path)(signals.noNestedCalls) >= 5
+    const hasNestedCalls = countDetectionsAtPath(path)(signals.noNestedCalls) >= 5
 
     const hasUncurriedFunctions =
       countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions) >= 5
 
-    const noNestedCallsEvidence = Array.make(
-      hasNestedCalls,
-      hasUncurriedFunctions
-    )
+    const noNestedCallsEvidence = Array.make(hasNestedCalls, hasUncurriedFunctions)
 
     return Array.every(noNestedCallsEvidence, Boolean)
   }
 
-  const nestedCallPaths = Array.map(
-    signals.noNestedCalls,
-    (element) => element.location.path
-  )
+  const nestedCallPaths = Array.map(signals.noNestedCalls, (element) => element.location.path)
 
   const uniquePaths = Array.dedupe(nestedCallPaths)
 
@@ -40,16 +31,11 @@ const pipelineHostileAdviceFor = (
       const location = adviceLocation(path)
       const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
 
-      const uncurriedCount = countDetectionsAtPath(path)(
-        signals.preferCurriedDataLastFunctions
-      )
+      const uncurriedCount = countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions)
 
       const nestedItem = evidenceItem("no-nested-calls", nestedCount)
 
-      const uncurriedItem = evidenceItem(
-        "prefer-curried-data-last-functions",
-        uncurriedCount
-      )
+      const uncurriedItem = evidenceItem("prefer-curried-data-last-functions", uncurriedCount)
 
       const evidence = Array.make(nestedItem, uncurriedItem)
 
@@ -67,14 +53,10 @@ const pipelineHostileAdviceFor = (
   )
 }
 
-export const pipelineHostile = (
-  input: PipelineHostileInput
-): Stream.Stream<Advice, Error> => {
+export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice, Error> => {
   const noNestedCalls = collectSignals(input.noNestedCalls)
 
-  const preferCurriedDataLastFunctions = collectSignals(
-    input.preferCurriedDataLastFunctions
-  )
+  const preferCurriedDataLastFunctions = collectSignals(input.preferCurriedDataLastFunctions)
 
   return pipe(
     Effect.all({ noNestedCalls, preferCurriedDataLastFunctions }),

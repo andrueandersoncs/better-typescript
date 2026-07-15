@@ -1,4 +1,8 @@
 {
   "semi": false,
-  "trailingComma": "none"
+  "trailingComma": "none",
+  "printWidth": 100,
+  "proseWrap": "always",
+  "plugins": ["prettier-plugin-jsdoc"],
+  "jsdocPrintWidth": 80
 }

@@ -90,9 +90,7 @@ const runNoNewErrorFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noNewError)(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noNewError)(project)))
   )
 
   return projectElements.flat()

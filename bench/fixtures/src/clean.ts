@@ -19,18 +19,15 @@ interface OrderLine {
 
 const isPaid = (order: Order): boolean => order.status === "paid"
 
-const addOrderAmountCents = (total: number, order: Order): number =>
-  total + order.amountCents
+const addOrderAmountCents = (total: number, order: Order): number => total + order.amountCents
 
 export const totalPaidCents = (orders: ReadonlyArray<Order>): number =>
   orders.filter(isPaid).reduce(addOrderAmountCents, 0)
 
-const orderLabel = (order: Order): string =>
-  `${order.id}: ${(order.amountCents / 100).toFixed(2)}`
+const orderLabel = (order: Order): string => `${order.id}: ${(order.amountCents / 100).toFixed(2)}`
 
-export const orderLabels = (
-  orders: ReadonlyArray<Order>
-): ReadonlyArray<string> => orders.map(orderLabel)
+export const orderLabels = (orders: ReadonlyArray<Order>): ReadonlyArray<string> =>
+  orders.map(orderLabel)
 
 export const parseOrderPayload = (raw: string): unknown => JSON.parse(raw)
 
@@ -39,23 +36,18 @@ export const isOpen = (order: Order): boolean => order.status === "open"
 export const statusRank = (order: Order): number =>
   order.status === "open" ? 0 : order.status === "paid" ? 1 : 2
 
-export const lineTotalCents = (line: OrderLine): number =>
-  line.quantity * line.unitPriceCents
+export const lineTotalCents = (line: OrderLine): number => line.quantity * line.unitPriceCents
 
-const addLineTotalCents = (total: number, line: OrderLine): number =>
-  total + lineTotalCents(line)
+const addLineTotalCents = (total: number, line: OrderLine): number => total + lineTotalCents(line)
 
 export const computedAmountCents = (order: Order): number =>
   order.lines.reduce(addLineTotalCents, 0)
 
 const lineSku = Struct.get("sku")
 
-export const skusForOrder = (order: Order): ReadonlyArray<string> =>
-  order.lines.map(lineSku)
+export const skusForOrder = (order: Order): ReadonlyArray<string> => order.lines.map(lineSku)
 
-export const distinctSkus = (
-  orders: ReadonlyArray<Order>
-): ReadonlyArray<string> => {
+export const distinctSkus = (orders: ReadonlyArray<Order>): ReadonlyArray<string> => {
   const allSkus = orders.flatMap(skusForOrder)
 
   return [...new Set(allSkus)]

@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "no-primitive-array-constructors"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "no-primitive-array-constructors")
 const expectedMessage = "Avoid primitive Array constructors."
 const expectedHint =
   "Use Effect's Array module instead — Array.empty() for an empty array, " +
@@ -169,9 +165,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(noPrimitiveArrayConstructors)(project)
-      )
+      Effect.runPromise(runCheckOnProject(noPrimitiveArrayConstructors)(project))
     )
   )
 

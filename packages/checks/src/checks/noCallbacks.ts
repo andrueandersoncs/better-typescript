@@ -2,11 +2,7 @@ import { Array, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isInAmbientContext } from "./support/tsNode.js"
-import {
-  callSignatureCheck,
-  hasCallSignature,
-  isVoidType
-} from "./support/tsType.js"
+import { callSignatureCheck, hasCallSignature, isVoidType } from "./support/tsType.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -16,13 +12,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * CallbackStyleDeclaration is the shared name, typeParameters, parameters, type
- * contract used by isCallbackStyleCandidate and callbackStyleMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * CallbackStyleDeclaration is the syntax contract shared by callback candidate
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted declarations drift.
  */
 type CallbackStyleDeclaration =
   | ts.FunctionDeclaration
@@ -47,17 +40,12 @@ const effectiveCallableTypeNode = (typeNode: ts.TypeNode): ts.TypeNode =>
 const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
   ts.isFunctionExpression(node) || ts.isArrowFunction(node)
 
-const isCallbackStyleCandidate = (
-  node: ts.Node
-): node is CallbackStyleDeclaration => {
-  const isFunctionOrExpression =
-    ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration => {
+  const isFunctionOrExpression = ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
-  const isArrowOrMethod =
-    ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+  const isArrowOrMethod = ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
 
-  const isSignature =
-    ts.isMethodSignature(node) || ts.isCallSignatureDeclaration(node)
+  const isSignature = ts.isMethodSignature(node) || ts.isCallSignatureDeclaration(node)
 
   const isFunctionOrArrow = isFunctionOrExpression || isArrowOrMethod
   const isDirectCallbackKind = isFunctionOrArrow || isSignature
@@ -69,24 +57,18 @@ const isCallbackStyleCandidate = (
   const typeNode = effectiveCallableTypeNode(node)
   const parent = typeNode.parent
 
-  const isValueDeclaration =
-    ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
+  const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
   if (isValueDeclaration) {
     const isTypeAnnotation = parent.type === typeNode
     const initializer = Option.fromNullable(parent.initializer)
 
-    const isNotRuntimeFunction = !Option.exists(
-      initializer,
-      isRuntimeFunctionLike
-    )
+    const isNotRuntimeFunction = !Option.exists(initializer, isRuntimeFunctionLike)
 
     return isTypeAnnotation && isNotRuntimeFunction
   }
 
-  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(
-    parent
-  )
+  const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(parent)
 
   const hasTypeAliasFunctionType = Option.exists(
     aliasDeclaration,
@@ -107,9 +89,7 @@ const callbackStyleMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const matches = (
-    declaration: CallbackStyleDeclaration
-  ): ReadonlyArray<Detection> => {
+  const matches = (declaration: CallbackStyleDeclaration): ReadonlyArray<Detection> => {
     // Exempt declarations because they mirror a third-party API with no Effect-returning alternative to describe.
     if (isInAmbientContext(declaration)) {
       return Array.empty()
@@ -122,48 +102,37 @@ const callbackStyleMatches = (context: CheckContext) => {
       const returnType = checker.getReturnTypeOfSignature(resolvedSignature)
       const returnsVoid = isVoidType(returnType)
 
-      const hasFunctionArgument = Array.some(
-        declaration.parameters,
-        (parameter) => {
-          const parameterType = checker.getTypeAtLocation(parameter)
+      const hasFunctionArgument = Array.some(declaration.parameters, (parameter) => {
+        const parameterType = checker.getTypeAtLocation(parameter)
 
-          const parameterHasCallSignature =
-            hasCallSignature(checker)(parameterType)
+        const parameterHasCallSignature = hasCallSignature(checker)(parameterType)
 
-          const restToken = Option.fromNullable(parameter.dotDotDotToken)
+        const restToken = Option.fromNullable(parameter.dotDotDotToken)
 
-          if (Option.isNone(restToken)) {
-            return parameterHasCallSignature
-          }
-
-          const indexType = checker.getIndexTypeOfType(
-            parameterType,
-            ts.IndexKind.Number
-          )
-
-          const elementType = Option.fromNullable(indexType)
-
-          const elementHasCallSignature = Option.exists(
-            elementType,
-            callSignatureCheck(checker)
-          )
-
-          const callSignatureIndicators = Array.make(
-            parameterHasCallSignature,
-            elementHasCallSignature
-          )
-
-          return Array.some(callSignatureIndicators, Boolean)
+        if (Option.isNone(restToken)) {
+          return parameterHasCallSignature
         }
-      )
+
+        const indexType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
+
+        const elementType = Option.fromNullable(indexType)
+
+        const elementHasCallSignature = Option.exists(elementType, callSignatureCheck(checker))
+
+        const callSignatureIndicators = Array.make(
+          parameterHasCallSignature,
+          elementHasCallSignature
+        )
+
+        return Array.some(callSignatureIndicators, Boolean)
+      })
 
       return returnsVoid && hasFunctionArgument
     })
 
     const callbackMatch = match({
       node: declaration,
-      message:
-        "Avoid callback-style functions that accept a function argument and return void.",
+      message: "Avoid callback-style functions that accept a function argument and return void.",
       hint:
         "Use Effect instead: wrap third-party callback APIs in an Effect, or declare your " +
         "own API as an Effect-returning function from the start. Ambient declarations " +
@@ -186,11 +155,8 @@ const callbackStyleCandidateKinds = Array.make(
   ts.SyntaxKind.FunctionType
 )
 
-const check = nodeCheck(callbackStyleCandidateKinds)(isCallbackStyleCandidate)(
-  callbackStyleMatches
-)
+const check = nodeCheck(callbackStyleCandidateKinds)(isCallbackStyleCandidate)(callbackStyleMatches)
 
 export const noCallbacks: Check = check
 
-export const noCallbacksExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-callbacks")
+export const noCallbacksExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-callbacks")

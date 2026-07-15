@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-schema-guard"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-guard")
 
 const message = (key: string, obj: string): string =>
   `Avoid using ${key} in ${obj} as a type guard.`

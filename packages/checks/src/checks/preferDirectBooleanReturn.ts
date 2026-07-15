@@ -1,10 +1,7 @@
 import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  unwrapExpression,
-  unwrapSingleStatementBlock
-} from "./support/tsNode.js"
+import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -13,9 +10,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const booleanLiteralValue = (
-  expression: ts.Expression
-): Option.Option<boolean> => {
+const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
 
   return pipe(
@@ -29,9 +24,8 @@ const booleanLiteralValue = (
 const isNonBooleanLiteral = (expression: ts.Expression): boolean =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
 
-const returnStatementExpression = (
-  statement: ts.ReturnStatement
-): Option.Option<ts.Expression> => Option.fromNullable(statement.expression)
+const returnStatementExpression = (statement: ts.ReturnStatement): Option.Option<ts.Expression> =>
+  Option.fromNullable(statement.expression)
 
 const isFalseKeyword = (expression: ts.Expression): boolean =>
   unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
@@ -45,13 +39,10 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
   )
 
 /**
- * BooleanReturnTarget is the shared BooleanReturnTarget values contract used by
- * booleanReturnMatches and isBooleanReturnTarget.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * BooleanReturnTarget is the syntax contract shared by boolean-return candidate
+ * detection and matching. @modelRole shared @remarks It remains explicit
+ * because both owners need one stable compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted expressions drift.
  */
 type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
@@ -86,9 +77,7 @@ const booleanReturnMatches = (context: CheckContext) => {
   ): Detection => {
     const conditionText = condition.getText(sourceFile)
 
-    const returnExpression = literalValue
-      ? `(${conditionText})`
-      : `!(${conditionText})`
+    const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
 
     const literalText = String(literalValue)
 
@@ -115,12 +104,8 @@ const booleanReturnMatches = (context: CheckContext) => {
 
       const bothLiteral = pipe(
         Option.all({ trueLiteral, falseLiteral }),
-        Option.filter(
-          ({ trueLiteral, falseLiteral }) => trueLiteral !== falseLiteral
-        ),
-        Option.map(({ trueLiteral }) =>
-          literalBranchMatch(node, node.condition, trueLiteral)
-        )
+        Option.filter(({ trueLiteral, falseLiteral }) => trueLiteral !== falseLiteral),
+        Option.map(({ trueLiteral }) => literalBranchMatch(node, node.condition, trueLiteral))
       )
 
       const falseElseDetection = andFalseMatch(node)
@@ -141,11 +126,7 @@ const booleanReturnMatches = (context: CheckContext) => {
         Option.as(falseThenDetection)
       )
 
-      const ternaryReturnCandidates = Array.make(
-        bothLiteral,
-        falseElseArm,
-        falseThenArm
-      )
+      const ternaryReturnCandidates = Array.make(bothLiteral, falseElseArm, falseThenArm)
 
       return pipe(Option.firstSomeOf(ternaryReturnCandidates), Option.toArray)
     }
@@ -153,23 +134,17 @@ const booleanReturnMatches = (context: CheckContext) => {
     if (ts.isIfStatement(node)) {
       return pipe(
         Option.gen(function* () {
-          const unwrappedStatement = unwrapSingleStatementBlock(
-            node.thenStatement
+          const unwrappedStatement = unwrapSingleStatementBlock(node.thenStatement)
+
+          const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(
+            unwrappedStatement
           )
 
-          const returnStatement = yield* Option.liftPredicate(
-            ts.isReturnStatement
-          )(unwrappedStatement)
-
-          const expression = yield* Option.fromNullable(
-            returnStatement.expression
-          )
+          const expression = yield* Option.fromNullable(returnStatement.expression)
 
           return yield* booleanLiteralValue(expression)
         }),
-        Option.map((literalValue) =>
-          literalBranchMatch(node, node.expression, literalValue)
-        ),
+        Option.map((literalValue) => literalBranchMatch(node, node.expression, literalValue)),
         Option.toArray
       )
     }
@@ -197,9 +172,7 @@ const booleanReturnMatches = (context: CheckContext) => {
                 const blockStatements = block.statements
                 const lastIndex = blockStatements.length - 1
 
-                const lastThenStatement = Option.fromNullable(
-                  blockStatements[lastIndex]
-                )
+                const lastThenStatement = Option.fromNullable(blockStatements[lastIndex])
 
                 return pipe(
                   lastThenStatement,
@@ -222,11 +195,10 @@ const booleanReturnMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(booleanReturnTargetKinds)(isBooleanReturnTarget)(
-  booleanReturnMatches
-)
+const check = nodeCheck(booleanReturnTargetKinds)(isBooleanReturnTarget)(booleanReturnMatches)
 
 export const preferDirectBooleanReturn: Check = check
 
-export const preferDirectBooleanReturnExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-direct-boolean-return")
+export const preferDirectBooleanReturnExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "prefer-direct-boolean-return"
+)

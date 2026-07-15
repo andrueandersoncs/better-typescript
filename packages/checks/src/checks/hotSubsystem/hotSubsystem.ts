@@ -1,8 +1,5 @@
 import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
-import {
-  Advice,
-  FileDetections
-} from "@better-typescript/core/engine/derive/data"
+import { Advice, FileDetections } from "@better-typescript/core/engine/derive/data"
 import {
   adviceLocation,
   byFile,
@@ -22,11 +19,7 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const hasEnoughFiles = directory.files.length >= 3
   const hasProjectShare = total * 5 >= directory.projectTotal * 3
 
-  const signalsEvidence = Array.make(
-    hasEnoughSignals,
-    hasEnoughFiles,
-    hasProjectShare
-  )
+  const signalsEvidence = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
 
   return Array.every(signalsEvidence, Boolean)
 }
@@ -37,9 +30,7 @@ const subsystemAdvice = (directory: DirectorySignals): Advice => {
   const checkEvidence = evidenceFromCounts(summary.countsByCheck)
 
   const sharePercent =
-    directory.projectTotal > 0
-      ? Math.floor((summary.total * 100) / directory.projectTotal)
-      : 0
+    directory.projectTotal > 0 ? Math.floor((summary.total * 100) / directory.projectTotal) : 0
 
   const signalsItem = evidenceItem("signals", summary.total)
   const filesItem = evidenceItem("files-with-signals", directory.files.length)
@@ -61,9 +52,7 @@ const subsystemAdvice = (directory: DirectorySignals): Advice => {
   })
 }
 
-const hotSubsystemAdvice = (
-  signals: ReadonlyArray<NamedDetection>
-): ReadonlyArray<Advice> => {
+const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const files = byFile(signals)
   const projectElements = Array.flatMap(files, Struct.get("elements"))
   const projectTotal = projectElements.length
@@ -71,17 +60,12 @@ const hotSubsystemAdvice = (
   const directoryEntries = Array.flatMap(files, (file) => {
     const directories = parentDirectories(file.path)
 
-    const entries = Array.map(directories, (directory) =>
-      Tuple.make(directory, file)
-    )
+    const entries = Array.map(directories, (directory) => Tuple.make(directory, file))
 
     return entries
   })
 
-  const directoryNamesWithDuplicates = Array.map(
-    directoryEntries,
-    (entry) => entry[0]
-  )
+  const directoryNamesWithDuplicates = Array.map(directoryEntries, (entry) => entry[0])
 
   const directoryNames = Array.dedupe(directoryNamesWithDuplicates)
 
@@ -90,23 +74,19 @@ const hotSubsystemAdvice = (
     ReadonlyArray<FileDetections>
   > = HashMap.empty()
 
-  const directoryFiles = Array.reduce(
-    directoryEntries,
-    emptyDirectoryFiles,
-    (groups, entry) => {
-      const path = entry[0]
-      const filesOption = HashMap.get(groups, path)
+  const directoryFiles = Array.reduce(directoryEntries, emptyDirectoryFiles, (groups, entry) => {
+    const path = entry[0]
+    const filesOption = HashMap.get(groups, path)
 
-      const filesForDirectory = pipe(
-        filesOption,
-        Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
-      )
+    const filesForDirectory = pipe(
+      filesOption,
+      Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
+    )
 
-      const groupedFiles = Array.append(filesForDirectory, entry[1])
+    const groupedFiles = Array.append(filesForDirectory, entry[1])
 
-      return HashMap.set(groups, path, groupedFiles)
-    }
-  )
+    return HashMap.set(groups, path, groupedFiles)
+  })
 
   const directories = Array.map(directoryNames, (path): DirectorySignals => {
     const filesOption = HashMap.get(directoryFiles, path)

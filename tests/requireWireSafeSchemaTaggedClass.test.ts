@@ -16,14 +16,9 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "require-wire-safe-schema-tagged-class"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "require-wire-safe-schema-tagged-class")
 
-const message =
-  "Require Schema.TaggedClass to have a portable encoded representation."
+const message = "Require Schema.TaggedClass to have a portable encoded representation."
 
 const hint =
   "At least one encoded field is not provably composed of strings, numbers, booleans, " +
@@ -117,9 +112,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(requireWireSafeSchemaTaggedClass)(project)
-      )
+      Effect.runPromise(runCheckOnProject(requireWireSafeSchemaTaggedClass)(project))
     )
   )
 

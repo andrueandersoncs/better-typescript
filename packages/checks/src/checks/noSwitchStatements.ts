@@ -31,9 +31,9 @@ const switchStatementElements = (context: CheckContext) => {
 
 const switchStatementKinds = Array.of(switchStatementKind)
 
-export const noSwitchStatements: Check = nodeCheck(switchStatementKinds)(
-  ts.isSwitchStatement
-)(switchStatementElements)
+export const noSwitchStatements: Check = nodeCheck(switchStatementKinds)(ts.isSwitchStatement)(
+  switchStatementElements
+)
 
 export const noSwitchStatementsExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("no-switch-statements")

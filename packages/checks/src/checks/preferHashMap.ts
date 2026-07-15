@@ -14,8 +14,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const isMapIdentifier = (identifier: ts.Identifier): boolean =>
-  identifier.text === "Map"
+const isMapIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Map"
 
 const constructorMessage = "Avoid constructing a built-in Map."
 
@@ -27,8 +26,7 @@ const constructorHint =
 
 const mapTypeNames: ReadonlyArray<string> = Array.make("Map", "ReadonlyMap")
 
-const isMapTypeName = (id: ts.Identifier): boolean =>
-  Array.contains(mapTypeNames, id.text)
+const isMapTypeName = (id: ts.Identifier): boolean => Array.contains(mapTypeNames, id.text)
 
 const typeRefHint =
   "Use HashMap.HashMap<K, V> from Effect instead. HashMap integrates with Equal and Hash " +
@@ -37,13 +35,10 @@ const typeRefHint =
   "third-party call."
 
 /**
- * MapRuleNode is the shared typeArguments contract used by isMapRuleNode and
- * mapMatches.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * MapRuleNode is the syntax contract shared by Map candidate detection and
+ * matching. @modelRole shared @remarks It remains explicit because constructor
+ * and type-reference syntax need one compiler-node vocabulary; removing it
+ * would duplicate the union and let their accepted expressions drift.
  */
 type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
@@ -51,9 +46,7 @@ const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.flatMap((ref) =>
-      Option.liftPredicate(ts.isIdentifier)(ref.typeName)
-    ),
+    Option.flatMap((ref) => Option.liftPredicate(ts.isIdentifier)(ref.typeName)),
     Option.exists(isMapTypeName)
   )
 
@@ -64,18 +57,13 @@ const mapMatches = (context: CheckContext) => {
 
   const matches = (node: MapRuleNode): ReadonlyArray<Detection> => {
     if (ts.isNewExpression(node)) {
-      const expressionOption = Option.liftPredicate(ts.isIdentifier)(
-        node.expression
-      )
+      const expressionOption = Option.liftPredicate(ts.isIdentifier)(node.expression)
 
       const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
 
       const escapesExternally = isMapConstruction && constructionEscapes(node)
 
-      const reportableConditions = Array.make(
-        isMapConstruction,
-        !escapesExternally
-      )
+      const reportableConditions = Array.make(isMapConstruction, !escapesExternally)
 
       const isReportable = Array.every(reportableConditions, Boolean)
 
@@ -116,10 +104,7 @@ const mapMatches = (context: CheckContext) => {
   return matches
 }
 
-const mapRuleNodeKinds = Array.make(
-  ts.SyntaxKind.NewExpression,
-  ts.SyntaxKind.TypeReference
-)
+const mapRuleNodeKinds = Array.make(ts.SyntaxKind.NewExpression, ts.SyntaxKind.TypeReference)
 
 const check = nodeCheck(mapRuleNodeKinds)(isMapRuleNode)(mapMatches)
 

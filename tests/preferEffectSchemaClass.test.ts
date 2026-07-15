@@ -14,11 +14,7 @@ import {
 } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "prefer-effect-schema-class"
-)
+const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-schema-class")
 
 const makeMessage = (typeName: string, kindLabel: string): string =>
   `Avoid declaring ${typeName} as ${kindLabel} when this project constructs its values.`

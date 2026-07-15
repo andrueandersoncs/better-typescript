@@ -11,13 +11,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
 /**
- * ArrayPrototypeMethod is the shared length contract used by preferEffectArrayMatches
- * and arrayPrototypeMethods.
- *
- * @modelRole shared
- * @remarks It remains explicit because these independent owners need one stable
- * vocabulary. Removing it would duplicate the field contract across consumers and let
- * their representations drift.
+ * ArrayPrototypeMethod is the method-name vocabulary shared by Effect Array
+ * detection and policy. @modelRole shared @remarks It remains explicit because
+ * both owners must classify the same methods; removing it would duplicate the
+ * literal union and let their policies drift.
  */
 type ArrayPrototypeMethod =
   | "at"
@@ -111,9 +108,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
   const isReceiverArrayType = isArrayLikeType(checker)
   const match = detection(context)
 
-  const matches = (
-    callExpression: ts.CallExpression
-  ): ReadonlyArray<Detection> => {
+  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return Array.empty()
     }
@@ -133,9 +128,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
 
-    const methodCall = isReceiverArrayType(receiverType)
-      ? methodName
-      : Option.none()
+    const methodCall = isReceiverArrayType(receiverType) ? methodName : Option.none()
 
     return pipe(
       methodCall,
@@ -155,9 +148,7 @@ const preferEffectArrayMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
-  preferEffectArrayMatches
-)
+const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(preferEffectArrayMatches)
 
 export const preferEffectArray: Check = check
 

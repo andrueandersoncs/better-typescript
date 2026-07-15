@@ -1,10 +1,7 @@
 import { Array, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import {
-  isFunctionInitializer,
-  unwrapTransparentExpression
-} from "./support/tsNode.js"
+import { isFunctionInitializer, unwrapTransparentExpression } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -14,8 +11,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 
-const message =
-  "Avoid block bodies that only bind a value and thread it into a call."
+const message = "Avoid block bodies that only bind a value and thread it into a call."
 
 const hint =
   "Use pipe, flow, or Function.compose (or a related Function combinator) so the " +
@@ -29,15 +25,8 @@ const unwrapTowerCarrier = (expression: ts.Expression): ts.Expression =>
 
 const identifierText = Struct.get("text")
 
-const carrierIdentifier = (
-  expression: ts.Expression
-): Option.Option<ts.Identifier> =>
-  pipe(
-    expression,
-    unwrapTowerCarrier,
-    Option.some,
-    Option.filter(ts.isIdentifier)
-  )
+const carrierIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> =>
+  pipe(expression, unwrapTowerCarrier, Option.some, Option.filter(ts.isIdentifier))
 
 const isPipeCallee = (expression: ts.Expression): boolean =>
   pipe(
@@ -55,9 +44,8 @@ const isSeedIdentifier =
       Option.exists((text) => text === name)
     )
 
-const callFirstArgument = (
-  call: ts.CallExpression
-): Option.Option<ts.Expression> => Option.fromNullable(call.arguments[0])
+const callFirstArgument = (call: ts.CallExpression): Option.Option<ts.Expression> =>
+  Option.fromNullable(call.arguments[0])
 
 const isUnaryCallTowerOver =
   (name: string) =>
@@ -107,39 +95,32 @@ const functionCompositionMatches = (context: CheckContext) => {
           const hasOneDeclaration = declarationList.declarations.length === 1
 
           yield* Option.liftPredicate((value: boolean) => value)(isConstList)
-          yield* Option.liftPredicate((value: boolean) => value)(
-            hasOneDeclaration
-          )
+          yield* Option.liftPredicate((value: boolean) => value)(hasOneDeclaration)
 
-          const binding = yield* Option.fromNullable(
-            declarationList.declarations[0]
-          )
+          const binding = yield* Option.fromNullable(declarationList.declarations[0])
 
           yield* Option.liftPredicate(ts.isIdentifier)(binding.name)
 
           const initializer = yield* Option.fromNullable(binding.initializer)
-          yield* Option.liftPredicate(
-            (value: ts.Expression) => !isFunctionInitializer(value)
-          )(initializer)
+          yield* Option.liftPredicate((value: ts.Expression) => !isFunctionInitializer(value))(
+            initializer
+          )
 
           const returned = yield* pipe(
             Option.liftPredicate(ts.isReturnStatement)(secondStatement),
-            Option.flatMap((statement) =>
-              Option.fromNullable(statement.expression)
-            )
+            Option.flatMap((statement) => Option.fromNullable(statement.expression))
           )
 
           const name = identifierText(binding.name as ts.Identifier)
 
-          const referenceCount = foldAst(
-            (count: number, node: ts.Node): number =>
-              pipe(
-                Option.liftPredicate(ts.isIdentifier)(node),
-                Option.map(identifierText),
-                Option.exists((text) => text === name)
-              )
-                ? count + 1
-                : count
+          const referenceCount = foldAst((count: number, node: ts.Node): number =>
+            pipe(
+              Option.liftPredicate(ts.isIdentifier)(node),
+              Option.map(identifierText),
+              Option.exists((text) => text === name)
+            )
+              ? count + 1
+              : count
           )(returned)(0)
 
           const seedOnly = isSeedIdentifier(name)(returned)
@@ -166,11 +147,10 @@ const functionCompositionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(
-  functionCompositionMatches
-)
+const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(functionCompositionMatches)
 
 export const preferFunctionComposition: Check = check
 
-export const preferFunctionCompositionExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-function-composition")
+export const preferFunctionCompositionExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "prefer-function-composition"
+)
