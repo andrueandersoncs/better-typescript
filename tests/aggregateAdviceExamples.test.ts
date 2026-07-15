@@ -129,6 +129,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "business logic in an adapter",
     wiring: functionalCoreEffectWiring
+  },
+  {
+    fixtureId: "thick-composition-root",
+    pairId: "1",
+    title: "thick composition root",
+    wiring: functionalCoreEffectWiring
   }
 ]
 
