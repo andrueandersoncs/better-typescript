@@ -10,7 +10,12 @@ import {
   parentDirectories
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { DirectorySignals } from "./data.js"
+
+export const hotSubsystemExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("hot-subsystem")
 
 const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
@@ -47,7 +52,8 @@ const subsystemAdvice = (directory: DirectorySignals): Advice => {
       "pile of files to patch. Give the subsystem a Layer of its own, move shared state " +
       "into Refs and PubSubs behind that Layer, and enter the runtime once at the " +
       "subsystem's edge.",
-    evidence
+    evidence,
+    examples: hotSubsystemExamples
   })
 }
 

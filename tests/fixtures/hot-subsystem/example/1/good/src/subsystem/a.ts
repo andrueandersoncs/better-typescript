@@ -1,0 +1,9 @@
+export const valueA01 = 1
+export const valueA02 = 2
+export const valueA03 = 3
+export const valueA04 = 4
+export const valueA05 = 5
+export const valueA06 = 6
+export const valueA07 = 7
+export const valueA08 = 8
+export const valueA09 = 9

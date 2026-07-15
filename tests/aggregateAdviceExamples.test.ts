@@ -55,6 +55,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "concept proliferation",
     wiring: defaultWiring
+  },
+  {
+    fixtureId: "hot-subsystem",
+    pairId: "1",
+    title: "hot subsystem",
+    wiring: defaultWiring
   }
 ]
 
