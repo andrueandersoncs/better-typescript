@@ -3,7 +3,13 @@ import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
 import { Detection } from "@better-typescript/core/engine/location/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { ImperativeStateManagerInput, ImperativeStateSignals, MutationElementData } from "./data.js"
+
+export const imperativeStateManagerExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "imperative-state-manager"
+)
 
 const isSharedStateMutation = (element: Detection): boolean => {
   const data = Option.fromNullishOr(element.data)
@@ -73,7 +79,8 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
           "symptoms. Hold each cell in a Ref (SynchronizedRef when updates contend), fan out to " +
           "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
           "runtime once at the boundary.",
-        evidence
+        evidence,
+        examples: imperativeStateManagerExamples
       })
     })
   )

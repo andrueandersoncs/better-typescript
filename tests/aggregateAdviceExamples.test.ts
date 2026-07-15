@@ -37,6 +37,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "pipeline-hostile module",
     wiring: defaultWiring
+  },
+  {
+    fixtureId: "imperative-state-manager",
+    pairId: "1",
+    title: "imperative state manager",
+    wiring: defaultWiring
   }
 ]
 
