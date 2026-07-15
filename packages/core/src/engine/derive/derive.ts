@@ -11,6 +11,7 @@ import {
   Struct,
   pipe
 } from "effect"
+import { formatRefactorExample } from "../example/example.js"
 import { Location } from "../location/data.js"
 import { AdviceReportKey, ReportBlock } from "../report/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
@@ -198,9 +199,11 @@ export const adviceHeader = (advice: Advice): string => {
 export const adviceText = (advice: Advice): string => {
   const header = adviceHeader(advice)
   const remediation = `  fix: ${advice.remediation}`
+  const examples = Array.map(advice.examples, formatRefactorExample)
   const evidence = Array.map(advice.evidence, evidenceText)
   const prefixLines = Array.make(header, remediation)
-  const lines = Array.appendAll(prefixLines, evidence)
+  const remediationLines = Array.appendAll(prefixLines, examples)
+  const lines = Array.appendAll(remediationLines, evidence)
 
   return Array.join(lines, "\n")
 }

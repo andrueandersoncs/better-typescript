@@ -174,7 +174,8 @@ const advice = (
   level,
   title,
   remediation,
-  evidence: [{ measure: `${title} evidence`, count: 1 }]
+  evidence: [{ measure: `${title} evidence`, count: 1 }],
+  examples: probeExamples
 })
 
 const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
@@ -443,7 +444,7 @@ test("reportFromConfig preserves two distinct detections emitted at the same AST
   )
 })
 
-test("reportFromConfig renders advice header, remediation, and evidence lines", async () => {
+test("reportFromConfig renders advice remediation examples before evidence", async () => {
   const fixedAdvice = {
     location: location("src/cases.ts", 4, 3),
     level: "file" as const,
@@ -452,7 +453,8 @@ test("reportFromConfig renders advice header, remediation, and evidence lines", 
     evidence: [
       { measure: "signals", count: 12 },
       { measure: "no-throw", count: 4 }
-    ]
+    ],
+    examples: probeExamples
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
@@ -463,6 +465,10 @@ test("reportFromConfig renders advice header, remediation, and evidence lines", 
     [
       "src/cases.ts [file] — high signal density",
       "  fix: split the module before changing individual checks",
+      "  Bad (src/cases.ts):",
+      '    throw new Error("boom")',
+      "  Good (src/cases.ts):",
+      "    yield* new BoomError()",
       "  evidence: signals: 12",
       "  evidence: no-throw: 4"
     ].join("\n")
@@ -675,7 +681,8 @@ test("reportFromConfig lets silent checks influence advice without rendering loc
                 measure: silentProbeNamedCheck.name,
                 count: silentDetections.length
               }
-            ]
+            ],
+            examples: probeExamples
           }
         ]
       : []

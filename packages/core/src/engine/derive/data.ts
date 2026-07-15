@@ -1,4 +1,5 @@
-import { Array, HashMap, Schema } from "effect"
+import { Array, Effect, HashMap, Schema, pipe } from "effect"
+import { RefactorExample } from "../example/data.js"
 import { Detection, Location } from "../location/data.js"
 
 /**
@@ -36,10 +37,17 @@ const adviceLevelValues = Array.make<["file", "directory", "project"]>(
 
 const adviceLevelSchema = Schema.Literals(adviceLevelValues)
 const evidenceArraySchema = Schema.Array(EvidenceItem)
+const emptyRefactorExamples = Array.empty<RefactorExample>()
+const emptyRefactorExamplesEffect = Effect.succeed(emptyRefactorExamples)
+
+const refactorExamplesSchema = pipe(
+  Schema.Array(RefactorExample),
+  Schema.withConstructorDefault(emptyRefactorExamplesEffect)
+)
 
 /**
- * Advice is the shared location, level, title, remediation contract used by
- * deriveAdvice, adviceReportBlock, and adviceText.
+ * Advice is the shared location, level, title, remediation, examples contract
+ * used by deriveAdvice, adviceReportBlock, and adviceText.
  *
  * @remarks
  *   It remains explicit because these independent owners need one stable
@@ -52,7 +60,8 @@ export class Advice extends Schema.Class<Advice>("Advice")({
   level: adviceLevelSchema,
   title: Schema.String,
   remediation: Schema.String,
-  evidence: evidenceArraySchema
+  evidence: evidenceArraySchema,
+  examples: refactorExamplesSchema
 }) {}
 
 /**

@@ -298,7 +298,8 @@ test("signalUpdates and reportBlockUpdates derive one signal array and advice-fi
     level: "file",
     title: "probe advice",
     remediation: "act on the probe evidence",
-    evidence: [{ measure: "probe", count: 4 }]
+    evidence: [{ measure: "probe", count: 4 }],
+    examples: probeExamples
   }
   const adviceProbeWiring: Wiring = makeWiring({
     checks: [throwProbeNamedCheck],

@@ -208,21 +208,24 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
     level: "directory",
     title: "hot subsystem",
     remediation: "fix subsystem",
-    evidence: [{ measure: "signals", count: 27 }]
+    evidence: [{ measure: "signals", count: 27 }],
+    examples: []
   }
   const firstDense: Advice = {
     location: new Location({ path: "src/one.ts" }),
     level: "file",
     title: "high signal density",
     remediation: "fix one",
-    evidence: [{ measure: "signals", count: 10 }]
+    evidence: [{ measure: "signals", count: 10 }],
+    examples: []
   }
   const secondDense: Advice = {
     location: new Location({ path: "src/two.ts" }),
     level: "file",
     title: "high signal density",
     remediation: "fix two",
-    evidence: [{ measure: "signals", count: 10 }]
+    evidence: [{ measure: "signals", count: 10 }],
+    examples: []
   }
 
   assert.deepEqual(
