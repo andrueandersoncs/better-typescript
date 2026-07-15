@@ -10,6 +10,10 @@ Always use @repos/effect/ (vendored effect repository) to find examples of corre
 
 Always do the complete work you're asked to do, do _not_ concern yourself with "churn".
 
+Always do **exactly** the work you're asked to do. If the magnitude of the work is large, decompose it into independent tasks and delegate to subagents.
+
+Always **manually do the work** unless it is a mechanical change that can be **trivially** accomplished with a script. Your first instinct should be to do the work yourself.
+
 Always double-check your work for consistency and simplicity.
 
 Always double-check your work to make sure it **reduces or maintains** semantic complexity, never increases unless explicitly asked. If your work increases semantic complexity, always provide a justification.
