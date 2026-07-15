@@ -7,6 +7,11 @@ import {
   deriveSignals
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
+export const sideEffectLaunderingExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("side-effect-laundering")
 
 const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const files = byFile(signals)
@@ -27,7 +32,8 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
           "any edit that appeases one rule trips another. Restructure instead of appeasing — " +
           "split the expression, or annotate the value with the consuming library's own " +
           "callback type so the contract is the consumer's.",
-        evidence
+        evidence,
+        examples: sideEffectLaunderingExamples
       })
 
       return Array.of(advice)

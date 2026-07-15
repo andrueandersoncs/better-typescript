@@ -25,6 +25,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "high signal density",
     wiring: defaultWiring
+  },
+  {
+    fixtureId: "side-effect-laundering",
+    pairId: "1",
+    title: "colliding fixes on shared expressions",
+    wiring: defaultWiring
   }
 ]
 
