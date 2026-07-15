@@ -80,6 +80,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "deletion-test shallowness",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "wide-shallow-interface",
+    pairId: "1",
+    title: "wide shallow interface",
+    wiring: architectureExploreWiring
   }
 ]
 

@@ -2,7 +2,12 @@ import { Array, Option, pipe, Result, Function } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { interfaceBurdenDataOf, isDeletableWrapper } from "./evidence.js"
+
+export const wideShallowInterfaceExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("wide-shallow-interface")
 
 const minimumForwarders = 3
 
@@ -44,7 +49,8 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
           remediation:
             "This public interface carries many operations while most of its surface is low-leverage forwarding. " +
             "Collapse the forwarders and expose the smaller domain operation that hides configuration, ordering, and adapter details.",
-          evidence
+          evidence,
+          examples: wideShallowInterfaceExamples
         })
       }),
       Result.fromOption(Function.constVoid)
