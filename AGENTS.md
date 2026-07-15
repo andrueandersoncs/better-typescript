@@ -13,3 +13,5 @@ Always do the complete work you're asked to do, do _not_ concern yourself with "
 Always double-check your work for consistency and simplicity.
 
 Always double-check your work to make sure it **reduces or maintains** semantic complexity, never increases unless explicitly asked. If your work increases semantic complexity, always provide a justification.
+
+Always write tests (in @tests) to verify the behavior of any code you write. These tests will be used in future changes to ensure no regressions are introduced.
