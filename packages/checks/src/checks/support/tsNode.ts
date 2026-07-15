@@ -183,7 +183,6 @@ export const isProjectFile = (sourceFile: ts.SourceFile): boolean =>
 
 export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
-
   const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
 
   return Array.some(sourceFiles, isProjectFile)
@@ -242,9 +241,7 @@ export const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.ma
 
 export const containsUndefinedKeyword = (node: ts.Node): boolean => {
   const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
-
   const childContainsUndefinedKeyword = ts.forEachChild(node, containsUndefinedKeyword) === true
-
   const conditions = Array.make(isUndefinedKeyword, childContainsUndefinedKeyword)
 
   return Array.some(conditions, Boolean)
@@ -264,11 +261,8 @@ export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnT
 
 const containsAnyKeyword = (node: ts.Node): boolean => {
   const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
-
   const anyChild = ts.forEachChild(node, (child) => (containsAnyKeyword(child) ? child : void 0))
-
   const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
-
   const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)
   return Array.some(ambientConditions, Boolean)
 }

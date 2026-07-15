@@ -43,7 +43,6 @@ const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceIte
   const services = Tuple.make("services", data.serviceCount)
   const effectfulMembers = Tuple.make("effectful-members", data.effectfulMemberCount)
   const transformations = Tuple.make("transformations", data.transformationCount)
-
   const measurements = Array.make(branches, functions, services, effectfulMembers, transformations)
 
   return pipe(
@@ -146,7 +145,6 @@ export const functionalCoreEffectDerive = (
   signals: ReadonlyArray<Signal>
 ): Stream.Stream<Advice, Error> => {
   const boundaryDetections = detectionsOf(signals, functionalCoreBoundaryCheckName)
-
   const shapeDetections = detectionsOf(signals, functionalCoreShapeCheckName)
   const localShapeAdvice = shapeAdvice(shapeDetections)
   const aggregateAdvice = imperativeCoreAdvice(boundaryDetections)

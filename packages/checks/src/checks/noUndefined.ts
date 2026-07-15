@@ -75,11 +75,8 @@ const equalityComparisonOperators = HashSet.make(
 
 const isEqualityWithUndefined = (expr: ts.BinaryExpression): boolean => {
   const isEqualityComparison = HashSet.has(equalityComparisonOperators, expr.operatorToken.kind)
-
   const comparisonOperands = Array.make(expr.left, expr.right)
-
   const hasUndefinedOperand = Array.some(comparisonOperands, isUndefinedExpression)
-
   const checks = Array.make(isEqualityComparison, hasUndefinedOperand)
   return Array.every(checks, Boolean)
 }
@@ -92,7 +89,6 @@ const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression => {
 
 const parameterAcceptsUndefined = (param: ts.ParameterDeclaration): boolean => {
   const hasQuestionToken = pipe(param.questionToken, Option.fromNullable, Option.isSome)
-
   const typeNode = Option.fromNullable(param.type)
   const hasUndefinedType = containsUndefinedType(typeNode)
 
@@ -111,13 +107,10 @@ const getArrowExpressionBody = (fn: ts.ArrowFunction): Option.Option<ts.Expressi
 const isUndefinedReturnExpression = (node: ts.Node): node is UndefinedReturnExpression => {
   const returnStmt = Option.liftPredicate(ts.isReturnStatement)(node)
   const returnExprValue = Option.flatMap(returnStmt, getReturnExpression)
-
   const isUndefinedReturn = Option.exists(returnExprValue, isUndefinedExpression)
-
   const arrowFn = Option.liftPredicate(ts.isArrowFunction)(node)
   const arrowBody = Option.flatMap(arrowFn, getArrowExpressionBody)
   const isUndefinedArrow = Option.exists(arrowBody, isUndefinedExpression)
-
   const checks = Array.make(isUndefinedReturn, isUndefinedArrow)
   return Array.some(checks, Boolean)
 }
@@ -127,7 +120,6 @@ const isNotMinusToken = (questionToken: ts.Node): boolean =>
 
 const propertySignatureAcceptsUndefined = (node: ts.PropertySignature): boolean => {
   const hasQuestionToken = pipe(node.questionToken, Option.fromNullable, Option.isSome)
-
   const typeNode = Option.fromNullable(node.type)
   const hasUndefinedType = containsUndefinedType(typeNode)
 

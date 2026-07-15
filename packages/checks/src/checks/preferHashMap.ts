@@ -61,13 +61,9 @@ const mapMatches = (context: CheckContext) => {
   const matches = (node: MapRuleNode): ReadonlyArray<Detection> => {
     if (ts.isNewExpression(node)) {
       const expressionOption = Option.liftPredicate(ts.isIdentifier)(node.expression)
-
       const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)
-
       const escapesExternally = isMapConstruction && constructionEscapes(node)
-
       const reportableConditions = Array.make(isMapConstruction, !escapesExternally)
-
       const isReportable = Array.every(reportableConditions, Boolean)
 
       const constructorMatch = match({

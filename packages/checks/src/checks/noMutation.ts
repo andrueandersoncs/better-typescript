@@ -77,9 +77,7 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
 // Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
-
   const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
-
   const hasDeclarations = sourceFiles.length > 0
   const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
   const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
@@ -197,7 +195,6 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode => {
   const isPrefixUnary = ts.isPrefixUnaryExpression(node)
   const isPostfixUnary = ts.isPostfixUnaryExpression(node)
   const isDelete = ts.isDeleteExpression(node)
-
   const checks = Array.make(isBinary, isPrefixUnary, isPostfixUnary, isDelete)
 
   return Array.some(checks, Boolean)
@@ -222,20 +219,16 @@ const mutationMatches = (context: CheckContext) => {
       Option.map(resolveAlias(checker)),
       Option.map((symbol): MutationScope => {
         const declarations = symbol.getDeclarations() ?? Array.empty()
-
         const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
-
         const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
 
         const declaredScope = pipe(
           Option.fromNullable(declarations[0]),
           Option.map((declaration): MutationScope => {
             const declarationBoundary = enclosingExecutionBoundary(declaration.parent)
-
             const mutationBoundary = enclosingExecutionBoundary(root.parent)
             const isModuleScoped = ts.isSourceFile(declarationBoundary)
             const isCaptured = declarationBoundary !== mutationBoundary
-
             const sharedStateConditions = Array.make(isModuleScoped, isCaptured)
             return Array.some(sharedStateConditions, Boolean) ? "shared-state" : "local"
           }),

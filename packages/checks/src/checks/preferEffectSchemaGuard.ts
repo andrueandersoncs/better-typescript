@@ -12,7 +12,6 @@ import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
-
   const children = astChildren(unwrapped)
   const filtered = Array.filter(children, ts.isExpression)
 
@@ -45,7 +44,6 @@ const inOperatorGuardMatches = (context: CheckContext) => {
       Array.filter(isStringKeyInExpression),
       Array.map((expression) => {
         const propertyName = unwrapExpression(expression.left).getText(sourceFile)
-
         const objectText = expression.right.getText(sourceFile)
 
         return match({

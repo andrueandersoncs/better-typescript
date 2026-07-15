@@ -46,9 +46,7 @@ const isArrayLikeTypeWithSeen =
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((type) => {
         const nextSeen = HashSet.add(seen, type)
-
         const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
-
         const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
 
         const hasUnionOrIntersectionArrayType = Option.exists(unionOrIntersection, (type) =>

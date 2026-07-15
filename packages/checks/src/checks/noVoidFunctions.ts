@@ -78,7 +78,6 @@ const voidFunctionMatches = (context: CheckContext) => {
       Option.flatMap(objectLiteralParent),
       Option.exists((literal) => {
         const literalContextualTypeNode = checker.getContextualType(literal)
-
         const literalContextualType = Option.fromNullable(literalContextualTypeNode)
 
         return Option.isSome(literalContextualType)

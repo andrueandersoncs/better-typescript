@@ -92,17 +92,13 @@ const duplicateNameListeners = (
       const identicalDeclarations = Array.filter(declarations, (other) => {
         const candidateType = context.checker.getTypeAtLocation(candidate)
         const otherType = context.checker.getTypeAtLocation(other)
-
         const forward = context.checker.isTypeAssignableTo(candidateType, otherType)
-
         const backward = context.checker.isTypeAssignableTo(otherType, candidateType)
-
         const ambientConditions = Array.make(forward, backward)
         return Array.every(ambientConditions, Boolean)
       })
 
       const declaredFileNames = Array.map(identicalDeclarations, declaredFileName)
-
       const uniqueFileNames = Array.dedupe(declaredFileNames)
 
       const otherFileNames = Array.filter(

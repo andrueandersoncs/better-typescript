@@ -22,7 +22,6 @@ const effectiveParent = (node: ts.Node): ts.Node =>
 
 const arrowFunctionMatches = (context: CheckContext) => {
   const isExternalArgument = isExternalPackageArgument(context.checker)(context.program)
-
   const match = detection(context)
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {

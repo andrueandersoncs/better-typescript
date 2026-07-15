@@ -96,7 +96,6 @@ const importedPathFor = (
 
 const isCollaboratorName = (name: string): boolean => {
   const knownName = HashSet.has(collaboratorNames, name)
-
   const knownSuffix = Array.some(collaboratorSuffixes, (suffix) => name.endsWith(suffix))
 
   return knownName || knownSuffix

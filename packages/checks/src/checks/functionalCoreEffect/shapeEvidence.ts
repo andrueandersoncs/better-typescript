@@ -153,7 +153,6 @@ const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration): b
       Option.map(() => {
         const isYield = ts.isYieldExpression(current)
         const parentNested = pipe(Option.fromNullable(current.parent), Option.exists(visit))
-
         const yieldFlags = Array.make(isYield, parentNested)
 
         return Array.some(yieldFlags, Boolean)
@@ -276,7 +275,6 @@ const callIsRecognizedCompositionApi = (
       const platformFlags = Array.make(platformNode, platformBun, platformDeno)
       const platformRuntime = Array.some(platformFlags, Boolean)
       const isRunMain = name === "runMain"
-
       const runMainFlags = Array.make(platformRuntime, isRunMain)
 
       return Array.every(runMainFlags, Boolean)
@@ -296,7 +294,6 @@ const nestedInRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.Node
     )
 
     const parentNested = pipe(Option.fromNullable(current.parent), Option.exists(visit))
-
     const nestedFlags = Array.make(matchingCall, parentNested)
 
     return Array.some(nestedFlags, Boolean)
@@ -460,7 +457,6 @@ const orchestratorElements =
             )
 
             const branchOrTransformation = Array.some(branchTransformationFlags, Boolean)
-
             const qualifyFlags = Array.make(hasSeveralServices, branchOrTransformation)
             const qualifies = Array.every(qualifyFlags, Boolean)
 
@@ -531,9 +527,7 @@ const collectFileShape = (context: CheckContext, role: ArchitectureRole) =>
     )
 
     const returnedCompositionFlags = Array.make(isRoot, isRuntimeFunction, returnsComposition)
-
     const returnedComposition = Array.every(returnedCompositionFlags, Boolean)
-
     const excludeCompositionFlags = Array.make(nestedComposition, returnedComposition)
     const excludeComposition = Array.some(excludeCompositionFlags, Boolean)
 
@@ -570,7 +564,6 @@ const fileShapeData = (
   const adapterFunctions = metrics.functionCount >= 2
   const adapterEvidenceFlags = Array.make(isAdapter, adapterBranches, adapterFunctions)
   const adapterEvidence = Array.every(adapterEvidenceFlags, Boolean)
-
   const isRoot = role === "root"
   const rootBranches = metrics.branchCount >= 2
   const rootFunctions = metrics.functionCount >= 2

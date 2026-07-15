@@ -32,7 +32,6 @@ const commentsWithoutBecause = (context: CheckContext): ReadonlyArray<Detection>
     const hasBecause = becauseWord.test(textOfComment)
     const isNotJsDoc = !isDocumentingJsDoc
     const isMissingBecause = !hasBecause
-
     const jsDocConditions = Array.make(isNotJsDoc, isMissingBecause)
     return Array.every(jsDocConditions, Boolean)
   })

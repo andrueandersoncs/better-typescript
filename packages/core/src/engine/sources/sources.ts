@@ -334,7 +334,6 @@ export const diffCheckableFiles =
   (previous: HashMap.HashMap<string, ts.SourceFile>) =>
   (context: ProgramContext): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
     const currentFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-
     const next = pipe(currentFiles, Array.map(fileIndexEntry), HashMap.fromIterable)
 
     const changed = Array.filter(currentFiles, (sourceFile) =>

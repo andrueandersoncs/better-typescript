@@ -58,7 +58,6 @@ const mutableArrayMatches = (context: CheckContext) => {
     }
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
-
     const methodCall = isReceiverArrayType(receiverType) ? methodName : Option.none()
 
     return pipe(

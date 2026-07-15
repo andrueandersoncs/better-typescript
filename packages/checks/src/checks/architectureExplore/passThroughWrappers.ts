@@ -71,7 +71,6 @@ const parameterIdentifiers = (
     const restTokenMissing = Option.isNone(restToken)
     const omissions = Array.make(initializerMissing, restTokenMissing)
     const unmodified = Array.every(omissions, Boolean)
-
     const identifier = pipe(Option.some(parameter.name), Option.filter(ts.isIdentifier))
 
     return pipe(identifier, Option.filter(Function.constant(unmodified)))
@@ -176,9 +175,7 @@ const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Exp
   )
 
   const reexports = Array.filter(publicStatements, ts.isExportDeclaration)
-
   const allReexports = Array.every(reexports, hasModuleSpecifier)
-
   const onlyReexports = reexports.length === publicStatements.length
 
   return allReexports && onlyReexports ? reexports : Array.empty()

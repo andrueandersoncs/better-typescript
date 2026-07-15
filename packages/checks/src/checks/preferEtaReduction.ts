@@ -63,7 +63,6 @@ const etaReductionMatches = (context: CheckContext) => {
   const propertyAccessRequiresThis = (propertyAccess: ts.PropertyAccessExpression): boolean => {
     const namedSymbol = symbolOption(propertyAccess.name)
     const accessSymbol = symbolOption(propertyAccess)
-
     const propertySymbol = pipe(namedSymbol, Option.orElse(Function.constant(accessSymbol)))
 
     const isMethod = pipe(
@@ -95,9 +94,7 @@ const etaReductionMatches = (context: CheckContext) => {
     const isIdentifier = ts.isIdentifier(unwrapped)
     const isFree = isCall || isIdentifier
     const isPropertyAccess = ts.isPropertyAccessExpression(unwrapped)
-
     const propertyNeedsThis = isPropertyAccess ? propertyAccessRequiresThis(unwrapped) : true
-
     const isBound = isFree === false
     const boundCalleeNeedsThis = isBound && propertyNeedsThis
 
@@ -166,13 +163,9 @@ const etaReductionMatches = (context: CheckContext) => {
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullable(arrowFunction.parameters[0])
-
         const hasRest = pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
-
         const hasDefault = pipe(Option.fromNullable(parameter.initializer), Option.isSome)
-
         const isOptional = pipe(Option.fromNullable(parameter.questionToken), Option.isSome)
-
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
         const isComplex = hasRestOrDefault || isOptional
@@ -185,7 +178,6 @@ const etaReductionMatches = (context: CheckContext) => {
         const body = yield* conciseArrowBody(arrowFunction)
         const callees = yield* unaryCalleeTower(parameterName)(body)
         const hasSteps = Array.length(callees) > 0
-
         const freeCallees = Array.every(callees, (callee) => !calleeRequiresThis(callee))
 
         yield* Option.liftPredicate((value: boolean) => value)(hasSteps)

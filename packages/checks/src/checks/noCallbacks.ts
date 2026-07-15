@@ -45,11 +45,8 @@ const isRuntimeFunctionLike = (node: ts.Expression): boolean =>
 
 const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclaration => {
   const isFunctionOrExpression = ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
-
   const isArrowOrMethod = ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
-
   const isSignature = ts.isMethodSignature(node) || ts.isCallSignatureDeclaration(node)
-
   const isFunctionOrArrow = isFunctionOrExpression || isArrowOrMethod
   const isDirectCallbackKind = isFunctionOrArrow || isSignature
 
@@ -59,13 +56,11 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
 
   const typeNode = effectiveCallableTypeNode(node)
   const parent = typeNode.parent
-
   const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
   if (isValueDeclaration) {
     const isTypeAnnotation = parent.type === typeNode
     const initializer = Option.fromNullable(parent.initializer)
-
     const isNotRuntimeFunction = !Option.exists(initializer, isRuntimeFunctionLike)
 
     return isTypeAnnotation && isNotRuntimeFunction
@@ -107,9 +102,7 @@ const callbackStyleMatches = (context: CheckContext) => {
 
       const hasFunctionArgument = Array.some(declaration.parameters, (parameter) => {
         const parameterType = checker.getTypeAtLocation(parameter)
-
         const parameterHasCallSignature = hasCallSignature(checker)(parameterType)
-
         const restToken = Option.fromNullable(parameter.dotDotDotToken)
 
         if (Option.isNone(restToken)) {
@@ -117,9 +110,7 @@ const callbackStyleMatches = (context: CheckContext) => {
         }
 
         const indexType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
-
         const elementType = Option.fromNullable(indexType)
-
         const elementHasCallSignature = Option.exists(elementType, callSignatureCheck(checker))
 
         const callSignatureIndicators = Array.make(

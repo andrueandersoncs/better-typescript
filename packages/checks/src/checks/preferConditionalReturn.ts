@@ -12,7 +12,6 @@ const maximumReturnExpressionLength = 100
 
 const containsYieldExpression = (node: ts.Node): boolean => {
   const isYield = ts.isYieldExpression(node)
-
   const childContainsYield = ts.forEachChild(node, containsYieldExpression) === true
 
   return isYield || childContainsYield
@@ -34,7 +33,6 @@ const ternaryText =
     const conditionText = condition.getText(sourceFile)
     const whenTrueText = whenTrue.getText(sourceFile)
     const whenFalseText = whenFalse.getText(sourceFile)
-
     const ternaryParts = Array.make(`(${conditionText})`, "?", whenTrueText, ":", whenFalseText)
 
     return Array.join(ternaryParts, " ")
@@ -48,9 +46,7 @@ const conditionalReturnDetections = (context: CheckContext) => {
   const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(statement)
-
       const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)
-
       const expression = yield* Option.fromNullable(returnStatement.expression)
 
       return yield* Option.liftPredicate((expression: ts.Expression) => {
@@ -81,13 +77,9 @@ const conditionalReturnDetections = (context: CheckContext) => {
         Option.flatMap((ifStatement) =>
           Option.gen(function* () {
             const thenExpression = yield* returnExpression(ifStatement.thenStatement)
-
             const elseStatement = Option.fromNullable(ifStatement.elseStatement)
-
             const fallbackStatement = Option.isSome(elseStatement) ? elseStatement : nextStatement
-
             const fallbackExpression = yield* Option.flatMap(fallbackStatement, returnExpression)
-
             const unwrappedCondition = unwrapExpression(ifStatement.expression)
 
             const negatedCondition = pipe(

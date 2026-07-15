@@ -22,9 +22,7 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const expression = unwrapExpression(ifStatement.expression)
-
     const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
-
     const isLogicalOperatorExpression = Option.exists(binaryExpression, hasLogicalOperator)
 
     const reported = match({

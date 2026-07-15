@@ -86,7 +86,6 @@ const isRecordType =
     const apparentType = checker.getApparentType(type)
     const typeHasIndexSignature = hasIndexSignature(type)
     const apparentTypeHasIndexSignature = hasIndexSignature(apparentType)
-
     const conditions = Array.make(typeHasIndexSignature, apparentTypeHasIndexSignature)
 
     return type.isUnionOrIntersection()
@@ -99,7 +98,6 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
   const isRecord = isRecordType(checker)
-
   const propertyNameText = (name: ts.PropertyName): string => name.getText(sourceFile)
 
   const ruleMatch =

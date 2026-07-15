@@ -177,9 +177,7 @@ const parentFollowsExportPath = (node: ts.Node): boolean =>
 
 const exportNodeStep = (current: ts.Node) => {
   const parent = Option.fromNullable(current.parent)
-
   const currentFollowsParent = HashSet.has(currentKindsThatFollowParent, current.kind)
-
   const parentFollowsParent = Option.exists(parent, parentFollowsExportPath)
   const followsParent = currentFollowsParent || parentFollowsParent
   const directParent = followsParent ? parent : Option.none<ts.Node>()

@@ -143,7 +143,6 @@ const runtimeSchemaType = (
   declaration: ts.VariableDeclaration
 ): boolean => {
   const type = checker.getTypeAtLocation(declaration.name)
-
   const text = checker.typeToString(type, declaration.name, ts.TypeFormatFlags.NoTruncation)
   const includesSchemaType = text.includes("Schema<")
   const startsWithSchemaNamespace = text.startsWith("Schema.")
@@ -194,7 +193,6 @@ const fieldTypeText =
     )
 
     const location = declaration ?? field.valueDeclaration
-
     const declaredType = checker.getDeclaredTypeOfSymbol(field)
 
     const type = pipe(
@@ -475,7 +473,6 @@ const addOwner = (
   owner: ts.Symbol
 ): MutableHashMap.MutableHashMap<ts.Symbol, MutableHashSet.MutableHashSet<ts.Symbol>> => {
   const existing = MutableHashMap.get(index, target)
-
   const owners = pipe(existing, Option.getOrElse(MutableHashSet.empty<ts.Symbol>))
 
   MutableHashSet.add(owners, owner)
@@ -1087,7 +1084,6 @@ const structuralRoles = (
     dataStructures,
     Array.map((entry) => {
       const owners = pipe(HashMap.get(ownersByData, entry.symbol), Option.getOrElse(HashSet.empty))
-
       const roles = HashSet.empty<ModelRole>()
       const directlyShared = HashSet.size(owners) >= 2
 
@@ -1105,14 +1101,11 @@ const structuralRoles = (
       )
 
       const isRuntimeSchema = declarationIsRuntimeSchema(checker, entry)
-
       const boundaryEvidence = Array.make(usedByExportedFunction, isRuntimeSchema)
-
       const boundary = entry.exported && Array.some(boundaryEvidence, Boolean)
       const invariant = classHasInvariant(entry)
       const protocol = declarationIsProtocol(entry)
       const recursive = declarationSelfReference(checker, entry)
-
       const sharedObservation = Tuple.make("shared" as const, shared)
       const boundaryObservation = Tuple.make("boundary" as const, boundary)
       const invariantObservation = Tuple.make("invariant" as const, invariant)
@@ -1199,7 +1192,6 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
   const fieldReads = MutableList.empty<FieldRead>()
   const readFieldNames = MutableHashSet.empty<string>()
   const parameterBags = MutableList.empty<ParameterBag>()
-
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   Array.forEach(sourceFiles, (sourceFile) => {
@@ -1255,10 +1247,8 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
               )
 
               const isMechanicalForwarding = mechanicalForwardingRead(identifier)
-
               const notFieldDeclaration = !fieldIsDeclaration
               const notMechanicalForwarding = !isMechanicalForwarding
-
               const isIndependentRead = Array.make(notFieldDeclaration, notMechanicalForwarding)
 
               pipe(

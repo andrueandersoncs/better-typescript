@@ -182,7 +182,6 @@ const incrementAdapter =
     counts: HashMap.HashMap<ts.Symbol, readonly [number, number]>
   ): HashMap.HashMap<ts.Symbol, readonly [number, number]> => {
     const current = pipe(HashMap.get(counts, symbol), Option.getOrElse(emptyAdapterCount))
-
     const production = fromTest ? current[0] : current[0] + 1
     const test = fromTest ? current[1] + 1 : current[1]
     const updated = Tuple.make(production, test)
@@ -197,7 +196,6 @@ const buildIndex = (
   HashMap.HashMap<ts.Symbol, readonly [number, number]>
 ] => {
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-
   const candidates = seamCandidates(context)(sourceFiles)
 
   const candidateSymbols = pipe(
@@ -319,9 +317,7 @@ const singleAdapterElements =
 
         const hasOneProductionAdapter = counts[0] === 1
         const hasNoTestAdapter = counts[1] === 0
-
         const isHypothetical = hasOneProductionAdapter && hasNoTestAdapter
-
         const hypotheticalCandidate = isHypothetical ? Option.some(candidate) : Option.none()
 
         return pipe(

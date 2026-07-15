@@ -153,7 +153,6 @@ const bindingFromDefaultImport = (moduleSpecifier: string): ImportedMember => {
 
 const bindingFromDeclaration = (declaration: ts.Declaration): Option.Option<ImportedMember> => {
   const moduleDeclaration = moduleDeclarationAncestor(declaration)
-
   const moduleSpecifier = pipe(moduleDeclaration, Option.flatMap(moduleSpecifierText))
 
   return pipe(
@@ -407,11 +406,9 @@ export const effectApiMember = (
   names: ReadonlyArray<string>
 ): boolean => {
   const last = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
-
   const fromBarrelPath = member.path[0] === namespace
   const fromEffectBarrel = member.moduleSpecifier === "effect"
   const fromBarrel = fromEffectBarrel && fromBarrelPath
-
   const fromSubpath = member.moduleSpecifier === `effect/${namespace}`
   const fromEffectModule = fromBarrel || fromSubpath
   const nameMatches = Array.contains(names, last)
@@ -665,7 +662,6 @@ export const moduleMatchesPolicyPrefix = (
   Array.some(policy.capabilityModulePrefixes, (prefix) => {
     const namespacePrefix = prefix.endsWith(":")
     const namespaceMatch = namespacePrefix && moduleSpecifier.startsWith(prefix)
-
     const packagePrefix = `${prefix}/`
     const exactPackage = moduleSpecifier === prefix
     const nestedPackage = moduleSpecifier.startsWith(packagePrefix)
@@ -758,17 +754,13 @@ const ambientCallSubject = (
     ambientPathAt(checker, expression),
     Option.filter((path) => {
       const joined = Array.join(path, ".")
-
       const isSingleSegment = path.length === 1
       const directMatch = isSingleSegment && Array.contains(ambientDirectNames, joined)
-
       const exactMatch = Array.contains(ambientExactMembers, joined)
       const receiver = path[0]
-
       const isLocalStorage = receiver === "localStorage"
       const isSessionStorage = receiver === "sessionStorage"
       const storageMatch = isLocalStorage || isSessionStorage
-
       const consoleMatch = receiver === "console"
       const ambientFlags = Array.make(directMatch, exactMatch, storageMatch, consoleMatch)
 
@@ -937,9 +929,7 @@ export const resourceSubjectAt = (
     externalImportedMemberAt(context.checker, node.expression),
     Option.filter((member) => {
       const name = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
-
       const factoryMatch = Array.contains(policy.resourceFactoryNames, name)
-
       const suffixMatch = Array.some(policy.resourceTypeSuffixes, (suffix) => name.endsWith(suffix))
       const isNewExpression = ts.isNewExpression(node)
       const newSuffixMatch = isNewExpression && suffixMatch
@@ -954,9 +944,7 @@ export const resourceSubjectAt = (
 
 export const hasScopedLifecycleAncestor = (checker: ts.TypeChecker, node: ts.Node): boolean => {
   const scopedEffect = hasEffectCallAncestor(checker, node, "Effect", effectLifecycleNames)
-
   const scopedLayer = hasEffectCallAncestor(checker, node, "Layer", layerLifecycleNames)
-
   const scoped = scopedEffect || scopedLayer
   const hasSuspension = hasSuspensionBoundary(checker, node)
   const scopedFlags = Array.make(scoped, hasSuspension)

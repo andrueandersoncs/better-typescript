@@ -217,7 +217,6 @@ const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
 
 export const adviceReportBlock = (advice: Advice): ReportBlock => {
   const pathLabel = advicePath(advice)
-
   const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
   const identity = reportIdentity("advice", adviceIdentityParts)
 

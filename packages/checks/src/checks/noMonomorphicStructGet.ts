@@ -30,7 +30,6 @@ const declarationIsEffectStructModule = (declaration: ts.Declaration): boolean =
   )
 
   const isStructModule = Array.some(structModuleSuffixes, (suffix) => fileName.endsWith(suffix))
-
   const effectStructModuleConditions = Array.make(inEffectPackage, isStructModule)
 
   return Array.every(effectStructModuleConditions, Boolean)
@@ -73,11 +72,8 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
     pipe(
       Option.gen(function* () {
         const expression = unwrapTransparentExpression(initializer)
-
         const call = yield* Option.liftPredicate(ts.isCallExpression)(expression)
-
         const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
-
         const symbolAtName = checker.getSymbolAtLocation(callee.name)
         yield* pipe(
           Option.fromNullable(symbolAtName),

@@ -11,7 +11,6 @@ const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
   const parent = node.parent
-
   const isFunctionDeclaration = ts.isFunctionDeclaration(parent)
   const isFunctionExpression = ts.isFunctionExpression(parent)
   const isArrowFunction = ts.isArrowFunction(parent)

@@ -66,9 +66,7 @@ const connectedComponents = (
       const frontier = Array.of(seed)
       const visited = Array.empty<string>()
       const component = reachable(edges, frontier, visited)
-
       const rest = Array.filter(remaining, (path) => !Array.contains(component, path))
-
       const nextComponents = Array.append(components, component)
 
       return collect(rest, nextComponents)
@@ -99,9 +97,7 @@ const directorySegments = (filePath: string): ReadonlyArray<string> => {
 const commonDirectory = (paths: ReadonlyArray<string>): string => {
   const allSegments = Array.map(paths, directorySegments)
   const fallback = Array.of(".")
-
   const first = pipe(Array.head(allSegments), Option.getOrElse(Function.constant(fallback)))
-
   const remaining = Array.drop(allSegments, 1)
 
   const common = Array.reduce(remaining, first, (prefix, segments) =>

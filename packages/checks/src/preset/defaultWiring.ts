@@ -26,6 +26,10 @@ import {
   noPrimitiveArrayConstructorsExamples
 } from "../checks/noPrimitiveArrayConstructors.js"
 import { noAsyncFunctions, noAsyncFunctionsExamples } from "../checks/noAsyncFunctions.js"
+import {
+  noBlankLinesBetweenSingleLineDeclarations,
+  noBlankLinesBetweenSingleLineDeclarationsExamples
+} from "../checks/noBlankLinesBetweenSingleLineDeclarations.js"
 import { noCallbacks, noCallbacksExamples } from "../checks/noCallbacks.js"
 import {
   noDuplicateFunctionNames,
@@ -330,6 +334,12 @@ const requireBlankLinesAroundMultilineDeclarationsCheck = namedCheck(
   requireBlankLinesAroundMultilineDeclarationsExamples
 )
 
+const noBlankLinesBetweenSingleLineDeclarationsCheck = namedCheck(
+  "no-blank-lines-between-single-line-declarations",
+  noBlankLinesBetweenSingleLineDeclarations,
+  noBlankLinesBetweenSingleLineDeclarationsExamples
+)
+
 const noExplicitAnyReturnCheck = namedCheck(
   "no-explicit-any-return",
   noExplicitAnyReturn,
@@ -509,6 +519,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noMultiLineCommentsCheck,
   requireBecauseInCommentsCheck,
   requireBlankLinesAroundMultilineDeclarationsCheck,
+  noBlankLinesBetweenSingleLineDeclarationsCheck,
   noExplicitAnyReturnCheck,
   noMultipleBooleanOperatorsCheck,
   noInlineBooleanExpressionsCheck,
@@ -552,9 +563,7 @@ export const defaultDerive = (signals: ReadonlyArray<Signal>): Stream.Stream<Adv
   const preferHashMap = elementsOf("prefer-hash-map")
   const preferHashSet = elementsOf("prefer-hash-set")
   const noMutableArrayMethods = elementsOf("no-mutable-array-methods")
-
   const noMutableVariableDeclarations = elementsOf("no-mutable-variable-declarations")
-
   const noNestedCalls = elementsOf("no-nested-calls")
   const preferCurried = elementsOf("prefer-curried-data-last-functions")
   const conceptSignals = elementsOf("concept-control")
@@ -583,7 +592,6 @@ export const defaultDerive = (signals: ReadonlyArray<Signal>): Stream.Stream<Adv
   )
 
   const specificAdviceStreams = Stream.fromIterable(specificAdviceStreamsSource)
-
   const specificAdvice = pipe(specificAdviceStreams, Stream.flatten())
   const densityAdvice = highSignalDensity(namedElements)
   const subsystemAdvice = hotSubsystem(namedElements)

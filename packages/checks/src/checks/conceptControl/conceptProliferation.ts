@@ -52,9 +52,7 @@ const signalKindCount = (
 
 const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): Advice => {
   const externalCallers = evidenceItem("external callers", data.externalCallers)
-
   const independentOwners = evidenceItem("independent model owners", data.independentOwners)
-
   const evidence = Array.make(externalCallers, independentOwners)
 
   return new Advice({
@@ -92,7 +90,6 @@ const proliferationAdvice = (
 
   const emptyKindCounts = HashMap.empty<string, number>()
   const kindCounts = Array.reduce(data, emptyKindCounts, signalKindCount)
-
   const counts = evidenceFromCounts(kindCounts)
   const distinctConceptCount = HashSet.size(concepts)
   const conceptCount = evidenceItem("distinct concepts", distinctConceptCount)

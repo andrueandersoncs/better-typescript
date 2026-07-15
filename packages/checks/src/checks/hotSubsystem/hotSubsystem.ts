@@ -18,7 +18,6 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   const hasEnoughSignals = total >= 25
   const hasEnoughFiles = directory.files.length >= 3
   const hasProjectShare = total * 5 >= directory.projectTotal * 3
-
   const signalsEvidence = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
 
   return Array.every(signalsEvidence, Boolean)
@@ -59,14 +58,12 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
 
   const directoryEntries = Array.flatMap(files, (file) => {
     const directories = parentDirectories(file.path)
-
     const entries = Array.map(directories, (directory) => Tuple.make(directory, file))
 
     return entries
   })
 
   const directoryNamesWithDuplicates = Array.map(directoryEntries, (entry) => entry[0])
-
   const directoryNames = Array.dedupe(directoryNamesWithDuplicates)
 
   const emptyDirectoryFiles: HashMap.HashMap<
@@ -109,7 +106,6 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
     const hasHotDescendant = Array.some(hotDirectories, (directory) => {
       const isDifferentPath = directory.path !== candidate.path
       const isNestedPath = directory.path.startsWith(`${candidate.path}/`)
-
       const conditions = Array.make(isDifferentPath, isNestedPath)
       return Array.every(conditions, Boolean)
     })

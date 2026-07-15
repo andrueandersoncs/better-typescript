@@ -28,7 +28,6 @@ const failConfig = (
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
   const isObject = typeof value === "object"
   const isPresent = value !== null
-
   const conditions = Array.make(isObject, isPresent)
   return Array.every(conditions, Boolean)
 }
@@ -90,13 +89,9 @@ const selectedExport = Effect.fn("selectedExport")(function* (
   moduleValue: unknown
 ) {
   const recordValueOption = Option.liftPredicate(isRecord)(moduleValue)
-
   const recordExport = pipe(recordValueOption, Option.map(configExportFromRecord))
-
   const functionValueOption = Option.liftPredicate(isFunctionValue)(moduleValue)
-
   const functionExport = pipe(functionValueOption, Option.map(configExportFromFunction))
-
   const exportOption = pipe(recordExport, Option.orElse(Function.constant(functionExport)))
 
   const missingExport = failConfig(
@@ -144,7 +139,6 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
   const exported = yield* selectedExport(configPath, moduleValue)
   const value = exported.value
   const factoryOption = Option.liftPredicate(isFunctionValue)(value)
-
   const plainExport = Effect.succeed(value)
 
   return yield* pipe(
@@ -211,7 +205,6 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
   const record = value as Readonly<Record<string, unknown>>
   const name = record.name as string
   const check = record.check as Check
-
   const reported = Object.hasOwn(record, "reported") ? (record.reported as boolean) : true
 
   const examples = Object.hasOwn(record, "examples")
@@ -268,9 +261,7 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
   }
 
   const record = value as Readonly<Record<string, unknown>>
-
   const checks = yield* validateNamedChecks(configPath, `${fieldPath}.checks`, record.checks)
-
   const deriveIsFunction = typeof record.derive === "function"
 
   if (!deriveIsFunction) {
@@ -322,7 +313,6 @@ const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
   }
 
   const files = filesOption.value
-
   const wiring = yield* validateWiringShape(configPath, `${fieldPath}.wiring`, record.wiring)
 
   return new WiringEntry({ files, wiring })

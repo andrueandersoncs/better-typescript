@@ -248,7 +248,6 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const rationaleIsComplete = (entry: DataStructureEntry): boolean => {
       const commentsAndTags = ts.getJSDocCommentsAndTags(entry.documentationNode)
-
       const docs = Array.filter(commentsAndTags, ts.isJSDoc)
 
       const tags = Array.flatMap(docs, (doc) => {
@@ -258,7 +257,6 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       })
 
       const roleTags = Array.filter(tags, (tag) => tag.tagName.text === "modelRole")
-
       const remarksTags = Array.filter(tags, (tag) => tag.tagName.text === "remarks")
 
       const description = pipe(

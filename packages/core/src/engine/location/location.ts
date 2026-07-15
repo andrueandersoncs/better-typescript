@@ -38,7 +38,6 @@ export const detectionEquals = (a: Detection, b: Detection): boolean => {
   const sameMessage = a.message === b.message
   const sameHint = a.hint === b.hint
   const sameData = Equal.equals(a.data, b.data)
-
   const conditions = Array.make(samePath, sameLine, sameColumn, sameMessage, sameHint, sameData)
 
   return Array.every(conditions, Boolean)

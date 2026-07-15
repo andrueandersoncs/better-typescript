@@ -37,18 +37,12 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
 
     const emptyWhenTrue = isEmptyArrayLiteral(expression.whenTrue)
     const nonEmptyWhenFalse = isNonEmptyArrayBranch(expression.whenFalse)
-
     const emptyThenNonEmptyConditions = Array.make(emptyWhenTrue, nonEmptyWhenFalse)
-
     const emptyThenNonEmpty = Array.every(emptyThenNonEmptyConditions, Boolean)
-
     const nonEmptyWhenTrue = isNonEmptyArrayBranch(expression.whenTrue)
     const emptyWhenFalse = isEmptyArrayLiteral(expression.whenFalse)
-
     const nonEmptyThenEmptyConditions = Array.make(nonEmptyWhenTrue, emptyWhenFalse)
-
     const nonEmptyThenEmpty = Array.every(nonEmptyThenEmptyConditions, Boolean)
-
     const checks = Array.make(emptyThenNonEmpty, nonEmptyThenEmpty)
     const detection = match({ node: spread, message, hint })
     return Array.some(checks, Boolean) ? Array.of(detection) : Array.empty()

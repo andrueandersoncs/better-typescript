@@ -31,9 +31,7 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
       ).length
 
       const location = adviceLocation(filePath)
-
       const constructionItem = evidenceItem("external-dependency-construction", count)
-
       const evidence = Array.of(constructionItem)
 
       return new Advice({

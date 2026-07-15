@@ -29,7 +29,6 @@ const tokenTexts =
 
     const children = node.getChildren(sourceFile)
     const isLeafToken = children.length === 0
-
     const nodeText = node.getText(sourceFile)
     return isLeafToken ? Array.of(nodeText) : Array.flatMap(children, tokenTexts(sourceFile))
   }
@@ -37,7 +36,6 @@ const tokenTexts =
 const duplicateIfMatches = (context: CheckContext) => {
   const fingerprint = (statement: ts.Statement): string => {
     const unwrappedBody = unwrapSingleStatementBlock(statement)
-
     const textsForFile = tokenTexts(context.sourceFile)
     const tokens = textsForFile(unwrappedBody)
 
@@ -67,11 +65,8 @@ const duplicateIfMatches = (context: CheckContext) => {
     (previousIfStatement: ts.IfStatement): Option.Option<string> => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
-
       const mergeableDuplicateConditions = Array.make(hasDuplicateBody, bodyExitsScope)
-
       const isMergeableDuplicate = Array.every(mergeableDuplicateConditions, Boolean)
-
       const combinedCondition = combineConditions(previousIfStatement)(ifStatement)
 
       return isMergeableDuplicate ? Option.some(combinedCondition) : Option.none()
@@ -81,7 +76,6 @@ const duplicateIfMatches = (context: CheckContext) => {
     (ifStatement: ts.IfStatement) =>
     (parentIfStatement: ts.IfStatement): Option.Option<string> => {
       const hasDuplicateBody = sameBody(parentIfStatement)(ifStatement)
-
       const combinedCondition = combineConditions(parentIfStatement)(ifStatement)
 
       return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()

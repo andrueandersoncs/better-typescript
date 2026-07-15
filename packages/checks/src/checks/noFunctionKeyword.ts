@@ -55,7 +55,6 @@ const functionKeywordMatches = (context: CheckContext) => {
             const isImplementation = candidate === declaration
             const body = Option.fromNullable(candidate.body)
             const hasNoBody = Option.isNone(body)
-
             const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
 
             return Array.every(overloadSiblingConditions, Boolean)

@@ -14,16 +14,13 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
   const isObjectKeyword = typeNode.kind === ts.SyntaxKind.ObjectKeyword
   const isUnionType = ts.isUnionTypeNode(typeNode)
-
   const unionContainsRaw = isUnionType && Array.some(typeNode.types, containsRawObjectType)
-
   const isIntersectionType = ts.isIntersectionTypeNode(typeNode)
 
   const intersectionContainsRaw =
     isIntersectionType && Array.some(typeNode.types, containsRawObjectType)
 
   const isParenthesizedType = ts.isParenthesizedTypeNode(typeNode)
-
   const parenthesizedContainsRaw = isParenthesizedType && containsRawObjectType(typeNode.type)
 
   const conditions = Array.make(

@@ -89,9 +89,7 @@ export const isTestSourceFile =
   (projectRoot: string) =>
   (sourceFile: ts.SourceFile): boolean => {
     const normalized = path.relative(projectRoot, sourceFile.fileName).replaceAll("\\", "/")
-
     const testDirectories = Array.make("test/", "tests/", "__tests__/")
-
     const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
 
     const inTestDirectory = Array.some(
@@ -184,7 +182,6 @@ const isImportBinding = (node: ts.Identifier): boolean => {
   const isImportClause = ts.isImportClause(parent)
   const isNamespaceImport = ts.isNamespaceImport(parent)
   const isImportEquals = ts.isImportEqualsDeclaration(parent)
-
   const checks = Array.make(isImportSpecifier, isImportClause, isNamespaceImport, isImportEquals)
 
   return Array.some(checks, Boolean)
@@ -202,7 +199,6 @@ const isDirectCallReference = (node: ts.Identifier): boolean => {
     Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
     Option.exists((access) => {
       const hasReferencedName = access.name === node
-
       const callParent = Option.liftPredicate(ts.isCallExpression)(access.parent)
 
       const invokesAccess = pipe(
@@ -250,7 +246,6 @@ const updateUsage =
 
     const productionPaths = appendUnique(path)(usage.productionPaths)
     const nonCallReference = !isCall
-
     const hasProductionNonCallReference = usage.hasProductionNonCallReference || nonCallReference
 
     return new ExportUsage({
@@ -263,13 +258,9 @@ const updateUsage =
 
 export const buildExportReferenceIndex = (context: ProgramContext): ExportReferenceIndex => {
   const checker = context.checker
-
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-
   const entries = Array.flatMap(projectFiles, exportedFunctionsIn(checker))
-
   const entryPairs = Array.map(entries, (entry) => Tuple.make(entry.symbol, entry))
-
   const entriesBySymbol = HashMap.fromIterable(entryPairs)
   const currentEntryMap = entriesBySymbol
   const relative = toRelativeFileName(context.projectRoot)
@@ -307,7 +298,6 @@ export const buildExportReferenceIndex = (context: ProgramContext): ExportRefere
                   )
 
                   const isCall = isDirectCallReference(currentIdentifier)
-
                   const updated = updateUsage(fromTest, isCall, sourcePath)(usage)
 
                   return HashMap.set(current, candidate.symbol, updated)
@@ -386,7 +376,6 @@ const statementModuleSpecifier = (statement: ts.Statement): Option.Option<ts.Exp
 export const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleEdge> => {
   const relative = toRelativeFileName(context.projectRoot)
   const classifyTestSource = isTestSourceFile(context.projectRoot)
-
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   return Array.flatMap(projectFiles, (sourceFile) => {

@@ -132,13 +132,9 @@ const propertyTypeIsWireSafe =
         )
 
         const propertyType = checker.getTypeOfSymbolAtLocation(namedProperty, propertyLocation)
-
         const isOptional = (namedProperty.flags & ts.SymbolFlags.Optional) !== 0
-
         const optionalUnion = isOptional && propertyType.isUnion()
-
         const members = optionalUnion ? definedUnionMembers(propertyType) : Array.of(propertyType)
-
         const checkType = typeIsWireSafeWithSeen(checker)(location)(seen)
         const hasDefinedMember = members.length > 0
         const everyMemberIsWireSafe = Array.every(members, checkType)
@@ -162,7 +158,6 @@ const intersectionTypeIsWireSafe =
 const objectTypeHasSignatures = (type: ts.ObjectType): boolean => {
   const callSignatureCount = type.getCallSignatures().length
   const constructSignatureCount = type.getConstructSignatures().length
-
   const signatureCounts = Array.make(callSignatureCount, constructSignatureCount)
 
   return Array.some(signatureCounts, (count) => count > 0)
@@ -198,12 +193,9 @@ const structuralObjectTypeIsWireSafe =
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.ObjectType): boolean => {
     const stringIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.String)
-
     const numberIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.Number)
-
     const possibleIndexTypes = Array.make(stringIndexType, numberIndexType)
     const indexTypes = Array.filterMap(possibleIndexTypes, Option.fromNullable)
-
     const indexTypesAreWireSafe = Array.every(indexTypes, checkType)
     const properties = checker.getPropertiesOfType(type)
     const hasStructuralMembers = properties.length + indexTypes.length > 0
@@ -252,7 +244,6 @@ const constrainedOrStructuralTypeIsWireSafe =
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.Type): boolean => {
     const baseConstraint = differentBaseConstraint(checker)(type)
-
     const checkUnconstrained = unconstrainedTypeIsWireSafe(checker)(location)(seen)(checkType)
 
     return pipe(

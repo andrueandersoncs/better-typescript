@@ -56,7 +56,6 @@ const isEligibleFunction = (node: ConstantThunk): boolean => {
   const modifiers = pipe(
     Option.gen(function* () {
       const nodeWithModifiers = yield* Option.liftPredicate(ts.canHaveModifiers)(node)
-
       const modifiers = ts.getModifiers(nodeWithModifiers)
 
       return yield* Option.fromNullable(modifiers)
@@ -94,7 +93,6 @@ const blockReturnedExpression = (body: ts.Block): Option.Option<ts.Expression> =
   Option.gen(function* () {
     yield* Option.liftPredicate(hasSingleElement)(body.statements)
     const statement = yield* Option.fromNullable(body.statements[0])
-
     const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(statement)
 
     return yield* Option.fromNullable(returnStatement.expression)
@@ -162,10 +160,8 @@ const functionConstantMatches = (context: CheckContext) => {
             pipe(
               Option.gen(function* () {
                 const symbolCandidate = context.checker.getSymbolAtLocation(identifier)
-
                 const symbol = yield* Option.fromNullable(symbolCandidate)
                 const declarationCandidates = symbol.getDeclarations()
-
                 const declarations = yield* Option.fromNullable(declarationCandidates)
 
                 yield* Option.liftPredicate(hasSingleElement)(declarations)

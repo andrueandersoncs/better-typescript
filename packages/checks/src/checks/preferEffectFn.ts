@@ -23,7 +23,6 @@ const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
 const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
   const isNamedEffect = symbol.name === "Effect"
   const declarations = symbol.declarations ?? Array.empty()
-
   const hasEffectModuleDeclaration = Array.some(declarations, isEffectModuleDeclaration)
 
   return isNamedEffect && hasEffectModuleDeclaration
@@ -46,12 +45,10 @@ const effectFnMatches = (context: CheckContext) => {
       Option.filter(hasParameters),
       Option.filter((initializer) => {
         const declaredSignature = checker.getSignatureFromDeclaration(initializer)
-
         const signature = Option.fromNullable(declaredSignature)
 
         return Option.exists(signature, (signature) => {
           const returnType = checker.getReturnTypeOfSignature(signature)
-
           const typeSymbol = returnType.getSymbol()
           const symbol = Option.fromNullable(typeSymbol)
 
@@ -70,9 +67,7 @@ const effectFnMatches = (context: CheckContext) => {
         )
 
         const conciseResult = ts.isBlock(body) ? Option.none<ts.Expression>() : Option.some(body)
-
         const resultExpression = Option.orElse(blockResult, Function.constant(conciseResult))
-
         const unwrapped = Option.map(resultExpression, unwrapExpression)
 
         return pipe(

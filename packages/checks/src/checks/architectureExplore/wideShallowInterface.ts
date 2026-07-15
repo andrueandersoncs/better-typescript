@@ -32,13 +32,9 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
       Option.filter((data) => forwarders.length * 2 > data.operationCount),
       Option.map((data) => {
         const location = adviceLocation(filePath)
-
         const operationsItem = evidenceItem("interface-operations", data.operationCount)
-
         const parametersItem = evidenceItem("required-parameters", data.requiredParameterCount)
-
         const forwardersItem = evidenceItem("deletable-forwarders", forwarders.length)
-
         const evidence = Array.make(operationsItem, parametersItem, forwardersItem)
 
         return new Advice({

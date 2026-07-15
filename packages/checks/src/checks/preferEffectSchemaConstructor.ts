@@ -45,7 +45,6 @@ const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expressi
   )
 
   const branches = Array.make(ternaryBranchOption, shortCircuitBranchOption)
-
   const leafBranches = Array.of(unwrapped)
   return pipe(Option.firstSomeOf(branches), Option.getOrElse(Function.constant(leafBranches)))
 }

@@ -110,7 +110,6 @@ const collectWorkspaceSignals = <A>(
   const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
       const context = toContext(project)
-
       const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
       const sourceMatches = Array.map(sourceFiles, (sourceFile) => {
@@ -143,7 +142,6 @@ const collectWorkspaceSignals = <A>(
 
       const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile): boolean => {
         const wiringIndex = wiringIndexesByCheck[checkIndex]
-
         const matches = HashMap.unsafeGet(matchesByFileName, sourceFile.fileName)
 
         return matches[wiringIndex] ?? false
@@ -299,7 +297,6 @@ export const checkReportBlocks =
       Record.values,
       Array.map((group) => {
         const first = Array.headNonEmpty(group)
-
         const ruleIdentityParts = Array.make(name, first.message, first.hint)
         const identity = reportKeyIdentity("rule", ruleIdentityParts)
 
@@ -317,10 +314,8 @@ export const checkReportBlocks =
               const message = `  ${head.message}`
               const hint = `  Hint: ${head.hint}`
               const examplesText = Array.map(examples, formatRefactorExample)
-
               const prefixLines2 = Array.make(name, message, hint)
               const header = Array.appendAll(prefixLines2, examplesText)
-
               const locations = Array.map(group, locationText)
               const lines = Array.appendAll(header, locations)
 
@@ -459,7 +454,6 @@ export const signalOf =
   (signals: ReadonlyArray<Signal>) =>
   (name: string): Stream.Stream<Detection, Error> => {
     const namedSignal = Array.findFirst(signals, (signal) => signal.name === name)
-
     const detections = pipe(namedSignal, Option.map(Struct.get("detections")))
 
     return pipe(
@@ -551,7 +545,6 @@ export const makeWiring = (wiring: Wiring): Wiring => validateCheckNames(wiring.
 export const defineConfig = (config: WiringConfig): WiringConfig => {
   const invalidIndexes = Array.filterMap(config, (entry, index) => {
     const hasFiles = entry.files.length > 0
-
     const hasOnlyNonEmptyPatterns = Array.every(entry.files, isFileGlob)
 
     return hasFiles && hasOnlyNonEmptyPatterns ? Option.none() : Option.some(index)

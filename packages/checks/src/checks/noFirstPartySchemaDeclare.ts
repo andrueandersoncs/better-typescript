@@ -42,7 +42,6 @@ const isFirstPartyDataStructure = (type: ts.Type): boolean => {
   const isDataStructure = type.getCallSignatures().length === 0
   // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
   const isConcreteType = !type.isTypeParameter()
-
   const ambientConditions = Array.make(isFirstParty, isDataStructure, isConcreteType)
 
   return Array.every(ambientConditions, Boolean)

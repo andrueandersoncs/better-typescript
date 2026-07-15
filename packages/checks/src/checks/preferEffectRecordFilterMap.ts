@@ -35,18 +35,12 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
 
     const emptyWhenTrue = hasNoProperties(expression.whenTrue)
     const nonEmptyWhenFalse = hasSomeProperties(expression.whenFalse)
-
     const emptyThenNonEmptyConditions = Array.make(emptyWhenTrue, nonEmptyWhenFalse)
-
     const emptyThenNonEmptyElse = Array.every(emptyThenNonEmptyConditions, Boolean)
-
     const nonEmptyWhenTrue = hasSomeProperties(expression.whenTrue)
     const emptyWhenFalse = hasNoProperties(expression.whenFalse)
-
     const nonEmptyThenEmptyConditions = Array.make(nonEmptyWhenTrue, emptyWhenFalse)
-
     const nonEmptyThenEmptyElse = Array.every(nonEmptyThenEmptyConditions, Boolean)
-
     const checks = Array.make(emptyThenNonEmptyElse, nonEmptyThenEmptyElse)
     const detection = match({ node: spread, message, hint })
     return Array.some(checks, Boolean) ? Array.of(detection) : Array.empty()

@@ -61,13 +61,9 @@ const setMatches = (context: CheckContext) => {
   const matches = (node: SetRuleNode): ReadonlyArray<Detection> => {
     if (ts.isNewExpression(node)) {
       const expressionOption = Option.liftPredicate(ts.isIdentifier)(node.expression)
-
       const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)
-
       const escapesExternally = isSetConstruction && constructionEscapes(node)
-
       const reportableConditions = Array.make(isSetConstruction, !escapesExternally)
-
       const isReportable = Array.every(reportableConditions, Boolean)
 
       const constructorMatch = match({

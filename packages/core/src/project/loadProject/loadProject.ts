@@ -31,9 +31,7 @@ import {
 export const discoverWorkspace: (projectPath: string) => Effect.Effect<WorkspaceConfigs, Error> =
   Effect.fn("discoverWorkspace")(function* (projectPath: string) {
     const rootPath = path.resolve(projectPath)
-
     const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
-
     const configPath = Option.fromNullable(foundConfigPath)
 
     if (Option.isNone(configPath)) {
@@ -41,7 +39,6 @@ export const discoverWorkspace: (projectPath: string) => Effect.Effect<Workspace
     }
 
     const rootAncestorPaths = HashSet.empty<string>()
-
     const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
 
     const projects = Array.dedupeWith(
@@ -188,7 +185,6 @@ const discoverConfig: (
   }
 
   const configDirectory = path.dirname(configPath)
-
   const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, configDirectory)
 
   if (parsedConfig.errors.length > 0) {

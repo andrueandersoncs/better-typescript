@@ -79,9 +79,7 @@ const booleanReturnMatches = (context: CheckContext) => {
     literalValue: boolean
   ): Detection => {
     const conditionText = condition.getText(sourceFile)
-
     const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
-
     const literalText = String(literalValue)
 
     return match({
@@ -174,7 +172,6 @@ const booleanReturnMatches = (context: CheckContext) => {
               onSome: (block) => {
                 const blockStatements = block.statements
                 const lastIndex = blockStatements.length - 1
-
                 const lastThenStatement = Option.fromNullable(blockStatements[lastIndex])
 
                 return pipe(

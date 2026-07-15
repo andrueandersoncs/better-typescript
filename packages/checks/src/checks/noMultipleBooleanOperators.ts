@@ -28,11 +28,8 @@ const isBooleanOperatorExpression = (node: ts.Node): node is BooleanOperatorExpr
     ts.isBinaryExpression(node) && HashSet.has(booleanBinaryOperatorKinds, node.operatorToken.kind)
 
   const unaryOperator = ts.isPrefixUnaryExpression(node) ? node.operator : undefined
-
   const isUnaryBooleanOperator = unaryOperator === ts.SyntaxKind.ExclamationToken
-
   const isTernaryOperator = ts.isConditionalExpression(node)
-
   const checks = Array.make(isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator)
 
   return Array.some(checks, Boolean)
@@ -78,7 +75,6 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   )
 
   const hasCountedAncestor = Option.exists(parent, isOrHasBooleanOperatorAncestor)
-
   const checks = Array.make(!isConditionEdge, hasCountedAncestor)
   return Array.every(checks, Boolean)
 }
@@ -101,7 +97,6 @@ const multipleBooleanOperatorMatches = (context: CheckContext) => {
 
   const matches = (expression: BooleanOperatorExpression): ReadonlyArray<Detection> => {
     const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
-
     const hasNoBooleanOperatorAncestor = !hasBooleanOperatorAncestor(expression)
     const hasMultiple = booleanOperatorCount(expression) > 1
 

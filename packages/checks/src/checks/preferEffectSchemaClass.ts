@@ -21,12 +21,9 @@ const namedPropertyText = (property: ts.ObjectLiteralElementLike): Option.Option
 
 const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
-
   const isInterfaceDeclaration = ts.isInterfaceDeclaration(declaration)
   const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(declaration)
-
   const isTypeLiteralAlias = isTypeAliasDeclaration && ts.isTypeLiteralNode(declaration.type)
-
   const conditions = Array.make(isInterfaceDeclaration, isTypeLiteralAlias)
   const isRelevantDeclaration = Array.some(conditions, Boolean)
 
@@ -41,7 +38,6 @@ const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean => {
 
 const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
   const symbol = type.getSymbol()
-
   const directSymbol = pipe(Option.fromNullable(symbol), Option.filter(isProjectObjectTypeSymbol))
 
   const aliasSymbol = pipe(
@@ -177,7 +173,6 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
     (typeParameter: ts.Type): ReadonlyArray<ts.Type> => {
       const declaredReturn = signature.getReturnType()
       const contextualMembers = typeMembers(contextual)
-
       const declaredMembers = typeMembers(declaredReturn)
       const extractForParameter = memberExtractions(typeParameter)
       const extractMembers = extractForParameter(contextualMembers)
@@ -209,13 +204,11 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
     (literal: ts.ObjectLiteralExpression): ReadonlyArray<readonly [ts.Symbol, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullable(contextualType)
-
       const emptyBoxedTypes = Array.empty()
 
       const boxedTypes = pipe(
         Option.gen(function* () {
           const argument = outermostTransparentWrapper(literal)
-
           const call = yield* Option.liftPredicate(ts.isCallExpression)(argument.parent)
 
           const argumentPosition = yield* Array.findFirstIndex(
@@ -225,7 +218,6 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
 
           const callContextualType = checker.getContextualType(call)
           const contextual = yield* Option.fromNullable(callContextualType)
-
           const signatures = checker.getTypeAtLocation(call.expression).getCallSignatures()
 
           return Array.flatMap(signatures, signatureBoxedTypes(argumentPosition)(contextual))
@@ -239,7 +231,6 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
       )
 
       const targetTypes = Array.flatMap(contextualCandidates, candidateTypes(literal))
-
       const objectTypeSymbols = Array.filterMap(targetTypes, typeObjectTypeSymbol)
 
       return Array.map(objectTypeSymbols, symbolFileEntry(fileName))
@@ -277,7 +268,6 @@ const objectTypeDeclarationMatches =
         Option.map((constructionFileName) => {
           const typeName = declaration.name.text
           const exampleFile = toRelative(constructionFileName)
-
           const kindLabel = ts.isInterfaceDeclaration(declaration) ? "an interface" : "a type alias"
 
           return match({

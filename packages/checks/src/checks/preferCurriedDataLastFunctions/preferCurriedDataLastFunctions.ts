@@ -28,7 +28,6 @@ const updateSymbolUse =
   (update: (use: SymbolUse) => SymbolUse) =>
   (uses: SymbolUses): SymbolUses => {
     const currentUse = pipe(HashMap.get(uses, symbol), Option.getOrElse(fallbackEmptySymbolUse))
-
     const updatedUse = update(currentUse)
 
     return HashMap.set(uses, symbol, updatedUse)
@@ -123,7 +122,6 @@ const runtimeParameters = (
 const hasDisallowedParameterList = (declaration: CurriedDataLastCandidate): boolean => {
   const declarationHasRestParameter = hasRestParameter(declaration)
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
-
   const conditions = Array.make(declarationHasRestParameter, hasMultipleRuntimeParameters)
 
   return Array.some(conditions, Boolean)
@@ -133,9 +131,7 @@ const hasCurriedArrowBody = (declaration: CurriedDataLastCandidate): boolean => 
   const parameters = runtimeParameters(declaration)
   const hasSingleRuntimeParameter = parameters.length === 1
   const hasNoRestParameter = !hasRestParameter(declaration)
-
   const parameterChecks = Array.make(hasSingleRuntimeParameter, hasNoRestParameter)
-
   const hasCurriedParameterList = Array.every(parameterChecks, Boolean)
 
   const bodyIsFunctionInitializer = pipe(
@@ -254,9 +250,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
         Option.liftPredicate(isCurriedDataLastCandidate)(node),
         Option.filter((declaration) => {
           const hasDisallowedParameters = hasDisallowedParameterList(declaration)
-
           const hasCurriedBody = hasCurriedArrowBody(declaration)
-
           const isContextual = isContextuallyTypedFunction(checker)(declaration)
 
           const reportableCurryChecks = Array.make(
@@ -307,7 +301,6 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
           )
 
           const declarationNameChecks = Array.make(isVariableName, isFunctionName, isMethodName)
-
           const isDeclaration = Array.some(declarationNameChecks, Boolean)
 
           if (isDeclaration) {
@@ -327,7 +320,6 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
           }
 
           const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
-
           const isSameExpression = (candidate: ts.Expression): boolean => candidate === expression
 
           const index = ts.isCallExpression(expression.parent)
@@ -358,7 +350,6 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
             Option.exists(type, hasCallSignature(checker))
 
           const contextualTypes = Array.make(expressionContextualType, signatureType)
-
           const hasCallableContext = Array.some(contextualTypes, optionHasCallableType)
 
           const hasExternalCallbackBoundary = pipe(
@@ -397,7 +388,6 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
     const matches = (declaration: CurriedDataLastCandidate): ReadonlyArray<Detection> => {
       const hasDisallowedParameters = hasDisallowedParameterList(declaration)
       const hasCurriedBody = hasCurriedArrowBody(declaration)
-
       const isContextual = isContextuallyTypedFunction(context.checker)(declaration)
 
       const hasOnlyContextualUse = pipe(

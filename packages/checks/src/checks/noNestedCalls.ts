@@ -32,7 +32,6 @@ const nestedCallMatches = (context: CheckContext) => {
 
   const sourceFile = context.sourceFile
   const match = detection(context)
-
   const callLabel = calleeText(sourceFile)
 
   const matches = (call: ts.CallExpression | ts.NewExpression): ReadonlyArray<Detection> =>
@@ -44,9 +43,7 @@ const nestedCallMatches = (context: CheckContext) => {
         }
 
         const callerExpression = consumer.expression
-
         const callerName = ts.isIdentifier(callerExpression) ? callerExpression.text : undefined
-
         const isPipeName = callerName === "pipe"
         const isCallConsumer = ts.isCallExpression(consumer)
         const isFirstArg = callArguments(consumer)[0] === call

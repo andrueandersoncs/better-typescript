@@ -47,7 +47,6 @@ const moduleGraphElements =
     )
 
     const data = new ModuleGraphData({ importedPaths })
-
     const reported = element({ node, message, hint, data })
 
     return Array.of(reported)

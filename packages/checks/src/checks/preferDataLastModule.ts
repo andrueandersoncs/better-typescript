@@ -97,9 +97,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const isMember = (type: ts.Type): boolean => {
     const isArrayType = checker.isArrayType(type)
     const isTupleType = checker.isTupleType(type)
-
     const arrayOrTupleChecks = Array.make(isArrayType, isTupleType)
-
     const isArrayOrTuple = Array.some(arrayOrTupleChecks, Boolean)
     const typeHasCallSignature = hasCallSignature(checker)(type)
 
@@ -127,14 +125,11 @@ const dataLastModuleMatches = (context: CheckContext) => {
   const isDataStructureDeclaration = (declaration: ts.Declaration): boolean => {
     const sourceFile = declaration.getSourceFile()
     const sourceFileIsProject = isProjectSourceFile(sourceFile)
-
     const isInterface = ts.isInterfaceDeclaration(declaration)
     const isTypeAlias = ts.isTypeAliasDeclaration(declaration)
     const isClass = ts.isClassDeclaration(declaration)
     const declarationKinds = Array.make(isInterface, isTypeAlias, isClass)
-
     const declarationIsDataStructure = Array.some(declarationKinds, Boolean)
-
     const conditions = Array.make(sourceFileIsProject, declarationIsDataStructure)
 
     return Array.every(conditions, Boolean)
@@ -144,7 +139,6 @@ const dataLastModuleMatches = (context: CheckContext) => {
     (type: ts.Type) =>
     (symbol: ts.Symbol): Option.Option<DataStructureModule> => {
       const declarations = symbol.declarations ?? Array.empty()
-
       const declaration = Array.findFirst(declarations, isDataStructureDeclaration)
 
       const isStructured = type.isUnionOrIntersection()
@@ -260,7 +254,6 @@ const dataLastModuleMatches = (context: CheckContext) => {
     (definition: FunctionDefinition) =>
     (dataStructure: DataStructureModule): Option.Option<Detection> => {
       const relativeDirectory = path.relative(projectRoot, dataStructure.moduleDirectory)
-
       const displayDirectory = relativeDirectory.length > 0 ? relativeDirectory : "."
 
       const ruleMatch = match({

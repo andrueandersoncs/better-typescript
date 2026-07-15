@@ -36,11 +36,8 @@ const hasStringLiteralOperand = (expression: ts.Expression): boolean =>
 
 const isSchemaTagComparisonBinary = (node: ts.BinaryExpression): boolean => {
   const isStrictComparison = HashSet.has(strictTagComparisonOperators, node.operatorToken.kind)
-
   const leftTagRightString = hasTagPropertyOperand(node.left) && hasStringLiteralOperand(node.right)
-
   const leftStringRightTag = hasStringLiteralOperand(node.left) && hasTagPropertyOperand(node.right)
-
   const hasTagComparison = leftTagRightString || leftStringRightTag
 
   return isStrictComparison && hasTagComparison
@@ -74,7 +71,6 @@ const schemaIsMatches = (context: CheckContext) => {
 
     const isFirstParty = Option.exists(tagAccess, (access) => {
       const checkedType = context.checker.getTypeAtLocation(access.expression)
-
       const constituents = checkedType.isUnion() ? checkedType.types : Array.of(checkedType)
 
       return Array.every(constituents, constituentIsFirstParty)
@@ -102,9 +98,7 @@ const schemaIsMatches = (context: CheckContext) => {
     )
 
     const schemaIsCheck = `Schema.is($schema)(${valueText})`
-
     const isNegated = expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
-
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
     const reported = match({

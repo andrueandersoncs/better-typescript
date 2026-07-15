@@ -17,7 +17,6 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
   }
 
   const nestedCallPaths = Array.map(signals.noNestedCalls, (element) => element.location.path)
-
   const uniquePaths = Array.dedupe(nestedCallPaths)
 
   return pipe(
@@ -26,13 +25,9 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
     Array.map((path) => {
       const location = adviceLocation(path)
       const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
-
       const uncurriedCount = countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions)
-
       const nestedItem = evidenceItem("no-nested-calls", nestedCount)
-
       const uncurriedItem = evidenceItem("prefer-curried-data-last-functions", uncurriedCount)
-
       const evidence = Array.make(nestedItem, uncurriedItem)
 
       return new Advice({
@@ -51,7 +46,6 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
 
 export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice, Error> => {
   const noNestedCalls = collectSignals(input.noNestedCalls)
-
   const preferCurriedDataLastFunctions = collectSignals(input.preferCurriedDataLastFunctions)
 
   return pipe(

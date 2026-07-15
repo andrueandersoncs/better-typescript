@@ -139,9 +139,7 @@ export const isExternalPackageArgument =
 
         return Option.exists(declarationFile, (sourceFile) => {
           const isExternal = !isProjectSourceFile(sourceFile)
-
           const isDefaultLibrary = program.isSourceFileDefaultLibrary(sourceFile)
-
           const ambientConditions = Array.make(isExternal, !isDefaultLibrary)
           return Array.every(ambientConditions, Boolean)
         })
@@ -207,9 +205,7 @@ export const constructionEscapesExternally =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): boolean => {
     const outermost = outermostTransparentWrapper(expression)
-
     const isDirectExternalArgument = isExternalArgumentPosition(checker)(outermost)
-
     const sourceFile = expression.getSourceFile()
 
     const escapesThroughVariable = pipe(
@@ -265,7 +261,6 @@ export const typeReferenceEscapesExternally =
         if (ts.isParameter(carrier)) {
           const enclosing = carrier.parent
           const sourceFile = carrier.getSourceFile()
-
           const isDirectExternalArgument = isExternalArgumentPosition(checker)(enclosing)
 
           const variableName = pipe(
@@ -279,7 +274,6 @@ export const typeReferenceEscapesExternally =
           )
 
           const nameNode = pipe(variableName, Option.orElse(Function.constant(functionName)))
-
           const escapesThroughName = Option.exists(nameNode, nameNodeEscapes(checker)(sourceFile))
 
           return isDirectExternalArgument || escapesThroughName

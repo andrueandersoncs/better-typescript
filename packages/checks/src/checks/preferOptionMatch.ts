@@ -29,7 +29,6 @@ const containsDotValue =
   (name: string) =>
   (node: ts.Node): boolean => {
     const childHasDotValue = ts.forEachChild(node, containsDotValue(name)) === true
-
     const isPropertyAccess = ts.isPropertyAccessExpression(node)
 
     if (!isPropertyAccess) {
@@ -57,23 +56,19 @@ const optionMatchMatches = (context: CheckContext) => {
       Option.gen(function* () {
         const unwrapped = unwrapTransparentExpression(conditional.condition)
         const call = yield* Option.liftPredicate(ts.isCallExpression)(unwrapped)
-
         const callee = yield* Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
-
         const object = yield* Option.liftPredicate(ts.isIdentifier)(callee.expression)
 
         yield* Option.liftPredicate(isOptionText)(object.text)
         const methodName = callee.name.text
         yield* Option.liftPredicate(isGuardMethodName)(methodName)
         const firstArg = yield* Option.fromNullable(call.arguments[0])
-
         const identifier = yield* Option.liftPredicate(ts.isIdentifier)(firstArg)
 
         return Tuple.make(methodName as OptionGuardKind, identifier.text)
       }),
       Option.filter(([kind, argumentName]: readonly [OptionGuardKind, string]): boolean => {
         const isSomeGuard = kind === "isSome"
-
         const branch = isSomeGuard ? conditional.whenTrue : conditional.whenFalse
 
         return containsDotValue(argumentName)(branch)

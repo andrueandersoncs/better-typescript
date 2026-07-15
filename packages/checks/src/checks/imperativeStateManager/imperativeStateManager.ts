@@ -29,7 +29,6 @@ const sharedMutationCountAt =
 
 const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArray<Advice> => {
   const mutationPaths = Array.map(signals.noMutation, (element) => element.location.path)
-
   const paths = Array.dedupe(mutationPaths)
 
   return pipe(
@@ -41,17 +40,12 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
       const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
       const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
       const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
-
       const arrayCount = countDetectionsAtPath(path)(signals.noMutableArrayMethods)
-
       const declarationCount = countDetectionsAtPath(path)(signals.noMutableVariableDeclarations)
-
       const sharedItem = evidenceItem("no-mutation/shared-state", sharedCount)
-
       const mutationEvidence = evidenceItem("no-mutation", mutationCount)
       const hashMapEvidence = evidenceItem("prefer-hash-map", hashMapCount)
       const hashSetEvidence = evidenceItem("prefer-hash-set", hashSetCount)
-
       const mutableArrayEvidence = evidenceItem("no-mutable-array-methods", arrayCount)
 
       const mutableDeclarationEvidence = evidenceItem(
@@ -92,7 +86,6 @@ export const imperativeStateManager = (
   const preferHashMap = collectSignals(input.preferHashMap)
   const preferHashSet = collectSignals(input.preferHashSet)
   const noMutableArrayMethods = collectSignals(input.noMutableArrayMethods)
-
   const noMutableVariableDeclarations = collectSignals(input.noMutableVariableDeclarations)
 
   return pipe(

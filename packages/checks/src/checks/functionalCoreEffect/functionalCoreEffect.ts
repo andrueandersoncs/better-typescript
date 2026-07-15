@@ -572,7 +572,6 @@ const architectureExportElements =
   (node: ts.ExportDeclaration): ReadonlyArray<Detection> => {
     const role = roleForSourceFile(index, context.sourceFile)
     const moduleSpecifierOption = Option.fromNullable(node.moduleSpecifier)
-
     const exportInputs = Option.all({ role, moduleSpecifier: moduleSpecifierOption })
 
     if (Option.isNone(exportInputs)) {
@@ -832,7 +831,6 @@ const callExpressionElements =
     )
 
     const runtime = detectionWhen(shouldReportRuntime, runtimeDetection)
-
     const isProvisioning = callIsProvisioning(context, node)
     const shouldReportProvisioning = notRoot && isProvisioning
 
@@ -845,7 +843,6 @@ const callExpressionElements =
     )
 
     const provisioning = detectionWhen(shouldReportProvisioning, provisioningDetection)
-
     const isPort = resolvedRole === "port"
     const isPortLayerCall = callIsPortLayer(context, node)
     const shouldReportPortLayer = isPort && isPortLayerCall
@@ -859,7 +856,6 @@ const callExpressionElements =
     )
 
     const portLayer = detectionWhen(shouldReportPortLayer, portLayerDetection)
-
     const isServiceLocatorCall = callIsServiceLocator(context, node)
     const shouldReportServiceLocator = notRoot && isServiceLocatorCall
 
@@ -872,7 +868,6 @@ const callExpressionElements =
     )
 
     const serviceLocator = detectionWhen(shouldReportServiceLocator, serviceLocatorDetection)
-
     const importedExpression = importedMemberAt(context.checker, node.expression)
     const expressionNotImported = Option.isNone(importedExpression)
     const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
@@ -1254,9 +1249,7 @@ const typeIsServiceLocator = (
     Option.exists((member) => {
       const contextType = effectApiMember(member, "Context", contextTypeNames)
       const runtimeType = effectApiMember(member, "Runtime", runtimeTypeNames)
-
       const managedRuntimeType = effectApiMember(member, "ManagedRuntime", managedRuntimeTypeNames)
-
       const checks = Array.make(contextType, runtimeType, managedRuntimeType)
       return Array.some(checks, Boolean)
     })
@@ -1310,7 +1303,6 @@ const typeReferenceElements =
     }
 
     const resolvedRole = role.value
-
     const isTestRole = resolvedRole === "test"
     const isRootRole = resolvedRole === "root"
     const skippedRoles = Array.make(isTestRole, isRootRole)
@@ -1331,7 +1323,6 @@ const typeReferenceElements =
     )
 
     const serviceLocator = detectionWhen(isServiceLocatorType, serviceLocatorDetection)
-
     const isPortRole = resolvedRole === "port"
     const isTopLevelExport = isTopLevelExportedDeclaration(node)
     const shouldCheckInfrastructure = isPortRole && isTopLevelExport
@@ -1365,7 +1356,6 @@ const typeReferenceElements =
     )
 
     const domainPromise = detectionWhen(shouldCheckDomainPromise, domainPromiseDetection)
-
     const groups = Array.make(serviceLocator, infrastructureContract, domainPromise)
     return Array.flatten(groups)
   }
@@ -1417,7 +1407,6 @@ const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subsc
   const classElements = classDeclarationElements(index)
   const typeReferenceElementsForIndex = typeReferenceElements(index)
   const asyncElements = asyncKeywordElements(index)
-
   const importSubscriptions = nodeSubscriptions(importKinds)(ts.isImportDeclaration)(importElements)
   const exportSubscriptions = nodeSubscriptions(exportKinds)(ts.isExportDeclaration)(exportElements)
   const callSubscriptions = nodeSubscriptions(callKinds)(ts.isCallExpression)(callElements)

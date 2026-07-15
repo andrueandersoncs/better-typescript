@@ -90,7 +90,6 @@ const functionCompositionMatches = (context: CheckContext) => {
           )
 
           const isConstList = (declarationList.flags & ts.NodeFlags.Const) !== 0
-
           const hasOneDeclaration = declarationList.declarations.length === 1
 
           yield* Option.liftPredicate((value: boolean) => value)(isConstList)

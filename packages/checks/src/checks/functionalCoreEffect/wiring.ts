@@ -12,9 +12,7 @@ const boundaryExamples = fixtureRefactorExamples("functional-core-effect-boundar
 
 export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy): Wiring => {
   const boundaryPlan = makeFunctionalCoreEffect(policy)
-
   const boundaryCheck = namedCheck(functionalCoreBoundaryCheckName, boundaryPlan, boundaryExamples)
-
   const shapeEvidence = makeFunctionalCoreShapeEvidence(policy)
   const shapeCheck = silentCheck(functionalCoreShapeCheckName, shapeEvidence)
   const checks = Array.make(boundaryCheck, shapeCheck)

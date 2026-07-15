@@ -63,10 +63,8 @@ const importElements = (context: CheckContext) => {
     )
 
     const importedPath = pipe(specifier, Option.getOrElse(Function.constant("")))
-
     const normalizedPath = importedPath.replaceAll("\\", "/")
     const rawPathParts = normalizedPath.split("/")
-
     const pathParts = Array.filter(rawPathParts, (part) => part.length > 0)
 
     return pipe(

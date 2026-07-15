@@ -44,7 +44,6 @@ const formatExampleTree =
 export const formatRefactorExample = (example: RefactorExample): string => {
   const badText = formatExampleTree("Bad")(example.bad)
   const goodText = formatExampleTree("Good")(example.good)
-
   const joinedParts = Array.make(badText, goodText)
   return Array.join(joinedParts, "\n")
 }
@@ -87,7 +86,6 @@ const collectTypeScriptFiles: (
       const notDeclaration = !declaration
       const isSource = typescript && notDeclaration
       const keep = entry.isFile() && isSource
-
       const paths = keep ? Array.of(absolute) : Array.empty()
 
       return Effect.succeed(paths)

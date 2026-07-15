@@ -29,7 +29,6 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
     ).length
 
     const sourceCount = atPath.length - internalCount
-
     const location = adviceLocation(filePath)
     const internalItem = evidenceItem("internal-path-imports", internalCount)
     const sourceItem = evidenceItem("source-path-imports", sourceCount)
