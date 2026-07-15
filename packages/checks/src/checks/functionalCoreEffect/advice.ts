@@ -28,6 +28,9 @@ const shapeAdviceExamples: Readonly<Record<FunctionalCoreShapeKind, NonEmptyRefa
   "pure-service": fixtureRefactorExamples("pure-service")
 }
 
+export const imperativeCoreExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("imperative-core")
+
 const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "effect-orchestrator":
     "This application program both coordinates capabilities and owns domain decisions. Read through ports, call a pure function over plain data, then execute the returned decisions through ports. Keep retry, concurrency, resource, and typed-error control flow in Effect.",
@@ -144,7 +147,8 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
         title: "imperative core",
         remediation:
           "Several independent boundary violations concentrate in this core Module. Extract a pure decision function, express external needs as domain-owned Context.Service ports, and leave Layer selection plus runtime execution at the composition root.",
-        evidence
+        evidence,
+        examples: imperativeCoreExamples
       })
 
       return Array.of(advice)
