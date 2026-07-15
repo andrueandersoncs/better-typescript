@@ -16,7 +16,7 @@ export class DefaultPort extends Context.Service<DefaultPort>()("DefaultPort", {
     read: () => "value"
   })
 }) {
-  static readonly Default = Layer.effect(DefaultPort, DefaultPort.make).pipe(
+  static readonly layer = Layer.effect(DefaultPort, DefaultPort.make).pipe(
     Layer.provide(Layer.empty)
   )
 }
@@ -43,3 +43,13 @@ export class AliasedContextPort extends Context.Service<
   AliasedContextPort,
   AliasedContextContract
 >()("AliasedContextPort") {}
+
+interface FunctionLivePort {
+  readonly read: () => string
+}
+
+export const FunctionLivePort = Context.Service<FunctionLivePort>()("FunctionLivePort", {
+  make: Effect.succeed({
+    read: () => "function-live"
+  })
+})

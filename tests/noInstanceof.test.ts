@@ -15,6 +15,11 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-instanceof")
 
+const hint =
+  "Use a stable discriminant, an explicit structural type guard, or Schema.is with a " +
+  "structurally defined Schema such as Schema.Struct. Schema.is on Schema.Class retains " +
+  "constructor semantics, so it does not make a class check structural or cross-realm safe."
+
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "instanceof with first-party class AppError",
@@ -22,10 +27,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 6,
     column: 27,
     message: 'Avoid instanceof for the first-party class "AppError".',
-    hint:
-      "Use Schema.is(AppError)(value) or a Schema-based type guard instead of instanceof. " +
-      "Schema.is is structural, works across realms, and stays consistent with " +
-      "the Effect type system."
+    hint
   },
   {
     name: "instanceof with first-party class Config",
@@ -33,10 +35,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 13,
     column: 25,
     message: 'Avoid instanceof for the first-party class "Config".',
-    hint:
-      "Use Schema.is(Config)(value) or a Schema-based type guard instead of instanceof. " +
-      "Schema.is is structural, works across realms, and stays consistent with " +
-      "the Effect type system."
+    hint
   }
 ]
 
@@ -54,7 +53,7 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     column: 23
   },
   {
-    name: "Schema.is type guard (no instanceof)",
+    name: "Schema.is with a structural Schema",
     fileName: "src/allowed.ts",
     line: 17,
     column: 27

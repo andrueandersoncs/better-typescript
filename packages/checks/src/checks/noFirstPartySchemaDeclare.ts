@@ -1,4 +1,4 @@
-import { Array, Function, pipe, Option, Struct } from "effect"
+import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -36,13 +36,56 @@ const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> =>
     )
   )
 
-const isFirstPartyDataStructure = (type: ts.Type): boolean => {
+const opaquePrimitiveKinds = HashSet.make(
+  ts.SyntaxKind.StringKeyword,
+  ts.SyntaxKind.NumberKeyword,
+  ts.SyntaxKind.BooleanKeyword,
+  ts.SyntaxKind.BigIntKeyword,
+  ts.SyntaxKind.SymbolKeyword
+)
+
+const isOpaqueAliasDeclaration = (declaration: ts.Declaration): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isTypeAliasDeclaration)(declaration),
+    Option.map(Struct.get("type")),
+    Option.filter(ts.isIntersectionTypeNode),
+    Option.exists((intersection) => {
+      const hasPrimitiveBase = Array.some(intersection.types, (type) =>
+        HashSet.has(opaquePrimitiveKinds, type.kind)
+      )
+
+      const hasOpaqueMarker = intersection.types.length > 1
+
+      return hasPrimitiveBase && hasOpaqueMarker
+    })
+  )
+
+const isStructuralOwnedDeclaration = (declaration: ts.Declaration): boolean => {
+  const isInterface = ts.isInterfaceDeclaration(declaration)
+  const isClass = ts.isClassDeclaration(declaration)
+  const isNominalDeclaration = isInterface || isClass
+  const isAlias = ts.isTypeAliasDeclaration(declaration)
+  const isOpaqueAlias = isOpaqueAliasDeclaration(declaration)
+  const isStructural = isOpaqueAlias === false
+  const isStructuralAlias = isAlias && isStructural
+
+  return isNominalDeclaration || isStructuralAlias
+}
+
+const symbolDeclarations = (symbol: ts.Symbol): ReadonlyArray<ts.Declaration> =>
+  symbol.getDeclarations() ?? Array.empty()
+
+const isStructuralOwnedSymbol = (symbol: ts.Symbol): boolean =>
+  pipe(symbol, symbolDeclarations, Array.some(isStructuralOwnedDeclaration))
+
+const isFirstPartyStructuralModel = (type: ts.Type): boolean => {
   const symbol = typeSymbol(type)
   const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
+  const isStructural = Option.exists(symbol, isStructuralOwnedSymbol)
   const isDataStructure = type.getCallSignatures().length === 0
-  // Exempt generic parameters because callers supply their type rather than the project defining a first-party data structure.
+  // Exempt generic parameters because callers supply their type rather than the project defining a first-party structural model.
   const isConcreteType = !type.isTypeParameter()
-  const ambientConditions = Array.make(isFirstParty, isDataStructure, isConcreteType)
+  const ambientConditions = Array.make(isFirstParty, isStructural, isDataStructure, isConcreteType)
 
   return Array.every(ambientConditions, Boolean)
 }
@@ -52,9 +95,9 @@ const symbolName = Struct.get<ts.Symbol, "name">("name")
 const fallbackTypeName: () => string = Function.constant("unknown")
 
 const schemaDeclareHint =
-  "Schema.declare is meant for integrating third-party types you do not control. " +
-  "For types you own, define a proper Schema — for example class MyType extends " +
-  'Schema.Class<MyType>("MyType")({ ... }) {} — which gives you validation, ' +
+  "Schema.declare is for third-party integrations and non-parametric opaque or branded types " +
+  "validated by a type guard. For structural models you own, define a proper Schema — for example " +
+  'class MyType extends Schema.Class<MyType>("MyType")({ ... }) {} — which gives you validation, ' +
   "encoding, and decoding for free."
 
 const schemaDeclareMatches = (context: CheckContext) => {
@@ -89,7 +132,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
       ? pipe(
           Option.fromNullishOr(call.arguments[0]),
           Option.flatMap(assertedType),
-          Option.filter(isFirstPartyDataStructure),
+          Option.filter(isFirstPartyStructuralModel),
           Option.map((type) => {
             const name = pipe(
               typeSymbol(type),
@@ -97,7 +140,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
               Option.getOrElse(fallbackTypeName)
             )
 
-            const message = `Avoid Schema.declare for the first-party type "${name}".`
+            const message = `Avoid Schema.declare for the first-party structural type "${name}".`
 
             return match({ node: call, message, hint: schemaDeclareHint })
           })

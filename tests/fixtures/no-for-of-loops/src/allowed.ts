@@ -1,3 +1,5 @@
+import { Stream } from "effect"
+
 export {}
 
 function collectionOperationsAreAllowed(
@@ -7,3 +9,13 @@ function collectionOperationsAreAllowed(
     .map((value) => value * 2)
     .reduce((left, right) => left + right, 0)
 }
+
+declare const asyncValues: AsyncIterable<number>
+
+export const asyncCollectionOperationsAreAllowed = Stream.fromAsyncIterable(
+  asyncValues,
+  (cause) => cause
+).pipe(
+  Stream.map((value) => value * 2),
+  Stream.runCollect
+)

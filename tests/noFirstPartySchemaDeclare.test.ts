@@ -16,9 +16,9 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-first-party-schema-declare")
 
 const hint =
-  "Schema.declare is meant for integrating third-party types you do not control. " +
-  "For types you own, define a proper Schema — for example class MyType extends " +
-  'Schema.Class<MyType>("MyType")({ ... }) {} — which gives you validation, ' +
+  "Schema.declare is for third-party integrations and non-parametric opaque or branded types " +
+  "validated by a type guard. For structural models you own, define a proper Schema — for example " +
+  'class MyType extends Schema.Class<MyType>("MyType")({ ... }) {} — which gives you validation, ' +
   "encoding, and decoding for free."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
@@ -27,7 +27,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     fileName: "src/cases.ts",
     line: 9,
     column: 22,
-    message: 'Avoid Schema.declare for the first-party type "MyData".',
+    message: 'Avoid Schema.declare for the first-party structural type "MyData".',
     hint
   },
   {
@@ -35,7 +35,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     fileName: "src/cases.ts",
     line: 20,
     column: 25,
-    message: 'Avoid Schema.declare for the first-party type "AppConfig".',
+    message: 'Avoid Schema.declare for the first-party structural type "AppConfig".',
     hint
   },
   {
@@ -43,7 +43,23 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     fileName: "src/cases.ts",
     line: 23,
     column: 22,
-    message: 'Avoid Schema.declare for the first-party type "MyData".',
+    message: 'Avoid Schema.declare for the first-party structural type "MyData".',
+    hint
+  },
+  {
+    name: "Schema.declare with first-party class SessionState",
+    fileName: "src/cases.ts",
+    line: 35,
+    column: 28,
+    message: 'Avoid Schema.declare for the first-party structural type "SessionState".',
+    hint
+  },
+  {
+    name: "Schema.declare with alias to a first-party structural model",
+    fileName: "src/cases.ts",
+    line: 42,
+    column: 30,
+    message: 'Avoid Schema.declare for the first-party structural type "AppConfig".',
     hint
   }
 ]
@@ -72,6 +88,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 27,
     column: 33
+  },
+  {
+    name: "Schema.declare for first-party branded opaque type UserId",
+    fileName: "src/allowed.ts",
+    line: 35,
+    column: 22
   }
 ]
 

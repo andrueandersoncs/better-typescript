@@ -27,16 +27,20 @@ import type { FunctionalCoreEffectPolicy } from "./policy.js"
 import { detection, nodeSubscriptions } from "@better-typescript/core/engine/check"
 import {
   ambientCapabilityPropertySubject,
+  callIsPipeRuntimeHandoff,
+  callIsReferenceProvideService,
   capabilitySubjectAt,
-  classExtendsEffectApi,
   effectApiMember,
   contextServiceLayerProperty,
+  declarationIsContextService,
+  effectServiceConfigFromExpression,
   effectServiceConfigObject,
   hasScopedLifecycleAncestor,
   hasSuspensionBoundary,
   importHasRuntimeValue,
   importedEffectApiAt,
   importedMemberAt,
+  importedMemberIsMovedPlatformCapability,
   importedTypeMemberAt,
   localTypeReferenceTargets,
   isManagedRuntimeMethodAccess,
@@ -65,8 +69,7 @@ const messageByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
     "Require individual services through the Effect context channel instead of passing a context or runtime bag.",
   "unsuspended-adapter-effect":
     "Suspend the foreign operation before composing it into an Effect program.",
-  "unscoped-resource":
-    "Acquire this external resource in a Layer.effect or acquireRelease lifecycle.",
+  "unscoped-resource": "Acquire this external resource in an Effect-managed lifecycle.",
   "escaping-runtime-state":
     "Create shared Effect state inside a Layer.effect service instead of letting it escape."
 }
@@ -91,7 +94,7 @@ const hintByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
   "unsuspended-adapter-effect":
     "Use Effect.sync, Effect.try, Effect.tryPromise, or Effect.callback around the lazy foreign call; Effect.succeed does not suspend work.",
   "unscoped-resource":
-    "Pair acquisition and release with Effect.acquireRelease and expose the implementation through Layer.effect.",
+    "Pair acquisition and release with Effect.acquireRelease or acquireDisposable, then expose the scoped implementation through a Layer.",
   "escaping-runtime-state":
     "Use Ref.make or the appropriate Queue/PubSub constructor while building a Layer.effect service and keep the handle out of the port surface."
 }
@@ -219,7 +222,9 @@ const forbiddenDomainNamespaces: Readonly<Record<string, true>> = {
   References: true,
   Runtime: true,
   ManagedRuntime: true,
-  Scope: true
+  Scope: true,
+  Latch: true,
+  Semaphore: true
 }
 
 const namespaceIsForbidden = (namespace: string): boolean =>
@@ -494,10 +499,30 @@ const architectureImportElements =
     const importProvidesRuntime = importHasRuntimeValue(node)
     const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
 
-    const capabilityDetection = pipe(
+    const moduleCapability = pipe(
       moduleSpecifierText(node),
       Option.filter(Function.constant(importProvidesRuntime)),
-      Option.filter((subject) => moduleMatchesPolicyPrefix(index.policy, subject)),
+      Option.filter((subject) => moduleMatchesPolicyPrefix(index.policy, subject))
+    )
+
+    const barrelCapability = importProvidesRuntime
+      ? pipe(
+          importBindingIdentifiers(node),
+          Array.map((identifier) =>
+            pipe(
+              importedMemberAt(context.checker, identifier),
+              Option.filter(importedMemberIsMovedPlatformCapability),
+              Option.map((member) => `${member.moduleSpecifier}:${Array.join(member.path, ".")}`)
+            )
+          ),
+          Array.findFirst(Option.isSome),
+          Option.flatten
+        )
+      : Option.none()
+
+    const capabilityDetection = pipe(
+      moduleCapability,
+      Option.orElse(Function.constant(barrelCapability)),
       Option.filter(Function.constant(roleForbidsCapability)),
       Option.map((subject) =>
         boundaryDetection(context, node.moduleSpecifier, resolvedRole, "direct-capability", subject)
@@ -626,10 +651,30 @@ const architectureExportElements =
     const exportProvidesRuntime = exportHasRuntimeValue(node)
     const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
 
-    const capabilityDetection = pipe(
+    const moduleCapability = pipe(
       moduleSpecifierText(node),
       Option.filter(Function.constant(exportProvidesRuntime)),
-      Option.filter((subject) => moduleMatchesPolicyPrefix(index.policy, subject)),
+      Option.filter((subject) => moduleMatchesPolicyPrefix(index.policy, subject))
+    )
+
+    const barrelCapability = exportProvidesRuntime
+      ? pipe(
+          exportBindingIdentifiers(node),
+          Array.map((identifier) =>
+            pipe(
+              importedMemberAt(context.checker, identifier),
+              Option.filter(importedMemberIsMovedPlatformCapability),
+              Option.map((member) => `${member.moduleSpecifier}:${Array.join(member.path, ".")}`)
+            )
+          ),
+          Array.findFirst(Option.isSome),
+          Option.flatten
+        )
+      : Option.none()
+
+    const capabilityDetection = pipe(
+      moduleCapability,
+      Option.orElse(Function.constant(barrelCapability)),
       Option.filter(Function.constant(roleForbidsCapability)),
       Option.map((subject) =>
         boundaryDetection(
@@ -653,34 +698,54 @@ const runtimeNames = Array.make(
   "runPromise",
   "runPromiseExit",
   "runSync",
-  "runSyncExit"
+  "runSyncExit",
+  "runCallbackWith",
+  "runForkWith",
+  "runPromiseWith",
+  "runPromiseExitWith",
+  "runSyncWith",
+  "runSyncExitWith"
 )
 
-const provideEffectNames = Array.make("provide", "provideService", "provideServiceEffect")
+const provideEffectNames = Array.make(
+  "provide",
+  "provideService",
+  "provideServiceEffect",
+  "provideContext"
+)
 
 const provideLayerNames = Array.make("provide", "provideMerge")
 
-const serviceLocatorEffectNames = Array.make("context", "contextWith", "contextWithEffect")
+const serviceLocatorEffectNames = Array.make("context", "contextWith")
 
-const serviceLocatorContextNames = Array.make("get", "getOption", "getOrElse", "unsafeGet")
+const serviceLocatorContextNames = Array.make(
+  "get",
+  "getOption",
+  "getOrElse",
+  "getUnsafe",
+  "getOrUndefined",
+  "getReferenceUnsafe"
+)
 
 const portLayerNames = Array.make("effect", "succeed")
 
 const managedRuntimeMakeNames = Array.of("make")
 
 const contextTypeNames = Array.of("Context")
-const runtimeTypeNames = Array.of("Runtime")
 const managedRuntimeTypeNames = Array.of("ManagedRuntime")
 
 const platformRuntimePrefixes = Array.make(
   "@effect/platform-node",
   "@effect/platform-bun",
-  "@effect/platform-deno"
+  "@effect/platform-deno",
+  "@effect/platform-browser"
 )
 
 const stateConstructors: Readonly<Record<string, ReadonlyArray<string>>> = {
   Ref: Array.of("makeUnsafe"),
-  SynchronizedRef: Array.of("makeUnsafe")
+  SynchronizedRef: Array.of("makeUnsafe"),
+  Latch: Array.of("makeUnsafe"),
+  Semaphore: Array.of("makeUnsafe")
 }
 
 const stateConstructorEntries = EffectRecord.toEntries(stateConstructors)
@@ -688,26 +753,14 @@ const stateConstructorEntries = EffectRecord.toEntries(stateConstructors)
 const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression): boolean => {
   const directEffect = importedEffectApiAt(context.checker, node.expression, "Effect", runtimeNames)
 
-  const runtimeModule = importedEffectApiAt(
-    context.checker,
-    node.expression,
-    "Runtime",
-    runtimeNames
-  )
-
-  const managedRuntime = importedEffectApiAt(
-    context.checker,
-    node.expression,
-    "ManagedRuntime",
-    runtimeNames
-  )
-
   const managedRuntimeMethod = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(node.expression),
     Option.exists((expression) =>
       isManagedRuntimeMethodAccess(context.checker, expression, runtimeNames)
     )
   )
+
+  const pipeRuntimeHandoff = callIsPipeRuntimeHandoff(context.checker, node, runtimeNames)
 
   const runMain = pipe(
     importedMemberAt(context.checker, node.expression),
@@ -724,13 +777,7 @@ const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression):
     })
   )
 
-  const checks = Array.make(
-    directEffect,
-    runtimeModule,
-    managedRuntime,
-    managedRuntimeMethod,
-    runMain
-  )
+  const checks = Array.make(directEffect, managedRuntimeMethod, pipeRuntimeHandoff, runMain)
 
   return Array.some(checks, Boolean)
 }
@@ -742,6 +789,11 @@ const callIsProvisioning = (context: CheckContext, node: ts.CallExpression): boo
     "Effect",
     provideEffectNames
   )
+
+  const referenceOverride = callIsReferenceProvideService(context.checker, node)
+  const needsProvisioning = referenceOverride === false
+  const effectProvisioningChecks = Array.make(effectProvide, needsProvisioning)
+  const effectProvisioning = Array.every(effectProvisioningChecks, Boolean)
 
   const layerProvide = importedEffectApiAt(
     context.checker,
@@ -757,7 +809,7 @@ const callIsProvisioning = (context: CheckContext, node: ts.CallExpression): boo
     managedRuntimeMakeNames
   )
 
-  const checks = Array.make(effectProvide, layerProvide, managedRuntimeMake)
+  const checks = Array.make(effectProvisioning, layerProvide, managedRuntimeMake)
   return Array.some(checks, Boolean)
 }
 
@@ -1066,8 +1118,8 @@ const propertyAccessElements =
       Option.toArray
     )
 
-    const defaultSelection = pipe(
-      Option.liftPredicate((access: ts.PropertyAccessExpression) => access.name.text === "Default")(
+    const layerSelection = pipe(
+      Option.liftPredicate((access: ts.PropertyAccessExpression) => access.name.text === "layer")(
         node
       ),
       Option.flatMap((access) => {
@@ -1090,11 +1142,10 @@ const propertyAccessElements =
           Option.getOrElse(emptyDeclarationsFallback)
         )
 
-        return Array.findFirst(declarations, ts.isClassDeclaration)
+        return Array.findFirst(declarations, (declaration) =>
+          declarationIsContextService(context.checker, declaration)
+        )
       }),
-      Option.filter((declaration) =>
-        classExtendsEffectApi(context.checker, declaration, "Context", "Service")
-      ),
       Option.filter(Function.constant(resolvedRole !== "root")),
       Option.map(() => {
         const subject = node.getText()
@@ -1103,7 +1154,7 @@ const propertyAccessElements =
       Option.toArray
     )
 
-    const groups = Array.make(directCapability, unsuspended, defaultSelection)
+    const groups = Array.make(directCapability, unsuspended, layerSelection)
     return Array.flatten(groups)
   }
 
@@ -1160,6 +1211,44 @@ const classDeclarationElements =
     return Array.prepend(embeddedLayer, liveImplementation)
   }
 
+const variableDeclarationElements =
+  (index: FunctionalCoreEffectIndex) =>
+  (context: CheckContext) =>
+  (node: ts.VariableDeclaration): ReadonlyArray<Detection> => {
+    const role = roleForSourceFile(index, context.sourceFile)
+
+    if (Option.isNone(role)) {
+      return emptyDetections
+    }
+
+    const resolvedRole = role.value
+
+    if (resolvedRole !== "port") {
+      return emptyDetections
+    }
+
+    const serviceConfig = pipe(
+      Option.fromNullishOr(node.initializer),
+      Option.flatMap((expression) => effectServiceConfigFromExpression(context.checker, expression))
+    )
+
+    if (Option.isNone(serviceConfig)) {
+      return emptyDetections
+    }
+
+    const targetText = node.name.getText()
+
+    const liveImplementation = boundaryDetection(
+      context,
+      node.name,
+      resolvedRole,
+      "port-live-implementation",
+      targetText
+    )
+
+    return Array.of(liveImplementation)
+  }
+
 const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
   Ref: true,
   SynchronizedRef: true,
@@ -1168,7 +1257,9 @@ const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
   SubscriptionRef: true,
   References: true,
   Runtime: true,
-  ManagedRuntime: true
+  ManagedRuntime: true,
+  Latch: true,
+  Semaphore: true
 }
 
 const effectNamespaceFromMember = (member: ImportedMember): string =>
@@ -1249,9 +1340,8 @@ const typeIsServiceLocator = (
     importedTypeMemberAt(context.checker, node.typeName),
     Option.exists((member) => {
       const contextType = effectApiMember(member, "Context", contextTypeNames)
-      const runtimeType = effectApiMember(member, "Runtime", runtimeTypeNames)
       const managedRuntimeType = effectApiMember(member, "ManagedRuntime", managedRuntimeTypeNames)
-      const checks = Array.make(contextType, runtimeType, managedRuntimeType)
+      const checks = Array.make(contextType, managedRuntimeType)
       return Array.some(checks, Boolean)
     })
   )
@@ -1397,6 +1487,7 @@ const callKinds = Array.of(ts.SyntaxKind.CallExpression)
 const newKinds = Array.of(ts.SyntaxKind.NewExpression)
 const propertyKinds = Array.of(ts.SyntaxKind.PropertyAccessExpression)
 const classKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
+const variableKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 const typeReferenceKinds = Array.of(ts.SyntaxKind.TypeReference)
 
 const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subscription> => {
@@ -1406,6 +1497,7 @@ const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subsc
   const newElements = newExpressionElements(index)
   const propertyElements = propertyAccessElements(index)
   const classElements = classDeclarationElements(index)
+  const variableElements = variableDeclarationElements(index)
   const typeReferenceElementsForIndex = typeReferenceElements(index)
   const asyncElements = asyncKeywordElements(index)
   const importSubscriptions = nodeSubscriptions(importKinds)(ts.isImportDeclaration)(importElements)
@@ -1418,6 +1510,10 @@ const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subsc
   )
 
   const classSubscriptions = nodeSubscriptions(classKinds)(ts.isClassDeclaration)(classElements)
+
+  const variableSubscriptions = nodeSubscriptions(variableKinds)(ts.isVariableDeclaration)(
+    variableElements
+  )
 
   const typeReferenceSubscriptions = nodeSubscriptions(typeReferenceKinds)(ts.isTypeReferenceNode)(
     typeReferenceElementsForIndex
@@ -1432,6 +1528,7 @@ const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subsc
     newSubscriptions,
     propertySubscriptions,
     classSubscriptions,
+    variableSubscriptions,
     typeReferenceSubscriptions,
     asyncSubscriptions
   )

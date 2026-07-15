@@ -1,5 +1,6 @@
 import {
   Array,
+  Data,
   Equal,
   Function,
   HashMap,
@@ -25,6 +26,7 @@ import {
   unwrapCallee,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
+import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import {
   ConceptIndex,
   DataStructureEntry,
@@ -37,9 +39,82 @@ import {
   type ModelRole
 } from "./data.js"
 
-const effectDataMembers = HashSet.make("Class", "TaggedClass", "TaggedError", "TaggedErrorClass")
+const effectDataMembers = HashSet.make(
+  "Class",
+  "Error",
+  "ErrorClass",
+  "Opaque",
+  "TaggedClass",
+  "TaggedError",
+  "TaggedErrorClass",
+  "asClass"
+)
 
-const ignoredFieldNames = HashSet.make("pipe", "toJSON", "toString", "toJSON", "[TypeId]")
+const effectProtocolMembers = HashSet.make(
+  "Error",
+  "ErrorClass",
+  "TaggedClass",
+  "TaggedError",
+  "TaggedErrorClass"
+)
+
+const effectErrorMembers = HashSet.make("Error", "ErrorClass", "TaggedError", "TaggedErrorClass")
+
+const schemaOnlyDataMembers = HashSet.make("ErrorClass", "Opaque", "TaggedErrorClass", "asClass")
+
+const inheritedErrorFieldNames = HashSet.make("cause", "message", "name", "stack")
+
+const ignoredFieldNames = HashSet.make("pipe", "toJSON", "toString", "[TypeId]")
+
+const EffectDataClass = Data.Class<{
+  readonly protocol: boolean
+  readonly runtimeSchema: boolean
+  readonly errorLike: boolean
+}>
+
+const schemaDataClass = new EffectDataClass({
+  protocol: false,
+  runtimeSchema: true,
+  errorLike: false
+})
+
+const symbolDeclaredInSchemaModule = (symbol: ts.Symbol): boolean => {
+  const declarations = symbol.getDeclarations() ?? Array.empty()
+
+  return Array.some(declarations, (declaration) => {
+    const fileName = declaration.getSourceFile().fileName.replaceAll("\\", "/")
+    const isSourceModule = fileName.endsWith("/Schema.ts")
+    const isDeclarationModule = fileName.endsWith("/Schema.d.ts")
+    const moduleChecks = Array.make(isSourceModule, isDeclarationModule)
+
+    return Array.some(moduleChecks, Boolean)
+  })
+}
+
+const effectDataClassForSymbol = (symbol: ts.Symbol): Option.Option<typeof schemaDataClass> => {
+  const member = symbol.getName()
+
+  const isEffectMember =
+    symbolDeclaredInEffectPackage(symbol) && HashSet.has(effectDataMembers, member)
+
+  if (!isEffectMember) {
+    return Option.none()
+  }
+
+  const runtimeSchema =
+    HashSet.has(schemaOnlyDataMembers, member) || symbolDeclaredInSchemaModule(symbol)
+
+  const protocol = HashSet.has(effectProtocolMembers, member)
+  const errorLike = HashSet.has(effectErrorMembers, member)
+
+  const data = new EffectDataClass({
+    protocol,
+    runtimeSchema,
+    errorLike
+  })
+
+  return Option.some(data)
+}
 
 const invariantMemberNames = HashSet.make(
   "brand",
@@ -89,31 +164,114 @@ const symbolAt =
       Option.map(canonicalSymbol(checker))
     )
 
-const propertyAccessMember = (expression: ts.Expression): Option.Option<string> =>
+const emptyHeritageClauses = Array.empty<ts.HeritageClause>()
+
+const classHeritageExpression = (declaration: ts.ClassDeclaration): Option.Option<ts.Expression> =>
   pipe(
-    unwrapCallee(expression),
-    Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.map((access) => access.name.text)
+    declaration.heritageClauses ?? emptyHeritageClauses,
+    Array.findFirst((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword),
+    Option.flatMap((clause) => Array.head(clause.types)),
+    Option.map(Struct.get("expression"))
   )
 
-const classDataMember = (declaration: ts.ClassDeclaration): Option.Option<string> => {
-  const clauses = declaration.heritageClauses ?? Array.empty()
-
-  const extendsClause = Array.findFirst(
-    clauses,
-    (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+const classDataForDeclaration = (
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration,
+  visited: ReadonlyArray<ts.Symbol> = Array.empty<ts.Symbol>()
+): Option.Option<typeof schemaDataClass> =>
+  pipe(
+    classHeritageExpression(declaration),
+    Option.flatMap((expression) => classDataForExpression(checker, expression, visited))
   )
+
+const classDataForSymbol = (
+  checker: ts.TypeChecker,
+  symbol: ts.Symbol,
+  visited: ReadonlyArray<ts.Symbol>
+): Option.Option<typeof schemaDataClass> => {
+  const resolved = canonicalSymbol(checker)(symbol)
+  const direct = effectDataClassForSymbol(resolved)
+  const alreadyVisited = Array.some(visited, (candidate) => candidate === resolved)
+  const directFound = Option.isSome(direct)
+  const stopSearch = directFound || alreadyVisited
+
+  if (stopSearch) {
+    return direct
+  }
+
+  const nextVisited = Array.append(visited, resolved)
+  const declarations = resolved.getDeclarations() ?? Array.empty<ts.Declaration>()
 
   return pipe(
-    extendsClause,
-    Option.flatMap((clause) => Array.head(clause.types)),
-    Option.flatMap((type) => propertyAccessMember(type.expression)),
-    Option.filter((member) => HashSet.has(effectDataMembers, member))
+    declarations,
+    Array.filterMap((declaration) => {
+      const classData = pipe(
+        Option.liftPredicate(ts.isClassDeclaration)(declaration),
+        Option.flatMap((classDeclaration) =>
+          classDataForDeclaration(checker, classDeclaration, nextVisited)
+        )
+      )
+
+      const variableData = pipe(
+        Option.liftPredicate(ts.isVariableDeclaration)(declaration),
+        Option.flatMap((variable) => Option.fromNullishOr(variable.initializer)),
+        Option.flatMap((initializer) => classDataForExpression(checker, initializer, nextVisited))
+      )
+
+      return pipe(
+        classData,
+        Option.orElse(Function.constant(variableData)),
+        Result.fromOption(Function.constVoid)
+      )
+    }),
+    Array.head
   )
 }
 
-const classIsDataStructure = (declaration: ts.ClassDeclaration): boolean =>
-  pipe(declaration, classDataMember, Option.isSome)
+const classDataForExpression = (
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  visited: ReadonlyArray<ts.Symbol>
+): Option.Option<typeof schemaDataClass> => {
+  const unwrapped = unwrapTransparentExpression(expression)
+  const callee = unwrapCallee(unwrapped)
+
+  const extension = pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
+    Option.filter((access) => access.name.text === "extend")
+  )
+
+  if (Option.isSome(extension)) {
+    const access = extension.value
+    const inherited = classDataForExpression(checker, access.expression, visited)
+
+    const inheritedSchema = pipe(
+      inherited,
+      Option.map((data) => new EffectDataClass({ ...data, runtimeSchema: true }))
+    )
+
+    const effectExtension = pipe(
+      symbolAt(checker)(access.name),
+      Option.filter(symbolDeclaredInEffectPackage),
+      Option.as(schemaDataClass)
+    )
+
+    return pipe(inheritedSchema, Option.orElse(Function.constant(effectExtension)))
+  }
+
+  const reference = ts.isPropertyAccessExpression(callee) ? callee.name : callee
+
+  return pipe(
+    Option.liftPredicate(ts.isIdentifier)(reference),
+    Option.flatMap(symbolAt(checker)),
+    Option.flatMap((symbol) => classDataForSymbol(checker, symbol, visited))
+  )
+}
+
+const classIsDataStructure =
+  (checker: ts.TypeChecker) =>
+  (declaration: ts.ClassDeclaration): boolean =>
+    pipe(classDataForDeclaration(checker, declaration), Option.isSome)
 
 const interfaceCarriesData = (declaration: ts.InterfaceDeclaration): boolean => {
   const hasDataMember = Array.some(declaration.members, (member) => {
@@ -177,10 +335,43 @@ const fieldIsDomainData = (symbol: ts.Symbol): boolean => {
   return Array.every(exclusions, (excluded) => !excluded)
 }
 
-const fieldsFor = (checker: ts.TypeChecker, nameNode: ts.Identifier): ReadonlyArray<ts.Symbol> => {
+const declarationInProject = Function.flow(
+  (declaration: ts.Declaration) => declaration.getSourceFile(),
+  isProjectSourceFile
+)
+
+const fieldDeclaredInProject = (symbol: ts.Symbol): boolean => {
+  const declarations = symbol.declarations ?? Array.empty()
+
+  return Array.some(declarations, declarationInProject)
+}
+
+const fieldsFor = (
+  checker: ts.TypeChecker,
+  declaration: DataStructureDeclaration,
+  nameNode: ts.Identifier
+): ReadonlyArray<ts.Symbol> => {
   const type = checker.getTypeAtLocation(nameNode)
 
-  return pipe(type.getProperties(), Array.filter(fieldIsDomainData))
+  const errorLike = pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(declaration),
+    Option.flatMap((classDeclaration) => classDataForDeclaration(checker, classDeclaration)),
+    Option.exists(Struct.get("errorLike"))
+  )
+
+  return pipe(
+    type.getProperties(),
+    Array.filter(fieldIsDomainData),
+    Array.filter((field) => {
+      const fieldName = field.getName()
+      const knownErrorField = HashSet.has(inheritedErrorFieldNames, fieldName)
+      const externalField = fieldDeclaredInProject(field) === false
+      const inheritedErrorField = knownErrorField && externalField
+      const keepChecks = Array.make(errorLike === false, inheritedErrorField === false)
+
+      return Array.some(keepChecks, Boolean)
+    })
+  )
 }
 
 const fieldTypeText =
@@ -320,7 +511,7 @@ const entryForDeclaration = (
   pipe(
     symbolAt(checker)(nameNode),
     Option.map((symbol) => {
-      const fieldSymbols = fieldsFor(checker, nameNode)
+      const fieldSymbols = fieldsFor(checker, declaration, nameNode)
       const shape = shapeForDeclaration(checker, declaration, fieldSymbols)
       const sourceFile = nameNode.getSourceFile()
 
@@ -338,17 +529,21 @@ const entryForDeclaration = (
     })
   )
 
-const isNamedDataClass = (
-  statement: ts.Statement
-): statement is ts.ClassDeclaration & { readonly name: ts.Identifier } =>
-  pipe(
-    Option.liftPredicate(ts.isClassDeclaration)(statement),
-    Option.flatMap((declaration) =>
-      pipe(Option.fromNullishOr(declaration.name), Option.as(declaration))
-    ),
-    Option.filter(classIsDataStructure),
-    Option.isSome
-  )
+const isNamedDataClass =
+  (
+    checker: ts.TypeChecker
+  ): ((
+    statement: ts.Statement
+  ) => statement is ts.ClassDeclaration & { readonly name: ts.Identifier }) =>
+  (statement): statement is ts.ClassDeclaration & { readonly name: ts.Identifier } =>
+    pipe(
+      Option.liftPredicate(ts.isClassDeclaration)(statement),
+      Option.flatMap((declaration) =>
+        pipe(Option.fromNullishOr(declaration.name), Option.as(declaration))
+      ),
+      Option.filter(classIsDataStructure(checker)),
+      Option.isSome
+    )
 
 const isDataInterface = (statement: ts.Statement): statement is ts.InterfaceDeclaration => {
   const isInterface = ts.isInterfaceDeclaration(statement)
@@ -373,7 +568,9 @@ const declarationEntry = (
 
   const namedDeclarationEntries = pipe(
     Match.value(statement),
-    Match.when(isNamedDataClass, (declaration) => entriesFor(declaration, declaration.name)),
+    Match.when(isNamedDataClass(checker), (declaration) =>
+      entriesFor(declaration, declaration.name)
+    ),
     Match.when(isDataInterface, (declaration) => entriesFor(declaration, declaration.name)),
     Match.when(isDataTypeAlias, (declaration) => entriesFor(declaration, declaration.name)),
     Match.when(ts.isEnumDeclaration, (declaration) => entriesFor(declaration, declaration.name)),
@@ -1064,11 +1261,11 @@ const classHasInvariant = (entry: DataStructureEntry): boolean =>
     })
   )
 
-const declarationIsProtocol = (entry: DataStructureEntry): boolean => {
+const declarationIsProtocol = (checker: ts.TypeChecker, entry: DataStructureEntry): boolean => {
   const classProtocol = pipe(
     Option.liftPredicate(ts.isClassDeclaration)(entry.declaration),
-    Option.flatMap(classDataMember),
-    Option.exists((member) => member !== "Class")
+    Option.flatMap((declaration) => classDataForDeclaration(checker, declaration)),
+    Option.exists(Struct.get("protocol"))
   )
 
   const isTypeAlias = ts.isTypeAliasDeclaration(entry.declaration)
@@ -1103,24 +1300,11 @@ const declarationSelfReference = (checker: ts.TypeChecker, entry: DataStructureE
   )
 }
 
-const heritageTypeExtendsSchema = (type: ts.ExpressionWithTypeArguments): boolean =>
-  pipe(
-    unwrapCallee(type.expression),
-    Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.map(Struct.get("expression")),
-    Option.filter(ts.isIdentifier),
-    Option.exists((identifier) => identifier.text === "Schema")
-  )
-
-const classExtendsSchema = (entry: DataStructureEntry): boolean =>
+const classExtendsSchema = (checker: ts.TypeChecker, entry: DataStructureEntry): boolean =>
   pipe(
     Option.liftPredicate(ts.isClassDeclaration)(entry.declaration),
-    Option.exists((declaration) => {
-      const clauses = declaration.heritageClauses ?? Array.empty()
-      const types = Array.flatMap(clauses, Struct.get("types"))
-
-      return Array.some(types, heritageTypeExtendsSchema)
-    })
+    Option.flatMap((declaration) => classDataForDeclaration(checker, declaration)),
+    Option.exists(Struct.get("runtimeSchema"))
   )
 
 const declarationIsRuntimeSchema = (
@@ -1135,7 +1319,7 @@ const declarationIsRuntimeSchema = (
     return isVariable && runtimeSchemaType(checker, declaration)
   })
 
-  const extendsSchema = classExtendsSchema(entry)
+  const extendsSchema = classExtendsSchema(checker, entry)
   const runtimeSchemaChecks = Array.make(variableSchema, extendsSchema)
 
   return Array.some(runtimeSchemaChecks, Boolean)
@@ -1177,7 +1361,7 @@ const structuralRoles = (
       const boundaryEvidence = Array.make(usedByExportedFunction, isRuntimeSchema)
       const boundary = entry.exported && Array.some(boundaryEvidence, Boolean)
       const invariant = classHasInvariant(entry)
-      const protocol = declarationIsProtocol(entry)
+      const protocol = declarationIsProtocol(checker, entry)
       const recursive = declarationSelfReference(checker, entry)
       const sharedObservation = Tuple.make("shared" as const, shared)
       const boundaryObservation = Tuple.make("boundary" as const, boundary)

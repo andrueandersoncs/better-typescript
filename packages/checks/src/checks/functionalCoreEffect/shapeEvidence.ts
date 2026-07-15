@@ -17,9 +17,10 @@ import {
 } from "./index.js"
 import type { FunctionalCoreEffectPolicy } from "./policy.js"
 import {
-  classExtendsEffectApi,
+  callIsPipeRuntimeHandoff,
   effectServiceConfigObject,
   enclosingFunctionLike,
+  expressionIsServiceTag,
   importedEffectApiAt,
   importedMemberAt,
   isManagedRuntimeMethodAccess,
@@ -137,7 +138,9 @@ const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
   Fiber: true,
   Deferred: true,
   Cause: true,
-  Exit: true
+  Exit: true,
+  Latch: true,
+  Semaphore: true
 }
 
 const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration): boolean => {
@@ -224,12 +227,19 @@ const compositionEffectNames = Array.make(
   "provide",
   "provideService",
   "provideServiceEffect",
+  "provideContext",
   "runCallback",
   "runFork",
   "runPromise",
   "runPromiseExit",
   "runSync",
-  "runSyncExit"
+  "runSyncExit",
+  "runCallbackWith",
+  "runForkWith",
+  "runPromiseWith",
+  "runPromiseExitWith",
+  "runSyncWith",
+  "runSyncExitWith"
 )
 
 const compositionRuntimeNames = Array.make(
@@ -238,8 +248,16 @@ const compositionRuntimeNames = Array.make(
   "runPromise",
   "runPromiseExit",
   "runSync",
-  "runSyncExit"
+  "runSyncExit",
+  "runCallbackWith",
+  "runForkWith",
+  "runPromiseWith",
+  "runPromiseExitWith",
+  "runSyncWith",
+  "runSyncExitWith"
 )
+
+const managedRuntimeMakeNames = Array.of("make")
 
 const callIsRecognizedCompositionApi = (
   checker: ts.TypeChecker,
@@ -247,14 +265,12 @@ const callIsRecognizedCompositionApi = (
 ): boolean => {
   const layer = importedEffectApiAt(checker, node.expression, "Layer", compositionLayerNames)
   const effect = importedEffectApiAt(checker, node.expression, "Effect", compositionEffectNames)
-  const runtime = importedEffectApiAt(checker, node.expression, "Runtime", compositionRuntimeNames)
-  const managedRuntimeNames = Array.append(compositionRuntimeNames, "make")
 
-  const managedRuntime = importedEffectApiAt(
+  const managedRuntimeMake = importedEffectApiAt(
     checker,
     node.expression,
     "ManagedRuntime",
-    managedRuntimeNames
+    managedRuntimeMakeNames
   )
 
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(node.expression)
@@ -263,6 +279,8 @@ const callIsRecognizedCompositionApi = (
     isManagedRuntimeMethodAccess(checker, expression, compositionRuntimeNames)
   )
 
+  const pipeRuntimeHandoff = callIsPipeRuntimeHandoff(checker, node, compositionRuntimeNames)
+
   const runMain = pipe(
     importedMemberAt(checker, node.expression),
     Option.exists((member) => {
@@ -270,7 +288,8 @@ const callIsRecognizedCompositionApi = (
       const platformNode = member.moduleSpecifier.startsWith("@effect/platform-node")
       const platformBun = member.moduleSpecifier.startsWith("@effect/platform-bun")
       const platformDeno = member.moduleSpecifier.startsWith("@effect/platform-deno")
-      const platformFlags = Array.make(platformNode, platformBun, platformDeno)
+      const platformBrowser = member.moduleSpecifier.startsWith("@effect/platform-browser")
+      const platformFlags = Array.make(platformNode, platformBun, platformDeno, platformBrowser)
       const platformRuntime = Array.some(platformFlags, Boolean)
       const isRunMain = name === "runMain"
       const runMainFlags = Array.make(platformRuntime, isRunMain)
@@ -279,7 +298,14 @@ const callIsRecognizedCompositionApi = (
     })
   )
 
-  const checks = Array.make(layer, effect, runtime, managedRuntime, managedRuntimeMethod, runMain)
+  const checks = Array.make(
+    layer,
+    effect,
+    managedRuntimeMake,
+    managedRuntimeMethod,
+    pipeRuntimeHandoff,
+    runMain
+  )
 
   return Array.some(checks, Boolean)
 }
@@ -300,34 +326,8 @@ const nestedInRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.Node
   return pipe(Option.fromNullishOr(node.parent), Option.exists(visit))
 }
 
-const resolvedSymbolAt = (checker: ts.TypeChecker, node: ts.Node): Option.Option<ts.Symbol> =>
-  pipe(
-    checker.getSymbolAtLocation(node),
-    Option.fromNullishOr,
-    Option.map((symbol) => {
-      const alias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-
-      return alias ? checker.getAliasedSymbol(symbol) : symbol
-    })
-  )
-
 const isServiceTagExpression = (checker: ts.TypeChecker, expression: ts.Expression): boolean =>
-  pipe(
-    resolvedSymbolAt(checker, expression),
-    Option.map((symbol) =>
-      pipe(Option.fromNullishOr(symbol.declarations), Option.getOrElse(Array.empty))
-    ),
-    Option.exists((declarations) =>
-      Array.some(declarations, (declaration) =>
-        pipe(
-          Option.liftPredicate(ts.isClassDeclaration)(declaration),
-          Option.exists((classDeclaration) =>
-            classExtendsEffectApi(checker, classDeclaration, "Context", "Service")
-          )
-        )
-      )
-    )
-  )
+  expressionIsServiceTag(checker, expression)
 
 const addServiceName = (names: ReadonlyArray<string>, name: string): ReadonlyArray<string> =>
   Array.contains(names, name) ? names : Array.append(names, name)

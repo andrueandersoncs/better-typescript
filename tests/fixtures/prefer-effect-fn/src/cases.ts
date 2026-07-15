@@ -12,3 +12,21 @@ export const load = function (id: number) {
 }
 export const failWith = (code: number, message: string) =>
   Effect.fail({ code, message })
+
+type Service = {
+  readonly prefix: string
+}
+
+declare const service: Service
+
+export const loadName = (id: string) =>
+  Effect.gen({ self: service }, function* (this: Service) {
+    return `${this.prefix}:${id}`
+  })
+
+const self = service
+
+export const loadShortName = (id: string) =>
+  Effect.gen({ self }, function* (this: Service) {
+    return `${this.prefix}:${id}`
+  })

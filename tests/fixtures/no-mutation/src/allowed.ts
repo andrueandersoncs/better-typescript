@@ -1,15 +1,27 @@
-import { Array } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 
 declare const scores: ReadonlyArray<number>
+declare const ranked: Array.NonEmptyReadonlyArray<number>
 declare const flag: boolean
 
-// Deriving new values never mutates.
-export const raised = Array.replace(scores, 0, 100)
+// Deriving new values never mutates. Array.replace/modify return Option.
+export const raised: ReadonlyArray<number> = pipe(
+  Array.replace(scores, 0, 100),
+  Option.getOrElse(() => scores)
+)
 
 const doubleScore = (score: number): number => score * 2
 
-export const doubled = Array.modify(scores, 0, doubleScore)
+export const doubled: ReadonlyArray<number> = pipe(
+  Array.modify(scores, 0, doubleScore),
+  Option.getOrElse(() => scores)
+)
+
+// Known head updates on nonempty arrays can use direct helpers instead of Option.
+export const topScore = Array.setHeadNonEmpty(ranked, 100)
+
+export const doubledTop = Array.modifyHeadNonEmpty(ranked, doubleScore)
 
 // Comparison and arithmetic binary operators are not assignments.
 export const isHigh = scores.length > 3

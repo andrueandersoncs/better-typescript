@@ -18,10 +18,15 @@ const fixturePath = path.join(testDirectory, "fixtures", "prefer-effect-fn")
 const makeMessage = (functionName: string): string =>
   `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`
 
-const makeHint = (functionName: string): string =>
+const makeOrdinaryHint = (functionName: string): string =>
   `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
   "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
   "traced span."
+
+const makeSelfBoundHint = (functionName: string, selfBinding: string): string =>
+  `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(${selfBinding}, ` +
+  "function*(this: Service, ...) { ... }): Effect.fn subsumes the Effect.gen wrapper " +
+  "and runs every call inside a traced span."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
@@ -30,7 +35,23 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 6,
     column: 14,
     message: makeMessage("compute"),
-    hint: makeHint("compute")
+    hint: makeOrdinaryHint("compute")
+  },
+  {
+    name: "loadName.name",
+    fileName: "src/cases.ts",
+    line: 22,
+    column: 14,
+    message: makeMessage("loadName"),
+    hint: makeSelfBoundHint("loadName", "{ self: service }")
+  },
+  {
+    name: "loadShortName.name",
+    fileName: "src/cases.ts",
+    line: 29,
+    column: 14,
+    message: makeMessage("loadShortName"),
+    hint: makeSelfBoundHint("loadShortName", "{ self }")
   }
 ]
 
@@ -70,26 +91,32 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "ready.name",
     fileName: "src/allowed.ts",
-    line: 4,
+    line: 6,
     column: 14
   },
   {
     name: "increment.name",
     fileName: "src/allowed.ts",
-    line: 5,
+    line: 7,
     column: 14
   },
   {
     name: "loadAsync.name",
     fileName: "src/allowed.ts",
-    line: 6,
+    line: 8,
     column: 14
   },
   {
     name: "legacyFetch.name",
     fileName: "src/allowed.ts",
-    line: 7,
+    line: 9,
     column: 17
+  },
+  {
+    name: "effectFn.loadName.name",
+    fileName: "src/allowed.ts",
+    line: 19,
+    column: 14
   }
 ]
 

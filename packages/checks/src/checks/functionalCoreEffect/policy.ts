@@ -181,7 +181,11 @@ const defaultCapabilityModulePrefixes = Array.make(
   "child_process",
   "worker_threads",
   "process",
-  "@effect/platform"
+  "effect/FileSystem",
+  "effect/Terminal",
+  "effect/Path",
+  "effect/unstable/http",
+  "effect/unstable/httpapi"
 )
 
 const defaultResourceFactoryNames = Array.make(
