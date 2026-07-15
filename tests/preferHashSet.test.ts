@@ -32,6 +32,13 @@ const typeHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
+const mutableHashSetMessage = "Avoid Effect's MutableHashSet."
+
+const mutableHashSetHint =
+  "Use Effect's immutable HashSet instead. Build a HashSet with HashSet.empty(), " +
+  "HashSet.make(), or HashSet.fromIterable(), and return the value from HashSet.add() " +
+  "when updating it."
+
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "new Set only used locally in boundary file",
@@ -112,6 +119,30 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 23,
     message: readonlySetTypeMessage,
     hint: typeHint
+  },
+  {
+    name: "aliased MutableHashSet barrel import",
+    fileName: "src/mutable.ts",
+    line: 1,
+    column: 19,
+    message: mutableHashSetMessage,
+    hint: mutableHashSetHint
+  },
+  {
+    name: "direct MutableHashSet module import",
+    fileName: "src/mutable.ts",
+    line: 2,
+    column: 35,
+    message: mutableHashSetMessage,
+    hint: mutableHashSetHint
+  },
+  {
+    name: "MutableHashSet through Effect namespace",
+    fileName: "src/mutable.ts",
+    line: 7,
+    column: 30,
+    message: mutableHashSetMessage,
+    hint: mutableHashSetHint
   }
 ]
 
@@ -157,6 +188,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/boundary.ts",
     line: 11,
     column: 32
+  },
+  {
+    name: "immutable HashSet",
+    fileName: "src/mutable.ts",
+    line: 8,
+    column: 19
   }
 ]
 

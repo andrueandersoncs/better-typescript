@@ -5,8 +5,6 @@ import {
   HashSet,
   Iterable,
   Match,
-  MutableHashMap,
-  MutableHashSet,
   MutableList,
   Option,
   Order,
@@ -540,35 +538,18 @@ const functionEntries = (
 }
 
 const addOwner = (
-  index: MutableHashMap.MutableHashMap<ts.Symbol, MutableHashSet.MutableHashSet<ts.Symbol>>,
+  index: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>>,
   target: ts.Symbol,
   owner: ts.Symbol
-): MutableHashMap.MutableHashMap<ts.Symbol, MutableHashSet.MutableHashSet<ts.Symbol>> => {
-  const existing = MutableHashMap.get(index, target)
-  const owners = pipe(existing, Option.getOrElse(MutableHashSet.empty<ts.Symbol>))
+): HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>> => {
+  const existing = HashMap.get(index, target)
+  const owners = pipe(existing, Option.getOrElse(HashSet.empty))
+  const updatedOwners = HashSet.add(owners, owner)
 
-  MutableHashSet.add(owners, owner)
-  MutableHashMap.set(index, target, owners)
+  HashMap.set(index, target, updatedOwners)
 
   return index
 }
-
-const immutableOwnerIndex = (
-  mutable: MutableHashMap.MutableHashMap<ts.Symbol, MutableHashSet.MutableHashSet<ts.Symbol>>
-): HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>> =>
-  pipe(
-    MutableHashMap.keys(mutable),
-    Array.map((symbol) => {
-      const owners = pipe(
-        MutableHashMap.get(mutable, symbol),
-        Option.map(HashSet.fromIterable),
-        Option.getOrElse(HashSet.empty)
-      )
-
-      return Tuple.make(symbol, owners)
-    }),
-    HashMap.fromIterable
-  )
 
 const topLevelStatement = (node: ts.Node): Option.Option<ts.Statement> =>
   pipe(
@@ -1228,19 +1209,19 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
     HashMap.fromIterable
   )
 
-  const ownersByDataMutable = MutableHashMap.empty<
-    ts.Symbol,
-    MutableHashSet.MutableHashSet<ts.Symbol>
-  >()
+  const ownersByDataBuilder = pipe(
+    HashMap.empty<ts.Symbol, HashSet.HashSet<ts.Symbol>>(),
+    HashMap.beginMutation
+  )
 
-  const ownersByFunctionMutable = MutableHashMap.empty<
-    ts.Symbol,
-    MutableHashSet.MutableHashSet<ts.Symbol>
-  >()
+  const ownersByFunctionBuilder = pipe(
+    HashMap.empty<ts.Symbol, HashSet.HashSet<ts.Symbol>>(),
+    HashMap.beginMutation
+  )
 
   const fields = fieldModelIndex(dataStructures)
   const fieldReads = MutableList.empty<FieldRead>()
-  const readFieldNames = MutableHashSet.empty<string>()
+  const readFieldNameIndex = pipe(HashMap.empty<string, true>(), HashMap.beginMutation)
   const parameterBags = MutableList.empty<ParameterBag>()
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
@@ -1270,7 +1251,7 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
 
                   return Array.every(trackChecks, Boolean)
                 }),
-                Option.map(({ ownerSymbol }) => addOwner(ownersByDataMutable, symbol, ownerSymbol))
+                Option.map(({ ownerSymbol }) => addOwner(ownersByDataBuilder, symbol, ownerSymbol))
               )
 
               pipe(
@@ -1285,7 +1266,7 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
                   return Array.every(trackChecks, Boolean)
                 }),
                 Option.map(({ ownerSymbol }) =>
-                  addOwner(ownersByFunctionMutable, symbol, ownerSymbol)
+                  addOwner(ownersByFunctionBuilder, symbol, ownerSymbol)
                 )
               )
 
@@ -1346,7 +1327,7 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
           pipe(
             structField,
             Option.map((fieldName) => {
-              MutableHashSet.add(readFieldNames, fieldName)
+              HashMap.set(readFieldNameIndex, fieldName, true)
             })
           )
 
@@ -1381,8 +1362,8 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
     })
   })
 
-  const ownersByData = immutableOwnerIndex(ownersByDataMutable)
-  const ownersByFunction = immutableOwnerIndex(ownersByFunctionMutable)
+  const ownersByData = HashMap.endMutation(ownersByDataBuilder)
+  const ownersByFunction = HashMap.endMutation(ownersByFunctionBuilder)
 
   const rolesByData = structuralRoles(
     checker,
@@ -1397,7 +1378,14 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
   )
 
   const fieldReadList = Array.fromIterable(fieldReads)
-  const readFieldNameSet = HashSet.fromIterable(readFieldNames)
+
+  const readFieldNameSet = pipe(
+    readFieldNameIndex,
+    HashMap.endMutation,
+    HashMap.keys,
+    HashSet.fromIterable
+  )
+
   const shapeGroupMap = shapeGroups(dataStructures)
   const parameterBagList = Array.fromIterable(parameterBags)
 

@@ -8,8 +8,6 @@ import {
   Function,
   HashMap,
   HashSet,
-  MutableHashMap,
-  MutableHashSet,
   MutableList,
   Option,
   Predicate,
@@ -86,7 +84,7 @@ const collectWorkspaceSignals = <A>(
 
   const seenByWiring = Array.map(config, (entry) =>
     Array.makeBy(entry.wiring.checks.length, () =>
-      MutableHashMap.empty<string, ReadonlyArray<Detection>>()
+      pipe(HashMap.empty<string, ReadonlyArray<Detection>>(), HashMap.beginMutation)
     )
   )
 
@@ -105,7 +103,7 @@ const collectWorkspaceSignals = <A>(
     Array.makeBy(entry.wiring.checks.length, () => wiringIndex)
   )
 
-  const matchedWiringIndexes = MutableHashSet.empty<number>()
+  const matchedWiringIndexes = pipe(HashMap.empty<number, true>(), HashMap.beginMutation)
 
   const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
@@ -129,7 +127,7 @@ const collectWorkspaceSignals = <A>(
       Array.forEach(sourceMatches, ([, matches]) =>
         Array.forEach(matches, (matched, wiringIndex) => {
           if (matched) {
-            MutableHashSet.add(matchedWiringIndexes, wiringIndex)
+            HashMap.set(matchedWiringIndexes, wiringIndex, true)
           }
         })
       )
@@ -180,7 +178,7 @@ const collectWorkspaceSignals = <A>(
           )
 
           const key = JSON.stringify(dedupeKeyParts)
-          const maybeBucket = MutableHashMap.get(seen, key)
+          const maybeBucket = HashMap.get(seen, key)
           const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
 
           const alreadySeen = Array.some(bucket, (candidate) =>
@@ -193,7 +191,7 @@ const collectWorkspaceSignals = <A>(
 
           const expandedBucket = Array.append(bucket, element)
 
-          MutableHashMap.set(seen, key, expandedBucket)
+          HashMap.set(seen, key, expandedBucket)
           MutableList.append(elements, element)
         })
       })
@@ -201,8 +199,10 @@ const collectWorkspaceSignals = <A>(
 
   return pipe(
     Effect.forEach(projects, collectProject, { discard: true }),
-    Effect.map(() =>
-      Array.map(config, (entry, wiringIndex) => {
+    Effect.map(() => {
+      const matchedWiringIndexSet = HashMap.endMutation(matchedWiringIndexes)
+
+      return Array.map(config, (entry, wiringIndex) => {
         const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
           const elements = elementsByWiring[wiringIndex][checkIndex]
           const detections = Array.fromIterable(elements)
@@ -215,14 +215,14 @@ const collectWorkspaceSignals = <A>(
           })
         })
 
-        const matched = MutableHashSet.has(matchedWiringIndexes, wiringIndex)
+        const matched = HashMap.has(matchedWiringIndexSet, wiringIndex)
 
         return new WiringSignals({
           matched,
           signals
         })
       })
-    )
+    })
   )
 }
 

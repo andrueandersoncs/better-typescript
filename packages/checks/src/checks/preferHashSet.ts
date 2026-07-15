@@ -1,4 +1,4 @@
-import { Array, Function, pipe, Option, Struct } from "effect"
+import { Array, Function, Match, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { isInAmbientContext, type NewOrTypeReferenceNode } from "./support/tsNode.js"
 import {
@@ -11,7 +11,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const isSetIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Set"
 
@@ -32,6 +32,23 @@ const typeRefHint =
   "traits for structural equality. Writing the built-in Set type is permitted only where " +
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
+
+const effectModuleName = "effect"
+
+const mutableHashSetModuleName = "effect/MutableHashSet"
+
+const mutableHashSetName = "MutableHashSet"
+
+const mutableHashSetMessage = "Avoid Effect's MutableHashSet."
+
+const mutableHashSetHint =
+  "Use Effect's immutable HashSet instead. Build a HashSet with HashSet.empty(), " +
+  "HashSet.make(), or HashSet.fromIterable(), and return the value from HashSet.add() " +
+  "when updating it."
+
+const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
+
+const emptyNodes: ReadonlyArray<ts.Node> = Array.empty()
 
 const isSetRuleNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
   ts.isNewExpression(node) ||
@@ -95,11 +112,121 @@ const setMatches = (context: CheckContext) => {
   return matches
 }
 
+const mutableHashSetImportMatches = (context: CheckContext) => {
+  const match = detection(context)
+
+  const matches = (declaration: ts.ImportDeclaration): ReadonlyArray<Detection> => {
+    const importNodes = pipe(
+      Option.liftPredicate(ts.isStringLiteralLike)(declaration.moduleSpecifier),
+      Option.map((moduleSpecifier) =>
+        pipe(
+          Match.value(moduleSpecifier.text),
+          Match.when(
+            (moduleName) => moduleName === mutableHashSetModuleName,
+            () => Array.of<ts.Node>(moduleSpecifier)
+          ),
+          Match.when(
+            (moduleName) => moduleName === effectModuleName,
+            () =>
+              pipe(
+                Option.fromNullable(declaration.importClause?.namedBindings),
+                Option.filter(ts.isNamedImports),
+                Option.map((bindings): ReadonlyArray<ts.Node> =>
+                  Array.filter(
+                    bindings.elements,
+                    (specifier) =>
+                      (specifier.propertyName?.text ?? specifier.name.text) === mutableHashSetName
+                  )
+                ),
+                Option.getOrElse(Function.constant(emptyNodes))
+              )
+          ),
+          Match.orElse(Function.constant(emptyNodes))
+        )
+      ),
+      Option.getOrElse(Function.constant(emptyNodes))
+    )
+
+    return Array.map(importNodes, (node) =>
+      match({
+        node,
+        message: mutableHashSetMessage,
+        hint: mutableHashSetHint
+      })
+    )
+  }
+
+  return matches
+}
+
+const isMutableHashSetNamespaceAccess = (node: ts.Node): node is ts.PropertyAccessExpression =>
+  pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(node),
+    Option.exists((access) => access.name.text === mutableHashSetName)
+  )
+
+const mutableHashSetNamespaceMatches = (context: CheckContext) => {
+  const match = detection(context)
+
+  const matches = (access: ts.PropertyAccessExpression): ReadonlyArray<Detection> => {
+    const isEffectNamespace = pipe(
+      Option.liftPredicate(ts.isIdentifier)(access.expression),
+      Option.flatMap((identifier) =>
+        pipe(context.checker.getSymbolAtLocation(identifier), Option.fromNullable)
+      ),
+      Option.exists((symbol) =>
+        Array.some(symbol.declarations ?? emptyDeclarations, (declaration) =>
+          pipe(
+            Option.liftPredicate(ts.isNamespaceImport)(declaration),
+            Option.map((namespaceImport) => namespaceImport.parent.parent),
+            Option.filter(ts.isImportDeclaration),
+            Option.map(Struct.get("moduleSpecifier")),
+            Option.filter(ts.isStringLiteralLike),
+            Option.exists((moduleSpecifier) => moduleSpecifier.text === effectModuleName)
+          )
+        )
+      )
+    )
+
+    if (!isEffectNamespace) {
+      return Array.empty()
+    }
+
+    const namespaceMatch = match({
+      node: access.name,
+      message: mutableHashSetMessage,
+      hint: mutableHashSetHint
+    })
+
+    return Array.of(namespaceMatch)
+  }
+
+  return matches
+}
+
 const setRuleNodeKinds = Array.make(ts.SyntaxKind.NewExpression, ts.SyntaxKind.TypeReference)
 
-const check = nodeCheck(setRuleNodeKinds)(isSetRuleNode)(setMatches)
+const setRuleSubscriptions = nodeSubscriptions(setRuleNodeKinds)(isSetRuleNode)(setMatches)
 
-export const preferHashSet: Check = check
+const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
+
+const mutableHashSetImportSubscriptions = nodeSubscriptions(importDeclarationKinds)(
+  ts.isImportDeclaration
+)(mutableHashSetImportMatches)
+
+const propertyAccessKinds = Array.of(ts.SyntaxKind.PropertyAccessExpression)
+
+const mutableHashSetNamespaceSubscriptions = nodeSubscriptions(propertyAccessKinds)(
+  isMutableHashSetNamespaceAccess
+)(mutableHashSetNamespaceMatches)
+
+const preferHashSetSubscriptions = Array.make(
+  setRuleSubscriptions,
+  mutableHashSetImportSubscriptions,
+  mutableHashSetNamespaceSubscriptions
+)
+
+export const preferHashSet: Check = combineAll(preferHashSetSubscriptions)
 
 export const preferHashSetExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("prefer-hash-set")

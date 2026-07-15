@@ -32,6 +32,13 @@ const typeHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
+const mutableHashMapMessage = "Avoid Effect's MutableHashMap."
+
+const mutableHashMapHint =
+  "Use Effect's immutable HashMap instead. Build a HashMap with HashMap.empty(), " +
+  "HashMap.make(), or HashMap.fromIterable(), and return the value from HashMap.set() " +
+  "when updating it."
+
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
     name: "new Map only used locally in boundary file",
@@ -112,6 +119,30 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 24,
     message: readonlyMapTypeMessage,
     hint: typeHint
+  },
+  {
+    name: "aliased MutableHashMap barrel import",
+    fileName: "src/mutable.ts",
+    line: 1,
+    column: 19,
+    message: mutableHashMapMessage,
+    hint: mutableHashMapHint
+  },
+  {
+    name: "direct MutableHashMap module import",
+    fileName: "src/mutable.ts",
+    line: 2,
+    column: 35,
+    message: mutableHashMapMessage,
+    hint: mutableHashMapHint
+  },
+  {
+    name: "MutableHashMap through Effect namespace",
+    fileName: "src/mutable.ts",
+    line: 7,
+    column: 30,
+    message: mutableHashMapMessage,
+    hint: mutableHashMapHint
   }
 ]
 
@@ -157,6 +188,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/boundary.ts",
     line: 11,
     column: 34
+  },
+  {
+    name: "immutable HashMap",
+    fileName: "src/mutable.ts",
+    line: 8,
+    column: 19
   }
 ]
 
