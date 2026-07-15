@@ -21,12 +21,11 @@ const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "pure-service": "pure service candidate"
 }
 
-const shapeAdviceExamples: Readonly<
-  Partial<Record<FunctionalCoreShapeKind, NonEmptyRefactorExamples>>
-> = {
+const shapeAdviceExamples: Readonly<Record<FunctionalCoreShapeKind, NonEmptyRefactorExamples>> = {
   "effect-orchestrator": fixtureRefactorExamples("effect-orchestrator"),
   "adapter-business-logic": fixtureRefactorExamples("adapter-business-logic"),
-  "thick-composition-root": fixtureRefactorExamples("thick-composition-root")
+  "thick-composition-root": fixtureRefactorExamples("thick-composition-root"),
+  "pure-service": fixtureRefactorExamples("pure-service")
 }
 
 const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>> = {
@@ -71,7 +70,7 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
     }
 
     const evidence = shapeEvidence(data)
-    const examples = shapeAdviceExamples[data.kind] ?? Array.empty()
+    const examples = shapeAdviceExamples[data.kind]
 
     const advice = new Advice({
       location: element.location,
