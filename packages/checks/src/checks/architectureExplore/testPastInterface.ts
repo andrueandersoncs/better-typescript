@@ -2,7 +2,12 @@ import { Array, Function, Option, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { seamLeakageDataOf, testOnlyExportDataOf } from "./evidence.js"
+
+export const testPastInterfaceExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("test-past-interface")
 
 const testPastInterfaceAdvice = (
   elements: ReadonlyArray<NamedDetection>
@@ -53,7 +58,8 @@ const testPastInterfaceAdvice = (
       remediation:
         "Tests and production callers must cross the same interface. Exercise observable behaviour through the public Module, " +
         "make test-only helpers private, and replace internal/source imports with the declared seam.",
-      evidence
+      evidence,
+      examples: testPastInterfaceExamples
     })
   })
 }

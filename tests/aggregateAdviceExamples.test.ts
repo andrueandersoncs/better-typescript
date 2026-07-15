@@ -98,6 +98,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "leaked seam",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "test-past-interface",
+    pairId: "1",
+    title: "test past interface",
+    wiring: architectureExploreWiring
   }
 ]
 
