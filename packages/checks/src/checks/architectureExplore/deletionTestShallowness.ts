@@ -2,7 +2,13 @@ import { Array, Function, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { isDeletableWrapper, passThroughDataOf } from "./evidence.js"
+
+export const deletionTestShallownessExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
+  "deletion-test-shallowness"
+)
 
 const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const wrappers = pipe(
@@ -39,7 +45,8 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
         "Deleting these exact forwarders removes indirection without spreading policy across production callers. " +
         "Inline the one-use operation or collapse the re-export into the intended public interface; keep a Module " +
         "when behaviour would reappear across multiple callers.",
-      evidence
+      evidence,
+      examples: deletionTestShallownessExamples
     })
   })
 }

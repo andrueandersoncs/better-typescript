@@ -3,6 +3,7 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { Effect } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
 import {
   fixtureExampleRoot,
   fixtureRefactorExamples
@@ -73,6 +74,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "systemic hotspots",
     wiring: defaultWiring
+  },
+  {
+    fixtureId: "deletion-test-shallowness",
+    pairId: "1",
+    title: "deletion-test shallowness",
+    wiring: architectureExploreWiring
   }
 ]
 
