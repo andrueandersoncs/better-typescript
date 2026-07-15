@@ -1,4 +1,4 @@
-import { Predicate, Schema } from "effect"
+import { Brand, Predicate, Schema } from "effect"
 import type * as ts from "typescript"
 
 // Allowed: Schema.declare for third-party types from TypeScript
@@ -12,7 +12,7 @@ const isTsProgram = (input: unknown): input is ts.Program =>
 
 const TsProgramSchema = Schema.declare(isTsProgram)
 
-// Allowed: Schema.declare for first-party function types (not data structures)
+// Allowed: Schema.declare for first-party function types (not structural models)
 type MyHandler = (value: string) => number
 
 const isMyHandler = (input: unknown): input is MyHandler =>
@@ -21,10 +21,18 @@ const isMyHandler = (input: unknown): input is MyHandler =>
 const MyHandlerSchema = Schema.declare(isMyHandler)
 
 // Allowed: Schema.declare guarding a generic type parameter — the placeholder stands
-// for a caller-supplied type, not a first-party data structure.
+// for a caller-supplied type, not a first-party structural model.
 const isParameterValue = <F>(input: unknown): input is F => input !== null
 
 const parameterField = <F>() => Schema.declare(isParameterValue<F>)
+
+// Allowed: Effect v4 first-party opaque/branded type validated by a type guard
+type UserId = string & Brand.Brand<"UserId">
+
+const isUserId = (input: unknown): input is UserId =>
+  typeof input === "string" && input.startsWith("user_")
+
+const UserIdSchema = Schema.declare(isUserId)
 
 // Allowed: normal Schema class definition (not Schema.declare)
 class MyData extends Schema.Class<MyData>("MyData")({
@@ -36,4 +44,5 @@ void TsNodeSchema
 void TsProgramSchema
 void MyHandlerSchema
 void parameterField
+void UserIdSchema
 void MyData

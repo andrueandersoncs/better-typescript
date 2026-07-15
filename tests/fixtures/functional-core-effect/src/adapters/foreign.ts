@@ -56,3 +56,18 @@ export const eagerStateLive = Layer.effect(
   RuntimeState,
   Effect.succeed(Ref.makeUnsafe(0))
 )
+
+export const unsafelyLayeredClient = Layer.effect(
+  PaymentPort,
+  Effect.map(Effect.sync(() => createClient()), (client) => ({
+    charge: (amount: number) => Effect.promise(() => client.charge(amount))
+  }))
+)
+
+export const disposableClient = Effect.acquireDisposable(
+  Effect.sync(() => ({
+    [Symbol.dispose]: () => undefined,
+    charge: (amount: number) => Promise.resolve(String(amount)),
+    close: () => undefined
+  }))
+)

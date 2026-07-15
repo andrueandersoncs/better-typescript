@@ -20,15 +20,18 @@ const message = "Avoid mutating first-party data."
 
 const hint =
   "Match the fix to the scale of the state. Local data: derive a new value — " +
-  "Array.replace or Array.modify for elements, Struct.evolve for record fields, a " +
-  "fresh const for rebindings. Shared, long-lived state (module-scope bindings, " +
-  "closure-captured cells, subscriber registries): do not patch the assignment — move " +
-  "the state into the Effect runtime, holding it in a Ref (SynchronizedRef under " +
-  "contention, PubSub for subscriber sets); when a whole file manages state this way, " +
-  "invert the module into Effect behind a Layer with one runtime entry at the " +
-  "boundary. Never mutate built-ins (prototypes, globals). Mutating a third-party " +
-  "structure whose API contract requires assignment (process.exitCode, a WebSocket " +
-  "handler slot, a React ref cell) is permitted."
+  "Array.replace or Array.modify for elements (both return Option — handle absence " +
+  "with Option.getOrElse or Option.match; for a nonempty array's head or last element, " +
+  "use Array.setHeadNonEmpty, Array.modifyHeadNonEmpty, Array.setLastNonEmpty, or " +
+  "Array.modifyLastNonEmpty), " +
+  "Struct.evolve for record fields, a fresh const for rebindings. Shared, long-lived " +
+  "state (module-scope bindings, closure-captured cells, subscriber registries): do " +
+  "not patch the assignment — move the state into the Effect runtime, holding it in " +
+  "a Ref (SynchronizedRef under contention, PubSub for subscriber sets); when a " +
+  "whole file manages state this way, invert the module into Effect behind a Layer " +
+  "with one runtime entry at the boundary. Never mutate built-ins (prototypes, " +
+  "globals). Mutating a third-party structure whose API contract requires assignment " +
+  "(process.exitCode, a WebSocket handler slot, a React ref cell) is permitted."
 
 const expectedSignal = (name: string, line: number, column: number): ExpectedDetection => ({
   name,
@@ -56,63 +59,75 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
-    name: "Array.replace derives a new array",
+    name: "Array.replace Option is resolved to an array",
     fileName: "src/allowed.ts",
-    line: 8,
-    column: 23
+    line: 10,
+    column: 3
   },
   {
-    name: "Array.modify derives a new array",
+    name: "Array.modify Option is resolved to an array",
     fileName: "src/allowed.ts",
-    line: 12,
-    column: 24
+    line: 17,
+    column: 3
+  },
+  {
+    name: "nonempty replace helper derives a new array",
+    fileName: "src/allowed.ts",
+    line: 22,
+    column: 25
+  },
+  {
+    name: "nonempty modify helper derives a new array",
+    fileName: "src/allowed.ts",
+    line: 24,
+    column: 27
   },
   {
     name: "comparison operator is not an assignment",
     fileName: "src/allowed.ts",
-    line: 15,
+    line: 27,
     column: 23
   },
   {
     name: "arithmetic operator is not an assignment",
     fileName: "src/allowed.ts",
-    line: 17,
+    line: 29,
     column: 22
   },
   {
     name: "logical not does not write to its operand",
     fileName: "src/allowed.ts",
-    line: 20,
+    line: 32,
     column: 25
   },
   {
     name: "unary minus does not write to its operand",
     fileName: "src/allowed.ts",
-    line: 22,
+    line: 34,
     column: 26
   },
   {
     name: "host-environment handler slot mutation is exempt",
     fileName: "src/allowed.ts",
-    line: 27,
+    line: 39,
     column: 1
   },
   {
     name: "import-alias third-party mutation is exempt",
     fileName: "src/allowed.ts",
-    line: 30,
+    line: 42,
     column: 56
   },
   {
     name: "third-party value in a first-party binding is exempt",
     fileName: "src/allowed.ts",
-    line: 36,
+    line: 48,
     column: 43
   },
   {
     name: "nullish third-party receiver is still exempt",
     fileName: "src/allowed.ts",
-    line: 42,
+    line: 54,
     column: 37
   }
 ]

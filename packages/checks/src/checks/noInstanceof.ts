@@ -35,9 +35,9 @@ const instanceofMatches = (context: CheckContext) => {
           node: expression,
           message: `Avoid instanceof for the first-party class "${name}".`,
           hint:
-            `Use Schema.is(${name})(value) or a Schema-based type guard instead of instanceof. ` +
-            "Schema.is is structural, works across realms, and stays consistent with " +
-            "the Effect type system."
+            "Use a stable discriminant, an explicit structural type guard, or Schema.is with a " +
+            "structurally defined Schema such as Schema.Struct. Schema.is on Schema.Class retains " +
+            "constructor semantics, so it does not make a class check structural or cross-realm safe."
         })
       }),
       Option.toArray

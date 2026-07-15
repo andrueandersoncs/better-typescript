@@ -15,9 +15,12 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-for-of-loops")
 const expectedMessage = "Avoid imperative logic in for..of loops."
-const expectedHint =
+const synchronousHint =
   "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
   "Array.filter(), or Array.flatMap(), instead."
+const asynchronousHint =
+  "Use Stream.fromAsyncIterable(...).pipe(Stream.map(...), Stream.runCollect) or another " +
+  "Stream/Effect combinator instead; Array combinators do not consume AsyncIterable values."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
   {
@@ -26,7 +29,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 6,
     column: 3,
     message: expectedMessage,
-    hint: expectedHint
+    hint: synchronousHint
   },
   {
     name: "collectAsyncValues.forAwaitOfLoop",
@@ -34,7 +37,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     line: 18,
     column: 3,
     message: expectedMessage,
-    hint: expectedHint
+    hint: asynchronousHint
   }
 ]
 
@@ -42,8 +45,14 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
     name: "collectionOperationsAreAllowed",
     fileName: "src/allowed.ts",
-    line: 3,
-    column: 1
+    line: 5,
+    column: 10
+  },
+  {
+    name: "async collection operations are allowed",
+    fileName: "src/allowed.ts",
+    line: 15,
+    column: 14
   }
 ]
 

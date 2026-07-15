@@ -5,10 +5,11 @@ export class Catalog extends Context.Service<
   { readonly size: Effect.Effect<number> }
 >()("Catalog") {}
 
-export class Shipping extends Context.Service<
-  Shipping,
-  { readonly fee: Effect.Effect<number> }
->()("Shipping") {}
+interface ShippingShape {
+  readonly fee: Effect.Effect<number>
+}
+
+export const Shipping = Context.Service<ShippingShape>("Shipping")
 
 const double = (value: number): number => value * 2
 const bump = (value: number): number => value + 1

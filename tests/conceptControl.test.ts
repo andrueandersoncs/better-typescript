@@ -2,9 +2,11 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Array } from "effect"
+import { Array, Effect, Equal, HashMap, HashSet, Option } from "effect"
 import { conceptControl } from "@better-typescript/checks/conceptControl"
+import { buildConceptIndex } from "@better-typescript/checks/conceptControl/conceptIndex"
 import type { Detection } from "@better-typescript/core/engine/location/data"
+import { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -31,6 +33,21 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   )
 
   return projects.flat()
+}
+
+const loadConceptIndex = async () => {
+  const workspace = await Effect.runPromise(loadProject(fixturePath))
+  const project = workspace.projects[0]
+
+  assert.ok(project, "concept-control fixture project was not loaded")
+
+  return buildConceptIndex(
+    new ProgramContext({
+      program: project.program,
+      checker: project.program.getTypeChecker(),
+      projectRoot: project.rootPath
+    })
+  )
 }
 
 test("concept-control reports structural concept debt before accepting rationale", async () => {
@@ -77,4 +94,79 @@ test("concept-control reports structural concept debt before accepting rationale
       `missing duplicate message ${expected}: ${duplicateMessages.join(", ")}`
     )
   }
+})
+
+test("concept index recognizes Effect v4 data classes without spelling false positives", async () => {
+  const index = await loadConceptIndex()
+
+  const entryNamed = (name: string) => {
+    const entry = index.dataStructures.find((candidate) => candidate.name === name)
+
+    assert.ok(entry, `missing concept entry for ${name}`)
+
+    return entry
+  }
+
+  const rolesFor = (name: string) => {
+    const entry = entryNamed(name)
+    const roles = HashMap.get(index.rolesByData, Equal.byReferenceUnsafe(entry.symbol))
+
+    assert.ok(Option.isSome(roles), `missing concept roles for ${name}`)
+
+    return roles.value
+  }
+
+  const recognized = Array.make(
+    "PrimaryDataError",
+    "SecondaryDataError",
+    "PrimarySchemaError",
+    "SecondarySchemaError",
+    "PrimaryOpaque",
+    "SecondaryOpaque",
+    "PrimaryAsClass",
+    "SecondaryAsClass",
+    "BaseModel",
+    "PrimaryExtended",
+    "SecondaryExtended"
+  )
+
+  Array.forEach(recognized, (name) => {
+    entryNamed(name)
+  })
+
+  const indexedNames = index.dataStructures.map((entry) => entry.name)
+
+  assert.equal(indexedNames.includes("FakePrimary"), false)
+  assert.equal(indexedNames.includes("FakeSecondary"), false)
+
+  const dataErrorRoles = rolesFor("PrimaryDataError")
+  const schemaErrorRoles = rolesFor("PrimarySchemaError")
+  const opaqueRoles = rolesFor("PrimaryOpaque")
+
+  assert.equal(HashSet.has(dataErrorRoles, "protocol"), true)
+  assert.equal(HashSet.has(schemaErrorRoles, "protocol"), true)
+  assert.equal(HashSet.has(schemaErrorRoles, "boundary"), true)
+  assert.equal(HashSet.has(opaqueRoles, "protocol"), false)
+
+  Array.forEach(
+    Array.make("PrimaryOpaque", "PrimaryAsClass", "BaseModel", "PrimaryExtended"),
+    (name) => {
+      assert.equal(HashSet.has(rolesFor(name), "boundary"), true)
+    }
+  )
+
+  const inheritedDataErrorFields = entryNamed("PrimaryDataError").fieldSymbols.map((field) =>
+    field.getName()
+  )
+
+  assert.equal(inheritedDataErrorFields.includes("cause"), false)
+  assert.equal(inheritedDataErrorFields.includes("message"), false)
+  assert.equal(inheritedDataErrorFields.includes("name"), false)
+  assert.equal(inheritedDataErrorFields.includes("stack"), false)
+
+  const schemaErrorFields = entryNamed("PrimarySchemaError").fieldSymbols.map((field) =>
+    field.getName()
+  )
+
+  assert.equal(schemaErrorFields.includes("message"), true)
 })

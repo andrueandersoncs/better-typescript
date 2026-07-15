@@ -558,7 +558,7 @@ export const propertyAssignmentNamed = (
       )
   )
 
-const contextServiceLayerPropertyNames = Array.make("Default", "layer")
+const contextServiceLayerPropertyNames = Array.of("layer")
 
 const hasStaticModifier = (declaration: ts.PropertyDeclaration): boolean =>
   pipe(
@@ -583,6 +583,207 @@ export const contextServiceLayerProperty = (
     (member): member is ts.PropertyDeclaration =>
       ts.isPropertyDeclaration(member) && hasLayerStaticProperty(member)
   )
+
+const contextReferenceNames = Array.of("Reference")
+
+const resolvedSymbolAtNode =
+  (checker: ts.TypeChecker) =>
+  (node: ts.Node): Option.Option<ts.Symbol> =>
+    pipe(
+      checker.getSymbolAtLocation(node),
+      Option.fromNullishOr,
+      Option.map((symbol) => {
+        const alias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+        return alias ? checker.getAliasedSymbol(symbol) : symbol
+      })
+    )
+
+const callConstructsContextApi = (
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  names: ReadonlyArray<string>
+): boolean => {
+  const current = unwrapTransparentExpression(expression)
+
+  if (!ts.isCallExpression(current)) {
+    return importedEffectApiAt(checker, current, "Context", names)
+  }
+
+  const callee = unwrapCallee(current.expression)
+  const direct = importedEffectApiAt(checker, callee, "Context", names)
+  return direct || callConstructsContextApi(checker, current.expression, names)
+}
+
+const declarationInitializesContextApi = (
+  checker: ts.TypeChecker,
+  declaration: ts.Declaration,
+  names: ReadonlyArray<string>
+): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isVariableDeclaration)(declaration),
+    Option.flatMap((variable) => Option.fromNullishOr(variable.initializer)),
+    Option.exists((initializer) => callConstructsContextApi(checker, initializer, names))
+  )
+
+export const declarationIsContextService = (
+  checker: ts.TypeChecker,
+  declaration: ts.Declaration
+): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(declaration),
+    Option.exists((classDeclaration) =>
+      classExtendsEffectApi(checker, classDeclaration, "Context", "Service")
+    )
+  ) || declarationInitializesContextApi(checker, declaration, contextServiceNames)
+
+export const declarationIsContextReference = (
+  checker: ts.TypeChecker,
+  declaration: ts.Declaration
+): boolean => declarationInitializesContextApi(checker, declaration, contextReferenceNames)
+
+export const expressionIsServiceTag = (
+  checker: ts.TypeChecker,
+  expression: ts.Expression
+): boolean =>
+  pipe(
+    expression,
+    unwrapTransparentExpression,
+    resolvedSymbolAtNode(checker),
+    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
+    Option.exists((declarations) =>
+      Array.some(
+        declarations,
+        (declaration) =>
+          declarationIsContextService(checker, declaration) ||
+          declarationIsContextReference(checker, declaration)
+      )
+    )
+  )
+
+const provideServiceNames = Array.of("provideService")
+
+const provideServiceTagArgument = (node: ts.CallExpression): Option.Option<ts.Expression> => {
+  const args = Array.fromIterable(node.arguments)
+  const tagIndex = args.length >= 3 ? 1 : 0
+
+  return Option.fromNullishOr(args[tagIndex])
+}
+
+export const callIsReferenceProvideService = (
+  checker: ts.TypeChecker,
+  node: ts.CallExpression
+): boolean => {
+  const isProvideService = importedEffectApiAt(
+    checker,
+    node.expression,
+    "Effect",
+    provideServiceNames
+  )
+
+  const referenceOverride = pipe(
+    provideServiceTagArgument(node),
+    Option.map(unwrapTransparentExpression),
+    Option.flatMap(resolvedSymbolAtNode(checker)),
+    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
+    Option.exists((declarations) =>
+      Array.some(declarations, (declaration) => declarationIsContextReference(checker, declaration))
+    )
+  )
+
+  const checks = Array.make(isProvideService, referenceOverride)
+
+  return Array.every(checks, Boolean)
+}
+
+export const expressionIsEffectRuntimeRunner = (
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  runtimeNames: ReadonlyArray<string>
+): boolean => {
+  const current = unwrapTransparentExpression(expression)
+  const direct = importedEffectApiAt(checker, current, "Effect", runtimeNames)
+
+  const curried = pipe(
+    Option.liftPredicate(ts.isCallExpression)(current),
+    Option.exists((call) => importedEffectApiAt(checker, call.expression, "Effect", runtimeNames))
+  )
+
+  const checks = Array.make(direct, curried)
+
+  return Array.some(checks, Boolean)
+}
+
+export const callIsPipeRuntimeHandoff = (
+  checker: ts.TypeChecker,
+  node: ts.CallExpression,
+  runtimeNames: ReadonlyArray<string>
+): boolean => {
+  const callee = unwrapTransparentExpression(node.expression)
+
+  const isPipe = pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
+    Option.exists((access) => access.name.text === "pipe")
+  )
+
+  const hasRunner = Array.some(node.arguments, (argument) =>
+    expressionIsEffectRuntimeRunner(checker, argument, runtimeNames)
+  )
+
+  const checks = Array.make(isPipe, hasRunner)
+
+  return Array.every(checks, Boolean)
+}
+
+const effectBarrelPlatformCapabilityNames: Readonly<Record<string, true>> = {
+  FileSystem: true,
+  Terminal: true,
+  Path: true
+}
+
+const unstableHttpNamespaces = Array.make("http", "httpapi")
+
+export const importedMemberIsMovedPlatformCapability = (member: ImportedMember): boolean => {
+  const fromEffectBarrel = member.moduleSpecifier === "effect"
+
+  const isMovedBarrelMember = pipe(
+    Option.fromNullishOr(member.path[0]),
+    Option.exists((name) => effectBarrelPlatformCapabilityNames[name] === true)
+  )
+
+  const barrelChecks = Array.make(fromEffectBarrel, isMovedBarrelMember)
+  const fromBarrel = Array.every(barrelChecks, Boolean)
+
+  const isUnstableNamespace = pipe(
+    Option.fromNullishOr(member.path[0]),
+    Option.exists((name) => name === "unstable")
+  )
+
+  const isHttpNamespace = pipe(
+    Option.fromNullishOr(member.path[1]),
+    Option.exists((name) => Array.contains(unstableHttpNamespaces, name))
+  )
+
+  const unstableChecks = Array.make(fromEffectBarrel, isUnstableNamespace, isHttpNamespace)
+  const fromUnstableHttp = Array.every(unstableChecks, Boolean)
+  const capabilitySources = Array.make(fromBarrel, fromUnstableHttp)
+
+  return Array.some(capabilitySources, Boolean)
+}
+
+export const effectServiceConfigFromExpression = (
+  checker: ts.TypeChecker,
+  expression: ts.Expression
+): Option.Option<ts.ObjectLiteralExpression> => {
+  const current = unwrapTransparentExpression(expression)
+  const isContextService = callConstructsContextApi(checker, current, contextServiceNames)
+  const keepContextService = Function.constant(isContextService)
+
+  return pipe(
+    current,
+    Option.liftPredicate(keepContextService),
+    Option.flatMap(effectServiceMakerObject)
+  )
+}
 
 export const sourceFileRole = (
   index: FunctionalCoreEffectIndex,
@@ -772,7 +973,11 @@ export const capabilitySubjectAt = (
 
   const imported = pipe(
     importedMemberAt(context.checker, node.expression),
-    Option.filter((member) => moduleMatchesPolicyPrefix(policy, member.moduleSpecifier)),
+    Option.filter(
+      (member) =>
+        moduleMatchesPolicyPrefix(policy, member.moduleSpecifier) ||
+        importedMemberIsMovedPlatformCapability(member)
+    ),
     Option.map((member) => {
       const memberPath = Array.join(member.path, ".")
       return `${member.moduleSpecifier}:${memberPath}`
@@ -798,11 +1003,10 @@ const suspensionNames = Array.make("callback", "promise", "suspend", "sync", "tr
 
 const effectLifecycleNames = Array.make(
   "acquireRelease",
-  "acquireReleaseInterruptible",
-  "acquireUseRelease"
+  "acquireUseRelease",
+  "acquireDisposable",
+  "addFinalizer"
 )
-
-const layerLifecycleNames = Array.make("effect", "effectContext", "effectDiscard")
 
 const tryEffectNames = Array.make("try", "tryPromise")
 
@@ -926,10 +1130,8 @@ export const resourceSubjectAt = (
 
 export const hasScopedLifecycleAncestor = (checker: ts.TypeChecker, node: ts.Node): boolean => {
   const scopedEffect = hasEffectCallAncestor(checker, node, "Effect", effectLifecycleNames)
-  const scopedLayer = hasEffectCallAncestor(checker, node, "Layer", layerLifecycleNames)
-  const scoped = scopedEffect || scopedLayer
   const hasSuspension = hasSuspensionBoundary(checker, node)
-  const scopedFlags = Array.make(scoped, hasSuspension)
+  const scopedFlags = Array.make(scopedEffect, hasSuspension)
 
   return Array.every(scopedFlags, Boolean)
 }
@@ -994,21 +1196,12 @@ export const sourceFileScopesFunction = (context: CheckContext, node: ts.Node): 
           return found
         }
 
-        const scopedLayer = importedEffectApiAt(
-          context.checker,
-          current.expression,
-          "Layer",
-          layerLifecycleNames
-        )
-
-        const scopedEffect = importedEffectApiAt(
+        const isScoped = importedEffectApiAt(
           context.checker,
           current.expression,
           "Effect",
           effectLifecycleNames
         )
-
-        const isScoped = scopedLayer || scopedEffect
 
         if (!isScoped) {
           return found

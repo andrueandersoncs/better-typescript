@@ -5,10 +5,10 @@ interface Counter {
 }
 
 declare const counter: Counter
-declare const scores: ReadonlyArray<number>
+declare const scores: Array.NonEmptyReadonlyArray<number>
 
 export const nextCounter: Counter = {
   count: counter.count + 1
 }
 
-export const raised = Array.replace(scores, 0, 100)
+export const raised = Array.setHeadNonEmpty(scores, 100)

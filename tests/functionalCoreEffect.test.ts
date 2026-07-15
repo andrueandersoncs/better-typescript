@@ -115,41 +115,53 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
       "src/adapters/foreign.ts:15:unsuspended-adapter-effect:node:fs:readFileSync",
       "src/adapters/foreign.ts:26:unscoped-resource:@acme/sdk:PaymentClient",
       "src/adapters/foreign.ts:44:unscoped-resource:@acme/sdk:createClient",
+      "src/adapters/foreign.ts:51:escaping-runtime-state:effect:Ref.makeUnsafe",
       "src/adapters/foreign.ts:57:escaping-runtime-state:effect:Ref.makeUnsafe",
+      "src/adapters/foreign.ts:62:unscoped-resource:@acme/sdk:createClient",
       "src/application/badDependency.ts:1:dependency-direction:application -> adapter",
       "src/application/badReexport.ts:1:dependency-direction:application -> adapter",
       "src/application/barrelRuntime.ts:3:runtime-execution:effect:Effect.runSync",
+      "src/application/capabilities.ts:1:direct-capability:effect:FileSystem",
       "src/application/capabilities.ts:2:direct-capability:node:fs",
       "src/application/capabilities.ts:7:direct-capability:fetch",
-      "src/application/runtime.ts:14:runtime-execution:effect:Effect.runPromise",
-      "src/application/runtime.ts:15:dependency-provisioning:effect:Effect.provideService",
-      "src/application/runtime.ts:18:dependency-provisioning:effect:Effect.provide",
-      "src/application/runtime.ts:23:service-locator:effect:Effect.context",
-      "src/application/runtime.ts:25:service-locator:Context.Context",
-      "src/application/runtime.ts:26:service-locator:effect:Context.get",
-      "src/application/runtime.ts:28:escaping-runtime-state:effect:Ref.makeUnsafe",
-      "src/application/runtime.ts:30:runtime-execution:effect:Effect.runCallback",
-      "src/application/runtime.ts:31:dependency-provisioning:DefaultPort.Default",
-      "src/application/runtime.ts:33:dependency-provisioning:effect:ManagedRuntime.make",
-      "src/application/runtime.ts:37:runtime-execution:managedRuntime.runPromise",
+      "src/application/runtime.ts:19:runtime-execution:effect:Effect.runPromise",
+      "src/application/runtime.ts:20:dependency-provisioning:effect:Effect.provideService",
+      "src/application/runtime.ts:23:dependency-provisioning:effect:Effect.provide",
+      "src/application/runtime.ts:28:dependency-provisioning:effect:Effect.provideContext",
+      "src/application/runtime.ts:33:runtime-execution:effect:Effect.runPromiseWith",
+      "src/application/runtime.ts:35:runtime-execution:effect:Effect.void.pipe",
+      "src/application/runtime.ts:37:service-locator:effect:Effect.context",
+      "src/application/runtime.ts:39:service-locator:Context.Context",
+      "src/application/runtime.ts:40:service-locator:effect:Context.getUnsafe",
+      "src/application/runtime.ts:48:escaping-runtime-state:effect:Ref.makeUnsafe",
+      "src/application/runtime.ts:50:escaping-runtime-state:effect:Latch.makeUnsafe",
+      "src/application/runtime.ts:52:runtime-execution:effect:Effect.runCallback",
+      "src/application/runtime.ts:53:dependency-provisioning:DefaultPort.layer",
+      "src/application/runtime.ts:55:dependency-provisioning:effect:ManagedRuntime.make",
+      "src/application/runtime.ts:59:runtime-execution:managedRuntime.runPromise",
+      "src/application/runtime.ts:61:runtime-execution:@effect/platform-browser/BrowserRuntime:runMain",
       "src/domain/barrelEffect.ts:1:domain-effect-program:effect",
       "src/domain/effectFacade.ts:1:domain-effect-program:effect",
       "src/domain/effectful.ts:1:domain-effect-program:effect",
       "src/domain/effectful.ts:6:domain-effect-program:Promise",
       "src/domain/effectful.ts:8:domain-effect-program:Promise",
+      "src/domain/latchState.ts:1:domain-effect-program:effect",
+      "src/domain/latchState.ts:3:escaping-runtime-state:effect:Latch.makeUnsafe",
+      "src/domain/latchState.ts:4:escaping-runtime-state:effect:Semaphore.makeUnsafe",
       "src/domain/namespaceEffect.ts:1:domain-effect-program:effect",
       "src/ports/badPort.ts:7:infrastructure-contract:Promise",
       "src/ports/badPort.ts:8:infrastructure-contract:effect:Ref.Ref",
       "src/ports/badPort.ts:9:infrastructure-contract:@acme/sdk:PaymentClient",
       "src/ports/badPort.ts:10:service-locator:Context.Context",
-      "src/ports/badPort.ts:19:port-live-implementation:DefaultPort.Default",
+      "src/ports/badPort.ts:14:port-live-implementation:DefaultPort",
+      "src/ports/badPort.ts:19:port-live-implementation:DefaultPort.layer",
       "src/ports/badPort.ts:19:port-live-implementation:effect:Layer.effect",
       "src/ports/badPort.ts:20:dependency-provisioning:effect:Layer.provide",
+      "src/ports/badPort.ts:29:port-live-implementation:effect:Layer.succeed",
       "src/ports/badPort.ts:37:infrastructure-contract:@acme/sdk:PaymentClient",
       "src/ports/badPort.ts:40:service-locator:Context.Context",
       "src/ports/badPort.ts:44:service-locator:AliasedContextContract",
-      "src/ports/badPort.ts:14:port-live-implementation:DefaultPort",
-      "src/ports/badPort.ts:29:port-live-implementation:effect:Layer.succeed"
+      "src/ports/badPort.ts:51:port-live-implementation:FunctionLivePort"
     ].sort()
   )
 
@@ -192,6 +204,48 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
     boundary.detections.some((item) => item.location.path === "src/domain/namespacePure.ts"),
     false
   )
+  assert.equal(
+    boundary.detections.some(
+      (item) =>
+        item.location.path === "src/application/runtime.ts" &&
+        boundarySummary(item).includes("referenceOverride")
+    ),
+    false
+  )
+  assert.equal(
+    boundary.detections.some(
+      (item) =>
+        boundaryDataOf(item).kind === "dependency-provisioning" &&
+        boundaryDataOf(item).subject.includes("LogLevel")
+    ),
+    false
+  )
+  assert.equal(
+    boundary.detections.some(
+      (item) =>
+        item.location.path === "src/adapters/foreign.ts" &&
+        boundarySummary(item).includes("disposableClient")
+    ),
+    false
+  )
+  assert.equal(
+    boundary.detections.some(
+      (item) =>
+        item.location.path === "src/adapters/foreign.ts" &&
+        boundaryDataOf(item).kind === "unscoped-resource" &&
+        item.location.line === 33
+    ),
+    false
+  )
+  assert.equal(
+    boundary.detections.some(
+      (item) =>
+        item.location.path === "src/adapters/foreign.ts" &&
+        boundaryDataOf(item).kind === "unscoped-resource" &&
+        item.location.line === 35
+    ),
+    false
+  )
 })
 
 test("shape evidence and advice require the documented thresholds", async () => {
@@ -204,7 +258,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/application/effectPureService.ts:3:pure-service:0:1:1:0:0",
     "src/application/orchestrator.ts:13:pure-service:0:1:1:0:0",
     "src/application/orchestrator.ts:23:effect-orchestrator:2:1:2:2:0",
-    "src/application/transformOrchestrator.ts:17:effect-orchestrator:0:1:2:2:3",
+    "src/application/transformOrchestrator.ts:18:effect-orchestrator:0:1:2:2:3",
     "src/entrypoints/thick.ts:1:thick-composition-root:2:2:0:0:0",
     "src/ports/badPort.ts:14:pure-service:0:1:1:0:0"
   ])
@@ -219,6 +273,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/application/orchestrator.ts:pure service candidate",
     "src/application/runtime.ts:imperative core",
     "src/application/transformOrchestrator.ts:overgrown Effect orchestrator",
+    "src/domain/latchState.ts:imperative core",
     "src/entrypoints/thick.ts:thick composition root",
     "src/ports/badPort.ts:pure service candidate"
   ])

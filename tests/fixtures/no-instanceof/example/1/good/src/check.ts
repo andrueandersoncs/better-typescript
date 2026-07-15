@@ -1,9 +1,8 @@
 import { Schema } from "effect"
 
-class NotFoundError extends Schema.TaggedErrorClass<NotFoundError>()(
-  "NotFoundError",
-  {}
-) {}
+const NotFoundError = Schema.Struct({
+  _tag: Schema.Literal("NotFoundError")
+})
 
 export const recover = (fallback: string) => (error: unknown) => {
   if (Schema.is(NotFoundError)(error)) {
