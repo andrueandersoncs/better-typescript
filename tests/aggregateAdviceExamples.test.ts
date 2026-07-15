@@ -4,6 +4,7 @@ import { test } from "node:test"
 import { Effect } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 import {
   fixtureExampleRoot,
   fixtureRefactorExamples
@@ -116,6 +117,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "hypothetical seam",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "effect-orchestrator",
+    pairId: "1",
+    title: "overgrown Effect orchestrator",
+    wiring: functionalCoreEffectWiring
   }
 ]
 

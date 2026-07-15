@@ -4,6 +4,8 @@ import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { Signal } from "@better-typescript/core/engine/report/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData,
@@ -17,6 +19,12 @@ const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "adapter-business-logic": "business logic in an adapter",
   "thick-composition-root": "thick composition root",
   "pure-service": "pure service candidate"
+}
+
+const shapeAdviceExamples: Readonly<
+  Partial<Record<FunctionalCoreShapeKind, NonEmptyRefactorExamples>>
+> = {
+  "effect-orchestrator": fixtureRefactorExamples("effect-orchestrator")
 }
 
 const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>> = {
@@ -61,13 +69,15 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
     }
 
     const evidence = shapeEvidence(data)
+    const examples = shapeAdviceExamples[data.kind] ?? Array.empty()
 
     const advice = new Advice({
       location: element.location,
       level: "file",
       title: shapeAdviceTitles[data.kind],
       remediation: shapeAdviceRemediations[data.kind],
-      evidence
+      evidence,
+      examples
     })
 
     return Result.succeed(advice)
