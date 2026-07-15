@@ -1,1047 +1,948 @@
 /**
- * @since 3.10.0
- */
-
-import * as Arr from "./Array.js"
-import * as errors_ from "./internal/schema/errors.js"
-import * as schemaId_ from "./internal/schema/schemaId.js"
-import * as Option from "./Option.js"
-import * as ParseResult from "./ParseResult.js"
-import * as Predicate from "./Predicate.js"
-import * as Record from "./Record.js"
-import type * as Schema from "./Schema.js"
-import * as AST from "./SchemaAST.js"
-
-type JsonValue = string | number | boolean | null | Array<JsonValue> | { [key: string]: JsonValue }
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchemaAnnotations {
-  title?: string
-  description?: string
-  default?: JsonValue
-  examples?: Array<JsonValue>
-}
-
-/**
- * @category model
- * @since 3.11.5
- */
-export interface JsonSchema7Never extends JsonSchemaAnnotations {
-  $id: "/schemas/never"
-  not: {}
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Any extends JsonSchemaAnnotations {
-  $id: "/schemas/any"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Unknown extends JsonSchemaAnnotations {
-  $id: "/schemas/unknown"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Void extends JsonSchemaAnnotations {
-  $id: "/schemas/void"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7object extends JsonSchemaAnnotations {
-  $id: "/schemas/object"
-  anyOf: [
-    { type: "object" },
-    { type: "array" }
-  ]
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7empty extends JsonSchemaAnnotations {
-  $id: "/schemas/%7B%7D"
-  anyOf: [
-    { type: "object" },
-    { type: "array" }
-  ]
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Ref extends JsonSchemaAnnotations {
-  $ref: string
-}
-
-/**
- * @category model
- * @since 3.11.7
- */
-export interface JsonSchema7Null extends JsonSchemaAnnotations {
-  type: "null"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7String extends JsonSchemaAnnotations {
-  type: "string"
-  minLength?: number
-  maxLength?: number
-  pattern?: string
-  format?: string
-  contentMediaType?: string
-  allOf?: Array<{
-    minLength?: number
-    maxLength?: number
-    pattern?: string
-  }>
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Numeric extends JsonSchemaAnnotations {
-  minimum?: number
-  exclusiveMinimum?: number
-  maximum?: number
-  exclusiveMaximum?: number
-  multipleOf?: number
-  allOf?: Array<{
-    minimum?: number
-    exclusiveMinimum?: number
-    maximum?: number
-    exclusiveMaximum?: number
-    multipleOf?: number
-  }>
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Number extends JsonSchema7Numeric {
-  type: "number"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Integer extends JsonSchema7Numeric {
-  type: "integer"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Boolean extends JsonSchemaAnnotations {
-  type: "boolean"
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Array extends JsonSchemaAnnotations {
-  type: "array"
-  items?: JsonSchema7 | Array<JsonSchema7> | false
-  prefixItems?: Array<JsonSchema7>
-  minItems?: number
-  maxItems?: number
-  additionalItems?: JsonSchema7 | boolean
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Enum extends JsonSchemaAnnotations {
-  type?: "string" | "number" | "boolean"
-  enum: Array<string | number | boolean>
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Enums extends JsonSchemaAnnotations {
-  $comment: "/schemas/enums"
-  anyOf: Array<{
-    type: "string" | "number"
-    title: string
-    enum: [string | number]
-  }>
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7AnyOf extends JsonSchemaAnnotations {
-  anyOf: Array<JsonSchema7>
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export interface JsonSchema7Object extends JsonSchemaAnnotations {
-  type: "object"
-  required: Array<string>
-  properties: Record<string, JsonSchema7>
-  additionalProperties?: boolean | JsonSchema7
-  patternProperties?: Record<string, JsonSchema7>
-  propertyNames?: JsonSchema7
-}
-
-/**
- * @category model
- * @since 3.10.0
- */
-export type JsonSchema7 =
-  | JsonSchema7Never
-  | JsonSchema7Any
-  | JsonSchema7Unknown
-  | JsonSchema7Void
-  | JsonSchema7object
-  | JsonSchema7empty
-  | JsonSchema7Ref
-  | JsonSchema7Null
-  | JsonSchema7String
-  | JsonSchema7Number
-  | JsonSchema7Integer
-  | JsonSchema7Boolean
-  | JsonSchema7Array
-  | JsonSchema7Enum
-  | JsonSchema7Enums
-  | JsonSchema7AnyOf
-  | JsonSchema7Object
-
-/**
- * @category model
- * @since 3.10.0
- */
-export type JsonSchema7Root = JsonSchema7 & {
-  $schema?: string
-  $defs?: Record<string, JsonSchema7>
-}
-
-/**
- * Generates a JSON Schema from a schema.
+ * Helpers for normalizing and converting JSON Schema and OpenAPI schema
+ * documents. Supported inputs include JSON Schema Draft-07, Draft 2020-12,
+ * OpenAPI 3.0, and OpenAPI 3.1; conversions normalize through
+ * `Document<"draft-2020-12">` before emitting another dialect. The module also
+ * defines document types, meta-schema constants, OpenAPI component-key helpers,
+ * and `$ref` resolution utilities.
  *
- * **Options**
+ * @since 4.0.0
+ */
+import * as Arr from "./Array.ts"
+import { unescapeToken } from "./JsonPointer.ts"
+import * as Predicate from "./Predicate.ts"
+import * as Rec from "./Record.ts"
+
+/**
+ * A plain object representing a single JSON Schema node.
  *
- * - `target`: The target JSON Schema version. Possible values are:
- *   - `"jsonSchema7"`: JSON Schema draft-07 (default behavior).
- *   - `"jsonSchema2019-09"`: JSON Schema draft-2019-09.
- *   - `"jsonSchema2020-12"`: JSON Schema draft-2020-12.
- *   - `"openApi3.1"`: OpenAPI 3.1.
+ * **When to use**
  *
+ * Use to represent an arbitrary JSON Schema object regardless of dialect.
+ *
+ * **Details**
+ *
+ * This is an open record type (`[x: string]: unknown`) so it can hold any JSON
+ * Schema keyword. Most functions in this module accept or return this type.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface JsonSchema {
+  [x: string]: unknown
+}
+
+/**
+ * The set of JSON Schema dialects supported by this module.
+ *
+ * **When to use**
+ *
+ * Use as the dialect marker for `JsonSchema` documents when parsing,
+ * converting, or emitting schemas across the supported formats.
+ *
+ * **Details**
+ *
+ * Supported values are `"draft-07"` for JSON Schema Draft-07,
+ * `"draft-2020-12"` for JSON Schema Draft 2020-12 and the canonical internal
+ * form, `"openapi-3.1"` for OpenAPI 3.1, and `"openapi-3.0"` for OpenAPI 3.0.
+ *
+ * @see {@link Document} for a single root schema tagged with a dialect
+ * @see {@link MultiDocument} for multiple root schemas tagged with a dialect
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Dialect = "draft-07" | "draft-2020-12" | "openapi-3.1" | "openapi-3.0"
+
+/**
+ * The JSON Schema primitive type names.
+ *
+ * **When to use**
+ *
+ * Use to restrict a JSON Schema `type` keyword to the supported primitive names.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Type = "string" | "number" | "boolean" | "array" | "object" | "null" | "integer"
+
+/**
+ * A record of named JSON Schema definitions, keyed by definition name.
+ *
+ * **When to use**
+ *
+ * Use as the shared lookup table for named JSON Schema nodes that are
+ * referenced from JSON Schema documents.
+ *
+ * **Details**
+ *
+ * The map is dialect-neutral. Conversion APIs emit it as `$defs`,
+ * `definitions`, or `components.schemas` depending on the target format.
+ *
+ * @see {@link Document} for a single root schema with definitions
+ * @see {@link MultiDocument} for multiple root schemas sharing definitions
+ * @see {@link resolve$ref} for resolving a `$ref` against definitions
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Definitions extends Record<string, JsonSchema> {}
+
+/**
+ * A structured container for a single JSON Schema and its associated
+ * definitions.
+ *
+ * **When to use**
+ *
+ * Use when you need to carry a root schema together with its shared
+ * definitions, or when converting between dialects with the `from*` and `to*`
+ * functions.
+ *
+ * **Details**
+ *
+ * The `schema` field holds the root schema *without* the definitions
+ * collection. Root definitions are stored separately in `definitions` and
+ * referenced via `#/$defs/<name>` for Draft-2020-12, `#/definitions/<name>`
+ * for Draft-07, and `#/components/schemas/<name>` for OpenAPI 3.1 and
+ * OpenAPI 3.0.
+ *
+ * **Example** (Inspecting a parsed document)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const raw: JsonSchema.JsonSchema = {
+ *   type: "string",
+ *   $defs: { Trimmed: { type: "string", minLength: 1 } }
+ * }
+ *
+ * const doc = JsonSchema.fromSchemaDraft2020_12(raw)
+ *
+ * console.log(doc.dialect)     // "draft-2020-12"
+ * console.log(doc.schema)      // { type: "string" }
+ * console.log(doc.definitions) // { Trimmed: { type: "string", minLength: 1 } }
+ * ```
+ *
+ * @see {@link MultiDocument}
+ * @see {@link fromSchemaDraft2020_12}
+ * @category models
+ * @since 4.0.0
+ */
+export interface Document<D extends Dialect> {
+  readonly dialect: D
+  readonly schema: JsonSchema
+  readonly definitions: Definitions
+}
+
+/**
+ * Like {@link Document}, but carries multiple root schemas that share a
+ * single definitions pool.
+ *
+ * **When to use**
+ *
+ * Use when generating several schemas, such as a request body
+ * and a response body, that reference the same set of definitions.
+ *
+ * **Details**
+ *
+ * The `schemas` tuple is non-empty and contains at least one element.
+ *
+ * @see {@link Document}
+ * @see {@link toMultiDocumentOpenApi3_1}
+ * @category models
+ * @since 4.0.0
+ */
+export interface MultiDocument<D extends Dialect> {
+  readonly dialect: D
+  readonly schemas: readonly [JsonSchema, ...Array<JsonSchema>]
+  readonly definitions: Definitions
+}
+
+/**
+ * Represents the `$schema` meta-schema URI for JSON Schema Draft-07.
+ *
+ * **When to use**
+ *
+ * Use when constructing a Draft-07 JSON Schema document and you need a stable
+ * value for the root `$schema` field.
+ *
+ * **Details**
+ *
+ * The exported value is the literal string
+ * `http://json-schema.org/draft-07/schema`.
+ *
+ * @see {@link META_SCHEMA_URI_DRAFT_2020_12} for the Draft 2020-12 `$schema` URI
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const META_SCHEMA_URI_DRAFT_07 = "http://json-schema.org/draft-07/schema"
+
+/**
+ * Represents the `$schema` meta-schema URI for JSON Schema Draft 2020-12.
+ *
+ * **When to use**
+ *
+ * Use when you need to populate the `$schema` field while emitting a JSON
+ * Schema document that should declare JSON Schema Draft 2020-12.
+ *
+ * **Details**
+ *
+ * The exported value is the literal string
+ * `https://json-schema.org/draft/2020-12/schema`.
+ *
+ * @see {@link META_SCHEMA_URI_DRAFT_07} for the Draft-07 `$schema` URI
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const META_SCHEMA_URI_DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
+
+const RE_DEFINITIONS = /^#\/definitions(?=\/|$)/
+const RE_DEFS = /^#\/\$defs(?=\/|$)/
+const RE_COMPONENTS_SCHEMAS = /^#\/components\/schemas(?=\/|$)/
+
+/**
+ * Parses a raw Draft-07 JSON Schema into a `Document<"draft-2020-12">`.
+ *
+ * **When to use**
+ *
+ * Use when you have a raw JSON Schema object that follows Draft-07 conventions
+ * and need the canonical Draft-2020-12 document representation.
+ *
+ * **Details**
+ *
+ * This converts Draft-07 tuple syntax (`items` as array plus
+ * `additionalItems`) to Draft-2020-12 form (`prefixItems` plus `items`),
+ * rewrites `#/definitions/...` refs to `#/$defs/...`, and extracts root-level
+ * `definitions` into the `definitions` field.
+ *
+ * **Gotchas**
+ *
+ * Unsupported keywords, such as `if`/`then`/`else` and `$id`, are dropped.
+ *
+ * **Example** (Parsing a Draft-07 schema)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const raw: JsonSchema.JsonSchema = {
+ *   type: "object",
+ *   properties: {
+ *     tags: {
+ *       type: "array",
+ *       items: { type: "string" }
+ *     }
+ *   }
+ * }
+ *
+ * const doc = JsonSchema.fromSchemaDraft07(raw)
+ * console.log(doc.dialect) // "draft-2020-12"
+ * console.log(doc.schema.properties) // { tags: { type: "array", items: { type: "string" } } }
+ * ```
+ *
+ * @see {@link fromSchemaDraft2020_12}
+ * @see {@link fromSchemaOpenApi3_0}
+ * @see {@link toDocumentDraft07}
+ * @category decoding
+ * @since 4.0.0
+ */
+export function fromSchemaDraft07(js: JsonSchema): Document<"draft-2020-12"> {
+  let definitions: Definitions | undefined
+
+  const schema = walk(js, true) as JsonSchema
+  return {
+    dialect: "draft-2020-12",
+    schema,
+    definitions: definitions ?? {}
+  }
+
+  function walk(node: unknown, isRoot: boolean): unknown {
+    if (Array.isArray(node)) return node.map((v) => walk(v, false))
+    if (!Predicate.isObject(node)) return node
+
+    const out: Record<string, unknown> = {}
+
+    let prefixItems: unknown = undefined
+    let additionalItems: unknown = undefined
+
+    for (const k of Object.keys(node)) {
+      const v = node[k]
+
+      switch (k) {
+        case "$ref":
+          out.$ref = typeof v === "string" ? v.replace(RE_DEFINITIONS, "#/$defs") : v
+          break
+
+        case "definitions": {
+          const mapped = walk_object(v, walk)
+          if (isRoot) {
+            definitions = mapped as Definitions | undefined
+          } else {
+            out.definitions = mapped ?? v
+          }
+          break
+        }
+
+        case "items":
+          prefixItems = v
+          break
+        case "additionalItems":
+          additionalItems = v
+          break
+
+        case "properties":
+        case "patternProperties": {
+          const mapped = walk_object(v, walk)
+          out[k] = mapped ?? v
+          break
+        }
+
+        case "additionalProperties":
+        case "propertyNames":
+          out[k] = walk(v, false)
+          break
+
+        case "allOf":
+        case "anyOf":
+        case "oneOf":
+          out[k] = Array.isArray(v) ? v.map((x) => walk(x, false)) : v
+          break
+
+        case "type":
+        case "required":
+        case "enum":
+        case "const":
+        case "title":
+        case "description":
+        case "default":
+        case "examples":
+        case "format":
+        case "readOnly":
+        case "writeOnly":
+        case "pattern":
+        case "minimum":
+        case "maximum":
+        case "exclusiveMinimum":
+        case "exclusiveMaximum":
+        case "minLength":
+        case "maxLength":
+        case "minItems":
+        case "maxItems":
+        case "minProperties":
+        case "maxProperties":
+        case "multipleOf":
+        case "uniqueItems":
+          out[k] = v
+          break
+
+        default:
+          break
+      }
+    }
+
+    // Draft-07 tuples -> 2020-12 tuples
+    if (prefixItems !== undefined) {
+      if (Array.isArray(prefixItems)) {
+        out.prefixItems = prefixItems.map((x) => walk(x, false))
+        if (additionalItems !== undefined) out.items = walk(additionalItems, false)
+      } else {
+        out.items = walk(prefixItems, false)
+      }
+    }
+
+    return out
+  }
+}
+
+/**
+ * Parses a raw Draft-2020-12 JSON Schema into a `Document<"draft-2020-12">`.
+ *
+ * **When to use**
+ *
+ * Use when you already have a raw JSON Schema object in Draft-2020-12 format.
+ *
+ * **Details**
+ *
+ * This separates `$defs` from the root schema into the `definitions` field.
+ * Unlike {@link fromSchemaDraft07}, this performs no keyword rewriting.
+ *
+ * **Example** (Parsing a Draft-2020-12 schema)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const raw: JsonSchema.JsonSchema = {
+ *   type: "number",
+ *   minimum: 0,
+ *   $defs: { PositiveInt: { type: "integer", minimum: 1 } }
+ * }
+ *
+ * const doc = JsonSchema.fromSchemaDraft2020_12(raw)
+ * console.log(doc.schema)      // { type: "number", minimum: 0 }
+ * console.log(doc.definitions) // { PositiveInt: { type: "integer", minimum: 1 } }
+ * ```
+ *
+ * @see {@link fromSchemaDraft07}
+ * @see {@link fromSchemaOpenApi3_1}
+ * @category decoding
+ * @since 4.0.0
+ */
+export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"> {
+  const { $defs, ...schema } = js
+  return {
+    dialect: "draft-2020-12",
+    schema,
+    definitions: Predicate.isObject($defs) ? ($defs as Definitions) : {}
+  }
+}
+
+/**
+ * Parses a raw OpenAPI 3.1 JSON Schema into a `Document<"draft-2020-12">`.
+ *
+ * **When to use**
+ *
+ * Use when you need to consume raw JSON Schema objects from an OpenAPI 3.1
+ * specification.
+ *
+ * **Details**
+ *
+ * This rewrites `#/components/schemas/...` refs to `#/$defs/...`, then delegates
+ * to {@link fromSchemaDraft2020_12}.
+ *
+ * **Example** (Parsing an OpenAPI 3.1 schema)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const raw: JsonSchema.JsonSchema = {
+ *   type: "object",
+ *   properties: {
+ *     user: { $ref: "#/components/schemas/User" }
+ *   }
+ * }
+ *
+ * const doc = JsonSchema.fromSchemaOpenApi3_1(raw)
+ * // $ref is rewritten to Draft-2020-12 form
+ * console.log(doc.schema.properties) // { user: { $ref: "#/$defs/User" } }
+ * ```
+ *
+ * @see {@link fromSchemaOpenApi3_0}
+ * @see {@link toMultiDocumentOpenApi3_1}
+ * @category decoding
+ * @since 4.0.0
+ */
+export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> {
+  const schema = rewrite_refs(js, (ref) => ref.replace(RE_COMPONENTS_SCHEMAS, "#/$defs")) as JsonSchema
+  return fromSchemaDraft2020_12(schema)
+}
+
+/**
+ * Parses a raw OpenAPI 3.0 JSON Schema into a `Document<"draft-2020-12">`.
+ *
+ * **When to use**
+ *
+ * Use when you need to consume raw JSON Schema objects from an OpenAPI 3.0
+ * specification.
+ *
+ * **Details**
+ *
+ * This handles OpenAPI 3.0 extensions, including `nullable`, singular
+ * `example`, and boolean `exclusiveMinimum` or `exclusiveMaximum`. It
+ * normalizes the schema to Draft-07 first, then converts to Draft-2020-12 via
+ * {@link fromSchemaDraft07}.
+ *
+ * **Example** (Parsing an OpenAPI 3.0 nullable schema)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const raw: JsonSchema.JsonSchema = {
+ *   type: "string",
+ *   nullable: true
+ * }
+ *
+ * const doc = JsonSchema.fromSchemaOpenApi3_0(raw)
+ * // nullable is expanded into a type array
+ * console.log(doc.schema.type) // ["string", "null"]
+ * ```
+ *
+ * @see {@link fromSchemaOpenApi3_1}
+ * @see {@link fromSchemaDraft07}
+ * @category decoding
+ * @since 4.0.0
+ */
+export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-12"> {
+  const normalized = normalize_OpenApi3_0_to_Draft07(schema)
+  return fromSchemaDraft07(normalized as JsonSchema)
+}
+
+/**
+ * Converts a `Document<"draft-2020-12">` to a `Document<"draft-07">`.
+ *
+ * **When to use**
+ *
+ * Use when you need to output a canonical JSON Schema document in Draft-07
+ * format.
+ *
+ * **Details**
+ *
+ * This rewrites `#/$defs/...` refs to `#/definitions/...`, converts
+ * Draft-2020-12 tuple syntax (`prefixItems` plus `items`) to Draft-07 form
+ * (`items` as array plus `additionalItems`), and converts both the root schema
+ * and all definitions.
+ *
+ * **Gotchas**
+ *
+ * Unsupported Draft-2020-12 keywords are dropped.
+ *
+ * **Example** (Converting to Draft-07)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const doc = JsonSchema.fromSchemaDraft2020_12({
+ *   type: "array",
+ *   prefixItems: [{ type: "string" }, { type: "number" }],
+ *   items: { type: "boolean" }
+ * })
+ *
+ * const draft07 = JsonSchema.toDocumentDraft07(doc)
+ * console.log(draft07.dialect)                // "draft-07"
+ * console.log(draft07.schema.items)           // [{ type: "string" }, { type: "number" }]
+ * console.log(draft07.schema.additionalItems) // { type: "boolean" }
+ * ```
+ *
+ * @see {@link fromSchemaDraft07}
+ * @see {@link toMultiDocumentOpenApi3_1}
  * @category encoding
- * @since 3.10.0
+ * @since 4.0.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: {
-  readonly target?: Target | undefined
-}): JsonSchema7Root => {
-  const definitions: Record<string, any> = {}
-  const target = options?.target ?? "jsonSchema7"
-  const ast = AST.isTransformation(schema.ast) && isParseJsonTransformation(schema.ast.from)
-    // Special case top level `parseJson` transformations
-    ? schema.ast.to
-    : schema.ast
-  const jsonSchema = fromAST(ast, {
-    definitions,
-    target
-  })
-  const out: JsonSchema7Root = {
-    $schema: getMetaSchemaUri(target),
-    $defs: {},
-    ...jsonSchema
+export function toDocumentDraft07(document: Document<"draft-2020-12">): Document<"draft-07"> {
+  return {
+    dialect: "draft-07",
+    schema: toSchemaDraft07(document.schema),
+    definitions: Rec.map(document.definitions, toSchemaDraft07)
   }
-  if (Record.isEmptyRecord(definitions)) {
-    delete out.$defs
-  } else {
-    out.$defs = definitions
-  }
-  return out
 }
 
-type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1" | "jsonSchema2020-12"
+function toSchemaDraft07(schema: JsonSchema): JsonSchema {
+  return rewrite(schema)
 
-type TopLevelReferenceStrategy = "skip" | "keep"
+  function rewrite(node: unknown): JsonSchema {
+    return walk(rewrite_refs(node, (ref) => ref.replace(RE_DEFS, "#/definitions")), true) as JsonSchema
+  }
 
-type AdditionalPropertiesStrategy = "allow" | "strict"
+  function walk(node: unknown, _isRoot: boolean): unknown {
+    if (Array.isArray(node)) return node.map((v) => walk(v, false))
+    if (!Predicate.isObject(node)) return node
+
+    const src = node as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+
+    let prefixItems: unknown = undefined
+    let items: unknown = undefined
+
+    for (const k of Object.keys(src)) {
+      const v = src[k]
+
+      switch (k) {
+        // We already rewrote $ref via rewrite_refs, so just copy it through.
+        case "$ref":
+        case "type":
+        case "required":
+        case "enum":
+        case "const":
+        case "title":
+        case "description":
+        case "default":
+        case "examples":
+        case "format":
+        case "pattern":
+        case "minimum":
+        case "maximum":
+        case "exclusiveMinimum":
+        case "exclusiveMaximum":
+        case "minLength":
+        case "maxLength":
+        case "minItems":
+        case "maxItems":
+        case "minProperties":
+        case "maxProperties":
+        case "multipleOf":
+        case "uniqueItems":
+          out[k] = v
+          break
+
+        // Schema maps
+        case "properties":
+        case "patternProperties": {
+          const mapped = walk_object(v, walk)
+          out[k] = mapped ?? v
+          break
+        }
+
+        // Single subschemas
+        case "additionalProperties":
+        case "propertyNames":
+          out[k] = walk(v, false)
+          break
+
+        // Schema arrays
+        case "allOf":
+        case "anyOf":
+        case "oneOf":
+          out[k] = Array.isArray(v) ? v.map((x) => walk(x, false)) : v
+          break
+
+        // Tuple handling (2020-12 form)
+        case "prefixItems":
+          prefixItems = v
+          break
+        case "items":
+          items = v
+          break
+
+        default:
+          // drop everything else (subset)
+          break
+      }
+    }
+
+    // 2020-12 tuples -> Draft-07 tuples
+    if (prefixItems !== undefined) {
+      if (Array.isArray(prefixItems)) {
+        out.items = prefixItems.map((x) => walk(x, false))
+        if (items !== undefined) out.additionalItems = walk(items, false)
+      } else {
+        // Non-standard, but keep a reasonable behavior
+        out.items = walk(prefixItems, false)
+      }
+    } else if (items !== undefined) {
+      // Regular items schema stays as items
+      out.items = walk(items, false)
+    }
+
+    return out
+  }
+}
+
+/**
+ * Converts a `MultiDocument<"draft-2020-12">` to a
+ * `MultiDocument<"openapi-3.1">`.
+ *
+ * **When to use**
+ *
+ * Use when you need to emit an OpenAPI 3.1 multi-document from canonical JSON
+ * Schema documents.
+ *
+ * **Details**
+ *
+ * This rewrites `#/$defs/...` refs to `#/components/schemas/...`, sanitizes
+ * definition keys to match the OpenAPI component key pattern
+ * (`^[a-zA-Z0-9.\-_]+$`) by replacing invalid characters with `_`, updates all
+ * `$ref` pointers to use the sanitized keys, and converts all schemas and
+ * definitions in the multi-document.
+ *
+ * **Example** (Converting to OpenAPI 3.1)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const multi: JsonSchema.MultiDocument<"draft-2020-12"> = {
+ *   dialect: "draft-2020-12",
+ *   schemas: [{ $ref: "#/$defs/User" }],
+ *   definitions: {
+ *     User: { type: "object", properties: { name: { type: "string" } } }
+ *   }
+ * }
+ *
+ * const openapi = JsonSchema.toMultiDocumentOpenApi3_1(multi)
+ * console.log(openapi.dialect) // "openapi-3.1"
+ * console.log(openapi.schemas[0]) // { $ref: "#/components/schemas/User" }
+ * ```
+ *
+ * @see {@link toDocumentDraft07}
+ * @see {@link MultiDocument}
+ * @category encoding
+ * @since 4.0.0
+ */
+export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-2020-12">): MultiDocument<"openapi-3.1"> {
+  const keyMap = new Map<string, string>()
+  for (const key of Object.keys(multiDocument.definitions)) {
+    const sanitized = sanitizeOpenApiComponentsSchemasKey(key)
+    if (sanitized !== key) {
+      keyMap.set(key, sanitized)
+    }
+  }
+
+  function rewrite(schema: JsonSchema): JsonSchema {
+    return rewrite_refs(schema, ($ref) => {
+      const tokens = $ref.split("/")
+      if (tokens.length > 0) {
+        const identifier = unescapeToken(tokens[tokens.length - 1])
+        const sanitized = keyMap.get(identifier)
+        if (sanitized !== undefined) {
+          $ref = tokens.slice(0, -1).join("/") + "/" + sanitized
+        }
+      }
+      return $ref.replace(RE_DEFS, "#/components/schemas")
+    }) as JsonSchema
+  }
+
+  return {
+    dialect: "openapi-3.1",
+    schemas: Arr.map(multiDocument.schemas, rewrite),
+    definitions: Rec.mapEntries(
+      multiDocument.definitions,
+      (definition, key) => [keyMap.get(key) ?? key, rewrite(definition)]
+    )
+  }
+}
 
 /** @internal */
-export function getMetaSchemaUri(target: Target) {
-  switch (target) {
-    case "jsonSchema7":
-      return "http://json-schema.org/draft-07/schema#"
-    case "jsonSchema2019-09":
-      return "https://json-schema.org/draft/2019-09/schema"
-    case "jsonSchema2020-12":
-    case "openApi3.1":
-      return "https://json-schema.org/draft/2020-12/schema"
+export const VALID_OPEN_API_COMPONENTS_SCHEMAS_KEY_REGEXP = /^[a-zA-Z0-9.\-_]+$/
+
+/**
+ * Returns a sanitized key for an OpenAPI component schema.
+ * Should match the `^[a-zA-Z0-9.\-_]+$` regular expression.
+ *
+ * @internal
+ */
+export function sanitizeOpenApiComponentsSchemasKey(s: string): string {
+  if (s.length === 0) return "_"
+  if (VALID_OPEN_API_COMPONENTS_SCHEMAS_KEY_REGEXP.test(s)) return s
+
+  const out: Array<string> = []
+
+  for (const ch of s) {
+    const code = ch.codePointAt(0)
+    if (
+      code !== undefined &&
+      ((code >= 48 && code <= 57) || // 0-9
+        (code >= 65 && code <= 90) || // A-Z
+        (code >= 97 && code <= 122) || // a-z
+        code === 46 || // .
+        code === 45 || // -
+        code === 95) // _
+    ) {
+      out.push(ch)
+    } else {
+      out.push("_")
+    }
+  }
+
+  return out.join("")
+}
+
+function rewrite_refs(node: unknown, f: ($ref: string) => string): unknown {
+  if (Array.isArray(node)) return node.map((v) => rewrite_refs(v, f))
+  if (!Predicate.isObject(node)) return node
+
+  const out: Record<string, unknown> = {}
+
+  for (const k of Object.keys(node)) {
+    const v = node[k]
+
+    if (k === "$ref") {
+      out[k] = typeof v === "string" ? f(v) : v
+    } else if (Array.isArray(v) || Predicate.isObject(v)) {
+      out[k] = rewrite_refs(v, f)
+    } else {
+      out[k] = v
+    }
+  }
+
+  return out
+}
+
+function walk_object(
+  value: unknown,
+  walk: (node: unknown, isRoot: boolean) => unknown
+): Record<string, unknown> | undefined {
+  if (!Predicate.isObject(value)) return undefined
+  const out: Record<string, unknown> = {}
+  for (const k of Object.keys(value)) out[k] = walk(value[k], false)
+  return out
+}
+
+function normalize_OpenApi3_0_to_Draft07(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(normalize_OpenApi3_0_to_Draft07)
+  if (!Predicate.isObject(node)) return node
+
+  const src = node as Record<string, unknown>
+  let out: Record<string, unknown> = {}
+
+  for (const k of Object.keys(src)) {
+    const v = src[k]
+    if (k === "$ref" && typeof v === "string") {
+      out[k] = v.replace(RE_COMPONENTS_SCHEMAS, "#/definitions")
+    } else if (k === "example") {
+      if (src.examples === undefined) {
+        out.examples = [v]
+      }
+    } else if (Array.isArray(v) || Predicate.isObject(v)) {
+      out[k] = normalize_OpenApi3_0_to_Draft07(v)
+    } else {
+      out[k] = v
+    }
+  }
+
+  // Draft-04-style numeric exclusivity booleans
+  out = adjust_exclusivity(out)
+
+  // OpenAPI 3.0 nullable
+  if (out.nullable === true) {
+    out = apply_nullable(out)
+  }
+  delete out.nullable
+
+  return out
+}
+
+function adjust_exclusivity(node: Record<string, unknown>): Record<string, unknown> {
+  let out = node
+
+  if (typeof out.exclusiveMinimum === "boolean") {
+    if (out.exclusiveMinimum === true && typeof out.minimum === "number") {
+      out = { ...out, exclusiveMinimum: out.minimum }
+      delete out.minimum
+    } else {
+      out = { ...out }
+      delete out.exclusiveMinimum
+    }
+  }
+
+  if (typeof out.exclusiveMaximum === "boolean") {
+    if (out.exclusiveMaximum === true && typeof out.maximum === "number") {
+      out = { ...out, exclusiveMaximum: out.maximum }
+      delete out.maximum
+    } else {
+      out = { ...out }
+      delete out.exclusiveMaximum
+    }
+  }
+
+  return out
+}
+
+function apply_nullable(node: Record<string, unknown>): Record<string, unknown> {
+  // enum widening
+  if (Array.isArray(node.enum)) {
+    return widen_type({
+      ...node,
+      enum: node.enum.includes(null) ? node.enum : [...node.enum, null]
+    })
+  }
+
+  // type widening
+  if (node.type !== undefined) return widen_type(node)
+
+  // const === null
+  if (node.const === null) return node
+
+  // fallback
+  return { anyOf: [node, { type: "null" }] }
+}
+
+function widen_type(node: Record<string, unknown>): Record<string, unknown> {
+  const t = node.type
+  if (typeof t === "string") return t === "null" ? node : { ...node, type: [t, "null"] }
+  if (Array.isArray(t)) return t.includes("null") ? node : { ...node, type: [...t, "null"] }
+  return node
+}
+
+/**
+ * Resolves a `$ref` string by looking up the last path segment in a
+ * definitions map.
+ *
+ * **When to use**
+ *
+ * Use when you need to dereference a `$ref` pointer to get the JSON Schema
+ * object it points to.
+ *
+ * **Details**
+ *
+ * This only resolves the final segment of the ref path, such as `"User"` from
+ * `"#/$defs/User"`. It returns `undefined` if the definition is not found.
+ *
+ * **Gotchas**
+ *
+ * This function does not follow arbitrary JSON Pointer paths.
+ *
+ * **Example** (Resolving a $ref)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const definitions: JsonSchema.Definitions = {
+ *   User: { type: "object", properties: { name: { type: "string" } } }
+ * }
+ *
+ * const result = JsonSchema.resolve$ref("#/$defs/User", definitions)
+ * console.log(result) // { type: "object", properties: { name: { type: "string" } } }
+ *
+ * const missing = JsonSchema.resolve$ref("#/$defs/Unknown", definitions)
+ * console.log(missing) // undefined
+ * ```
+ *
+ * @see {@link resolveTopLevel$ref}
+ * @see {@link Definitions}
+ * @category getters
+ * @since 4.0.0
+ */
+export function resolve$ref($ref: string, definitions: Definitions): JsonSchema | undefined {
+  const tokens = $ref.split("/")
+  if (tokens.length > 0) {
+    const identifier = unescapeToken(tokens[tokens.length - 1])
+    const definition = definitions[identifier]
+    if (definition !== undefined) {
+      return definition
+    }
   }
 }
 
 /**
- * Returns a JSON Schema with additional options and definitions.
+ * Resolves a document whose root schema is a top-level `$ref`.
  *
- * **Warning**
+ * **When to use**
  *
- * This function is experimental and subject to change.
+ * Use when you need to dereference a top-level `$ref` before inspecting the
+ * root JSON Schema object's properties directly.
  *
- * **Options**
+ * **Details**
  *
- * - `definitions`: A record of definitions that are included in the schema.
- * - `definitionPath`: The path to the definitions within the schema (defaults
- *   to "#/$defs/").
- * - `target`: Which spec to target. Possible values are:
- *   - `'jsonSchema7'`: JSON Schema draft-07 (default behavior).
- *   - `'jsonSchema2019-09'`: JSON Schema draft-2019-09.
- *   - `'openApi3.1'`: OpenAPI 3.1.
- * - `topLevelReferenceStrategy`: Controls the handling of the top-level
- *   reference. Possible values are:
- *   - `"keep"`: Keep the top-level reference (default behavior).
- *   - `"skip"`: Skip the top-level reference.
- * - `additionalPropertiesStrategy`: Controls the handling of additional properties. Possible values are:
- *   - `"strict"`: Disallow additional properties (default behavior).
- *   - `"allow"`: Allow additional properties.
+ * This returns the same object if no change is needed, or a shallow copy with
+ * the resolved schema.
  *
- * @category encoding
- * @since 3.11.5
- * @experimental
+ * **Example** (Resolving a top-level $ref)
+ *
+ * ```ts
+ * import { JsonSchema } from "effect"
+ *
+ * const doc: JsonSchema.Document<"draft-2020-12"> = {
+ *   dialect: "draft-2020-12",
+ *   schema: { $ref: "#/$defs/User" },
+ *   definitions: {
+ *     User: { type: "object", properties: { name: { type: "string" } } }
+ *   }
+ * }
+ *
+ * const resolved = JsonSchema.resolveTopLevel$ref(doc)
+ * console.log(resolved.schema) // { type: "object", properties: { name: { type: "string" } } }
+ * ```
+ *
+ * @see {@link resolve$ref}
+ * @see {@link Document}
+ * @category transforming
+ * @since 4.0.0
  */
-export const fromAST = (ast: AST.AST, options: {
-  readonly definitions: Record<string, JsonSchema7>
-  readonly definitionPath?: string | undefined
-  readonly target?: Target | undefined
-  readonly topLevelReferenceStrategy?: TopLevelReferenceStrategy | undefined
-  readonly additionalPropertiesStrategy?: AdditionalPropertiesStrategy | undefined
-}): JsonSchema7 => {
-  const definitionPath = options.definitionPath ?? "#/$defs/"
-  const getRef = (id: string) => definitionPath + id
-  const target = options.target ?? "jsonSchema7"
-  const topLevelReferenceStrategy = options.topLevelReferenceStrategy ?? "keep"
-  const additionalPropertiesStrategy = options.additionalPropertiesStrategy ?? "strict"
-  return go(
-    ast,
-    options.definitions,
-    "handle-identifier",
-    [],
-    {
-      getRef,
-      target,
-      topLevelReferenceStrategy,
-      additionalPropertiesStrategy
-    },
-    "handle-annotation",
-    "handle-errors"
-  )
-}
-
-const constNever: JsonSchema7Never = {
-  $id: "/schemas/never",
-  not: {}
-}
-
-const constAny: JsonSchema7Any = {
-  $id: "/schemas/any"
-}
-
-const constUnknown: JsonSchema7Unknown = {
-  $id: "/schemas/unknown"
-}
-
-const constVoid: JsonSchema7Void = {
-  $id: "/schemas/void"
-}
-
-const constObject: JsonSchema7object = {
-  $id: "/schemas/object",
-  "anyOf": [
-    { "type": "object" },
-    { "type": "array" }
-  ]
-}
-
-const constEmptyStruct: JsonSchema7empty = {
-  $id: "/schemas/%7B%7D",
-  "anyOf": [
-    { "type": "object" },
-    { "type": "array" }
-  ]
-}
-
-function getRawDescription(annotated: AST.Annotated | undefined): string | undefined {
-  if (annotated !== undefined) return Option.getOrUndefined(AST.getDescriptionAnnotation(annotated))
-}
-
-function getRawTitle(annotated: AST.Annotated | undefined): string | undefined {
-  if (annotated !== undefined) return Option.getOrUndefined(AST.getTitleAnnotation(annotated))
-}
-
-function getRawDefault(annotated: AST.Annotated | undefined): Option.Option<unknown> {
-  if (annotated !== undefined) return AST.getDefaultAnnotation(annotated)
-  return Option.none()
-}
-
-function encodeDefault(ast: AST.AST, def: unknown): Option.Option<unknown> {
-  const getOption = ParseResult.getOption(ast, false)
-  return getOption(def)
-}
-
-function getRawExamples(annotated: AST.Annotated | undefined): ReadonlyArray<unknown> | undefined {
-  if (annotated !== undefined) return Option.getOrUndefined(AST.getExamplesAnnotation(annotated))
-}
-
-function encodeExamples(ast: AST.AST, examples: ReadonlyArray<unknown>): Array<JsonValue> | undefined {
-  const getOption = ParseResult.getOption(ast, false)
-  const out = Arr.filterMap(examples, (e) => getOption(e).pipe(Option.filter(isJsonValue)))
-  return out.length > 0 ? out : undefined
-}
-
-function filterBuiltIn(ast: AST.AST, annotation: string | undefined, key: symbol): string | undefined {
-  if (annotation !== undefined) {
-    switch (ast._tag) {
-      case "StringKeyword":
-        return annotation !== AST.stringKeyword.annotations[key] ? annotation : undefined
-      case "NumberKeyword":
-        return annotation !== AST.numberKeyword.annotations[key] ? annotation : undefined
-      case "BooleanKeyword":
-        return annotation !== AST.booleanKeyword.annotations[key] ? annotation : undefined
+export function resolveTopLevel$ref(document: Document<"draft-2020-12">): Document<"draft-2020-12"> {
+  if (typeof document.schema.$ref === "string") {
+    const schema = resolve$ref(document.schema.$ref, document.definitions)
+    if (schema !== undefined) {
+      return { ...document, schema }
     }
   }
-  return annotation
-}
-
-function isJsonValue(value: unknown, visited: Set<unknown> = new Set()): value is JsonValue {
-  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return true
-  }
-  if (Array.isArray(value) || typeof value === "object") {
-    // Check for cyclic references
-    if (visited.has(value)) {
-      return false
-    }
-    visited.add(value)
-    try {
-      if (Array.isArray(value)) {
-        return value.every((item) => isJsonValue(item, visited))
-      }
-      // Exclude non-plain objects (Date, RegExp, etc.) by checking constructor
-      const proto = Object.getPrototypeOf(value)
-      if (proto !== null && proto !== Object.prototype) {
-        return false
-      }
-      // JSON only allows string keys, so exclude objects with Symbol keys
-      if (Object.getOwnPropertySymbols(value).length > 0) {
-        return false
-      }
-      // Check all values are JSON values
-      return Object.values(value).every((v) => isJsonValue(v, visited))
-    } finally {
-      visited.delete(value)
-    }
-  }
-  return false
-}
-
-function pruneJsonSchemaAnnotations(
-  ast: AST.AST,
-  description: string | undefined,
-  title: string | undefined,
-  def: Option.Option<unknown>,
-  examples: ReadonlyArray<unknown> | undefined
-): JsonSchemaAnnotations | undefined {
-  const out: JsonSchemaAnnotations = {}
-  if (description !== undefined) out.description = description
-  if (title !== undefined) out.title = title
-  if (Option.isSome(def)) {
-    const o = encodeDefault(ast, def.value)
-    if (Option.isSome(o) && isJsonValue(o.value)) {
-      out.default = o.value
-    }
-  }
-  if (examples !== undefined) {
-    const encodedExamples = encodeExamples(ast, examples)
-    if (encodedExamples !== undefined) {
-      out.examples = encodedExamples
-    }
-  }
-  if (Object.keys(out).length === 0) {
-    return undefined
-  }
-  return out
-}
-
-function getContextJsonSchemaAnnotations(ast: AST.AST, annotated: AST.Annotated): JsonSchemaAnnotations | undefined {
-  return pruneJsonSchemaAnnotations(
-    ast,
-    getRawDescription(annotated),
-    getRawTitle(annotated),
-    getRawDefault(annotated),
-    getRawExamples(annotated)
-  )
-}
-
-function getJsonSchemaAnnotations(ast: AST.AST): JsonSchemaAnnotations | undefined {
-  return pruneJsonSchemaAnnotations(
-    ast,
-    filterBuiltIn(ast, getRawDescription(ast), AST.DescriptionAnnotationId),
-    filterBuiltIn(ast, getRawTitle(ast), AST.TitleAnnotationId),
-    getRawDefault(ast),
-    getRawExamples(ast)
-  )
-}
-
-function mergeJsonSchemaAnnotations(
-  jsonSchema: JsonSchema7,
-  jsonSchemaAnnotations: JsonSchemaAnnotations | undefined
-): JsonSchema7 {
-  if (jsonSchemaAnnotations) {
-    if ("$ref" in jsonSchema) {
-      return { allOf: [jsonSchema], ...jsonSchemaAnnotations } as any
-    }
-    return { ...jsonSchema, ...jsonSchemaAnnotations }
-  }
-  return jsonSchema
-}
-
-const pruneUndefined = (ast: AST.AST): AST.AST | undefined => {
-  if (Option.isNone(AST.getJSONSchemaAnnotation(ast))) {
-    return AST.pruneUndefined(ast, pruneUndefined, (ast) => pruneUndefined(ast.from))
-  }
-}
-
-const isParseJsonTransformation = (ast: AST.AST): boolean =>
-  ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
-
-const isOverrideAnnotation = (ast: AST.AST, jsonSchema: JsonSchema7): boolean => {
-  if (AST.isRefinement(ast)) {
-    const schemaId = ast.annotations[AST.SchemaIdAnnotationId]
-    if (schemaId === schemaId_.IntSchemaId) {
-      return "type" in jsonSchema && jsonSchema.type !== "integer"
-    }
-  }
-  return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("$ref" in jsonSchema)
-}
-
-const mergeRefinements = (from: any, jsonSchema: any, ast: AST.AST): any => {
-  const out: any = { ...from, ...getJsonSchemaAnnotations(ast), ...jsonSchema }
-  out.allOf ??= []
-
-  const handle = (name: string, filter: (i: any) => boolean) => {
-    if (name in jsonSchema && name in from) {
-      out.allOf.unshift({ [name]: from[name] })
-      out.allOf = out.allOf.filter(filter)
-    }
-  }
-
-  handle("minLength", (i) => i.minLength > jsonSchema.minLength)
-  handle("maxLength", (i) => i.maxLength < jsonSchema.maxLength)
-  handle("pattern", (i) => i.pattern !== jsonSchema.pattern)
-  handle("minItems", (i) => i.minItems > jsonSchema.minItems)
-  handle("maxItems", (i) => i.maxItems < jsonSchema.maxItems)
-  handle("minimum", (i) => i.minimum > jsonSchema.minimum)
-  handle("maximum", (i) => i.maximum < jsonSchema.maximum)
-  handle("exclusiveMinimum", (i) => i.exclusiveMinimum > jsonSchema.exclusiveMinimum)
-  handle("exclusiveMaximum", (i) => i.exclusiveMaximum < jsonSchema.exclusiveMaximum)
-  handle("multipleOf", (i) => i.multipleOf !== jsonSchema.multipleOf)
-
-  if (out.allOf.length === 0) {
-    delete out.allOf
-  }
-  return out
-}
-
-type GoOptions = {
-  readonly getRef: (id: string) => string
-  readonly target: Target
-  readonly topLevelReferenceStrategy: TopLevelReferenceStrategy
-  readonly additionalPropertiesStrategy: AdditionalPropertiesStrategy
-}
-
-function isContentSchemaSupported(options: GoOptions): boolean {
-  switch (options.target) {
-    case "jsonSchema7":
-      return false
-    case "jsonSchema2019-09":
-    case "jsonSchema2020-12":
-    case "openApi3.1":
-      return true
-  }
-}
-
-function getAdditionalProperties(options: GoOptions): boolean {
-  switch (options.additionalPropertiesStrategy) {
-    case "allow":
-      return true
-    case "strict":
-      return false
-  }
-}
-
-function addASTAnnotations(jsonSchema: JsonSchema7, ast: AST.AST): JsonSchema7 {
-  return addAnnotations(jsonSchema, getJsonSchemaAnnotations(ast))
-}
-
-function addAnnotations(jsonSchema: JsonSchema7, annotations: JsonSchemaAnnotations | undefined): JsonSchema7 {
-  if (annotations === undefined || Object.keys(annotations).length === 0) {
-    return jsonSchema
-  }
-  if ("$ref" in jsonSchema) {
-    return { allOf: [jsonSchema], ...annotations } as any
-  }
-  return { ...jsonSchema, ...annotations }
-}
-
-function getIdentifierAnnotation(ast: AST.AST): string | undefined {
-  const identifier = Option.getOrUndefined(AST.getJSONIdentifier(ast))
-  if (identifier === undefined) {
-    if (AST.isSuspend(ast)) {
-      return getIdentifierAnnotation(ast.f())
-    }
-    if (AST.isTransformation(ast) && AST.isTypeLiteral(ast.from) && AST.isDeclaration(ast.to)) {
-      const to = ast.to
-      const surrogate = AST.getSurrogateAnnotation(to)
-      if (Option.isSome(surrogate)) {
-        return getIdentifierAnnotation(to)
-      }
-    }
-  }
-  return identifier
-}
-
-function go(
-  ast: AST.AST,
-  $defs: Record<string, JsonSchema7>,
-  identifier: "handle-identifier" | "ignore-identifier",
-  path: ReadonlyArray<PropertyKey>,
-  options: GoOptions,
-  annotation: "handle-annotation" | "ignore-annotation",
-  errors: "handle-errors" | "ignore-errors"
-): JsonSchema7 {
-  if (
-    identifier === "handle-identifier" &&
-    (options.topLevelReferenceStrategy !== "skip" || AST.isSuspend(ast))
-  ) {
-    const id = getIdentifierAnnotation(ast)
-    if (id !== undefined) {
-      const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")
-      const out = { $ref: options.getRef(escapedId) }
-      if (!Record.has($defs, id)) {
-        $defs[id] = out
-        $defs[id] = go(ast, $defs, "ignore-identifier", path, options, "handle-annotation", errors)
-      }
-      return out
-    }
-  }
-  if (annotation === "handle-annotation") {
-    const hook = AST.getJSONSchemaAnnotation(ast)
-    if (Option.isSome(hook)) {
-      const handler = hook.value as JsonSchema7
-      if (isOverrideAnnotation(ast, handler)) {
-        switch (ast._tag) {
-          case "Declaration":
-            return addASTAnnotations(handler, ast)
-          default:
-            return handler
-        }
-      } else {
-        switch (ast._tag) {
-          case "Refinement": {
-            const t = AST.getTransformationFrom(ast)
-            if (t === undefined) {
-              return mergeRefinements(
-                go(ast.from, $defs, identifier, path, options, "handle-annotation", errors),
-                handler,
-                ast
-              )
-            } else {
-              return go(t, $defs, identifier, path, options, "handle-annotation", errors)
-            }
-          }
-          default:
-            return {
-              ...go(ast, $defs, identifier, path, options, "ignore-annotation", errors),
-              ...handler
-            } as any
-        }
-      }
-    }
-  }
-  const surrogate = AST.getSurrogateAnnotation(ast)
-  if (Option.isSome(surrogate)) {
-    return go(surrogate.value, $defs, identifier, path, options, "handle-annotation", errors)
-  }
-  switch (ast._tag) {
-    // Unsupported
-    case "Declaration":
-    case "UndefinedKeyword":
-    case "BigIntKeyword":
-    case "UniqueSymbol":
-    case "SymbolKeyword": {
-      if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-    }
-    case "Suspend": {
-      if (identifier === "handle-identifier") {
-        if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
-        throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
-      }
-      return go(ast.f(), $defs, "ignore-identifier", path, options, "handle-annotation", errors)
-    }
-    // Primitives
-    case "NeverKeyword":
-      return addASTAnnotations(constNever, ast)
-    case "VoidKeyword":
-      return addASTAnnotations(constVoid, ast)
-    case "UnknownKeyword":
-      return addASTAnnotations(constUnknown, ast)
-    case "AnyKeyword":
-      return addASTAnnotations(constAny, ast)
-    case "ObjectKeyword":
-      return addASTAnnotations(constObject, ast)
-    case "StringKeyword":
-      return addASTAnnotations({ type: "string" }, ast)
-    case "NumberKeyword":
-      return addASTAnnotations({ type: "number" }, ast)
-    case "BooleanKeyword":
-      return addASTAnnotations({ type: "boolean" }, ast)
-    case "Literal": {
-      const literal = ast.literal
-      if (literal === null) {
-        return addASTAnnotations({ type: "null" }, ast)
-      } else if (Predicate.isString(literal)) {
-        return addASTAnnotations({ type: "string", enum: [literal] }, ast)
-      } else if (Predicate.isNumber(literal)) {
-        return addASTAnnotations({ type: "number", enum: [literal] }, ast)
-      } else if (Predicate.isBoolean(literal)) {
-        return addASTAnnotations({ type: "boolean", enum: [literal] }, ast)
-      }
-      if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-    }
-    case "Enums": {
-      const anyOf = ast.enums.map((e) => {
-        const type: "string" | "number" = Predicate.isNumber(e[1]) ? "number" : "string"
-        return { type, title: e[0], enum: [e[1]] }
-      })
-      return anyOf.length >= 1 ?
-        addASTAnnotations({
-          $comment: "/schemas/enums",
-          anyOf
-        }, ast) :
-        addASTAnnotations(constNever, ast)
-    }
-    case "TupleType": {
-      const elements = ast.elements.map((e, i) =>
-        mergeJsonSchemaAnnotations(
-          go(e.type, $defs, "handle-identifier", path.concat(i), options, "handle-annotation", errors),
-          getContextJsonSchemaAnnotations(e.type, e)
-        )
-      )
-      const rest = ast.rest.map((type) =>
-        mergeJsonSchemaAnnotations(
-          go(type.type, $defs, "handle-identifier", path, options, "handle-annotation", errors),
-          getContextJsonSchemaAnnotations(type.type, type)
-        )
-      )
-      const output: JsonSchema7Array = { type: "array" }
-      // ---------------------------------------------
-      // handle elements
-      // ---------------------------------------------
-      const len = ast.elements.length
-      if (len > 0) {
-        output.minItems = len - ast.elements.filter((element) => element.isOptional).length
-        if (options.target === "jsonSchema7") {
-          output.items = elements
-        } else {
-          output.prefixItems = elements
-        }
-      }
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      const restLength = rest.length
-      if (restLength > 0) {
-        const head = rest[0]
-        const isHomogeneous = restLength === 1 && ast.elements.every((e) => e.type === ast.rest[0].type)
-        if (isHomogeneous) {
-          if (options.target === "jsonSchema7") {
-            output.items = head
-          } else {
-            output.items = head
-            delete output.prefixItems
-          }
-        } else {
-          if (options.target === "jsonSchema7") {
-            output.additionalItems = head
-          } else {
-            output.items = head
-          }
-        }
-
-        // ---------------------------------------------
-        // handle post rest elements
-        // ---------------------------------------------
-        if (restLength > 1) {
-          if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
-          throw new Error(errors_.getJSONSchemaUnsupportedPostRestElementsErrorMessage(path))
-        }
-      } else {
-        if (len > 0) {
-          if (options.target === "jsonSchema7") {
-            output.additionalItems = false
-          } else {
-            output.items = false
-          }
-        } else {
-          output.maxItems = 0
-        }
-      }
-
-      return addASTAnnotations(output, ast)
-    }
-    case "TypeLiteral": {
-      if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return addASTAnnotations(constEmptyStruct, ast)
-      }
-      const output: JsonSchema7Object = {
-        type: "object",
-        required: [],
-        properties: {},
-        additionalProperties: getAdditionalProperties(options)
-      }
-      let patternProperties: JsonSchema7 | undefined = undefined
-      let propertyNames: JsonSchema7 | undefined = undefined
-      for (const is of ast.indexSignatures) {
-        const pruned = pruneUndefined(is.type) ?? is.type
-        const parameter = is.parameter
-        switch (parameter._tag) {
-          case "StringKeyword": {
-            const additionalProperties = go(
-              pruned,
-              $defs,
-              "handle-identifier",
-              path,
-              options,
-              "handle-annotation",
-              errors
-            )
-            output.additionalProperties = isNeverWithoutCustomAnnotations(additionalProperties)
-              ? false
-              : additionalProperties
-            break
-          }
-          case "TemplateLiteral": {
-            patternProperties = go(pruned, $defs, "handle-identifier", path, options, "handle-annotation", errors)
-            propertyNames = {
-              type: "string",
-              pattern: AST.getTemplateLiteralRegExp(parameter).source
-            }
-            break
-          }
-          case "Refinement": {
-            patternProperties = go(pruned, $defs, "handle-identifier", path, options, "handle-annotation", errors)
-            propertyNames = go(parameter, $defs, "handle-identifier", path, options, "handle-annotation", errors)
-            break
-          }
-          case "SymbolKeyword": {
-            const indexSignaturePath = path.concat("[symbol]")
-            output.additionalProperties = go(
-              pruned,
-              $defs,
-              "handle-identifier",
-              indexSignaturePath,
-              options,
-              "handle-annotation",
-              errors
-            )
-            propertyNames = go(
-              parameter,
-              $defs,
-              "handle-identifier",
-              indexSignaturePath,
-              options,
-              "handle-annotation",
-              errors
-            )
-            break
-          }
-        }
-      }
-      // ---------------------------------------------
-      // handle property signatures
-      // ---------------------------------------------
-      for (let i = 0; i < ast.propertySignatures.length; i++) {
-        const ps = ast.propertySignatures[i]
-        const name = ps.name
-        if (Predicate.isString(name)) {
-          const pruned = pruneUndefined(ps.type)
-          const type = pruned ?? ps.type
-          output.properties[name] = mergeJsonSchemaAnnotations(
-            go(type, $defs, "handle-identifier", path.concat(ps.name), options, "handle-annotation", errors),
-            getContextJsonSchemaAnnotations(type, ps)
-          )
-          // ---------------------------------------------
-          // handle optional property signatures
-          // ---------------------------------------------
-          if (!ps.isOptional && pruned === undefined) {
-            output.required.push(name)
-          }
-        } else {
-          if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
-          throw new Error(errors_.getJSONSchemaUnsupportedKeyErrorMessage(name, path))
-        }
-      }
-      // ---------------------------------------------
-      // handle index signatures
-      // ---------------------------------------------
-      if (patternProperties !== undefined) {
-        delete output.additionalProperties
-        output.patternProperties = { "": patternProperties }
-      }
-      if (propertyNames !== undefined) {
-        output.propertyNames = propertyNames
-      }
-
-      return addASTAnnotations(output, ast)
-    }
-    case "Union": {
-      const members: Array<JsonSchema7> = ast.types.map((t) =>
-        go(t, $defs, "handle-identifier", path, options, "handle-annotation", errors)
-      )
-      const anyOf = compactUnion(members)
-      switch (anyOf.length) {
-        case 0:
-          return constNever
-        case 1:
-          return addASTAnnotations(anyOf[0], ast)
-        default:
-          return addASTAnnotations({ anyOf }, ast)
-      }
-    }
-    case "Refinement":
-      return go(ast.from, $defs, identifier, path, options, "handle-annotation", errors)
-    case "TemplateLiteral": {
-      const regex = AST.getTemplateLiteralRegExp(ast)
-      return addASTAnnotations({
-        type: "string",
-        title: String(ast),
-        description: "a template literal",
-        pattern: regex.source
-      }, ast)
-    }
-    case "Transformation": {
-      if (isParseJsonTransformation(ast.from)) {
-        const out: JsonSchema7String & { contentSchema?: JsonSchema7 } = {
-          "type": "string",
-          "contentMediaType": "application/json"
-        }
-        if (isContentSchemaSupported(options)) {
-          out["contentSchema"] = go(ast.to, $defs, identifier, path, options, "handle-annotation", errors)
-        }
-        return out
-      }
-      const from = go(ast.from, $defs, identifier, path, options, "handle-annotation", errors)
-      if (
-        ast.transformation._tag === "TypeLiteralTransformation" &&
-        isJsonSchema7Object(from)
-      ) {
-        const to = go(ast.to, {}, "ignore-identifier", path, options, "handle-annotation", "ignore-errors")
-        if (isJsonSchema7Object(to)) {
-          for (const t of ast.transformation.propertySignatureTransformations) {
-            const toKey = t.to
-            const fromKey = t.from
-            if (Predicate.isString(toKey) && Predicate.isString(fromKey)) {
-              const toProperty = to.properties[toKey]
-              if (Predicate.isRecord(toProperty)) {
-                const fromProperty = from.properties[fromKey]
-                if (Predicate.isRecord(fromProperty)) {
-                  const annotations: JsonSchemaAnnotations = {}
-                  if (Predicate.isString(toProperty.title)) annotations.title = toProperty.title
-                  if (Predicate.isString(toProperty.description)) annotations.description = toProperty.description
-                  if (Array.isArray(toProperty.examples)) annotations.examples = toProperty.examples
-                  if (Object.hasOwn(toProperty, "default") && toProperty.default !== undefined) {
-                    annotations.default = toProperty.default
-                  }
-                  from.properties[fromKey] = addAnnotations(fromProperty, annotations)
-                }
-              }
-            }
-          }
-        }
-      }
-      return addASTAnnotations(from, ast)
-    }
-  }
-}
-
-function isJsonSchema7Object(jsonSchema: unknown): jsonSchema is JsonSchema7Object {
-  return Predicate.isRecord(jsonSchema) && jsonSchema.type === "object" && Predicate.isRecord(jsonSchema.properties)
-}
-
-function isNeverWithoutCustomAnnotations(jsonSchema: JsonSchema7): boolean {
-  return jsonSchema === constNever || (Predicate.hasProperty(jsonSchema, "$id") && jsonSchema.$id === constNever.$id &&
-    Object.keys(jsonSchema).length === 3 && jsonSchema.title === AST.neverKeyword.annotations[AST.TitleAnnotationId])
-}
-
-function isAny(jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Any {
-  return "$id" in jsonSchema && jsonSchema.$id === constAny.$id
-}
-
-function isUnknown(jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Unknown {
-  return "$id" in jsonSchema && jsonSchema.$id === constUnknown.$id
-}
-
-function isVoid(jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Void {
-  return "$id" in jsonSchema && jsonSchema.$id === constVoid.$id
-}
-
-function isCompactableLiteral(jsonSchema: JsonSchema7 | undefined): jsonSchema is JsonSchema7Enum {
-  return Predicate.hasProperty(jsonSchema, "enum") && "type" in jsonSchema && Object.keys(jsonSchema).length === 2
-}
-
-function compactUnion(members: Array<JsonSchema7>): Array<JsonSchema7> {
-  const out: Array<JsonSchema7> = []
-  for (const m of members) {
-    if (isNeverWithoutCustomAnnotations(m)) continue
-    if (isAny(m) || isUnknown(m) || isVoid(m)) return [m]
-    if (isCompactableLiteral(m) && out.length > 0) {
-      const last = out[out.length - 1]
-      if (isCompactableLiteral(last) && last.type === m.type) {
-        out[out.length - 1] = {
-          type: last.type,
-          enum: [...last.enum, ...m.enum]
-        } as JsonSchema7Enum
-        continue
-      }
-    }
-    out.push(m)
-  }
-  return out
+  return document
 }
