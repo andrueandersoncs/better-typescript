@@ -1,5 +1,6 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
+import { isCallLikeExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -34,25 +35,14 @@ const arrayLiteralMatches = (context: CheckContext) => {
   return matches
 }
 
-/**
- * ArrayConstructorNode is the syntax contract shared by array-constructor
- * candidate detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   expressions drift.
- * @modelRole shared
- */
-export type ArrayConstructorNode = ts.NewExpression | ts.CallExpression
-
-const isArrayConstructorNode = (node: ts.Node): node is ArrayConstructorNode =>
-  ts.isNewExpression(node) || ts.isCallExpression(node)
-
 const arrayConstructorMatches = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ArrayConstructorNode): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isCallLikeExpression(node)) {
+      return Array.empty()
+    }
+
     const isBareArray = pipe(
       Option.liftPredicate(ts.isIdentifier)(node.expression),
       Option.exists(isArrayIdentifier)
@@ -85,7 +75,7 @@ const arrayLiteralListeners = nodeSubscriptions(arrayLiteralKinds)(ts.isArrayLit
 const arrayConstructorKinds = Array.make(ts.SyntaxKind.NewExpression, ts.SyntaxKind.CallExpression)
 
 const arrayConstructorListeners =
-  nodeSubscriptions(arrayConstructorKinds)(isArrayConstructorNode)(arrayConstructorMatches)
+  nodeSubscriptions(arrayConstructorKinds)(isCallLikeExpression)(arrayConstructorMatches)
 
 const arrayConstructorSubscriptions = Array.make(arrayLiteralListeners, arrayConstructorListeners)
 

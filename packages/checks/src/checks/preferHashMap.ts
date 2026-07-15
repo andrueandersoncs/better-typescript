@@ -1,6 +1,6 @@
 import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
-import { isInAmbientContext } from "./support/tsNode.js"
+import { isInAmbientContext, type NewOrTypeReferenceNode } from "./support/tsNode.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
@@ -33,19 +33,7 @@ const typeRefHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
-/**
- * MapRuleNode is the syntax contract shared by Map candidate detection and
- * matching.
- *
- * @remarks
- *   It remains explicit because constructor and type-reference syntax need one
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted expressions drift.
- * @modelRole shared
- */
-export type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
-
-const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
+const isMapRuleNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
@@ -58,7 +46,11 @@ const mapMatches = (context: CheckContext) => {
   const constructionEscapes = constructionEscapesExternally(context.checker)
   const typeRefEscapes = typeReferenceEscapesExternally(context.checker)
 
-  const matches = (node: MapRuleNode): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isMapRuleNode(node)) {
+      return Array.empty()
+    }
+
     if (ts.isNewExpression(node)) {
       const expressionOption = Option.liftPredicate(ts.isIdentifier)(node.expression)
       const isMapConstruction = Option.exists(expressionOption, isMapIdentifier)

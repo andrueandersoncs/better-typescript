@@ -7,11 +7,11 @@ import {
 } from "@better-typescript/core/engine/sources"
 import {
   conciseArrowBody,
-  isFunctionInitializer,
   namedDetectionTarget,
   outermostTransparentWrapper,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
+import { isFunctionDefinition, isFunctionInitializer } from "../support/tsNode.js"
 import { resolvedCallSignature, signatureIsExternal } from "../support/tsSignature.js"
 import { hasCallSignature } from "../support/tsType.js"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -65,41 +65,12 @@ const isContextualOnlyUse = (use: SymbolUse): boolean => {
   return Array.every(referenceConditions, Boolean)
 }
 
-/**
- * CurriedDataLastCandidate is the syntax contract shared by parameter,
- * arrow-body, and runtime-parameter analysis.
- *
- * @remarks
- *   It remains explicit because all three owners need one stable compiler- node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
-export type CurriedDataLastCandidate =
-  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
-
-const candidateKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
+const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.MethodDeclaration
 )
-
-const isCurriedDataLastCandidate = (node: ts.Node): node is CurriedDataLastCandidate => {
-  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
-  const isFunctionExpression = ts.isFunctionExpression(node)
-  const isArrowFunction = ts.isArrowFunction(node)
-  const isMethodDeclaration = ts.isMethodDeclaration(node)
-
-  const functionLikeConditions = Array.make(
-    isFunctionDeclaration,
-    isFunctionExpression,
-    isArrowFunction,
-    isMethodDeclaration
-  )
-
-  return Array.some(functionLikeConditions, Boolean)
-}
 
 const isRuntimeParameter = (parameter: ts.ParameterDeclaration): boolean => {
   const sourceFile = parameter.getSourceFile()
@@ -111,15 +82,24 @@ const isRuntimeParameter = (parameter: ts.ParameterDeclaration): boolean => {
 const parameterHasRestToken = (parameter: ts.ParameterDeclaration): boolean =>
   pipe(Option.fromNullable(parameter.dotDotDotToken), Option.isSome)
 
-const hasRestParameter = (declaration: CurriedDataLastCandidate): boolean =>
-  Array.some(declaration.parameters, parameterHasRestToken)
+const hasRestParameter = (declaration: ts.Node): boolean =>
+  pipe(
+    Option.liftPredicate(isFunctionDefinition)(declaration),
+    Option.exists((functionDefinition) =>
+      Array.some(functionDefinition.parameters, parameterHasRestToken)
+    )
+  )
 
-const runtimeParameters = (
-  declaration: CurriedDataLastCandidate
-): ReadonlyArray<ts.ParameterDeclaration> =>
-  Array.filter(declaration.parameters, isRuntimeParameter)
+const runtimeParameters = (declaration: ts.Node): ReadonlyArray<ts.ParameterDeclaration> =>
+  pipe(
+    Option.liftPredicate(isFunctionDefinition)(declaration),
+    Option.map((functionDefinition) =>
+      Array.filter(functionDefinition.parameters, isRuntimeParameter)
+    ),
+    Option.getOrElse(Array.empty)
+  )
 
-const hasDisallowedParameterList = (declaration: CurriedDataLastCandidate): boolean => {
+const hasDisallowedParameterList = (declaration: ts.Node): boolean => {
   const declarationHasRestParameter = hasRestParameter(declaration)
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
   const conditions = Array.make(declarationHasRestParameter, hasMultipleRuntimeParameters)
@@ -127,7 +107,7 @@ const hasDisallowedParameterList = (declaration: CurriedDataLastCandidate): bool
   return Array.some(conditions, Boolean)
 }
 
-const hasCurriedArrowBody = (declaration: CurriedDataLastCandidate): boolean => {
+const hasCurriedArrowBody = (declaration: ts.Node): boolean => {
   const parameters = runtimeParameters(declaration)
   const hasSingleRuntimeParameter = parameters.length === 1
   const hasNoRestParameter = !hasRestParameter(declaration)
@@ -153,7 +133,7 @@ const contextualType =
 
 const isContextuallyTypedFunction =
   (checker: ts.TypeChecker) =>
-  (declaration: CurriedDataLastCandidate): boolean =>
+  (declaration: ts.Node): boolean =>
     pipe(
       Option.liftPredicate(isFunctionInitializer)(declaration),
       Option.exists((expression) =>
@@ -197,7 +177,7 @@ const variableDeclarationIdentifierName = (
 
 const symbolForDeclaration =
   (checker: ts.TypeChecker) =>
-  (declaration: CurriedDataLastCandidate): Option.Option<ts.Symbol> => {
+  (declaration: ts.Node): Option.Option<ts.Symbol> => {
     const methodName = pipe(
       Option.liftPredicate(ts.isMethodDeclaration)(declaration),
       Option.flatMap(namedFunctionDeclarationName)
@@ -247,7 +227,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
     (node: ts.Node) =>
     (currentSymbols: HashSet.HashSet<ts.Symbol>): HashSet.HashSet<ts.Symbol> =>
       pipe(
-        Option.liftPredicate(isCurriedDataLastCandidate)(node),
+        Option.liftPredicate(isFunctionDefinition)(node),
         Option.filter((declaration) => {
           const hasDisallowedParameters = hasDisallowedParameterList(declaration)
           const hasCurriedBody = hasCurriedArrowBody(declaration)
@@ -385,7 +365,11 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
   const elements = (context: CheckContext) => {
     const makeElement = detection(context)
 
-    const matches = (declaration: CurriedDataLastCandidate): ReadonlyArray<Detection> => {
+    const matches = (declaration: ts.Node): ReadonlyArray<Detection> => {
+      if (!isFunctionDefinition(declaration)) {
+        return Array.empty()
+      }
+
       const hasDisallowedParameters = hasDisallowedParameterList(declaration)
       const hasCurriedBody = hasCurriedArrowBody(declaration)
       const isContextual = isContextuallyTypedFunction(context.checker)(declaration)
@@ -437,7 +421,7 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
     return matches
   }
 
-  return nodeSubscriptions(candidateKinds)(isCurriedDataLastCandidate)(elements)
+  return nodeSubscriptions(functionDefinitionKinds)(isFunctionDefinition)(elements)
 }
 
 const check = withProgramIndex(buildSymbolUses)(curriedDataLastListeners)

@@ -1,6 +1,7 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { isFunctionInitializer, namedDetectionTarget } from "./support/tsNode.js"
+import { namedDetectionTarget } from "./support/tsNode.js"
+import { isFunctionDefinition, isFunctionInitializer } from "./support/tsNode.js"
 import { isVoidType, permitsVoid } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -10,41 +11,12 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
-/**
- * VoidableFunction is the syntax contract shared by void-function candidate
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
-export type VoidableFunction =
-  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
-
 const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.MethodDeclaration
 )
-
-const isVoidableFunction = (node: ts.Node): node is VoidableFunction => {
-  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
-  const isFunctionExpression = ts.isFunctionExpression(node)
-  const isArrowFunction = ts.isArrowFunction(node)
-  const isMethodDeclaration = ts.isMethodDeclaration(node)
-
-  const conditions = Array.make(
-    isFunctionDeclaration,
-    isFunctionExpression,
-    isArrowFunction,
-    isMethodDeclaration
-  )
-
-  return Array.some(conditions, Boolean)
-}
 
 const objectLiteralParent = (
   declaration: ts.MethodDeclaration
@@ -55,7 +27,11 @@ const voidFunctionMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const matches = (declaration: VoidableFunction): ReadonlyArray<Detection> => {
+  const matches = (declaration: ts.Node): ReadonlyArray<Detection> => {
+    if (!isFunctionDefinition(declaration)) {
+      return Array.empty()
+    }
+
     const contextualTypeNode = isFunctionInitializer(declaration)
       ? checker.getContextualType(declaration)
       : undefined
@@ -120,7 +96,7 @@ const voidFunctionMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(voidableFunctionKinds)(isVoidableFunction)(voidFunctionMatches)
+const check = nodeCheck(voidableFunctionKinds)(isFunctionDefinition)(voidFunctionMatches)
 
 export const noVoidFunctions: Check = check
 

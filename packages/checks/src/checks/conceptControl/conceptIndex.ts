@@ -20,6 +20,8 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import {
   functionInitializer,
   hasExportModifier,
+  noneTypeShape,
+  returnedExpression,
   unwrapCallee,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
@@ -234,6 +236,80 @@ const shapeFor = (
   return pipe(parts, Array.join("|"), Option.some)
 }
 
+const unwrapParenthesizedType = (type: ts.TypeNode): ts.TypeNode =>
+  ts.isParenthesizedTypeNode(type) ? unwrapParenthesizedType(type.type) : type
+
+const compactTypeText = (type: ts.TypeNode): string => type.getText().replace(/\s+/g, " ").trim()
+
+const flattenUnionMembers = (type: ts.TypeNode): ReadonlyArray<ts.TypeNode> => {
+  const unwrapped = unwrapParenthesizedType(type)
+
+  return ts.isUnionTypeNode(unwrapped)
+    ? Array.flatMap(unwrapped.types, flattenUnionMembers)
+    : Array.of(unwrapped)
+}
+
+const flattenIntersectionMembers = (type: ts.TypeNode): ReadonlyArray<ts.TypeNode> => {
+  const unwrapped = unwrapParenthesizedType(type)
+
+  return ts.isIntersectionTypeNode(unwrapped)
+    ? Array.flatMap(unwrapped.types, flattenIntersectionMembers)
+    : Array.of(unwrapped)
+}
+
+const structureShapeForAlias = (declaration: ts.TypeAliasDeclaration): Option.Option<string> =>
+  pipe(
+    declaration.type,
+    unwrapParenthesizedType,
+    Match.value,
+    Match.when(ts.isUnionTypeNode, (unionType) =>
+      pipe(
+        flattenUnionMembers(unionType),
+        Array.map(compactTypeText),
+        Array.sort(Order.string),
+        Array.join("|"),
+        (members) => `union:${members}`,
+        Option.some
+      )
+    ),
+    Match.when(ts.isIntersectionTypeNode, (intersectionType) =>
+      pipe(
+        flattenIntersectionMembers(intersectionType),
+        Array.map(compactTypeText),
+        Array.sort(Order.string),
+        Array.join("&"),
+        (members) => `intersection:${members}`,
+        Option.some
+      )
+    ),
+    Match.when(ts.isTupleTypeNode, (tupleType) =>
+      pipe(
+        Array.map(tupleType.elements, compactTypeText),
+        Array.join(","),
+        (members) => `tuple:${members}`,
+        Option.some
+      )
+    ),
+    Match.orElse(Function.constant(noneTypeShape))
+  )
+
+const shapeForDeclaration = (
+  checker: ts.TypeChecker,
+  declaration: DataStructureDeclaration,
+  fieldSymbols: ReadonlyArray<ts.Symbol>
+): Option.Option<string> => {
+  const fieldShape = declarationHasComparableShape(declaration)
+    ? shapeFor(checker, fieldSymbols)
+    : Option.none<string>()
+
+  const aliasShape = pipe(
+    Option.liftPredicate(ts.isTypeAliasDeclaration)(declaration),
+    Option.flatMap(structureShapeForAlias)
+  )
+
+  return pipe(fieldShape, Option.orElse(Function.constant(aliasShape)))
+}
+
 const entryForDeclaration = (
   checker: ts.TypeChecker,
   declaration: DataStructureDeclaration,
@@ -245,11 +321,7 @@ const entryForDeclaration = (
     symbolAt(checker)(nameNode),
     Option.map((symbol) => {
       const fieldSymbols = fieldsFor(checker, nameNode)
-
-      const shape = declarationHasComparableShape(declaration)
-        ? shapeFor(checker, fieldSymbols)
-        : Option.none<string>()
-
+      const shape = shapeForDeclaration(checker, declaration, fieldSymbols)
       const sourceFile = nameNode.getSourceFile()
 
       return new DataStructureEntry({
@@ -789,28 +861,6 @@ const modelFromConstruction = (
     Match.orElse(Function.constant(noneDataStructureEntry))
   )
 
-const expressionBodiedArrow = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
-  pipe(
-    Option.liftPredicate(ts.isArrowFunction)(definition),
-    Option.map(Struct.get("body")),
-    Option.filter((body): body is ts.Expression => !ts.isBlock(body))
-  )
-
-const singleReturnExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
-  pipe(
-    Option.fromNullable(definition.body),
-    Option.filter(ts.isBlock),
-    Option.map((body) => Array.filter(body.statements, ts.isReturnStatement)),
-    Option.filter((returns) => returns.length === 1),
-    Option.flatMap((returns) => Option.fromNullable(returns[0].expression))
-  )
-
-const returnedExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> => {
-  const blockReturn = singleReturnExpression(definition)
-
-  return pipe(expressionBodiedArrow(definition), Option.orElse(Function.constant(blockReturn)))
-}
-
 const objectLiteralArgument = (
   expression: ts.NewExpression | ts.CallExpression
 ): Option.Option<ts.ObjectLiteralExpression> =>
@@ -876,9 +926,9 @@ const propertyCopiesParameter = (
   )
 
 const parameterModel = (
+  definition: FunctionDefinition,
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
-  definition: FunctionDefinition
+  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>
 ): Option.Option<readonly [ts.Identifier, DataStructureEntry]> => {
   const models = Array.filterMap(definition.parameters, (parameter) =>
     pipe(
@@ -898,9 +948,9 @@ const parameterModel = (
 }
 
 const returnModel = (
+  definition: FunctionDefinition,
   checker: ts.TypeChecker,
   dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
-  definition: FunctionDefinition,
   expression: ts.Expression
 ): Option.Option<DataStructureEntry> => {
   const constructed = modelFromConstruction(checker, dataBySymbol, expression)
@@ -944,7 +994,7 @@ const passThroughConversion = (
     entry.definition,
     Option.flatMap((definition) =>
       pipe(
-        parameterModel(checker, dataBySymbol, definition),
+        parameterModel(definition, checker, dataBySymbol),
         Option.flatMap(([parameter, source]) =>
           pipe(
             returnedExpression(definition),
@@ -959,7 +1009,7 @@ const passThroughConversion = (
                 ),
                 Option.flatMap(() =>
                   pipe(
-                    returnModel(checker, dataBySymbol, definition, expression),
+                    returnModel(definition, checker, dataBySymbol, expression),
                     Option.filter((target) => target.symbol !== source.symbol),
                     Option.filter((target) => modelShapesMatch(source, target)),
                     Option.map(

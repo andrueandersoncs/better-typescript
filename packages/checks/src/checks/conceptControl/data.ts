@@ -1,5 +1,6 @@
 import { Data, HashMap, HashSet, Option, Schema } from "effect"
 import type * as ts from "typescript"
+import type { FunctionDefinition } from "../support/tsNode.js"
 
 /**
  * The declaration forms that introduce a first-party data concept.
@@ -17,17 +18,7 @@ export type DataStructureDeclaration =
   | ts.TypeAliasDeclaration
   | ts.VariableDeclaration
 
-/**
- * The named declaration forms that can own an executable abstraction.
- *
- * @remarks
- *   This union exists because call and model-use edges must resolve to one stable
- *   owner regardless of function declaration syntax. Removing it would make
- *   every graph consumer repeat arrow, method, and function ownership logic.
- * @modelRole protocol
- */
-export type FunctionDefinition =
-  ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration
+export type { FunctionDefinition }
 
 const modelRoleSchema = Schema.Literal("shared", "boundary", "invariant", "protocol", "recursive")
 

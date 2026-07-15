@@ -1,5 +1,6 @@
 import { Array, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
+import type { ReturnedExpressionNode } from "./support/tsNode.js"
 import {
   containsUndefinedType,
   isUndefinedReturnTypeDeclaration,
@@ -13,17 +14,6 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
-/**
- * UndefinedReturnExpression is the compiler syntax protocol handled by
- * undefined-return detection.
- *
- * @remarks
- *   It remains explicit because return statements and concise arrows share one
- *   matcher contract; removing it would repeat the union and let accepted cases
- *   drift.
- * @modelRole protocol
- */
-export type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 /**
  * UndefinedTypeDeclaration is the compiler syntax protocol handled by
  * undefined-type detection.
@@ -104,7 +94,7 @@ const getReturnExpression = (stmt: ts.ReturnStatement): Option.Option<ts.Express
 const getArrowExpressionBody = (fn: ts.ArrowFunction): Option.Option<ts.Expression> =>
   ts.isBlock(fn.body) ? Option.none() : Option.some(fn.body)
 
-const isUndefinedReturnExpression = (node: ts.Node): node is UndefinedReturnExpression => {
+const isUndefinedReturnedExpression = (node: ts.Node): node is ReturnedExpressionNode => {
   const returnStmt = Option.liftPredicate(ts.isReturnStatement)(node)
   const returnExprValue = Option.flatMap(returnStmt, getReturnExpression)
   const isUndefinedReturn = Option.exists(returnExprValue, isUndefinedExpression)
@@ -180,7 +170,7 @@ const returnTypeListeners = nodeSubscriptions(returnTypeDeclarationKinds)(
 const returnStatementKinds = Array.make(ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction)
 
 const returnExpressionListeners = nodeSubscriptions(returnStatementKinds)(
-  isUndefinedReturnExpression
+  isUndefinedReturnedExpression
 )(undefinedUsageMatches("return-expression"))
 
 const propertySignatureKinds = Array.make(ts.SyntaxKind.PropertySignature, ts.SyntaxKind.MappedType)

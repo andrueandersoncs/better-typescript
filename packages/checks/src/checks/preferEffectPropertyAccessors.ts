@@ -1,6 +1,10 @@
 import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
-import { conciseArrowBody, unwrapTransparentExpression } from "./support/tsNode.js"
+import {
+  conciseArrowBody,
+  isFunctionDefinition,
+  unwrapTransparentExpression
+} from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -9,41 +13,12 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
-/**
- * PropertyAccessorFunction is the syntax contract shared by property- accessor
- * candidate detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
-export type PropertyAccessorFunction =
-  ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration | ts.MethodDeclaration
-
-const propertyAccessorFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
+const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.MethodDeclaration
 )
-
-const isPropertyAccessorFunction = (node: ts.Node): node is PropertyAccessorFunction => {
-  const isArrowFunction = ts.isArrowFunction(node)
-  const isFunctionExpression = ts.isFunctionExpression(node)
-  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
-  const isMethodDeclaration = ts.isMethodDeclaration(node)
-
-  const checks = Array.make(
-    isArrowFunction,
-    isFunctionExpression,
-    isFunctionDeclaration,
-    isMethodDeclaration
-  )
-
-  return Array.some(checks, Boolean)
-}
 
 const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
   ts.isReturnStatement(statement) ? Option.fromNullable(statement.expression) : Option.none()
@@ -101,14 +76,19 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const propertyNameText = (name: ts.PropertyName): string => name.getText(sourceFile)
 
   const ruleMatch =
-    (node: PropertyAccessorFunction) =>
+    (node: ts.Node) =>
     (access: ts.PropertyAccessExpression): Detection => {
+      const definition = Option.liftPredicate(isFunctionDefinition)(node)
+
       const name = pipe(
-        Option.fromNullable(node.name),
+        definition,
+        Option.flatMap((functionDefinition) => Option.fromNullable(functionDefinition.name)),
         Option.map(propertyNameText),
         Option.orElse(() =>
           pipe(
-            Option.liftPredicate(ts.isVariableDeclaration)(node.parent),
+            definition,
+            Option.map(Struct.get("parent")),
+            Option.flatMap(Option.liftPredicate(ts.isVariableDeclaration)),
             Option.map(Struct.get("name")),
             Option.flatMap(identifierBindingNameText)
           )
@@ -131,7 +111,11 @@ const propertyAccessorMatches = (context: CheckContext) => {
       })
     }
 
-  const matches = (node: PropertyAccessorFunction): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isFunctionDefinition(node)) {
+      return Array.empty()
+    }
+
     const hasSingleParam = node.parameters.length === 1
 
     const singleParam = hasSingleParam
@@ -175,9 +159,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(propertyAccessorFunctionKinds)(isPropertyAccessorFunction)(
-  propertyAccessorMatches
-)
+const check = nodeCheck(functionDefinitionKinds)(isFunctionDefinition)(propertyAccessorMatches)
 
 export const preferEffectPropertyAccessors: Check = check
 

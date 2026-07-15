@@ -59,4 +59,22 @@ test("concept-control reports structural concept debt before accepting rationale
   const allowedSignals = signals.filter((signal) => signal.location.path.includes("src/allowed/"))
 
   assert.deepEqual(allowedSignals, [])
+
+  const duplicateMessages = signals
+    .filter((signal) => kindOf(signal) === "duplicate-shape")
+    .map((signal) => signal.message)
+
+  const expectedDuplicateMessages = [
+    "SecondaryAddress duplicates the concrete structure of PrimaryAddress.",
+    "SecondaryStatement duplicates the concrete structure of PrimaryStatement.",
+    "SecondaryBounds duplicates the concrete structure of PrimaryBounds.",
+    "SecondaryPair duplicates the concrete structure of PrimaryPair."
+  ]
+
+  for (const expected of expectedDuplicateMessages) {
+    assert.ok(
+      duplicateMessages.includes(expected),
+      `missing duplicate message ${expected}: ${duplicateMessages.join(", ")}`
+    )
+  }
 })

@@ -397,7 +397,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
       append(
         entry.nameNode,
-        `${entry.name} duplicates the concrete field structure of ${target.name}.`,
+        `${entry.name} duplicates the concrete structure of ${target.name}.`,
         duplicateHint,
         data
       )

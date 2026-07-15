@@ -1,5 +1,6 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
+import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -7,38 +8,6 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-
-/**
- * DeclarationStatement is the syntax contract shared by declaration detection
- * and contiguous single-line blank-line matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
-export type DeclarationStatement =
-  | ts.VariableStatement
-  | ts.FunctionDeclaration
-  | ts.ClassDeclaration
-  | ts.InterfaceDeclaration
-  | ts.TypeAliasDeclaration
-  | ts.EnumDeclaration
-  | ts.ModuleDeclaration
-
-/**
- * StatementContainer is the compiler syntax protocol handled by
- * declaration-neighbor lookup.
- *
- * @remarks
- *   It remains explicit because source, block, and clause containers share one
- *   operation; removing it would repeat the union and let accepted cases
- *   drift.
- * @modelRole protocol
- */
-export type StatementContainer =
-  ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
 
 const singleLineDeclarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -48,16 +17,6 @@ const singleLineDeclarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.TypeAliasDeclaration,
   ts.SyntaxKind.EnumDeclaration,
   ts.SyntaxKind.ModuleDeclaration
-)
-
-const singleLineDeclarationKinds = HashSet.fromIterable(singleLineDeclarationKindList)
-
-const singleLineStatementContainerKinds = HashSet.make(
-  ts.SyntaxKind.SourceFile,
-  ts.SyntaxKind.Block,
-  ts.SyntaxKind.ModuleBlock,
-  ts.SyntaxKind.CaseClause,
-  ts.SyntaxKind.DefaultClause
 )
 
 const functionLikeKinds = HashSet.make(
@@ -82,12 +41,6 @@ const singleLineBlankLinePattern = /\n[ \t]*\r?\n/
 const fallbackFalse = Function.constant(false)
 
 const fallbackMissingIndex = Function.constant(-1)
-
-const isSingleLineDeclarationStatement = (node: ts.Node): node is DeclarationStatement =>
-  HashSet.has(singleLineDeclarationKinds, node.kind)
-
-const isSingleLineStatementContainer = (node: ts.Node): node is StatementContainer =>
-  HashSet.has(singleLineStatementContainerKinds, node.kind)
 
 const isFunctionLike = (node: ts.Node): boolean => HashSet.has(functionLikeKinds, node.kind)
 
@@ -120,7 +73,11 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
 
-  const matches = (node: DeclarationStatement): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isDeclarationStatement(node)) {
+      return Array.empty()
+    }
+
     const startPosition = node.getStart(sourceFile)
     const endPosition = node.getEnd()
     const start = sourceFile.getLineAndCharacterOfPosition(startPosition)
@@ -130,7 +87,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
     const parent = node.parent
 
     const siblingsOption = pipe(
-      Option.liftPredicate(isSingleLineStatementContainer)(parent),
+      Option.liftPredicate(isStatementContainer)(parent),
       Option.map(Struct.get("statements"))
     )
 
@@ -147,7 +104,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
         return pipe(
           previous,
           Option.map((prev) => {
-            const previousIsDeclaration = isSingleLineDeclarationStatement(prev)
+            const previousIsDeclaration = isDeclarationStatement(prev)
             const previousStartPosition = prev.getStart(sourceFile)
             const previousEndPosition = prev.getEnd()
             const previousStart = sourceFile.getLineAndCharacterOfPosition(previousStartPosition)
@@ -192,7 +149,9 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(singleLineDeclarationKindList)(isSingleLineDeclarationStatement)(contiguousSingleLineBlankLineMatches)
+const check = nodeCheck(singleLineDeclarationKindList)(isDeclarationStatement)(
+  contiguousSingleLineBlankLineMatches
+)
 
 export const noBlankLinesBetweenSingleLineDeclarations: Check = check
 

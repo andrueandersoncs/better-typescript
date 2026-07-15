@@ -2,6 +2,7 @@ import * as path from "node:path"
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { namedDetectionTarget, outermostTransparentWrapper } from "./support/tsNode.js"
+import { isFunctionDefinition as isAstFunctionDefinition } from "./support/tsNode.js"
 import { DataStructureModule, FunctionDefinition } from "./preferDataLastModuleData.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { hasCallSignature } from "./support/tsType.js"
@@ -13,41 +14,12 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
-/**
- * CheckedFunction is the syntax contract shared by data-last candidate
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
-export type CheckedFunction =
-  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
-
-const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
+const astFunctionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.MethodDeclaration
 )
-
-const isCheckedFunction = (node: ts.Node): node is CheckedFunction => {
-  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
-  const isFunctionExpression = ts.isFunctionExpression(node)
-  const isArrowFunction = ts.isArrowFunction(node)
-  const isMethodDeclaration = ts.isMethodDeclaration(node)
-
-  const functionLikeConditions = Array.make(
-    isFunctionDeclaration,
-    isFunctionExpression,
-    isArrowFunction,
-    isMethodDeclaration
-  )
-
-  return Array.some(functionLikeConditions, Boolean)
-}
 
 const primitiveTypeFlags =
   ts.TypeFlags.Any |
@@ -272,15 +244,24 @@ const dataLastModuleMatches = (context: CheckContext) => {
     }
 
   const matchForDefinition =
-    (node: CheckedFunction) =>
-    (definition: FunctionDefinition): Option.Option<Detection> =>
-      pipe(
+    (node: ts.Node) =>
+    (definition: FunctionDefinition): Option.Option<Detection> => {
+      if (!isAstFunctionDefinition(node)) {
+        return Option.none()
+      }
+
+      return pipe(
         Option.fromNullable(node.parameters[node.parameters.length - 1]),
         Option.flatMap(parameterStructure),
         Option.flatMap(structureMatch(definition))
       )
+    }
 
-  const matches = (node: CheckedFunction): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isAstFunctionDefinition(node)) {
+      return Array.empty()
+    }
+
     const isFunctionOrMethodDeclaration =
       ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
 
@@ -312,7 +293,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(checkedFunctionKinds)(isCheckedFunction)(dataLastModuleMatches)
+const check = nodeCheck(astFunctionDefinitionKinds)(isAstFunctionDefinition)(dataLastModuleMatches)
 
 export const preferDataLastModule: Check = check
 

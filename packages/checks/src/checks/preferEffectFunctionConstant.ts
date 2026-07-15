@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
-import { conciseArrowBody, unwrapExpression } from "./support/tsNode.js"
+import { conciseArrowBody, isFunctionInitializer, unwrapExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -8,17 +8,6 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-/**
- * ConstantThunk is the syntax contract shared by constant-function eligibility,
- * matching, and returned-expression analysis.
- *
- * @remarks
- *   It remains explicit because all three owners need one stable compiler- node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   expressions drift.
- * @modelRole shared
- */
-export type ConstantThunk = ts.ArrowFunction | ts.FunctionExpression
 
 const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -40,9 +29,6 @@ const emptyModifiers: ReadonlyArray<ts.ModifierLike> = Array.empty()
 const fallbackModifiers: Function.LazyArg<ReadonlyArray<ts.ModifierLike>> =
   Function.constant(emptyModifiers)
 
-const isConstantThunk = (node: ts.Node): node is ConstantThunk =>
-  ts.isArrowFunction(node) || ts.isFunctionExpression(node)
-
 const message = "Avoid a handwritten constant thunk."
 
 const modifierIsAsync = (modifier: ts.ModifierLike): boolean =>
@@ -52,42 +38,49 @@ const hasElements = (items: ReadonlyArray<unknown>): boolean => items.length > 0
 
 const hasSingleElement = (items: ReadonlyArray<unknown>): boolean => items.length === 1
 
-const isEligibleFunction = (node: ConstantThunk): boolean => {
-  const modifiers = pipe(
-    Option.gen(function* () {
-      const nodeWithModifiers = yield* Option.liftPredicate(ts.canHaveModifiers)(node)
-      const modifiers = ts.getModifiers(nodeWithModifiers)
+const isEligibleFunction = (node: ts.Node): boolean =>
+  pipe(
+    Option.liftPredicate(isFunctionInitializer)(node),
+    Option.map((initializer) => {
+      const modifiers = pipe(
+        Option.gen(function* () {
+          const nodeWithModifiers = yield* Option.liftPredicate(ts.canHaveModifiers)(initializer)
+          const modifiers = ts.getModifiers(nodeWithModifiers)
 
-      return yield* Option.fromNullable(modifiers)
+          return yield* Option.fromNullable(modifiers)
+        }),
+        Option.getOrElse(fallbackModifiers)
+      )
+
+      const hasAsync = Array.some(modifiers, modifierIsAsync)
+
+      const hasGenerator = pipe(
+        Option.gen(function* () {
+          const functionExpression = yield* Option.liftPredicate(ts.isFunctionExpression)(
+            initializer
+          )
+
+          return yield* Option.fromNullable(functionExpression.asteriskToken)
+        }),
+        Option.isSome
+      )
+
+      const hasTypeParameters = pipe(
+        Option.fromNullable(initializer.typeParameters),
+        Option.exists(hasElements)
+      )
+
+      const eligibility = Array.make(
+        initializer.parameters.length === 0,
+        !hasAsync,
+        !hasGenerator,
+        !hasTypeParameters
+      )
+
+      return Array.every(eligibility, Boolean)
     }),
-    Option.getOrElse(fallbackModifiers)
+    Option.getOrElse(Function.constFalse)
   )
-
-  const hasAsync = Array.some(modifiers, modifierIsAsync)
-
-  const hasGenerator = pipe(
-    Option.gen(function* () {
-      const functionExpression = yield* Option.liftPredicate(ts.isFunctionExpression)(node)
-
-      return yield* Option.fromNullable(functionExpression.asteriskToken)
-    }),
-    Option.isSome
-  )
-
-  const hasTypeParameters = pipe(
-    Option.fromNullable(node.typeParameters),
-    Option.exists(hasElements)
-  )
-
-  const nodeText = Array.make(
-    node.parameters.length === 0,
-    !hasAsync,
-    !hasGenerator,
-    !hasTypeParameters
-  )
-
-  return Array.every(nodeText, Boolean)
-}
 
 const blockReturnedExpression = (body: ts.Block): Option.Option<ts.Expression> =>
   Option.gen(function* () {
@@ -98,8 +91,12 @@ const blockReturnedExpression = (body: ts.Block): Option.Option<ts.Expression> =
     return yield* Option.fromNullable(returnStatement.expression)
   })
 
-const constantThunkReturnedExpression = (node: ConstantThunk): Option.Option<ts.Expression> =>
-  ts.isArrowFunction(node)
+const constantThunkReturnedExpression = (node: ts.Node): Option.Option<ts.Expression> => {
+  if (!isFunctionInitializer(node)) {
+    return Option.none()
+  }
+
+  return ts.isArrowFunction(node)
     ? pipe(
         conciseArrowBody(node),
         Option.orElse(() =>
@@ -111,6 +108,7 @@ const constantThunkReturnedExpression = (node: ConstantThunk): Option.Option<ts.
         )
       )
     : blockReturnedExpression(node.body)
+}
 
 const isPrimitiveLiteralExpression = (expression: ts.Expression): boolean => {
   const unwrapped = unwrapExpression(expression)
@@ -136,7 +134,7 @@ const declarationListHasSingleDeclaration = (
 const functionConstantMatches = (context: CheckContext) => {
   const match = detection(context)
 
-  const matches = (node: ConstantThunk): ReadonlyArray<Detection> =>
+  const matches = (node: ts.Node): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
         yield* Option.liftPredicate(isEligibleFunction)(node)
@@ -214,7 +212,7 @@ const functionConstantMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(constantThunkKinds)(isConstantThunk)(functionConstantMatches)
+const check = nodeCheck(constantThunkKinds)(isFunctionInitializer)(functionConstantMatches)
 
 export const preferEffectFunctionConstant: Check = check
 

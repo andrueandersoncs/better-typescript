@@ -1,6 +1,7 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
+import { isReturnedExpressionNode } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -83,25 +84,14 @@ const untaggedHint =
   "procedural seam that should be collapsed into its owner. Introduce a Schema.Class only " +
   "when the returned data has meaning independent of this object literal."
 
-/**
- * ReturnCandidate is the syntax contract shared by object-literal return
- * candidate detection and matching.
- *
- * @remarks
- *   It remains explicit because return statements and concise arrows need one
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted expressions drift.
- * @modelRole shared
- */
-export type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
-
-const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
-  ts.isReturnStatement(node) || ts.isArrowFunction(node)
-
 const objectLiteralReturnMatches = (context: CheckContext) => {
   const match = detection(context)
 
-  const matches = (node: ReturnCandidate): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isReturnedExpressionNode(node)) {
+      return Array.empty()
+    }
+
     const expression = ts.isReturnStatement(node)
       ? Option.fromNullable(node.expression)
       : Option.liftPredicate(ts.isExpression)(node.body)
@@ -140,7 +130,7 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
 
 const returnCandidateKinds = Array.make(ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(returnCandidateKinds)(isReturnCandidate)(objectLiteralReturnMatches)
+const check = nodeCheck(returnCandidateKinds)(isReturnedExpressionNode)(objectLiteralReturnMatches)
 
 export const preferEffectSchemaConstructor: Check = check
 

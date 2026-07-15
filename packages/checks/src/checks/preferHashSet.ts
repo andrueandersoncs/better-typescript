@@ -1,6 +1,6 @@
 import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
-import { isInAmbientContext } from "./support/tsNode.js"
+import { isInAmbientContext, type NewOrTypeReferenceNode } from "./support/tsNode.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
@@ -33,19 +33,7 @@ const typeRefHint =
   "it mirrors a third-party contract: ambient declarations and values that cross into a " +
   "third-party call."
 
-/**
- * SetRuleNode is the syntax contract shared by Set candidate detection and
- * matching.
- *
- * @remarks
- *   It remains explicit because constructor and type-reference syntax need one
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted expressions drift.
- * @modelRole shared
- */
-export type SetRuleNode = ts.NewExpression | ts.TypeReferenceNode
-
-const isSetRuleNode = (node: ts.Node): node is SetRuleNode =>
+const isSetRuleNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
@@ -58,7 +46,11 @@ const setMatches = (context: CheckContext) => {
   const constructionEscapes = constructionEscapesExternally(context.checker)
   const typeRefEscapes = typeReferenceEscapesExternally(context.checker)
 
-  const matches = (node: SetRuleNode): ReadonlyArray<Detection> => {
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    if (!isSetRuleNode(node)) {
+      return Array.empty()
+    }
+
     if (ts.isNewExpression(node)) {
       const expressionOption = Option.liftPredicate(ts.isIdentifier)(node.expression)
       const isSetConstruction = Option.exists(expressionOption, isSetIdentifier)

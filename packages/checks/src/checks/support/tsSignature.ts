@@ -1,23 +1,11 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { isSameNode, outermostTransparentWrapper } from "./tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { isSameNode, outermostTransparentWrapper } from "./tsNode.js"
+import { isCallLikeExpression, type CallLikeExpression } from "./tsNode.js"
 
-/**
- * CallLikeExpression is the shared expression, typeArguments, arguments
- * contract used by resolvedCallSignature, argumentConsumingCall, consumingCall,
- * calleeText, and isCallLikeExpression.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
-export type CallLikeExpression = ts.CallExpression | ts.NewExpression
-
-export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
-  ts.isCallExpression(node) || ts.isNewExpression(node)
+export type { CallLikeExpression }
+export { isCallLikeExpression }
 
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()

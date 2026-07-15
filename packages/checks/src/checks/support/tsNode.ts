@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, pipe, Option } from "effect"
+import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 /**
  * FunctionInitializer is the shared modifiers, body, name, asteriskToken
@@ -12,6 +12,87 @@ import * as ts from "typescript"
  * @modelRole shared
  */
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
+
+/**
+ * FunctionDefinition is the named declaration forms that can own an executable
+ * abstraction.
+ *
+ * @remarks
+ *   This union exists because call and model-use edges must resolve to one stable
+ *   owner regardless of function declaration syntax. Removing it would make
+ *   every graph consumer repeat arrow, method, and function ownership logic.
+ * @modelRole protocol
+ */
+export type FunctionDefinition =
+  ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration
+
+/**
+ * DeclarationStatement is the syntax contract shared by declaration detection
+ * and blank-line matching.
+ *
+ * @remarks
+ *   It remains explicit because both blank-line checks need one stable
+ *   compiler-node vocabulary; removing it would duplicate the union and let
+ *   their accepted declarations drift.
+ * @modelRole shared
+ */
+export type DeclarationStatement =
+  | ts.VariableStatement
+  | ts.FunctionDeclaration
+  | ts.ClassDeclaration
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration
+  | ts.EnumDeclaration
+  | ts.ModuleDeclaration
+
+/**
+ * StatementContainer is the compiler syntax protocol handled by
+ * declaration-neighbor lookup.
+ *
+ * @remarks
+ *   It remains explicit because source, block, and clause containers share one
+ *   operation; removing it would repeat the union and let accepted cases
+ *   drift.
+ * @modelRole protocol
+ */
+export type StatementContainer =
+  ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
+
+/**
+ * ReturnedExpressionNode is the shared return-statement and concise-arrow
+ * contract used by preferEffectSchemaConstructor and noUndefined.
+ *
+ * @remarks
+ *   It remains explicit because return statements and concise arrows need one
+ *   compiler-node vocabulary; removing it would duplicate the union and let
+ *   their accepted expressions drift.
+ * @modelRole shared
+ */
+export type ReturnedExpressionNode = ts.ReturnStatement | ts.ArrowFunction
+
+/**
+ * NewOrTypeReferenceNode is the shared constructor and type-reference contract
+ * used by preferHashSet and preferHashMap.
+ *
+ * @remarks
+ *   It remains explicit because constructor and type-reference syntax need one
+ *   compiler-node vocabulary; removing it would duplicate the union and let
+ *   their accepted expressions drift.
+ * @modelRole shared
+ */
+export type NewOrTypeReferenceNode = ts.NewExpression | ts.TypeReferenceNode
+
+/**
+ * CallLikeExpression is the shared expression, typeArguments, arguments
+ * contract used by call-site analysis and array-constructor detection.
+ *
+ * @remarks
+ *   It remains explicit because call and construct expressions share one
+ *   argument-consuming shape; removing it would duplicate the union and let
+ *   accepted call-sites drift.
+ * @modelRole shared
+ */
+export type CallLikeExpression = ts.CallExpression | ts.NewExpression
 
 /**
  * ReturnTypeDeclaration is the shared name, typeParameters, parameters, type
@@ -53,6 +134,94 @@ export const resolvedSymbolAt =
 
 export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
+
+export const isFunctionDefinition = (node: ts.Node): node is FunctionDefinition => {
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isFunctionExpression = ts.isFunctionExpression(node)
+  const isArrowFunction = ts.isArrowFunction(node)
+  const isMethodDeclaration = ts.isMethodDeclaration(node)
+
+  const conditions = Array.make(
+    isFunctionDeclaration,
+    isFunctionExpression,
+    isArrowFunction,
+    isMethodDeclaration
+  )
+
+  return Array.some(conditions, Boolean)
+}
+
+export const isDeclarationStatement = (node: ts.Node): node is DeclarationStatement => {
+  const isVariableStatement = ts.isVariableStatement(node)
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node)
+  const isClassDeclaration = ts.isClassDeclaration(node)
+  const isInterfaceDeclaration = ts.isInterfaceDeclaration(node)
+  const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(node)
+  const isEnumDeclaration = ts.isEnumDeclaration(node)
+  const isModuleDeclaration = ts.isModuleDeclaration(node)
+
+  const conditions = Array.make(
+    isVariableStatement,
+    isFunctionDeclaration,
+    isClassDeclaration,
+    isInterfaceDeclaration,
+    isTypeAliasDeclaration,
+    isEnumDeclaration,
+    isModuleDeclaration
+  )
+
+  return Array.some(conditions, Boolean)
+}
+
+export const isStatementContainer = (node: ts.Node): node is StatementContainer => {
+  const isSourceFile = ts.isSourceFile(node)
+  const isBlock = ts.isBlock(node)
+  const isModuleBlock = ts.isModuleBlock(node)
+  const isCaseClause = ts.isCaseClause(node)
+  const isDefaultClause = ts.isDefaultClause(node)
+  const conditions = Array.make(isSourceFile, isBlock, isModuleBlock, isCaseClause, isDefaultClause)
+
+  return Array.some(conditions, Boolean)
+}
+
+export const isReturnedExpressionNode = (node: ts.Node): node is ReturnedExpressionNode =>
+  ts.isReturnStatement(node) || ts.isArrowFunction(node)
+
+export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
+  ts.isCallExpression(node) || ts.isNewExpression(node)
+
+export const isNewOrTypeReferenceNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
+  ts.isNewExpression(node) || ts.isTypeReferenceNode(node)
+
+export const noneTypeShape: Option.Option<string> = Option.none()
+
+export const expressionBodiedArrow = (
+  definition: FunctionDefinition
+): Option.Option<ts.Expression> =>
+  pipe(
+    Option.liftPredicate(ts.isArrowFunction)(definition),
+    Option.map(Struct.get("body")),
+    Option.filter((body): body is ts.Expression => !ts.isBlock(body))
+  )
+
+export const singleReturnExpression = (
+  definition: FunctionDefinition
+): Option.Option<ts.Expression> =>
+  pipe(
+    Option.fromNullable(definition.body),
+    Option.filter(ts.isBlock),
+    Option.map((body) => Array.filter(body.statements, ts.isReturnStatement)),
+    Option.filter((returns) => returns.length === 1),
+    Option.flatMap((returns) => Option.fromNullable(returns[0].expression))
+  )
+
+export const returnedExpression = (
+  definition: FunctionDefinition
+): Option.Option<ts.Expression> => {
+  const blockReturn = singleReturnExpression(definition)
+
+  return pipe(expressionBodiedArrow(definition), Option.orElse(Function.constant(blockReturn)))
+}
 
 export const hasParameters = (initializer: FunctionInitializer): boolean =>
   initializer.parameters.length > 0
