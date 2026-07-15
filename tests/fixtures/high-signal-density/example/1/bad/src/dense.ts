@@ -1,0 +1,10 @@
+export let value01 = 1
+export let value02 = 2
+export let value03 = 3
+export let value04 = 4
+export let value05 = 5
+export let value06 = 6
+export let value07 = 7
+export let value08 = 8
+export let value09 = 9
+export let value10 = 10

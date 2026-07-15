@@ -9,6 +9,11 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
+export const highSignalDensityExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("high-signal-density")
 
 const densityAdvice = (file: FileDetections): Advice => {
   const summary = countSummary(file.elements)
@@ -26,7 +31,8 @@ const densityAdvice = (file: FileDetections): Advice => {
       "Restructure the file around the Effect runtime (state in Ref, SynchronizedRef, or " +
       "PubSub; wiring in Layer; one runtime entry at the boundary) instead of fixing " +
       "signals one at a time — the inversion dissolves most of them.",
-    evidence
+    evidence,
+    examples: highSignalDensityExamples
   })
 }
 

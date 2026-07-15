@@ -1,0 +1,10 @@
+export const value01 = 1
+export const value02 = 2
+export const value03 = 3
+export const value04 = 4
+export const value05 = 5
+export const value06 = 6
+export const value07 = 7
+export const value08 = 8
+export const value09 = 9
+export const value10 = 10
