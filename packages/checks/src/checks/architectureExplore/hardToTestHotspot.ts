@@ -2,6 +2,11 @@ import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+
+export const hardToTestHotspotExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("hard-to-test-hotspot")
 
 const minimumConstructions = 2
 
@@ -41,7 +46,8 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
         remediation:
           "External collaborator construction is concentrated inside behaviour. Classify the dependency first, construct production adapters " +
           "at the composition root, and inject a port only when a real test adapter supplies the second implementation.",
-        evidence
+        evidence,
+        examples: hardToTestHotspotExamples
       })
     })
   )

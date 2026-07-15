@@ -104,6 +104,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "test past interface",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "hard-to-test-hotspot",
+    pairId: "1",
+    title: "hard-to-test hotspot",
+    wiring: architectureExploreWiring
   }
 ]
 
