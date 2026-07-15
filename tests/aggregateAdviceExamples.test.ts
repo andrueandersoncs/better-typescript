@@ -43,6 +43,18 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "imperative state manager",
     wiring: defaultWiring
+  },
+  {
+    fixtureId: "concept-control",
+    pairId: "1",
+    title: "closed abstraction cluster",
+    wiring: defaultWiring
+  },
+  {
+    fixtureId: "concept-proliferation",
+    pairId: "1",
+    title: "concept proliferation",
+    wiring: defaultWiring
   }
 ]
 

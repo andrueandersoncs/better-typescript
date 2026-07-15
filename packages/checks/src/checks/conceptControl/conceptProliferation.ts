@@ -19,7 +19,15 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { Detection } from "@better-typescript/core/engine/location/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { ConceptSignalData, type ConceptSignalKind } from "./data.js"
+
+export const closedAbstractionClusterExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("concept-control")
+
+export const conceptProliferationExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("concept-proliferation")
 
 const proliferationKinds = HashSet.make<ConceptSignalKind[]>(
   "duplicate-shape",
@@ -65,7 +73,8 @@ const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): A
       "function, reuse existing domain concepts, or deepen the Module until it owns an " +
       "independent seam, invariant, protocol, or multiple consumers. Never evade this by " +
       "replacing the model with an anonymous object type.",
-    evidence
+    evidence,
+    examples: closedAbstractionClusterExamples
   })
 }
 
@@ -111,7 +120,8 @@ const proliferationAdvice = (
       "Review them as one vocabulary: delete speculative fields and exports, reuse or merge " +
       "equivalent shapes, collapse pass-through conversions, then deepen the remaining " +
       "Module behind fewer enduring models. File separation does not make these independent concepts.",
-    evidence
+    evidence,
+    examples: conceptProliferationExamples
   })
 
   return Option.some(advice)
