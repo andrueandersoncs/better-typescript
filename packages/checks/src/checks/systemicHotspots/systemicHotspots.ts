@@ -2,6 +2,11 @@ import { Array, Effect, pipe, Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import { SystemicHotspotsInput, SystemicSignals } from "./data.js"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+
+export const systemicHotspotsExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("systemic-hotspots")
 
 const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const hasHotSubsystem = signals.hotSubsystem.length >= 1
@@ -22,7 +27,8 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
       "file-by-file cleanup will thrash. Plan the campaign top-down — rewrite the hot " +
       "subsystem's shape first (Ref/Layer inversion, data-last signatures), let that land " +
       "the architectural pattern, then sweep the remaining dense files against it.",
-    evidence
+    evidence,
+    examples: systemicHotspotsExamples
   })
 
   return isSystemic ? Array.of(advice) : Array.empty()
