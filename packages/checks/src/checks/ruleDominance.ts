@@ -8,6 +8,11 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../fixtureExamples.js"
+
+export const ruleDominanceExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("rule-dominance")
 
 const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const summary = countSummary(elements)
@@ -28,7 +33,8 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
       "A single rule produces most of the signals across many files: the pattern is " +
       "systemic, not local. Plan one mechanical migration — a codemod and a single review " +
       "— instead of fixing occurrences file by file.",
-    evidence
+    evidence,
+    examples: ruleDominanceExamples
   })
 
   return isDominated ? Array.of(advice) : Array.empty()
