@@ -110,6 +110,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "hard-to-test hotspot",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "hypothetical-seam",
+    pairId: "1",
+    title: "hypothetical seam",
+    wiring: architectureExploreWiring
   }
 ]
 

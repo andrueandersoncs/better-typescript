@@ -2,6 +2,11 @@ import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+
+export const hypotheticalSeamExamples: NonEmptyRefactorExamples =
+  fixtureRefactorExamples("hypothetical-seam")
 
 const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const seams = Array.filter(elements, (element) => element.name === "single-adapter-seams")
@@ -29,7 +34,8 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
       remediation:
         "These injected behavioural interfaces have one production adapter and no test adapter. " +
         "Remove the speculative port and keep the seam internal until a second implementation actually varies across it.",
-      evidence
+      evidence,
+      examples: hypotheticalSeamExamples
     })
   })
 }
