@@ -12,7 +12,7 @@ Always do the complete work you're asked to do, do _not_ concern yourself with "
 
 Always do **exactly** the work you're asked to do. If the magnitude of the work is large, decompose it into independent tasks and delegate to subagents.
 
-Always **manually do the work** unless it is a mechanical change that can be **trivially** accomplished with a script. Your first instinct should be to do the work yourself.
+Always **manually do the work** unless it is a mechanical change that can be **trivially** accomplished with a script. Your first instinct should be to do the work yourself. Your second instinct should be to decompose the work into independent tasks and delegate to subagents. 
 
 Always double-check your work for consistency and simplicity.
 
