@@ -86,6 +86,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "wide shallow interface",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "bounce-cluster",
+    pairId: "1",
+    title: "bounce cluster",
+    wiring: architectureExploreWiring
   }
 ]
 
