@@ -92,6 +92,12 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "bounce cluster",
     wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "leaked-seam",
+    pairId: "1",
+    title: "leaked seam",
+    wiring: architectureExploreWiring
   }
 ]
 

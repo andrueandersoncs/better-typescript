@@ -2,7 +2,11 @@ import { Array, Function, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { seamLeakageDataOf } from "./evidence.js"
+
+export const leakedSeamExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("leaked-seam")
 
 const minimumLeaks = 2
 
@@ -41,7 +45,8 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
       remediation:
         "This Module repeatedly bypasses declared interfaces through internal or package-source imports. " +
         "Route dependencies through one public seam so implementation paths remain local and replaceable.",
-      evidence
+      evidence,
+      examples: leakedSeamExamples
     })
 
     return Result.succeed(advice)
