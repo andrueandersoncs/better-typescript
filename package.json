@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "self:timed": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && time tsx packages/cli/src/index.ts --pretty",
     "dev": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts --pretty",
     "start": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts",
     "watch": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts --pretty --watch",
