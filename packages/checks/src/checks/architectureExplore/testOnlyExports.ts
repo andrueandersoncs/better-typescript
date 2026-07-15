@@ -1,11 +1,11 @@
 import { Array, Function, Option, pipe } from "effect"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { TestOnlyExportData } from "./data.js"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import {
   ExportReferenceIndex,
   buildExportReferenceIndex,

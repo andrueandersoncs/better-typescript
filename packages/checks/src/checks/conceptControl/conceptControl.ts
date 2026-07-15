@@ -1,13 +1,24 @@
-import { Array, Function, HashMap, HashSet, MutableList, Option, Order, Struct, pipe } from "effect"
+import {
+  Array,
+  Function,
+  HashMap,
+  HashSet,
+  MutableList,
+  Option,
+  Order,
+  Struct,
+  pipe,
+  Tuple
+} from "effect"
 import * as ts from "typescript"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { buildConceptIndex, functionDerivedStem } from "./conceptIndex.js"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import {
   ConceptSignalData,
   type ConceptIndex,
@@ -81,25 +92,31 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       owner: string,
       relatedConcepts: ReadonlyArray<string>,
       externalCallers: number
-    ): ConceptSignalData =>
-      new ConceptSignalData({
+    ): ConceptSignalData => {
+      const owners = ownersFor(entry)
+      const independentOwners = HashSet.size(owners)
+
+      return new ConceptSignalData({
         kind,
         concept: entry.name,
         owner,
-        independentOwners: HashSet.size(ownersFor(entry)),
+        independentOwners,
         externalCallers,
         relatedConcepts
       })
+    }
 
     const append = (
       node: ts.Node,
       message: string,
       hint: string,
       data: ConceptSignalData
-    ): void => {
+    ): Detection => {
       const element = match({ node, message, hint, data })
 
       MutableList.append(found, element)
+
+      return element
     }
 
     const canonicalSymbol = (symbol: ts.Symbol): ts.Symbol =>
@@ -117,11 +134,14 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const declaration = entry.declaration
 
       if (ts.isInterfaceDeclaration(declaration)) {
-        const clauses = declaration.heritageClauses ?? Array.empty()
+        const emptyClauses = Array.empty<ts.HeritageClause>()
+        const clauses = declaration.heritageClauses ?? emptyClauses
         const types = Array.flatMap(clauses, Struct.get("types"))
         const isEmpty = declaration.members.length === 0
+        const hasSingleHeritage = types.length === 1
+        const emptyInterfaceAlias = isEmpty && hasSingleHeritage
 
-        return isEmpty && types.length === 1 ? modelAt(types[0].expression) : Option.none()
+        return emptyInterfaceAlias ? modelAt(types[0].expression) : Option.none()
       }
 
       if (!ts.isTypeAliasDeclaration(declaration)) {
@@ -147,9 +167,14 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const derivedConditions = Array.make(isDerivedUtility, isSingleOwner)
       const isRedundantDerived = Array.every(derivedConditions, Boolean)
 
-      return isRedundantDerived
-        ? pipe(type.typeArguments ?? Array.empty(), Array.head, Option.flatMap(modelAt))
-        : Option.none()
+      if (!isRedundantDerived) {
+        return Option.none()
+      }
+
+      const emptyTypeArguments = Array.empty<ts.TypeNode>()
+      const typeArguments = type.typeArguments ?? emptyTypeArguments
+
+      return pipe(typeArguments, Array.head, Option.flatMap(modelAt))
     }
 
     const closedOwner = (entry: DataStructureEntry): Option.Option<FunctionEntry> => {
@@ -198,8 +223,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.map(Struct.get("sourceFile"))
       )
 
+      const emptyDeclarations = Array.empty<ts.Declaration>()
+      const declarations = symbol.declarations ?? emptyDeclarations
+
       const declarationOwner = pipe(
-        symbol.declarations ?? Array.empty(),
+        declarations,
         Array.head,
         Option.map((declaration) => declaration.getSourceFile())
       )
@@ -222,7 +250,12 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const commentsAndTags = ts.getJSDocCommentsAndTags(entry.documentationNode)
 
       const docs = Array.filter(commentsAndTags, ts.isJSDoc)
-      const tags = Array.flatMap(docs, (doc) => doc.tags ?? Array.empty())
+
+      const tags = Array.flatMap(docs, (doc) => {
+        const emptyTags = Array.empty<ts.JSDocTag>()
+
+        return doc.tags ?? emptyTags
+      })
 
       const roleTags = Array.filter(tags, (tag) => tag.tagName.text === "modelRole")
 
@@ -256,7 +289,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
       const established = pipe(
         role,
-        Option.exists((claimed) => HashSet.has(rolesFor(entry), claimed))
+        Option.exists((claimed) => {
+          const roles = rolesFor(entry)
+
+          return HashSet.has(roles, claimed)
+        })
       )
 
       const hasOneRole = roleTags.length === 1
@@ -278,7 +315,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const redundantPairs = Array.filterMap(entries, (entry) =>
       pipe(
         redundantTarget(entry),
-        Option.map((target) => [entry, target] as const)
+        Option.map((target) => Tuple.make(entry, target))
       )
     )
 
@@ -293,7 +330,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         ? Option.none()
         : pipe(
             closedOwner(entry),
-            Option.map((owner) => [entry, owner] as const)
+            Option.map((owner) => Tuple.make(entry, owner))
           )
     )
 
@@ -307,12 +344,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const excluded = HashSet.has(closedSymbols, entry.symbol)
       const isRedundant = HashSet.has(redundantSymbols, entry.symbol)
       const exclusions = Array.make(excluded, isRedundant)
+      const isExcluded = Array.some(exclusions, Boolean)
 
-      return Array.some(exclusions, Boolean)
+      return isExcluded
         ? Option.none()
         : pipe(
             duplicateTarget(entry),
-            Option.map((target) => [entry, target] as const)
+            Option.map((target) => Tuple.make(entry, target))
           )
     })
 
@@ -324,13 +362,15 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     Array.forEach(closedPairs, ([entry, owner]) => {
       const callers = callersFor(owner)
+      const relatedConcepts = Array.of(owner.name)
+      const externalCallers = HashSet.size(callers)
 
       const data = signalData(
         "closed-abstraction",
         entry,
         owner.name,
-        Array.of(owner.name),
-        HashSet.size(callers)
+        relatedConcepts,
+        externalCallers
       )
 
       append(
@@ -342,7 +382,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     })
 
     Array.forEach(redundantPairs, ([entry, target]) => {
-      const data = signalData("redundant-alias", entry, target.name, Array.of(target.name), 0)
+      const relatedConcepts = Array.of(target.name)
+      const data = signalData("redundant-alias", entry, target.name, relatedConcepts, 0)
 
       append(
         entry.nameNode,
@@ -353,7 +394,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     })
 
     Array.forEach(duplicatePairs, ([entry, target]) => {
-      const data = signalData("duplicate-shape", entry, target.name, Array.of(target.name), 0)
+      const relatedConcepts = Array.of(target.name)
+      const data = signalData("duplicate-shape", entry, target.name, relatedConcepts, 0)
 
       append(
         entry.nameNode,
@@ -366,14 +408,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const readFields = pipe(index.fieldReads, Array.map(Struct.get("field")), HashSet.fromIterable)
 
     Array.forEach(entries, (entry) => {
-      const structurallyDecided = Array.some(
-        Array.make(
-          HashSet.has(closedSymbols, entry.symbol),
-          HashSet.has(redundantSymbols, entry.symbol),
-          HashSet.has(duplicateSymbols, entry.symbol)
-        ),
-        Boolean
-      )
+      const isClosed = HashSet.has(closedSymbols, entry.symbol)
+      const isRedundant = HashSet.has(redundantSymbols, entry.symbol)
+      const isDuplicate = HashSet.has(duplicateSymbols, entry.symbol)
+      const structuralFlags = Array.make(isClosed, isRedundant, isDuplicate)
+      const structurallyDecided = Array.some(structuralFlags, Boolean)
 
       if (structurallyDecided) {
         return
@@ -394,37 +433,57 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         )
       )
 
-      const roleExempt = Array.some(
-        Array.make(HashSet.has(roles, "boundary"), HashSet.has(roles, "protocol")),
-        Boolean
+      const isBoundary = HashSet.has(roles, "boundary")
+      const isProtocol = HashSet.has(roles, "protocol")
+      const roleExemptFlags = Array.make(isBoundary, isProtocol)
+      const roleExempt = Array.some(roleExemptFlags, Boolean)
+      const roleNotExempt = !roleExempt
+
+      const functionDerivedOwner = pipe(
+        matchingOwner,
+        Option.filter(Function.constant(roleNotExempt))
       )
 
-      if (Option.isSome(matchingOwner) && !roleExempt) {
-        const owner = matchingOwner.value
-        const callers = callersFor(owner)
-        const allowedOwners = pipe(callers, HashSet.add(owner.symbol))
+      const functionDerivedEmission = pipe(
+        functionDerivedOwner,
+        Option.flatMap((owner) => {
+          const callers = callersFor(owner)
+          const allowedOwners = pipe(callers, HashSet.add(owner.symbol))
 
-        const ownersStayInsideCluster = HashSet.every(owners, (candidate) =>
-          HashSet.has(allowedOwners, candidate)
+          const ownersStayInsideCluster = HashSet.every(owners, (candidate) =>
+            HashSet.has(allowedOwners, candidate)
+          )
+
+          if (!ownersStayInsideCluster) {
+            return Option.none()
+          }
+
+          const emission = Tuple.make(owner, callers)
+
+          return Option.some(emission)
+        })
+      )
+
+      if (Option.isSome(functionDerivedEmission)) {
+        const [owner, callers] = functionDerivedEmission.value
+        const relatedConcepts = Array.of(owner.name)
+        const externalCallers = HashSet.size(callers)
+
+        const data = signalData(
+          "function-derived-model",
+          entry,
+          owner.name,
+          relatedConcepts,
+          externalCallers
         )
 
-        if (ownersStayInsideCluster) {
-          const data = signalData(
-            "function-derived-model",
-            entry,
-            owner.name,
-            Array.of(owner.name),
-            HashSet.size(callers)
-          )
-
-          append(
-            entry.nameNode,
-            `${entry.name} is named after its sole function role instead of independent semantics.`,
-            "Remove or deepen the function-data abstraction, or replace this structural-role name with an existing domain concept. A new name must mean more than input, output, options, context, state, or result for one function.",
-            data
-          )
-          return
-        }
+        append(
+          entry.nameNode,
+          `${entry.name} is named after its sole function role instead of independent semantics.`,
+          "Remove or deepen the function-data abstraction, or replace this structural-role name with an existing domain concept. A new name must mean more than input, output, options, context, state, or result for one function.",
+          data
+        )
+        return
       }
 
       const externalOwners = pipe(
@@ -434,10 +493,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Array.filter((sourceFile) => sourceFile !== entry.sourceFile)
       )
 
-      const speculative = entry.exported && externalOwners.length === 0 && !roleExempt
+      const hasNoExternalOwners = externalOwners.length === 0
+      const isExportedWithoutConsumers = entry.exported && hasNoExternalOwners
+      const speculative = isExportedWithoutConsumers && roleNotExempt
 
       if (speculative) {
-        const data = signalData("speculative-export", entry, "", Array.empty(), 0)
+        const relatedConcepts = Array.empty<string>()
+        const data = signalData("speculative-export", entry, "", relatedConcepts, 0)
 
         append(
           entry.nameNode,
@@ -448,18 +510,17 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         return
       }
 
-      const reflectsExternally = Array.some(
-        Array.make(HashSet.has(roles, "boundary"), HashSet.has(roles, "protocol")),
-        Boolean
-      )
+      const reflectsBoundary = HashSet.has(roles, "boundary")
+      const reflectsProtocol = HashSet.has(roles, "protocol")
+      const externalReflectionFlags = Array.make(reflectsBoundary, reflectsProtocol)
+      const reflectsExternally = Array.some(externalReflectionFlags, Boolean)
 
       const unusedFields = reflectsExternally
         ? Array.empty<ts.Symbol>()
         : Array.filter(entry.fieldSymbols, (field) => {
             const directlyRead = HashSet.has(readFields, field)
-
-            const functionallyRead = HashSet.has(index.readFieldNames, field.getName())
-
+            const fieldName = field.getName()
+            const functionallyRead = HashSet.has(index.readFieldNames, fieldName)
             const readChecks = Array.make(directlyRead, functionallyRead)
 
             return Array.every(readChecks, (read) => !read)
@@ -467,17 +528,22 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
       if (unusedFields.length > 0) {
         Array.forEach(unusedFields, (field) => {
+          const emptyDeclarations = Array.empty<ts.Declaration>()
+          const declarations = field.declarations ?? emptyDeclarations
+
           const declaration = pipe(
-            field.declarations ?? Array.empty(),
+            declarations,
             Array.head,
             Option.getOrElse(Function.constant(entry.nameNode))
           )
 
-          const data = signalData("unused-field", entry, "", Array.of(field.getName()), 0)
+          const fieldName = field.getName()
+          const relatedConcepts = Array.of(fieldName)
+          const data = signalData("unused-field", entry, "", relatedConcepts, 0)
 
           append(
             declaration,
-            `${entry.name}.${field.getName()} is constructed but never independently read.`,
+            `${entry.name}.${fieldName} is constructed but never independently read.`,
             "Delete the speculative field or connect it to behavior that consumes its semantics. Mechanical forwarding into another representation is not a read and instead indicates parallel concepts.",
             data
           )
@@ -486,7 +552,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       }
 
       if (!rationaleIsComplete(entry)) {
-        const data = signalData("missing-rationale", entry, "", Array.empty(), 0)
+        const relatedConcepts = Array.empty<string>()
+        const data = signalData("missing-rationale", entry, "", relatedConcepts, 0)
 
         append(
           entry.nameNode,
@@ -499,16 +566,14 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const occupiedModels = pipe(
       entries,
-      Array.filter((entry) =>
-        Array.some(
-          Array.make(
-            HashSet.has(closedSymbols, entry.symbol),
-            HashSet.has(redundantSymbols, entry.symbol),
-            HashSet.has(duplicateSymbols, entry.symbol)
-          ),
-          Boolean
-        )
-      ),
+      Array.filter((entry) => {
+        const isClosed = HashSet.has(closedSymbols, entry.symbol)
+        const isRedundant = HashSet.has(redundantSymbols, entry.symbol)
+        const isDuplicate = HashSet.has(duplicateSymbols, entry.symbol)
+        const occupationFlags = Array.make(isClosed, isRedundant, isDuplicate)
+
+        return Array.some(occupationFlags, Boolean)
+      }),
       Array.map(Struct.get("symbol")),
       HashSet.fromIterable
     )
@@ -519,22 +584,24 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       Array.filter((bag) => !HashSet.has(occupiedModels, bag.model.symbol)),
       Array.filter((bag) => {
         const roles = rolesFor(bag.model)
-
-        const exemptions = Array.make(
-          HashSet.has(roles, "boundary"),
-          HashSet.has(roles, "invariant"),
-          HashSet.has(roles, "protocol")
-        )
+        const isBoundary = HashSet.has(roles, "boundary")
+        const isInvariant = HashSet.has(roles, "invariant")
+        const isProtocol = HashSet.has(roles, "protocol")
+        const exemptions = Array.make(isBoundary, isInvariant, isProtocol)
 
         return Array.every(exemptions, (exempt) => !exempt)
       }),
       Array.forEach((bag) => {
+        const relatedConcepts = Array.of(bag.functionEntry.name)
+        const callers = callersFor(bag.functionEntry)
+        const externalCallers = HashSet.size(callers)
+
         const data = signalData(
           "parameter-bag",
           bag.model,
           bag.functionEntry.name,
-          Array.of(bag.functionEntry.name),
-          HashSet.size(callersFor(bag.functionEntry))
+          relatedConcepts,
+          externalCallers
         )
 
         append(
@@ -549,20 +616,24 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     pipe(
       index.passThroughConversions,
       Array.filter((conversion) => conversion.node.getSourceFile() === context.sourceFile),
-      Array.filter(
-        (conversion) =>
-          !HashSet.has(occupiedModels, conversion.source.symbol) &&
-          !HashSet.has(occupiedModels, conversion.target.symbol)
-      ),
+      Array.filter((conversion) => {
+        const sourceOccupied = HashSet.has(occupiedModels, conversion.source.symbol)
+        const targetOccupied = HashSet.has(occupiedModels, conversion.target.symbol)
+        const occupationFlags = Array.make(sourceOccupied, targetOccupied)
+
+        return Array.every(occupationFlags, (occupied) => !occupied)
+      }),
       Array.forEach((conversion) => {
         const related = Array.make(conversion.source.name, conversion.target.name)
+        const callers = callersFor(conversion.functionEntry)
+        const externalCallers = HashSet.size(callers)
 
         const data = signalData(
           "pass-through-conversion",
           conversion.target,
           conversion.functionEntry.name,
           related,
-          HashSet.size(callersFor(conversion.functionEntry))
+          externalCallers
         )
 
         append(

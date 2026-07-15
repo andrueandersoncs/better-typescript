@@ -29,9 +29,7 @@ const declarationComesFromEffectModule =
 const symbolIsEffectTaggedClass =
   (moduleSuffixes: ReadonlyArray<string>) =>
   (symbol: ts.Symbol): boolean => {
-    if (symbol.getName() !== "TaggedClass") {
-      return false
-    }
+    const nameIsTaggedClass = symbol.getName() === "TaggedClass"
 
     const declarations = pipe(
       symbol.getDeclarations(),
@@ -39,7 +37,14 @@ const symbolIsEffectTaggedClass =
       Option.getOrElse(() => Array.empty<ts.Declaration>())
     )
 
-    return Array.some(declarations, declarationComesFromEffectModule(moduleSuffixes))
+    const declarationFromEffectModule = Array.some(
+      declarations,
+      declarationComesFromEffectModule(moduleSuffixes)
+    )
+
+    const conditions = Array.make(nameIsTaggedClass, declarationFromEffectModule)
+
+    return Array.every(conditions, Boolean)
   }
 
 const taggedClassHeritage =
@@ -50,15 +55,16 @@ const taggedClassHeritage =
     const extendsClauses = Array.filter(clauses, isExtendsClause)
     const heritageTypes = Array.flatMap(extendsClauses, Struct.get("types"))
 
-    return Array.findFirst(heritageTypes, (heritage) => {
-      const callee = unwrapCallee(heritage.expression)
-
-      return pipe(
-        taggedClassSymbolNode(callee),
+    const heritageIsEffectTaggedClass = (heritage: ts.ExpressionWithTypeArguments): boolean =>
+      pipe(
+        heritage.expression,
+        unwrapCallee,
+        taggedClassSymbolNode,
         Option.flatMap(resolvedSymbolAt(checker)),
         Option.exists(symbolIsEffectTaggedClass(moduleSuffixes))
       )
-    })
+
+    return Array.findFirst(heritageTypes, heritageIsEffectTaggedClass)
   }
 
 export const dataTaggedClassHeritage = taggedClassHeritage(effectDataModuleSuffixes)
@@ -144,17 +150,14 @@ const propertyTypeIsWireSafe =
 
 const intersectionTypeIsWireSafe =
   (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.IntersectionType): boolean => {
-    const primitiveMember = Array.findFirst(type.types, typeIsWirePrimitive)
-
-    return pipe(
-      primitiveMember,
+  (type: ts.IntersectionType): boolean =>
+    pipe(
+      Array.findFirst(type.types, typeIsWirePrimitive),
       Option.match({
         onNone: () => Array.every(type.types, checkType),
         onSome: Function.constTrue
       })
     )
-  }
 
 const objectTypeHasSignatures = (type: ts.ObjectType): boolean => {
   const callSignatureCount = type.getCallSignatures().length
@@ -178,11 +181,12 @@ const objectTypeIsCollection =
 const collectionTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.ObjectType): boolean => {
-    const elementType = checker.getIndexTypeOfType(type, ts.IndexKind.Number)
-
-    return pipe(elementType, Option.fromNullable, Option.exists(checkType))
-  }
+  (type: ts.ObjectType): boolean =>
+    pipe(
+      checker.getIndexTypeOfType(type, ts.IndexKind.Number),
+      Option.fromNullable,
+      Option.exists(checkType)
+    )
 
 const objectTypeIsClass = (type: ts.ObjectType): boolean =>
   (type.objectFlags & ts.ObjectFlags.Class) !== 0

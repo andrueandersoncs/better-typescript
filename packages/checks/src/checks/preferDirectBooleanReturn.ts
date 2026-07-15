@@ -1,14 +1,13 @@
 import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
@@ -40,11 +39,15 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
 
 /**
  * BooleanReturnTarget is the syntax contract shared by boolean-return candidate
- * detection and matching. @modelRole shared @remarks It remains explicit
- * because both owners need one stable compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted expressions drift.
+ * detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   expressions drift.
+ * @modelRole shared
  */
-type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
+export type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {
   const ifStatement = ts.isIfStatement(node)

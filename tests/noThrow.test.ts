@@ -1,11 +1,10 @@
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { Effect, Array } from "effect"
 import { noThrow } from "@better-typescript/checks/noThrow"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -86,7 +85,9 @@ const runNoThrowFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noThrow)(project)))
+    workspace.projects.map((project) =>
+      Effect.runPromise(runCheckOnProject(Array.of(noThrow))(project))
+    )
   )
 
   return projectElements.flat()

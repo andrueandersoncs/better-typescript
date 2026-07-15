@@ -4,8 +4,13 @@ import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { commentText, isJsDocComment, sourceComments } from "./support/comments.js"
-import type { SourceComment } from "./support/commentsData.js"
+import {
+  commentText,
+  isAdjacentLine,
+  isJsDocComment,
+  isSingleLineComment,
+  sourceComments
+} from "./support/comments.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
@@ -20,21 +25,7 @@ const hint =
   "@remarks). For architectural decisions that require longer explanation, create an " +
   "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
 
-const isSingleLineComment = (comment: SourceComment): boolean =>
-  comment.kind === ts.SyntaxKind.SingleLineCommentTrivia
-
 const commentPosition = Struct.get("pos")
-
-const lineOf =
-  (sourceFile: ts.SourceFile) =>
-  (pos: number): number =>
-    sourceFile.getLineAndCharacterOfPosition(pos).line
-
-const isAdjacentLine =
-  (sourceFile: ts.SourceFile) =>
-  (a: SourceComment) =>
-  (b: SourceComment): boolean =>
-    lineOf(sourceFile)(b.pos) - lineOf(sourceFile)(a.pos) === 1
 
 const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile

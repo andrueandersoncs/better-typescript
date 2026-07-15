@@ -13,15 +13,6 @@ import type { ConfigExportName } from "./data.js"
 const defaultExportName = "default"
 const configExportName = "config"
 
-/**
- * ModuleRecord is the unknown-module shape shared by record detection and
- * wiring validation. @modelRole shared @remarks It remains explicit because
- * named-field checks and wiring validation need one stable boundary contract;
- * removing it would duplicate the representation across consumers.
- */
-type ModuleRecord = Readonly<Record<string, unknown>>
-type ConfigFactory = () => unknown
-
 const projectWiringConfigError = (configPath: string, reason: string): ProjectWiringConfigError => {
   const fields = { configPath, reason }
 
@@ -34,7 +25,7 @@ const failConfig = (
 ): Effect.Effect<never, ProjectWiringConfigError> =>
   pipe(projectWiringConfigError(configPath, reason), Effect.fail)
 
-const isRecord = (value: unknown): value is ModuleRecord => {
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
   const isObject = typeof value === "object"
   const isPresent = value !== null
 
@@ -42,7 +33,7 @@ const isRecord = (value: unknown): value is ModuleRecord => {
   return Array.every(conditions, Boolean)
 }
 
-const isFunctionValue = (value: unknown): value is ConfigFactory => typeof value === "function"
+const isFunctionValue = (value: unknown): value is () => unknown => typeof value === "function"
 
 const isError = (cause: unknown): cause is Error => cause instanceof Error
 
@@ -67,9 +58,12 @@ const configExport =
 const defaultConfigExport = configExport(defaultExportName)
 
 const ownConfigExport =
-  (name: ConfigExportName) => (valueFromRecord: (record: ModuleRecord) => unknown) =>
+  (name: ConfigExportName) =>
+  (valueFromRecord: (record: Readonly<Record<string, unknown>>) => unknown) =>
     flow(
-      Option.liftPredicate((candidate: ModuleRecord): boolean => Object.hasOwn(candidate, name)),
+      Option.liftPredicate((candidate: Readonly<Record<string, unknown>>): boolean =>
+        Object.hasOwn(candidate, name)
+      ),
       Option.map(valueFromRecord),
       Option.map(configExport(name))
     )
@@ -78,7 +72,7 @@ const defaultOwnConfigExport = ownConfigExport(defaultExportName)(Struct.get(def
 
 const configOwnConfigExport = ownConfigExport(configExportName)(Struct.get(configExportName))
 
-const configExportFromRecord = (record: ModuleRecord): ConfigExport => {
+const configExportFromRecord = (record: Readonly<Record<string, unknown>>): ConfigExport => {
   const defaultOwn = defaultOwnConfigExport(record)
   const directExport = defaultConfigExport(record)
 
@@ -122,7 +116,7 @@ const selectedExport = Effect.fn("selectedExport")(function* (
 const callFactory = Effect.fn("callFactory")(function* (
   configPath: string,
   exportName: ConfigExportName,
-  factory: ConfigFactory
+  factory: () => unknown
 ) {
   const hasParameters = factory.length > 0
 
@@ -165,7 +159,7 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 const checkShapeReason =
   "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExample[] }"
 
-const hasNamedCheckFields = (record: ModuleRecord): boolean => {
+const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean => {
   const hasStringName = typeof record.name === "string"
 
   const hasCheckPlan = pipe(
@@ -214,7 +208,7 @@ const invalidNamedCheck = (value: unknown): boolean => {
 }
 
 const namedCheckFrom = (value: unknown): NamedCheck => {
-  const record = value as ModuleRecord
+  const record = value as Readonly<Record<string, unknown>>
   const name = record.name as string
   const check = record.check as Check
 
@@ -273,7 +267,7 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
     return yield* failConfig(configPath, reason)
   }
 
-  const record = value as ModuleRecord
+  const record = value as Readonly<Record<string, unknown>>
 
   const checks = yield* validateNamedChecks(configPath, `${fieldPath}.checks`, record.checks)
 

@@ -1,5 +1,4 @@
 import { Function, Schema } from "effect"
-import { TsNode } from "../tsSchema.js"
 
 const zeroPosition: () => number = Function.constant(0)
 
@@ -46,23 +45,6 @@ export class Location extends Schema.Class<Location>("Location")({
  */
 export class Detection extends Schema.Class<Detection>("Detection")({
   location: Location,
-  message: Schema.String,
-  hint: Schema.String,
-  data: optionalUnknown
-}) {}
-
-/**
- * DetectionSource is the shared message, hint, data, node contract used by
- * MakeDetection and detection.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
-export class DetectionSource extends Schema.Class<DetectionSource>("DetectionSource")({
-  node: TsNode,
   message: Schema.String,
   hint: Schema.String,
   data: optionalUnknown

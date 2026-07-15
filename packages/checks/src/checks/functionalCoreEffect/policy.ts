@@ -1,15 +1,35 @@
-import { Array, Data, Function, HashSet, Option, Order, Struct, pipe } from "effect"
+import { Array, Data, Function, HashSet, Option, Order, Struct, Tuple, pipe } from "effect"
 import type { ArchitectureRole } from "./data.js"
 
 export type ArchitectureRoleClassifier = (
   projectRelativePath: string
 ) => Option.Option<ArchitectureRole>
 
+/**
+ * ArchitectureRolePath is the shared path-to-role binding used by policy
+ * helpers.
+ *
+ * @remarks
+ *   It remains explicit because classifiers and prefix tables must exchange one
+ *   path/role pair. Removing it would use parallel arrays whose entries could
+ *   drift.
+ * @modelRole shared
+ */
 export class ArchitectureRolePath extends Data.Class<{
   readonly path: string
   readonly role: ArchitectureRole
 }> {}
 
+/**
+ * FunctionalCoreEffectPolicy is the boundary configuration consumed by
+ * functional-core checks.
+ *
+ * @remarks
+ *   It remains explicit because wiring factories and detectors must share one
+ *   policy record. Removing it would thread parallel knobs through every check
+ *   constructor and let defaults diverge.
+ * @modelRole boundary
+ */
 export class FunctionalCoreEffectPolicy extends Data.Class<{
   readonly roleOf: ArchitectureRoleClassifier
   readonly capabilityModulePrefixes: ReadonlyArray<string>
@@ -17,8 +37,19 @@ export class FunctionalCoreEffectPolicy extends Data.Class<{
   readonly resourceTypeSuffixes: ReadonlyArray<string>
 }> {}
 
-const normalizePath = (value: string): string =>
-  value.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "")
+const normalizePath = (value: string): string => {
+  const withForwardSlashes = value.replaceAll("\\", "/")
+
+  const withoutLeadingDotSlash = withForwardSlashes.startsWith("./")
+    ? withForwardSlashes.slice(2)
+    : withForwardSlashes
+
+  const withoutTrailingSlash = withoutLeadingDotSlash.endsWith("/")
+    ? withoutLeadingDotSlash.slice(0, -1)
+    : withoutLeadingDotSlash
+
+  return withoutTrailingSlash
+}
 
 const testDirectoryNames = HashSet.make("test", "tests", "__tests__")
 
@@ -70,31 +101,40 @@ export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (proje
 
   const contains = containsSegment(segments)
 
-  if (contains(testDirectoryNames) || hasTestSuffix(fileName)) {
-    return Option.some("test")
-  }
+  const inTestDirectory = contains(testDirectoryNames)
+  const hasTestName = hasTestSuffix(fileName)
+  const isTestPath = inTestDirectory || hasTestName
 
-  if (contains(rootDirectoryNames) || HashSet.has(rootFileNames, fileName)) {
-    return Option.some("root")
-  }
+  const inRootDirectory = contains(rootDirectoryNames)
+  const isRootFile = HashSet.has(rootFileNames, fileName)
+  const isRootPath = inRootDirectory || isRootFile
 
-  if (contains(adapterDirectoryNames)) {
-    return Option.some("adapter")
-  }
+  const isAdapterPath = contains(adapterDirectoryNames)
+  const isPortPath = contains(portDirectoryNames)
+  const isApplicationPath = contains(applicationDirectoryNames)
+  const isDomainPath = contains(domainDirectoryNames)
 
-  if (contains(portDirectoryNames)) {
-    return Option.some("port")
-  }
+  const testRule = Tuple.make(isTestPath, "test" as const)
+  const rootRule = Tuple.make(isRootPath, "root" as const)
+  const adapterRule = Tuple.make(isAdapterPath, "adapter" as const)
+  const portRule = Tuple.make(isPortPath, "port" as const)
+  const applicationRule = Tuple.make(isApplicationPath, "application" as const)
+  const domainRule = Tuple.make(isDomainPath, "domain" as const)
 
-  if (contains(applicationDirectoryNames)) {
-    return Option.some("application")
-  }
+  const roleRules = Array.make(
+    testRule,
+    rootRule,
+    adapterRule,
+    portRule,
+    applicationRule,
+    domainRule
+  )
 
-  if (contains(domainDirectoryNames)) {
-    return Option.some("domain")
-  }
-
-  return Option.none()
+  return pipe(
+    roleRules,
+    Array.findFirst(([matches]) => matches),
+    Option.map(([, role]) => role)
+  )
 }
 
 const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
@@ -102,21 +142,28 @@ const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
   (entry) => normalizePath(entry.path).length
 )
 
-const normalizedRolePath = (entry: ArchitectureRolePath): ArchitectureRolePath =>
-  new ArchitectureRolePath({
-    path: normalizePath(entry.path),
+const normalizedRolePath = (entry: ArchitectureRolePath): ArchitectureRolePath => {
+  const path = normalizePath(entry.path)
+
+  return new ArchitectureRolePath({
+    path,
     role: entry.role
   })
+}
 
-const pathContains = (prefix: string, candidate: string): boolean =>
-  candidate === prefix || candidate.startsWith(`${prefix}/`)
+const pathContains = (prefix: string, candidate: string): boolean => {
+  const exact = candidate === prefix
+  const nested = candidate.startsWith(`${prefix}/`)
+
+  return exact || nested
+}
 
 export const roleByPrefixes = (
   rolePaths: ReadonlyArray<ArchitectureRolePath>
 ): ArchitectureRoleClassifier => {
   const ordered = pipe(rolePaths, Array.map(normalizedRolePath), Array.sort(pathLengthOrder))
 
-  return (projectRelativePath) => {
+  const roleForPath = (projectRelativePath: string): Option.Option<ArchitectureRole> => {
     const normalized = normalizePath(projectRelativePath)
 
     return pipe(
@@ -125,6 +172,8 @@ export const roleByPrefixes = (
       Option.map(Struct.get("role"))
     )
   }
+
+  return roleForPath
 }
 
 const defaultCapabilityModulePrefixes = Array.make(

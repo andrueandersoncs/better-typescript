@@ -1,8 +1,6 @@
 import { Array, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { foldAst } from "@better-typescript/core/engine/sources"
-import { detection } from "@better-typescript/core/engine/location"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -10,6 +8,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid binding an Effect only to yield* it."
 
@@ -120,11 +119,9 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
               const nestedNonGenerator = Array.some(nestedFunctionFlags, Boolean)
 
-              if (nestedNonGenerator) {
-                return Option.none()
-              }
-
-              return pipe(Option.fromNullable(current.parent), Option.flatMap(visit))
+              return nestedNonGenerator
+                ? Option.none()
+                : pipe(Option.fromNullable(current.parent), Option.flatMap(visit))
             }
 
             return visit(start)

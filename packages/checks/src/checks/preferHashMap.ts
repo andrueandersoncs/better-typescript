@@ -1,18 +1,17 @@
 import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isInAmbientContext } from "./support/tsNode.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
 } from "./support/tsSignature.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const isMapIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Map"
 
@@ -36,11 +35,15 @@ const typeRefHint =
 
 /**
  * MapRuleNode is the syntax contract shared by Map candidate detection and
- * matching. @modelRole shared @remarks It remains explicit because constructor
- * and type-reference syntax need one compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted expressions drift.
+ * matching.
+ *
+ * @remarks
+ *   It remains explicit because constructor and type-reference syntax need one
+ *   compiler-node vocabulary; removing it would duplicate the union and let
+ *   their accepted expressions drift.
+ * @modelRole shared
  */
-type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
+export type MapRuleNode = ts.NewExpression | ts.TypeReferenceNode
 
 const isMapRuleNode = (node: ts.Node): node is MapRuleNode =>
   ts.isNewExpression(node) ||

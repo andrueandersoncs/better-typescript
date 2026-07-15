@@ -1,7 +1,5 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -9,6 +7,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { namedDetectionTarget } from "./support/tsNode.js"
 import { schemaTaggedClassEncodedType, typeIsWireSafe } from "./taggedClassPortability.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const message = "Require Schema.TaggedClass to have a portable encoded representation."
 
@@ -27,13 +26,15 @@ const schemaTaggedClassMatches = (context: CheckContext) => {
     pipe(
       schemaTaggedClassEncodedType(checker)(declaration),
       Option.filter((encodedType) => !typeIsWireSafe(checker)(declaration)(encodedType)),
-      Option.map(() =>
-        match({
-          node: namedDetectionTarget(declaration),
+      Option.map(() => {
+        const node = namedDetectionTarget(declaration)
+
+        return match({
+          node,
           message,
           hint
         })
-      ),
+      }),
       Option.toArray
     )
 

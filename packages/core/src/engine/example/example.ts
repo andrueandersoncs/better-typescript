@@ -27,6 +27,28 @@ export const refactorExampleTrees = (
   good: NonEmptyExampleTree
 ): RefactorExample => new RefactorExample({ bad, good })
 
+const formatExampleTree =
+  (label: string) =>
+  (files: ReadonlyArray<ExampleSnippet>): string => {
+    const sections = Array.map(files, (snippet) => {
+      const codeLines = snippet.code.split("\n")
+      const indentedLines = Array.map(codeLines, (line) => `    ${line}`)
+      const indentedCode = Array.join(indentedLines, "\n")
+
+      return `  ${label} (${snippet.filePath}):\n${indentedCode}`
+    })
+
+    return Array.join(sections, "\n")
+  }
+
+export const formatRefactorExample = (example: RefactorExample): string => {
+  const badText = formatExampleTree("Bad")(example.bad)
+  const goodText = formatExampleTree("Good")(example.good)
+
+  const joinedParts = Array.make(badText, goodText)
+  return Array.join(joinedParts, "\n")
+}
+
 const byPath = Order.string
 const byPairName = Order.string
 

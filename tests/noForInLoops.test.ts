@@ -1,11 +1,10 @@
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { Effect, Array } from "effect"
 import { noForInLoops } from "@better-typescript/checks/noForInLoops"
 import { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -52,7 +51,9 @@ const runNoForInLoopsFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(noForInLoops)(project)))
+    workspace.projects.map((project) =>
+      Effect.runPromise(runCheckOnProject(Array.of(noForInLoops))(project))
+    )
   )
 
   return projectElements.flat()

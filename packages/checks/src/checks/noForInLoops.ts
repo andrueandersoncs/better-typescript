@@ -1,13 +1,12 @@
 import { pipe, Array } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 const forInStatementKind = ts.SyntaxKind.ForInStatement
 
 const forInLoopElements = (context: CheckContext) => {

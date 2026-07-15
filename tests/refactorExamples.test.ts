@@ -3,11 +3,10 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
+import { Effect, Array } from "effect"
 import { fixtureExampleRoot, fixturesRoot } from "@better-typescript/checks/fixtureExamples"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
-import { loadProject } from "@better-typescript/core/project/loadProject"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { runCheckOnProject, loadProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 
@@ -40,7 +39,9 @@ const pairRoots = (exampleRoot: string): ReadonlyArray<string> =>
 const runSide = async (check: (typeof defaultWiring.checks)[number]["check"], sideRoot: string) => {
   const workspace = await Effect.runPromise(loadProject(sideRoot))
   const nested = await Promise.all(
-    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(check)(project)))
+    workspace.projects.map((project) =>
+      Effect.runPromise(runCheckOnProject(Array.of(check))(project))
+    )
   )
 
   return nested.flat()

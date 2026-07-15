@@ -1,6 +1,23 @@
 import * as path from "node:path"
-import { Array, Effect, Function, HashSet, Option } from "effect"
+import { Array, Effect, Function, HashSet, Option, Stream, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
+import type { Check } from "../../engine/check/data.js"
+import type { Detection } from "../../engine/location/data.js"
+import {
+  batchReportBlocks,
+  initialReportEvents,
+  workspaceSignals,
+  workspaceSignalsForProjects
+} from "../../engine/report/report.js"
+import type { ReportBlock, WiringConfig, WiringSignals } from "../../engine/report/data.js"
+import type { ReportEvent } from "../../engine/watch/data.js"
+import {
+  astNodesFromContext,
+  contextFor,
+  isProjectSourceFile,
+  runChecks
+} from "../../engine/sources/sources.js"
+import type { AstNodeElement, ProgramContext } from "../../engine/sources/data.js"
 import {
   CircularProjectReferenceError,
   InvalidTsconfigError,
@@ -50,6 +67,96 @@ export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
     program
   })
 }
+
+export const checkableSourceFiles = (project: LoadedProject): Stream.Stream<ts.SourceFile, Error> =>
+  pipe(project.program.getSourceFiles(), Array.filter(isProjectSourceFile), Stream.fromIterable)
+
+export const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
+  const createContext = contextFor(project.rootPath)
+
+  return createContext(project.program)
+}
+
+export const astNodes = (project: LoadedProject): Stream.Stream<AstNodeElement, Error> =>
+  pipe(project.program, contextFor(project.rootPath), astNodesFromContext)
+
+const emptyDetections: ReadonlyArray<Detection> = Array.empty()
+const noDetections = Function.constant(emptyDetections)
+const includeEverySourceFile = Function.constant(true)
+
+const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext = flow(
+  loadProjectConfig,
+  contextFromLoadedProject
+)
+
+export const workspaceSignalsFromConfigs =
+  (config: WiringConfig) =>
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+    workspaceSignalsForProjects(config)(workspace.rootPath)(workspace.projects)(
+      contextFromProjectConfig
+    )
+
+export const runCheckOnProject =
+  (checks: ReadonlyArray<Check>) =>
+  (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>, Error> =>
+    Effect.sync(() => {
+      const context = contextFromLoadedProject(project)
+      const checksInEveryFile = runChecks(checks)(includeEverySourceFile)
+      const detections = checksInEveryFile(context)
+
+      return pipe(detections, Array.head, Option.getOrElse(noDetections))
+    })
+
+export const reportBlocksFromConfig =
+  (config: WiringConfig) =>
+  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+    pipe(
+      workspace.projects,
+      Array.map(contextFromLoadedProject),
+      workspaceSignals(config)(workspace.rootPath),
+      Effect.flatMap(batchReportBlocks(config))
+    )
+
+export const reportBlocksFromWorkspaceConfigs =
+  (config: WiringConfig) =>
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+    pipe(workspaceSignalsFromConfigs(config)(workspace), Effect.flatMap(batchReportBlocks(config)))
+
+export const reportFromConfig =
+  (config: WiringConfig) =>
+  (workspace: LoadedWorkspace): Stream.Stream<string, Error> =>
+    pipe(
+      reportBlocksFromConfig(config)(workspace),
+      Stream.fromIterableEffect,
+      Stream.map(Struct.get("text"))
+    )
+
+export const reportFromWorkspaceConfigs =
+  (config: WiringConfig) =>
+  (workspace: WorkspaceConfigs): Stream.Stream<string, Error> =>
+    pipe(
+      reportBlocksFromWorkspaceConfigs(config)(workspace),
+      Stream.fromIterableEffect,
+      Stream.map(Struct.get("text"))
+    )
+
+export const reportEventsFromConfig =
+  (config: WiringConfig) =>
+  (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, Error> =>
+    pipe(
+      reportBlocksFromConfig(config)(workspace),
+      Effect.map(initialReportEvents(workspace.rootPath)),
+      Stream.fromIterableEffect
+    )
+
+export const reportEventsFromWorkspaceConfigs =
+  (config: WiringConfig) =>
+  (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, Error> =>
+    pipe(
+      reportBlocksFromWorkspaceConfigs(config)(workspace),
+      Effect.map(initialReportEvents(workspace.rootPath)),
+      Stream.fromIterableEffect
+    )
 
 export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
   Effect.fn("loadProject")(function* (projectPath: string) {

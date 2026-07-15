@@ -1,20 +1,15 @@
 import * as path from "node:path"
 import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { functionInitializer, unwrapExpression } from "./support/tsNode.js"
+import { functionInitializer, hasParameters, unwrapExpression } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
-import type { FunctionInitializer } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
-
-const hasParameters = (initializer: FunctionInitializer): boolean =>
-  initializer.parameters.length > 0
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const effectModuleFileNames = HashSet.make("Effect.ts", "Effect.d.ts")
 

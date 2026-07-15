@@ -3,11 +3,10 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Array, Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
 import { preferSchemaTaggedClass } from "@better-typescript/checks/preferSchemaTaggedClass"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -88,7 +87,7 @@ const runCheckFixture = async (rootPath: string): Promise<ReadonlyArray<Detectio
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(preferSchemaTaggedClass)(project))
+      Effect.runPromise(runCheckOnProject(Array.of(preferSchemaTaggedClass))(project))
     )
   )
 
@@ -101,7 +100,7 @@ const runDefaultFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const projectElements = await Promise.all(
     workspace.projects.flatMap((project) =>
       defaultWiring.checks.map((named) =>
-        Effect.runPromise(runCheckOnProject(named.check)(project))
+        Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
       )
     )
   )

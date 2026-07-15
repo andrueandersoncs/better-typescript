@@ -2,11 +2,10 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
+import { Effect, Array } from "effect"
 import { conceptControl } from "@better-typescript/checks/conceptControl"
-import { loadProject } from "@better-typescript/core/project/loadProject"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
 import type { Detection } from "@better-typescript/core/engine/location/data"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "concept-control")
@@ -27,7 +26,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projects = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(conceptControl)(project))
+      Effect.runPromise(runCheckOnProject(Array.of(conceptControl))(project))
     )
   )
 

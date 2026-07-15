@@ -5,9 +5,8 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
 import * as ts from "typescript"
-import { loadProject } from "@better-typescript/core/project/loadProject"
 import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
-import { checkableSourceFiles } from "@better-typescript/core/engine/sources"
+import { loadProject, checkableSourceFiles } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturesRoot = path.join(testDirectory, "fixtures")

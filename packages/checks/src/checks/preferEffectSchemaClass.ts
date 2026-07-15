@@ -1,9 +1,8 @@
 import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
-import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -11,27 +10,14 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
-/**
- * ConstructionIndex maps model symbols to construction sites for schema-class
- * indexing and detection. @modelRole shared @remarks It remains explicit
- * because the builder, listeners, and matcher need one stable lookup contract;
- * removing it would duplicate the representation across consumers.
- */
-type ConstructionIndex = HashMap.HashMap<ts.Symbol, string>
+import { toRelativeFileName } from "@better-typescript/core/engine/location"
+import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-const propertyNameText = (name: ts.PropertyName): Option.Option<string> =>
+const schemaPropertyNameText = (name: ts.PropertyName): Option.Option<string> =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
 
 const namedPropertyText = (property: ts.ObjectLiteralElementLike): Option.Option<string> =>
-  pipe(Option.fromNullable(property.name), Option.flatMap(propertyNameText))
-
-/**
- * ObjectTypeDeclaration is the compiler syntax protocol handled by object-type
- * matching. @modelRole protocol @remarks It remains explicit because interfaces
- * and type aliases share one matcher contract; removing it would repeat the
- * union and let accepted cases drift.
- */
-type ObjectTypeDeclaration = ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+  pipe(Option.fromNullable(property.name), Option.flatMap(schemaPropertyNameText))
 
 const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
@@ -89,12 +75,12 @@ const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (li
   ts.isObjectLiteralExpression(node) ? Array.append(literals, node) : literals
 
 const addConstructionEntry = (
-  index: ConstructionIndex,
+  index: HashMap.HashMap<ts.Symbol, string>,
   entry: readonly [ts.Symbol, string]
-): ConstructionIndex =>
+): HashMap.HashMap<ts.Symbol, string> =>
   HashMap.has(index, entry[0]) ? index : HashMap.set(index, entry[0], entry[1])
 
-const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
+const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Symbol, string> => {
   const emptyIndex = HashMap.empty<ts.Symbol, string>()
   const checker = context.checker
 
@@ -275,45 +261,48 @@ const buildConstructionIndex = (context: ProgramContext): ConstructionIndex => {
   return Array.reduce(flatMapped, emptyIndex, addConstructionEntry)
 }
 
-const objectTypeDeclarationMatches = (index: ConstructionIndex) => (context: CheckContext) => {
-  const checker = context.checker
-  const toRelative = toRelativeFileName(context.projectRoot)
-  const match = detection(context)
+const objectTypeDeclarationMatches =
+  (index: HashMap.HashMap<ts.Symbol, string>) => (context: CheckContext) => {
+    const checker = context.checker
+    const toRelative = toRelativeFileName(context.projectRoot)
+    const match = detection(context)
 
-  const matches = (declaration: ObjectTypeDeclaration): ReadonlyArray<Detection> =>
-    pipe(
-      checker.getSymbolAtLocation(declaration.name),
-      Option.fromNullable,
-      Option.flatMap((symbol) => HashMap.get(index, symbol)),
-      Option.map((constructionFileName) => {
-        const typeName = declaration.name.text
-        const exampleFile = toRelative(constructionFileName)
+    const matches = (
+      declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+    ): ReadonlyArray<Detection> =>
+      pipe(
+        checker.getSymbolAtLocation(declaration.name),
+        Option.fromNullable,
+        Option.flatMap((symbol) => HashMap.get(index, symbol)),
+        Option.map((constructionFileName) => {
+          const typeName = declaration.name.text
+          const exampleFile = toRelative(constructionFileName)
 
-        const kindLabel = ts.isInterfaceDeclaration(declaration) ? "an interface" : "a type alias"
+          const kindLabel = ts.isInterfaceDeclaration(declaration) ? "an interface" : "a type alias"
 
-        return match({
-          node: declaration.name,
-          message:
-            `Avoid declaring ${typeName} as ${kindLabel} when this project constructs ` +
-            "its values.",
-          hint:
-            `Object literals of this shape are built in ${exampleFile}, so ${typeName} is a ` +
-            "data definition rather than a boundary type. Replace it with an Effect " +
-            `Schema class — class ${typeName} extends ` +
-            `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
-            "for tagged variants). The class is both the type and the constructor: keep using " +
-            `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
-            "so every construction is validated. When the shape must hold process-bound " +
-            "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
-            "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
-            "preserve the class-as-type-and-constructor discipline without schema validation."
-        })
-      }),
-      Option.toArray
-    )
+          return match({
+            node: declaration.name,
+            message:
+              `Avoid declaring ${typeName} as ${kindLabel} when this project constructs ` +
+              "its values.",
+            hint:
+              `Object literals of this shape are built in ${exampleFile}, so ${typeName} is a ` +
+              "data definition rather than a boundary type. Replace it with an Effect " +
+              `Schema class — class ${typeName} extends ` +
+              `Schema.Class<${typeName}>("${typeName}")({ ... }) {} (or Schema.TaggedClass ` +
+              "for tagged variants). The class is both the type and the constructor: keep using " +
+              `${typeName} in annotations and build values with new ${typeName}({ ... }) ` +
+              "so every construction is validated. When the shape must hold process-bound " +
+              "runtime values (streams, functions, ts compiler objects), extend Data.Class " +
+              "instead, or Data.TaggedClass when the runtime-only data needs a _tag. Both " +
+              "preserve the class-as-type-and-constructor discipline without schema validation."
+          })
+        }),
+        Option.toArray
+      )
 
-  return matches
-}
+    return matches
+  }
 
 const isReadonlyTypeOperator = (node: ts.TypeNode): node is ts.TypeOperatorNode =>
   pipe(
@@ -370,7 +359,9 @@ const tupleTypeDeclarationMatches = (context: CheckContext) => {
 const isObjectTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclaration =>
   ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)
 
-const schemaClassListeners = (index: ConstructionIndex): ReadonlyArray<Subscription> => {
+const schemaClassListeners = (
+  index: HashMap.HashMap<ts.Symbol, string>
+): ReadonlyArray<Subscription> => {
   const interfaceDeclarationKinds = Array.of(ts.SyntaxKind.InterfaceDeclaration)
 
   const interfaceListeners = nodeSubscriptions(interfaceDeclarationKinds)(

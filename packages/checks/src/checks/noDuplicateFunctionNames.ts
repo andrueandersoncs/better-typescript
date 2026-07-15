@@ -1,9 +1,8 @@
 import { Array, Function, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { functionInitializer } from "./support/tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -11,13 +10,8 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
-/**
- * FunctionNameIndex groups declarations by function name for index construction
- * and duplicate detection. @modelRole shared @remarks It remains explicit
- * because the builder, lookup, and subscription owners need one stable grouping
- * contract; removing it would duplicate the representation across consumers.
- */
-type FunctionNameIndex = HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
+import { toRelativeFileName } from "@better-typescript/core/engine/location"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const declaredFunction = (declaration: ts.VariableDeclaration): Option.Option<ts.Identifier> =>
   Option.gen(function* () {
@@ -53,14 +47,14 @@ const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
   Function.constant(emptyIdentifiers)
 
 const declarationsForName =
-  (index: FunctionNameIndex) =>
+  (index: HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>) =>
   (name: string): ReadonlyArray<ts.Identifier> =>
     pipe(HashMap.get(index, name), Option.getOrElse(emptyIdentifierList))
 
 const addFunctionToIndex = (
-  index: FunctionNameIndex,
+  index: HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>,
   nameNode: ts.Identifier
-): FunctionNameIndex => {
+): HashMap.HashMap<string, ReadonlyArray<ts.Identifier>> => {
   const existingDeclarations = declarationsForName(index)(nameNode.text)
   const nextDeclarations = Array.append(existingDeclarations, nameNode)
 
@@ -71,7 +65,9 @@ const declaredFileName = (nameNode: ts.Identifier): string => nameNode.getSource
 
 const maxListedFileNames = 3
 
-const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
+const buildFunctionNameIndex = (
+  context: ProgramContext
+): HashMap.HashMap<string, ReadonlyArray<ts.Identifier>> => {
   const programSourceFiles = context.program.getSourceFiles()
   const filtered = Array.filter(programSourceFiles, isProjectSourceFile)
   const projectFunctions = Array.flatMap(filtered, topLevelFunctions)
@@ -80,7 +76,9 @@ const buildFunctionNameIndex = (context: ProgramContext): FunctionNameIndex => {
   return Array.reduce(projectFunctions, emptyIndex, addFunctionToIndex)
 }
 
-const duplicateNameListeners = (index: FunctionNameIndex): ReadonlyArray<Subscription> =>
+const duplicateNameListeners = (
+  index: HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>
+): ReadonlyArray<Subscription> =>
   fileSubscriptions((context: CheckContext): ReadonlyArray<Detection> => {
     const fileFunctions = topLevelFunctions(context.sourceFile)
     const toRelative = toRelativeFileName(context.projectRoot)

@@ -1,13 +1,12 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { combineAll, nodeSubscriptions } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const isArrayIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Array"
 
@@ -37,12 +36,15 @@ const arrayLiteralMatches = (context: CheckContext) => {
 
 /**
  * ArrayConstructorNode is the syntax contract shared by array-constructor
- * candidate detection and matching. @modelRole shared @remarks It remains
- * explicit because both owners need one stable compiler-node vocabulary;
- * removing it would duplicate the union and let their accepted expressions
- * drift.
+ * candidate detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   expressions drift.
+ * @modelRole shared
  */
-type ArrayConstructorNode = ts.NewExpression | ts.CallExpression
+export type ArrayConstructorNode = ts.NewExpression | ts.CallExpression
 
 const isArrayConstructorNode = (node: ts.Node): node is ArrayConstructorNode =>
   ts.isNewExpression(node) || ts.isCallExpression(node)

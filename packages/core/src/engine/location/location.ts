@@ -1,9 +1,7 @@
 import * as path from "node:path"
-import type * as ts from "typescript"
-import type { CheckContext } from "../check/data.js"
-import { Detection, DetectionSource, Location } from "./data.js"
-
-export type MakeDetection = (source: DetectionSource) => Detection
+import { Array, Equal, pipe } from "effect"
+import { NamedDetection } from "../derive/data.js"
+import { Detection } from "./data.js"
 
 export const toRelativeFileName =
   (projectRoot: string) =>
@@ -13,31 +11,44 @@ export const toRelativeFileName =
     return relative || fileName
   }
 
-export const locateNode =
-  (context: CheckContext) =>
-  (node: ts.Node): Location => {
-    const sourceFile = context.sourceFile
-    const start = node.getStart(sourceFile)
-    const position = sourceFile.getLineAndCharacterOfPosition(start)
+export const namedDetection =
+  (name: string) =>
+  (detectionValue: Detection): NamedDetection =>
+    new NamedDetection({ name, detection: detectionValue })
 
-    const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
+export const detectionAtPath =
+  (pathName: string) =>
+  (element: Detection): boolean =>
+    element.location.path === pathName
 
-    return new Location({
-      path: fileName,
-      line: position.line + 1,
-      column: position.character + 1
-    })
-  }
+export const detectionsAtPath =
+  (pathName: string) =>
+  (elements: ReadonlyArray<Detection>): ReadonlyArray<Detection> =>
+    Array.filter(elements, detectionAtPath(pathName))
 
-export const detection =
-  (context: CheckContext): MakeDetection =>
-  (source: DetectionSource): Detection => {
-    const location = locateNode(context)(source.node)
+export const countDetectionsAtPath =
+  (pathName: string) =>
+  (elements: ReadonlyArray<Detection>): number =>
+    detectionsAtPath(pathName)(elements).length
 
-    return new Detection({
-      location,
-      message: source.message,
-      hint: source.hint,
-      data: source.data
-    })
-  }
+export const detectionEquals = (a: Detection, b: Detection): boolean => {
+  const samePath = a.location.path === b.location.path
+  const sameLine = a.location.line === b.location.line
+  const sameColumn = a.location.column === b.location.column
+  const sameMessage = a.message === b.message
+  const sameHint = a.hint === b.hint
+  const sameData = Equal.equals(a.data, b.data)
+
+  const conditions = Array.make(samePath, sameLine, sameColumn, sameMessage, sameHint, sameData)
+
+  return Array.every(conditions, Boolean)
+}
+
+export const detectionBlockKey = (element: Detection): string => {
+  const detectionIdentityParts = Array.make(element.message, element.hint)
+
+  return pipe(Array.prepend(detectionIdentityParts, "detection"), JSON.stringify)
+}
+
+export const locationText = (element: Detection): string =>
+  `  ${element.location.path}:${element.location.line}:${element.location.column}`

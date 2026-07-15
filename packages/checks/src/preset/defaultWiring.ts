@@ -166,7 +166,8 @@ import type {
   Wiring,
   WiringConfig
 } from "@better-typescript/core/engine/report/data"
-import { collectSignals, namedDetection } from "@better-typescript/core/engine/derive"
+import { collectSignals } from "@better-typescript/core/engine/derive"
+import { namedDetection } from "@better-typescript/core/engine/location"
 import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 
 const nameDetections = (signal: Signal): Stream.Stream<NamedDetection, Error> => {

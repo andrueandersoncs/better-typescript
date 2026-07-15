@@ -1,13 +1,12 @@
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { fileCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { InterfaceBurdenData } from "./data.js"
 import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
+import { fileCheck, detection } from "@better-typescript/core/engine/check"
 
 const minimumOperations = 4
 
@@ -77,11 +76,15 @@ const isPublicClassMember = (member: ts.ClassElement): boolean => {
 
 /**
  * CallableClassMember is the compiler-node protocol accepted by class surface
- * measurement. @modelRole protocol @remarks It remains explicit because the
- * type guard and surface calculator must agree on callable class syntax;
- * removing it would repeat the union and let their accepted node kinds drift.
+ * measurement.
+ *
+ * @remarks
+ *   It remains explicit because the type guard and surface calculator must agree
+ *   on callable class syntax; removing it would repeat the union and let their
+ *   accepted node kinds drift.
+ * @modelRole protocol
  */
-type CallableClassMember =
+export type CallableClassMember =
   | ts.MethodDeclaration
   | ts.GetAccessorDeclaration
   | ts.SetAccessorDeclaration

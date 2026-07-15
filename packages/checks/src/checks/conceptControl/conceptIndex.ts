@@ -4,6 +4,7 @@ import {
   HashMap,
   HashSet,
   Iterable,
+  Match,
   MutableHashMap,
   MutableHashSet,
   MutableList,
@@ -61,6 +62,18 @@ const structuralRoleSuffixes = HashSet.make(
   "State"
 )
 
+const emptyDataStructureEntries: ReadonlyArray<DataStructureEntry> = Array.empty()
+
+const noneDeclarationName: Option.Option<ts.DeclarationName> = Option.none()
+
+const noneIdentifier: Option.Option<ts.Identifier> = Option.none()
+
+const noneDataStructureEntry: Option.Option<DataStructureEntry> = Option.none()
+
+const noneObjectLiteral: Option.Option<ts.ObjectLiteralExpression> = Option.none()
+
+const noneFunctionEntry: Option.Option<FunctionEntry> = Option.none()
+
 const canonicalSymbol =
   (checker: ts.TypeChecker) =>
   (symbol: ts.Symbol): ts.Symbol =>
@@ -101,14 +114,20 @@ const classDataMember = (declaration: ts.ClassDeclaration): Option.Option<string
 const classIsDataStructure = (declaration: ts.ClassDeclaration): boolean =>
   pipe(declaration, classDataMember, Option.isSome)
 
-const interfaceCarriesData = (declaration: ts.InterfaceDeclaration): boolean =>
-  Array.some(declaration.members, (member) => {
+const interfaceCarriesData = (declaration: ts.InterfaceDeclaration): boolean => {
+  const hasDataMember = Array.some(declaration.members, (member) => {
     const isProperty = ts.isPropertySignature(member)
     const isIndex = ts.isIndexSignatureDeclaration(member)
     const dataMemberChecks = Array.make(isProperty, isIndex)
 
     return Array.some(dataMemberChecks, Boolean)
-  }) || declaration.heritageClauses !== undefined
+  })
+
+  const hasHeritage = pipe(Option.fromNullable(declaration.heritageClauses), Option.isSome)
+  const carriesDataChecks = Array.make(hasDataMember, hasHeritage)
+
+  return Array.some(carriesDataChecks, Boolean)
+}
 
 const aliasCarriesData = (declaration: ts.TypeAliasDeclaration): boolean => {
   const type = declaration.type
@@ -126,8 +145,11 @@ const runtimeSchemaType = (
   const type = checker.getTypeAtLocation(declaration.name)
 
   const text = checker.typeToString(type, declaration.name, ts.TypeFormatFlags.NoTruncation)
+  const includesSchemaType = text.includes("Schema<")
+  const startsWithSchemaNamespace = text.startsWith("Schema.")
+  const schemaChecks = Array.make(includesSchemaType, startsWithSchemaNamespace)
 
-  return text.includes("Schema<") || text.startsWith("Schema.")
+  return Array.some(schemaChecks, Boolean)
 }
 
 const fieldIsMethod = (symbol: ts.Symbol): boolean => {
@@ -136,11 +158,9 @@ const fieldIsMethod = (symbol: ts.Symbol): boolean => {
   return Array.some(declarations, (declaration) => {
     const isMethod = ts.isMethodDeclaration(declaration)
     const isMethodSignature = ts.isMethodSignature(declaration)
-
-    const isAccessor =
-      ts.isGetAccessorDeclaration(declaration) || ts.isSetAccessorDeclaration(declaration)
-
-    const methodChecks = Array.make(isMethod, isMethodSignature, isAccessor)
+    const isGetAccessor = ts.isGetAccessorDeclaration(declaration)
+    const isSetAccessor = ts.isSetAccessorDeclaration(declaration)
+    const methodChecks = Array.make(isMethod, isMethodSignature, isGetAccessor, isSetAccessor)
 
     return Array.some(methodChecks, Boolean)
   })
@@ -165,29 +185,36 @@ const fieldsFor = (checker: ts.TypeChecker, nameNode: ts.Identifier): ReadonlyAr
 const fieldTypeText =
   (checker: ts.TypeChecker) =>
   (field: ts.Symbol): string => {
+    const declarations = field.declarations ?? Array.empty()
+
     const declaration = pipe(
-      field.declarations ?? Array.empty(),
+      declarations,
       Array.head,
       Option.getOrElse(Function.constant(field.valueDeclaration))
     )
 
     const location = declaration ?? field.valueDeclaration
 
+    const declaredType = checker.getDeclaredTypeOfSymbol(field)
+
     const type = pipe(
       Option.fromNullable(location),
       Option.map((node) => checker.getTypeOfSymbolAtLocation(field, node)),
-      Option.getOrElse(() => checker.getDeclaredTypeOfSymbol(field))
+      Option.getOrElse(Function.constant(declaredType))
     )
 
     return checker.typeToString(type, location, ts.TypeFormatFlags.NoTruncation)
   }
 
 const declarationHasComparableShape = (declaration: DataStructureDeclaration): boolean => {
-  if (ts.isTypeAliasDeclaration(declaration)) {
-    return ts.isTypeLiteralNode(declaration.type)
-  }
+  const isTypeLiteralAlias =
+    ts.isTypeAliasDeclaration(declaration) && ts.isTypeLiteralNode(declaration.type)
 
-  return ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration)
+  const isClass = ts.isClassDeclaration(declaration)
+  const isInterface = ts.isInterfaceDeclaration(declaration)
+  const shapeChecks = Array.make(isTypeLiteralAlias, isClass, isInterface)
+
+  return Array.some(shapeChecks, Boolean)
 }
 
 const shapeFor = (
@@ -241,45 +268,55 @@ const entryForDeclaration = (
     })
   )
 
+const isNamedDataClass = (
+  statement: ts.Statement
+): statement is ts.ClassDeclaration & { readonly name: ts.Identifier } =>
+  pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(statement),
+    Option.flatMap((declaration) =>
+      pipe(Option.fromNullable(declaration.name), Option.as(declaration))
+    ),
+    Option.filter(classIsDataStructure),
+    Option.isSome
+  )
+
+const isDataInterface = (statement: ts.Statement): statement is ts.InterfaceDeclaration => {
+  const isInterface = ts.isInterfaceDeclaration(statement)
+
+  return isInterface && interfaceCarriesData(statement)
+}
+
+const isDataTypeAlias = (statement: ts.Statement): statement is ts.TypeAliasDeclaration => {
+  const isAlias = ts.isTypeAliasDeclaration(statement)
+
+  return isAlias && aliasCarriesData(statement)
+}
+
 const declarationEntry = (
   checker: ts.TypeChecker,
   statement: ts.Statement
 ): ReadonlyArray<DataStructureEntry> => {
   const exported = hasExportModifier(statement)
 
-  if (
-    ts.isClassDeclaration(statement) &&
-    statement.name !== undefined &&
-    classIsDataStructure(statement)
-  ) {
-    return pipe(
-      entryForDeclaration(checker, statement, statement, statement.name, exported),
-      Option.toArray
-    )
+  const entriesFor = (declaration: DataStructureDeclaration, nameNode: ts.Identifier) =>
+    pipe(entryForDeclaration(checker, declaration, statement, nameNode, exported), Option.toArray)
+
+  const namedDeclarationEntries = pipe(
+    Match.value(statement),
+    Match.when(isNamedDataClass, (declaration) => entriesFor(declaration, declaration.name)),
+    Match.when(isDataInterface, (declaration) => entriesFor(declaration, declaration.name)),
+    Match.when(isDataTypeAlias, (declaration) => entriesFor(declaration, declaration.name)),
+    Match.when(ts.isEnumDeclaration, (declaration) => entriesFor(declaration, declaration.name)),
+    Match.orElse(Function.constant(emptyDataStructureEntries))
+  )
+
+  if (namedDeclarationEntries.length > 0) {
+    return namedDeclarationEntries
   }
 
-  if (ts.isInterfaceDeclaration(statement) && interfaceCarriesData(statement)) {
-    return pipe(
-      entryForDeclaration(checker, statement, statement, statement.name, exported),
-      Option.toArray
-    )
-  }
+  const isExportedVariable = ts.isVariableStatement(statement) && exported
 
-  if (ts.isTypeAliasDeclaration(statement) && aliasCarriesData(statement)) {
-    return pipe(
-      entryForDeclaration(checker, statement, statement, statement.name, exported),
-      Option.toArray
-    )
-  }
-
-  if (ts.isEnumDeclaration(statement)) {
-    return pipe(
-      entryForDeclaration(checker, statement, statement, statement.name, exported),
-      Option.toArray
-    )
-  }
-
-  if (!ts.isVariableStatement(statement) || !exported) {
+  if (!isExportedVariable) {
     return Array.empty()
   }
 
@@ -294,14 +331,15 @@ const declarationEntry = (
   )
 }
 
-const dataStructureEntries = (context: ProgramContext): ReadonlyArray<DataStructureEntry> => {
-  const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+const entriesFromSourceFile =
+  (checker: ts.TypeChecker) =>
+  (sourceFile: ts.SourceFile): ReadonlyArray<DataStructureEntry> =>
+    Array.flatMap(sourceFile.statements, (statement) => declarationEntry(checker, statement))
 
-  const declarations = Array.flatMap(sourceFiles, (sourceFile) =>
-    Array.flatMap(sourceFile.statements, (statement) =>
-      declarationEntry(context.checker, statement)
-    )
-  )
+const dataStructureEntries = (context: ProgramContext): ReadonlyArray<DataStructureEntry> => {
+  const programSourceFiles = context.program.getSourceFiles()
+  const sourceFiles = pipe(programSourceFiles, Array.filter(isProjectSourceFile))
+  const declarations = Array.flatMap(sourceFiles, entriesFromSourceFile(context.checker))
 
   return Array.dedupeWith(declarations, (first, second) => first.symbol === second.symbol)
 }
@@ -315,17 +353,21 @@ const functionEntryForDeclaration = (
     Option.flatMap((nameNode) =>
       pipe(
         symbolAt(checker)(nameNode),
-        Option.map(
-          (symbol) =>
-            new FunctionEntry({
-              symbol,
-              definition: Option.some(declaration),
-              nameNode,
-              name: nameNode.text,
-              sourceFile: declaration.getSourceFile(),
-              exported: hasExportModifier(declaration)
-            })
-        )
+        Option.map((symbol) => {
+          const definition = Option.some(declaration)
+          const name = nameNode.text
+          const sourceFile = declaration.getSourceFile()
+          const exported = hasExportModifier(declaration)
+
+          return new FunctionEntry({
+            symbol,
+            definition,
+            nameNode,
+            name,
+            sourceFile,
+            exported
+          })
+        })
       )
     )
   )
@@ -349,13 +391,15 @@ const functionEntryForVariable = (
         }),
         Option.map((symbol) => {
           const definition = functionInitializer(declaration)
+          const name = nameNode.text
+          const sourceFile = declaration.getSourceFile()
 
           return new FunctionEntry({
             symbol,
             definition,
             nameNode,
-            name: nameNode.text,
-            sourceFile: declaration.getSourceFile(),
+            name,
+            sourceFile,
             exported
           })
         })
@@ -372,17 +416,20 @@ const functionEntryForMethod = (
     Option.flatMap((nameNode) =>
       pipe(
         symbolAt(checker)(nameNode),
-        Option.map(
-          (symbol) =>
-            new FunctionEntry({
-              symbol,
-              definition: Option.some(declaration),
-              nameNode,
-              name: nameNode.text,
-              sourceFile: declaration.getSourceFile(),
-              exported: false
-            })
-        )
+        Option.map((symbol) => {
+          const definition = Option.some(declaration)
+          const name = nameNode.text
+          const sourceFile = declaration.getSourceFile()
+
+          return new FunctionEntry({
+            symbol,
+            definition,
+            nameNode,
+            name,
+            sourceFile,
+            exported: false
+          })
+        })
       )
     )
   )
@@ -398,23 +445,25 @@ const functionEntries = (
       astNodesIn(sourceFile),
       Array.fromIterable,
       Array.filterMap((node) => {
-        if (ts.isFunctionDeclaration(node)) {
-          return functionEntryForDeclaration(context.checker, node)
+        const variableEntry = (declaration: ts.VariableDeclaration) => {
+          const statement = declaration.parent.parent
+          const isVariableStatement = ts.isVariableStatement(statement)
+          const exported = isVariableStatement && hasExportModifier(statement)
+
+          return functionEntryForVariable(context.checker, declaration, exported, dataBySymbol)
         }
 
-        if (ts.isMethodDeclaration(node)) {
-          return functionEntryForMethod(context.checker, node)
-        }
-
-        if (!ts.isVariableDeclaration(node)) {
-          return Option.none()
-        }
-
-        const statement = node.parent.parent
-
-        const exported = ts.isVariableStatement(statement) && hasExportModifier(statement)
-
-        return functionEntryForVariable(context.checker, node, exported, dataBySymbol)
+        return pipe(
+          Match.value(node),
+          Match.when(ts.isFunctionDeclaration, (declaration) =>
+            functionEntryForDeclaration(context.checker, declaration)
+          ),
+          Match.when(ts.isMethodDeclaration, (declaration) =>
+            functionEntryForMethod(context.checker, declaration)
+          ),
+          Match.when(ts.isVariableDeclaration, variableEntry),
+          Match.orElse(Function.constant(noneFunctionEntry))
+        )
       })
     )
   )
@@ -424,16 +473,15 @@ const addOwner = (
   index: MutableHashMap.MutableHashMap<ts.Symbol, MutableHashSet.MutableHashSet<ts.Symbol>>,
   target: ts.Symbol,
   owner: ts.Symbol
-): void => {
+): MutableHashMap.MutableHashMap<ts.Symbol, MutableHashSet.MutableHashSet<ts.Symbol>> => {
   const existing = MutableHashMap.get(index, target)
 
-  const owners = pipe(
-    existing,
-    Option.getOrElse(() => MutableHashSet.empty<ts.Symbol>())
-  )
+  const owners = pipe(existing, Option.getOrElse(MutableHashSet.empty<ts.Symbol>))
 
   MutableHashSet.add(owners, owner)
   MutableHashMap.set(index, target, owners)
+
+  return index
 }
 
 const immutableOwnerIndex = (
@@ -453,102 +501,135 @@ const immutableOwnerIndex = (
     HashMap.fromIterable
   )
 
-const topLevelStatement = (node: ts.Node): Option.Option<ts.Statement> => {
-  const ancestors = Iterable.unfold<ts.Node, ts.Node>(node, (current) =>
-    pipe(
-      Option.fromNullable(current.parent),
-      Option.map((parent) => Tuple.make(current, parent))
-    )
-  )
-
-  return pipe(
-    ancestors,
+const topLevelStatement = (node: ts.Node): Option.Option<ts.Statement> =>
+  pipe(
+    Iterable.unfold<ts.Node, ts.Node>(node, (current) =>
+      pipe(
+        Option.fromNullable(current.parent),
+        Option.map((parent) => Tuple.make(current, parent))
+      )
+    ),
     Iterable.findFirst(
       (candidate): candidate is ts.Statement =>
         ts.isSourceFile(candidate.parent) && ts.isStatement(candidate)
     )
   )
-}
 
 const nodeInside =
   (node: ts.Node) =>
   (candidate: ts.Node): boolean =>
     node.pos >= candidate.pos && node.end <= candidate.end
 
+const isNamedTopLevelDeclaration = (
+  statement: ts.Statement
+): statement is
+  | ts.FunctionDeclaration
+  | ts.ClassDeclaration
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration
+  | ts.EnumDeclaration => {
+  const isFunction = ts.isFunctionDeclaration(statement)
+  const isClass = ts.isClassDeclaration(statement)
+  const isInterface = ts.isInterfaceDeclaration(statement)
+  const isAlias = ts.isTypeAliasDeclaration(statement)
+  const isEnum = ts.isEnumDeclaration(statement)
+  const namedChecks = Array.make(isFunction, isClass, isInterface, isAlias, isEnum)
+
+  return Array.some(namedChecks, Boolean)
+}
+
 const statementOwnerName = (
   node: ts.Node,
   statement: ts.Statement
-): Option.Option<ts.DeclarationName> => {
-  if (ts.isVariableStatement(statement)) {
-    return pipe(
-      statement.declarationList.declarations,
-      Array.findFirst(nodeInside(node)),
-      Option.map(Struct.get("name"))
-    )
-  }
+): Option.Option<ts.DeclarationName> =>
+  pipe(
+    Match.value(statement),
+    Match.when(ts.isVariableStatement, (variableStatement) =>
+      pipe(
+        variableStatement.declarationList.declarations,
+        Array.findFirst(nodeInside(node)),
+        Option.map(Struct.get("name"))
+      )
+    ),
+    Match.when(isNamedTopLevelDeclaration, (declaration) => Option.fromNullable(declaration.name)),
+    Match.orElse(Function.constant(noneDeclarationName))
+  )
 
-  if (
-    ts.isFunctionDeclaration(statement) ||
-    ts.isClassDeclaration(statement) ||
-    ts.isInterfaceDeclaration(statement) ||
-    ts.isTypeAliasDeclaration(statement) ||
-    ts.isEnumDeclaration(statement)
-  ) {
-    return Option.fromNullable(statement.name)
-  }
+const namedFunctionOrMethodName = (node: ts.Node): Option.Option<ts.Identifier> =>
+  pipe(
+    Match.value(node),
+    Match.when(ts.isFunctionDeclaration, (declaration) =>
+      pipe(Option.fromNullable(declaration.name), Option.filter(ts.isIdentifier))
+    ),
+    Match.when(ts.isMethodDeclaration, (declaration) =>
+      pipe(Option.fromNullable(declaration.name), Option.filter(ts.isIdentifier))
+    ),
+    Match.orElse(Function.constant(noneIdentifier))
+  )
 
-  return Option.none()
-}
+const expressionFunctionOwnerName = (node: ts.ArrowFunction | ts.FunctionExpression) => {
+  const namedExpression = pipe(
+    Option.liftPredicate(ts.isFunctionExpression)(node),
+    Option.flatMap((expression) => Option.fromNullable(expression.name))
+  )
 
-const functionOwnerName = (node: ts.Node): Option.Option<ts.Identifier> => {
-  if (
-    (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) &&
-    node.name !== undefined &&
-    ts.isIdentifier(node.name)
-  ) {
-    return Option.some(node.name)
-  }
-
-  if (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) {
-    return Option.none()
-  }
-
-  if (ts.isFunctionExpression(node) && node.name !== undefined) {
-    return Option.some(node.name)
-  }
-
-  return pipe(
+  const fromVariable = pipe(
     Option.liftPredicate(ts.isVariableDeclaration)(node.parent),
     Option.map(Struct.get("name")),
     Option.filter(ts.isIdentifier)
   )
+
+  return pipe(namedExpression, Option.orElse(Function.constant(fromVariable)))
 }
+
+const functionOwnerName = (node: ts.Node): Option.Option<ts.Identifier> => {
+  const expressionOwner = pipe(
+    Match.value(node),
+    Match.when(ts.isArrowFunction, expressionFunctionOwnerName),
+    Match.when(ts.isFunctionExpression, expressionFunctionOwnerName),
+    Match.orElse(Function.constant(noneIdentifier))
+  )
+
+  return pipe(namedFunctionOrMethodName(node), Option.orElse(Function.constant(expressionOwner)))
+}
+
+const functionOwnerFrom =
+  (checker: ts.TypeChecker) =>
+  (functionBySymbol: HashMap.HashMap<ts.Symbol, FunctionEntry>) =>
+  (current: ts.Node): Option.Option<ts.Symbol> =>
+    pipe(
+      functionOwnerName(current),
+      Option.flatMap(symbolAt(checker)),
+      Option.filter((symbol) => HashMap.has(functionBySymbol, symbol)),
+      // Lazy orElse required: parent walk is recursive and must not run eagerly.
+      Option.orElse(() =>
+        pipe(
+          Option.fromNullable(current.parent),
+          Option.flatMap(functionOwnerFrom(checker)(functionBySymbol))
+        )
+      )
+    )
+
+const topLevelOwnerSymbol =
+  (checker: ts.TypeChecker) =>
+  (node: ts.Node): Option.Option<ts.Symbol> =>
+    pipe(
+      topLevelStatement(node),
+      Option.flatMap((statement) => statementOwnerName(node, statement)),
+      Option.flatMap(symbolAt(checker))
+    )
 
 const ownerSymbol = (
   checker: ts.TypeChecker,
   functionBySymbol: HashMap.HashMap<ts.Symbol, FunctionEntry>,
   node: ts.Node
 ): Option.Option<ts.Symbol> => {
-  let current = node.parent
-
-  while (current !== undefined) {
-    const functionSymbol = pipe(
-      functionOwnerName(current),
-      Option.flatMap(symbolAt(checker)),
-      Option.filter((symbol) => HashMap.has(functionBySymbol, symbol))
-    )
-
-    if (Option.isSome(functionSymbol)) {
-      return functionSymbol
-    }
-
-    current = current.parent
-  }
+  const topLevelOwner = topLevelOwnerSymbol(checker)(node)
 
   return pipe(
-    topLevelStatement(node),
-    Option.flatMap((statement) => statementOwnerName(node, statement)),
-    Option.flatMap(symbolAt(checker))
+    Option.fromNullable(node.parent),
+    Option.flatMap(functionOwnerFrom(checker)(functionBySymbol)),
+    Option.orElse(Function.constant(topLevelOwner))
   )
 }
 
@@ -557,38 +638,43 @@ const declarationNameIs = (
   entry: DataStructureEntry | FunctionEntry
 ): boolean => node === entry.nameNode
 
+const fieldEntries = (
+  entry: DataStructureEntry
+): ReadonlyArray<readonly [ts.Symbol, DataStructureEntry]> =>
+  Array.map(entry.fieldSymbols, (field) => Tuple.make(field, entry))
+
 const fieldModelIndex = (
   dataStructures: ReadonlyArray<DataStructureEntry>
 ): HashMap.HashMap<ts.Symbol, DataStructureEntry> =>
+  pipe(dataStructures, Array.flatMap(fieldEntries), HashMap.fromIterable)
+
+const mechanicalForwardingRead = (node: ts.Node): boolean =>
   pipe(
-    dataStructures,
-    Array.flatMap((entry) => Array.map(entry.fieldSymbols, (field) => Tuple.make(field, entry))),
-    HashMap.fromIterable
+    Option.liftPredicate(ts.isIdentifier)(node),
+    Option.flatMap((identifier) =>
+      Option.liftPredicate(ts.isPropertyAccessExpression)(identifier.parent)
+    ),
+    Option.flatMap((access) =>
+      pipe(
+        Option.liftPredicate(ts.isPropertyAssignment)(access.parent),
+        Option.filter((assignment) => assignment.initializer === access),
+        Option.map((assignment) => Tuple.make(access, assignment))
+      )
+    ),
+    Option.exists(([access, assignment]) => assignment.name.getText() === access.name.text)
   )
-
-const mechanicalForwardingRead = (node: ts.Node): boolean => {
-  if (!ts.isIdentifier(node) || !ts.isPropertyAccessExpression(node.parent)) {
-    return false
-  }
-
-  const access = node.parent
-  const parent = access.parent
-
-  if (!ts.isPropertyAssignment(parent) || parent.initializer !== access) {
-    return false
-  }
-
-  return parent.name.getText() === access.name.text
-}
 
 const modelFromResolvedType =
   (checker: ts.TypeChecker) =>
   (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
   (type: ts.Type): Option.Option<DataStructureEntry> => {
-    const symbol = type.aliasSymbol ?? type.getSymbol()
+    const alias = Option.fromNullable(type.aliasSymbol)
+    const symbol = type.getSymbol()
+    const symbolOption = Option.fromNullable(symbol)
 
     return pipe(
-      Option.fromNullable(symbol),
+      alias,
+      Option.orElse(Function.constant(symbolOption)),
       Option.map(canonicalSymbol(checker)),
       Option.flatMap((candidate) => HashMap.get(dataBySymbol, candidate))
     )
@@ -631,14 +717,21 @@ const fieldReferences = (
   const direct = HashMap.get(fields, symbol)
 
   if (Option.isSome(direct)) {
-    return Array.make(Tuple.make(direct.value, symbol))
+    const reference = Tuple.make(direct.value, symbol)
+
+    return Array.make(reference)
   }
 
-  if (!ts.isPropertyAccessExpression(node.parent) || node.parent.name !== node) {
+  const propertyAccess = pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(node.parent),
+    Option.filter((access) => access.name === node)
+  )
+
+  if (Option.isNone(propertyAccess)) {
     return Array.empty()
   }
 
-  const receiverType = checker.getTypeAtLocation(node.parent.expression)
+  const receiverType = checker.getTypeAtLocation(propertyAccess.value.expression)
   const models = modelsFromResolvedType(checker, dataBySymbol, receiverType)
 
   return Array.filterMap(models, (model) =>
@@ -650,114 +743,140 @@ const fieldReferences = (
   )
 }
 
+const modelFromObjectLiteral =
+  (checker: ts.TypeChecker) =>
+  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (literal: ts.ObjectLiteralExpression): Option.Option<DataStructureEntry> =>
+    pipe(
+      checker.getContextualType(literal),
+      Option.fromNullable,
+      Option.flatMap(modelFromResolvedType(checker)(dataBySymbol))
+    )
+
+const modelFromConstructorSymbol =
+  (checker: ts.TypeChecker) =>
+  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (expression: ts.Expression): Option.Option<DataStructureEntry> =>
+    pipe(
+      unwrapCallee(expression),
+      symbolAt(checker),
+      Option.flatMap((symbol) => HashMap.get(dataBySymbol, symbol))
+    )
+
+const modelFromMakeCall =
+  (checker: ts.TypeChecker) =>
+  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (expression: ts.CallExpression): Option.Option<DataStructureEntry> =>
+    pipe(
+      unwrapCallee(expression.expression),
+      Option.liftPredicate(ts.isPropertyAccessExpression),
+      Option.filter((access) => access.name.text === "make"),
+      Option.map((access) => unwrapCallee(access.expression)),
+      Option.flatMap(symbolAt(checker)),
+      Option.flatMap((symbol) => HashMap.get(dataBySymbol, symbol))
+    )
+
 const modelFromConstruction = (
   checker: ts.TypeChecker,
   dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
   expression: ts.Expression
-): Option.Option<DataStructureEntry> => {
-  const unwrapped = unwrapTransparentExpression(expression)
-
-  if (ts.isObjectLiteralExpression(unwrapped)) {
-    return pipe(
-      checker.getContextualType(unwrapped),
-      Option.fromNullable,
-      Option.flatMap(modelFromResolvedType(checker)(dataBySymbol))
-    )
-  }
-
-  if (ts.isNewExpression(unwrapped)) {
-    return pipe(
-      symbolAt(checker)(unwrapCallee(unwrapped.expression)),
-      Option.flatMap((symbol) => HashMap.get(dataBySymbol, symbol))
-    )
-  }
-
-  if (!ts.isCallExpression(unwrapped)) {
-    return Option.none()
-  }
-
-  const callee = unwrapCallee(unwrapped.expression)
-
-  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== "make") {
-    return Option.none()
-  }
-
-  return pipe(
-    symbolAt(checker)(unwrapCallee(callee.expression)),
-    Option.flatMap((symbol) => HashMap.get(dataBySymbol, symbol))
+): Option.Option<DataStructureEntry> =>
+  pipe(
+    unwrapTransparentExpression(expression),
+    Match.value,
+    Match.when(ts.isObjectLiteralExpression, modelFromObjectLiteral(checker)(dataBySymbol)),
+    Match.when(ts.isNewExpression, (constructed) =>
+      modelFromConstructorSymbol(checker)(dataBySymbol)(constructed.expression)
+    ),
+    Match.when(ts.isCallExpression, modelFromMakeCall(checker)(dataBySymbol)),
+    Match.orElse(Function.constant(noneDataStructureEntry))
   )
-}
+
+const expressionBodiedArrow = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
+  pipe(
+    Option.liftPredicate(ts.isArrowFunction)(definition),
+    Option.map(Struct.get("body")),
+    Option.filter((body): body is ts.Expression => !ts.isBlock(body))
+  )
+
+const singleReturnExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
+  pipe(
+    Option.fromNullable(definition.body),
+    Option.filter(ts.isBlock),
+    Option.map((body) => Array.filter(body.statements, ts.isReturnStatement)),
+    Option.filter((returns) => returns.length === 1),
+    Option.flatMap((returns) => Option.fromNullable(returns[0].expression))
+  )
 
 const returnedExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> => {
-  if (ts.isArrowFunction(definition) && !ts.isBlock(definition.body)) {
-    return Option.some(definition.body)
-  }
+  const blockReturn = singleReturnExpression(definition)
 
-  const body = definition.body
-
-  if (body === undefined || !ts.isBlock(body)) {
-    return Option.none()
-  }
-
-  const returns = Array.filter(body.statements, ts.isReturnStatement)
-
-  if (returns.length !== 1) {
-    return Option.none()
-  }
-
-  return Option.fromNullable(returns[0].expression)
+  return pipe(expressionBodiedArrow(definition), Option.orElse(Function.constant(blockReturn)))
 }
 
-const constructionObject = (
-  expression: ts.Expression
-): Option.Option<ts.ObjectLiteralExpression> => {
-  const unwrapped = unwrapTransparentExpression(expression)
+const objectLiteralArgument = (
+  expression: ts.NewExpression | ts.CallExpression
+): Option.Option<ts.ObjectLiteralExpression> =>
+  pipe(
+    Option.fromNullable(expression.arguments),
+    Option.getOrElse(Array.empty),
+    Array.head,
+    Option.map(unwrapTransparentExpression),
+    Option.filter(ts.isObjectLiteralExpression)
+  )
 
-  if (ts.isObjectLiteralExpression(unwrapped)) {
-    return Option.some(unwrapped)
-  }
+const constructionObject = (expression: ts.Expression): Option.Option<ts.ObjectLiteralExpression> =>
+  pipe(
+    unwrapTransparentExpression(expression),
+    Match.value,
+    Match.when(ts.isObjectLiteralExpression, Option.some<ts.ObjectLiteralExpression>),
+    Match.when(ts.isNewExpression, objectLiteralArgument),
+    Match.when(ts.isCallExpression, objectLiteralArgument),
+    Match.orElse(Function.constant(noneObjectLiteral))
+  )
 
-  if (ts.isNewExpression(unwrapped) || ts.isCallExpression(unwrapped)) {
-    return pipe(
-      unwrapped.arguments ?? Array.empty(),
-      Array.head,
-      Option.map(unwrapTransparentExpression),
-      Option.filter(ts.isObjectLiteralExpression)
-    )
-  }
+const spreadCopiesParameter = (parameter: ts.Identifier, property: ts.SpreadAssignment): boolean =>
+  pipe(
+    unwrapTransparentExpression(property.expression),
+    Option.liftPredicate(ts.isIdentifier),
+    Option.exists((identifier) => identifier.text === parameter.text)
+  )
 
-  return Option.none()
-}
+const assignmentCopiesParameter = (
+  parameter: ts.Identifier,
+  property: ts.PropertyAssignment
+): boolean =>
+  pipe(
+    unwrapTransparentExpression(property.initializer),
+    Option.some,
+    Option.filter(ts.isPropertyAccessExpression),
+    Option.exists((initializer) => {
+      const receiver = unwrapTransparentExpression(initializer.expression)
+
+      const isParameter = pipe(
+        Option.liftPredicate(ts.isIdentifier)(receiver),
+        Option.exists((identifier) => identifier.text === parameter.text)
+      )
+
+      const sameField = property.name.getText() === initializer.name.text
+      const copyChecks = Array.make(isParameter, sameField)
+
+      return Array.every(copyChecks, Boolean)
+    })
+  )
 
 const propertyCopiesParameter = (
   parameter: ts.Identifier,
   property: ts.ObjectLiteralElementLike
-): boolean => {
-  if (ts.isSpreadAssignment(property)) {
-    const expression = unwrapTransparentExpression(property.expression)
-
-    return ts.isIdentifier(expression) && expression.text === parameter.text
-  }
-
-  if (!ts.isPropertyAssignment(property)) {
-    return false
-  }
-
-  const initializer = unwrapTransparentExpression(property.initializer)
-
-  if (!ts.isPropertyAccessExpression(initializer)) {
-    return false
-  }
-
-  const receiver = unwrapTransparentExpression(initializer.expression)
-
-  const isParameter = ts.isIdentifier(receiver) && receiver.text === parameter.text
-
-  const sameField = property.name.getText() === initializer.name.text
-  const copyChecks = Array.make(isParameter, sameField)
-
-  return Array.every(copyChecks, Boolean)
-}
+): boolean =>
+  pipe(
+    Match.value(property),
+    Match.when(ts.isSpreadAssignment, (spread) => spreadCopiesParameter(parameter, spread)),
+    Match.when(ts.isPropertyAssignment, (assignment) =>
+      assignmentCopiesParameter(parameter, assignment)
+    ),
+    Match.orElse(Function.constFalse)
+  )
 
 const parameterModel = (
   checker: ts.TypeChecker,
@@ -767,16 +886,18 @@ const parameterModel = (
   const models = Array.filterMap(definition.parameters, (parameter) =>
     pipe(
       Option.liftPredicate(ts.isIdentifier)(parameter.name),
-      Option.flatMap((name) =>
+      Option.flatMap((parameterName) =>
         pipe(
           modelFromType(checker, dataBySymbol, parameter),
-          Option.map((model) => Tuple.make(name, model))
+          Option.map((parameterModelEntry) => Tuple.make(parameterName, parameterModelEntry))
         )
       )
     )
   )
 
-  return models.length === 1 ? Option.some(models[0]) : Option.none()
+  const hasSingleModel = models.length === 1
+
+  return hasSingleModel ? Option.some(models[0]) : Option.none()
 }
 
 const returnModel = (
@@ -797,10 +918,13 @@ const returnModel = (
     Option.fromNullable(signature),
     Option.map((resolved) => checker.getReturnTypeOfSignature(resolved)),
     Option.flatMap((type) => {
-      const symbol = type.aliasSymbol ?? type.getSymbol()
+      const alias = Option.fromNullable(type.aliasSymbol)
+      const symbol = type.getSymbol()
+      const symbolOption = Option.fromNullable(symbol)
 
       return pipe(
-        Option.fromNullable(symbol),
+        alias,
+        Option.orElse(Function.constant(symbolOption)),
         Option.map(canonicalSymbol(checker)),
         Option.flatMap((candidate) => HashMap.get(dataBySymbol, candidate))
       )
@@ -808,20 +932,11 @@ const returnModel = (
   )
 }
 
-const modelShapesMatch = (source: DataStructureEntry, target: DataStructureEntry): boolean => {
-  const sourceShape = source.shape
-  const targetShape = target.shape
-
-  if (Option.isNone(sourceShape)) {
-    return false
-  }
-
-  if (Option.isNone(targetShape)) {
-    return false
-  }
-
-  return sourceShape.value === targetShape.value
-}
+const modelShapesMatch = (source: DataStructureEntry, target: DataStructureEntry): boolean =>
+  pipe(
+    Option.zipWith(source.shape, target.shape, (left, right) => left === right),
+    Option.getOrElse(Function.constFalse)
+  )
 
 const passThroughConversion = (
   checker: ts.TypeChecker,
@@ -869,72 +984,79 @@ const passThroughConversion = (
     )
   )
 
-const classHasInvariant = (entry: DataStructureEntry): boolean => {
-  if (!ts.isClassDeclaration(entry.declaration)) {
-    return false
-  }
+const classHasInvariant = (entry: DataStructureEntry): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(entry.declaration),
+    Option.exists((declaration) => {
+      const nodes = astNodesIn(declaration)
 
-  return Iterable.some(astNodesIn(entry.declaration), (node) =>
-    ts.isIdentifier(node) ? HashSet.has(invariantMemberNames, node.text) : false
+      return Iterable.some(nodes, (node) =>
+        pipe(
+          Option.liftPredicate(ts.isIdentifier)(node),
+          Option.exists((identifier) => HashSet.has(invariantMemberNames, identifier.text))
+        )
+      )
+    })
   )
-}
 
 const declarationIsProtocol = (entry: DataStructureEntry): boolean => {
-  if (ts.isClassDeclaration(entry.declaration)) {
-    return pipe(
-      entry.declaration,
-      classDataMember,
-      Option.exists((member) => member !== "Class")
-    )
-  }
+  const classProtocol = pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(entry.declaration),
+    Option.flatMap(classDataMember),
+    Option.exists((member) => member !== "Class")
+  )
 
-  const isUnion =
-    ts.isTypeAliasDeclaration(entry.declaration) && ts.isUnionTypeNode(entry.declaration.type)
-
+  const isTypeAlias = ts.isTypeAliasDeclaration(entry.declaration)
+  const isUnion = isTypeAlias && ts.isUnionTypeNode(entry.declaration.type)
   const isEnum = ts.isEnumDeclaration(entry.declaration)
-  const protocolChecks = Array.make(isUnion, isEnum)
+  const protocolChecks = Array.make(classProtocol, isUnion, isEnum)
 
   return Array.some(protocolChecks, Boolean)
 }
 
-const declarationSelfReference = (checker: ts.TypeChecker, entry: DataStructureEntry): boolean =>
-  Iterable.some(astNodesIn(entry.declaration), (node) => {
-    if (!ts.isIdentifier(node) || node === entry.nameNode) {
-      return false
-    }
+const identifierInHeritage = (
+  declaration: DataStructureDeclaration,
+  node: ts.Identifier
+): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(declaration),
+    Option.flatMap((classDeclaration) => Option.fromNullable(classDeclaration.heritageClauses)),
+    Option.exists((clauses) => Array.some(clauses, nodeInside(node)))
+  )
 
-    if (
-      ts.isClassDeclaration(entry.declaration) &&
-      entry.declaration.heritageClauses !== undefined &&
-      Array.some(entry.declaration.heritageClauses, nodeInside(node))
-    ) {
-      return false
-    }
+const declarationSelfReference = (checker: ts.TypeChecker, entry: DataStructureEntry): boolean => {
+  const nodes = astNodesIn(entry.declaration)
 
-    return pipe(
-      symbolAt(checker)(node),
+  return Iterable.some(nodes, (node) =>
+    pipe(
+      Option.liftPredicate(ts.isIdentifier)(node),
+      Option.filter((identifier) => identifier !== entry.nameNode),
+      Option.filter((identifier) => !identifierInHeritage(entry.declaration, identifier)),
+      Option.flatMap(symbolAt(checker)),
       Option.exists((symbol) => symbol === entry.symbol)
     )
-  })
-
-const classExtendsSchema = (entry: DataStructureEntry): boolean => {
-  if (!ts.isClassDeclaration(entry.declaration)) {
-    return false
-  }
-
-  const clauses = entry.declaration.heritageClauses ?? Array.empty()
-  const types = Array.flatMap(clauses, Struct.get("types"))
-
-  return Array.some(types, (type) => {
-    const callee = unwrapCallee(type.expression)
-
-    return (
-      ts.isPropertyAccessExpression(callee) &&
-      ts.isIdentifier(callee.expression) &&
-      callee.expression.text === "Schema"
-    )
-  })
+  )
 }
+
+const heritageTypeExtendsSchema = (type: ts.ExpressionWithTypeArguments): boolean =>
+  pipe(
+    unwrapCallee(type.expression),
+    Option.liftPredicate(ts.isPropertyAccessExpression),
+    Option.map(Struct.get("expression")),
+    Option.filter(ts.isIdentifier),
+    Option.exists((identifier) => identifier.text === "Schema")
+  )
+
+const classExtendsSchema = (entry: DataStructureEntry): boolean =>
+  pipe(
+    Option.liftPredicate(ts.isClassDeclaration)(entry.declaration),
+    Option.exists((declaration) => {
+      const clauses = declaration.heritageClauses ?? Array.empty()
+      const types = Array.flatMap(clauses, Struct.get("types"))
+
+      return Array.some(types, heritageTypeExtendsSchema)
+    })
+  )
 
 const declarationIsRuntimeSchema = (
   checker: ts.TypeChecker,
@@ -942,13 +1064,16 @@ const declarationIsRuntimeSchema = (
 ): boolean => {
   const declarations = entry.symbol.declarations ?? Array.empty()
 
-  const variableSchema = Array.some(
-    declarations,
-    (declaration) =>
-      ts.isVariableDeclaration(declaration) && runtimeSchemaType(checker, declaration)
-  )
+  const variableSchema = Array.some(declarations, (declaration) => {
+    const isVariable = ts.isVariableDeclaration(declaration)
 
-  return variableSchema || classExtendsSchema(entry)
+    return isVariable && runtimeSchemaType(checker, declaration)
+  })
+
+  const extendsSchema = classExtendsSchema(entry)
+  const runtimeSchemaChecks = Array.make(variableSchema, extendsSchema)
+
+  return Array.some(runtimeSchemaChecks, Boolean)
 }
 
 const structuralRoles = (
@@ -988,12 +1113,18 @@ const structuralRoles = (
       const protocol = declarationIsProtocol(entry)
       const recursive = declarationSelfReference(checker, entry)
 
+      const sharedObservation = Tuple.make("shared" as const, shared)
+      const boundaryObservation = Tuple.make("boundary" as const, boundary)
+      const invariantObservation = Tuple.make("invariant" as const, invariant)
+      const protocolObservation = Tuple.make("protocol" as const, protocol)
+      const recursiveObservation = Tuple.make("recursive" as const, recursive)
+
       const observations: ReadonlyArray<readonly [ModelRole, boolean]> = Array.make(
-        Tuple.make("shared" as const, shared),
-        Tuple.make("boundary" as const, boundary),
-        Tuple.make("invariant" as const, invariant),
-        Tuple.make("protocol" as const, protocol),
-        Tuple.make("recursive" as const, recursive)
+        sharedObservation,
+        boundaryObservation,
+        invariantObservation,
+        protocolObservation,
+        recursiveObservation
       )
 
       const established = Array.filter(observations, (observation) => observation[1])
@@ -1009,21 +1140,22 @@ const structuralRoles = (
 
 const shapeGroups = (
   dataStructures: ReadonlyArray<DataStructureEntry>
-): HashMap.HashMap<string, ReadonlyArray<DataStructureEntry>> =>
-  Array.reduce(
-    dataStructures,
-    HashMap.empty<string, ReadonlyArray<DataStructureEntry>>(),
-    (groups, entry) =>
-      pipe(
-        entry.shape,
-        Option.map((shape) => {
-          const group = pipe(HashMap.get(groups, shape), Option.getOrElse(Array.empty))
+): HashMap.HashMap<string, ReadonlyArray<DataStructureEntry>> => {
+  const emptyGroups = HashMap.empty<string, ReadonlyArray<DataStructureEntry>>()
 
-          return HashMap.set(groups, shape, Array.append(group, entry))
-        }),
-        Option.getOrElse(Function.constant(groups))
-      )
+  return Array.reduce(dataStructures, emptyGroups, (groups, entry) =>
+    pipe(
+      entry.shape,
+      Option.map((shape) => {
+        const group = pipe(HashMap.get(groups, shape), Option.getOrElse(Array.empty))
+        const nextGroup = Array.append(group, entry)
+
+        return HashMap.set(groups, shape, nextGroup)
+      }),
+      Option.getOrElse(Function.constant(groups))
+    )
   )
+}
 
 const structuralRoleStem = (name: string): Option.Option<string> =>
   pipe(
@@ -1071,96 +1203,141 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   Array.forEach(sourceFiles, (sourceFile) => {
-    Iterable.forEach(astNodesIn(sourceFile), (node) => {
-      if (ts.isIdentifier(node)) {
-        const maybeSymbol = symbolAt(checker)(node)
-        const owner = ownerSymbol(checker, functionBySymbol, node)
+    const nodes = astNodesIn(sourceFile)
 
-        if (Option.isSome(maybeSymbol)) {
-          const symbol = maybeSymbol.value
-          const data = HashMap.get(dataBySymbol, symbol)
-          const fn = HashMap.get(functionBySymbol, symbol)
+    Iterable.forEach(nodes, (node) => {
+      pipe(
+        Option.liftPredicate(ts.isIdentifier)(node),
+        Option.flatMap((identifier) =>
+          pipe(
+            symbolAt(checker)(identifier),
+            Option.map((symbol) => {
+              const owner = ownerSymbol(checker, functionBySymbol, identifier)
+              const data = HashMap.get(dataBySymbol, symbol)
+              const fn = HashMap.get(functionBySymbol, symbol)
+              const references = fieldReferences(checker, dataBySymbol, fields, identifier, symbol)
 
-          const references = fieldReferences(checker, dataBySymbol, fields, node, symbol)
+              pipe(
+                data,
+                Option.bindTo("dataEntry"),
+                Option.bind("ownerSymbol", Function.constant(owner)),
+                Option.filter(({ dataEntry, ownerSymbol }) => {
+                  const isForeignName = !declarationNameIs(identifier, dataEntry)
+                  const isForeignOwner = ownerSymbol !== symbol
+                  const trackChecks = Array.make(isForeignName, isForeignOwner)
 
-          if (
-            Option.isSome(data) &&
-            !declarationNameIs(node, data.value) &&
-            Option.isSome(owner) &&
-            owner.value !== symbol
-          ) {
-            addOwner(ownersByDataMutable, symbol, owner.value)
-          }
+                  return Array.every(trackChecks, Boolean)
+                }),
+                Option.map(({ ownerSymbol }) => addOwner(ownersByDataMutable, symbol, ownerSymbol))
+              )
 
-          if (
-            Option.isSome(fn) &&
-            !declarationNameIs(node, fn.value) &&
-            Option.isSome(owner) &&
-            owner.value !== symbol
-          ) {
-            addOwner(ownersByFunctionMutable, symbol, owner.value)
-          }
+              pipe(
+                fn,
+                Option.bindTo("functionEntry"),
+                Option.bind("ownerSymbol", Function.constant(owner)),
+                Option.filter(({ functionEntry, ownerSymbol }) => {
+                  const isForeignName = !declarationNameIs(identifier, functionEntry)
+                  const isForeignOwner = ownerSymbol !== symbol
+                  const trackChecks = Array.make(isForeignName, isForeignOwner)
 
-          const fieldIsDeclaration = pipe(
-            symbol.declarations ?? Array.empty(),
-            Array.some((declaration) => ts.getNameOfDeclaration(declaration) === node)
-          )
+                  return Array.every(trackChecks, Boolean)
+                }),
+                Option.map(({ ownerSymbol }) =>
+                  addOwner(ownersByFunctionMutable, symbol, ownerSymbol)
+                )
+              )
 
-          const isIndependentRead = Array.make(!fieldIsDeclaration, !mechanicalForwardingRead(node))
+              const declarations = symbol.declarations ?? Array.empty()
 
-          if (Array.every(isIndependentRead, Boolean)) {
-            Array.forEach(references, ([model, field]) => {
-              MutableList.append(fieldReads, new FieldRead({ model, field, owner, node }))
-            })
-          }
-        }
-      }
+              const fieldIsDeclaration = pipe(
+                declarations,
+                Array.some((declaration) => ts.getNameOfDeclaration(declaration) === identifier)
+              )
 
-      if (!ts.isCallExpression(node)) {
-        return
-      }
+              const isMechanicalForwarding = mechanicalForwardingRead(identifier)
 
-      const callee = unwrapCallee(node.expression)
-      const firstArgument = pipe(node.arguments, Array.head)
+              const notFieldDeclaration = !fieldIsDeclaration
+              const notMechanicalForwarding = !isMechanicalForwarding
 
-      const structField = pipe(
-        Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
-        Option.filter((access) => access.name.text === "get"),
-        Option.filter((access) =>
-          ts.isIdentifier(access.expression) ? access.expression.text === "Struct" : false
-        ),
-        Option.flatMap(() => firstArgument),
-        Option.filter(ts.isStringLiteralLike),
-        Option.map(Struct.get("text"))
-      )
+              const isIndependentRead = Array.make(notFieldDeclaration, notMechanicalForwarding)
 
-      if (Option.isSome(structField)) {
-        MutableHashSet.add(readFieldNames, structField.value)
-      }
+              pipe(
+                Option.liftPredicate((checks: ReadonlyArray<boolean>) =>
+                  Array.every(checks, Boolean)
+                )(isIndependentRead),
+                Option.map(() => {
+                  Array.forEach(references, ([model, field]) => {
+                    const fieldRead = new FieldRead({
+                      model,
+                      field,
+                      owner,
+                      node: identifier
+                    })
 
-      const called = pipe(
-        symbolAt(checker)(callee),
-        Option.flatMap((symbol) => HashMap.get(functionBySymbol, symbol))
-      )
-
-      if (Option.isNone(called)) {
-        return
-      }
-
-      Array.forEach(node.arguments, (argument) => {
-        const model = modelFromConstruction(checker, dataBySymbol, argument)
-
-        if (Option.isSome(model)) {
-          MutableList.append(
-            parameterBags,
-            new ParameterBag({
-              model: model.value,
-              functionEntry: called.value,
-              node: argument
+                    MutableList.append(fieldReads, fieldRead)
+                  })
+                })
+              )
             })
           )
-        }
-      })
+        )
+      )
+
+      pipe(
+        Option.liftPredicate(ts.isCallExpression)(node),
+        Option.map((call) => {
+          const callee = unwrapCallee(call.expression)
+          const firstArgument = pipe(call.arguments, Array.head)
+
+          const structField = pipe(
+            Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
+            Option.filter((access) => access.name.text === "get"),
+            Option.filter((access) =>
+              pipe(
+                Option.liftPredicate(ts.isIdentifier)(access.expression),
+                Option.exists((identifier) => identifier.text === "Struct")
+              )
+            ),
+            Option.flatMap(Function.constant(firstArgument)),
+            Option.filter(ts.isStringLiteralLike),
+            Option.map(Struct.get("text"))
+          )
+
+          pipe(
+            structField,
+            Option.map((fieldName) => {
+              MutableHashSet.add(readFieldNames, fieldName)
+            })
+          )
+
+          const called = pipe(
+            symbolAt(checker)(callee),
+            Option.flatMap((symbol) => HashMap.get(functionBySymbol, symbol))
+          )
+
+          pipe(
+            called,
+            Option.map((functionEntry) => {
+              Array.forEach(call.arguments, (argument) => {
+                const model = modelFromConstruction(checker, dataBySymbol, argument)
+
+                pipe(
+                  model,
+                  Option.map((modelEntry) => {
+                    const parameterBag = new ParameterBag({
+                      model: modelEntry,
+                      functionEntry,
+                      node: argument
+                    })
+
+                    MutableList.append(parameterBags, parameterBag)
+                  })
+                )
+              })
+            })
+          )
+        })
+      )
     })
   })
 
@@ -1179,6 +1356,11 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
     passThroughConversion(checker, dataBySymbol, entry)
   )
 
+  const fieldReadList = Array.fromIterable(fieldReads)
+  const readFieldNameSet = HashSet.fromIterable(readFieldNames)
+  const shapeGroupMap = shapeGroups(dataStructures)
+  const parameterBagList = Array.fromIterable(parameterBags)
+
   return new ConceptIndex({
     projectRoot: context.projectRoot,
     dataStructures,
@@ -1188,10 +1370,10 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
     ownersByData,
     ownersByFunction,
     rolesByData,
-    fieldReads: Array.fromIterable(fieldReads),
-    readFieldNames: HashSet.fromIterable(readFieldNames),
-    shapeGroups: shapeGroups(dataStructures),
+    fieldReads: fieldReadList,
+    readFieldNames: readFieldNameSet,
+    shapeGroups: shapeGroupMap,
     passThroughConversions: conversions,
-    parameterBags: Array.fromIterable(parameterBags)
+    parameterBags: parameterBagList
   })
 }

@@ -3,12 +3,11 @@ import { fileURLToPath } from "node:url"
 import { Effect, Stream, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
 import {
-  defineConfig,
-  makeWiring,
   reportFromConfig,
   reportFromWorkspaceConfigs
-} from "@better-typescript/core/engine/report"
+} from "@better-typescript/core/project/loadProject"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import {
   architectureExploreChecks,

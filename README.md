@@ -151,8 +151,8 @@ Re-exporting is valid when an entry module is that seam; callers must not bypass
 - `@better-typescript/checks/preset`: default `report` / `watchReport` runners
 - `@better-typescript/checks/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
   `defaultWiring`, `defaultConfig`
-- `@better-typescript/checks/preset/functionalCoreEffectWiring`: opt-in functional-core boundary
-  checks, derived architecture advice, and policy-aware wiring factories
+- `@better-typescript/checks/functionalCoreEffect/wiring`: opt-in functional-core boundary checks,
+  derived architecture advice, and policy-aware wiring factories
 - `@better-typescript/checks/functionalCoreEffect/policy`: conventional and explicit
   architecture-role classifiers plus capability/resource policy configuration
 - `@better-typescript/checks/<name>`: individual check modules
@@ -334,7 +334,7 @@ share the completed signal batch:
 import { Stream, pipe } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import { functionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 
 const wiring = makeWiring({
   checks: [...defaultWiring.checks, ...functionalCoreEffectWiring.checks],
@@ -365,7 +365,7 @@ import {
   ArchitectureRolePath,
   policyWithRolePrefixes
 } from "@better-typescript/checks/functionalCoreEffect/policy"
-import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 
 const policy = policyWithRolePrefixes([
   new ArchitectureRolePath({ path: "src/model", role: "domain" }),

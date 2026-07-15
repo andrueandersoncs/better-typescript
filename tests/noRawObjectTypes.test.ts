@@ -1,11 +1,10 @@
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { Effect, Array } from "effect"
 import { noRawObjectTypes } from "@better-typescript/checks/noRawObjectTypes"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -176,7 +175,7 @@ const runNoRawObjectTypesFixture = async (): Promise<ReadonlyArray<Detection>> =
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(noRawObjectTypes)(project))
+      Effect.runPromise(runCheckOnProject(Array.of(noRawObjectTypes))(project))
     )
   )
 

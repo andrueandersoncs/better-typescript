@@ -1,14 +1,13 @@
 import * as path from "node:path"
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { ExternalDependencyConstructionData } from "./data.js"
 import { unwrapExpression } from "../support/tsNode.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const message =
   "External collaborator construction evidence — behaviour creates an imported collaborator away from the composition root."
@@ -71,13 +70,10 @@ const constructionRootIdentifier = (expression: ts.Expression): Option.Option<ts
   )
 }
 
-const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> => {
-  if (ts.isImportDeclaration(node)) {
-    return Option.some(node)
-  }
-
-  return pipe(Option.fromNullable(node.parent), Option.flatMap(importDeclarationAncestor))
-}
+const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> =>
+  ts.isImportDeclaration(node)
+    ? Option.some(node)
+    : pipe(Option.fromNullable(node.parent), Option.flatMap(importDeclarationAncestor))
 
 const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 

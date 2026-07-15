@@ -1,12 +1,7 @@
 import { Array, Effect, Function, Option, Schema, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  collectSignals,
-  countDetectionsAtPath,
-  detectionAtPath,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { ImperativeStateManagerInput, ImperativeStateSignals, MutationElementData } from "./data.js"
 

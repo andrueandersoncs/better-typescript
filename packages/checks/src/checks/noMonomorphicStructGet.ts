@@ -1,7 +1,5 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import { hasExportModifier, unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -9,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 const message = "Avoid monomorphizing Struct.get at its declaration."
 
 const hint =

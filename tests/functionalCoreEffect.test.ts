@@ -2,20 +2,19 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { Chunk, Effect, Option, Schema, Stream, pipe } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { Chunk, Effect, Option, Schema, Stream, pipe, Array } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/report/data"
 import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectChecks
-} from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+} from "@better-typescript/checks/functionalCoreEffect/wiring"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData
 } from "@better-typescript/checks/functionalCoreEffect/data"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   ArchitectureRolePath,
   conventionalArchitectureRoleOf,
@@ -33,7 +32,7 @@ const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
     functionalCoreEffectWiring.checks.map(async (named) => {
       const detections = await Promise.all(
         workspace.projects.map((project) =>
-          Effect.runPromise(runCheckOnProject(named.check)(project))
+          Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
         )
       )
 

@@ -1,20 +1,23 @@
 import { Tuple, Array, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 /**
  * MutableVariableDeclarationKind is the mutable binding vocabulary shared by
- * token classification. @modelRole shared @remarks It remains explicit because
- * syntax-kind tuples and token lookup must exchange the same literal contract;
- * removing it would duplicate that contract across consumers.
+ * token classification.
+ *
+ * @remarks
+ *   It remains explicit because syntax-kind tuples and token lookup must exchange
+ *   the same literal contract; removing it would duplicate that contract across
+ *   consumers.
+ * @modelRole shared
  */
-type MutableVariableDeclarationKind = "let" | "var"
+export type MutableVariableDeclarationKind = "let" | "var"
 
 const nested6 = Tuple.make(ts.SyntaxKind.LetKeyword, "let" as MutableVariableDeclarationKind)
 

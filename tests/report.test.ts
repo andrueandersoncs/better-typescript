@@ -2,34 +2,38 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Chunk, Effect, Stream, pipe } from "effect"
+import { Chunk, Effect, Stream, pipe, Array } from "effect"
 import * as ts from "typescript"
-import {
-  checkFromSubscriptions,
-  fileCheck,
-  fileSubscription,
-  nodeCheck
-} from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
-import { locateNode } from "@better-typescript/core/engine/location"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type { NamedCheck, Wiring, WiringConfig } from "@better-typescript/core/engine/report/data"
 import {
   defineConfig,
   makeWiring,
   namedCheck,
-  reportFromConfig,
-  reportFromWorkspaceConfigs,
-  runCheckOnProject,
   signalOf,
   silentCheck,
   withFallbackAdvice
 } from "@better-typescript/core/engine/report"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { report } from "@better-typescript/checks/preset"
-import { astNodes, foldAst } from "@better-typescript/core/engine/sources"
-import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
+import { foldAst } from "@better-typescript/core/engine/sources"
+import {
+  astNodes,
+  discoverWorkspace,
+  loadProject,
+  reportFromConfig,
+  reportFromWorkspaceConfigs,
+  runCheckOnProject
+} from "@better-typescript/core/project/loadProject"
+import {
+  checkFromSubscriptions,
+  fileCheck,
+  fileSubscription,
+  locateNode,
+  nodeCheck
+} from "@better-typescript/core/engine/check"
 import type {
   LoadedProject,
   LoadedWorkspace
@@ -226,7 +230,7 @@ test("astNodes emits fixture AST elements in stable traversal order", async () =
 
 test("foldAst traverses deeply nested trees without call stack recursion", () => {
   const depth = 20_000
-  const root = Array.from({ length: depth }).reduce<ts.Expression>(
+  const root = globalThis.Array.from({ length: depth }).reduce<ts.Expression>(
     (expression) => ts.factory.createParenthesizedExpression(expression),
     ts.factory.createIdentifier("value")
   )
@@ -237,7 +241,7 @@ test("foldAst traverses deeply nested trees without call stack recursion", () =>
 
 test("runCheckOnProject applies probe subscriptions to matching fixture nodes", async () => {
   const project = await loadFixtureProject("no-throw")
-  const elements = await Effect.runPromise(runCheckOnProject(throwProbeCheck)(project))
+  const elements = await Effect.runPromise(runCheckOnProject(Array.of(throwProbeCheck))(project))
 
   assert.deepEqual(
     elements.map(detectionRecord),

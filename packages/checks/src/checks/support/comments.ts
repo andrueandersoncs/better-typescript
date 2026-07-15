@@ -247,3 +247,17 @@ export const commentText =
   (text: string) =>
   (comment: SourceComment): string =>
     text.slice(comment.pos, comment.end)
+
+export const isSingleLineComment = (comment: SourceComment): boolean =>
+  comment.kind === ts.SyntaxKind.SingleLineCommentTrivia
+
+const lineOf =
+  (sourceFile: ts.SourceFile) =>
+  (pos: number): number =>
+    sourceFile.getLineAndCharacterOfPosition(pos).line
+
+export const isAdjacentLine =
+  (sourceFile: ts.SourceFile) =>
+  (a: SourceComment) =>
+  (b: SourceComment): boolean =>
+    lineOf(sourceFile)(b.pos) - lineOf(sourceFile)(a.pos) === 1

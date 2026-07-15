@@ -5,8 +5,8 @@ import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 
 /**
  * CallLikeExpression is the shared expression, typeArguments, arguments
- * contract used by resolvedCallSignature, argumentConsumingCall, and
- * isCallLikeExpression.
+ * contract used by resolvedCallSignature, argumentConsumingCall, consumingCall,
+ * calleeText, and isCallLikeExpression.
  *
  * @remarks
  *   It remains explicit because these independent owners need one stable
@@ -21,6 +21,56 @@ export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression 
 
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()
+
+const valueForwardingKinds = HashSet.make(
+  ts.SyntaxKind.ParenthesizedExpression,
+  ts.SyntaxKind.AsExpression,
+  ts.SyntaxKind.SatisfiesExpression,
+  ts.SyntaxKind.NonNullExpression,
+  ts.SyntaxKind.ObjectLiteralExpression,
+  ts.SyntaxKind.PropertyAssignment,
+  ts.SyntaxKind.ShorthandPropertyAssignment,
+  ts.SyntaxKind.SpreadAssignment,
+  ts.SyntaxKind.ArrayLiteralExpression,
+  ts.SyntaxKind.SpreadElement,
+  ts.SyntaxKind.ConditionalExpression,
+  ts.SyntaxKind.BinaryExpression,
+  ts.SyntaxKind.PrefixUnaryExpression,
+  ts.SyntaxKind.PostfixUnaryExpression,
+  ts.SyntaxKind.AwaitExpression,
+  ts.SyntaxKind.YieldExpression,
+  ts.SyntaxKind.TypeOfExpression,
+  ts.SyntaxKind.VoidExpression,
+  ts.SyntaxKind.PropertyAccessExpression,
+  ts.SyntaxKind.ElementAccessExpression,
+  ts.SyntaxKind.TemplateSpan,
+  ts.SyntaxKind.TemplateExpression
+)
+
+export const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
+  const parent = node.parent
+  const isCallLike = isCallLikeExpression(parent)
+
+  if (isCallLike) {
+    return Option.liftPredicate((call: CallLikeExpression) => {
+      const args = callArguments(call)
+
+      return Array.some(args, isSameNode(node))
+    })(parent)
+  }
+
+  const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)
+
+  return isForwarding ? consumingCall(node.parent) : Option.none()
+}
+
+export const calleeText =
+  (sourceFile: ts.SourceFile) =>
+  (target: CallLikeExpression): string => {
+    const text = target.expression.getText(sourceFile)
+
+    return ts.isNewExpression(target) ? `new ${text}` : text
+  }
 
 export const resolvedCallSignature =
   (checker: ts.TypeChecker) =>
@@ -174,12 +224,15 @@ export const constructionEscapesExternally =
 
 /**
  * EscapeCarrier is the syntax contract shared by external-escape carrier
- * detection and matching. @modelRole shared @remarks It remains explicit
- * because variable and parameter declarations need one compiler-node
- * vocabulary; removing it would duplicate the union and let their accepted
- * declarations drift.
+ * detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because variable and parameter declarations need one
+ *   compiler-node vocabulary; removing it would duplicate the union and let
+ *   their accepted declarations drift.
+ * @modelRole shared
  */
-type EscapeCarrier = ts.VariableDeclaration | ts.ParameterDeclaration
+export type EscapeCarrier = ts.VariableDeclaration | ts.ParameterDeclaration
 
 const isEscapeCarrierNode = (node: ts.Node): node is EscapeCarrier =>
   ts.isVariableDeclaration(node) || ts.isParameter(node)

@@ -2,9 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { Effect, Option, Schema, pipe } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { Effect, Option, Schema, pipe, Array } from "effect"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { passThroughWrappers } from "@better-typescript/checks/architectureExplore/passThroughWrappers"
@@ -14,6 +12,7 @@ import { testOnlyExports } from "@better-typescript/checks/architectureExplore/t
 import { seamLeakageEvidence } from "@better-typescript/checks/architectureExplore/seamLeakageEvidence"
 import { externalDependencyConstruction } from "@better-typescript/checks/architectureExplore/externalDependencyConstruction"
 import { singleAdapterSeams } from "@better-typescript/checks/architectureExplore/singleAdapterSeams"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   ExternalDependencyConstructionData,
   InterfaceBurdenData,
@@ -30,7 +29,9 @@ const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence"
 const runFixture = async (check: Check): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
-    workspace.projects.map((project) => Effect.runPromise(runCheckOnProject(check)(project)))
+    workspace.projects.map((project) =>
+      Effect.runPromise(runCheckOnProject(Array.of(check))(project))
+    )
   )
 
   return projectDetections.flat()

@@ -1,7 +1,5 @@
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -9,6 +7,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { namedDetectionTarget } from "./support/tsNode.js"
 import { dataTaggedClassHeritage, typeIsWireSafe } from "./taggedClassPortability.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const message = "Prefer Schema.TaggedClass when every field has a portable wire representation."
 
@@ -22,18 +21,21 @@ const fieldsAreWireSafe =
   (checker: ts.TypeChecker) =>
   (heritage: ts.ExpressionWithTypeArguments): boolean =>
     pipe(
-      heritage.typeArguments ?? Array.empty(),
+      Option.fromNullable(heritage.typeArguments),
+      Option.getOrElse(Array.empty),
       Array.head,
       Option.match({
         onNone: Function.constant(true),
-        onSome: (fieldsNode) => {
-          const explicitEmptyFields =
-            ts.isTypeLiteralNode(fieldsNode) && fieldsNode.members.length === 0
-
-          return explicitEmptyFields
-            ? true
-            : pipe(checker.getTypeFromTypeNode(fieldsNode), typeIsWireSafe(checker)(fieldsNode))
-        }
+        onSome: (fieldsNode) =>
+          pipe(
+            Option.liftPredicate(ts.isTypeLiteralNode)(fieldsNode),
+            Option.filter((literal) => literal.members.length === 0),
+            Option.match({
+              onSome: Function.constant(true),
+              onNone: () =>
+                pipe(checker.getTypeFromTypeNode(fieldsNode), typeIsWireSafe(checker)(fieldsNode))
+            })
+          )
       })
     )
 
@@ -45,13 +47,15 @@ const portableDataTaggedClassMatches = (context: CheckContext) => {
     pipe(
       dataTaggedClassHeritage(checker)(declaration),
       Option.filter(fieldsAreWireSafe(checker)),
-      Option.map(() =>
-        match({
-          node: namedDetectionTarget(declaration),
+      Option.map(() => {
+        const node = namedDetectionTarget(declaration)
+
+        return match({
+          node,
           message,
           hint
         })
-      ),
+      }),
       Option.toArray
     )
 

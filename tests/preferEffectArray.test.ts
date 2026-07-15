@@ -1,11 +1,10 @@
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { Effect, Array } from "effect"
 import { preferEffectArray } from "@better-typescript/checks/preferEffectArray"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -89,7 +88,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const project = workspace.projects[0]
 
-  return Effect.runPromise(runCheckOnProject(preferEffectArray)(project))
+  return Effect.runPromise(runCheckOnProject(Array.of(preferEffectArray))(project))
 }
 
 test("prefer-effect-array reports disallowed and permits allowed fixture items", async () => {

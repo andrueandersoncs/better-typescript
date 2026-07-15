@@ -1,26 +1,29 @@
 import * as path from "node:path"
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { namedDetectionTarget, outermostTransparentWrapper } from "./support/tsNode.js"
 import { DataStructureModule, FunctionDefinition } from "./preferDataLastModuleData.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { hasCallSignature } from "./support/tsType.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 /**
  * CheckedFunction is the syntax contract shared by data-last candidate
- * detection and matching. @modelRole shared @remarks It remains explicit
- * because both owners need one stable compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted declarations drift.
+ * detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   declarations drift.
+ * @modelRole shared
  */
-type CheckedFunction =
+export type CheckedFunction =
   ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
 
 const checkedFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
@@ -125,11 +128,10 @@ const dataLastModuleMatches = (context: CheckContext) => {
     const sourceFile = declaration.getSourceFile()
     const sourceFileIsProject = isProjectSourceFile(sourceFile)
 
-    const declarationKinds = Array.make(
-      ts.isInterfaceDeclaration(declaration),
-      ts.isTypeAliasDeclaration(declaration),
-      ts.isClassDeclaration(declaration)
-    )
+    const isInterface = ts.isInterfaceDeclaration(declaration)
+    const isTypeAlias = ts.isTypeAliasDeclaration(declaration)
+    const isClass = ts.isClassDeclaration(declaration)
+    const declarationKinds = Array.make(isInterface, isTypeAlias, isClass)
 
     const declarationIsDataStructure = Array.some(declarationKinds, Boolean)
 
@@ -156,13 +158,14 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
       const dataStructure = pipe(
         sourceFile,
-        Option.map(
-          (candidate) =>
-            new DataStructureModule({
-              name: symbol.name,
-              moduleDirectory: path.dirname(candidate.fileName)
-            })
-        )
+        Option.map((candidate) => {
+          const moduleDirectory = path.dirname(candidate.fileName)
+
+          return new DataStructureModule({
+            name: symbol.name,
+            moduleDirectory
+          })
+        })
       )
 
       return isStructured ? dataStructure : Option.none()

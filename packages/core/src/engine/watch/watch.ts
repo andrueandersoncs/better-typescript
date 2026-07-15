@@ -1,7 +1,5 @@
 import {
   Array,
-  Effect,
-  Equal,
   Function,
   HashMap,
   HashSet,
@@ -13,18 +11,20 @@ import {
   pipe
 } from "effect"
 import type * as ts from "typescript"
-import type { LoadedWorkspace, WorkspaceConfigs } from "../../project/loadProject/data.js"
+import type { WorkspaceConfigs } from "../../project/loadProject/data.js"
 import { sourceUpdates } from "../sources/sources.js"
 import type { ProgramContext, SourceUpdate } from "../sources/data.js"
-import type { Detection } from "../location/data.js"
 import {
   batchReportBlocks,
-  reportBlocksFromConfig,
-  reportBlocksFromWorkspaceConfigs,
+  blockClearedEvent,
+  blockEntry,
+  blockSignalEvent,
+  initialReportEvents,
+  wiringSignalsArrayEquivalence,
   workspaceSignals
 } from "../report/report.js"
-import type { ReportBlock, Signal, WiringConfig, WiringSignals } from "../report/data.js"
-import { ClearedEvent, EmptyReportEvent, SignalEvent, WorkspaceUpdate } from "./data.js"
+import type { ReportBlock, WiringConfig, WiringSignals } from "../report/data.js"
+import { EmptyReportEvent, WorkspaceUpdate } from "./data.js"
 import type { ReportEvent } from "./data.js"
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty()
@@ -124,39 +124,6 @@ export const signalUpdates =
       Stream.mapEffect((update) => workspaceSignals(config)(update.rootPath)(update.contexts))
     )
 
-const detectionEquals = (a: Detection, b: Detection): boolean => {
-  const samePath = a.location.path === b.location.path
-  const sameLine = a.location.line === b.location.line
-  const sameColumn = a.location.column === b.location.column
-  const sameMessage = a.message === b.message
-  const sameHint = a.hint === b.hint
-  const sameData = Equal.equals(a.data, b.data)
-
-  const conditions = Array.make(samePath, sameLine, sameColumn, sameMessage, sameHint, sameData)
-
-  return Array.every(conditions, Boolean)
-}
-
-const detectionsEquivalence = Array.getEquivalence(detectionEquals)
-
-const signalEquals = (a: Signal, b: Signal): boolean => {
-  const sameName = a.name === b.name
-  const sameDetections = detectionsEquivalence(a.detections, b.detections)
-
-  return sameName && sameDetections
-}
-
-const signalArrayEquivalence = Array.getEquivalence(signalEquals)
-
-const wiringSignalsEquals = (a: WiringSignals, b: WiringSignals): boolean => {
-  const sameMatchState = a.matched === b.matched
-  const sameSignals = signalArrayEquivalence(a.signals, b.signals)
-
-  return sameMatchState && sameSignals
-}
-
-const wiringSignalsArrayEquivalence = Array.getEquivalence(wiringSignalsEquals)
-
 /**
  * Compare complete signal sets for every configured wiring.
  *
@@ -203,15 +170,6 @@ export const renderEventText = (event: ReportEvent): string =>
     Match.exhaustive
   )
 
-const blockSignalEvent = (block: ReportBlock): SignalEvent =>
-  new SignalEvent({ key: block.key, text: block.text })
-
-const blockClearedEvent = (block: ReportBlock): ClearedEvent =>
-  new ClearedEvent({ key: block.key, text: block.cleared })
-
-const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =>
-  Tuple.make(block.identity, block)
-
 /**
  * Pure per-block delta: clearances first (previous order) — previous blocks
  * whose key is absent from current emit their cleared event; then changed and
@@ -253,13 +211,6 @@ export const blockDelta =
     return Array.appendAll<ReportEvent, ReportEvent>(clearances, updates)
   }
 
-const initialReportEvents =
-  (rootPath: string) =>
-  (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
-    const emptyReportEvent = new EmptyReportEvent({ rootPath })
-    return blocks.length === 0 ? Array.of(emptyReportEvent) : Array.map(blocks, blockSignalEvent)
-  }
-
 const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> = Option.none()
 
 /**
@@ -289,33 +240,6 @@ export const blockDeltas =
         return Tuple.make(nested5, events)
       }),
       Stream.flattenIterables
-    )
-
-/**
- * The one-shot product: one loaded workspace snapshot mapped through the same
- * first-batch event vocabulary the continuous pipeline emits.
- *
- * @remarks
- *   Shares the continuous event vocabulary because one-shot and watch consumers
- *   should parse the same report events.
- */
-export const reportEventsFromConfig =
-  (config: WiringConfig) =>
-  (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, Error> =>
-    pipe(
-      reportBlocksFromConfig(config)(workspace),
-      Effect.map(initialReportEvents(workspace.rootPath)),
-      Stream.fromIterableEffect
-    )
-
-/** Analyze a discovered workspace without retaining all project Programs. */
-export const reportEventsFromWorkspaceConfigs =
-  (config: WiringConfig) =>
-  (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, Error> =>
-    pipe(
-      reportBlocksFromWorkspaceConfigs(config)(workspace),
-      Effect.map(initialReportEvents(workspace.rootPath)),
-      Stream.fromIterableEffect
     )
 
 /**

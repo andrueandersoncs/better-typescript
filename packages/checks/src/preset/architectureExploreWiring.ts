@@ -1,7 +1,7 @@
 import { Array, Stream, pipe } from "effect"
 import { makeWiring, silentCheck } from "@better-typescript/core/engine/report"
 import type { NamedCheck, Signal, Wiring } from "@better-typescript/core/engine/report/data"
-import { namedDetection } from "@better-typescript/core/engine/derive"
+import { namedDetection } from "@better-typescript/core/engine/location"
 import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { passThroughWrappers } from "../checks/architectureExplore/passThroughWrappers.js"
 import { interfaceBurden } from "../checks/architectureExplore/interfaceBurden.js"

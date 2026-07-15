@@ -1,4 +1,4 @@
-import { reportFromConfig } from "@better-typescript/core/engine/report"
+import { reportFromConfig } from "@better-typescript/core/project/loadProject"
 import { watchReportFromConfig } from "@better-typescript/core/engine/watch"
 import { defaultConfig } from "./preset/defaultWiring.js"
 

@@ -179,6 +179,8 @@ export class ConceptIndex extends Data.Class<{
   readonly parameterBags: ReadonlyArray<ParameterBag>
 }> {}
 
+const stringArraySchema = Schema.Array(Schema.String)
+
 /**
  * Machine-readable evidence attached to a concept-control diagnostic.
  *
@@ -194,5 +196,5 @@ export class ConceptSignalData extends Schema.Class<ConceptSignalData>("ConceptS
   owner: Schema.String,
   independentOwners: Schema.Number,
   externalCallers: Schema.Number,
-  relatedConcepts: Schema.Array(Schema.String)
+  relatedConcepts: stringArraySchema
 }) {}

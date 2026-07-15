@@ -1,7 +1,10 @@
 import { Array, Function, HashMap, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
+import {
+  withProgramIndex,
+  foldAst,
+  isProjectSourceFile
+} from "@better-typescript/core/engine/sources"
 import {
   conciseArrowBody,
   isFunctionInitializer,
@@ -9,7 +12,6 @@ import {
   outermostTransparentWrapper,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
-import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { resolvedCallSignature, signatureIsExternal } from "../support/tsSignature.js"
 import { hasCallSignature } from "../support/tsType.js"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -19,6 +21,7 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
 import { SymbolUse, type SymbolUses, emptySymbolUses, fallbackEmptySymbolUse } from "./data.js"
+import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const updateSymbolUse =
   (symbol: ts.Symbol) =>
@@ -65,12 +68,15 @@ const isContextualOnlyUse = (use: SymbolUse): boolean => {
 
 /**
  * CurriedDataLastCandidate is the syntax contract shared by parameter,
- * arrow-body, and runtime-parameter analysis. @modelRole shared @remarks It
- * remains explicit because all three owners need one stable compiler-node
- * vocabulary; removing it would duplicate the union and let their accepted
- * declarations drift.
+ * arrow-body, and runtime-parameter analysis.
+ *
+ * @remarks
+ *   It remains explicit because all three owners need one stable compiler- node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   declarations drift.
+ * @modelRole shared
  */
-type CurriedDataLastCandidate =
+export type CurriedDataLastCandidate =
   ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
 
 const candidateKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
@@ -174,11 +180,15 @@ const symbolAtLocation =
 
 /**
  * NamedFunctionDeclaration is the compiler syntax protocol handled by
- * declaration-name lookup. @modelRole protocol @remarks It remains explicit
- * because function and method declarations share one naming operation; removing
- * it would repeat the union and let accepted cases drift.
+ * declaration-name lookup.
+ *
+ * @remarks
+ *   It remains explicit because function and method declarations share one naming
+ *   operation; removing it would repeat the union and let accepted cases
+ *   drift.
+ * @modelRole protocol
  */
-type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
+export type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
 
 const namedFunctionDeclarationName = (
   declaration: NamedFunctionDeclaration
@@ -216,12 +226,16 @@ const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulato
   foldAst((current: A, currentNode: ts.Node): A => visit(currentNode)(current))
 
 /**
- * NameDeclaration is the compiler syntax protocol handled by declaration-name
- * comparison. @modelRole protocol @remarks It remains explicit because
- * variable, function, and method declarations share one lookup operation;
- * removing it would repeat the union and let accepted cases drift.
+ * NameDeclaration is the compiler syntax protocol handled by declaration- name
+ * comparison.
+ *
+ * @remarks
+ *   It remains explicit because variable, function, and method declarations share
+ *   one lookup operation; removing it would repeat the union and let accepted
+ *   cases drift.
+ * @modelRole protocol
  */
-type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
+export type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
 const declarationHasName =
   (identifier: ts.Identifier) =>

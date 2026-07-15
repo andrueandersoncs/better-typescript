@@ -1,15 +1,14 @@
 import { Array, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
 import { isUnseenType } from "./support/tsType.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 const message = "Avoid mutating first-party data."
 
 const hint =
@@ -26,11 +25,15 @@ const hint =
 
 /**
  * MutationNode is the syntax contract shared by mutation candidate detection
- * and matching. @modelRole shared @remarks It remains explicit because both
- * owners need one stable compiler-node vocabulary; removing it would duplicate
- * the union and let their accepted expressions drift.
+ * and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   expressions drift.
+ * @modelRole shared
  */
-type MutationNode =
+export type MutationNode =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression | ts.DeleteExpression
 
 const hasAssignmentOperator = (expression: ts.BinaryExpression): boolean =>
@@ -146,11 +149,15 @@ const isUncontrolledTypeWithSeen =
 
 /**
  * MutationScope classifies mutation ownership for matching and fallback scope
- * selection. @modelRole shared @remarks It remains explicit because both owners
- * must exchange the same policy vocabulary; removing it would duplicate the
- * literal union and let their classifications drift.
+ * selection.
+ *
+ * @remarks
+ *   It remains explicit because both owners must exchange the same policy
+ *   vocabulary; removing it would duplicate the literal union and let their
+ *   classifications drift.
+ * @modelRole shared
  */
-type MutationScope = "shared-state" | "local" | "builtin"
+export type MutationScope = "shared-state" | "local" | "builtin"
 
 const executionBoundaryKinds = HashSet.make(
   ts.SyntaxKind.SourceFile,

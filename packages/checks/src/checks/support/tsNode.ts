@@ -15,8 +15,9 @@ export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
 /**
  * ReturnTypeDeclaration is the shared name, typeParameters, parameters, type
- * contract used by RawObjectTarget, isReturnTypeDeclaration, and
- * isUndefinedReturnTypeDeclaration.
+ * contract used by RawObjectTarget, isReturnTypeDeclaration,
+ * isUndefinedReturnTypeDeclaration, hasUndefinedReturnType, and
+ * hasAnyReturnType.
  *
  * @remarks
  *   It remains explicit because these independent owners need one stable
@@ -52,6 +53,9 @@ export const resolvedSymbolAt =
 
 export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
+
+export const hasParameters = (initializer: FunctionInitializer): boolean =>
+  initializer.parameters.length > 0
 
 export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
   const isFunctionDeclaration = ts.isFunctionDeclaration(node)
@@ -96,12 +100,16 @@ export const transparentWrapperKinds = HashSet.make(
 
 /**
  * TransparentWrapper is the compiler syntax protocol handled by
- * transparent-expression unwrapping. @modelRole protocol @remarks It remains
- * explicit because parenthesized, satisfies, and assertion expressions share
- * one recursive operation; removing it would repeat the union and let accepted
- * cases drift.
+ * transparent-expression unwrapping.
+ *
+ * @remarks
+ *   It remains explicit because parenthesized, satisfies, and assertion
+ *   expressions share one recursive operation; removing it would repeat the
+ *   union and let accepted cases drift.
+ * @modelRole protocol
  */
-type TransparentWrapper = ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
+export type TransparentWrapper =
+  ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 
 export const unwrapTransparentExpression = (expression: ts.Expression): ts.Expression =>
   HashSet.has(transparentWrapperKinds, expression.kind)
@@ -220,3 +228,50 @@ export const isInAmbientContext = (node: ts.Node): boolean => {
 
   return Array.some(ambientConditions, Boolean)
 }
+
+export const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.ArrowFunction,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.MethodSignature,
+  ts.SyntaxKind.CallSignature,
+  ts.SyntaxKind.FunctionType,
+  ts.SyntaxKind.GetAccessor
+)
+
+export const containsUndefinedKeyword = (node: ts.Node): boolean => {
+  const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
+
+  const childContainsUndefinedKeyword = ts.forEachChild(node, containsUndefinedKeyword) === true
+
+  const conditions = Array.make(isUndefinedKeyword, childContainsUndefinedKeyword)
+
+  return Array.some(conditions, Boolean)
+}
+
+export const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
+  Option.exists(typeNode, containsUndefinedKeyword)
+
+export const hasUndefinedReturnType = (decl: ReturnTypeDeclaration): boolean =>
+  pipe(Option.fromNullable(decl.type), containsUndefinedType)
+
+export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
+  const returnTypeDecl = Option.liftPredicate(isReturnTypeDeclaration)(node)
+
+  return Option.exists(returnTypeDecl, hasUndefinedReturnType)
+}
+
+const containsAnyKeyword = (node: ts.Node): boolean => {
+  const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
+
+  const anyChild = ts.forEachChild(node, (child) => (containsAnyKeyword(child) ? child : void 0))
+
+  const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
+
+  const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)
+  return Array.some(ambientConditions, Boolean)
+}
+
+export const hasAnyReturnType = (decl: ReturnTypeDeclaration): boolean =>
+  pipe(Option.fromNullable(decl.type), Option.exists(containsAnyKeyword))

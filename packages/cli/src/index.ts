@@ -2,16 +2,15 @@
 import * as path from "node:path"
 import { Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Function, Option, Stream, flow, pipe } from "effect"
-import {
-  reportEventsFromWorkspaceConfigs,
-  renderEventText,
-  watchReportFromConfig
-} from "@better-typescript/core/engine/watch"
+import { Console, Effect, Function, Option, Stream, pipe } from "effect"
+import { renderEventText, watchReportFromConfig } from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
-import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import {
+  reportEventsFromWorkspaceConfigs,
+  discoverWorkspace
+} from "@better-typescript/core/project/loadProject"
 
 const workingDirectory = process.cwd()
 

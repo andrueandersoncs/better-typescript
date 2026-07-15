@@ -1,15 +1,14 @@
 import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isReturnTypeDeclaration, namedDetectionTarget } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
@@ -43,11 +42,15 @@ const parameterTypeNode = (param: ts.ParameterDeclaration): Option.Option<ts.Typ
 
 /**
  * RawObjectTarget is the syntax contract shared by raw-object candidate
- * detection and matching. @modelRole shared @remarks It remains explicit
- * because both owners need one stable compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted declarations drift.
+ * detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   declarations drift.
+ * @modelRole shared
  */
-type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
+export type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
 const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
   pipe(

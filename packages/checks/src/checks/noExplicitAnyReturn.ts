@@ -1,44 +1,22 @@
-import { Array, pipe, Option } from "effect"
+import { Array } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { isReturnTypeDeclaration } from "./support/tsNode.js"
-import type { ReturnTypeDeclaration } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
+import {
+  hasAnyReturnType,
+  isReturnTypeDeclaration,
+  returnTypeDeclarationKinds
+} from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
-
-const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.MethodDeclaration,
-  ts.SyntaxKind.MethodSignature,
-  ts.SyntaxKind.CallSignature,
-  ts.SyntaxKind.FunctionType,
-  ts.SyntaxKind.GetAccessor
-)
-
-const containsAnyKeyword = (node: ts.Node): boolean => {
-  const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
-
-  const anyChild = ts.forEachChild(node, (child) => (containsAnyKeyword(child) ? child : void 0))
-
-  const hasAnyDescendant = pipe(Option.fromNullable(anyChild), Option.isSome)
-
-  const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)
-  return Array.some(ambientConditions, Boolean)
-}
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const explicitAnyReturnElements = (context: CheckContext) => {
   const element = detection(context)
 
-  const matches = (node: ReturnTypeDeclaration): ReadonlyArray<Detection> => {
-    const hasAnyReturnType = pipe(Option.fromNullable(node.type), Option.exists(containsAnyKeyword))
-
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
     const reported = element({
       node,
       message: "Avoid function return types that include any.",
@@ -47,7 +25,9 @@ const explicitAnyReturnElements = (context: CheckContext) => {
         "use unknown and narrow before use."
     })
 
-    return hasAnyReturnType ? Array.of(reported) : Array.empty()
+    return isReturnTypeDeclaration(node) && hasAnyReturnType(node)
+      ? Array.of(reported)
+      : Array.empty()
   }
 
   return matches

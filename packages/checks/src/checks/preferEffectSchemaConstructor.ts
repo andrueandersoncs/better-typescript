@@ -1,14 +1,13 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 const tagPropertyName = "_tag"
 
 const shortCircuitOperatorKinds = HashSet.make(
@@ -87,12 +86,15 @@ const untaggedHint =
 
 /**
  * ReturnCandidate is the syntax contract shared by object-literal return
- * candidate detection and matching. @modelRole shared @remarks It remains
- * explicit because return statements and concise arrows need one compiler-node
- * vocabulary; removing it would duplicate the union and let their accepted
- * expressions drift.
+ * candidate detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because return statements and concise arrows need one
+ *   compiler-node vocabulary; removing it would duplicate the union and let
+ *   their accepted expressions drift.
+ * @modelRole shared
  */
-type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
+export type ReturnCandidate = ts.ReturnStatement | ts.ArrowFunction
 
 const isReturnCandidate = (node: ts.Node): node is ReturnCandidate =>
   ts.isReturnStatement(node) || ts.isArrowFunction(node)

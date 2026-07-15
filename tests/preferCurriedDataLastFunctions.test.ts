@@ -2,12 +2,11 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { Effect, Array } from "effect"
 import { preferCurriedDataLastFunctions } from "@better-typescript/checks/preferCurriedDataLastFunctions"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
 import { assertAllowedFixtureItems, type FixtureItem } from "./ruleTestAssertions.js"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "prefer-curried-data-last-functions")
@@ -101,7 +100,7 @@ const runPreferCurriedDataLastFunctionsFixture = async (): Promise<ReadonlyArray
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(preferCurriedDataLastFunctions)(project))
+      Effect.runPromise(runCheckOnProject(Array.of(preferCurriedDataLastFunctions))(project))
     )
   )
 

@@ -4,11 +4,13 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Stream } from "effect"
-import { defineConfig, reportFromConfig } from "@better-typescript/core/engine/report"
+import { defineConfig } from "@better-typescript/core/engine/report"
+import { reportFromConfig } from "@better-typescript/core/project/loadProject"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/report/data"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { checkFromSubscriptions, fileCheck, locateNode } from "@better-typescript/core/engine/check"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
@@ -22,7 +24,7 @@ const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fa
 
 const emptyCheckConfigPreamble = [
   'import { Stream } from "effect"',
-  'import { checkFromSubscriptions } from "@better-typescript/core/engine/check"',
+  "",
   "",
   "const emptyCheck = checkFromSubscriptions(() => [])",
   ""
@@ -177,9 +179,9 @@ test("loaded glob config drives the report end to end", async () => {
       projectDirectory,
       [
         'import { Stream } from "effect"',
-        'import { fileCheck } from "@better-typescript/core/engine/check"',
+        "",
         'import { Detection } from "@better-typescript/core/engine/location/data"',
-        'import { locateNode } from "@better-typescript/core/engine/location"',
+        "",
         "",
         "export default [",
         "  {",

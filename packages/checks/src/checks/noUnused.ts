@@ -1,6 +1,7 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
+import { fileSubscriptions } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { Check } from "@better-typescript/core/engine/check/data"

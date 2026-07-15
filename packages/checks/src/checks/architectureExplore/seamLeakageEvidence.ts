@@ -1,14 +1,13 @@
 import * as path from "node:path"
 import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { SeamLeakageData } from "./data.js"
 import { isTestSourceFile } from "./programSymbols.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const message =
   "Seam leakage evidence — this import reaches through an internal or package-source path."

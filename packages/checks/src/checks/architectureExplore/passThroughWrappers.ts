@@ -1,7 +1,8 @@
-import { Array, Data, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
-import { detection, toRelativeFileName } from "@better-typescript/core/engine/location"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
+import { toRelativeFileName } from "@better-typescript/core/engine/location"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -16,19 +17,6 @@ import {
   usageFor
 } from "./programSymbols.js"
 import { unwrapExpression } from "../support/tsNode.js"
-
-/**
- * PassThroughIndex is the shared symbol, module-edge, and path context used to
- * classify forwarding exports and re-export modules. @modelRole shared @remarks
- * It remains explicit because index construction and both classifiers must
- * query the same reference graph and project root; removing it would pass three
- * synchronized values through every consumer.
- */
-class PassThroughIndex extends Data.Class<{
-  readonly references: ExportReferenceIndex
-  readonly edges: ReadonlyArray<ModuleEdge>
-  readonly projectRoot: string
-}> {}
 
 const reexportMessage =
   "Pass-through Module evidence — this public file only re-exports other Modules."
@@ -197,19 +185,20 @@ const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Exp
 }
 
 const passThroughElements =
-  (index: PassThroughIndex) =>
+  (index: readonly [ExportReferenceIndex, ReadonlyArray<ModuleEdge>, string]) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
     const element = detection(context)
     const sourceFile = context.sourceFile
-    const relative = toRelativeFileName(index.projectRoot)
+    const [references, edges, projectRoot] = index
+    const relative = toRelativeFileName(projectRoot)
     const filePath = relative(sourceFile.fileName)
 
     const forwarding = pipe(
-      index.references.entries,
+      references.entries,
       Array.filter((entry) => entry.nameNode.getSourceFile() === sourceFile),
       Array.filter((entry) => isExactForwarder(entry.functionNode)),
       Array.map((entry) => {
-        const usage = usageFor(index.references)(entry)
+        const usage = usageFor(references)(entry)
 
         const data = new PassThroughWrapperData({
           kind: "forwarding-call",
@@ -231,7 +220,7 @@ const passThroughElements =
     const reexports = reexportOnlyStatements(sourceFile)
 
     const inboundPaths = pipe(
-      index.edges,
+      edges,
       Array.filter((edge) => edge.importedPath === filePath),
       Array.filter((edge) => !edge.fromTest),
       Array.map(Struct.get("importerPath")),
@@ -262,15 +251,13 @@ const passThroughElements =
     return Array.appendAll(forwarding, reexportDetection)
   }
 
-const buildIndex = (context: ProgramContext): PassThroughIndex => {
+const buildIndex = (
+  context: ProgramContext
+): readonly [ExportReferenceIndex, ReadonlyArray<ModuleEdge>, string] => {
   const references = buildExportReferenceIndex(context)
   const edges = buildModuleEdges(context)
 
-  return new PassThroughIndex({
-    references,
-    edges,
-    projectRoot: context.projectRoot
-  })
+  return Tuple.make(references, edges, context.projectRoot)
 }
 
 const passThroughSubscriptions = Function.compose(passThroughElements, fileSubscriptions)

@@ -1,4 +1,4 @@
-import { Array, Data, Function, Option, pipe } from "effect"
+import { Array, Function, Option, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -6,33 +6,24 @@ import { isDeletableWrapper, moduleGraphDataOf } from "./evidence.js"
 
 const minimumThinFiles = 3
 
-/**
- * GraphEdge is the path pair shared by connected-component traversal.
- *
- * @modelRole shared @remarks It remains explicit because neighbor lookup,
- * reachability, and component assembly must exchange the same normalized edge;
- * removing it would spread positional path pairs across all three operations.
- */
-class GraphEdge extends Data.Class<{
-  readonly from: string
-  readonly to: string
-}> {}
-
-const neighborsOf = (edges: ReadonlyArray<GraphEdge>, path: string): ReadonlyArray<string> =>
+const neighborsOf = (
+  edges: ReadonlyArray<readonly [string, string]>,
+  path: string
+): ReadonlyArray<string> =>
   pipe(
     edges,
     Array.flatMap((edge) => {
-      if (edge.from === path) {
-        return Array.of(edge.to)
+      if (edge[0] === path) {
+        return Array.of(edge[1])
       }
 
-      return edge.to === path ? Array.of(edge.from) : Array.empty()
+      return edge[1] === path ? Array.of(edge[0]) : Array.empty()
     }),
     Array.dedupe
   )
 
 const reachable = (
-  edges: ReadonlyArray<GraphEdge>,
+  edges: ReadonlyArray<readonly [string, string]>,
   frontier: ReadonlyArray<string>,
   visited: ReadonlyArray<string>
 ): ReadonlyArray<string> => {
@@ -65,7 +56,7 @@ const reachable = (
 
 const connectedComponents = (
   paths: ReadonlyArray<string>,
-  edges: ReadonlyArray<GraphEdge>
+  edges: ReadonlyArray<readonly [string, string]>
 ): ReadonlyArray<ReadonlyArray<string>> => {
   const collect = (
     remaining: ReadonlyArray<string>,
@@ -145,7 +136,7 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
 
             return fromIsShallow && toIsShallow
           }),
-          Array.map((to) => new GraphEdge({ from, to }))
+          Array.map((to) => Tuple.make(from, to))
         )
       ),
       Option.getOrElse(Array.empty)
@@ -157,8 +148,8 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     Array.filter((component) => component.length >= minimumThinFiles),
     Array.filter((component) =>
       Array.some(edges, (edge) => {
-        const containsFrom = Array.contains(component, edge.from)
-        const containsTo = Array.contains(component, edge.to)
+        const containsFrom = Array.contains(component, edge[0])
+        const containsTo = Array.contains(component, edge[1])
 
         return containsFrom && containsTo
       })
@@ -167,8 +158,8 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
 
   return Array.map(components, (component) => {
     const edgeCount = Array.filter(edges, (edge) => {
-      const containsFrom = Array.contains(component, edge.from)
-      const containsTo = Array.contains(component, edge.to)
+      const containsFrom = Array.contains(component, edge[0])
+      const containsTo = Array.contains(component, edge[1])
 
       return containsFrom && containsTo
     }).length

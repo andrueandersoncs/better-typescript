@@ -1,11 +1,7 @@
 import { Array, Effect, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  adviceLocation,
-  collectSignals,
-  countDetectionsAtPath,
-  evidenceItem
-} from "@better-typescript/core/engine/derive"
+import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
 import { PipelineHostileInput, PipelineSignals } from "./data.js"
 
 const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advice> => {

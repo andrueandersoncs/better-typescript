@@ -1,21 +1,23 @@
 import { Tuple, Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 /**
  * OptionGuardKind is the compiler syntax vocabulary handled by Option guard
- * matching. @modelRole protocol @remarks It remains explicit because Some and
- * None guards share one matcher contract; removing it would repeat the literal
- * union and let accepted cases drift.
+ * matching.
+ *
+ * @remarks
+ *   It remains explicit because Some and None guards share one matcher contract;
+ *   removing it would repeat the literal union and let accepted cases drift.
+ * @modelRole protocol
  */
-type OptionGuardKind = "isSome" | "isNone"
+export type OptionGuardKind = "isSome" | "isNone"
 
 const guardMethodNames = HashSet.make("isSome", "isNone")
 

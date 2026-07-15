@@ -5,7 +5,7 @@ import {
   architectureExploreChecks,
   architectureExploreDerive
 } from "@better-typescript/checks/preset/architectureExploreWiring"
-import { functionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 
 // Self-host with the default Effect fleet plus both opt-in architecture fleets.
 // Keep the architecture presets separate so consumers can choose either policy;

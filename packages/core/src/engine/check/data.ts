@@ -2,7 +2,7 @@ import { Data, MutableList, Schema } from "effect"
 import type * as ts from "typescript"
 import type { Detection } from "../location/data.js"
 import type { ProgramContext } from "../sources/data.js"
-import { TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
+import { TsNode, TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
 
 /**
  * CheckContext is the shared program, checker, projectRoot, sourceFile contract
@@ -19,6 +19,26 @@ export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
   checker: TsTypeChecker,
   projectRoot: Schema.String,
   sourceFile: TsSourceFile
+}) {}
+
+const optionalUnknown = Schema.optional(Schema.Unknown)
+
+/**
+ * DetectionSource is the boundary message, hint, data, node contract used by
+ * MakeDetection and detection.
+ *
+ * @remarks
+ *   It remains explicit because detection construction at the check boundary
+ *   needs one named input contract distinct from emitted Detection values.
+ *   Removing it would inline parallel object shapes at every detection call
+ *   site and let message, hint, and node wiring drift.
+ * @modelRole boundary
+ */
+export class DetectionSource extends Schema.Class<DetectionSource>("DetectionSource")({
+  node: TsNode,
+  message: Schema.String,
+  hint: Schema.String,
+  data: optionalUnknown
 }) {}
 
 export type NodeHandler = (context: CheckContext) => (node: ts.Node) => ReadonlyArray<Detection>

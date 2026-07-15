@@ -1,22 +1,25 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isArrayLikeType } from "./support/tsType.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 /**
  * MutableArrayMethod is the method-name vocabulary shared by mutable-array
- * detection and policy. @modelRole shared @remarks It remains explicit because
- * both owners must classify the same methods; removing it would duplicate the
- * literal union and let their policies drift.
+ * detection and policy.
+ *
+ * @remarks
+ *   It remains explicit because both owners must classify the same methods;
+ *   removing it would duplicate the literal union and let their policies
+ *   drift.
+ * @modelRole shared
  */
-type MutableArrayMethod =
+export type MutableArrayMethod =
   "copyWithin" | "fill" | "pop" | "push" | "reverse" | "shift" | "sort" | "splice" | "unshift"
 
 const mutableArrayMethods = HashSet.make(

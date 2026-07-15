@@ -1,37 +1,52 @@
 import { Array, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
-import { combineAll, nodeSubscriptions } from "@better-typescript/core/engine/check"
-import { isReturnTypeDeclaration, unwrapExpression } from "./support/tsNode.js"
-import type { ReturnTypeDeclaration } from "./support/tsNode.js"
-import { detection } from "@better-typescript/core/engine/location"
+import {
+  containsUndefinedType,
+  isUndefinedReturnTypeDeclaration,
+  returnTypeDeclarationKinds,
+  unwrapExpression
+} from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 /**
  * UndefinedReturnExpression is the compiler syntax protocol handled by
- * undefined-return detection. @modelRole protocol @remarks It remains explicit
- * because return statements and concise arrows share one matcher contract;
- * removing it would repeat the union and let accepted cases drift.
+ * undefined-return detection.
+ *
+ * @remarks
+ *   It remains explicit because return statements and concise arrows share one
+ *   matcher contract; removing it would repeat the union and let accepted cases
+ *   drift.
+ * @modelRole protocol
  */
-type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
+export type UndefinedReturnExpression = ts.ReturnStatement | ts.ArrowFunction
 /**
  * UndefinedTypeDeclaration is the compiler syntax protocol handled by
- * undefined-type detection. @modelRole protocol @remarks It remains explicit
- * because property signatures and mapped types share one matcher contract;
- * removing it would repeat the union and let accepted cases drift.
+ * undefined-type detection.
+ *
+ * @remarks
+ *   It remains explicit because property signatures and mapped types share one
+ *   matcher contract; removing it would repeat the union and let accepted cases
+ *   drift.
+ * @modelRole protocol
  */
-type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
+export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
 /**
  * UndefinedUsageKind is the usage vocabulary shared by undefined matching and
- * diagnostic messages. @modelRole shared @remarks It remains explicit because
- * both owners must classify the same cases; removing it would duplicate the
- * literal union and let their policies drift.
+ * diagnostic messages.
+ *
+ * @remarks
+ *   It remains explicit because both owners must classify the same cases;
+ *   removing it would duplicate the literal union and let their policies
+ *   drift.
+ * @modelRole shared
  */
-type UndefinedUsageKind =
+export type UndefinedUsageKind =
   "parameter" | "return-type" | "return-expression" | "type-declaration" | "comparison"
 
 const optionHint =
@@ -50,19 +65,6 @@ const isUndefinedExpression = (expression: ts.Expression): boolean => {
 
   return Option.exists(identifier, isUndefinedIdentifier)
 }
-
-const containsUndefinedKeyword = (node: ts.Node): boolean => {
-  const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
-
-  const childContainsUndefinedKeyword = ts.forEachChild(node, containsUndefinedKeyword) === true
-
-  const conditions = Array.make(isUndefinedKeyword, childContainsUndefinedKeyword)
-
-  return Array.some(conditions, Boolean)
-}
-
-const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
-  Option.exists(typeNode, containsUndefinedKeyword)
 
 const equalityComparisonOperators = HashSet.make(
   ts.SyntaxKind.EqualsEqualsToken,
@@ -99,15 +101,6 @@ const parameterAcceptsUndefined = (param: ts.ParameterDeclaration): boolean => {
 
 const isParameterAcceptingUndefined = (node: ts.Node): node is ts.ParameterDeclaration =>
   pipe(Option.liftPredicate(ts.isParameter)(node), Option.exists(parameterAcceptsUndefined))
-
-const hasUndefinedReturnType = (decl: ReturnTypeDeclaration): boolean =>
-  pipe(Option.fromNullable(decl.type), containsUndefinedType)
-
-const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
-  const returnTypeDecl = Option.liftPredicate(isReturnTypeDeclaration)(node)
-
-  return Option.exists(returnTypeDecl, hasUndefinedReturnType)
-}
 
 const getReturnExpression = (stmt: ts.ReturnStatement): Option.Option<ts.Expression> =>
   Option.fromNullable(stmt.expression)
@@ -181,17 +174,6 @@ const undefinedUsageMatches = (kind: UndefinedUsageKind) => (context: CheckConte
 
   return matches
 }
-
-const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.MethodDeclaration,
-  ts.SyntaxKind.MethodSignature,
-  ts.SyntaxKind.CallSignature,
-  ts.SyntaxKind.FunctionType,
-  ts.SyntaxKind.GetAccessor
-)
 
 const parameterKinds = Array.of(ts.SyntaxKind.Parameter)
 

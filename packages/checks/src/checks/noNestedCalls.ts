@@ -1,59 +1,19 @@
-import { Array, flow, HashSet, Option, pipe } from "effect"
+import { Array, flow, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { isSameNode } from "./support/tsNode.js"
-import { callArguments, isCallLikeExpression } from "./support/tsSignature.js"
-import type { CallLikeExpression } from "./support/tsSignature.js"
+import {
+  callArguments,
+  calleeText,
+  consumingCall,
+  isCallLikeExpression
+} from "./support/tsSignature.js"
 import { hasCallSignature } from "./support/tsType.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
-
-const valueForwardingKinds = HashSet.make(
-  ts.SyntaxKind.ParenthesizedExpression,
-  ts.SyntaxKind.AsExpression,
-  ts.SyntaxKind.SatisfiesExpression,
-  ts.SyntaxKind.NonNullExpression,
-  ts.SyntaxKind.ObjectLiteralExpression,
-  ts.SyntaxKind.PropertyAssignment,
-  ts.SyntaxKind.ShorthandPropertyAssignment,
-  ts.SyntaxKind.SpreadAssignment,
-  ts.SyntaxKind.ArrayLiteralExpression,
-  ts.SyntaxKind.SpreadElement,
-  ts.SyntaxKind.ConditionalExpression,
-  ts.SyntaxKind.BinaryExpression,
-  ts.SyntaxKind.PrefixUnaryExpression,
-  ts.SyntaxKind.PostfixUnaryExpression,
-  ts.SyntaxKind.AwaitExpression,
-  ts.SyntaxKind.YieldExpression,
-  ts.SyntaxKind.TypeOfExpression,
-  ts.SyntaxKind.VoidExpression,
-  ts.SyntaxKind.PropertyAccessExpression,
-  ts.SyntaxKind.ElementAccessExpression,
-  ts.SyntaxKind.TemplateSpan,
-  ts.SyntaxKind.TemplateExpression
-)
-
-const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
-  const parent = node.parent
-  const isCallLike = isCallLikeExpression(parent)
-
-  if (isCallLike) {
-    return Option.liftPredicate((call: CallLikeExpression) => {
-      const args = callArguments(call)
-
-      return Array.some(args, isSameNode(node))
-    })(parent)
-  }
-
-  const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)
-
-  return isForwarding ? consumingCall(node.parent) : Option.none()
-}
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const ruleHint =
   "A call whose result feeds another call hides a sequence of steps in one expression " +
@@ -66,20 +26,16 @@ const nestedCallMatches = (context: CheckContext) => {
   const checker = context.checker
 
   const producesCallable = flow(
-    (call: CallLikeExpression) => checker.getTypeAtLocation(call),
+    (call: ts.CallExpression | ts.NewExpression) => checker.getTypeAtLocation(call),
     hasCallSignature(checker)
   )
 
   const sourceFile = context.sourceFile
   const match = detection(context)
 
-  const calleeText = (target: CallLikeExpression): string => {
-    const text = target.expression.getText(sourceFile)
+  const callLabel = calleeText(sourceFile)
 
-    return ts.isNewExpression(target) ? `new ${text}` : text
-  }
-
-  const matches = (call: CallLikeExpression): ReadonlyArray<Detection> =>
+  const matches = (call: ts.CallExpression | ts.NewExpression): ReadonlyArray<Detection> =>
     pipe(
       consumingCall(call),
       Option.flatMap((consumer) => {
@@ -101,8 +57,8 @@ const nestedCallMatches = (context: CheckContext) => {
           return Option.none()
         }
 
-        const callText = calleeText(call)
-        const consumerText = calleeText(consumer)
+        const callText = callLabel(call)
+        const consumerText = callLabel(consumer)
 
         const ruleMatch = match({
           node: call,

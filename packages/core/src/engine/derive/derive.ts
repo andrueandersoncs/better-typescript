@@ -12,8 +12,9 @@ import {
   Struct,
   pipe
 } from "effect"
-import { Detection, Location } from "../location/data.js"
-import { CountSummary, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
+import { Location } from "../location/data.js"
+import { AdviceReportKey, ReportBlock } from "../report/data.js"
+import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
 export const collectSignals = <A>(
   signals: Stream.Stream<A, Error>
@@ -44,11 +45,6 @@ const addCount =
 
     return HashMap.set(counts, key, next)
   }
-
-export const namedDetection =
-  (name: string) =>
-  (detection: Detection): NamedDetection =>
-    new NamedDetection({ name, detection })
 
 const detectionPath = (named: NamedDetection): string => named.detection.location.path
 
@@ -127,21 +123,6 @@ export const evidenceItem = (measure: string, count: number): EvidenceItem =>
 
 export const adviceLocation = (path: string): Location => new Location({ path })
 
-export const detectionAtPath =
-  (path: string) =>
-  (element: Detection): boolean =>
-    element.location.path === path
-
-export const detectionsAtPath =
-  (path: string) =>
-  (elements: ReadonlyArray<Detection>): ReadonlyArray<Detection> =>
-    Array.filter(elements, detectionAtPath(path))
-
-export const countDetectionsAtPath =
-  (path: string) =>
-  (elements: ReadonlyArray<Detection>): number =>
-    detectionsAtPath(path)(elements).length
-
 const countEntryEvidence = (entry: readonly [string, number]): EvidenceItem =>
   evidenceItem(entry[0], entry[1])
 
@@ -200,3 +181,59 @@ export const dominantCheckEvidence =
 
     return Array.sort(evidence, evidenceOrder)
   }
+
+export const evidenceText = (item: EvidenceItem): string =>
+  `  evidence: ${item.measure}: ${item.count}`
+
+const adviceLevelRanks = { file: 0, directory: 1, project: 2 } as const
+
+export const adviceLevelRank = (advice: Advice): number => adviceLevelRanks[advice.level]
+
+export const advicePath = (advice: Advice): string =>
+  advice.level === "project" ? "project" : advice.location.path
+
+const byAdviceLevel = Order.mapInput(Order.number, adviceLevelRank)
+const byAdvicePath = Order.mapInput(Order.string, advicePath)
+export const adviceOrder = Order.combine(byAdviceLevel, byAdvicePath)
+
+export const adviceHeader = (advice: Advice): string => {
+  const pathLabel = advicePath(advice)
+
+  return `${pathLabel} [${advice.level}] — ${advice.title}`
+}
+
+export const adviceText = (advice: Advice): string => {
+  const header = adviceHeader(advice)
+  const remediation = `  fix: ${advice.remediation}`
+  const evidence = Array.map(advice.evidence, evidenceText)
+  const prefixLines = Array.make(header, remediation)
+  const lines = Array.appendAll(prefixLines, evidence)
+
+  return Array.join(lines, "\n")
+}
+
+const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
+  pipe(Array.prepend(parts, kind), JSON.stringify)
+
+export const adviceReportBlock = (advice: Advice): ReportBlock => {
+  const pathLabel = advicePath(advice)
+
+  const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
+  const identity = reportIdentity("advice", adviceIdentityParts)
+
+  const key = new AdviceReportKey({
+    level: advice.level,
+    path: pathLabel,
+    title: advice.title
+  })
+
+  const text = adviceText(advice)
+  const header = adviceHeader(advice)
+  const cleared = `${header} — cleared`
+
+  return new ReportBlock({ identity, key, text, cleared })
+}
+
+export const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
+
+export const fileAdvicePath = (advice: Advice): string => advice.location.path

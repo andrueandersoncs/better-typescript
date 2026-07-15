@@ -1,23 +1,26 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { unwrapExpression } from "./support/tsNode.js"
 import { astChildren } from "@better-typescript/core/engine/sources"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 /**
- * BooleanOperatorExpression is the syntax contract shared by boolean-expression
- * detection and matching. @modelRole shared @remarks It remains explicit
- * because both owners need one stable compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted expressions drift.
+ * BooleanOperatorExpression is the syntax contract shared by boolean-
+ * expression detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   expressions drift.
+ * @modelRole shared
  */
-type BooleanOperatorExpression =
+export type BooleanOperatorExpression =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
 
 const isBooleanOperatorExpression = (node: ts.Node): node is BooleanOperatorExpression => {

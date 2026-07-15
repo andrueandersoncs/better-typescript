@@ -10,7 +10,7 @@
     "./preset": "./dist/preset.js",
     "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
     "./preset/architectureExploreWiring": "./dist/preset/architectureExploreWiring.js",
-    "./preset/functionalCoreEffectWiring": "./dist/preset/functionalCoreEffectWiring.js",
+    "./functionalCoreEffect/wiring": "./dist/checks/functionalCoreEffect/wiring.js",
     "./fixtureExamples": "./dist/fixtureExamples.js",
     "./pipelineHostile": "./dist/checks/pipelineHostile/pipelineHostile.js",
     "./conceptControl": "./dist/checks/conceptControl/conceptControl.js",

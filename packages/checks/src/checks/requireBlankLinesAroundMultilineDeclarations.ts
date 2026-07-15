@@ -1,21 +1,24 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 /**
  * DeclarationStatement is the syntax contract shared by declaration detection
- * and blank-line matching. @modelRole shared @remarks It remains explicit
- * because both owners need one stable compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted declarations drift.
+ * and blank-line matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   declarations drift.
+ * @modelRole shared
  */
-type DeclarationStatement =
+export type DeclarationStatement =
   | ts.VariableStatement
   | ts.FunctionDeclaration
   | ts.ClassDeclaration
@@ -26,11 +29,15 @@ type DeclarationStatement =
 
 /**
  * StatementContainer is the compiler syntax protocol handled by
- * declaration-neighbor lookup. @modelRole protocol @remarks It remains explicit
- * because source, block, and clause containers share one operation; removing it
- * would repeat the union and let accepted cases drift.
+ * declaration-neighbor lookup.
+ *
+ * @remarks
+ *   It remains explicit because source, block, and clause containers share one
+ *   operation; removing it would repeat the union and let accepted cases
+ *   drift.
+ * @modelRole protocol
  */
-type StatementContainer =
+export type StatementContainer =
   ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
 
 const declarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(

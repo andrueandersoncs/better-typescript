@@ -1,11 +1,10 @@
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { Effect, Array } from "effect"
 import { requireBlankLinesAroundMultilineDeclarations } from "@better-typescript/checks/requireBlankLinesAroundMultilineDeclarations"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject } from "@better-typescript/core/engine/report"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -95,7 +94,9 @@ const runRequireBlankLinesAroundMultilineDeclarationsFixture = async (): Promise
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(requireBlankLinesAroundMultilineDeclarations)(project))
+      Effect.runPromise(
+        runCheckOnProject(Array.of(requireBlankLinesAroundMultilineDeclarations))(project)
+      )
     )
   )
 

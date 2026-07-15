@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url"
 import { Chunk, Effect, Fiber, HashMap, Option, Queue, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { Location } from "@better-typescript/core/engine/location/data"
-import { locateNode } from "@better-typescript/core/engine/location"
 import {
   AdviceReportKey,
   ReportBlock,
@@ -21,13 +20,9 @@ import type {
   Wiring,
   WiringConfig
 } from "@better-typescript/core/engine/report/data"
-import {
-  defineConfig,
-  namedCheck,
-  reportBlocksFromConfig
-} from "@better-typescript/core/engine/report"
+import { defineConfig, namedCheck } from "@better-typescript/core/engine/report"
+import { reportBlocksFromConfig } from "@better-typescript/core/project/loadProject"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
-import { checkFromSubscriptions, nodeSubscription } from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { contextFor, diffCheckableFiles } from "@better-typescript/core/engine/sources"
@@ -44,13 +39,21 @@ import {
   blockDelta,
   blockDeltas,
   renderEventText,
-  reportEventsFromConfig,
   signalUpdates,
   signalsEquivalence,
   watchReportFromConfig
 } from "@better-typescript/core/engine/watch"
-import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
+import {
+  discoverWorkspace,
+  loadProject,
+  reportEventsFromConfig
+} from "@better-typescript/core/project/loadProject"
 import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
+import {
+  locateNode,
+  checkFromSubscriptions,
+  nodeSubscription
+} from "@better-typescript/core/engine/check"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")

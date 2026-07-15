@@ -1,23 +1,26 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
 import { isFunctionInitializer, namedDetectionTarget } from "./support/tsNode.js"
 import { isVoidType, permitsVoid } from "./support/tsType.js"
-import { detection } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 /**
  * VoidableFunction is the syntax contract shared by void-function candidate
- * detection and matching. @modelRole shared @remarks It remains explicit
- * because both owners need one stable compiler-node vocabulary; removing it
- * would duplicate the union and let their accepted declarations drift.
+ * detection and matching.
+ *
+ * @remarks
+ *   It remains explicit because both owners need one stable compiler-node
+ *   vocabulary; removing it would duplicate the union and let their accepted
+ *   declarations drift.
+ * @modelRole shared
  */
-type VoidableFunction =
+export type VoidableFunction =
   ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
 
 const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(

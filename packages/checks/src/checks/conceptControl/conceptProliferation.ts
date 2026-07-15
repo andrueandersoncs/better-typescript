@@ -6,8 +6,8 @@ import {
   Option,
   Record,
   Schema,
-  Stream,
   Struct,
+  Tuple,
   pipe
 } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
@@ -90,34 +90,37 @@ const proliferationAdvice = (
     return Option.none()
   }
 
-  const kindCounts = Array.reduce(data, HashMap.empty<string, number>(), signalKindCount)
+  const emptyKindCounts = HashMap.empty<string, number>()
+  const kindCounts = Array.reduce(data, emptyKindCounts, signalKindCount)
 
   const counts = evidenceFromCounts(kindCounts)
-  const conceptCount = evidenceItem("distinct concepts", HashSet.size(concepts))
+  const distinctConceptCount = HashSet.size(concepts)
+  const conceptCount = evidenceItem("distinct concepts", distinctConceptCount)
   const signalCount = evidenceItem("concept-control signals", data.length)
+  const withSignals = Array.prepend(counts, signalCount)
+  const evidence = Array.prepend(withSignals, conceptCount)
+  const location = adviceLocation(directory)
 
-  const evidence = Array.prepend(Array.prepend(counts, signalCount), conceptCount)
+  const advice = new Advice({
+    location,
+    level: "directory",
+    title: "concept proliferation",
+    remediation:
+      "Several weakly justified representations accumulate in this concept directory. " +
+      "Review them as one vocabulary: delete speculative fields and exports, reuse or merge " +
+      "equivalent shapes, collapse pass-through conversions, then deepen the remaining " +
+      "Module behind fewer enduring models. File separation does not make these independent concepts.",
+    evidence
+  })
 
-  return Option.some(
-    new Advice({
-      location: adviceLocation(directory),
-      level: "directory",
-      title: "concept proliferation",
-      remediation:
-        "Several weakly justified representations accumulate in this concept directory. " +
-        "Review them as one vocabulary: delete speculative fields and exports, reuse or merge " +
-        "equivalent shapes, collapse pass-through conversions, then deepen the remaining " +
-        "Module behind fewer enduring models. File separation does not make these independent concepts.",
-      evidence
-    })
-  )
+  return Option.some(advice)
 }
 
 const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
   const typed = Array.filterMap(elements, (element) =>
     pipe(
       signalData(element),
-      Option.map((data) => [element, data] as const)
+      Option.map((data) => Tuple.make(element, data))
     )
   )
 
@@ -145,6 +148,4 @@ const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Adv
   return Array.appendAll(closed, proliferation)
 }
 
-export const conceptProliferation = (
-  signals: Stream.Stream<Detection, Error>
-): Stream.Stream<Advice, Error> => deriveSignals(conceptAdviceFor)(signals)
+export const conceptProliferation = deriveSignals(conceptAdviceFor)

@@ -1,7 +1,6 @@
-import { Array, Data, Function, HashMap, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashMap, HashSet, Option, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { fileSubscriptions, withProgramIndex } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/location"
+import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -13,57 +12,9 @@ import { hasExportModifier } from "../support/tsNode.js"
 import { resolvedSymbolAt } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
 import { isTestSourceFile } from "./programSymbols.js"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-/**
- * SeamCandidate binds an exported behavioural interface declaration to its
- * canonical compiler symbol. @modelRole shared @remarks It remains explicit
- * because candidate discovery and adapter counting must preserve syntax
- * location and symbol identity; removing it would repeat alias resolution or
- * split those correlated values.
- */
-class SeamCandidate extends Data.Class<{
-  readonly declaration: ts.InterfaceDeclaration
-  readonly symbol: ts.Symbol
-}> {}
-
-/**
- * AdapterCount is the shared production-versus-test implementation tally for
- * one injected interface symbol. @modelRole shared @remarks It remains explicit
- * because accumulation and seam classification must update and compare both
- * populations together; removing it would use parallel maps whose entries could
- * diverge.
- */
-class AdapterCount extends Data.Class<{
-  readonly production: number
-  readonly test: number
-}> {}
-
-/**
- * SingleAdapterIndex is the shared candidate, injection, and implementation
- * evidence consumed by per-file seam reporting. @modelRole shared @remarks It
- * remains explicit because project indexing and file subscriptions must
- * exchange one internally consistent snapshot; removing it would risk mixing
- * index generations.
- */
-class SingleAdapterIndex extends Data.Class<{
-  readonly candidates: ReadonlyArray<SeamCandidate>
-  readonly injected: HashSet.HashSet<ts.Symbol>
-  readonly adapterCounts: HashMap.HashMap<ts.Symbol, AdapterCount>
-}> {}
-
-/**
- * AdapterState is the accumulated injection and implementation evidence while
- * traversing project syntax. @modelRole shared @remarks It remains explicit
- * because the fold initializer and reducer must evolve the symbol set and count
- * map as one state transition; removing it would synchronize two accumulator
- * parameters manually.
- */
-class AdapterState extends Data.Class<{
-  readonly injected: HashSet.HashSet<ts.Symbol>
-  readonly adapterCounts: HashMap.HashMap<ts.Symbol, AdapterCount>
-}> {}
-
-const emptyAdapterCount = (): AdapterCount => new AdapterCount({ production: 0, test: 0 })
+const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
 
 const message =
   "Single-adapter seam evidence — this injected behavioural interface has one production adapter and no test adapter."
@@ -111,7 +62,9 @@ const isBehaviouralMember =
 
 const seamCandidates =
   (context: ProgramContext) =>
-  (sourceFiles: ReadonlyArray<ts.SourceFile>): ReadonlyArray<SeamCandidate> =>
+  (
+    sourceFiles: ReadonlyArray<ts.SourceFile>
+  ): ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]> =>
     Array.flatMap(sourceFiles, (sourceFile) =>
       Array.filterMap(sourceFile.statements, (statement) =>
         pipe(
@@ -124,7 +77,7 @@ const seamCandidates =
           Option.flatMap((declaration) =>
             pipe(
               resolvedSymbolAt(context.checker)(declaration.name),
-              Option.map((symbol) => new SeamCandidate({ declaration, symbol }))
+              Option.map((symbol) => Tuple.make(declaration, symbol))
             )
           )
         )
@@ -141,38 +94,24 @@ const exportedVariableStatement = (
     Option.filter(hasExportModifier)
   )
 
-/**
- * ClassDependencyOwner is the compiler-node protocol that may own an injected
- * constructor or method parameter. @modelRole protocol @remarks It remains
- * explicit because the type guard and export classifier must accept the same
- * class-member syntax; removing it would repeat the union and let their
- * supported node kinds drift.
- */
-type ClassDependencyOwner = ts.ConstructorDeclaration | ts.MethodDeclaration
-
 const classDependencyOwnerKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.Constructor,
   ts.SyntaxKind.MethodDeclaration
 )
 
-const isClassDependencyOwner = (node: ts.Node): node is ClassDependencyOwner =>
+const isClassDependencyOwner = (
+  node: ts.Node
+): node is ts.ConstructorDeclaration | ts.MethodDeclaration =>
   Array.contains(classDependencyOwnerKinds, node.kind)
-
-/**
- * VariableDependencyOwner is the compiler-node protocol for exported variable
- * functions that may own injected parameters. @modelRole protocol @remarks It
- * remains explicit because the type guard and variable-statement resolver must
- * accept the same expression forms; removing it would duplicate the union and
- * let their supported syntax diverge.
- */
-type VariableDependencyOwner = ts.ArrowFunction | ts.FunctionExpression
 
 const variableDependencyOwnerKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
   ts.SyntaxKind.FunctionExpression
 )
 
-const isVariableDependencyOwner = (node: ts.Node): node is VariableDependencyOwner =>
+const isVariableDependencyOwner = (
+  node: ts.Node
+): node is ts.ArrowFunction | ts.FunctionExpression =>
   Array.contains(variableDependencyOwnerKinds, node.kind)
 
 const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration): boolean => {
@@ -239,120 +178,147 @@ const contextualInterfaceSymbol =
 const incrementAdapter =
   (fromTest: boolean) =>
   (symbol: ts.Symbol) =>
-  (counts: HashMap.HashMap<ts.Symbol, AdapterCount>): HashMap.HashMap<ts.Symbol, AdapterCount> => {
+  (
+    counts: HashMap.HashMap<ts.Symbol, readonly [number, number]>
+  ): HashMap.HashMap<ts.Symbol, readonly [number, number]> => {
     const current = pipe(HashMap.get(counts, symbol), Option.getOrElse(emptyAdapterCount))
 
-    const production = fromTest ? current.production : current.production + 1
-    const test = fromTest ? current.test + 1 : current.test
-    const updated = new AdapterCount({ production, test })
+    const production = fromTest ? current[0] : current[0] + 1
+    const test = fromTest ? current[1] + 1 : current[1]
+    const updated = Tuple.make(production, test)
     return HashMap.set(counts, symbol, updated)
   }
 
-const buildIndex = (context: ProgramContext): SingleAdapterIndex => {
+const buildIndex = (
+  context: ProgramContext
+): readonly [
+  ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]>,
+  HashSet.HashSet<ts.Symbol>,
+  HashMap.HashMap<ts.Symbol, readonly [number, number]>
+] => {
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   const candidates = seamCandidates(context)(sourceFiles)
 
-  const candidateSymbols = pipe(candidates, Array.map(Struct.get("symbol")), HashSet.fromIterable)
+  const candidateSymbols = pipe(
+    candidates,
+    Array.map((candidate) => candidate[1]),
+    HashSet.fromIterable
+  )
 
   const classifyTestSource = isTestSourceFile(context.projectRoot)
 
   const scanFile =
     (sourceFile: ts.SourceFile) =>
-    (state: AdapterState): AdapterState => {
+    (
+      state: readonly [
+        HashSet.HashSet<ts.Symbol>,
+        HashMap.HashMap<ts.Symbol, readonly [number, number]>
+      ]
+    ): readonly [
+      HashSet.HashSet<ts.Symbol>,
+      HashMap.HashMap<ts.Symbol, readonly [number, number]>
+    ] => {
       const fromTest = classifyTestSource(sourceFile)
 
-      return foldAst((current: AdapterState, node: ts.Node): AdapterState => {
-        const parameterState = pipe(
-          Option.liftPredicate(ts.isParameter)(node),
-          Option.filter(isExportedDependencyParameter),
-          Option.map((parameter) => context.checker.getTypeAtLocation(parameter)),
-          Option.flatMap(typeSymbol(context.checker)),
-          Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
-          Option.map((candidate) => {
-            const injected = HashSet.add(current.injected, candidate)
+      return foldAst(
+        (
+          current: readonly [
+            HashSet.HashSet<ts.Symbol>,
+            HashMap.HashMap<ts.Symbol, readonly [number, number]>
+          ],
+          node: ts.Node
+        ): readonly [
+          HashSet.HashSet<ts.Symbol>,
+          HashMap.HashMap<ts.Symbol, readonly [number, number]>
+        ] => {
+          const parameterState = pipe(
+            Option.liftPredicate(ts.isParameter)(node),
+            Option.filter(isExportedDependencyParameter),
+            Option.map((parameter) => context.checker.getTypeAtLocation(parameter)),
+            Option.flatMap(typeSymbol(context.checker)),
+            Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
+            Option.map((candidate) => {
+              const injected = HashSet.add(current[0], candidate)
 
-            return new AdapterState({
-              injected,
-              adapterCounts: current.adapterCounts
-            })
-          }),
-          Option.getOrElse(() => current)
-        )
+              return Tuple.make(injected, current[1])
+            }),
+            Option.getOrElse(() => current)
+          )
 
-        const classState = pipe(
-          Option.liftPredicate(ts.isClassDeclaration)(node),
-          Option.map((declaration) => {
-            const symbols = pipe(
-              implementedSymbols(context.checker)(declaration),
-              Array.filter((symbol) => HashSet.has(candidateSymbols, symbol))
-            )
+          const classState = pipe(
+            Option.liftPredicate(ts.isClassDeclaration)(node),
+            Option.map((declaration) => {
+              const symbols = pipe(
+                implementedSymbols(context.checker)(declaration),
+                Array.filter((symbol) => HashSet.has(candidateSymbols, symbol))
+              )
 
-            const adapterCounts = Array.reduce(
-              symbols,
-              parameterState.adapterCounts,
-              (counts, symbol) => incrementAdapter(fromTest)(symbol)(counts)
-            )
+              const adapterCounts = Array.reduce(symbols, parameterState[1], (counts, symbol) =>
+                incrementAdapter(fromTest)(symbol)(counts)
+              )
 
-            return new AdapterState({
-              injected: parameterState.injected,
-              adapterCounts
-            })
-          }),
-          Option.getOrElse(Function.constant(parameterState))
-        )
+              return Tuple.make(parameterState[0], adapterCounts)
+            }),
+            Option.getOrElse(Function.constant(parameterState))
+          )
 
-        const objectState = pipe(
-          Option.liftPredicate(ts.isObjectLiteralExpression)(node),
-          Option.flatMap(contextualInterfaceSymbol(context.checker)),
-          Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
-          Option.map((candidate) => {
-            const adapterCounts = incrementAdapter(fromTest)(candidate)(classState.adapterCounts)
+          const objectState = pipe(
+            Option.liftPredicate(ts.isObjectLiteralExpression)(node),
+            Option.flatMap(contextualInterfaceSymbol(context.checker)),
+            Option.filter((candidate) => HashSet.has(candidateSymbols, candidate)),
+            Option.map((candidate) => {
+              const adapterCounts = incrementAdapter(fromTest)(candidate)(classState[1])
 
-            return new AdapterState({
-              injected: classState.injected,
-              adapterCounts
-            })
-          }),
-          Option.getOrElse(Function.constant(classState))
-        )
+              return Tuple.make(classState[0], adapterCounts)
+            }),
+            Option.getOrElse(Function.constant(classState))
+          )
 
-        return objectState
-      })(sourceFile)(state)
+          return objectState
+        }
+      )(sourceFile)(state)
     }
 
   const injected = HashSet.empty<ts.Symbol>()
-  const adapterCounts = HashMap.empty<ts.Symbol, AdapterCount>()
-  const initial = new AdapterState({ injected, adapterCounts })
+  const adapterCounts = HashMap.empty<ts.Symbol, readonly [number, number]>()
 
-  const finalState = Array.reduce(sourceFiles, initial, (state, sourceFile) =>
-    scanFile(sourceFile)(state)
+  const initial: readonly [
+    HashSet.HashSet<ts.Symbol>,
+    HashMap.HashMap<ts.Symbol, readonly [number, number]>
+  ] = Tuple.make(injected, adapterCounts)
+
+  const finalState = pipe(
+    sourceFiles,
+    Array.reduce(initial, (state, sourceFile) => scanFile(sourceFile)(state))
   )
 
-  return new SingleAdapterIndex({
-    candidates,
-    injected: finalState.injected,
-    adapterCounts: finalState.adapterCounts
-  })
+  return Tuple.make(candidates, finalState[0], finalState[1])
 }
 
 const singleAdapterElements =
-  (index: SingleAdapterIndex) =>
+  (
+    index: readonly [
+      ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]>,
+      HashSet.HashSet<ts.Symbol>,
+      HashMap.HashMap<ts.Symbol, readonly [number, number]>
+    ]
+  ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
     const element = detection(context)
 
     return pipe(
-      index.candidates,
-      Array.filter((candidate) => candidate.declaration.getSourceFile() === context.sourceFile),
-      Array.filter((candidate) => HashSet.has(index.injected, candidate.symbol)),
+      index[0],
+      Array.filter((candidate) => candidate[0].getSourceFile() === context.sourceFile),
+      Array.filter((candidate) => HashSet.has(index[1], candidate[1])),
       Array.filterMap((candidate) => {
         const counts = pipe(
-          HashMap.get(index.adapterCounts, candidate.symbol),
+          HashMap.get(index[2], candidate[1]),
           Option.getOrElse(emptyAdapterCount)
         )
 
-        const hasOneProductionAdapter = counts.production === 1
-        const hasNoTestAdapter = counts.test === 0
+        const hasOneProductionAdapter = counts[0] === 1
+        const hasNoTestAdapter = counts[1] === 0
 
         const isHypothetical = hasOneProductionAdapter && hasNoTestAdapter
 
@@ -362,13 +328,13 @@ const singleAdapterElements =
           hypotheticalCandidate,
           Option.map((currentCandidate) => {
             const data = new SingleAdapterSeamData({
-              interfaceName: currentCandidate.declaration.name.text,
-              productionAdapterCount: counts.production,
-              testAdapterCount: counts.test
+              interfaceName: currentCandidate[0].name.text,
+              productionAdapterCount: counts[0],
+              testAdapterCount: counts[1]
             })
 
             const reported = element({
-              node: currentCandidate.declaration.name,
+              node: currentCandidate[0].name,
               message,
               hint,
               data
