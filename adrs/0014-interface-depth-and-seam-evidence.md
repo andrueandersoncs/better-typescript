@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. The `prefer-data-last-module` retention note is superseded by
+[ADR-0020](0020-files-are-module-boundaries.md); the interface-depth and seam-evidence decisions
+remain accepted.
 
 ## Date
 

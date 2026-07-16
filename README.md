@@ -427,6 +427,9 @@ exports are the supported entrypoints; source paths are implementation details.
 
 ## Architecture notes
 
+- `adrs/0020-files-are-module-boundaries.md` records the removal of the `prefer-data-last-module`
+  placement check: files are the language's module boundary, so placement rules stop at file scope
+  while data-last signature preference stays with the shape-based checks.
 - `adrs/0019-workspace-update-report-seam.md` records the Workspace Update stream seam, shared
   one-shot/watch report composition, focused project-loading surface, whole-Wiring composition, and
   module ownership.

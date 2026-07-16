@@ -17,7 +17,6 @@ import { preferEffectPropertyAccessors } from "../checks/preferEffectPropertyAcc
 import { preferEffectRecordFilterMap } from "../checks/preferEffectRecordFilterMap.js"
 import { preferEffectArray } from "../checks/preferEffectArray.js"
 import { preferEffectArrayAppendAll } from "../checks/preferEffectArrayAppendAll.js"
-import { preferDataLastModule } from "../checks/preferDataLastModule.js"
 import { preferSchemaTaggedClass } from "../checks/preferSchemaTaggedClass.js"
 import { requireWireSafeSchemaTaggedClass } from "../checks/requireWireSafeSchemaTaggedClass.js"
 import { conceptControl } from "../checks/conceptControl/conceptControl.js"
@@ -100,7 +99,6 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectRecordFilterMap,
   preferEffectArray,
   preferEffectArrayAppendAll,
-  preferDataLastModule,
   preferSchemaTaggedClass,
   requireWireSafeSchemaTaggedClass,
   conceptControl,
