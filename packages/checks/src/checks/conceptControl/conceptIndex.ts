@@ -21,12 +21,13 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import {
   functionInitializer,
   hasExportModifier,
-  noneTypeShape,
   returnedExpression,
   unwrapCallee,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+
+const noneTypeShape: Option.Option<string> = Option.none()
 import {
   ConceptIndex,
   DataStructureEntry,

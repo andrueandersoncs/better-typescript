@@ -1,31 +1,31 @@
 export {}
 
-function functionDeclaration(): any {
+function functionDeclaration(): any { // ~detect 1
   return {}
 }
 
-const functionExpression = function (): Promise<any> {
+const functionExpression = function (): Promise<any> { // ~detect 28
   return Promise.resolve({})
 }
 
-const arrowFunction = (): string | any => "value"
+const arrowFunction = (): string | any => "value" // ~detect 23
 
 class Service {
-  methodDeclaration(): ReadonlyArray<any> {
+  methodDeclaration(): ReadonlyArray<any> { // ~detect 3
     return []
   }
 
-  get value(): any {
+  get value(): any { // ~detect 3
     return {}
   }
 }
 
 interface ServiceContract {
-  methodSignature(): any
+  methodSignature(): any // ~detect 3
 }
 
 interface CallableContract {
-  (): any
+  (): any // ~detect 3
 }
 
-type FunctionTypeAlias = () => any
+type FunctionTypeAlias = () => any // ~detect 26

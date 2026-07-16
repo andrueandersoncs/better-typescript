@@ -2,12 +2,10 @@ import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const singleLineDeclarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -149,11 +147,9 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(singleLineDeclarationKindList)(isDeclarationStatement)(
+export const noBlankLinesBetweenSingleLineDeclarations = defineCheck(
+  "no-blank-lines-between-single-line-declarations",
+  singleLineDeclarationKindList,
+  isDeclarationStatement,
   contiguousSingleLineBlankLineMatches
 )
-
-export const noBlankLinesBetweenSingleLineDeclarations: Check = check
-
-export const noBlankLinesBetweenSingleLineDeclarationsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-blank-lines-between-single-line-declarations")

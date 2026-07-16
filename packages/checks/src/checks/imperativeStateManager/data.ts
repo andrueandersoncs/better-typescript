@@ -27,14 +27,13 @@ export class ImperativeStateSignals extends Schema.Class<ImperativeStateSignals>
 const detectionSignal = Schema.Any
 
 /**
- * ImperativeStateManagerInput is the stable boundary representation exchanged
- * with imperativeStateManager.
+ * The five named evidence streams the preset derive stage hands to the
+ * imperative-state-manager fleet.
  *
  * @remarks
- *   It remains explicit because callers need one named contract for noMutation,
- *   preferHashMap, preferHashSet, noMutableArrayMethods. Removing it would
- *   duplicate boundary translation and let wire and in-memory representations
- *   drift.
+ *   This contract remains explicit because the fleet consumes parallel named
+ *   streams rather than a positional collection. Removing it would spread that
+ *   stream coupling into defaultWiring and let source-check wiring drift.
  * @modelRole boundary
  */
 export class ImperativeStateManagerInput extends Schema.Class<ImperativeStateManagerInput>(

@@ -16,7 +16,7 @@ const t1 = x === y ? a : b
 const t2 = p && q ? a : b
 
 // Condition with two && operators is flagged at the condition
-const t3 = p && q && r ? a : b
+const t3 = p && q && r ? a : b // ~detect 12
 
 // Nested ternary in a branch still counts two operators
-const t4 = p ? a : q ? b : c
+const t4 = p ? a : q ? b : c // ~detect 12

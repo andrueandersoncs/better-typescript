@@ -232,4 +232,3 @@ export const adviceReportBlock = (advice: Advice): ReportBlock => {
 export const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
 
 export const fileAdvicePath = (advice: Advice): string => advice.location.path
-

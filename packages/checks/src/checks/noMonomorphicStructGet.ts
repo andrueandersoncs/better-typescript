@@ -2,12 +2,9 @@ import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { hasExportModifier, unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const message = "Avoid monomorphizing Struct.get at its declaration."
 
 const hint =
@@ -116,12 +113,9 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(
+export const noMonomorphicStructGet = defineCheck(
+  "no-monomorphic-struct-get",
+  variableDeclarationKinds,
+  ts.isVariableDeclaration,
   monomorphicStructGetMatches
-)
-
-export const noMonomorphicStructGet: Check = check
-
-export const noMonomorphicStructGetExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "no-monomorphic-struct-get"
 )

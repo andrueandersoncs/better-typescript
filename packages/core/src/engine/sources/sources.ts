@@ -16,15 +16,14 @@ import * as ts from "typescript"
 import type { ProjectConfig } from "../../project/loadProject/data.js"
 import type { Detection } from "../location/data.js"
 import { checkFromSubscriptions, isFileSubscription, isNodeSubscription } from "../check/check.js"
+import { Check, CheckContext, type Subscription } from "../check/data.js"
 import {
   ActiveNodeSubscription,
   CachedPlan,
-  Check,
-  CheckContext,
   PlannedNodeSubscription,
-  type Subscription
-} from "../check/data.js"
-import { AstNodeElement, ProgramContext, SourceUpdate } from "./data.js"
+  ProgramContext,
+  SourceUpdate
+} from "./data.js"
 
 export type CheckFilePredicate = (checkIndex: number, sourceFile: ts.SourceFile) => boolean
 
@@ -248,25 +247,6 @@ export const foldAst =
     return Iterable.reduce(nodes, initial, fold)
   }
 
-export const astNodesFromContext = (
-  context: ProgramContext
-): Stream.Stream<AstNodeElement, never> => {
-  const sourceFiles = context.program.getSourceFiles()
-  const projectSourceFiles = Array.filter(sourceFiles, isProjectSourceFile)
-
-  return pipe(
-    projectSourceFiles,
-    Stream.fromIterable,
-    Stream.flatMap((sourceFile) =>
-      pipe(
-        astNodesIn(sourceFile),
-        Stream.fromIterable,
-        Stream.map((node) => new AstNodeElement({ context, sourceFile, node }))
-      )
-    )
-  )
-}
-
 // Reporter diagnostics stay silent because the watcher must retain the last valid program through a transient config failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 
@@ -381,4 +361,3 @@ export const sourceUpdates = (
       return Tuple.make(next, updates)
     })
   )
-

@@ -2,12 +2,9 @@ import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
 
 const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
   const unwrapped = unwrapExpression(expression)
@@ -196,10 +193,9 @@ const booleanReturnMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(booleanReturnTargetKinds)(isBooleanReturnTarget)(booleanReturnMatches)
-
-export const preferDirectBooleanReturn: Check = check
-
-export const preferDirectBooleanReturnExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-direct-boolean-return"
+export const preferDirectBooleanReturn = defineCheck(
+  "prefer-direct-boolean-return",
+  booleanReturnTargetKinds,
+  isBooleanReturnTarget,
+  booleanReturnMatches
 )

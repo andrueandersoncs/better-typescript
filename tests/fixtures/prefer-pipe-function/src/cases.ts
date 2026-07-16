@@ -1,17 +1,17 @@
 import { Effect, Option, pipe } from "effect"
 
 // method pipe on Effect
-const program = Effect.succeed(1).pipe(Effect.map((n) => n + 1))
+const program = Effect.succeed(1).pipe(Effect.map((n) => n + 1)) // ~detect 35
 
 // method pipe on Option
-const value = Option.some(42).pipe(
+const value = Option.some(42).pipe( // ~detect 31
   Option.map((n) => n * 2),
   Option.getOrElse(() => 0)
 )
 
 // chained method pipe
-const chained = Option.fromNullishOr("hello").pipe(Option.map((s) => s.length))
+const chained = Option.fromNullishOr("hello").pipe(Option.map((s) => s.length)) // ~detect 47
 
 // method pipe on a variable
 const opt = Option.some(10)
-const doubled = opt.pipe(Option.map((n) => n * 2))
+const doubled = opt.pipe(Option.map((n) => n * 2)) // ~detect 21

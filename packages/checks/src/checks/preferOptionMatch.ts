@@ -2,12 +2,10 @@ import { Tuple, Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 /**
  * OptionGuardKind is the compiler syntax vocabulary handled by Option guard
  * matching.
@@ -90,9 +88,9 @@ const optionMatchMatches = (context: CheckContext) => {
 
 const conditionalExpressionKinds = Array.of(ts.SyntaxKind.ConditionalExpression)
 
-const check = nodeCheck(conditionalExpressionKinds)(ts.isConditionalExpression)(optionMatchMatches)
-
-export const preferOptionMatch: Check = check
-
-export const preferOptionMatchExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-option-match")
+export const preferOptionMatch = defineCheck(
+  "prefer-option-match",
+  conditionalExpressionKinds,
+  ts.isConditionalExpression,
+  optionMatchMatches
+)

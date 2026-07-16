@@ -4,6 +4,6 @@ interface Profile {
 
 declare const profile: Profile
 
-export const bareName = profile.name!
+export const bareName = profile.name! // ~detect 25
 
-export const upperName = profile.name!.toUpperCase()
+export const upperName = profile.name!.toUpperCase() // ~detect 26

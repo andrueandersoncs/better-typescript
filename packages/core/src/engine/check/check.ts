@@ -6,11 +6,11 @@ import { Detection, Location } from "../location/data.js"
 import {
   Check,
   CheckContext,
-  DetectionSource,
-  FileHandler,
   FileSubscription,
-  NodeHandler,
   NodeSubscription,
+  type DetectionSource,
+  type FileHandler,
+  type NodeHandler,
   type Subscription
 } from "./data.js"
 
@@ -47,8 +47,6 @@ export const locateNode =
       column: position.character + 1
     })
   }
-
-export type MakeDetection = (source: DetectionSource) => Detection
 
 export const detection =
   (context: CheckContext) =>

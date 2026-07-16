@@ -28,7 +28,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projects = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(conceptControl))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(conceptControl.check))(project))
     )
   )
 

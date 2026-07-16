@@ -7,11 +7,9 @@ import {
   deriveSignals
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { packageExamples } from "../defineCheck.js"
 
-export const sideEffectLaunderingExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("side-effect-laundering")
+export const sideEffectLaunderingExamples = packageExamples("side-effect-laundering")
 
 const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const files = byFile(signals)
@@ -22,6 +20,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
 
     if (hasEnoughCollisions) {
       const location = adviceLocation(file.path)
+      const examples = sideEffectLaunderingExamples()
 
       const advice = new Advice({
         location,
@@ -33,7 +32,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
           "split the expression, or annotate the value with the consuming library's own " +
           "callback type so the contract is the consumer's.",
         evidence,
-        examples: sideEffectLaunderingExamples
+        examples
       })
 
       return Array.of(advice)

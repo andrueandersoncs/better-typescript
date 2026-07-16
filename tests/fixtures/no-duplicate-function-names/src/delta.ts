@@ -1,5 +1,5 @@
 export {}
 
-function crowded(): void {}
+function crowded(): void {} // ~detect 10
 
 void crowded

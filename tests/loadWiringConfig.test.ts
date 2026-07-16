@@ -4,20 +4,27 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Stream } from "effect"
-import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
-import { reportFromConfig } from "@better-typescript/core/project/loadProject"
-import type { Wiring, WiringConfig } from "@better-typescript/core/engine/report/data"
-import { loadProject } from "@better-typescript/core/project/loadProject"
-import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
-import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
+import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
+import { Detection } from "@better-typescript/core/engine/location/data"
+import { workspaceSignals } from "@better-typescript/core/engine/signal"
 import { checkFromSubscriptions, fileCheck, locateNode } from "@better-typescript/core/engine/check"
+import { contextFromLoadedProject, loadProject } from "@better-typescript/core/project/loadProject"
+import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
+import {
+  decodeWiringConfig,
+  loadWiringConfig
+} from "@better-typescript/core/project/loadWiringConfig"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
+const virtualConfigPath = path.join(testDirectory, configFileName)
 
 const fallbackWiring: Wiring = makeWiring({ checks: [], derive: () => Stream.empty })
 
 const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
+
+const emptyCheck = checkFromSubscriptions(() => [])
 
 const emptyCheckConfigPreamble = [
   'import { Stream } from "effect"',
@@ -64,11 +71,11 @@ const runInTempProject = async (
 const writeConfig = (projectDirectory: string, source: string): Promise<void> =>
   fs.writeFile(path.join(projectDirectory, configFileName), source)
 
+const decodeFailure = (moduleValue: unknown): Promise<ProjectWiringConfigError> =>
+  Effect.runPromise(Effect.flip(decodeWiringConfig(virtualConfigPath, moduleValue)))
+
 const loadConfigFailure = (projectDirectory: string): Promise<ProjectWiringConfigError> =>
   Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig)))
-
-const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(Stream.runCollect(stream))
 
 test("loadWiringConfig returns fallback config when a project has no config", async () => {
   await runInTempProject(async (projectDirectory) => {
@@ -120,272 +127,228 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
   })
 })
 
-test("loadWiringConfig accepts a named zero-argument config factory", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export const config = () => ([",
-        "  {",
-        '    files: ["src/**/*.ts"],',
-        "    wiring: {",
-        '      checks: [{ name: "named-factory-check", check: emptyCheck }],',
-        "      derive: () => Stream.empty",
-        "    }",
-        "  }",
-        "])",
-        ""
-      ].join("\n")
-    )
+test("decodeWiringConfig accepts a named zero-argument config factory", async () => {
+  const config = await Effect.runPromise(
+    decodeWiringConfig(virtualConfigPath, {
+      config: () => [
+        {
+          files: ["src/**/*.ts"],
+          wiring: {
+            checks: [{ name: "named-factory-check", check: emptyCheck }],
+            derive: () => Stream.empty
+          }
+        }
+      ]
+    })
+  )
 
-    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
-
-    assert.equal(config[0]?.wiring.checks[0]?.name, "named-factory-check")
-  })
+  assert.equal(config[0]?.wiring.checks[0]?.name, "named-factory-check")
 })
 
-test("loadWiringConfig accepts a default zero-argument config factory", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export default () => ([",
-        "  {",
-        '    files: ["src/**/*.ts"],',
-        "    wiring: {",
-        '      checks: [{ name: "default-factory-check", check: emptyCheck }],',
-        "      derive: () => Stream.empty",
-        "    }",
-        "  }",
-        "])",
-        ""
-      ].join("\n")
-    )
+test("decodeWiringConfig accepts a default zero-argument config factory", async () => {
+  const config = await Effect.runPromise(
+    decodeWiringConfig(virtualConfigPath, {
+      default: () => [
+        {
+          files: ["src/**/*.ts"],
+          wiring: {
+            checks: [{ name: "default-factory-check", check: emptyCheck }],
+            derive: () => Stream.empty
+          }
+        }
+      ]
+    })
+  )
 
-    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
-
-    assert.equal(config[0]?.wiring.checks[0]?.name, "default-factory-check")
-  })
+  assert.equal(config[0]?.wiring.checks[0]?.name, "default-factory-check")
 })
 
-test("loaded glob config drives the report end to end", async () => {
+test("decoded glob config drives workspace signals end to end", async () => {
   await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        'import { Stream } from "effect"',
-        "",
-        'import { Detection } from "@better-typescript/core/engine/location/data"',
-        'import { fileCheck, locateNode } from "@better-typescript/core/engine/check"',
-        "",
-        "export default [",
-        "  {",
-        '    files: ["src/**/cases.ts"],',
-        "    wiring: {",
-        "      checks: [",
-        "        {",
-        '          name: "config-extra-check",',
-        "          check: fileCheck((context) => [",
-        "            new Detection({",
-        "              location: locateNode(context)(context.sourceFile),",
-        '              message: "configured detection",',
-        '              hint: "loaded from project config"',
-        "            })",
-        "          ])",
-        "        }",
-        "      ],",
-        "      derive: () => Stream.empty",
-        "    }",
-        "  }",
-        "]",
-        ""
-      ].join("\n")
+    const config = await Effect.runPromise(
+      decodeWiringConfig(virtualConfigPath, {
+        default: [
+          {
+            files: ["src/**/cases.ts"],
+            wiring: {
+              checks: [
+                {
+                  name: "config-extra-check",
+                  check: fileCheck((context) => [
+                    new Detection({
+                      location: locateNode(context)(context.sourceFile),
+                      message: "configured detection",
+                      hint: "loaded from project config"
+                    })
+                  ])
+                }
+              ],
+              derive: () => Stream.empty
+            }
+          }
+        ]
+      })
     )
 
-    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
     const workspace = await Effect.runPromise(loadProject(projectDirectory))
-    const blocks = await collectStream(reportFromConfig(config)(workspace))
+    const wiringSignals = await Effect.runPromise(
+      workspaceSignals(config)(workspace.rootPath)(workspace.projects.map(contextFromLoadedProject))
+    )
 
-    assert.deepEqual(blocks, [
-      [
-        "config-extra-check",
-        "  configured detection",
-        "  Hint: loaded from project config",
-        "  src/cases.ts:1:1"
-      ].join("\n")
+    assert.equal(wiringSignals[0]?.matched, true)
+
+    const signal = wiringSignals[0]?.signals[0]
+
+    assert.equal(signal?.name, "config-extra-check")
+    assert.equal(signal?.detections[0]?.message, "configured detection")
+    assert.equal(signal?.detections[0]?.hint, "loaded from project config")
+    assert.deepEqual(
+      {
+        path: signal?.detections[0]?.location.path,
+        line: signal?.detections[0]?.location.line,
+        column: signal?.detections[0]?.location.column
+      },
+      {
+        path: "src/cases.ts",
+        line: 1,
+        column: 1
+      }
+    )
+  })
+})
+
+test("decodeWiringConfig rejects empty and blank file glob arrays", async () => {
+  const blankError = await decodeFailure([
+    {
+      files: ["src/**/*.ts", "  "],
+      wiring: { checks: [], derive: () => Stream.empty }
+    }
+  ])
+
+  assert.equal(blankError._tag, "ProjectWiringConfigError")
+  assert.match(blankError.message, /files must be a non-empty array/)
+
+  const emptyError = await decodeFailure([
+    {
+      files: [],
+      wiring: { checks: [], derive: () => Stream.empty }
+    }
+  ])
+
+  assert.match(emptyError.message, /files must be a non-empty array/)
+})
+
+test("decodeWiringConfig rejects the legacy bare wiring shape", async () => {
+  const error = await decodeFailure({
+    checks: [{ name: "legacy-check", check: emptyCheck }],
+    derive: () => Stream.empty
+  })
+
+  assert.match(error.message, /exported config must be an array/)
+})
+
+test("decodeWiringConfig rejects the legacy named wiring export", async () => {
+  const error = await decodeFailure({
+    wiring: [
+      {
+        files: ["src/**/*.ts"],
+        wiring: { checks: [], derive: () => Stream.empty }
+      }
+    ]
+  })
+
+  assert.match(error.message, /exported config must be an array/)
+})
+
+test("decodeWiringConfig rejects legacy per-check paths", async () => {
+  const error = await decodeFailure([
+    {
+      files: ["src/**/*.ts"],
+      wiring: {
+        checks: [{ name: "legacy-scope", paths: ["src"], check: emptyCheck }],
+        derive: () => Stream.empty
+      }
+    }
+  ])
+
+  assert.match(
+    error.message,
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: \(\) => RefactorExample\[\] \}/
+  )
+})
+
+test("decodeWiringConfig rejects array-valued check examples", async () => {
+  const error = await decodeFailure([
+    {
+      files: ["src/**/*.ts"],
+      wiring: {
+        checks: [{ name: "array-examples", check: emptyCheck, examples: [] }],
+        derive: () => Stream.empty
+      }
+    }
+  ])
+
+  assert.match(
+    error.message,
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: \(\) => RefactorExample\[\] \}/
+  )
+})
+
+test("decodeWiringConfig accepts thunk-valued check examples", async () => {
+  const config = await Effect.runPromise(
+    decodeWiringConfig(virtualConfigPath, [
+      {
+        files: ["src/**/*.ts"],
+        wiring: {
+          checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
+          derive: () => Stream.empty
+        }
+      }
     ])
-  })
+  )
+
+  assert.equal(config[0]?.wiring.checks[0]?.name, "thunk-examples")
+  assert.deepEqual(config[0]?.wiring.checks[0]?.examples(), [])
 })
 
-test("loadWiringConfig rejects empty and blank file glob arrays", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export default [",
-        "  {",
-        '    files: ["src/**/*.ts", "  "],',
-        "    wiring: { checks: [], derive: () => Stream.empty }",
-        "  }",
-        "]",
-        ""
-      ].join("\n")
-    )
+test("decodeWiringConfig rejects duplicate check names across wiring entries", async () => {
+  const error = await decodeFailure([
+    {
+      files: ["src/**/*.ts"],
+      wiring: {
+        checks: [{ name: "duplicate-check", check: emptyCheck }],
+        derive: () => Stream.empty
+      }
+    },
+    {
+      files: ["tests/**/*.ts"],
+      wiring: {
+        checks: [{ name: "duplicate-check", reported: false, check: emptyCheck }],
+        derive: () => Stream.empty
+      }
+    }
+  ])
 
-    const blankError = await loadConfigFailure(projectDirectory)
-
-    assert.equal(blankError._tag, "ProjectWiringConfigError")
-    assert.match(blankError.message, /files must be a non-empty array/)
-
-    await writeConfig(
-      projectDirectory,
-      [
-        'import { Stream } from "effect"',
-        "export default [",
-        "  {",
-        "    files: [],",
-        "    wiring: { checks: [], derive: () => Stream.empty }",
-        "  }",
-        "]",
-        ""
-      ].join("\n")
-    )
-
-    const emptyError = await loadConfigFailure(projectDirectory)
-
-    assert.match(emptyError.message, /files must be a non-empty array/)
-  })
+  assert.match(error.message, /Duplicate check names: duplicate-check/)
 })
 
-test("loadWiringConfig rejects the legacy bare wiring shape", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export default {",
-        '  checks: [{ name: "legacy-check", check: emptyCheck }],',
-        "  derive: () => Stream.empty",
-        "}",
-        ""
-      ].join("\n")
-    )
+test("decodeWiringConfig rejects invalid wiring entry shapes", async () => {
+  const error = await decodeFailure([
+    {
+      files: ["src/**/*.ts"],
+      wiring: 42
+    }
+  ])
 
-    const error = await loadConfigFailure(projectDirectory)
-
-    assert.match(error.message, /exported config must be an array/)
-  })
+  assert.match(error.message, /config\[0\]\.wiring must be an object with checks and derive/)
 })
 
-test("loadWiringConfig rejects the legacy named wiring export", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export const wiring = [{",
-        '  files: ["src/**/*.ts"],',
-        "  wiring: { checks: [], derive: () => Stream.empty }",
-        "}]",
-        ""
-      ].join("\n")
-    )
-
-    const error = await loadConfigFailure(projectDirectory)
-
-    assert.match(error.message, /exported config must be an array/)
+test("decodeWiringConfig rejects throwing config factories", async () => {
+  const error = await decodeFailure(() => {
+    throw new Error("factory boom")
   })
-})
 
-test("loadWiringConfig rejects legacy per-check paths", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export default [{",
-        '  files: ["src/**/*.ts"],',
-        "  wiring: {",
-        '    checks: [{ name: "legacy-scope", paths: ["src"], check: emptyCheck }],',
-        "    derive: () => Stream.empty",
-        "  }",
-        "}]",
-        ""
-      ].join("\n")
-    )
-
-    const error = await loadConfigFailure(projectDirectory)
-
-    assert.match(error.message, /config\[0\]\.wiring\.checks\[0\] must be/)
-  })
-})
-
-test("loadWiringConfig rejects duplicate check names across wiring entries", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        ...emptyCheckConfigPreamble,
-        "export default [",
-        "  {",
-        '    files: ["src/**/*.ts"],',
-        "    wiring: {",
-        '      checks: [{ name: "duplicate-check", check: emptyCheck }],',
-        "      derive: () => Stream.empty",
-        "    }",
-        "  },",
-        "  {",
-        '    files: ["tests/**/*.ts"],',
-        "    wiring: {",
-        '      checks: [{ name: "duplicate-check", reported: false, check: emptyCheck }],',
-        "      derive: () => Stream.empty",
-        "    }",
-        "  }",
-        "]",
-        ""
-      ].join("\n")
-    )
-
-    const error = await loadConfigFailure(projectDirectory)
-
-    assert.match(error.message, /Duplicate check names: duplicate-check/)
-  })
-})
-
-test("loadWiringConfig rejects invalid wiring entry shapes", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      [
-        'import { Stream } from "effect"',
-        "export default [{",
-        '  files: ["src/**/*.ts"],',
-        "  wiring: 42",
-        "}]",
-        ""
-      ].join("\n")
-    )
-
-    const error = await loadConfigFailure(projectDirectory)
-
-    assert.match(error.message, /config\[0\]\.wiring must be an object with checks and derive/)
-  })
-})
-
-test("loadWiringConfig rejects throwing config factories", async () => {
-  await runInTempProject(async (projectDirectory) => {
-    await writeConfig(
-      projectDirectory,
-      ["export default () => {", '  throw new Error("factory boom")', "}", ""].join("\n")
-    )
-
-    const error = await loadConfigFailure(projectDirectory)
-
-    assert.match(error.message, /default export factory failed: factory boom/)
-  })
+  assert.match(error.message, /default export factory failed: factory boom/)
 })
 
 test("loadWiringConfig rejects syntax-invalid config modules", async () => {

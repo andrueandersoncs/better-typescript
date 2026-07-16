@@ -3,6 +3,28 @@ import { Data, Schema } from "effect"
 export const configFileName = "better-typescript.config.ts"
 
 /**
+ * ProjectWiringConfigError is the failure protocol for loading one project's
+ * wiring configuration module.
+ *
+ * @remarks
+ *   It remains explicit because the loader and CLI need the failing path and
+ *   reason as structured data. Removing it would collapse those fields into
+ *   prose and force boundary consumers to parse an unstable message.
+ * @modelRole protocol
+ */
+export class ProjectWiringConfigError extends Schema.TaggedErrorClass<ProjectWiringConfigError>()(
+  "ProjectWiringConfigError",
+  {
+    configPath: Schema.String,
+    reason: Schema.String
+  }
+) {
+  get message(): string {
+    return `Invalid ${configFileName} at ${this.configPath}: ${this.reason}`
+  }
+}
+
+/**
  * ConfigExportName is the accepted export-name protocol for project wiring
  * configuration modules.
  *
@@ -28,25 +50,3 @@ export class ConfigExport extends Data.Class<{
   readonly name: ConfigExportName
   readonly value: unknown
 }> {}
-
-/**
- * ProjectWiringConfigError is the failure protocol for loading one project's
- * wiring configuration module.
- *
- * @remarks
- *   It remains explicit because the loader and CLI need the failing path and
- *   reason as structured data. Removing it would collapse those fields into
- *   prose and force boundary consumers to parse an unstable message.
- * @modelRole protocol
- */
-export class ProjectWiringConfigError extends Schema.TaggedErrorClass<ProjectWiringConfigError>()(
-  "ProjectWiringConfigError",
-  {
-    configPath: Schema.String,
-    reason: Schema.String
-  }
-) {
-  get message(): string {
-    return `Invalid ${configFileName} at ${this.configPath}: ${this.reason}`
-  }
-}

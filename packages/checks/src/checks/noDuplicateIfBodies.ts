@@ -2,12 +2,10 @@ import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { alwaysExitsScope, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatement =>
   pipe(
@@ -127,9 +125,10 @@ const duplicateIfMatches = (context: CheckContext) => {
 }
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(duplicateIfMatches)
 
-export const noDuplicateIfBodies: Check = check
-
-export const noDuplicateIfBodiesExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-duplicate-if-bodies")
+export const noDuplicateIfBodies = defineCheck(
+  "no-duplicate-if-bodies",
+  ifStatementKinds,
+  ts.isIfStatement,
+  duplicateIfMatches
+)

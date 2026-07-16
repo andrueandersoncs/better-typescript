@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. The public runner naming and cutover clause is superseded by
+[ADR-0017](0017-workspace-update-report-seam.md); the `WiringConfig` and glob semantics remain
+accepted.
 
 ## Date
 

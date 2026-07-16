@@ -2,12 +2,10 @@ import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isFirstPartySymbol, unwrapExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const tagPropertyName = "_tag"
 
 const strictTagComparisonOperators = HashSet.make(
@@ -117,9 +115,9 @@ const schemaIsMatches = (context: CheckContext) => {
 
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
-const check = nodeCheck(binaryExpressionKinds)(isSchemaTagComparison)(schemaIsMatches)
-
-export const preferEffectSchemaIs: Check = check
-
-export const preferEffectSchemaIsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-schema-is")
+export const preferEffectSchemaIs = defineCheck(
+  "prefer-effect-schema-is",
+  binaryExpressionKinds,
+  isSchemaTagComparison,
+  schemaIsMatches
+)

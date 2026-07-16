@@ -3,12 +3,10 @@ import * as ts from "typescript"
 import { conciseArrowBody, unwrapCarrier } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid wrapping a function call that only forwards its argument."
 
@@ -199,9 +197,9 @@ const etaReductionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(etaReductionMatches)
-
-export const preferEtaReduction: Check = check
-
-export const preferEtaReductionExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-eta-reduction")
+export const preferEtaReduction = defineCheck(
+  "prefer-eta-reduction",
+  arrowFunctionKinds,
+  ts.isArrowFunction,
+  etaReductionMatches
+)

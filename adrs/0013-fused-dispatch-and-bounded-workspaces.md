@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Accepted. The built-in authoring consequence is superseded by
+[ADR-0016](0016-check-owned-authoring-and-package-examples.md). Its fused execution, full-recompute,
+bounded-workspace, and loaded-workspace decisions remain accepted through
+[ADR-0017](0017-workspace-update-report-seam.md).
 
 ## Date
 

@@ -3,13 +3,10 @@ import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
 import { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { ImperativeStateManagerInput, ImperativeStateSignals, MutationElementData } from "./data.js"
 
-export const imperativeStateManagerExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "imperative-state-manager"
-)
+export const imperativeStateManagerExamples = packageExamples("imperative-state-manager")
 
 const isSharedStateMutation = (element: Detection): boolean => {
   const data = Option.fromNullishOr(element.data)
@@ -69,6 +66,7 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
 
       const nonZero = Array.filter(observations, (item) => item.count > 0)
       const evidence = Array.prepend(nonZero, sharedItem)
+      const examples = imperativeStateManagerExamples()
 
       return new Advice({
         location,
@@ -80,7 +78,7 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
           "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
           "runtime once at the boundary.",
         evidence,
-        examples: imperativeStateManagerExamples
+        examples
       })
     })
   )

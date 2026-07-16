@@ -1,7 +1,7 @@
 export {}
 
 function passesThrough(flag: boolean): boolean {
-  if (flag) {
+  if (flag) { // ~detect 3
     return flag
   }
   return false
@@ -16,7 +16,7 @@ function fromElse(active: boolean): string | boolean {
 }
 
 function compareReturned(count: number): boolean {
-  if (count > 0) {
+  if (count > 0) { // ~detect 3
     return count > 0
   }
   return false

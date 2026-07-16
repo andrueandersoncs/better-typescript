@@ -11,7 +11,7 @@ const isVoidCompatibleType = (type: ts.Type): boolean => (type.flags & voidCompa
 export const permitsVoid = (type: ts.Type): boolean =>
   type.isUnion() ? Array.some(type.types, isVoidCompatibleType) : isVoidCompatibleType(type)
 
-export const isDifferentType =
+const isDifferentType =
   (type: ts.Type) =>
   (other: ts.Type): boolean =>
     other !== type
@@ -25,7 +25,7 @@ export const differentBaseConstraint =
       Option.filter(isDifferentType(type))
     )
 
-export const differentApparentType =
+const differentApparentType =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): Option.Option<ts.Type> =>
     pipe(checker.getApparentType(type), Option.liftPredicate(isDifferentType(type)))
@@ -129,11 +129,9 @@ const hasCallSignatureWithSeen =
       })
     )
 
-export const callSignatureCheck = (checker: ts.TypeChecker) => {
+export const hasCallSignature = (checker: ts.TypeChecker) => {
   const withSeen = hasCallSignatureWithSeen(checker)
   const emptySeen = HashSet.empty<ts.Type>()
 
   return withSeen(emptySeen)
 }
-
-export const hasCallSignature = callSignatureCheck

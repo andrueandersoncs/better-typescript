@@ -190,23 +190,14 @@ export const isReturnedExpressionNode = (node: ts.Node): node is ReturnedExpress
 export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
   ts.isCallExpression(node) || ts.isNewExpression(node)
 
-export const isNewOrTypeReferenceNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
-  ts.isNewExpression(node) || ts.isTypeReferenceNode(node)
-
-export const noneTypeShape: Option.Option<string> = Option.none()
-
-export const expressionBodiedArrow = (
-  definition: FunctionDefinition
-): Option.Option<ts.Expression> =>
+const expressionBodiedArrow = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
   pipe(
     Option.liftPredicate(ts.isArrowFunction)(definition),
     Option.map(Struct.get("body")),
     Option.filter((body): body is ts.Expression => !ts.isBlock(body))
   )
 
-export const singleReturnExpression = (
-  definition: FunctionDefinition
-): Option.Option<ts.Expression> =>
+const singleReturnExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
   pipe(
     Option.fromNullishOr(definition.body),
     Option.filter(ts.isBlock),
@@ -356,11 +347,6 @@ export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
 
   return Array.some(sourceFiles, isProjectFile)
 }
-
-export const isSameNode =
-  (node: ts.Node) =>
-  (candidate: ts.Node): boolean =>
-    candidate === node
 
 const isExportKeyword = (modifier: ts.Modifier): boolean =>
   modifier.kind === ts.SyntaxKind.ExportKeyword

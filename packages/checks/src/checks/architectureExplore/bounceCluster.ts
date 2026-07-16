@@ -2,12 +2,10 @@ import { Array, Function, Option, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { isDeletableWrapper, moduleGraphDataOf } from "./evidence.js"
 
-export const bounceClusterExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("bounce-cluster")
+export const bounceClusterExamples = packageExamples("bounce-cluster")
 
 const minimumThinFiles = 3
 
@@ -170,6 +168,7 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     const thinModulesItem = evidenceItem("thin-modules", component.length)
     const moduleEdgesItem = evidenceItem("module-edges", edgeCount)
     const evidence = Array.make(thinModulesItem, moduleEdgesItem)
+    const examples = bounceClusterExamples()
 
     return new Advice({
       location,
@@ -179,7 +178,7 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
         "Understanding one flow requires traversing connected low-leverage forwarding Modules. " +
         "Collapse this import path behind one deeper interface so policy and verification become local.",
       evidence,
-      examples: bounceClusterExamples
+      examples
     })
   })
 }

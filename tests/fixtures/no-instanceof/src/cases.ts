@@ -3,11 +3,11 @@ class AppError extends Error {}
 
 const value: unknown = new AppError()
 
-export const isAppError = value instanceof AppError
+export const isAppError = value instanceof AppError // ~detect 27
 
 // Case 2: instanceof with a first-party standalone class
 class Config {
   readonly host: string = "localhost"
 }
 
-export const isConfig = value instanceof Config
+export const isConfig = value instanceof Config // ~detect 25

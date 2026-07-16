@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "examples"
   ],
   "exports": {
     "./preset": "./dist/preset.js",
     "./preset/defaultWiring": "./dist/preset/defaultWiring.js",
     "./preset/architectureExploreWiring": "./dist/preset/architectureExploreWiring.js",
     "./functionalCoreEffect/wiring": "./dist/checks/functionalCoreEffect/wiring.js",
-    "./fixtureExamples": "./dist/fixtureExamples.js",
+    "./defineCheck": "./dist/defineCheck.js",
     "./pipelineHostile": "./dist/checks/pipelineHostile/pipelineHostile.js",
     "./conceptControl": "./dist/checks/conceptControl/conceptControl.js",
     "./pipelineHostile/data": "./dist/checks/pipelineHostile/data.js",

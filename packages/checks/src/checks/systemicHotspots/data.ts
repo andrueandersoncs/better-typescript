@@ -22,13 +22,13 @@ export class SystemicSignals extends Schema.Class<SystemicSignals>("SystemicSign
 const adviceSignal = Schema.Any
 
 /**
- * SystemicHotspotsInput is the stable boundary representation exchanged with
- * systemicHotspots.
+ * The two named advice streams the preset derive stage hands to the
+ * systemic-hotspots fleet.
  *
  * @remarks
- *   It remains explicit because callers need one named contract for hotSubsystem,
- *   highSignalDensity. Removing it would duplicate boundary translation and let
- *   wire and in-memory representations drift.
+ *   This contract remains explicit because the fleet consumes parallel named
+ *   streams rather than a positional pair. Removing it would spread that stream
+ *   coupling into defaultWiring and let advice wiring drift.
  * @modelRole boundary
  */
 export class SystemicHotspotsInput extends Schema.Class<SystemicHotspotsInput>(

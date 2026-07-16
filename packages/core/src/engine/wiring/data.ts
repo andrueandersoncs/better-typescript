@@ -1,0 +1,130 @@
+import { Array, Data, HashSet, Schema, Stream } from "effect"
+import type { Check } from "../check/data.js"
+import type { Advice } from "../derive/data.js"
+import type { RefactorExample } from "../example/data.js"
+import type { Signal } from "../signal/data.js"
+
+/**
+ * NamedCheck binds a stable check name and reporting policy to its executable
+ * check and remediation examples.
+ *
+ * @remarks
+ *   It remains explicit because preset wiring, check execution, and advice
+ *   derivation must use the same check identity. Removing it would duplicate
+ *   that contract across those consumers and risk mismatched names. Examples
+ *   stay lazy so loading a wiring does not force every remediation fixture into
+ *   memory before a check reports.
+ * @modelRole shared
+ */
+export class NamedCheck extends Data.Class<{
+  readonly name: string
+  readonly check: Check
+  readonly reported: boolean
+  readonly examples: () => ReadonlyArray<RefactorExample>
+}> {}
+
+/**
+ * Wiring defines the complete check set and advice derivation for one scope.
+ *
+ * @remarks
+ *   It remains explicit because configuration loading and report execution
+ *   exchange checks with their matching derivation function. The error
+ *   parameter preserves derivation failures through report and watch streams
+ *   instead of widening them at this seam. Removing it would let those two
+ *   halves be configured independently and drift.
+ * @modelRole shared
+ */
+export class Wiring<E = never> extends Data.Class<{
+  readonly checks: ReadonlyArray<NamedCheck>
+  readonly derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, E>
+}> {}
+
+/**
+ * WiringEntry associates one validated file scope with the wiring it activates.
+ *
+ * @remarks
+ *   It remains explicit because configuration authors and the report engine need
+ *   one stable scope-to-wiring contract. Removing it would recreate that
+ *   pairing as positional arrays or anonymous objects at the boundary.
+ * @modelRole boundary
+ */
+export class WiringEntry<E = never> extends Data.Class<{
+  readonly files: Array.NonEmptyReadonlyArray<string>
+  readonly wiring: Wiring<E>
+}> {}
+
+/**
+ * WiringConfig is the ordered configuration boundary consumed by reporting.
+ *
+ * @remarks
+ *   It remains explicit because configuration loading, validation, and execution
+ *   must preserve entry order. Removing it would repeat the collection contract
+ *   at each interface and obscure that ordering requirement.
+ * @modelRole boundary
+ */
+export type WiringConfig<E = never> = ReadonlyArray<WiringEntry<E>>
+
+const duplicateNameArray = Schema.Array(Schema.String)
+
+/**
+ * DuplicateCheckNamesError is the failure protocol for ambiguous check
+ * identity.
+ *
+ * @remarks
+ *   It remains explicit because wiring validation and CLI error handling need the
+ *   same structured collision names. Removing it would reduce the error to
+ *   prose and force consumers to parse an unstable message.
+ * @modelRole protocol
+ */
+export class DuplicateCheckNamesError extends Schema.TaggedErrorClass<DuplicateCheckNamesError>()(
+  "DuplicateCheckNamesError",
+  {
+    names: duplicateNameArray
+  }
+) {
+  get message(): string {
+    return `Duplicate check names: ${Array.join(this.names, ", ")}`
+  }
+}
+
+const invalidWiringIndexArray = Schema.Array(Schema.Number)
+
+/**
+ * InvalidWiringFilesError is the failure protocol for invalid wiring file
+ * scopes.
+ *
+ * @remarks
+ *   It remains explicit because configuration validation and CLI error handling
+ *   need the exact invalid entry indexes. Removing it would hide that
+ *   structured evidence in prose and duplicate error parsing at the boundary.
+ * @modelRole protocol
+ */
+export class InvalidWiringFilesError extends Schema.TaggedErrorClass<InvalidWiringFilesError>()(
+  "InvalidWiringFilesError",
+  {
+    indexes: invalidWiringIndexArray
+  }
+) {
+  get message(): string {
+    const indexes = Array.map(this.indexes, String)
+
+    return `Wiring files must be non-empty glob arrays at indexes: ${Array.join(indexes, ", ")}`
+  }
+}
+
+/**
+ * DuplicateNameState is the accumulated identity state for wiring-name
+ * validation.
+ *
+ * @remarks
+ *   It remains explicit because first-seen membership, collision membership, and
+ *   collision-name order must stay synchronized while validating one wiring.
+ *   Removing it would make addDuplicateName and validateCheckNames reconstruct
+ *   that invariant with parallel collections that can drift.
+ * @modelRole shared
+ */
+export class DuplicateNameState extends Data.Class<{
+  readonly seen: HashSet.HashSet<string>
+  readonly collisions: HashSet.HashSet<string>
+  readonly names: ReadonlyArray<string>
+}> {}

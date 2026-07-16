@@ -1,13 +1,11 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
 
 const weakMapIdentifier = (node: ts.Node): node is ts.Identifier =>
   pipe(
@@ -46,8 +44,9 @@ const weakMapMatches = (context: CheckContext) => {
 
 const identifierKinds = Array.of(ts.SyntaxKind.Identifier)
 
-const check = nodeCheck(identifierKinds)(weakMapIdentifier)(weakMapMatches)
-
-export const noWeakMap: Check = check
-
-export const noWeakMapExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-weak-map")
+export const noWeakMap = defineCheck(
+  "no-weak-map",
+  identifierKinds,
+  weakMapIdentifier,
+  weakMapMatches
+)

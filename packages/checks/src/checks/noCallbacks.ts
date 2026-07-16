@@ -1,14 +1,12 @@
 import { Array, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { isInAmbientContext } from "./support/tsNode.js"
-import { callSignatureCheck, hasCallSignature, isVoidType } from "./support/tsType.js"
+import { hasCallSignature, isVoidType } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 /**
  * CallbackStyleDeclaration is the syntax contract shared by callback candidate
@@ -111,7 +109,7 @@ const callbackStyleMatches = (context: CheckContext) => {
 
         const indexType = checker.getIndexTypeOfType(parameterType, ts.IndexKind.Number)
         const elementType = Option.fromNullishOr(indexType)
-        const elementHasCallSignature = Option.exists(elementType, callSignatureCheck(checker))
+        const elementHasCallSignature = Option.exists(elementType, hasCallSignature(checker))
 
         const callSignatureIndicators = Array.make(
           parameterHasCallSignature,
@@ -149,8 +147,9 @@ const callbackStyleCandidateKinds = Array.make(
   ts.SyntaxKind.FunctionType
 )
 
-const check = nodeCheck(callbackStyleCandidateKinds)(isCallbackStyleCandidate)(callbackStyleMatches)
-
-export const noCallbacks: Check = check
-
-export const noCallbacksExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-callbacks")
+export const noCallbacks = defineCheck(
+  "no-callbacks",
+  callbackStyleCandidateKinds,
+  isCallbackStyleCandidate,
+  callbackStyleMatches
+)

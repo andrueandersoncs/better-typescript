@@ -3,12 +3,10 @@ import * as ts from "typescript"
 import { isFunctionInitializer, unwrapTransparentExpression } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid block bodies that only bind a value and thread it into a call."
 
@@ -145,10 +143,9 @@ const functionCompositionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(functionCompositionMatches)
-
-export const preferFunctionComposition: Check = check
-
-export const preferFunctionCompositionExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-function-composition"
+export const preferFunctionComposition = defineCheck(
+  "prefer-function-composition",
+  arrowFunctionKinds,
+  ts.isArrowFunction,
+  functionCompositionMatches
 )

@@ -2,12 +2,9 @@ import { Array, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const logicalOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken,
@@ -41,10 +38,9 @@ const inlineBooleanConditionMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(inlineBooleanConditionMatches)
-
-export const noInlineBooleanExpressions: Check = check
-
-export const noInlineBooleanExpressionsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "no-inline-boolean-expressions"
+export const noInlineBooleanExpressions = defineCheck(
+  "no-inline-boolean-expressions",
+  ifStatementKinds,
+  ts.isIfStatement,
+  inlineBooleanConditionMatches
 )

@@ -18,7 +18,8 @@ export class SourceComment extends Data.Class<{
 }> {}
 
 /**
- * LatestCacheEntry is the shared key, value contract used by memoizeLatest.
+ * LatestCacheEntry is the shared key, value contract used by memoizeLatest,
+ * readOrLoad, and emptyCache.
  *
  * @remarks
  *   It remains explicit because these independent owners need one stable

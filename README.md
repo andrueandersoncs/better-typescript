@@ -13,14 +13,13 @@ enforces.
 
 The architecture is intentionally plain:
 
-- A check is a declarative subscription plan from a loaded `Program` to file handlers and
-  `SyntaxKind`-indexed node handlers. Handlers synchronously produce `Detection` values.
-- The runner compiles every active plan into one fused AST traversal, then materializes each named
-  check into a completed `Signal`: `{ name, reported, detections }`.
-- `reported` controls visibility only. Reported checks render local detection blocks; silent checks
-  still run, still affect watch equivalence, and still feed derivation, but render no local block.
-- `derive` receives the completed `Signal[]` for the batch and emits aggregate `Advice` values.
-- The CLI renders derived `Advice` and reported local detections into the event stream.
+- A `Check` analyzes TypeScript source and emits located `Detection` values.
+- A `NamedCheck` carries one Check's stable name, reporting policy, and lazy refactor examples.
+- A `Wiring` selects NamedChecks and derives aggregate `Advice` from their completed `Signal`
+  values.
+- Reported Signals render local blocks; silent Signals remain available to derivation without a
+  local block.
+- `reportEvents` turns complete Workspace Updates into the event stream consumed by the CLI.
 
 There are no suppressions, severities, or result-based exit gate. The `files` globs on each config
 entry limit which source files its complete `Wiring` analyzes. If a signal appears, fix the cause in
@@ -127,35 +126,38 @@ Better TypeScript exposes one intentional public interface per Module through pa
 Re-exporting is valid when an entry module is that seam; callers must not bypass it through package
 `src/` or `internal/` paths.
 
-- `@better-typescript/core/engine/check`: `nodeCheck`, `fileCheck`, `checkFromSubscriptions`,
-  `combineAll`, `nodeSubscriptions`, `fileSubscriptions`, `withProgramIndex`
-- `@better-typescript/core/engine/check/data`: `Check`, `CheckContext`, `Subscription`
-- `@better-typescript/core/engine/location`: `detection`, `locateNode`, `toRelativeFileName`
-- `@better-typescript/core/engine/location/data`: `Detection`, `DetectionSource`, `Location`
-- `@better-typescript/core/engine/derive`: `deriveSignals`, `adviceLocation`, `evidenceItem`, and
-  related derivation helpers
-- `@better-typescript/core/engine/derive/data`: `Advice`, `EvidenceItem`, `NamedDetection`,
-  `FileDetections`, `CountSummary`
-- `@better-typescript/core/engine/example`: `exampleSnippet`, `refactorExample`,
-  `refactorExampleTrees`, `loadRefactorExamplesAt`
-- `@better-typescript/core/engine/report`: `namedCheck`, `silentCheck`, `signalOf`, `makeWiring`,
-  `defineConfig`, `withFallbackAdvice`, `reportFromConfig`
-- `@better-typescript/core/engine/report/data`: `NamedCheck`, `Signal`, `Wiring`, `WiringEntry`,
-  `WiringConfig`
-- `@better-typescript/core/engine/watch`: `watchReportFromConfig`, `reportEventsFromConfig`,
-  `reportEventsFromWorkspaceConfigs`, `renderEventText`
-- `@better-typescript/core/engine/watch/data`: `ReportEvent`, `SignalEvent`, `ClearedEvent`,
-  `EmptyReportEvent`
-- `@better-typescript/core/engine/sources`: program/source stream helpers
-- `@better-typescript/core/project/loadWiringConfig`: project config loading
-- `@better-typescript/checks/preset`: default `report` / `watchReport` runners
-- `@better-typescript/checks/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
-  `defaultWiring`, `defaultConfig`
-- `@better-typescript/checks/functionalCoreEffect/wiring`: opt-in functional-core boundary checks,
-  derived architecture advice, and policy-aware wiring factories
-- `@better-typescript/checks/functionalCoreEffect/policy`: conventional and explicit
-  architecture-role classifiers plus capability/resource policy configuration
-- `@better-typescript/checks/<name>`: individual check modules
+### Public package surface
+
+| Import                                                  | Primary public role                                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `@better-typescript/core/engine/check`                  | Low-level `nodeCheck`, `fileCheck`, `checkFromSubscriptions`, subscription, location, and detection authoring primitives                |
+| `@better-typescript/core/engine/check/data`             | `Check`, `CheckContext`, `DetectionSource`, and subscription types                                                                      |
+| `@better-typescript/core/engine/location`               | Detection grouping, equality, and path helpers                                                                                          |
+| `@better-typescript/core/engine/location/data`          | `Detection` and `Location`                                                                                                              |
+| `@better-typescript/core/engine/derive`                 | Advice derivation helpers                                                                                                               |
+| `@better-typescript/core/engine/derive/data`            | `Advice` and evidence vocabulary                                                                                                        |
+| `@better-typescript/core/engine/example`                | Refactor-example constructors and source-tree loading                                                                                   |
+| `@better-typescript/core/engine/example/data`           | Refactor-example data types                                                                                                             |
+| `@better-typescript/core/engine/wiring`                 | `namedCheck`, `silentCheck`, `makeWiring`, `mergeWirings`, `defineConfig`                                                               |
+| `@better-typescript/core/engine/wiring/data`            | `NamedCheck`, `Wiring`, `WiringEntry`, `WiringConfig`                                                                                   |
+| `@better-typescript/core/engine/signal`                 | `signalOf` and Signal-level composition                                                                                                 |
+| `@better-typescript/core/engine/signal/data`            | The `Signal` result vocabulary                                                                                                          |
+| `@better-typescript/core/engine/report`                 | Report rendering, including `withFallbackAdvice` and `renderEventText`                                                                  |
+| `@better-typescript/core/engine/report/data`            | `ReportEvent`, `SignalEvent`, `ClearedEvent`, and `EmptyReportEvent` wire vocabulary                                                    |
+| `@better-typescript/core/engine/watch`                  | `reportEvents` composition and the production `workspaceUpdates` adapter                                                                |
+| `@better-typescript/core/engine/watch/data`             | The `WorkspaceUpdate` input contract                                                                                                    |
+| `@better-typescript/core/engine/sources`                | Program/source execution helpers                                                                                                        |
+| `@better-typescript/core/engine/sources/data`           | Program and source context types                                                                                                        |
+| `@better-typescript/core/project/loadProject`           | `discoverWorkspace`, `loadProjectConfig`, `contextFromLoadedProject`, `workspaceSignalsFromConfigs`, `runCheckOnProject`, `loadProject` |
+| `@better-typescript/core/project/loadProject/data`      | Discovered and loaded project/workspace types and project-loading errors                                                                |
+| `@better-typescript/core/project/loadWiringConfig`      | Project config loading                                                                                                                  |
+| `@better-typescript/core/project/loadWiringConfig/data` | `ProjectWiringConfigError` and config-loading vocabulary                                                                                |
+| `@better-typescript/checks/defineCheck`                 | Built-in `defineCheck`, `defineFileCheck`, `definePlannedCheck`, `defineSilentPlannedCheck` authoring                                   |
+| `@better-typescript/checks/preset`                      | `report`, the default-config Workspace Update-to-Report Event composition                                                               |
+| `@better-typescript/checks/preset/defaultWiring`        | `defaultChecks`, `defaultDerive`, `defaultWiring`, `defaultConfig`                                                                      |
+| `@better-typescript/checks/<name>`                      | One package-owned built-in `NamedCheck`                                                                                                 |
+| `@better-typescript/checks/functionalCoreEffect/wiring` | Opt-in functional-core boundary Checks, derived advice, and wiring factories                                                            |
+| `@better-typescript/checks/functionalCoreEffect/policy` | Architecture-role and capability/resource policy configuration                                                                          |
 
 ### Config resolution
 
@@ -167,63 +169,32 @@ The CLI looks for exactly one config file:
 
 `<project-directory>` is the `--project` value when supplied, otherwise the current working
 directory. The config file is loaded with `jiti`, so normal TypeScript config modules work with the
-published Node bin. There is no config lookup in parent directories, no `package.json` field, no
-`extends` chain, and no dynamic plugin discovery.
+published Node bin. There is no parent-directory lookup, `package.json` field, `extends` chain, or
+dynamic plugin discovery.
 
 If no config file exists, the CLI uses `defaultConfig` from
-`@better-typescript/checks/preset/defaultWiring`.
+`@better-typescript/checks/preset/defaultWiring`. A config may default-export a `WiringConfig` or a
+zero-argument factory, or expose either as the named `config` export. A bare `Wiring` and the legacy
+named `wiring` export are invalid.
 
-A config may export any of these shapes:
+`WiringConfig` is an ordered array of `{ files, wiring }` entries. `files` is a non-empty set of
+workspace-relative globs; `wiring` contains `NamedCheck` values and one derive function. Use
+`defineConfig` to construct and validate it. Check names are unique across all entries; config load,
+compile, glob, shape, and duplicate-name failures print an error and exit `2`.
 
-```ts
-export default config
-export default () => config
-export const config = config
-export const config = () => config
-```
+### Built-in checks own their identity and examples
 
-The loaded value is structurally validated as a flat `WiringConfig`:
-
-```ts
-type WiringConfig<E> = ReadonlyArray<{
-  files: NonEmptyReadonlyArray<string>
-  wiring: {
-    checks: ReadonlyArray<{
-      name: string
-      check: Check
-      reported?: boolean
-      examples?: ReadonlyArray<RefactorExample>
-    }>
-    derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, E>
-  }
-}>
-```
-
-`reported` defaults to `true` when omitted in handwritten config objects.
-`namedCheck(name, check, examples)` creates a reported `NamedCheck` with one or more paired bad→good
-refactor examples; `silentCheck(name, check, examples?)` creates a silent one. Reported checks print
-those examples under the Hint as `Bad (path):` / `Good (path):` blocks (each file in the tree, code
-indented four spaces). Check names are unique across every wiring entry, and `defineConfig` rejects
-duplicates. Config load, compile, glob, shape, and duplicate-name failures print an error and exit
-`2`.
-
-### Assigning wirings with file globs
-
-Each config entry assigns one complete `Wiring`—its checks and its `derive` function—to one or more
-workspace-relative file globs:
+Every individual module in `@better-typescript/checks/<name>` exports a `NamedCheck`, not a raw
+Check that consumers must register. Its stable name, reporting policy, executable Check, and lazy
+examples travel together, so it can be placed directly in a `Wiring`:
 
 ```ts
 import { Stream } from "effect"
-import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/report"
-import { noThrow, noThrowExamples } from "@better-typescript/checks/noThrow"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
+import { noThrow } from "@better-typescript/checks/noThrow"
 
 const runtimeWiring = makeWiring({
-  checks: [namedCheck("runtime/no-throw", noThrow, noThrowExamples)],
-  derive: () => Stream.empty
-})
-
-const testWiring = makeWiring({
-  checks: [namedCheck("tests/no-throw", noThrow, noThrowExamples)],
+  checks: [noThrow],
   derive: () => Stream.empty
 })
 
@@ -231,46 +202,45 @@ export default defineConfig([
   {
     files: ["src/**/*.{ts,tsx}", "packages/*/src/**/*.ts"],
     wiring: runtimeWiring
-  },
-  {
-    files: ["tests/**/*.ts", "packages/*/test/**/*.ts"],
-    wiring: testWiring
   }
 ])
 ```
 
 `files` uses Minimatch syntax, including `*`, `**`, `?`, character classes, brace expansion, and
-extglobs. Patterns always use `/`, including on Windows, and resolve from the TypeScript workspace
-root discovered from `--project` (or the current directory). Dotfiles participate. Each entry's
-patterns form a union; an arbitrary number of entries may be configured; and overlapping entries all
-run. Patterns are positive—leading `!` is treated literally.
+extglobs. Patterns use `/` on every platform and resolve from the discovered TypeScript workspace
+root. Dotfiles participate, patterns in one entry form a union, and all overlapping entries run.
+Patterns are positive; leading `!` is literal.
 
-Glob filtering happens before check execution and again on emitted detections. Each matched wiring
-materializes its own complete `Signal[]` and runs its own `derive`; a wiring with no matching
-project files runs neither checks nor derivation. The legacy per-check `paths` field and
-`scopeCheck` helper are not accepted.
+Glob filtering applies to the complete Wiring, including derivation. A wiring with no matching
+source file runs neither Checks nor `derive`. Each matched wiring receives its own completed
+`Signal[]`; advice derived from that already-filtered evidence is not filtered a second time.
 
-In this repository, preset checks load examples from disk with
-`fixtureRefactorExamples("<kebab-name>")`, backed by real TypeScript trees at
-`tests/fixtures/<kebab-name>/example/<n>/{bad,good}/` (each side is a mini-project with its own
-`tsconfig.json`). Characterization fixtures stay separate: `src/cases.ts` is the disallowed corpus
-and `src/allowed.ts` is negative tests — not the "good" rewrite. Consumer configs should keep using
-inline `exampleSnippet` / `refactorExample` (or `refactorExampleTrees`) as shown below.
+Built-in refactor examples are package assets at
+`packages/checks/examples/<name>/<pair>/{bad,good}/`. The built-in authoring constructors associate
+those trees with the Check lazily and memoize the first load, so constructing the default fleet does
+not read every example. Reports render each source tree as paired `Bad (path):` and `Good (path):`
+blocks.
+
+The separate characterization corpus stays under `tests/fixtures/<name>/`. A `// ~detect <columns>`
+marker on a fixture line declares its expected detection columns; unmarked lines must remain clean.
+Tests call the exported `NamedCheck`, so names and behavior are not mirrored in test registration.
+Comment-, whitespace-, or other syntax-sensitive/custom cases retain exact assertions only when
+adding a marker would change the Check's input or a location marker cannot express the contract.
 
 ### Minimal custom check config
 
-Put this at `<project-directory>/better-typescript.config.ts` to replace the preset fleet with one
-local reported check:
+Consumer Checks continue to use the core primitives. Put this at
+`<project-directory>/better-typescript.config.ts` to replace the preset with one local reported
+Check:
 
 ```ts
 import { Stream } from "effect"
 import * as ts from "typescript"
-import { nodeCheck } from "@better-typescript/core/engine/check"
+import { detection, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import { detection } from "@better-typescript/core/engine/location"
-import type { Detection } from "@better-typescript/core/engine/location/data"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
-import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/report"
+import type { Detection } from "@better-typescript/core/engine/location/data"
+import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/wiring"
 
 const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   const expression = node.expression
@@ -285,12 +255,12 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
 
 const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
   (context) => {
-    const element = detection(context)
+    const makeDetection = detection(context)
 
     return (node): ReadonlyArray<Detection> =>
       isConsoleLogCall(node)
         ? [
-            element({
+            makeDetection({
               node,
               message: "Avoid console.log in runtime code.",
               hint: "Return data to the caller or use this project's structured logger at the boundary."
@@ -300,161 +270,77 @@ const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallE
   }
 )
 
-const noConsoleLogExamples = [
-  refactorExample(
-    exampleSnippet("src/main.ts", `console.log("starting")`),
-    exampleSnippet("src/main.ts", `return { status: "starting" as const }`)
-  )
-] as const
+const noConsoleLogExamples = () =>
+  [
+    refactorExample(
+      exampleSnippet("src/main.ts", `console.log("starting")`),
+      exampleSnippet("src/main.ts", `return { status: "starting" as const }`)
+    )
+  ] as const
 
-const wiring = makeWiring({
+const localWiring = makeWiring({
   checks: [namedCheck("acme/no-console-log", noConsoleLog, noConsoleLogExamples)],
   derive: () => Stream.empty
 })
 
-export default defineConfig([{ files: ["src/**/*.ts"], wiring }])
+export default defineConfig([{ files: ["src/**/*.ts"], wiring: localWiring }])
 ```
 
-Checks plan subscriptions from the loaded program. File and node handlers receive a `CheckContext`
-containing the source file, project root, `Program`, and type checker. Checks should not read
-signals, depend on derived advice, or create check-to-check dependencies.
+Use `nodeCheck`, `fileCheck`, or `checkFromSubscriptions` to build custom Check behavior. Wrap it
+with `namedCheck` when detections should render locally or `silentCheck` when it exists only to feed
+derivation. Custom examples are lazy thunks built with `exampleSnippet`, `refactorExample`, or
+`refactorExampleTrees`.
 
-### Opting into functional-core Effect architecture
+### Composing and cherry-picking Wiring
 
-The functional-core preset is intentionally separate from `defaultWiring` because its rules encode
-project architecture, not universal TypeScript style. It classifies files as `domain`, `port`,
-`application`, `adapter`, `root`, or `test`; unclassified files are ignored. The default classifier
-recognizes those directory names and common aliases such as `infrastructure`, `use-cases`, and
-`entrypoints`, plus `main.ts`, `bootstrap.ts`, `wiring.ts`, `*.test.ts`, and `*.spec.ts`.
-
-Compose the preset with existing wiring so its reported boundary check and silent shape evidence
-share the completed signal batch:
+`mergeWirings` composes whole Wiring values: it preserves check order and runs every member's derive
+function over the completed Signal batch. Do not spread check arrays and reconstruct derivation by
+hand. For example, opt into the functional-core fleet alongside the default preset with:
 
 ```ts
-import { Stream, pipe } from "effect"
-import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { defineConfig, mergeWirings } from "@better-typescript/core/engine/wiring"
 import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 
-const wiring = makeWiring({
-  checks: [...defaultWiring.checks, ...functionalCoreEffectWiring.checks],
-  derive: (signals) =>
-    pipe(defaultWiring.derive(signals), Stream.concat(functionalCoreEffectWiring.derive(signals)))
-})
+const wiring = mergeWirings([defaultWiring, functionalCoreEffectWiring])
 
 export default defineConfig([{ files: ["**/*"], wiring }])
 ```
 
-The boundary check enforces inward dependency direction, a pure domain, direct capability access
-only in adapters/roots/tests, runtime execution and dependency provisioning only at roots/tests,
-port/live-layer separation, infrastructure-free port contracts, tag-based dependency access instead
-of context service location, suspended adapter effects, scoped closeable resources, and
-service-owned runtime state. Silent evidence derives file advice for overgrown Effect orchestrators,
-business policy in adapters, thick composition roots, imperative application cores, and unnecessary
-pure services.
-
-API and module ownership is resolved through TypeScript symbols, including import aliases, path
-mappings, first-party barrels, and re-exports. Locally shadowed ambient names are ignored.
-
-For layouts without the conventional directory names, use explicit project-relative prefixes. The
-longest matching prefix wins:
+To extend the preset with the `localWiring` above, use `mergeWirings([defaultWiring, localWiring])`.
+To cherry-pick built-ins, import their ready-made `NamedCheck` values and place them directly in a
+new Wiring:
 
 ```ts
-import { defineConfig } from "@better-typescript/core/engine/report"
-import {
-  ArchitectureRolePath,
-  policyWithRolePrefixes
-} from "@better-typescript/checks/functionalCoreEffect/policy"
-import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+import { Stream } from "effect"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
+import { noThrow } from "@better-typescript/checks/noThrow"
+import { noTryCatch } from "@better-typescript/checks/noTryCatch"
 
-const policy = policyWithRolePrefixes([
-  new ArchitectureRolePath({ path: "src/model", role: "domain" }),
-  new ArchitectureRolePath({ path: "src/contracts", role: "port" }),
-  new ArchitectureRolePath({ path: "src/workflows", role: "application" }),
-  new ArchitectureRolePath({ path: "src/integrations", role: "adapter" }),
-  new ArchitectureRolePath({ path: "src/bootstrap", role: "root" }),
-  new ArchitectureRolePath({ path: "tests", role: "test" })
-])
-
-const wiring = makeFunctionalCoreEffectWiring(policy)
-
-export default defineConfig([{ files: ["**/*"], wiring }])
-```
-
-### Extending or cherry-picking the preset
-
-To extend the built-in fleet, spread `defaultChecks` and add local `NamedCheck` values. To
-cherry-pick, build a new `checks` array from `defaultChecks` or import individual checks from
-`@better-typescript/checks/<name>` and omit the entries you do not want. Never shadow a preset check
-by reusing its name; names are one global lookup namespace.
-
-Use `namedCheck` when the check should render local detection blocks. Use `silentCheck` when it
-exists only to feed `derive`; it still runs, still materializes a `Signal`, still participates in
-watch equality, and still remains available through `signalOf(signals)(name)`.
-
-```ts
-import { Stream, pipe } from "effect"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
-import {
-  defineConfig,
-  makeWiring,
-  signalOf,
-  silentCheck
-} from "@better-typescript/core/engine/report"
-import type { NamedCheck, Signal, Wiring } from "@better-typescript/core/engine/report/data"
-import { defaultChecks, defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
-import { noConsoleLog } from "./checks/noConsoleLog.js"
-
-const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number =>
-  detections.filter((element) => element.location.path === path).length
-
-const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
-  Array.from(new Set(detections.map((element) => element.location.path))).sort()
-
-const consoleLogAdvice = (detections: Stream.Stream<Detection>): Stream.Stream<Advice> =>
-  deriveSignals((elements: ReadonlyArray<Detection>) =>
-    detectionPaths(elements).map(
-      (path) =>
-        new Advice({
-          location: adviceLocation(path),
-          level: "file",
-          title: "console logging in runtime code",
-          remediation:
-            "Replace console.log with the project's structured logger or return data to the caller.",
-          evidence: [evidenceItem("console.log calls", countAtPath(path, elements))]
-        })
-    )
-  )(detections)
-
-const consoleLogEvidence: NamedCheck = silentCheck("acme/console-log-evidence", noConsoleLog)
-
-const wiring: Wiring = makeWiring({
-  checks: [...defaultChecks, consoleLogEvidence],
-  derive: (signals: ReadonlyArray<Signal>): Stream.Stream<Advice> => {
-    const elementsOf = signalOf(signals)
-    const presetAdvice = defaultDerive(signals)
-    const localAdvice = consoleLogAdvice(elementsOf("acme/console-log-evidence"))
-
-    return pipe(presetAdvice, Stream.concat(localAdvice))
-  }
+const selectedWiring = makeWiring({
+  checks: [noThrow, noTryCatch],
+  derive: () => Stream.empty
 })
 
-export default defineConfig([{ files: ["**/*"], wiring }])
+export default defineConfig([{ files: ["**/*"], wiring: selectedWiring }])
 ```
 
-`derive` consumes a completed signal array, not live upstream streams. Missing names yield
-`Stream.empty`, so renaming a check is a breaking change for every derivation lookup that asks for
-that name. Compose derived output with Effect `Stream` combinators. Use
-`withFallbackAdvice(specific, fallback)` when fallback file-level advice should appear only for
-files where no file-level specific advice fired; it materializes the specific stream once, emits
-specific advice first, and filters fallback file advice for already-covered files.
+Do not rename or re-register built-ins. Check names form one global namespace across the complete
+config, so merging the same built-in twice is an error.
 
-`examples/extend-preset/better-typescript.config.ts` contains a complete copyable config that
-extends the preset from an examples subtree. The CLI will not load it while self-hosting this
-repository because config resolution only checks the direct `--project` / current-working-directory
-root.
+`derive` consumes a completed Signal array, not live upstream streams. Import `signalOf` from
+`@better-typescript/core/engine/signal` to select a Check's detections and compose Advice with
+Effect `Stream` combinators. Import `withFallbackAdvice` from
+`@better-typescript/core/engine/report` when file-level fallback Advice should be suppressed for
+files already covered by specific Advice.
+
+The functional-core preset is separate from `defaultWiring` because it encodes project architecture,
+not universal TypeScript style. It classifies conventional `domain`, `port`, `application`,
+`adapter`, `root`, and `test` paths; explicit role prefixes and capability/resource policy are
+available from its policy subpath.
+
+`examples/extend-preset/better-typescript.config.ts` contains a complete copyable consumer config.
+Config resolution does not discover examples subtrees while this repository self-hosts.
 
 ### Exit codes
 
@@ -474,62 +360,68 @@ Better TypeScript intentionally does not provide:
 
 ## Analysis modes
 
-The default CLI path is a terminating snapshot run. It loads the project once, matches project files
-against every wiring entry, and fuses all active checks into one AST traversal per project. Each
-matched wiring materializes its own complete `Signal[]` and runs its own `derive(signals)` before
-all advice and local blocks are combined. The CLI projects those blocks to `ReportEvent`s, prints
-NDJSON or `--pretty` text, and exits `0` after stdout drains. The initial event projection is the
-same as the first watch batch: either one `signal` event per visible report block or one `empty`
-event when no blocks exist.
+`workspaceUpdates(workspace, watchOptions)` is the production adapter from a discovered workspace to
+a `Stream<WorkspaceUpdate>`. `reportEvents(config)(updates)` is the public report composition from
+that stream to `Stream<ReportEvent>`. Programmatic callers and tests can provide synthetic Workspace
+Updates directly without replacing the compiler or importing pipeline stages.
 
-`--watch` opts into the continuous pipeline. Watch mode uses `ts.createWatchProgram`-backed streams:
-one fresh program context per rebuild, diffed by `ts.SourceFile` identity into changed and removed
-files. The pipeline is source updates → per-wiring signal sets → per-wiring derived advice and
-combined report blocks → per-block delta events. Every element carries one consistent workspace
-batch, and change gates keep quiet batches silent. Checks recompute in full inside each batch, so
-detection sets always match a fresh snapshot report. Wiring match state and silent checks
-participate in signal equality; only `reported` controls whether local detections render.
+The CLI constructs the producer once and selects only how much of it to consume:
 
-The snapshot `reportFromConfig` runner remains public library surface for tests, benchmarks, and
-programmatic one-shot use. `watchReportFromConfig` is the generic watch runner used by `--watch`.
+```ts
+const updates = workspaceUpdates(workspace, watchOptions)
+const selectedUpdates = watchForChanges ? updates : Stream.take(updates, 1)
+const events = reportEvents(config)(selectedUpdates)
+```
+
+The default one-shot path therefore takes the first complete workspace snapshot, emits its report,
+and exits after stdout drains. `--watch` consumes the same producer continuously. Both modes share
+glob activation, fused Check execution, full batch recomputation, derivation, rendering, empty
+reports, and report-event deltas. The initial batch emits one `signal` event per visible block or
+one `empty` event; later watch batches emit changed `signal` and disappeared `cleared` events only.
 
 Watch-mode caveat: membership changes in a solution-style root tsconfig's reference list need a
 restart. Each leaf project's own tsconfig hot-reloads. Mid-run tsconfig breakage is tolerated
-silently — the watcher keeps the last good program and recovers when the config is fixed.
+silently—the watcher keeps the last good program and recovers when the config is fixed.
 
 ## Source topology
 
-Built-in checks and their derivation helpers live under `packages/checks/src/checks/`; preset wiring
-lives under `packages/checks/src/preset/`. Execution, reporting, watch, source loading, location,
-and TypeScript-schema infrastructure live under `packages/core/src/engine/`; project loading lives
-under `packages/core/src/project/`, and the CLI lives under `packages/cli/src/`. Public package
+The repository is split into the core analysis package, built-in Checks package, and CLI package.
+Within core, wiring owns identity/configuration/composition, signal owns completed Check results,
+report owns rendering and wire vocabulary, and watch owns Workspace Update production and Workspace
+Update-to-Report Event composition. Project loading remains a separate boundary. Public package
 exports are the supported entrypoints; source paths are implementation details.
 
 ## Architecture notes
 
+- `adrs/0017-workspace-update-report-seam.md` records the Workspace Update stream seam, shared
+  one-shot/watch report composition, focused project-loading surface, whole-Wiring composition, and
+  module ownership.
+- `adrs/0016-check-owned-authoring-and-package-examples.md` records complete built-in `NamedCheck`
+  exports, package-owned lazy examples, direct preset enrollment, and marker-driven
+  characterization.
 - `adrs/0015-glob-specific-wiring-configuration.md` records the flat, glob-matched `WiringConfig`,
-  arbitrary wiring-entry cardinality, and removal of per-check path scoping.
+  arbitrary wiring-entry cardinality, and removal of per-check path scoping. ADR-0017 supersedes
+  only its public runner naming clause.
 - `adrs/0014-interface-depth-and-seam-evidence.md` records the evidence model for module leverage,
   locality, seam placement, and testability.
 - `adrs/0013-fused-dispatch-and-bounded-workspaces.md` records declarative Check plans, fused
   `SyntaxKind` dispatch, stack-safe traversal, and bounded one-project-at-a-time workspace analysis.
-  It supersedes ADR-0006's independent Check-stream representation and ADR-0007's materialized AST
-  snapshot cache.
+  ADR-0016 supersedes its built-in authoring consequence; ADR-0017 preserves its execution and
+  workspace decisions behind the new stream seam.
 - `adrs/0012-monorepo-core-checks-cli.md` records the split into core, checks, and CLI workspace
-  packages while preserving reviewed TypeScript configuration.
+  packages. ADR-0016 supersedes only its fixture location and loader consequence.
 - `adrs/0011-rules-and-advice-are-one-concept.md` records the unified Check, Signal, `reported`, and
   `derive` vocabulary. ADR-0013 supersedes its Check execution representation, not those concepts.
-- `adrs/0010-one-shot-default-watch-opt-in.md` records the current CLI mode decision: one-shot by
-  default, `--watch` for continuous deltas.
-- `adrs/0008-ndjson-event-output.md` records the NDJSON-by-default output decision and the event
-  schema. Later ADRs preserve its event tags, report-key shapes, rendering order, and pretty-output
-  projection.
+- `adrs/0010-one-shot-default-watch-opt-in.md` records the CLI mode decision: one-shot by default,
+  `--watch` for continuous deltas.
+- `adrs/0008-ndjson-event-output.md` records the NDJSON-by-default output decision and event schema.
+  Later ADRs preserve its event tags, report-key shapes, rendering order, and pretty projection.
 - `adrs/0009-user-fleets-are-report-wiring.md` remains historical context for one root TypeScript
   config, no discovery, no hot reload, and no plugin registry. ADR-0011 supersedes its public wiring
   shape.
-- `adrs/0007-continuous-watch-analysis.md` records the watch pipeline and its change gates. ADR-0010
-  supersedes its continuous-only default, and ADR-0013 supersedes its materialized AST snapshot
-  cache.
+- `adrs/0007-continuous-watch-analysis.md` records consistent workspace batches, full recomputation,
+  and change gates. ADR-0010 supersedes its continuous-only default, ADR-0013 supersedes its
+  materialized AST cache, and ADR-0017 preserves the remaining decisions through Workspace Updates.
 - `adrs/0006-detection-is-streams-and-functions.md` remains historical context for stream-based
   derivation and reporting. ADR-0013 supersedes its independent Check streams; its rejection of
   registries, schedulers, ids, roles, severities, suppressions, and dependency metadata remains.

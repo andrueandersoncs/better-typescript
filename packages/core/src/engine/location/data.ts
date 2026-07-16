@@ -2,16 +2,7 @@ import { Effect, Schema, pipe } from "effect"
 
 const defaultPosition = Effect.succeed(0)
 
-/**
- * PositionSchema is the stable boundary representation exchanged with Location.
- *
- * @remarks
- *   It remains explicit because callers need one named contract for from, ast.
- *   Removing it would duplicate boundary translation and let wire and in-memory
- *   representations drift.
- * @modelRole boundary
- */
-export const positionSchema = pipe(
+const positionSchema = pipe(
   Schema.Int,
   Schema.withDecodingDefaultType(defaultPosition),
   Schema.withConstructorDefault(defaultPosition)

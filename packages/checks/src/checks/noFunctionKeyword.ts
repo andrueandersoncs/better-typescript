@@ -1,12 +1,9 @@
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 /**
  * FunctionKeywordNode is the syntax contract shared by keyword candidate
  * detection and matching.
@@ -95,9 +92,9 @@ const functionKeywordNodeKinds = Array.make(
   ts.SyntaxKind.FunctionExpression
 )
 
-const check = nodeCheck(functionKeywordNodeKinds)(isFunctionKeywordNode)(functionKeywordMatches)
-
-export const noFunctionKeyword: Check = check
-
-export const noFunctionKeywordExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-function-keyword")
+export const noFunctionKeyword = defineCheck(
+  "no-function-keyword",
+  functionKeywordNodeKinds,
+  isFunctionKeywordNode,
+  functionKeywordMatches
+)

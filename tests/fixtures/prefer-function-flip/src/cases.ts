@@ -23,14 +23,14 @@ declare const Option: {
   ) => B
 }
 
-export const flippedInline = (
+export const flippedInline = ( // ~detect 30
   before: ReadonlyArray<string>
 ): ReadonlyArray<string> => blockDelta(before)(current)
 
 export const flippedHandler = Option.match(null as never, {
   onNone: () => [],
-  onSome: (before) => blockDelta(before)(current)
+  onSome: (before) => blockDelta(before)(current) // ~detect 11
 })
 
-export const flippedPartialCallee = (type: unknown): boolean =>
+export const flippedPartialCallee = (type: unknown): boolean => // ~detect 37
   hasCallSignature(checker)(type)(extra)

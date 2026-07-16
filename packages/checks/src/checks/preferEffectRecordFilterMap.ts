@@ -1,13 +1,11 @@
 import { Array } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 const message = "Avoid conditional object spreads."
 
 const hint =
@@ -51,9 +49,9 @@ const conditionalObjectSpreadMatches = (context: CheckContext) => {
 
 const kinds = Array.of(ts.SyntaxKind.SpreadAssignment)
 
-const check = nodeCheck(kinds)(ts.isSpreadAssignment)(conditionalObjectSpreadMatches)
-
-export const preferEffectRecordFilterMap: Check = check
-
-export const preferEffectRecordFilterMapExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-record-filter-map")
+export const preferEffectRecordFilterMap = defineCheck(
+  "prefer-effect-record-filter-map",
+  kinds,
+  ts.isSpreadAssignment,
+  conditionalObjectSpreadMatches
+)

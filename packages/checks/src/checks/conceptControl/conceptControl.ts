@@ -13,12 +13,9 @@ import {
   Result
 } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { definePlannedCheck } from "../../defineCheck.js"
 import { buildConceptIndex, functionDerivedStem } from "./conceptIndex.js"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import {
@@ -697,9 +694,6 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
   return fileSubscriptions(matches)
 }
 
-export const conceptControl: Check = withProgramIndex(buildConceptIndex)(
-  conceptControlSubscriptions
-)
+const conceptControlPlan = Function.compose(buildConceptIndex, conceptControlSubscriptions)
 
-export const conceptControlExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("concept-control")
+export const conceptControl = definePlannedCheck("concept-control", conceptControlPlan)

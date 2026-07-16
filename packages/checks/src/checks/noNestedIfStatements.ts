@@ -1,12 +1,10 @@
 import { Array, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
@@ -66,9 +64,10 @@ const nestedIfMatches = (context: CheckContext) => {
 }
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(nestedIfMatches)
 
-export const noNestedIfStatements: Check = check
-
-export const noNestedIfStatementsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-nested-if-statements")
+export const noNestedIfStatements = defineCheck(
+  "no-nested-if-statements",
+  ifStatementKinds,
+  ts.isIfStatement,
+  nestedIfMatches
+)

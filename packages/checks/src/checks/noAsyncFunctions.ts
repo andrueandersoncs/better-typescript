@@ -1,12 +1,10 @@
 import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
@@ -49,8 +47,9 @@ const asyncFunctionElements = (context: CheckContext) => {
 
 const asyncKeywordKinds = Array.of(asyncKeywordKind)
 
-export const noAsyncFunctions: Check =
-  nodeCheck(asyncKeywordKinds)(isAsyncFunctionModifier)(asyncFunctionElements)
-
-export const noAsyncFunctionsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-async-functions")
+export const noAsyncFunctions = defineCheck(
+  "no-async-functions",
+  asyncKeywordKinds,
+  isAsyncFunctionModifier,
+  asyncFunctionElements
+)

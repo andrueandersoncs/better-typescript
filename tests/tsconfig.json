@@ -6,5 +6,5 @@
     "types": ["node"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["fixtures/**/example/**"]
+  "exclude": ["fixtures/**/example/**", "../packages/checks/examples/**"]
 }

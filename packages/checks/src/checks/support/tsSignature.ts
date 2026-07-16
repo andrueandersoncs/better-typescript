@@ -1,11 +1,16 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { isSameNode, outermostTransparentWrapper } from "./tsNode.js"
+import { outermostTransparentWrapper } from "./tsNode.js"
 import { isCallLikeExpression, type CallLikeExpression } from "./tsNode.js"
 
 export type { CallLikeExpression }
 export { isCallLikeExpression }
+
+export const isSameNode =
+  (node: ts.Node) =>
+  (candidate: ts.Node): boolean =>
+    candidate === node
 
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()
@@ -65,7 +70,7 @@ export const resolvedCallSignature =
   (call: CallLikeExpression): Option.Option<ts.Signature> =>
     pipe(checker.getResolvedSignature(call), Option.fromNullishOr)
 
-const signatureDeclarationIsExternal = (declaration: ts.Declaration): boolean => {
+export const signatureDeclarationIsExternal = (declaration: ts.Declaration): boolean => {
   const sourceFile = declaration.getSourceFile()
 
   return !isProjectSourceFile(sourceFile)
@@ -80,8 +85,9 @@ export const signatureIsExternal = (signature: ts.Signature): boolean =>
     Option.getOrElse(Function.constant(true))
   )
 
-const signatureDeclarationOption = (signature: ts.Signature): Option.Option<ts.Declaration> =>
-  pipe(signature.getDeclaration(), Option.fromNullishOr)
+export const signatureDeclarationOption = (
+  signature: ts.Signature
+): Option.Option<ts.Declaration> => pipe(signature.getDeclaration(), Option.fromNullishOr)
 
 // Missing declarations do not grant an escape because exemptions require a proven external boundary.
 const hasExternalDeclaration = (signature: ts.Signature): boolean =>

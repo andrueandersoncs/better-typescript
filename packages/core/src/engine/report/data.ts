@@ -1,96 +1,4 @@
-import { Array, Data, HashSet, Schema, Stream } from "effect"
-import type { Check } from "../check/data.js"
-import type { Advice } from "../derive/data.js"
-import type { RefactorExample } from "../example/data.js"
-import type { Detection } from "../location/data.js"
-
-/**
- * NamedCheck binds a stable check name and reporting policy to its executable
- * check and remediation examples.
- *
- * @remarks
- *   It remains explicit because preset wiring, check execution, and advice
- *   derivation must use the same check identity. Removing it would duplicate
- *   that contract across those consumers and risk mismatched names.
- * @modelRole shared
- */
-export class NamedCheck extends Data.Class<{
-  readonly name: string
-  readonly check: Check
-  readonly reported: boolean
-  readonly examples: ReadonlyArray<RefactorExample>
-}> {}
-
-/**
- * Signal is the materialized result of one named check for one wiring scope.
- *
- * @remarks
- *   It remains explicit because rendering and aggregate advice consume the same
- *   detections, reporting policy, and examples. Removing it would split those
- *   correlated values into parallel collections at every consumer.
- * @modelRole shared
- */
-export class Signal extends Data.Class<{
-  readonly name: string
-  readonly reported: boolean
-  readonly detections: ReadonlyArray<Detection>
-  readonly examples: ReadonlyArray<RefactorExample>
-}> {}
-
-/**
- * Wiring defines the complete check set and advice derivation for one scope.
- *
- * @remarks
- *   It remains explicit because configuration loading and report execution
- *   exchange checks with their matching derivation function. The error
- *   parameter preserves derivation failures through report and watch streams
- *   instead of widening them at this seam. Removing it would let those two
- *   halves be configured independently and drift.
- * @modelRole shared
- */
-export class Wiring<E = never> extends Data.Class<{
-  readonly checks: ReadonlyArray<NamedCheck>
-  readonly derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, E>
-}> {}
-
-/**
- * WiringEntry associates one validated file scope with the wiring it activates.
- *
- * @remarks
- *   It remains explicit because configuration authors and the report engine need
- *   one stable scope-to-wiring contract. Removing it would recreate that
- *   pairing as positional arrays or anonymous objects at the boundary.
- * @modelRole boundary
- */
-export class WiringEntry<E = never> extends Data.Class<{
-  readonly files: Array.NonEmptyReadonlyArray<string>
-  readonly wiring: Wiring<E>
-}> {}
-
-/**
- * WiringConfig is the ordered configuration boundary consumed by reporting.
- *
- * @remarks
- *   It remains explicit because configuration loading, validation, and execution
- *   must preserve entry order. Removing it would repeat the collection contract
- *   at each interface and obscure that ordering requirement.
- * @modelRole boundary
- */
-export type WiringConfig<E = never> = ReadonlyArray<WiringEntry<E>>
-
-/**
- * WiringSignals records whether one wiring matched and the signals it produced.
- *
- * @remarks
- *   It remains explicit because collection and report derivation must distinguish
- *   an unmatched wiring from a matched wiring with no detections. Removing it
- *   would collapse those states or require parallel result arrays.
- * @modelRole shared
- */
-export class WiringSignals extends Data.Class<{
-  readonly matched: boolean
-  readonly signals: ReadonlyArray<Signal>
-}> {}
+import { Array, Schema } from "effect"
 
 /**
  * AdviceReportKey is the stable wire identity for one aggregate advice block.
@@ -163,65 +71,61 @@ export class ReportBlock extends Schema.Class<ReportBlock>("ReportBlock")({
   cleared: Schema.String
 }) {}
 
-const duplicateNameArray = Schema.Array(Schema.String)
-
 /**
- * DuplicateCheckNamesError is the failure protocol for ambiguous check
- * identity.
+ * One report event on the wire: a signal block appeared or changed its text
+ * (signal), a block's signal went away (cleared), or the initial report found
+ * nothing (empty). The default CLI output is NDJSON — JSON.stringify of these
+ * events, one per line; --pretty renders them through renderEventText.
  *
  * @remarks
- *   It remains explicit because wiring validation and CLI error handling need the
- *   same structured collision names. Removing it would reduce the error to
- *   prose and force consumers to parse an unstable message.
- * @modelRole protocol
- */
-export class DuplicateCheckNamesError extends Schema.TaggedErrorClass<DuplicateCheckNamesError>()(
-  "DuplicateCheckNamesError",
-  {
-    names: duplicateNameArray
-  }
-) {
-  get message(): string {
-    return `Duplicate check names: ${Array.join(this.names, ", ")}`
-  }
-}
-
-const invalidWiringIndexArray = Schema.Array(Schema.Number)
-
-/**
- * InvalidWiringFilesError is the failure protocol for invalid wiring file
- * scopes.
- *
- * @remarks
- *   It remains explicit because configuration validation and CLI error handling
- *   need the exact invalid entry indexes. Removing it would hide that
- *   structured evidence in prose and duplicate error parsing at the boundary.
- * @modelRole protocol
- */
-export class InvalidWiringFilesError extends Schema.TaggedErrorClass<InvalidWiringFilesError>()(
-  "InvalidWiringFilesError",
-  {
-    indexes: invalidWiringIndexArray
-  }
-) {
-  get message(): string {
-    const indexes = Array.map(this.indexes, String)
-
-    return `Wiring files must be non-empty glob arrays at indexes: ${Array.join(indexes, ", ")}`
-  }
-}
-
-/**
- * DuplicateNameState is the accumulated identity state for wiring validation.
- *
- * @remarks
- *   It remains explicit because the empty-state constructor, incremental reducer,
- *   and final validator must preserve first-seen order and collisions. Removing
- *   it would spread three synchronized collections across those owners.
+ *   Tagged events are the wire vocabulary because NDJSON and --pretty both
+ *   project the same signal/cleared/empty shapes. This model remains explicit
+ *   because its consumers need the documented contract; removing it would
+ *   reintroduce that contract at each use site.
  * @modelRole shared
  */
-export class DuplicateNameState extends Data.Class<{
-  readonly seen: HashSet.HashSet<string>
-  readonly collisions: HashSet.HashSet<string>
-  readonly names: ReadonlyArray<string>
-}> {}
+export class SignalEvent extends Schema.TaggedClass<SignalEvent>()("signal", {
+  key: reportKeySchema,
+  text: Schema.String
+}) {}
+
+/**
+ * ClearedEvent is the shared key, text contract used by ReportEvent and
+ * blockClearedEvent.
+ *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
+ * @modelRole shared
+ */
+export class ClearedEvent extends Schema.TaggedClass<ClearedEvent>()("cleared", {
+  key: reportKeySchema,
+  text: Schema.String
+}) {}
+
+/**
+ * EmptyReportEvent is the shared rootPath contract used by ReportEvent,
+ * initialReportEvents, and emptyReportText.
+ *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
+ * @modelRole shared
+ */
+export class EmptyReportEvent extends Schema.TaggedClass<EmptyReportEvent>()("empty", {
+  rootPath: Schema.String
+}) {}
+
+/**
+ * ReportEvent is the wire event union shared by initialReportEvents,
+ * renderEventText, and reportEvents.
+ *
+ * @remarks
+ *   It remains explicit because these independent owners need one stable
+ *   vocabulary. Removing it would duplicate the field contract across consumers
+ *   and let their representations drift.
+ * @modelRole shared
+ */
+export type ReportEvent = SignalEvent | ClearedEvent | EmptyReportEvent

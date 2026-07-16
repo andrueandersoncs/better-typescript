@@ -3,12 +3,10 @@ import * as ts from "typescript"
 import { isReturnTypeDeclaration, namedDetectionTarget } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
@@ -110,9 +108,9 @@ const rawObjectTypeMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(rawObjectTargetKinds)(isRawObjectTarget)(rawObjectTypeMatches)
-
-export const noRawObjectTypes: Check = check
-
-export const noRawObjectTypesExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-raw-object-types")
+export const noRawObjectTypes = defineCheck(
+  "no-raw-object-types",
+  rawObjectTargetKinds,
+  isRawObjectTarget,
+  rawObjectTypeMatches
+)

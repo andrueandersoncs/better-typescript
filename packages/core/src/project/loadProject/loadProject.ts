@@ -1,23 +1,13 @@
 import * as path from "node:path"
-import { Array, Effect, Function, HashSet, Option, Stream, Struct, flow, pipe } from "effect"
+import { Array, Effect, Function, HashSet, Option, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "../../engine/check/data.js"
 import type { Detection } from "../../engine/location/data.js"
-import {
-  batchReportBlocks,
-  initialReportEvents,
-  workspaceSignals,
-  workspaceSignalsForProjects
-} from "../../engine/report/report.js"
-import type { ReportBlock, WiringConfig, WiringSignals } from "../../engine/report/data.js"
-import type { ReportEvent } from "../../engine/watch/data.js"
-import {
-  astNodesFromContext,
-  contextFor,
-  isProjectSourceFile,
-  runChecks
-} from "../../engine/sources/sources.js"
-import type { AstNodeElement, ProgramContext } from "../../engine/sources/data.js"
+import type { WiringSignals } from "../../engine/signal/data.js"
+import { workspaceSignalsForProjects } from "../../engine/signal/signal.js"
+import type { WiringConfig } from "../../engine/wiring/data.js"
+import { contextFor, runChecks } from "../../engine/sources/sources.js"
+import type { ProgramContext } from "../../engine/sources/data.js"
 import {
   CircularProjectReferenceError,
   InvalidTsconfigError,
@@ -69,17 +59,11 @@ export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   })
 }
 
-export const checkableSourceFiles = (project: LoadedProject): Stream.Stream<ts.SourceFile, never> =>
-  pipe(project.program.getSourceFiles(), Array.filter(isProjectSourceFile), Stream.fromIterable)
-
 export const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
   const createContext = contextFor(project.rootPath)
 
   return createContext(project.program)
 }
-
-export const astNodes = (project: LoadedProject): Stream.Stream<AstNodeElement, never> =>
-  pipe(project.program, contextFor(project.rootPath), astNodesFromContext)
 
 const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
@@ -107,57 +91,6 @@ export const runCheckOnProject =
 
       return pipe(detections, Array.head, Option.getOrElse(noDetections))
     })
-
-export const reportBlocksFromConfig =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<ReportBlock>, E> =>
-    pipe(
-      workspace.projects,
-      Array.map(contextFromLoadedProject),
-      workspaceSignals(config)(workspace.rootPath),
-      Effect.flatMap(batchReportBlocks(config))
-    )
-
-export const reportBlocksFromWorkspaceConfigs =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<ReportBlock>, E> =>
-    pipe(workspaceSignalsFromConfigs(config)(workspace), Effect.flatMap(batchReportBlocks(config)))
-
-export const reportFromConfig =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: LoadedWorkspace): Stream.Stream<string, E> =>
-    pipe(
-      reportBlocksFromConfig(config)(workspace),
-      Stream.fromIterableEffect,
-      Stream.map(Struct.get("text"))
-    )
-
-export const reportFromWorkspaceConfigs =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: WorkspaceConfigs): Stream.Stream<string, E> =>
-    pipe(
-      reportBlocksFromWorkspaceConfigs(config)(workspace),
-      Stream.fromIterableEffect,
-      Stream.map(Struct.get("text"))
-    )
-
-export const reportEventsFromConfig =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, E> =>
-    pipe(
-      reportBlocksFromConfig(config)(workspace),
-      Effect.map(initialReportEvents(workspace.rootPath)),
-      Stream.fromIterableEffect
-    )
-
-export const reportEventsFromWorkspaceConfigs =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, E> =>
-    pipe(
-      reportBlocksFromWorkspaceConfigs(config)(workspace),
-      Effect.map(initialReportEvents(workspace.rootPath)),
-      Stream.fromIterableEffect
-    )
 
 export const loadProject: (
   projectPath: string
@@ -245,5 +178,3 @@ const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
     getCurrentDirectory: ts.sys.getCurrentDirectory,
     getNewLine: Function.constant(ts.sys.newLine)
   })
-
-

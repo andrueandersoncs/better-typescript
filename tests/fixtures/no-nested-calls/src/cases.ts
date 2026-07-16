@@ -27,26 +27,26 @@ class Service {
 }
 
 // Direct nesting: inner() is consumed as an argument of outer()
-const direct = outer(inner())
+const direct = outer(inner()) // ~detect 22
 
 // Deep chain: outer(wrap(inner())) — 2 matches (wrap consumed by outer,
 // inner consumed by wrap). Pre-order DFS: wrap reported before inner.
-const chain = outer(wrap(inner()))
+const chain = outer(wrap(inner())) // ~detect 21,26
 
 // Forwarded through arithmetic (BinaryExpression)
-const arithmetic = outer(inner() + 1)
+const arithmetic = outer(inner() + 1) // ~detect 26
 
 // Forwarded through an array literal
-const arrayLit = collect([inner()])
+const arrayLit = collect([inner()]) // ~detect 27
 
 // Forwarded through an object literal (via PropertyAssignment)
-const objLit = build({ value: inner() })
+const objLit = build({ value: inner() }) // ~detect 31
 
 // Forwarded through as (AsExpression)
-const asExpr = outer(inner() as number)
+const asExpr = outer(inner() as number) // ~detect 22
 
 // NewExpression as inner: callText = "new Service", consumerText = "register"
-const newInner = register(new Service())
+const newInner = register(new Service()) // ~detect 27
 
 // NewExpression as consumer: callText = "inner", consumerText = "new Outer"
 class Outer {
@@ -54,4 +54,4 @@ class Outer {
     void x
   }
 }
-const newConsumer = new Outer(inner())
+const newConsumer = new Outer(inner()) // ~detect 31

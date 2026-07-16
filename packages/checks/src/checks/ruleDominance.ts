@@ -8,11 +8,9 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { packageExamples } from "../defineCheck.js"
 
-export const ruleDominanceExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("rule-dominance")
+export const ruleDominanceExamples = packageExamples("rule-dominance")
 
 const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const summary = countSummary(elements)
@@ -24,6 +22,7 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   const location = adviceLocation("project")
   const signalsItem = evidenceItem("signals", summary.total)
   const evidence = Array.prepend(dominantEvidence, signalsItem)
+  const examples = ruleDominanceExamples()
 
   const advice = new Advice({
     location,
@@ -34,7 +33,7 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
       "systemic, not local. Plan one mechanical migration — a codemod and a single review " +
       "— instead of fixing occurrences file by file.",
     evidence,
-    examples: ruleDominanceExamples
+    examples
   })
 
   return isDominated ? Array.of(advice) : Array.empty()

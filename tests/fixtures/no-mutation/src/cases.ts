@@ -11,24 +11,24 @@ declare const config: Config
 declare const scores: Array<number>
 declare const grid: Array<Array<number>>
 
-counter.count = 1
-counter.count += 1
-scores[0] = 100
-grid[0][1] = 5
-counter.count++
---counter.count
-delete config.name
-config.name ??= "fallback"
+counter.count = 1 // ~detect 1
+counter.count += 1 // ~detect 1
+scores[0] = 100 // ~detect 1
+grid[0][1] = 5 // ~detect 1
+counter.count++ // ~detect 1
+--counter.count // ~detect 3
+delete config.name // ~detect 8
+config.name ??= "fallback" // ~detect 1
 
 // Rebinding a project-declared binding mutates first-party state.
 let label = "start"
-label = "changed"
+label = "changed" // ~detect 1
 
 // A parameter is a project-declared binding.
-export const overwriteParameter = (value: number): number => (value = 0)
+export const overwriteParameter = (value: number): number => (value = 0) // ~detect 63
 
 // Built-in JavaScript values are first-party data even though lib.es declares them.
-Error.prototype.name = "Failure"
+Error.prototype.name = "Failure" // ~detect 1
 
 export const useLabel = (): string => label
 
@@ -39,6 +39,6 @@ export const writeGenericField = <O extends Record<string, number>>(
   value: number
 ): O => {
   const out: Record<string, number> = { ...obj }
-  out[key] = value
+  out[key] = value // ~detect 3
   return out as O
 }

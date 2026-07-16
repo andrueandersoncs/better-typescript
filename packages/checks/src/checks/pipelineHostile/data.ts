@@ -22,13 +22,13 @@ export class PipelineSignals extends Schema.Class<PipelineSignals>("PipelineSign
 const detectionSignal = Schema.Any
 
 /**
- * PipelineHostileInput is the stable boundary representation exchanged with
- * pipelineHostile.
+ * The two named evidence streams the preset derive stage hands to the
+ * pipeline-hostile fleet.
  *
  * @remarks
- *   It remains explicit because callers need one named contract for
- *   noNestedCalls, preferCurriedDataLastFunctions. Removing it would duplicate
- *   boundary translation and let wire and in-memory representations drift.
+ *   This contract remains explicit because the fleet consumes parallel named
+ *   streams rather than a positional pair. Removing it would spread that stream
+ *   coupling into defaultWiring and let source-check wiring drift.
  * @modelRole boundary
  */
 export class PipelineHostileInput extends Schema.Class<PipelineHostileInput>(

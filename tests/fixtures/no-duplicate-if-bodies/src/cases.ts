@@ -4,14 +4,14 @@ function adjacentGuardDuplicate(input: string): void {
   if (input === "empty") {
     throw new Error("missing")
   }
-  if (input === "blank") {
+  if (input === "blank") { // ~detect 3
     throw new Error("missing")
   }
 }
 
 function unwrappedGuardDuplicate(input: string): void {
   if (input === "one") return
-  if (input === "two") {
+  if (input === "two") { // ~detect 3
     return
   }
 }
@@ -19,7 +19,7 @@ function unwrappedGuardDuplicate(input: string): void {
 function elseIfDuplicate(input: string): string {
   if (input === "short") {
     return "small"
-  } else if (input === "tiny") {
+  } else if (input === "tiny") { // ~detect 10
     return "small"
   }
   return "large"

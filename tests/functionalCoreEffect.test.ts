@@ -5,7 +5,7 @@ import { test } from "node:test"
 import { Effect, Option, Schema, Stream, pipe, Array } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { Signal } from "@better-typescript/core/engine/report/data"
+import { Signal } from "@better-typescript/core/engine/signal/data"
 import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring
@@ -40,7 +40,7 @@ const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
         name: named.name,
         reported: named.reported,
         detections: detections.flat(),
-        examples: named.examples
+        examples: named.examples()
       })
     })
   )
@@ -289,5 +289,5 @@ test("wiring exposes one reported policy check and silent shape evidence", () =>
       ["functional-core-effect-shape-evidence", false]
     ]
   )
-  assert.equal(checks[0]?.examples.length, 1)
+  assert.equal(checks[0]?.examples().length, 1)
 })

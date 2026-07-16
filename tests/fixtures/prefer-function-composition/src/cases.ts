@@ -29,7 +29,7 @@ declare const pipe: {
 
 const fileCheckLike = (
   handler: (input: string) => ReadonlyArray<number>
-): number => {
+): number => { // ~detect 14
   const subscriptions = fileSubscriptions(handler)
 
   return checkFromSubscriptions(Function.constant(subscriptions))
@@ -37,19 +37,19 @@ const fileCheckLike = (
 
 const combineAllLike = (
   groups: ReadonlyArray<ReadonlyArray<string>>
-): number => {
+): number => { // ~detect 14
   const subscriptions = Array.flatten(groups)
 
   return checkFromSubscriptions(Function.constant(subscriptions))
 }
 
-const unaryWrap = (symbol: string | null): string | null => {
+const unaryWrap = (symbol: string | null): string | null => { // ~detect 61
   const value = symbol
 
   return Option.fromNullishOr(value)
 }
 
-const pipeAfterBinding = (symbol: string | null): string | null => {
+const pipeAfterBinding = (symbol: string | null): string | null => { // ~detect 68
   const value = Option.fromNullishOr(symbol)
 
   return pipe(value, (current) => current)

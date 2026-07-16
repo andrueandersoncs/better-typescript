@@ -3,12 +3,10 @@ import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
 import { astChildren } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
@@ -59,10 +57,9 @@ const inOperatorGuardMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-const check = nodeCheck(ifStatementKinds)(ts.isIfStatement)(inOperatorGuardMatches)
-
-export const preferEffectSchemaGuard: Check = check
-
-export const preferEffectSchemaGuardExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-effect-schema-guard"
+export const preferEffectSchemaGuard = defineCheck(
+  "prefer-effect-schema-guard",
+  ifStatementKinds,
+  ts.isIfStatement,
+  inOperatorGuardMatches
 )

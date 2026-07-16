@@ -7,8 +7,12 @@ derive emits Advice.
 
 ### Analysis kernel
 
-**Check**: A function from the AST-node stream to a stream of Detections. AST-only; does not read
-other Signals. _Avoid_: rule, detector, linter rule
+**Check**: The local source-analysis behavior that emits Detections without reading other Signals.
+_Avoid_: rule, detector, linter rule
+
+**NamedCheck**: A Check bound to one stable name, reporting policy, and set of refactor examples.
+Wiring selects NamedChecks rather than registering those facts separately. _Avoid_: rule
+registration, check descriptor
 
 **Detection**: One located finding from a Check — path, message, hint, optional data. _Avoid_:
 finding, diagnostic, violation
@@ -21,6 +25,12 @@ meta-rule, report section
 
 **Wiring**: The reviewed fleet: NamedChecks plus a derive function over their Signals. _Avoid_:
 config soup, plugin set, registry
+
+**Workspace Update**: One complete workspace-wide analysis snapshot. It is the input seam shared by
+one-shot and continuous reporting. _Avoid_: watch callback, file-change event
+
+**Report Event**: One emitted report transition — a signal block, a cleared block, or an explicit
+empty report. _Avoid_: log line, diagnostic event
 
 ### Architecture Explore fleet
 

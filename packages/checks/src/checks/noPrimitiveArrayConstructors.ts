@@ -1,13 +1,11 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { isCallLikeExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { definePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const isArrayIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Array"
 
@@ -79,7 +77,11 @@ const arrayConstructorListeners =
 
 const arrayConstructorSubscriptions = Array.make(arrayLiteralListeners, arrayConstructorListeners)
 
-export const noPrimitiveArrayConstructors: Check = combineAll(arrayConstructorSubscriptions)
+const arrayConstructorSubscriptionList = Array.flatten(arrayConstructorSubscriptions)
 
-export const noPrimitiveArrayConstructorsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-primitive-array-constructors")
+const arrayConstructorPlan = Function.constant(arrayConstructorSubscriptionList)
+
+export const noPrimitiveArrayConstructors = definePlannedCheck(
+  "no-primitive-array-constructors",
+  arrayConstructorPlan
+)

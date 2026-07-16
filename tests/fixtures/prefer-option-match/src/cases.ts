@@ -25,7 +25,7 @@ declare const parameter: string
 
 // isSome ternary accessing .value in whenTrue
 const typeNode: OptionType<string> = Option.fromNullishOr("hello")
-const resolved = Option.isSome(typeNode)
+const resolved = Option.isSome(typeNode) // ~detect 18
   ? checker.getTypeFromTypeNode(typeNode.value)
   : checker.getTypeAtLocation(parameter)
 
@@ -33,8 +33,8 @@ const resolved = Option.isSome(typeNode)
 const nameNode: OptionType<{ getText: () => string }> = Option.fromNullishOr({
   getText: () => "x"
 })
-const name = Option.isSome(nameNode) ? nameNode.value.getText() : "fallback"
+const name = Option.isSome(nameNode) ? nameNode.value.getText() : "fallback" // ~detect 14
 
 // isNone ternary accessing .value in whenFalse
 const cached: OptionType<number> = Option.fromNullishOr(42)
-const result = Option.isNone(cached) ? 0 : cached.value + 1
+const result = Option.isNone(cached) ? 0 : cached.value + 1 // ~detect 16

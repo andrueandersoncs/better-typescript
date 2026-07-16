@@ -1,13 +1,11 @@
 import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { conciseArrowBody, isFunctionInitializer, unwrapExpression } from "./support/tsNode.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 
 const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -212,9 +210,9 @@ const functionConstantMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(constantThunkKinds)(isFunctionInitializer)(functionConstantMatches)
-
-export const preferEffectFunctionConstant: Check = check
-
-export const preferEffectFunctionConstantExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-function-constant")
+export const preferEffectFunctionConstant = defineCheck(
+  "prefer-effect-function-constant",
+  constantThunkKinds,
+  isFunctionInitializer,
+  functionConstantMatches
+)

@@ -17,7 +17,7 @@ declare const oneShot: Effect.Effect<void>
 declare const watched: Effect.Effect<void>
 
 export const adjacent = Effect.gen(function* () {
-  const subsystemAdviceEffect = collectSignals(subsystemAdvice)
+  const subsystemAdviceEffect = collectSignals(subsystemAdvice) // ~detect 9
   const subsystemItems = yield* subsystemAdviceEffect
 
   return subsystemItems
@@ -29,9 +29,9 @@ export const batched = Effect.gen(function* () {
   const densityAfterFallbackSuppression =
     filterFallback(specificItems)(densityAdvice)
 
-  const densityAdviceEffect = collectSignals(densityAfterFallbackSuppression)
-  const subsystemAdviceEffect = collectSignals(subsystemAdvice)
-  const dominanceAdviceEffect = collectSignals(dominanceAdvice)
+  const densityAdviceEffect = collectSignals(densityAfterFallbackSuppression) // ~detect 9
+  const subsystemAdviceEffect = collectSignals(subsystemAdvice) // ~detect 9
+  const dominanceAdviceEffect = collectSignals(dominanceAdvice) // ~detect 9
   const densityItems = yield* densityAdviceEffect
   const subsystemItems = yield* subsystemAdviceEffect
   const dominanceItems = yield* dominanceAdviceEffect
@@ -40,7 +40,7 @@ export const batched = Effect.gen(function* () {
 })
 
 export const runCommand = Effect.fn("runCommand")(function* () {
-  const commandEffect = Option.match(watchMode, {
+  const commandEffect = Option.match(watchMode, { // ~detect 9
     onNone: Function.constant(oneShot),
     onSome: Function.constant(watched)
   })
@@ -49,7 +49,7 @@ export const runCommand = Effect.fn("runCommand")(function* () {
 })
 
 export const multiline = Effect.gen(function* () {
-  const commandEffect = Option.match(watchMode, {
+  const commandEffect = Option.match(watchMode, { // ~detect 9
     onNone: Function.constant(oneShot),
     onSome: Function.constant(watched)
   })

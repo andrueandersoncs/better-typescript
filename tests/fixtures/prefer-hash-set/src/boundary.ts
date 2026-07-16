@@ -11,8 +11,8 @@ const inline = JSON.stringify(new Set(["a"]))
 declare const loadFlags: () => Set<string>
 
 // Control: construction only used locally still reports
-const local = new Set<number>()
+const local = new Set<number>() // ~detect 15
 const v = local.has(1)
 
 // Control: non-ambient written type still reports
-const annotated: Set<number> = local
+const annotated: Set<number> = local // ~detect 18

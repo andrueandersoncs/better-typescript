@@ -1,14 +1,11 @@
 import { Array } from "effect"
-import { fileCheck } from "@better-typescript/core/engine/check"
+import { defineFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { commentText, isJsDocComment, sourceComments } from "./support/comments.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = 'Comments must include the word "because".'
 
 const hint =
@@ -49,8 +46,7 @@ const commentsWithoutBecause = (context: CheckContext): ReadonlyArray<Detection>
   })
 }
 
-export const requireBecauseInComments: Check = fileCheck(commentsWithoutBecause)
-
-export const requireBecauseInCommentsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "require-because-in-comments"
+export const requireBecauseInComments = defineFileCheck(
+  "require-because-in-comments",
+  commentsWithoutBecause
 )

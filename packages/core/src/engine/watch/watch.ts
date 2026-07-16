@@ -1,9 +1,9 @@
 import {
   Array,
+  Effect,
   Function,
   HashMap,
   HashSet,
-  Match,
   Option,
   Stream,
   Struct,
@@ -12,20 +12,20 @@ import {
 } from "effect"
 import type * as ts from "typescript"
 import type { WorkspaceConfigs } from "../../project/loadProject/data.js"
-import { sourceUpdates } from "../sources/sources.js"
-import type { ProgramContext, SourceUpdate } from "../sources/data.js"
+import type { ReportBlock, ReportEvent } from "../report/data.js"
 import {
   batchReportBlocks,
   blockClearedEvent,
   blockEntry,
   blockSignalEvent,
-  initialReportEvents,
-  wiringSignalsArrayEquivalence,
-  workspaceSignals
+  initialReportEvents
 } from "../report/report.js"
-import type { ReportBlock, WiringConfig, WiringSignals } from "../report/data.js"
-import { ClearedEvent, EmptyReportEvent, SignalEvent, WorkspaceUpdate } from "./data.js"
-import type { ReportEvent } from "./data.js"
+import type { WiringSignals } from "../signal/data.js"
+import { wiringSignalsArrayEquivalence, workspaceSignals } from "../signal/signal.js"
+import type { ProgramContext, SourceUpdate } from "../sources/data.js"
+import { sourceUpdates } from "../sources/sources.js"
+import type { WiringConfig } from "../wiring/data.js"
+import { WorkspaceUpdate } from "./data.js"
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty()
 
@@ -99,84 +99,58 @@ export const workspaceUpdates = (
   return pipe(merged, Stream.mapAccum(Function.constant(emptyContextCache), applyUpdate))
 }
 
-/**
- * Full check recompute per batch: detection sets are always exactly what the
- * snapshot report would compute for the current programs. Per-file incremental
- * recompute is deliberately not built — checker-using checks observe other
- * files through the type graph, so file identity under-approximates their true
- * inputs.
- *
- * @remarks
- *   Full recompute is required because checker-using checks can depend on files
- *   outside the edited set through the type graph.
- */
-export const signalUpdates =
+const signalUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
-  <E, R>(
-    updates: Stream.Stream<WorkspaceUpdate, E, R>
-  ): Stream.Stream<ReadonlyArray<WiringSignals>, E, R> =>
+  <UpdateError, R>(
+    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
+  ): Stream.Stream<
+    readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
+    UpdateError,
+    R
+  > =>
     pipe(
       updates,
-      Stream.mapEffect((update) => workspaceSignals(config)(update.rootPath)(update.contexts))
+      Stream.mapEffect((update) =>
+        pipe(
+          workspaceSignals(config)(update.rootPath)(update.contexts),
+          Effect.map((signals) => Tuple.make(update.rootPath, signals))
+        )
+      )
     )
 
-/**
- * Compare complete signal sets for every configured wiring.
- *
- * @remarks
- *   Match state participates because a newly matched or fully removed glob scope
- *   must reach derivation and clearing. `Detection.data` remains best-effort
- *   because it is `Schema.Unknown`: fresh plain objects under-cut the gate but
- *   can never hide a real report change.
- */
-export const signalsEquivalence = (
-  a: ReadonlyArray<WiringSignals>,
-  b: ReadonlyArray<WiringSignals>
-): boolean => wiringSignalsArrayEquivalence(a, b)
+const signalsEquivalence = (
+  a: readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
+  b: readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>]
+): boolean => {
+  const hasSameRootPath = a[0] === b[0]
 
-/**
- * Derive report blocks from each complete wiring signal set.
- *
- * @remarks
- *   Derivation remains per wiring because each glob assignment is one independent
- *   policy boundary.
- */
-export const reportBlockUpdates =
+  return hasSameRootPath && wiringSignalsArrayEquivalence(a[1], b[1])
+}
+
+const reportBlockUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
-  <E, R>(
-    signals: Stream.Stream<ReadonlyArray<WiringSignals>, E, R>
-  ): Stream.Stream<ReadonlyArray<ReportBlock>, E | DeriveError, R> =>
-    pipe(signals, Stream.mapEffect(batchReportBlocks(config)))
+  <UpdateError, R>(
+    updates: Stream.Stream<
+      readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
+      UpdateError,
+      R
+    >
+  ): Stream.Stream<
+    readonly [rootPath: string, blocks: ReadonlyArray<ReportBlock>],
+    UpdateError | DeriveError,
+    R
+  > =>
+    pipe(
+      updates,
+      Stream.mapEffect(([rootPath, signals]) =>
+        pipe(
+          batchReportBlocks(config)(signals),
+          Effect.map((blocks) => Tuple.make(rootPath, blocks))
+        )
+      )
+    )
 
-const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`
-
-/**
- * Render one event as the human-readable text block the --pretty flag prints.
- *
- * @remarks
- *   Kept separate from NDJSON encoding because --pretty needs a human-readable
- *   projection of the same events.
- */
-export const renderEventText = (event: ReportEvent): string =>
-  pipe(
-    Match.value(event),
-    Match.tag("signal", Struct.get<SignalEvent, "text">("text")),
-    Match.tag("cleared", Struct.get<ClearedEvent, "text">("text")),
-    Match.tag("empty", emptyReportText),
-    Match.exhaustive
-  )
-
-/**
- * Pure per-block delta: clearances first (previous order) — previous blocks
- * whose key is absent from current emit their cleared event; then changed and
- * new blocks (current order) — key absent from previous or text differs emit
- * their signal event. Unchanged blocks emit nothing.
- *
- * @remarks
- *   Clearances precede signals because consumers must retire stale blocks before
- *   applying replacements for the same identity.
- */
-export const blockDelta =
+const blockDelta =
   (current: ReadonlyArray<ReportBlock>) =>
   (previous: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     const previousEntries = Array.map(previous, blockEntry)
@@ -209,69 +183,47 @@ export const blockDelta =
 
 const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> = Option.none()
 
-/**
- * Terminal gate: the first element emits every block as a signal event (or the
- * single empty-report event), each later element emits only its blockDelta —
- * nothing when no block changed, so quiet batches are silent.
- *
- * @remarks
- *   Quiet batches stay silent because continuous watch output should only surface
- *   real block changes after the initial report.
- */
-export const blockDeltas =
-  (rootPath: string) =>
-  <E, R>(
-    blocks: Stream.Stream<ReadonlyArray<ReportBlock>, E, R>
-  ): Stream.Stream<ReportEvent, E, R> =>
-    pipe(
-      blocks,
-      Stream.mapAccum(Function.constant(initialDeltaState), (previous, current) => {
-        const events = pipe(
-          previous,
-          Option.match({
-            onNone: () => initialReportEvents(rootPath)(current),
-            onSome: blockDelta(current)
-          })
-        )
+const blockDeltas = <UpdateError, R>(
+  updates: Stream.Stream<
+    readonly [rootPath: string, blocks: ReadonlyArray<ReportBlock>],
+    UpdateError,
+    R
+  >
+): Stream.Stream<ReportEvent, UpdateError, R> =>
+  pipe(
+    updates,
+    Stream.mapAccum(Function.constant(initialDeltaState), (previous, [rootPath, current]) => {
+      const events = pipe(
+        previous,
+        Option.match({
+          onNone: () => initialReportEvents(rootPath)(current),
+          onSome: blockDelta(current)
+        })
+      )
 
-        const nextState = Option.some(current)
+      const nextState = Option.some(current)
 
-        return Tuple.make(nextState, events)
-      })
-    )
+      return Tuple.make(nextState, events)
+    })
+  )
 
 /**
- * The continuous product: a linear pipeline of stream transformers whose
- * elements each carry one consistent batch.
- *
- * Change propagation model: every node is a stream; a node propagates only when
- * its value differs from the one before. The gates, in pipeline order: source —
- * diffCheckableFiles on ts.SourceFile identity (the only equality ts objects
- * support; the abstract builder reuses unchanged files, so identity is content
- * equality there); batch — empty diffs dropped in workspaceUpdates; signals —
- * Stream.changesWith(signalsEquivalence); report — blockDeltas on block key
- * plus rendered text (the canonical content projection).
- *
- * Fan-in never tears because it happens inside an element (derivation reads
- * every signal from one completed signal array), never across independently-
- * ticking streams. Per-node external subscribers are derived views — broadcast
- * the signal-array stream, Stream.map the projection, gate with
- * Stream.changesWith — never independently recomputed streams.
+ * Recompute complete signals for each workspace update and emit only observable
+ * report deltas.
  *
  * @remarks
- *   Linear gated stages are required because each stage must drop unchanged
- *   values while keeping derivation fan-in inside one batch element.
+ *   Full recomputation stays at this stream boundary because checks can depend on
+ *   files outside the edited set through the TypeScript type graph.
  */
-export const watchReportFromConfig =
-  <E>(config: WiringConfig<E>) =>
-  (
-    workspace: WorkspaceConfigs,
-    watchOptions: Option.Option<ts.WatchOptions>
-  ): Stream.Stream<ReportEvent, E> =>
+export const reportEvents =
+  <DeriveError>(config: WiringConfig<DeriveError>) =>
+  <UpdateError, R>(
+    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
+  ): Stream.Stream<ReportEvent, UpdateError | DeriveError, R> =>
     pipe(
-      workspaceUpdates(workspace, watchOptions),
+      updates,
       signalUpdates(config),
       Stream.changesWith(signalsEquivalence),
       reportBlockUpdates(config),
-      blockDeltas(workspace.rootPath)
+      blockDeltas
     )

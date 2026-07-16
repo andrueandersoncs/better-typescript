@@ -3,28 +3,77 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Stream } from "effect"
+import { Effect } from "effect"
 import * as ts from "typescript"
 import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
-import { loadProject, checkableSourceFiles } from "@better-typescript/core/project/loadProject"
+import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { packageExamplesRoot } from "./packageExamples.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturesRoot = path.join(testDirectory, "fixtures")
 
-const fixtureNames = fs
+interface FixtureProject {
+  readonly label: string
+  readonly projectPath: string
+}
+
+const fixtureProjects: ReadonlyArray<FixtureProject> = fs
   .readdirSync(fixturesRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .sort()
+  .map((entry) => ({
+    label: entry.name,
+    projectPath: path.join(fixturesRoot, entry.name)
+  }))
+  .sort((left, right) => left.label.localeCompare(right.label))
 
-const diagnosticsFormatHost: ts.FormatDiagnosticsHost = {
-  getCanonicalFileName: (fileName) => fileName,
-  getCurrentDirectory: () => fixturesRoot,
-  getNewLine: () => "\n"
+const exampleProjects = (): ReadonlyArray<FixtureProject> => {
+  if (!fs.existsSync(packageExamplesRoot)) {
+    return []
+  }
+
+  const projects: Array<FixtureProject> = []
+
+  for (const checkEntry of fs.readdirSync(packageExamplesRoot, { withFileTypes: true })) {
+    if (!checkEntry.isDirectory()) {
+      continue
+    }
+
+    const checkRoot = path.join(packageExamplesRoot, checkEntry.name)
+
+    for (const pairEntry of fs.readdirSync(checkRoot, { withFileTypes: true })) {
+      if (!pairEntry.isDirectory()) {
+        continue
+      }
+
+      const pairRoot = path.join(checkRoot, pairEntry.name)
+
+      for (const side of ["bad", "good"] as const) {
+        const sideRoot = path.join(pairRoot, side)
+        const tsconfigPath = path.join(sideRoot, "tsconfig.json")
+
+        if (fs.existsSync(tsconfigPath)) {
+          projects.push({
+            label: `examples/${checkEntry.name}/${pairEntry.name}/${side}`,
+            projectPath: sideRoot
+          })
+        }
+      }
+    }
+  }
+
+  return projects.sort((left, right) => left.label.localeCompare(right.label))
 }
+
+const diagnosticsFormatHost = (projectRoot: string): ts.FormatDiagnosticsHost => ({
+  getCanonicalFileName: (fileName) => fileName,
+  getCurrentDirectory: () => projectRoot,
+  getNewLine: () => "\n"
+})
 
 const sourceFileProblems =
   (program: ts.Program) =>
+  (projectRoot: string) =>
   (sourceFile: ts.SourceFile): ReadonlyArray<string> => {
     const diagnostics = [
       ...program.getSyntacticDiagnostics(sourceFile),
@@ -33,23 +82,26 @@ const sourceFileProblems =
 
     return diagnostics.map((diagnostic) =>
       ts
-        .formatDiagnostics([diagnostic], diagnosticsFormatHost)
-        .replaceAll(fixturesRoot + path.sep, "")
+        .formatDiagnostics([diagnostic], diagnosticsFormatHost(projectRoot))
+        .replaceAll(projectRoot + path.sep, "")
         .trim()
     )
   }
 
-const projectProblems = async (project: LoadedProject): Promise<ReadonlyArray<string>> => {
-  const sourceFiles = await Effect.runPromise(Stream.runCollect(checkableSourceFiles(project)))
+const projectProblems = (project: LoadedProject, projectRoot: string): ReadonlyArray<string> => {
+  const sourceFiles = project.program.getSourceFiles().filter(isProjectSourceFile)
 
-  return sourceFiles.flatMap(sourceFileProblems(project.program))
+  return sourceFiles.flatMap(sourceFileProblems(project.program)(projectRoot))
 }
 
-const registerFixtureTest = (fixtureName: string): void => {
-  test(`fixture compiles: ${fixtureName}`, async () => {
-    const fixturePath = path.join(fixturesRoot, fixtureName)
-    const workspace = await Effect.runPromise(loadProject(fixturePath))
-    const problems = (await Promise.all(workspace.projects.map(projectProblems))).flat()
+const registerFixtureTest = (fixture: FixtureProject): void => {
+  test(`fixture compiles: ${fixture.label}`, async () => {
+    const workspace = await Effect.runPromise(loadProject(fixture.projectPath))
+    const problems = (
+      await Promise.all(
+        workspace.projects.map((project) => projectProblems(project, fixture.projectPath))
+      )
+    ).flat()
 
     assert.deepEqual(
       problems,
@@ -59,4 +111,4 @@ const registerFixtureTest = (fixtureName: string): void => {
   })
 }
 
-fixtureNames.forEach(registerFixtureTest)
+;[...fixtureProjects, ...exampleProjects()].forEach(registerFixtureTest)

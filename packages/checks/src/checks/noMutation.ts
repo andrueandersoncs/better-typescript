@@ -3,12 +3,9 @@ import * as ts from "typescript"
 import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
 import { isUnseenType } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const message = "Avoid mutating first-party data."
 
 const hint =
@@ -291,8 +288,9 @@ const mutationMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(mutationNodeKinds)(isMutationCandidate)(mutationMatches)
-
-export const noMutation: Check = check
-
-export const noMutationExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-mutation")
+export const noMutation = defineCheck(
+  "no-mutation",
+  mutationNodeKinds,
+  isMutationCandidate,
+  mutationMatches
+)

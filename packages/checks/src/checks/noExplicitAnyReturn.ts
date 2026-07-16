@@ -6,12 +6,10 @@ import {
   returnTypeDeclarationKinds
 } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const explicitAnyReturnElements = (context: CheckContext) => {
   const element = detection(context)
@@ -33,9 +31,9 @@ const explicitAnyReturnElements = (context: CheckContext) => {
   return matches
 }
 
-export const noExplicitAnyReturn: Check = nodeCheck(returnTypeDeclarationKinds)(
-  isReturnTypeDeclaration
-)(explicitAnyReturnElements)
-
-export const noExplicitAnyReturnExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-explicit-any-return")
+export const noExplicitAnyReturn = defineCheck(
+  "no-explicit-any-return",
+  returnTypeDeclarationKinds,
+  isReturnTypeDeclaration,
+  explicitAnyReturnElements
+)

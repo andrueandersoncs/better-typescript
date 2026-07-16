@@ -21,8 +21,7 @@ export class ProjectConfig extends Data.Class<{
 
 /**
  * WorkspaceConfigs is the shared rootPath, projects contract used by
- * reportFromWorkspaceConfigs, discoverWorkspace, and
- * reportBlocksFromWorkspaceConfigs.
+ * discoverWorkspace, workspaceUpdates, and workspaceSignalsFromConfigs.
  *
  * @remarks
  *   It remains explicit because these independent owners need one stable
@@ -37,7 +36,7 @@ export class WorkspaceConfigs extends Data.Class<{
 
 /**
  * LoadedProject is the shared program, configPath, rootPath contract used by
- * loadedProjectsSchema, astNodes, and loadProjectConfig.
+ * loadedProjectsSchema, loadProjectConfig, and contextFromLoadedProject.
  *
  * @remarks
  *   It remains explicit because these independent owners need one stable
@@ -54,14 +53,13 @@ export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
 const loadedProjectsSchema = Schema.Array(LoadedProject)
 
 /**
- * LoadedWorkspace is the shared rootPath, projects contract used by
- * reportFromWiring, loadProject, and reportEventsFromWiring.
+ * LoadedWorkspace is the public loadProject return and runtime-schema seam.
  *
  * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
+ *   It remains explicit because that public contract must evolve independently
+ *   from project-loading internals. Removing it would couple callers and
+ *   runtime validation to internal representations.
+ * @modelRole boundary
  */
 export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorkspace")({
   rootPath: Schema.String,

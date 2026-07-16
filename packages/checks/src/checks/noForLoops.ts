@@ -1,12 +1,9 @@
 import { Array, pipe, Option } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const forStatementKind = ts.SyntaxKind.ForStatement
 
 const forLoopElements = (context: CheckContext) => {
@@ -37,6 +34,9 @@ const forLoopElements = (context: CheckContext) => {
 
 const forStatementKinds = Array.of(forStatementKind)
 
-export const noForLoops: Check = nodeCheck(forStatementKinds)(ts.isForStatement)(forLoopElements)
-
-export const noForLoopsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-for-loops")
+export const noForLoops = defineCheck(
+  "no-for-loops",
+  forStatementKinds,
+  ts.isForStatement,
+  forLoopElements
+)
