@@ -73,12 +73,12 @@ const relativeWorkspacePath = (
   return path.relative(workspaceRoot, absoluteCandidatePath).replaceAll(path.sep, "/")
 }
 
-const collectWorkspaceSignals = <A>(
-  config: WiringConfig,
+const collectWorkspaceSignals = <A, E>(
+  config: WiringConfig<E>,
   workspaceRoot: string,
   projects: ReadonlyArray<A>,
   toContext: (project: A) => ProgramContext
-): Effect.Effect<ReadonlyArray<WiringSignals>, Error> => {
+): Effect.Effect<ReadonlyArray<WiringSignals>> => {
   const matchersByWiring = Array.map(config, (entry) =>
     Array.map(entry.files, (pattern) => compileFileGlob(pattern, globOptions))
   )
@@ -236,9 +236,9 @@ const collectWorkspaceSignals = <A>(
  *   against one shared boundary.
  */
 export const workspaceSignals =
-  (config: WiringConfig) =>
+  <E>(config: WiringConfig<E>) =>
   (workspaceRoot: string) =>
-  (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+  (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> =>
     collectWorkspaceSignals(config, workspaceRoot, contexts, Function.identity)
 
 /**
@@ -250,10 +250,10 @@ export const workspaceSignals =
  *   solution workspace exhausts the JavaScript heap.
  */
 export const workspaceSignalsForProjects =
-  (config: WiringConfig) =>
+  <E>(config: WiringConfig<E>) =>
   (workspaceRoot: string) =>
   <A>(projects: ReadonlyArray<A>) =>
-  (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+  (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>> =>
     collectWorkspaceSignals(config, workspaceRoot, projects, toContext)
 
 /**
@@ -264,8 +264,8 @@ export const workspaceSignalsForProjects =
  *   same batch, not a partial stream.
  */
 export const deriveAdvice =
-  (wiring: Wiring) =>
-  (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, Error> =>
+  <E>(wiring: Wiring<E>) =>
+  (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, E> =>
     pipe(wiring.derive(signals), collectSignals)
 
 const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
@@ -360,10 +360,8 @@ export const reportBlocks =
  * local blocks retain configuration-entry and check order.
  */
 export const batchReportBlocks =
-  (config: WiringConfig) =>
-  (
-    wiringSignals: ReadonlyArray<WiringSignals>
-  ): Effect.Effect<ReadonlyArray<ReportBlock>, Error> => {
+  <E>(config: WiringConfig<E>) =>
+  (wiringSignals: ReadonlyArray<WiringSignals>): Effect.Effect<ReadonlyArray<ReportBlock>, E> => {
     const matchedEntries = pipe(
       Array.zip(config, wiringSignals),
       Array.filter(([, current]) => current.matched)
@@ -380,7 +378,7 @@ export const batchReportBlocks =
 
 export const filterFallbackAdviceForUncoveredFiles =
   (specific: ReadonlyArray<Advice>) =>
-  (fallbackAdvice: Stream.Stream<Advice, Error>): Stream.Stream<Advice, Error> => {
+  <E, R>(fallbackAdvice: Stream.Stream<Advice, E, R>): Stream.Stream<Advice, E, R> => {
     const fileAdvice = Array.filter(specific, isFileLevelAdvice)
     const paths = Array.map(fileAdvice, fileAdvicePath)
     const coveredFiles = HashSet.fromIterable(paths)
@@ -402,10 +400,10 @@ export const filterFallbackAdviceForUncoveredFiles =
  *   Suppression is required because fallback must not duplicate file-level advice
  *   that a specific rule already covered.
  */
-export const withFallbackAdvice = (
-  specificAdvice: Stream.Stream<Advice, Error>,
-  fallbackAdvice: Stream.Stream<Advice, Error>
-): Stream.Stream<Advice, Error> =>
+export const withFallbackAdvice = <E, R>(
+  specificAdvice: Stream.Stream<Advice, E, R>,
+  fallbackAdvice: Stream.Stream<Advice, E, R>
+): Stream.Stream<Advice, E, R> =>
   pipe(
     collectSignals(specificAdvice),
     Effect.map((specific) => {
@@ -454,7 +452,7 @@ export const initialReportEvents =
 
 export const signalOf =
   (signals: ReadonlyArray<Signal>) =>
-  (name: string): Stream.Stream<Detection, Error> => {
+  (name: string): Stream.Stream<Detection> => {
     const namedSignal = Array.findFirst(signals, (signal) => signal.name === name)
     const detections = pipe(namedSignal, Option.map(Struct.get("detections")))
 
@@ -542,14 +540,16 @@ const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A =
   return Effect.runSync(failed)
 }
 
-export const makeWiring = (definition: Pick<Wiring, "checks" | "derive">): Wiring => {
-  const wiring = new Wiring(definition)
+export const makeWiring = <E = never>(
+  definition: Pick<Wiring<E>, "checks" | "derive">
+): Wiring<E> => {
+  const wiring = new Wiring<E>(definition)
   return validateCheckNames(wiring.checks, wiring)
 }
 
-export const defineConfig = (
-  config: ReadonlyArray<Pick<WiringEntry, "files" | "wiring">>
-): WiringConfig => {
+export const defineConfig = <E = never>(
+  config: ReadonlyArray<Pick<WiringEntry<E>, "files" | "wiring">>
+): WiringConfig<E> => {
   const invalidIndexes = Array.filterMap(config, (entry, index) => {
     const hasFiles = entry.files.length > 0
     const hasOnlyNonEmptyPatterns = Array.every(entry.files, isFileGlob)
@@ -574,7 +574,7 @@ export const defineConfig = (
 
     const wiring = makeWiring(entry.wiring)
 
-    return new WiringEntry({
+    return new WiringEntry<E>({
       files: entry.files,
       wiring
     })

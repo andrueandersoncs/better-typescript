@@ -159,7 +159,7 @@ const localExamples = [
 
 const local = namedCheck("acme/local-check", localCheck, localExamples)
 
-const localAdvice = (detections: Stream.Stream<Detection, Error>): Stream.Stream<Advice, Error> =>
+const localAdvice = (detections: Stream.Stream<Detection>): Stream.Stream<Advice> =>
   deriveSignals((elements) =>
     elements.length === 0
       ? []

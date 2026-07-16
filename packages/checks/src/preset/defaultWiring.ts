@@ -80,6 +80,7 @@ import {
   noNestedIfStatementsExamples
 } from "../checks/noNestedIfStatements.js"
 import { noNewError, noNewErrorExamples } from "../checks/noNewError.js"
+import { noErrorType, noErrorTypeExamples } from "../checks/noErrorType.js"
 import { noNonNullAssertion, noNonNullAssertionExamples } from "../checks/noNonNullAssertion.js"
 import { noRawObjectTypes, noRawObjectTypesExamples } from "../checks/noRawObjectTypes.js"
 import { noSwitchStatements, noSwitchStatementsExamples } from "../checks/noSwitchStatements.js"
@@ -175,7 +176,7 @@ import { collectSignals } from "@better-typescript/core/engine/derive"
 import { namedDetection } from "@better-typescript/core/engine/location"
 import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 
-const nameDetections = (signal: Signal): Stream.Stream<NamedDetection, Error> => {
+const nameDetections = (signal: Signal): Stream.Stream<NamedDetection> => {
   const toNamedDetection = namedDetection(signal.name)
 
   return pipe(Stream.fromIterable(signal.detections), Stream.map(toNamedDetection))
@@ -304,6 +305,8 @@ const preferImplicitReturnCheck = namedCheck(
 const noThrowCheck = namedCheck("no-throw", noThrow, noThrowExamples)
 
 const noNewErrorCheck = namedCheck("no-new-error", noNewError, noNewErrorExamples)
+
+const noErrorTypeCheck = namedCheck("no-error-type", noErrorType, noErrorTypeExamples)
 
 const noTryCatchCheck = namedCheck("no-try-catch", noTryCatch, noTryCatchExamples)
 
@@ -513,6 +516,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferImplicitReturnCheck,
   noThrowCheck,
   noNewErrorCheck,
+  noErrorTypeCheck,
   noTryCatchCheck,
   noUndefinedCheck,
   noUnusedCheck,
@@ -555,7 +559,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferCurriedDataLastFunctionsCheck
 )
 
-export const defaultDerive = (signals: ReadonlyArray<Signal>): Stream.Stream<Advice, Error> => {
+export const defaultDerive = (signals: ReadonlyArray<Signal>): Stream.Stream<Advice> => {
   const elementsOf = signalOf(signals)
   const reportedSignals = Array.filter(signals, Struct.get("reported"))
   const signalStream = Stream.fromIterable(reportedSignals)

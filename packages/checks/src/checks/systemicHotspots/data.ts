@@ -37,6 +37,6 @@ export class SystemicHotspotsInput extends Schema.Class<SystemicHotspotsInput>(
   hotSubsystem: adviceSignal,
   highSignalDensity: adviceSignal
 }) {
-  declare readonly hotSubsystem: Stream.Stream<Advice, Error>
-  declare readonly highSignalDensity: Stream.Stream<Advice, Error>
+  declare readonly hotSubsystem: Stream.Stream<Advice>
+  declare readonly highSignalDensity: Stream.Stream<Advice>
 }

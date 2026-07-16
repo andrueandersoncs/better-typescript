@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Array, Effect, Function, flow, pipe, Option, Struct } from "effect"
+import { Array, Context, Effect, Function, Layer, flow, pipe, Option, Struct } from "effect"
 import { createJiti } from "jiti"
 import { NamedCheck, Wiring, WiringEntry } from "../../engine/report/data.js"
 import type { WiringConfig } from "../../engine/report/data.js"
@@ -34,7 +34,7 @@ const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
 
 const isFunctionValue = (value: unknown): value is () => unknown => typeof value === "function"
 
-const isError = (cause: unknown): cause is Error => cause instanceof Error
+const isError = (cause: unknown): cause is { readonly message: string } => cause instanceof Error
 
 const hasText = (value: string): boolean => value.length > 0
 
@@ -270,9 +270,9 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
     return yield* failConfig(configPath, reason)
   }
 
-  const derive = record.derive as Wiring["derive"]
+  const derive = record.derive as Wiring<unknown>["derive"]
 
-  return new Wiring({ checks, derive })
+  return new Wiring<unknown>({ checks, derive })
 })
 
 const isFileGlob = (value: unknown): value is string => {
@@ -315,7 +315,7 @@ const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
   const files = filesOption.value
   const wiring = yield* validateWiringShape(configPath, `${fieldPath}.wiring`, record.wiring)
 
-  return new WiringEntry({ files, wiring })
+  return new WiringEntry<unknown>({ files, wiring })
 })
 
 const validateWiringConfig = Effect.fn("validateWiringConfig")(function* (
@@ -365,11 +365,21 @@ const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function*
   return yield* validateWiringConfig(configPath, exportValue)
 })
 
+export class LoadWiringConfig extends Context.Service<
+  LoadWiringConfig,
+  {
+    readonly loadWiringConfig: (
+      projectDirectory: string,
+      fallback: WiringConfig<unknown>
+    ) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError>
+  }
+>()("LoadWiringConfig") {}
+
 export const loadWiringConfig: (
   projectDirectory: string,
-  fallback: WiringConfig
-) => Effect.Effect<WiringConfig, ProjectWiringConfigError> = Effect.fn("loadWiringConfig")(
-  function* (projectDirectory: string, fallback: WiringConfig) {
+  fallback: WiringConfig<unknown>
+) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn("loadWiringConfig")(
+  function* (projectDirectory: string, fallback: WiringConfig<unknown>) {
     const configPath = path.resolve(projectDirectory, configFileName)
     const exists = yield* Effect.sync(() => fs.existsSync(configPath))
     const missingConfig = !exists
@@ -381,3 +391,7 @@ export const loadWiringConfig: (
     return yield* loadExistingWiringConfig(configPath)
   }
 )
+
+export const LoadWiringConfigLive: Layer.Layer<LoadWiringConfig> = Layer.succeed(LoadWiringConfig, {
+  loadWiringConfig
+})

@@ -27,7 +27,7 @@ const reportedSignal = (name: string, detections: ReadonlyArray<Detection>): Sig
 const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
   new Signal({ name, reported: false, detections, examples: [] })
 
-const collectAdvice = (advice: Stream.Stream<Advice, Error>): Promise<ReadonlyArray<Advice>> =>
+const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(Stream.runCollect(advice))
 
 const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>

@@ -37,6 +37,6 @@ export class PipelineHostileInput extends Schema.Class<PipelineHostileInput>(
   noNestedCalls: detectionSignal,
   preferCurriedDataLastFunctions: detectionSignal
 }) {
-  declare readonly noNestedCalls: Stream.Stream<Detection, Error>
-  declare readonly preferCurriedDataLastFunctions: Stream.Stream<Detection, Error>
+  declare readonly noNestedCalls: Stream.Stream<Detection>
+  declare readonly preferCurriedDataLastFunctions: Stream.Stream<Detection>
 }

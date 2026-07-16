@@ -52,9 +52,7 @@ const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number
 const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
   Array.from(new Set(detections.map((element) => element.location.path))).sort()
 
-const consoleLogBoundaryAdvice = (
-  detections: Stream.Stream<Detection, Error>
-): Stream.Stream<Advice, Error> =>
+const consoleLogBoundaryAdvice = (detections: Stream.Stream<Detection>): Stream.Stream<Advice> =>
   deriveSignals((elements: ReadonlyArray<Detection>) =>
     detectionPaths(elements).map(
       (path) =>

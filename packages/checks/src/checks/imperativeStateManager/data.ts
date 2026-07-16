@@ -46,11 +46,11 @@ export class ImperativeStateManagerInput extends Schema.Class<ImperativeStateMan
   noMutableArrayMethods: detectionSignal,
   noMutableVariableDeclarations: detectionSignal
 }) {
-  declare readonly noMutation: Stream.Stream<Detection, Error>
-  declare readonly preferHashMap: Stream.Stream<Detection, Error>
-  declare readonly preferHashSet: Stream.Stream<Detection, Error>
-  declare readonly noMutableArrayMethods: Stream.Stream<Detection, Error>
-  declare readonly noMutableVariableDeclarations: Stream.Stream<Detection, Error>
+  declare readonly noMutation: Stream.Stream<Detection>
+  declare readonly preferHashMap: Stream.Stream<Detection>
+  declare readonly preferHashSet: Stream.Stream<Detection>
+  declare readonly noMutableArrayMethods: Stream.Stream<Detection>
+  declare readonly noMutableVariableDeclarations: Stream.Stream<Detection>
 }
 
 /**

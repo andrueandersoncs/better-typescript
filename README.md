@@ -185,7 +185,7 @@ export const config = () => config
 The loaded value is structurally validated as a flat `WiringConfig`:
 
 ```ts
-ReadonlyArray<{
+type WiringConfig<E> = ReadonlyArray<{
   files: NonEmptyReadonlyArray<string>
   wiring: {
     checks: ReadonlyArray<{
@@ -194,7 +194,7 @@ ReadonlyArray<{
       reported?: boolean
       examples?: ReadonlyArray<RefactorExample>
     }>
-    derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, Error>
+    derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, E>
   }
 }>
 ```
@@ -413,9 +413,7 @@ const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number
 const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
   Array.from(new Set(detections.map((element) => element.location.path))).sort()
 
-const consoleLogAdvice = (
-  detections: Stream.Stream<Detection, Error>
-): Stream.Stream<Advice, Error> =>
+const consoleLogAdvice = (detections: Stream.Stream<Detection>): Stream.Stream<Advice> =>
   deriveSignals((elements: ReadonlyArray<Detection>) =>
     detectionPaths(elements).map(
       (path) =>
@@ -434,7 +432,7 @@ const consoleLogEvidence: NamedCheck = silentCheck("acme/console-log-evidence", 
 
 const wiring: Wiring = makeWiring({
   checks: [...defaultChecks, consoleLogEvidence],
-  derive: (signals: ReadonlyArray<Signal>): Stream.Stream<Advice, Error> => {
+  derive: (signals: ReadonlyArray<Signal>): Stream.Stream<Advice> => {
     const elementsOf = signalOf(signals)
     const presetAdvice = defaultDerive(signals)
     const localAdvice = consoleLogAdvice(elementsOf("acme/console-log-evidence"))

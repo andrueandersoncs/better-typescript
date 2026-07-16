@@ -250,7 +250,7 @@ export const foldAst =
 
 export const astNodesFromContext = (
   context: ProgramContext
-): Stream.Stream<AstNodeElement, Error> => {
+): Stream.Stream<AstNodeElement, never> => {
   const sourceFiles = context.program.getSourceFiles()
   const projectSourceFiles = Array.filter(sourceFiles, isProjectSourceFile)
 
@@ -286,8 +286,8 @@ const stopWatch = (watch: ts.WatchOfConfigFile<ts.BuilderProgram>): Effect.Effec
 export const programUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
-): Stream.Stream<ProgramContext, Error> =>
-  Stream.callback<ProgramContext, Error>((queue) => {
+): Stream.Stream<ProgramContext> =>
+  Stream.callback<ProgramContext>((queue) => {
     const onProgramCreate = (builder: ts.BuilderProgram): boolean => {
       const program = builder.getProgram()
       const context = contextFor(config.rootPath)(program)
@@ -372,7 +372,7 @@ export const diffCheckableFiles =
 export const sourceUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
-): Stream.Stream<SourceUpdate, Error> =>
+): Stream.Stream<SourceUpdate> =>
   pipe(
     programUpdates(config, watchOptions),
     Stream.mapAccum(Function.constant(emptyFileIndex), (previous, context) => {
@@ -381,3 +381,4 @@ export const sourceUpdates = (
       return Tuple.make(next, updates)
     })
   )
+

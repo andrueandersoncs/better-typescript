@@ -28,28 +28,32 @@ import {
   WorkspaceConfigs
 } from "./data.js"
 
-export const discoverWorkspace: (projectPath: string) => Effect.Effect<WorkspaceConfigs, Error> =
-  Effect.fn("discoverWorkspace")(function* (projectPath: string) {
-    const rootPath = path.resolve(projectPath)
-    const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
-    const configPath = Option.fromNullishOr(foundConfigPath)
+export const discoverWorkspace: (
+  projectPath: string
+) => Effect.Effect<
+  WorkspaceConfigs,
+  MissingTsconfigError | CircularProjectReferenceError | InvalidTsconfigError
+> = Effect.fn("discoverWorkspace")(function* (projectPath: string) {
+  const rootPath = path.resolve(projectPath)
+  const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
+  const configPath = Option.fromNullishOr(foundConfigPath)
 
-    if (Option.isNone(configPath)) {
-      return yield* new MissingTsconfigError({ rootPath })
-    }
+  if (Option.isNone(configPath)) {
+    return yield* new MissingTsconfigError({ rootPath })
+  }
 
-    const rootAncestorPaths = HashSet.empty<string>()
-    const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
+  const rootAncestorPaths = HashSet.empty<string>()
+  const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
 
-    const projects = Array.dedupeWith(
-      discoveredProjects,
-      (self, that) => self.configPath === that.configPath
-    )
+  const projects = Array.dedupeWith(
+    discoveredProjects,
+    (self, that) => self.configPath === that.configPath
+  )
 
-    const workspaceRootPath = path.dirname(configPath.value)
+  const workspaceRootPath = path.dirname(configPath.value)
 
-    return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
-  })
+  return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
+})
 
 export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   const program = ts.createProgram({
@@ -65,7 +69,7 @@ export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   })
 }
 
-export const checkableSourceFiles = (project: LoadedProject): Stream.Stream<ts.SourceFile, Error> =>
+export const checkableSourceFiles = (project: LoadedProject): Stream.Stream<ts.SourceFile, never> =>
   pipe(project.program.getSourceFiles(), Array.filter(isProjectSourceFile), Stream.fromIterable)
 
 export const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
@@ -74,7 +78,7 @@ export const contextFromLoadedProject = (project: LoadedProject): ProgramContext
   return createContext(project.program)
 }
 
-export const astNodes = (project: LoadedProject): Stream.Stream<AstNodeElement, Error> =>
+export const astNodes = (project: LoadedProject): Stream.Stream<AstNodeElement, never> =>
   pipe(project.program, contextFor(project.rootPath), astNodesFromContext)
 
 const emptyDetections: ReadonlyArray<Detection> = Array.empty()
@@ -87,15 +91,15 @@ const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext = flow
 )
 
 export const workspaceSignalsFromConfigs =
-  (config: WiringConfig) =>
-  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>> =>
     workspaceSignalsForProjects(config)(workspace.rootPath)(workspace.projects)(
       contextFromProjectConfig
     )
 
 export const runCheckOnProject =
   (checks: ReadonlyArray<Check>) =>
-  (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>, Error> =>
+  (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
     Effect.sync(() => {
       const context = contextFromLoadedProject(project)
       const checksInEveryFile = runChecks(checks)(includeEverySourceFile)
@@ -105,8 +109,8 @@ export const runCheckOnProject =
     })
 
 export const reportBlocksFromConfig =
-  (config: WiringConfig) =>
-  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<ReportBlock>, E> =>
     pipe(
       workspace.projects,
       Array.map(contextFromLoadedProject),
@@ -115,13 +119,13 @@ export const reportBlocksFromConfig =
     )
 
 export const reportBlocksFromWorkspaceConfigs =
-  (config: WiringConfig) =>
-  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<ReportBlock>, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<ReportBlock>, E> =>
     pipe(workspaceSignalsFromConfigs(config)(workspace), Effect.flatMap(batchReportBlocks(config)))
 
 export const reportFromConfig =
-  (config: WiringConfig) =>
-  (workspace: LoadedWorkspace): Stream.Stream<string, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: LoadedWorkspace): Stream.Stream<string, E> =>
     pipe(
       reportBlocksFromConfig(config)(workspace),
       Stream.fromIterableEffect,
@@ -129,8 +133,8 @@ export const reportFromConfig =
     )
 
 export const reportFromWorkspaceConfigs =
-  (config: WiringConfig) =>
-  (workspace: WorkspaceConfigs): Stream.Stream<string, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: WorkspaceConfigs): Stream.Stream<string, E> =>
     pipe(
       reportBlocksFromWorkspaceConfigs(config)(workspace),
       Stream.fromIterableEffect,
@@ -138,8 +142,8 @@ export const reportFromWorkspaceConfigs =
     )
 
 export const reportEventsFromConfig =
-  (config: WiringConfig) =>
-  (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: LoadedWorkspace): Stream.Stream<ReportEvent, E> =>
     pipe(
       reportBlocksFromConfig(config)(workspace),
       Effect.map(initialReportEvents(workspace.rootPath)),
@@ -147,26 +151,33 @@ export const reportEventsFromConfig =
     )
 
 export const reportEventsFromWorkspaceConfigs =
-  (config: WiringConfig) =>
-  (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, Error> =>
+  <E>(config: WiringConfig<E>) =>
+  (workspace: WorkspaceConfigs): Stream.Stream<ReportEvent, E> =>
     pipe(
       reportBlocksFromWorkspaceConfigs(config)(workspace),
       Effect.map(initialReportEvents(workspace.rootPath)),
       Stream.fromIterableEffect
     )
 
-export const loadProject: (projectPath: string) => Effect.Effect<LoadedWorkspace, Error> =
-  Effect.fn("loadProject")(function* (projectPath: string) {
-    const workspace = yield* discoverWorkspace(projectPath)
-    const projects = Array.map(workspace.projects, loadProjectConfig)
+export const loadProject: (
+  projectPath: string
+) => Effect.Effect<
+  LoadedWorkspace,
+  MissingTsconfigError | CircularProjectReferenceError | InvalidTsconfigError
+> = Effect.fn("loadProject")(function* (projectPath: string) {
+  const workspace = yield* discoverWorkspace(projectPath)
+  const projects = Array.map(workspace.projects, loadProjectConfig)
 
-    return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
-  })
+  return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
+})
 
 const discoverConfig: (
   configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
-) => Effect.Effect<ReadonlyArray<ProjectConfig>, Error> = Effect.fn("discoverConfig")(function* (
+) => Effect.Effect<
+  ReadonlyArray<ProjectConfig>,
+  CircularProjectReferenceError | InvalidTsconfigError
+> = Effect.fn("discoverConfig")(function* (
   configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
 ) {
@@ -234,3 +245,5 @@ const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
     getCurrentDirectory: ts.sys.getCurrentDirectory,
     getNewLine: Function.constant(ts.sys.newLine)
   })
+
+

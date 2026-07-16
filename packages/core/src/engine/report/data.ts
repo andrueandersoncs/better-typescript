@@ -42,13 +42,15 @@ export class Signal extends Data.Class<{
  *
  * @remarks
  *   It remains explicit because configuration loading and report execution
- *   exchange checks with their matching derivation function. Removing it would
- *   let those two halves be configured independently and drift.
+ *   exchange checks with their matching derivation function. The error
+ *   parameter preserves derivation failures through report and watch streams
+ *   instead of widening them at this seam. Removing it would let those two
+ *   halves be configured independently and drift.
  * @modelRole shared
  */
-export class Wiring extends Data.Class<{
+export class Wiring<E = never> extends Data.Class<{
   readonly checks: ReadonlyArray<NamedCheck>
-  readonly derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, Error>
+  readonly derive: (signals: ReadonlyArray<Signal>) => Stream.Stream<Advice, E>
 }> {}
 
 /**
@@ -60,9 +62,9 @@ export class Wiring extends Data.Class<{
  *   pairing as positional arrays or anonymous objects at the boundary.
  * @modelRole boundary
  */
-export class WiringEntry extends Data.Class<{
+export class WiringEntry<E = never> extends Data.Class<{
   readonly files: Array.NonEmptyReadonlyArray<string>
-  readonly wiring: Wiring
+  readonly wiring: Wiring<E>
 }> {}
 
 /**
@@ -74,7 +76,7 @@ export class WiringEntry extends Data.Class<{
  *   at each interface and obscure that ordering requirement.
  * @modelRole boundary
  */
-export type WiringConfig = ReadonlyArray<WiringEntry>
+export type WiringConfig<E = never> = ReadonlyArray<WiringEntry<E>>
 
 /**
  * WiringSignals records whether one wiring matched and the signals it produced.

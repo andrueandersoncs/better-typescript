@@ -64,7 +64,7 @@ const loadFixtureProject = async (name: string): Promise<LoadedProject> => {
   return project
 }
 
-const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
+const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
   Effect.runPromise(Stream.runCollect(stream))
 
 const relativeFileName = (project: LoadedProject, sourceFile: ts.SourceFile): string =>
@@ -181,7 +181,7 @@ const advice = (
 const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
   blocks.map((block) => block.split("\n")[0])
 
-const delayedSource = <A>(items: ReadonlyArray<A>): Stream.Stream<A, Error> =>
+const delayedSource = <A>(items: ReadonlyArray<A>): Stream.Stream<A> =>
   pipe(
     Stream.fromIterable(items),
     Stream.mapEffect((item) => pipe(Effect.sleep("1 millis"), Effect.as(item)))
@@ -208,13 +208,13 @@ const namedNoOpCheck = (name: string): NamedCheck => namedCheck(name, noOpCheck,
 
 const silentNoOpCheck = (name: string): NamedCheck => silentCheck(name, noOpCheck)
 
-const thrownError = (run: () => unknown): Error => {
+const thrownMessage = (run: () => unknown): string => {
   try {
     run()
   } catch (error) {
     assert.ok(error instanceof Error, "expected an Error to be thrown")
 
-    return error
+    return error.message
   }
 
   assert.fail("expected an Error to be thrown")
@@ -652,6 +652,24 @@ test("reportFromConfig preserves asynchronously emitted advice", async () => {
   ])
 })
 
+test("reportFromConfig preserves the derivation error channel", async () => {
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const failure = "derive failure" as const
+
+  const fallibleWiring = makeWiring({
+    checks: [],
+    derive: () => Stream.fail(failure)
+  })
+
+  const fallibleConfig = defineConfig([{ files: ["**/*"], wiring: fallibleWiring }])
+
+  const output: Stream.Stream<string, typeof failure> = reportFromConfig(fallibleConfig)(workspace)
+
+  const actual = await Effect.runPromise(pipe(output, Stream.runCollect, Effect.flip))
+
+  assert.equal(actual, failure)
+})
+
 test("report stream emits check blocks and omits silent checks", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(report(workspace))
@@ -772,25 +790,25 @@ test("withFallbackAdvice emits specific advice before applicable fallback and ru
 })
 
 test("makeWiring rejects duplicate reported check names and reports the collisions", () => {
-  const error = thrownError(() =>
+  const message = thrownMessage(() =>
     makeWiring(testWiring([namedNoOpCheck("same-check"), namedNoOpCheck("same-check")]))
   )
 
-  assert.match(error.message, /Duplicate check names: same-check/)
+  assert.match(message, /Duplicate check names: same-check/)
 })
 
 test("makeWiring rejects duplicate silent check names and reports the collisions", () => {
-  const error = thrownError(() =>
+  const message = thrownMessage(() =>
     makeWiring(testWiring([silentNoOpCheck("same-check"), silentNoOpCheck("same-check")]))
   )
 
-  assert.match(error.message, /Duplicate check names: same-check/)
+  assert.match(message, /Duplicate check names: same-check/)
 })
 
 test("makeWiring rejects duplicate names across reported and silent checks", () => {
-  const error = thrownError(() =>
+  const message = thrownMessage(() =>
     makeWiring(testWiring([namedNoOpCheck("shared-name"), silentNoOpCheck("shared-name")]))
   )
 
-  assert.match(error.message, /Duplicate check names: shared-name/)
+  assert.match(message, /Duplicate check names: shared-name/)
 })

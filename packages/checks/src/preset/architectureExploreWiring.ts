@@ -18,9 +18,7 @@ import { testPastInterface } from "../checks/architectureExplore/testPastInterfa
 import { hardToTestHotspot } from "../checks/architectureExplore/hardToTestHotspot.js"
 import { hypotheticalSeam } from "../checks/architectureExplore/hypotheticalSeam.js"
 
-const nameArchitectureExploreDetections = (
-  signal: Signal
-): Stream.Stream<NamedDetection, Error> => {
+const nameArchitectureExploreDetections = (signal: Signal): Stream.Stream<NamedDetection> => {
   const toNamedDetection = namedDetection(signal.name)
 
   return pipe(Stream.fromIterable(signal.detections), Stream.map(toNamedDetection))
@@ -55,7 +53,7 @@ export const architectureExploreChecks: ReadonlyArray<NamedCheck> = Array.make(
 
 export const architectureExploreDerive = (
   signals: ReadonlyArray<Signal>
-): Stream.Stream<Advice, Error> => {
+): Stream.Stream<Advice> => {
   const namedElements = pipe(
     Stream.fromIterable(signals),
     Stream.flatMap(nameArchitectureExploreDetections)

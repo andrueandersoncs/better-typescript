@@ -67,7 +67,7 @@ const writeConfig = (projectDirectory: string, source: string): Promise<void> =>
 const loadConfigFailure = (projectDirectory: string): Promise<ProjectWiringConfigError> =>
   Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig)))
 
-const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
+const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
   Effect.runPromise(Stream.runCollect(stream))
 
 test("loadWiringConfig returns fallback config when a project has no config", async () => {

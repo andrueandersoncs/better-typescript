@@ -31,10 +31,10 @@ const namedElements = (
 ): ReadonlyArray<NamedDetection> =>
   elements.map((detection) => new NamedDetection({ name, detection }))
 
-const signalStream = <A>(elements: ReadonlyArray<A>): Stream.Stream<A, Error> =>
+const signalStream = <A>(elements: ReadonlyArray<A>): Stream.Stream<A> =>
   Stream.fromIterable(elements)
 
-const collectAdvice = (advice: Stream.Stream<Advice, Error>): Promise<ReadonlyArray<Advice>> =>
+const collectAdvice = <E>(advice: Stream.Stream<Advice, E>): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(Stream.runCollect(advice))
 
 const adviceTitles = (advice: ReadonlyArray<Advice>): ReadonlyArray<string> =>

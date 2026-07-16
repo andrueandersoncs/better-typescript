@@ -34,7 +34,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   return isSystemic ? Array.of(advice) : Array.empty()
 }
 
-export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice, Error> => {
+export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice> => {
   const hotSubsystem = collectSignals(input.hotSubsystem)
   const highSignalDensity = collectSignals(input.highSignalDensity)
 

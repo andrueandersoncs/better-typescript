@@ -16,13 +16,13 @@ import { Location } from "../location/data.js"
 import { AdviceReportKey, ReportBlock } from "../report/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
-export const collectSignals: <A>(
-  signals: Stream.Stream<A, Error>
-) => Effect.Effect<ReadonlyArray<A>, Error> = Stream.runCollect
+export const collectSignals: <A, E, R>(
+  signals: Stream.Stream<A, E, R>
+) => Effect.Effect<ReadonlyArray<A>, E, R> = Stream.runCollect
 
 export const deriveSignals =
   <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
-  (signals: Stream.Stream<A, Error>): Stream.Stream<B, Error> =>
+  <E, R>(signals: Stream.Stream<A, E, R>): Stream.Stream<B, E, R> =>
     pipe(collectSignals(signals), Effect.map(derive), Stream.fromArrayEffect)
 
 const namedDetectionName = Struct.get<NamedDetection, "name">("name")
@@ -232,3 +232,4 @@ export const adviceReportBlock = (advice: Advice): ReportBlock => {
 export const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
 
 export const fileAdvicePath = (advice: Advice): string => advice.location.path
+

@@ -50,7 +50,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
   )
 }
 
-export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice, Error> => {
+export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice> => {
   const noNestedCalls = collectSignals(input.noNestedCalls)
   const preferCurriedDataLastFunctions = collectSignals(input.preferCurriedDataLastFunctions)
 

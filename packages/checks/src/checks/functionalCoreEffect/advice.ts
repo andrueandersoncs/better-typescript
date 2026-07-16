@@ -158,7 +158,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
 
 export const functionalCoreEffectDerive = (
   signals: ReadonlyArray<Signal>
-): Stream.Stream<Advice, Error> => {
+): Stream.Stream<Advice> => {
   const boundaryDetections = detectionsOf(signals, functionalCoreBoundaryCheckName)
   const shapeDetections = detectionsOf(signals, functionalCoreShapeCheckName)
   const localShapeAdvice = shapeAdvice(shapeDetections)

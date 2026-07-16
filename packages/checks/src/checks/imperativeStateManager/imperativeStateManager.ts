@@ -88,7 +88,7 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
 
 export const imperativeStateManager = (
   input: ImperativeStateManagerInput
-): Stream.Stream<Advice, Error> => {
+): Stream.Stream<Advice> => {
   const noMutation = collectSignals(input.noMutation)
   const preferHashMap = collectSignals(input.preferHashMap)
   const preferHashSet = collectSignals(input.preferHashSet)

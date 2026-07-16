@@ -69,7 +69,7 @@ const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
-const collectStream = <A>(stream: Stream.Stream<A, Error>): Promise<ReadonlyArray<A>> =>
+const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
   Effect.runPromise(Stream.runCollect(stream))
 
 const loadFixtureProject = async (): Promise<LoadedProject> => {

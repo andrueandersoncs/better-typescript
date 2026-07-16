@@ -41,7 +41,7 @@ const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty
 export const workspaceUpdates = (
   workspace: WorkspaceConfigs,
   watchOptions: Option.Option<ts.WatchOptions>
-): Stream.Stream<WorkspaceUpdate, Error> => {
+): Stream.Stream<WorkspaceUpdate> => {
   const projectCount = workspace.projects.length
 
   const updateStreams = Array.map(workspace.projects, (config, index) =>
@@ -111,10 +111,10 @@ export const workspaceUpdates = (
  *   outside the edited set through the type graph.
  */
 export const signalUpdates =
-  (config: WiringConfig) =>
-  (
-    updates: Stream.Stream<WorkspaceUpdate, Error>
-  ): Stream.Stream<ReadonlyArray<WiringSignals>, Error> =>
+  <DeriveError>(config: WiringConfig<DeriveError>) =>
+  <E, R>(
+    updates: Stream.Stream<WorkspaceUpdate, E, R>
+  ): Stream.Stream<ReadonlyArray<WiringSignals>, E, R> =>
     pipe(
       updates,
       Stream.mapEffect((update) => workspaceSignals(config)(update.rootPath)(update.contexts))
@@ -142,10 +142,10 @@ export const signalsEquivalence = (
  *   policy boundary.
  */
 export const reportBlockUpdates =
-  (config: WiringConfig) =>
-  (
-    signals: Stream.Stream<ReadonlyArray<WiringSignals>, Error>
-  ): Stream.Stream<ReadonlyArray<ReportBlock>, Error> =>
+  <DeriveError>(config: WiringConfig<DeriveError>) =>
+  <E, R>(
+    signals: Stream.Stream<ReadonlyArray<WiringSignals>, E, R>
+  ): Stream.Stream<ReadonlyArray<ReportBlock>, E | DeriveError, R> =>
     pipe(signals, Stream.mapEffect(batchReportBlocks(config)))
 
 const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`
@@ -220,7 +220,9 @@ const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> = Option.none
  */
 export const blockDeltas =
   (rootPath: string) =>
-  (blocks: Stream.Stream<ReadonlyArray<ReportBlock>, Error>): Stream.Stream<ReportEvent, Error> =>
+  <E, R>(
+    blocks: Stream.Stream<ReadonlyArray<ReportBlock>, E, R>
+  ): Stream.Stream<ReportEvent, E, R> =>
     pipe(
       blocks,
       Stream.mapAccum(Function.constant(initialDeltaState), (previous, current) => {
@@ -261,11 +263,11 @@ export const blockDeltas =
  *   values while keeping derivation fan-in inside one batch element.
  */
 export const watchReportFromConfig =
-  (config: WiringConfig) =>
+  <E>(config: WiringConfig<E>) =>
   (
     workspace: WorkspaceConfigs,
     watchOptions: Option.Option<ts.WatchOptions>
-  ): Stream.Stream<ReportEvent, Error> =>
+  ): Stream.Stream<ReportEvent, E> =>
     pipe(
       workspaceUpdates(workspace, watchOptions),
       signalUpdates(config),
