@@ -507,6 +507,9 @@ exports are the supported entrypoints; source paths are implementation details.
 
 ## Architecture notes
 
+- `adrs/0016-single-line-comments-only.md` records the comment policy: isolated single-line comments
+  only, a universal because requirement, a 100-character cap, and concept rationale read from
+  leading line comments instead of JSDoc.
 - `adrs/0015-glob-specific-wiring-configuration.md` records the flat, glob-matched `WiringConfig`,
   arbitrary wiring-entry cardinality, and removal of per-check path scoping.
 - `adrs/0014-interface-depth-and-seam-evidence.md` records the evidence model for module leverage,

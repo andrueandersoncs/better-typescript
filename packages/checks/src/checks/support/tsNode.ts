@@ -1,41 +1,13 @@
 import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
-/**
- * FunctionInitializer is the shared modifiers, body, name, asteriskToken
- * contract used by functionInitializer, isFunctionInitializer, and
- * hasParameters.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// FunctionInitializer is the shared function shape because owners must agree.
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
-/**
- * FunctionDefinition is the named declaration forms that can own an executable
- * abstraction.
- *
- * @remarks
- *   This union exists because call and model-use edges must resolve to one stable
- *   owner regardless of function declaration syntax. Removing it would make
- *   every graph consumer repeat arrow, method, and function ownership logic.
- * @modelRole protocol
- */
+// FunctionDefinition names executable forms because call edges need one owner.
 export type FunctionDefinition =
   ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration
 
-/**
- * DeclarationStatement is the syntax contract shared by declaration detection
- * and blank-line matching.
- *
- * @remarks
- *   It remains explicit because both blank-line checks need one stable
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted declarations drift.
- * @modelRole shared
- */
+// DeclarationStatement is shared declaration syntax because blank-line checks need one vocabulary.
 export type DeclarationStatement =
   | ts.VariableStatement
   | ts.FunctionDeclaration
@@ -45,67 +17,20 @@ export type DeclarationStatement =
   | ts.EnumDeclaration
   | ts.ModuleDeclaration
 
-/**
- * StatementContainer is the compiler syntax protocol handled by
- * declaration-neighbor lookup.
- *
- * @remarks
- *   It remains explicit because source, block, and clause containers share one
- *   operation; removing it would repeat the union and let accepted cases
- *   drift.
- * @modelRole protocol
- */
+// StatementContainer is shared container syntax because neighbor lookup needs one operation.
 export type StatementContainer =
   ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseClause | ts.DefaultClause
 
-/**
- * ReturnedExpressionNode is the shared return-statement and concise-arrow
- * contract used by preferEffectSchemaConstructor and noUndefined.
- *
- * @remarks
- *   It remains explicit because return statements and concise arrows need one
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted expressions drift.
- * @modelRole shared
- */
+// ReturnedExpressionNode is the return/arrow contract because both checks need one vocabulary.
 export type ReturnedExpressionNode = ts.ReturnStatement | ts.ArrowFunction
 
-/**
- * NewOrTypeReferenceNode is the shared constructor and type-reference contract
- * used by preferHashSet and preferHashMap.
- *
- * @remarks
- *   It remains explicit because constructor and type-reference syntax need one
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted expressions drift.
- * @modelRole shared
- */
+// NewOrTypeReferenceNode is the new/type-ref contract because both checks need one vocabulary.
 export type NewOrTypeReferenceNode = ts.NewExpression | ts.TypeReferenceNode
 
-/**
- * CallLikeExpression is the shared expression, typeArguments, arguments
- * contract used by call-site analysis and array-constructor detection.
- *
- * @remarks
- *   It remains explicit because call and construct expressions share one
- *   argument-consuming shape; removing it would duplicate the union and let
- *   accepted call-sites drift.
- * @modelRole shared
- */
+// CallLikeExpression is the shared call/construct shape because both consume arguments alike.
 export type CallLikeExpression = ts.CallExpression | ts.NewExpression
 
-/**
- * ReturnTypeDeclaration is the shared name, typeParameters, parameters, type
- * contract used by RawObjectTarget, isReturnTypeDeclaration,
- * isUndefinedReturnTypeDeclaration, hasUndefinedReturnType, and
- * hasAnyReturnType.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// ReturnTypeDeclaration is one typed callable contract because owners must agree.
 export type ReturnTypeDeclaration =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -267,16 +192,7 @@ export const transparentWrapperKinds = HashSet.make(
   ts.SyntaxKind.AsExpression
 )
 
-/**
- * TransparentWrapper is the compiler syntax protocol handled by
- * transparent-expression unwrapping.
- *
- * @remarks
- *   It remains explicit because parenthesized, satisfies, and assertion
- *   expressions share one recursive operation; removing it would repeat the
- *   union and let accepted cases drift.
- * @modelRole protocol
- */
+// TransparentWrapper is shared unwrap syntax because paren/satisfies/assert share one walk.
 export type TransparentWrapper =
   ts.ParenthesizedExpression | ts.SatisfiesExpression | ts.AsExpression
 
@@ -376,7 +292,7 @@ export const hasExportModifier = (statement: ts.Statement): boolean => {
 const isDeclareKeyword = (modifier: ts.ModifierLike): boolean =>
   modifier.kind === ts.SyntaxKind.DeclareKeyword
 
-// Treat ambient declarations as external because they mirror a dependency's contract rather than an author choice.
+// Treat ambient decls as external because they mirror a dependency contract, not an author choice.
 export const isInAmbientContext = (node: ts.Node): boolean => {
   const sourceFile = node.getSourceFile()
 

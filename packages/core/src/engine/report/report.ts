@@ -228,27 +228,14 @@ const collectWorkspaceSignals = <A, E>(
   )
 }
 
-/**
- * Run every configured wiring over already-loaded program contexts.
- *
- * @remarks
- *   The workspace root stays explicit because glob candidates are normalized
- *   against one shared boundary.
- */
+// Workspace root stays explicit because glob candidates normalize against one shared boundary.
 export const workspaceSignals =
   <E>(config: WiringConfig<E>) =>
   (workspaceRoot: string) =>
   (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> =>
     collectWorkspaceSignals(config, workspaceRoot, contexts, Function.identity)
 
-/**
- * Build and analyze workspace projects one at a time through a caller-supplied
- * context constructor so solution-style roots do not retain every Program.
- *
- * @remarks
- *   Sequential loading is required because retaining every Program in a large
- *   solution workspace exhausts the JavaScript heap.
- */
+// Sequential project loading is required because retaining every Program can exhaust the heap.
 export const workspaceSignalsForProjects =
   <E>(config: WiringConfig<E>) =>
   (workspaceRoot: string) =>
@@ -256,13 +243,7 @@ export const workspaceSignalsForProjects =
   (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>> =>
     collectWorkspaceSignals(config, workspaceRoot, projects, toContext)
 
-/**
- * Within one batch, derivation consumes the complete materialized signal array.
- *
- * @remarks
- *   Full-array input is required because advice must see every signal from the
- *   same batch, not a partial stream.
- */
+// Derivation takes the full signal array because advice must see every signal from the same batch.
 export const deriveAdvice =
   <E>(wiring: Wiring<E>) =>
   (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, E> =>
@@ -271,25 +252,11 @@ export const deriveAdvice =
 const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
   pipe(Array.prepend(parts, kind), JSON.stringify)
 
-/**
- * Keyed advice blocks in report order: file advice first, then directory, then
- * project, each sorted by path.
- *
- * @remarks
- *   Stable sort order is part of the report contract because consumers rely on
- *   file-then-directory-then-project presentation.
- */
+// Advice blocks keep a stable sort order because consumers rely on that presentation order.
 export const adviceReportBlocks = (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> =>
   pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
 
-/**
- * Keyed local detection blocks, one per distinct message and hint, groups in
- * insertion order. The key kind remains `rule` for NDJSON compatibility.
- *
- * @remarks
- *   The `rule` key kind is retained because existing NDJSON consumers already key
- *   local blocks that way.
- */
+// Local blocks keep the rule key kind because existing NDJSON consumers already key that way.
 export const checkReportBlocks =
   (name: string) =>
   (examples: ReadonlyArray<RefactorExample>) =>
@@ -332,14 +299,7 @@ export const checkReportBlocks =
       })
     )
 
-/**
- * One batch's full keyed report: advice blocks first, then reported local
- * blocks in wiring order. Silent signals still ran and fed derivation.
- *
- * @remarks
- *   Silent signals stay in the batch because derivation still needs them even
- *   when they do not render.
- */
+// Silent signals stay in the batch because derivation still needs them when they do not render.
 export const reportBlocks =
   (signals: ReadonlyArray<Signal>) =>
   (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> => {
@@ -354,11 +314,6 @@ export const reportBlocks =
     return Array.appendAll(adviceBlocks, signalBlocks)
   }
 
-/**
- * One batch through every matched wiring's independent derivation stage. Advice
- * is combined before rendering so aggregate blocks remain globally first, while
- * local blocks retain configuration-entry and check order.
- */
 export const batchReportBlocks =
   <E>(config: WiringConfig<E>) =>
   (wiringSignals: ReadonlyArray<WiringSignals>): Effect.Effect<ReadonlyArray<ReportBlock>, E> => {
@@ -391,15 +346,7 @@ export const filterFallbackAdviceForUncoveredFiles =
     })
   }
 
-/**
- * Fallback suppression: file-level fallback advice is emitted only for files
- * where no file-level specific advice fired. Specific advice is collected once
- * and emitted before the applicable fallback advice.
- *
- * @remarks
- *   Suppression is required because fallback must not duplicate file-level advice
- *   that a specific rule already covered.
- */
+// Fallback suppression is required because fallback must not duplicate covered file-level advice.
 export const withFallbackAdvice = <E, R>(
   specificAdvice: Stream.Stream<Advice, E, R>,
   fallbackAdvice: Stream.Stream<Advice, E, R>

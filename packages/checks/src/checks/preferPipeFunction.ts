@@ -19,7 +19,7 @@ const pipeMethodCallMatches = (context: CheckContext) => {
     pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(callExpression.expression),
       Option.filter(isPipeName),
-      // Rewrite only Effect's Pipeable.pipe because Node streams and RxJS observables retain different pipe semantics.
+      // Rewrite only Effect Pipeable.pipe because Node streams and RxJS keep different pipe semantics.
       Option.filter((access) =>
         pipe(
           checker.getSymbolAtLocation(access.name),

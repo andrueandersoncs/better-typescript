@@ -37,16 +37,7 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
 const parameterTypeNode = (param: ts.ParameterDeclaration): Option.Option<ts.TypeNode> =>
   Option.fromNullishOr(param.type)
 
-/**
- * RawObjectTarget is the syntax contract shared by raw-object candidate
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
+// RawObjectTarget is shared raw-object syntax because owners need one node vocabulary.
 export type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
 
 const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>

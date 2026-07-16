@@ -83,7 +83,7 @@ const isFirstPartyStructuralModel = (type: ts.Type): boolean => {
   const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
   const isStructural = Option.exists(symbol, isStructuralOwnedSymbol)
   const isDataStructure = type.getCallSignatures().length === 0
-  // Exempt generic parameters because callers supply their type rather than the project defining a first-party structural model.
+  // Exempt generic parameters because callers supply the type, not a first-party structural model.
   const isConcreteType = !type.isTypeParameter()
   const ambientConditions = Array.make(isFirstParty, isStructural, isDataStructure, isConcreteType)
 

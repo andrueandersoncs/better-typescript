@@ -3,7 +3,7 @@ import * as ts from "typescript"
 
 export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
 
-// Contextual any or unknown permits void because the consumer contract accepts a void-returning implementation.
+// Contextual any or unknown permits void because consumers accept void-returning implementations.
 const voidCompatibleFlags = ts.TypeFlags.Void | ts.TypeFlags.Any | ts.TypeFlags.Unknown
 
 const isVoidCompatibleType = (type: ts.Type): boolean => (type.flags & voidCompatibleFlags) !== 0

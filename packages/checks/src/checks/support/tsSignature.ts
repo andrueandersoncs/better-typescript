@@ -83,7 +83,7 @@ export const signatureIsExternal = (signature: ts.Signature): boolean =>
 const signatureDeclarationOption = (signature: ts.Signature): Option.Option<ts.Declaration> =>
   pipe(signature.getDeclaration(), Option.fromNullishOr)
 
-// Missing declarations do not grant an escape because exemptions require a proven external boundary.
+// Missing declarations do not grant escape because exemptions need a proven external boundary.
 const hasExternalDeclaration = (signature: ts.Signature): boolean =>
   pipe(signatureDeclarationOption(signature), Option.exists(signatureDeclarationIsExternal))
 
@@ -111,7 +111,7 @@ export const argumentConsumingCall = (node: ts.Node): Option.Option<CallLikeExpr
   return isForwarding ? argumentConsumingCall(parent) : Option.none()
 }
 
-// Exclude the default library because only dependency combinators form an external callback boundary.
+// Exclude the default library because only dependency combinators form external callback bounds.
 export const isExternalPackageArgument =
   (checker: ts.TypeChecker) =>
   (program: ts.Program) =>
@@ -206,16 +206,7 @@ export const constructionEscapesExternally =
     return isDirectExternalArgument || escapesThroughVariable
   }
 
-/**
- * EscapeCarrier is the syntax contract shared by external-escape carrier
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because variable and parameter declarations need one
- *   compiler-node vocabulary; removing it would duplicate the union and let
- *   their accepted declarations drift.
- * @modelRole shared
- */
+// EscapeCarrier is shared escape-carrier syntax because var and param checks need one vocabulary.
 export type EscapeCarrier = ts.VariableDeclaration | ts.ParameterDeclaration
 
 const isEscapeCarrierNode = (node: ts.Node): node is EscapeCarrier =>

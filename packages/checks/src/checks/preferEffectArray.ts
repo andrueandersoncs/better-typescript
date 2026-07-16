@@ -9,16 +9,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
-/**
- * ArrayPrototypeMethod is the method-name vocabulary shared by Effect Array
- * detection and policy.
- *
- * @remarks
- *   It remains explicit because both owners must classify the same methods;
- *   removing it would duplicate the literal union and let their policies
- *   drift.
- * @modelRole shared
- */
+// ArrayPrototypeMethod is shared method-name vocabulary because detection and policy must agree.
 export type ArrayPrototypeMethod =
   | "at"
   | "concat"

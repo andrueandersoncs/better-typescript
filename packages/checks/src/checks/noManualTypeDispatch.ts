@@ -8,10 +8,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-// Require this many branches because shorter chains read as ordinary early-return guards rather than a hand-rolled match.
+// Require this many branches because shorter chains look like early-return guards, not a match.
 const minimumChainLength = 3
 
-// Treat branchless exiting if statements as guards because successive guards form a flat dispatch ladder.
+// Treat branchless exiting ifs as guards because successive guards form a flat dispatch ladder.
 const isDispatchGuard = (statement: ts.Statement): statement is ts.IfStatement =>
   pipe(
     Option.liftPredicate(ts.isIfStatement)(statement),

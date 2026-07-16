@@ -19,11 +19,18 @@ const message = 'Comments must include the word "because".'
 
 const hint =
   "Delete comments that only restate what the code does. Otherwise, explain why the " +
-  'code or approach is necessary using the word "because". Structured JSDoc on an ' +
-  "exported API (description plus at least one tag) is exempt because it documents an " +
-  "API contract."
+  'code or approach is necessary using the word "because". Every comment carries this ' +
+  "obligation; there are no exempt comment forms."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
+  {
+    name: "structured JSDoc on exported API",
+    fileName: "src/cases.ts",
+    line: 1,
+    column: 1,
+    message,
+    hint
+  },
   {
     name: "description-only JSDoc on export",
     fileName: "src/cases.ts",
@@ -124,12 +131,6 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
-    name: "structured JSDoc on exported API",
-    fileName: "src/cases.ts",
-    line: 1,
-    column: 1
-  },
-  {
     name: "case-insensitive because",
     fileName: "src/allowed.ts",
     line: 1,
@@ -160,7 +161,7 @@ const runRequireBecauseInCommentsFixture = async (): Promise<ReadonlyArray<Detec
   return projectElements.flat()
 }
 
-test("require-because-in-comments reports non-JSDoc comments without because", async () => {
+test("require-because-in-comments reports every comment without because", async () => {
   const signals = await runRequireBecauseInCommentsFixture()
 
   assertDisallowedFixtureItems(signals, disallowedFixtureItems)

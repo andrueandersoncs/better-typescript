@@ -37,16 +37,7 @@ const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
     Option.exists(isFalseKeyword)
   )
 
-/**
- * BooleanReturnTarget is the syntax contract shared by boolean-return candidate
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   expressions drift.
- * @modelRole shared
- */
+// BooleanReturnTarget is shared syntax contract because detection and matching need one vocabulary.
 export type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
 
 const isBooleanReturnTarget = (node: ts.Node): node is BooleanReturnTarget => {

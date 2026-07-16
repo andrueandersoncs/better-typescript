@@ -1,6 +1,2 @@
-/**
- * Strips leading and trailing whitespace before persistence.
- * @param input - Raw persisted string
- * @returns Trimmed string safe for storage
- */
+// Trim before persistence because padded strings break storage-key equality.
 export const sanitize = (input: string): string => input.trim()

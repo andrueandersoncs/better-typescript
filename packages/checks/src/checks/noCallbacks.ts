@@ -10,16 +10,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
-/**
- * CallbackStyleDeclaration is the syntax contract shared by callback candidate
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
+// CallbackStyleDeclaration is shared callback syntax because owners need one vocabulary.
 export type CallbackStyleDeclaration =
   | ts.FunctionDeclaration
   | ts.FunctionExpression
@@ -88,7 +79,7 @@ const callbackStyleMatches = (context: CheckContext) => {
   const match = detection(context)
 
   const matches = (declaration: CallbackStyleDeclaration): ReadonlyArray<Detection> => {
-    // Exempt declarations because they mirror a third-party API with no Effect-returning alternative to describe.
+    // Exempt declarations because they mirror a third-party API with no Effect-returning alternative.
     if (isInAmbientContext(declaration)) {
       return Array.empty()
     }

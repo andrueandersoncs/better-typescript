@@ -5,31 +5,13 @@ export type ArchitectureRoleClassifier = (
   projectRelativePath: string
 ) => Option.Option<ArchitectureRole>
 
-/**
- * ArchitectureRolePath is the shared path-to-role binding used by policy
- * helpers.
- *
- * @remarks
- *   It remains explicit because classifiers and prefix tables must exchange one
- *   path/role pair. Removing it would use parallel arrays whose entries could
- *   drift.
- * @modelRole shared
- */
+// ArchitectureRolePath is shared path-to-role pair because classifiers exchange one binding.
 export class ArchitectureRolePath extends Data.Class<{
   readonly path: string
   readonly role: ArchitectureRole
 }> {}
 
-/**
- * FunctionalCoreEffectPolicy is the boundary configuration consumed by
- * functional-core checks.
- *
- * @remarks
- *   It remains explicit because wiring factories and detectors must share one
- *   policy record. Removing it would thread parallel knobs through every check
- *   constructor and let defaults diverge.
- * @modelRole boundary
- */
+// FunctionalCoreEffectPolicy is shared check config because wiring and detectors need one record.
 export class FunctionalCoreEffectPolicy extends Data.Class<{
   readonly roleOf: ArchitectureRoleClassifier
   readonly capabilityModulePrefixes: ReadonlyArray<string>

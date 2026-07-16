@@ -18,13 +18,22 @@ const fixturePath = path.join(testDirectory, "fixtures", "no-multi-line-comments
 const message = "Avoid multi-line comments."
 
 const hint =
-  "Code should be self-documenting. Use single-line comments only to explain WHY " +
-  "something is done, never HOW. JSDoc (/** ... */) is permitted only when it documents " +
-  "an exported API with a description and at least one tag (such as @param, @returns, or " +
-  "@remarks). For architectural decisions that require longer explanation, create an " +
-  "Architectural Decision Record (ADR) as a markdown file in the adrs/ directory instead."
+  "Code should be self-documenting. Use isolated single-line comments only to explain WHY " +
+  "something is done, never HOW. Block comments and JSDoc (/* ... */ and /** ... */) are " +
+  "disallowed entirely. Consecutive single-line comments form a multi-line comment even when " +
+  "blank lines separate them, so keep one comment per explanation. For architectural decisions " +
+  "that require longer explanation, create an Architectural Decision Record (ADR) as a " +
+  "markdown file in the adrs/ directory instead."
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
+  {
+    name: "structured JSDoc on exported API",
+    fileName: "src/cases.ts",
+    line: 1,
+    column: 1,
+    message,
+    hint
+  },
   {
     name: "description-only JSDoc on export",
     fileName: "src/cases.ts",
@@ -58,7 +67,7 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     hint
   },
   {
-    name: "adjacent single-line comment run (2 lines)",
+    name: "single-line block comment",
     fileName: "src/cases.ts",
     line: 32,
     column: 1,
@@ -66,9 +75,25 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     hint
   },
   {
+    name: "adjacent single-line comment run (2 lines)",
+    fileName: "src/cases.ts",
+    line: 35,
+    column: 1,
+    message,
+    hint
+  },
+  {
     name: "adjacent single-line comment run (3 lines)",
     fileName: "src/cases.ts",
-    line: 38,
+    line: 41,
+    column: 1,
+    message,
+    hint
+  },
+  {
+    name: "comment stack separated only by a blank line",
+    fileName: "src/cases.ts",
+    line: 46,
     column: 1,
     message,
     hint
@@ -77,34 +102,34 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {
-    name: "structured JSDoc on exported API",
-    fileName: "src/cases.ts",
-    line: 1,
-    column: 1
-  },
-  {
-    name: "single-line block comment",
-    fileName: "src/allowed.ts",
-    line: 1,
-    column: 1
-  },
-  {
     name: "lone single-line comment",
     fileName: "src/allowed.ts",
-    line: 4,
+    line: 1,
     column: 1
   },
   {
-    name: "isolated comment after gap",
+    name: "isolated comment after a gap",
     fileName: "src/allowed.ts",
-    line: 10,
+    line: 7,
     column: 1
   },
   {
     name: "another isolated comment",
     fileName: "src/allowed.ts",
-    line: 13,
+    line: 10,
     column: 1
+  },
+  {
+    name: "trailing comment above another trailing comment",
+    fileName: "src/allowed.ts",
+    line: 13,
+    column: 24
+  },
+  {
+    name: "trailing comment below another trailing comment",
+    fileName: "src/allowed.ts",
+    line: 14,
+    column: 25
   }
 ]
 

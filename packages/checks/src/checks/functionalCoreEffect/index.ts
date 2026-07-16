@@ -6,16 +6,7 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import type { ArchitectureRole } from "./data.js"
 import type { FunctionalCoreEffectPolicy } from "./policy.js"
 
-/**
- * FunctionalCoreEffectIndex is the shared program snapshot for functional-core
- * checks.
- *
- * @remarks
- *   It remains explicit because boundary and shape detectors must query one role
- *   map and policy pair. Removing it would rebuild path roles per check and
- *   risk inconsistent classification.
- * @modelRole shared
- */
+// FunctionalCoreEffectIndex is shared program snapshot because checks must query one role map.
 export class FunctionalCoreEffectIndex extends Data.Class<{
   readonly policy: FunctionalCoreEffectPolicy
   readonly projectRoot: string

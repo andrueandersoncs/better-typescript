@@ -58,7 +58,7 @@ const constituentIsFirstParty = (type: ts.Type): boolean => {
   return Option.exists(symbol, isFirstPartySymbol)
 }
 
-// Restrict this rewrite to declared classes because Schema.is(Class) uses instanceof semantics that would invert plain JSON or third-party unions.
+// Limit rewrites to declared classes because Schema.is uses instanceof that inverts plain unions.
 const schemaIsMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)

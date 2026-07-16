@@ -8,15 +8,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-/**
- * OptionGuardKind is the compiler syntax vocabulary handled by Option guard
- * matching.
- *
- * @remarks
- *   It remains explicit because Some and None guards share one matcher contract;
- *   removing it would repeat the literal union and let accepted cases drift.
- * @modelRole protocol
- */
+// OptionGuardKind is Option guard syntax vocabulary because Some and None share one matcher.
 export type OptionGuardKind = "isSome" | "isNone"
 
 const guardMethodNames = HashSet.make("isSome", "isNone")

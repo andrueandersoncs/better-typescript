@@ -278,14 +278,7 @@ const typeIsWireSafeWithSeen =
     )
   }
 
-/**
- * Proves that a type belongs to the portable wire-value algebra because every
- * reachable value has a faithful primitive, collection, or structural-record
- * representation; opaque runtime identities and unresolved values are
- * rejected.
- *
- * @returns Whether the complete encoded type is portable.
- */
+// Wire-safe means every reachable value encodes portably because opaque identities are rejected.
 export const typeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>

@@ -3,17 +3,7 @@ import { Detection } from "@better-typescript/core/engine/location/data"
 
 const detectionArray = Schema.Array(Detection)
 
-/**
- * One materialized batch of imperative-state findings after all five source
- * checks finish.
- *
- * @remarks
- *   This schema exists because replay must preserve five named evidence streams
- *   as one validated batch before cluster advice is derived. Removing it would
- *   spread positional collections and synchronization assumptions across the
- *   replay and preset wiring.
- * @modelRole boundary
- */
+// ImperativeStateSignals is one batch of five evidence streams because replay needs one schema.
 export class ImperativeStateSignals extends Schema.Class<ImperativeStateSignals>(
   "ImperativeStateSignals"
 )({
@@ -26,17 +16,7 @@ export class ImperativeStateSignals extends Schema.Class<ImperativeStateSignals>
 
 const detectionSignal = Schema.Any
 
-/**
- * ImperativeStateManagerInput is the stable boundary representation exchanged
- * with imperativeStateManager.
- *
- * @remarks
- *   It remains explicit because callers need one named contract for noMutation,
- *   preferHashMap, preferHashSet, noMutableArrayMethods. Removing it would
- *   duplicate boundary translation and let wire and in-memory representations
- *   drift.
- * @modelRole boundary
- */
+// ImperativeStateManagerInput is stable boundary input because callers need one contract.
 export class ImperativeStateManagerInput extends Schema.Class<ImperativeStateManagerInput>(
   "ImperativeStateManagerInput"
 )({
@@ -53,16 +33,7 @@ export class ImperativeStateManagerInput extends Schema.Class<ImperativeStateMan
   declare readonly noMutableVariableDeclarations: Stream.Stream<Detection>
 }
 
-/**
- * MutationElementData is the stable boundary representation exchanged with
- * isSharedStateMutation.
- *
- * @remarks
- *   It remains explicit because callers need one named contract for fields,
- *   records, Type, Encoded. Removing it would duplicate boundary translation
- *   and let wire and in-memory representations drift.
- * @modelRole boundary
- */
+// MutationElementData is the mutation boundary payload because callers need one contract.
 export interface MutationElementData {
   readonly target: string
 }

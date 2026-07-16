@@ -26,16 +26,7 @@ const hint =
   "globals). Mutating a third-party structure whose API contract requires assignment " +
   "(process.exitCode, a WebSocket handler slot, a React ref cell) is permitted."
 
-/**
- * MutationNode is the syntax contract shared by mutation candidate detection
- * and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   expressions drift.
- * @modelRole shared
- */
+// MutationNode is shared mutation syntax because detection and matching need one vocabulary.
 export type MutationNode =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression | ts.DeleteExpression
 
@@ -62,7 +53,7 @@ const unaryMutationTarget = (
 const deleteExpressionTarget = (expression: ts.DeleteExpression): Option.Option<ts.Expression> =>
   Option.some(expression.expression)
 
-// Recognize only ECMAScript default-library values as built-ins because host environments and packages remain external.
+// Recognize only ECMAScript lib values as built-ins because hosts and packages stay external.
 const ecmaScriptLibPrefixes: ReadonlyArray<string> = Array.make(
   "lib.es",
   "lib.decorators",
@@ -77,7 +68,7 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
   return Array.some(ecmaScriptLibPrefixes, (prefix) => baseName.startsWith(prefix))
 }
 
-// Mark a symbol uncontrolled only because every declaration is outside the project and ECMAScript standard library.
+// Mark a symbol uncontrolled only because every declaration is outside the project and ES library.
 const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
   const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
@@ -94,7 +85,7 @@ const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
   return Array.every(moduleScopedConditions, Boolean)
 }
 
-// Follow an import alias because its local declaration cannot determine whether the imported value is external.
+// Follow an import alias because its local declaration cannot show whether the import is external.
 const resolveAlias =
   (checker: ts.TypeChecker) =>
   (symbol: ts.Symbol): ts.Symbol => {
@@ -103,7 +94,7 @@ const resolveAlias =
     return isAlias ? checker.getAliasedSymbol(symbol) : symbol
   }
 
-// Avoid checker.getNonNullableType because it stack-overflows on Effect type parameters like Struct.evolve's O.
+// Avoid getNonNullableType because it stack-overflows on Effect params like Struct.evolve's O.
 const nullishTypeFlags = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
 
 const isNullishType = (type: ts.Type): boolean => (type.flags & nullishTypeFlags) !== 0
@@ -120,7 +111,7 @@ const isUncontrolledTypeWithSeen =
         const nextSeen = HashSet.add(seen, candidateKey)
         const checkMember = isUncontrolledTypeWithSeen(nextSeen)
 
-        // Exempt a union only when every non-nullish member is uncontrolled because any member can occur at runtime.
+        // Exempt union only when every non-nullish member is uncontrolled because any can occur at runtime.
         if (candidate.isUnion()) {
           const keepMember = Predicate.not(isNullishType)
           const members = Array.filter(candidate.types, keepMember)
@@ -133,7 +124,7 @@ const isUncontrolledTypeWithSeen =
           return Array.some(candidate.types, checkMember)
         }
 
-        // Prefer getSymbol because aliasSymbol names only a project-local spelling, not the declaration that shaped the value.
+        // Prefer getSymbol because aliasSymbol names a local spelling, not the shaping declaration.
         const ownSymbol = candidate.getSymbol()
         const symbol = ownSymbol ?? candidate.aliasSymbol
         const isNullish = isNullishType(candidate)
@@ -149,16 +140,7 @@ const isUncontrolledTypeWithSeen =
       })
     )
 
-/**
- * MutationScope classifies mutation ownership for matching and fallback scope
- * selection.
- *
- * @remarks
- *   It remains explicit because both owners must exchange the same policy
- *   vocabulary; removing it would duplicate the literal union and let their
- *   classifications drift.
- * @modelRole shared
- */
+// MutationScope classifies mutation ownership because matching needs one policy vocabulary.
 export type MutationScope = "shared-state" | "local" | "builtin"
 
 const executionBoundaryKinds = HashSet.make(

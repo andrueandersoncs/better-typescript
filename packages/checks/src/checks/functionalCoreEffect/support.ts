@@ -25,16 +25,7 @@ import {
   unwrapTransparentExpression
 } from "../support/tsNode.js"
 
-/**
- * ImportedMember is the shared module specifier and member-path binding for
- * import resolution.
- *
- * @remarks
- *   It remains explicit because binding construction and imported-member lookup
- *   must exchange one specifier/path pair. Removing it would duplicate those
- *   fields across helpers and let paths drift from their modules.
- * @modelRole shared
- */
+// ImportedMember is shared specifier and member-path pair because helpers exchange one binding.
 export class ImportedMember extends Data.Class<{
   readonly moduleSpecifier: string
   readonly path: ReadonlyArray<string>

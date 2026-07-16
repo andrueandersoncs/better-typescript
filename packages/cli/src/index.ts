@@ -2,7 +2,7 @@
 import * as path from "node:path"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
-import { Console, Effect, Function, Option, Stream, pipe } from "effect"
+import { Console, Effect, Function, Option, Stream, Struct, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText, watchReportFromConfig } from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
@@ -33,8 +33,26 @@ const setErrorExitCode = (): number => {
   return process.exitCode
 }
 
-const reportError = Effect.fn("reportError")(function* (error: Error) {
-  yield* Console.error(`Error: ${error.message}`)
+const isError = (cause: unknown): cause is { readonly message: string } => cause instanceof Error
+
+const hasText = (value: string): boolean => value.length > 0
+
+// Render unknown failures ourselves because config wiring reports errors with an unknown type.
+const errorText = (error: unknown): string => {
+  const fallbackText = String(error)
+
+  return pipe(
+    Option.liftPredicate(isError)(error),
+    Option.map(Struct.get("message")),
+    Option.filter(hasText),
+    Option.getOrElse(Function.constant(fallbackText))
+  )
+}
+
+const reportError = Effect.fn("reportError")(function* (error: unknown) {
+  const text = errorText(error)
+
+  yield* Console.error(`Error: ${text}`)
   yield* Effect.sync(setErrorExitCode)
 })
 

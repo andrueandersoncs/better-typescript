@@ -245,5 +245,3 @@ const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
     getCurrentDirectory: ts.sys.getCurrentDirectory,
     getNewLine: Function.constant(ts.sys.newLine)
   })
-
-

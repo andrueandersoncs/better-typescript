@@ -74,16 +74,7 @@ const isPublicClassMember = (member: ts.ClassElement): boolean => {
   return !Array.some(modifiers, (modifier) => Array.contains(hiddenKinds, modifier.kind))
 }
 
-/**
- * CallableClassMember is the compiler-node protocol accepted by class surface
- * measurement.
- *
- * @remarks
- *   It remains explicit because the type guard and surface calculator must agree
- *   on callable class syntax; removing it would repeat the union and let their
- *   accepted node kinds drift.
- * @modelRole protocol
- */
+// CallableClassMember is the callable class-node protocol because guard and calculator agree.
 export type CallableClassMember =
   | ts.MethodDeclaration
   | ts.GetAccessorDeclaration

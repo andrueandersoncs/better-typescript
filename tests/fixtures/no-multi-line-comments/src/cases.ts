@@ -6,17 +6,17 @@
 export const documented = (x: number): number => x + 1
 
 /**
- * Description-only JSDoc is not enough to exempt a multi-line comment.
+ * Description-only JSDoc is also a multi-line comment.
  */
 export const descriptionOnly = (x: number): number => x
 
 /**
- * @param x - Tags without a description are not enough either.
+ * @param x - Tags without a description are flagged too.
  */
 export const tagsOnly = (x: number): number => x
 
 /**
- * Structured JSDoc on a non-exported binding is not an API contract.
+ * Structured JSDoc on a non-exported binding is flagged.
  * @param x - Current sequence value
  */
 const localDocumented = (x: number): number => x
@@ -29,6 +29,9 @@ export const usesLocal = localDocumented
  */
 export const multiLineBlock = 3
 
+/* A single-line block comment is still the block form */
+export const singleLineBlock = 7
+
 // Adjacent single-line comment first line
 // adjacent single-line comment second line
 export const afterAdjacent = 4
@@ -39,3 +42,8 @@ export const between = 5
 // second line
 // third line
 export const afterThree = 6
+
+// Stacked comment first line
+
+// stacked second line separated only by a blank line
+export const afterStacked = 8

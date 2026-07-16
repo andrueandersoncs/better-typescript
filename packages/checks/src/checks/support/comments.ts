@@ -1,19 +1,5 @@
-import {
-  Array,
-  Effect,
-  Function,
-  HashSet,
-  Iterable,
-  Match,
-  Option,
-  Ref,
-  Struct,
-  Tuple,
-  flow,
-  pipe
-} from "effect"
+import { Array, Effect, HashSet, Iterable, Option, Ref, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { astNodesIn } from "@better-typescript/core/engine/sources"
 import { LatestCacheEntry, SourceComment } from "./commentsData.js"
 
 const memoizeLatest = <Key extends object, Value>(load: (key: Key) => Value) => {
@@ -102,145 +88,6 @@ const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComm
 export const sourceComments: (sourceFile: ts.SourceFile) => ReadonlyArray<SourceComment> =
   memoizeLatest(scanSourceComments)
 
-const emptyString = Function.constant("")
-
-const commentFragmentsText: (comment: ts.NodeArray<ts.JSDocComment>) => string = flow(
-  ts.getTextOfJSDocComment,
-  Option.fromNullishOr,
-  Option.getOrElse(emptyString)
-)
-
-const stringDescription = (comment: string): string => comment
-
-const commentDescription: (comment: NonNullable<ts.JSDoc["comment"]>) => string = pipe(
-  Match.type<NonNullable<ts.JSDoc["comment"]>>(),
-  Match.withReturnType<string>(),
-  Match.when(Match.string, stringDescription),
-  Match.orElse(commentFragmentsText)
-)
-
-const hasNonBlankText = (text: string): boolean => text.trim().length > 0
-
-const hasJsDocTags = (tags: ts.NodeArray<ts.JSDocTag>): boolean => tags.length > 0
-
-const isStructuredJsDoc = (jsDoc: ts.JSDoc): boolean => {
-  const hasDescription = pipe(
-    Option.fromNullishOr(jsDoc.comment),
-    Option.map(commentDescription),
-    Option.exists(hasNonBlankText)
-  )
-
-  const hasTags = pipe(Option.fromNullishOr(jsDoc.tags), Option.exists(hasJsDocTags))
-
-  return hasDescription && hasTags
-}
-
-const emptyModifiers: ReadonlyArray<ts.Modifier> = Array.empty()
-const fallbackModifiers = Function.constant(emptyModifiers)
-const optionalModifiers = flow(ts.getModifiers, Option.fromNullishOr)
-
-const modifiersOf = (node: ts.Node): ReadonlyArray<ts.Modifier> =>
-  pipe(
-    node,
-    Option.liftPredicate(ts.canHaveModifiers),
-    Option.flatMap(optionalModifiers),
-    Option.getOrElse(fallbackModifiers)
-  )
-
-const isExportModifier = (modifier: ts.Modifier): boolean => {
-  const isExportKeyword = modifier.kind === ts.SyntaxKind.ExportKeyword
-  const isDefaultKeyword = modifier.kind === ts.SyntaxKind.DefaultKeyword
-
-  return isExportKeyword || isDefaultKeyword
-}
-
-const hasExportModifier = flow(modifiersOf, Array.some(isExportModifier))
-
-const currentKindsThatFollowParent = HashSet.make(
-  ts.SyntaxKind.VariableDeclaration,
-  ts.SyntaxKind.VariableDeclarationList
-)
-
-const parentKindsThatFollowParent = HashSet.make(
-  ts.SyntaxKind.ClassDeclaration,
-  ts.SyntaxKind.ClassExpression,
-  ts.SyntaxKind.InterfaceDeclaration,
-  ts.SyntaxKind.EnumDeclaration,
-  ts.SyntaxKind.ModuleDeclaration,
-  ts.SyntaxKind.PropertyAssignment,
-  ts.SyntaxKind.ShorthandPropertyAssignment,
-  ts.SyntaxKind.SpreadAssignment
-)
-
-const parentFollowsExportPath = (node: ts.Node): boolean =>
-  HashSet.has(parentKindsThatFollowParent, node.kind)
-
-const exportNodeStep = (current: ts.Node) => {
-  const parent = Option.fromNullishOr(current.parent)
-  const currentFollowsParent = HashSet.has(currentKindsThatFollowParent, current.kind)
-  const parentFollowsParent = Option.exists(parent, parentFollowsExportPath)
-  const followsParent = currentFollowsParent || parentFollowsParent
-  const directParent = followsParent ? parent : Option.none<ts.Node>()
-
-  const objectParent = pipe(
-    parent,
-    Option.filter(ts.isObjectLiteralExpression),
-    Option.map(Struct.get("parent")),
-    Option.flatMap(Option.fromNullishOr)
-  )
-
-  const useObjectParent = Function.constant(objectParent)
-  const next = pipe(directParent, Option.orElse(useObjectParent))
-
-  return Tuple.make(current, next)
-}
-
-const isExportedApiNode = (node: ts.Node): boolean => {
-  const initial = Option.some(node)
-
-  const candidates = Iterable.unfold<Option.Option<ts.Node>, ts.Node>(
-    initial,
-    Option.map(exportNodeStep)
-  )
-
-  return Iterable.some(candidates, hasExportModifier)
-}
-
-const collectStructuredJsDocPositions = (sourceFile: ts.SourceFile): HashSet.HashSet<number> => {
-  const nodes = astNodesIn(sourceFile)
-  const initial = HashSet.empty<number>()
-
-  return Iterable.reduce(nodes, initial, (current, node) => {
-    const commentsAndTags = ts.getJSDocCommentsAndTags(node)
-    const jsDocs = Array.filter(commentsAndTags, ts.isJSDoc)
-
-    if (jsDocs.length === 0) {
-      return current
-    }
-
-    const candidate = Option.some(node)
-    const exported = pipe(candidate, Option.filter(isExportedApiNode))
-
-    if (Option.isNone(exported)) {
-      return current
-    }
-
-    const structured = Array.filter(jsDocs, isStructuredJsDoc)
-
-    return Array.reduce(structured, current, (set, doc) => HashSet.add(set, doc.pos))
-  })
-}
-
-const structuredJsDocPositions: (sourceFile: ts.SourceFile) => HashSet.HashSet<number> =
-  memoizeLatest(collectStructuredJsDocPositions)
-
-const commentAtPosition =
-  (positions: HashSet.HashSet<number>) =>
-  (comment: SourceComment): boolean =>
-    HashSet.has(positions, comment.pos)
-
-export const isJsDocComment = flow(structuredJsDocPositions, commentAtPosition)
-
 export const commentText =
   (text: string) =>
   (comment: SourceComment): string =>
@@ -249,13 +96,8 @@ export const commentText =
 export const isSingleLineComment = (comment: SourceComment): boolean =>
   comment.kind === ts.SyntaxKind.SingleLineCommentTrivia
 
-const lineOf =
-  (sourceFile: ts.SourceFile) =>
-  (pos: number): number =>
-    sourceFile.getLineAndCharacterOfPosition(pos).line
-
-export const isAdjacentLine =
-  (sourceFile: ts.SourceFile) =>
+export const onlyBlankBetween =
+  (text: string) =>
   (a: SourceComment) =>
   (b: SourceComment): boolean =>
-    lineOf(sourceFile)(b.pos) - lineOf(sourceFile)(a.pos) === 1
+    text.slice(a.end, b.pos).trim().length === 0

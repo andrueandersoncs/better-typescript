@@ -33,16 +33,7 @@ const emptyServiceNames: ReadonlyArray<string> = Array.empty()
 
 const orchestratorServiceNamesSchema = Schema.Array(Schema.String)
 
-/**
- * OrchestratorMetrics is the shared accumulator for orchestrator shape
- * evidence.
- *
- * @remarks
- *   It remains explicit because fold updates and threshold checks exchange one
- *   metrics record. Removing it would duplicate field bags across those
- *   owners.
- * @modelRole shared
- */
+// OrchestratorMetrics is shared shape accumulator because folds share one record.
 export class OrchestratorMetrics extends Schema.Class<OrchestratorMetrics>("OrchestratorMetrics")({
   branchCount: Schema.Number,
   yieldCount: Schema.Number,
@@ -50,28 +41,13 @@ export class OrchestratorMetrics extends Schema.Class<OrchestratorMetrics>("Orch
   serviceNames: orchestratorServiceNamesSchema
 }) {}
 
-/**
- * FileShapeMetrics is the shared accumulator for file-level shape evidence.
- *
- * @remarks
- *   It remains explicit because file folds and root/adapter thresholds share one
- *   counter shape. Removing it would let those sites drift.
- * @modelRole shared
- */
+// FileShapeMetrics is shared file-shape accumulator because folds and thresholds share it.
 export class FileShapeMetrics extends Schema.Class<FileShapeMetrics>("FileShapeMetrics")({
   branchCount: Schema.Number,
   functionCount: Schema.Number
 }) {}
 
-/**
- * ServiceSurfaceMetrics is the shared accumulator for pure-service surface
- * scans.
- *
- * @remarks
- *   It remains explicit because member classification and purity filters share
- *   one surface tally. Removing it would duplicate counters at each filter.
- * @modelRole shared
- */
+// ServiceSurfaceMetrics is shared service-surface tally because filters share one tally.
 export class ServiceSurfaceMetrics extends Schema.Class<ServiceSurfaceMetrics>(
   "ServiceSurfaceMetrics"
 )({

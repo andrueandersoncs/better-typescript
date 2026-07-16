@@ -2,28 +2,10 @@ import { Array, Effect, HashMap, Schema, pipe } from "effect"
 import { RefactorExample } from "../example/data.js"
 import { Detection, Location } from "../location/data.js"
 
-/**
- * AdviceLevel names the compiler syntax protocol handled by its public
- * consumers.
- *
- * @remarks
- *   It remains explicit because those algorithms must agree on the accepted
- *   syntax vocabulary. Removing it would repeat the compiler-node union in each
- *   matcher and let their accepted cases drift.
- * @modelRole protocol
- */
+// AdviceLevel names the advice-scope protocol because consumers must agree on vocabulary.
 export type AdviceLevel = "file" | "directory" | "project"
 
-/**
- * EvidenceItem is the shared measure, count contract used by byMeasure,
- * collisionEvidence, and evidenceText.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// EvidenceItem is the shared measure/count contract because owners need one vocabulary.
 export class EvidenceItem extends Schema.Class<EvidenceItem>("EvidenceItem")({
   measure: Schema.String,
   count: Schema.Number
@@ -45,16 +27,7 @@ const refactorExamplesSchema = pipe(
   Schema.withConstructorDefault(emptyRefactorExamplesEffect)
 )
 
-/**
- * Advice is the shared location, level, title, remediation, examples contract
- * used by deriveAdvice, adviceReportBlock, and adviceText.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// Advice is the shared advice payload because report owners need one vocabulary.
 export class Advice extends Schema.Class<Advice>("Advice")({
   location: Location,
   level: adviceLevelSchema,
@@ -64,16 +37,7 @@ export class Advice extends Schema.Class<Advice>("Advice")({
   examples: refactorExamplesSchema
 }) {}
 
-/**
- * NamedDetection is the shared name, detection contract used by lineKey,
- * collisionEvidence, and namedDetectionArray.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// NamedDetection is the shared name+detection pair because owners need one vocabulary.
 export class NamedDetection extends Schema.Class<NamedDetection>("NamedDetection")({
   name: Schema.String,
   detection: Detection
@@ -81,31 +45,13 @@ export class NamedDetection extends Schema.Class<NamedDetection>("NamedDetection
 
 const namedDetectionArray = Schema.Array(NamedDetection)
 
-/**
- * FileDetections is the shared path, elements contract used by byFile,
- * addFileCheckCounts, and fileDetections.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// FileDetections is the shared path+elements pair because owners need one vocabulary.
 export class FileDetections extends Schema.Class<FileDetections>("FileDetections")({
   path: Schema.String,
   elements: namedDetectionArray
 }) {}
 
-/**
- * CountSummary is the shared countsByCheck, filesByCheck, total, fileCount
- * contract used by dominantCheckEvidence and countSummary.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// CountSummary is the shared counts/totals contract because owners need one vocabulary.
 export class CountSummary extends Schema.Class<CountSummary>("CountSummary")({
   total: Schema.Number,
   fileCount: Schema.Number,

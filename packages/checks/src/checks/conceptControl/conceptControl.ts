@@ -30,22 +30,12 @@ import {
   type ModelRole
 } from "./data.js"
 
-const validModelRoles: HashSet.HashSet<ModelRole> = HashSet.make(
-  "shared" as ModelRole,
-  "boundary" as ModelRole,
-  "invariant" as ModelRole,
-  "protocol" as ModelRole,
-  "recursive" as ModelRole
-)
-
 const derivedAliasUtilities = HashSet.make("Omit", "Partial", "Pick", "Readonly", "Required")
 
 const rationaleHint =
-  "Delete or reuse this concept before documenting it. If it remains, add structured JSDoc " +
-  "with a semantic description, exactly one @modelRole (shared, boundary, invariant, protocol, " +
-  "or recursive), and @remarks that explain because why existing concepts are insufficient " +
-  "and what concrete complexity would reappear when removing it. The prose does not suppress " +
-  "structural evidence."
+  "Delete or reuse this concept before documenting it. If it remains, add one single-line " +
+  "comment directly above the declaration explaining because why existing concepts are " +
+  "insufficient. The prose does not suppress structural evidence."
 
 const closedHint =
   "Collapse the function and its private data vocabulary into their external owner, reuse an " +
@@ -264,75 +254,28 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       )
     }
 
-    const jsDocText = (comment: ts.JSDoc["comment"] | ts.JSDocTag["comment"]): string =>
-      pipe(
-        ts.getTextOfJSDocComment(comment),
-        Option.fromNullishOr,
-        Option.getOrElse(Function.constant(""))
-      )
-
     const rationaleIsComplete = (entry: DataStructureEntry): boolean => {
-      const commentsAndTags = ts.getJSDocCommentsAndTags(entry.documentationNode)
-      const docs = Array.filter(commentsAndTags, ts.isJSDoc)
+      const sourceText = entry.sourceFile.getFullText()
+      const emptyRanges = Array.empty<ts.CommentRange>()
 
-      const tags = Array.flatMap(docs, (doc) => {
-        const emptyTags = Array.empty<ts.JSDocTag>()
-
-        return doc.tags ?? emptyTags
-      })
-
-      const roleTags = Array.filter(tags, (tag) => tag.tagName.text === "modelRole")
-      const remarksTags = Array.filter(tags, (tag) => tag.tagName.text === "remarks")
-
-      const description = pipe(
-        docs,
-        Array.map((doc) => jsDocText(doc.comment)),
-        Array.join(" "),
-        (text) => text.trim()
+      const leadingRanges = pipe(
+        ts.getLeadingCommentRanges(sourceText, entry.documentationNode.pos),
+        Option.fromNullishOr,
+        Option.getOrElse(Function.constant(emptyRanges))
       )
 
-      const roleText = pipe(
-        roleTags,
-        Array.head,
-        Option.map((tag) => jsDocText(tag.comment).trim())
+      const lineRanges = Array.filter(
+        leadingRanges,
+        (range) => range.kind === ts.SyntaxKind.SingleLineCommentTrivia
       )
 
-      const remarks = pipe(
-        remarksTags,
-        Array.map((tag) => jsDocText(tag.comment)),
-        Array.join(" "),
-        (text) => text.toLowerCase()
+      const prose = pipe(
+        lineRanges,
+        Array.map((range) => sourceText.slice(range.pos + 2, range.end).trim()),
+        Array.join(" ")
       )
 
-      const role = pipe(
-        roleText,
-        Option.filter((value) => HashSet.has(validModelRoles, value as ModelRole)),
-        Option.map((value) => value as ModelRole)
-      )
-
-      const established = pipe(
-        role,
-        Option.exists((claimed) => {
-          const roles = rolesFor(entry)
-
-          return HashSet.has(roles, claimed)
-        })
-      )
-
-      const hasOneRole = roleTags.length === 1
-      const hasDescription = description.length > 0
-      const explainsCause = remarks.includes("because")
-      const explainsDeletion = remarks.includes("remov")
-
-      const conditions = Array.make(
-        hasOneRole,
-        hasDescription,
-        explainsCause,
-        explainsDeletion,
-        established
-      )
-
-      return Array.every(conditions, Boolean)
+      return prose.toLowerCase().includes("because")
     }
 
     const redundantPairs = Array.filterMap(entries, (entry) =>

@@ -177,7 +177,7 @@ const effectFnMatches = (context: CheckContext) => {
           return Option.exists(symbol, isEffectInterfaceSymbol)
         })
       }),
-      // Rewrite only Effect.gen wrappers because Effect.fn would change what plain combinator bodies build.
+      // Rewrite only Effect.gen wrappers because Effect.fn changes what plain combinator bodies build.
       Option.flatMap(genCall),
       Option.map((call) => {
         const functionName = declaration.name.getText(sourceFile)

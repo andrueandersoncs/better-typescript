@@ -3,16 +3,7 @@ import { FileDetections } from "@better-typescript/core/engine/derive/data"
 
 const fileDetectionsArray = Schema.Array(FileDetections)
 
-/**
- * DirectorySignals is the shared path, files, projectTotal contract used by
- * subsystemAdvice, hotSubsystemAdvice, and isHotSubsystem.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// DirectorySignals is shared path/files/total contract because advice owners need one shape.
 export class DirectorySignals extends Schema.Class<DirectorySignals>("DirectorySignals")({
   path: Schema.String,
   files: fileDetectionsArray,

@@ -7,16 +7,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-/**
- * FunctionKeywordNode is the syntax contract shared by keyword candidate
- * detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   declarations drift.
- * @modelRole shared
- */
+// FunctionKeywordNode is shared keyword syntax because owners need one node vocabulary.
 export type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>

@@ -1,6 +1,3 @@
-/* single-line block comment is fine */
-export const topLevel = 1
-
 // A lone single-line comment is fine
 export const withComment = 2
 
@@ -12,3 +9,6 @@ export const y = 4
 
 // Another isolated comment
 export const z = 5
+
+export const first = 6 // trailing note on the first line
+export const second = 7 // trailing note on the second line

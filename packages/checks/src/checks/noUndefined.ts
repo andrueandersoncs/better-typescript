@@ -14,28 +14,10 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
-/**
- * UndefinedTypeDeclaration is the compiler syntax protocol handled by
- * undefined-type detection.
- *
- * @remarks
- *   It remains explicit because property signatures and mapped types share one
- *   matcher contract; removing it would repeat the union and let accepted cases
- *   drift.
- * @modelRole protocol
- */
+// UndefinedTypeDeclaration is undefined-type syntax protocol because owners share one matcher.
 export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
-/**
- * UndefinedUsageKind is the usage vocabulary shared by undefined matching and
- * diagnostic messages.
- *
- * @remarks
- *   It remains explicit because both owners must classify the same cases;
- *   removing it would duplicate the literal union and let their policies
- *   drift.
- * @modelRole shared
- */
+// UndefinedUsageKind is shared usage vocabulary because matching and diagnostics align.
 export type UndefinedUsageKind =
   "parameter" | "return-type" | "return-expression" | "type-declaration" | "comparison"
 

@@ -42,7 +42,7 @@ const conditionalReturnDetections = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
 
-  // Leave branches that return ternaries alone because collapsing them would create a nested ternary that another rule forbids.
+  // Leave ternary return branches alone because collapsing them nests ternaries another rule forbids.
   const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(statement)

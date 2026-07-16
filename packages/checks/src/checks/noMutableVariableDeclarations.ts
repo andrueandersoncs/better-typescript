@@ -7,16 +7,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-/**
- * MutableVariableDeclarationKind is the mutable binding vocabulary shared by
- * token classification.
- *
- * @remarks
- *   It remains explicit because syntax-kind tuples and token lookup must exchange
- *   the same literal contract; removing it would duplicate that contract across
- *   consumers.
- * @modelRole shared
- */
+// MutableVariableDeclarationKind is shared binding vocabulary because owners exchange one contract.
 export type MutableVariableDeclarationKind = "let" | "var"
 
 const nested6 = Tuple.make(ts.SyntaxKind.LetKeyword, "let" as MutableVariableDeclarationKind)

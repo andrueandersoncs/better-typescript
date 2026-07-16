@@ -49,14 +49,7 @@ export const contextFor =
 const mutableLists = <A>(count: number): Array<MutableList.MutableList<A>> =>
   count <= 0 ? Array.empty() : Array.makeBy(count, () => MutableList.make<A>())
 
-/**
- * Compile all active subscriptions for one program and dispatch every AST node
- * once by SyntaxKind. Result arrays stay aligned with the input check order.
- *
- * @remarks
- *   Fused dispatch is required because independent AST streams multiply traversal
- *   and allocation costs by the number of checks.
- */
+// Fused dispatch is required because separate AST streams multiply traversal cost by check count.
 export const runChecks =
   (checks: ReadonlyArray<Check>) =>
   (includesSourceFile: CheckFilePredicate) =>
@@ -215,13 +208,7 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
   return MutableList.toArray(children)
 }
 
-/**
- * Depth-first pre-order traversal backed by an explicit persistent stack.
- *
- * @remarks
- *   TypeScript trees can be arbitrarily deep, so traversal must not use the
- *   JavaScript call stack.
- */
+// Explicit stack traversal is required because TypeScript trees can exceed the JS call stack.
 export const astNodesIn = (root: ts.Node): Iterable<ts.Node> => {
   const initial: ReadonlyArray<ts.Node> = Array.of(root)
 
@@ -267,7 +254,7 @@ export const astNodesFromContext = (
   )
 }
 
-// Reporter diagnostics stay silent because the watcher must retain the last valid program through a transient config failure.
+// Reporter diagnostics stay silent because the watcher must keep the last valid program on failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 
 const stopWatch = (watch: ts.WatchOfConfigFile<ts.BuilderProgram>): Effect.Effect<void> =>
@@ -275,14 +262,7 @@ const stopWatch = (watch: ts.WatchOfConfigFile<ts.BuilderProgram>): Effect.Effec
     watch.close()
   })
 
-/**
- * The project-level root signal: one fresh ProgramContext per watch rebuild,
- * covering file edits, adds, deletes, and leaf tsconfig edits.
- *
- * @remarks
- *   Fresh contexts per rebuild are required because downstream diffs and checks
- *   must observe the program TypeScript just produced.
- */
+// Fresh contexts per rebuild are required because diffs and checks must observe the new program.
 export const programUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
@@ -308,7 +288,7 @@ export const programUpdates = (
         watchOptionsToExtend
       )
 
-      // Assign the handler after construction because createWatchProgram emits the initial program synchronously and the callback queue buffers it.
+      // Set afterProgramCreate after host build because createWatchProgram emits the initial program now.
       host.afterProgramCreate = onProgramCreate
 
       return ts.createWatchProgram(host)
@@ -322,15 +302,7 @@ const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
 const fileIndexEntry = (sourceFile: ts.SourceFile): readonly [string, ts.SourceFile] =>
   Tuple.make(sourceFile.fileName, sourceFile)
 
-/**
- * Pure diff of one rebuilt program against the previous file index. Identity
- * diffing may over-report changed files (a redundant recompute at worst); it
- * never under-reports.
- *
- * @remarks
- *   Over-reporting is acceptable because missing a changed file would leave stale
- *   detections, while an extra recompute is only wasted work.
- */
+// Over-reporting is acceptable because missing a changed file would leave stale detections.
 export const diffCheckableFiles =
   (previous: HashMap.HashMap<string, ts.SourceFile>) =>
   (context: ProgramContext): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
@@ -361,14 +333,7 @@ export const diffCheckableFiles =
     return Tuple.make(next, update)
   }
 
-/**
- * The file-level root signal: per rebuild, which checkable source files changed
- * and which paths disappeared (first emission: all checkable files).
- *
- * @remarks
- *   Changed and deleted paths are emitted together because workspace caching must
- *   drop removed files as well as refresh edited ones.
- */
+// Changed and deleted paths emit together because workspace caching must drop removed files too.
 export const sourceUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
@@ -381,4 +346,3 @@ export const sourceUpdates = (
       return Tuple.make(next, updates)
     })
   )
-

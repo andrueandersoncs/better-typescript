@@ -10,16 +10,7 @@ import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/ex
 import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
-/**
- * BooleanOperatorExpression is the syntax contract shared by boolean-
- * expression detection and matching.
- *
- * @remarks
- *   It remains explicit because both owners need one stable compiler-node
- *   vocabulary; removing it would duplicate the union and let their accepted
- *   expressions drift.
- * @modelRole shared
- */
+// BooleanOperatorExpression is shared boolean syntax because owners need one vocabulary.
 export type BooleanOperatorExpression =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.ConditionalExpression
 
@@ -46,7 +37,7 @@ const booleanOperatorCount = (expression: ts.Expression): number => {
     return ownCount
   }
 
-  // Count a ternary condition separately because prefer-conditional-return mandates `cond ? x : y`.
+  // Count ternary conditions separately because prefer-conditional-return mandates `cond ? x : y`.
   const countedChildren = ts.isConditionalExpression(unwrapped)
     ? Array.make(unwrapped.whenTrue, unwrapped.whenFalse)
     : astChildren(unwrapped)

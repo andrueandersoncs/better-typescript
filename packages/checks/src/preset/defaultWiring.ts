@@ -51,6 +51,7 @@ import {
 } from "../checks/noInlineBooleanExpressions.js"
 import { noInlineClosures, noInlineClosuresExamples } from "../checks/noInlineClosures.js"
 import { noInstanceof, noInstanceofExamples } from "../checks/noInstanceof.js"
+import { noLongComments, noLongCommentsExamples } from "../checks/noLongComments.js"
 import {
   noManualTypeDispatch,
   noManualTypeDispatchExamples
@@ -326,6 +327,8 @@ const noMultiLineCommentsCheck = namedCheck(
   noMultiLineCommentsExamples
 )
 
+const noLongCommentsCheck = namedCheck("no-long-comments", noLongComments, noLongCommentsExamples)
+
 const requireBecauseInCommentsCheck = namedCheck(
   "require-because-in-comments",
   requireBecauseInComments,
@@ -523,6 +526,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   noVoidFunctionsCheck,
   noMultiLineCommentsCheck,
   requireBecauseInCommentsCheck,
+  noLongCommentsCheck,
   requireBlankLinesAroundMultilineDeclarationsCheck,
   noBlankLinesBetweenSingleLineDeclarationsCheck,
   noExplicitAnyReturnCheck,

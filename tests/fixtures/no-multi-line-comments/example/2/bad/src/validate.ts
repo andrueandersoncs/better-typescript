@@ -1,5 +1,6 @@
-/*
- * Validates the user input and
- * returns the sanitized result.
+/**
+ * Strips leading and trailing whitespace before persistence.
+ * @param input - Raw persisted string
+ * @returns Trimmed string safe for storage
  */
-const validate = (input: string): string => input.trim()
+export const sanitize = (input: string): string => input.trim()

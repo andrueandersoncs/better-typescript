@@ -29,15 +29,7 @@ import type { ReportEvent } from "./data.js"
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty()
 
-/**
- * Merge every project's source updates into workspace-wide change batches.
- * Untouched projects reuse their latest ProgramContext; no AST is
- * materialized.
- *
- * @remarks
- *   Cached contexts are required because each emitted batch must contain every
- *   project's latest program without retaining AST snapshots.
- */
+// Cached contexts are kept because each batch needs every project's latest program without ASTs.
 export const workspaceUpdates = (
   workspace: WorkspaceConfigs,
   watchOptions: Option.Option<ts.WatchOptions>
@@ -99,17 +91,7 @@ export const workspaceUpdates = (
   return pipe(merged, Stream.mapAccum(Function.constant(emptyContextCache), applyUpdate))
 }
 
-/**
- * Full check recompute per batch: detection sets are always exactly what the
- * snapshot report would compute for the current programs. Per-file incremental
- * recompute is deliberately not built — checker-using checks observe other
- * files through the type graph, so file identity under-approximates their true
- * inputs.
- *
- * @remarks
- *   Full recompute is required because checker-using checks can depend on files
- *   outside the edited set through the type graph.
- */
+// Full recompute is required because checker checks can depend on files outside the edit set.
 export const signalUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
   <E, R>(
@@ -120,27 +102,13 @@ export const signalUpdates =
       Stream.mapEffect((update) => workspaceSignals(config)(update.rootPath)(update.contexts))
     )
 
-/**
- * Compare complete signal sets for every configured wiring.
- *
- * @remarks
- *   Match state participates because a newly matched or fully removed glob scope
- *   must reach derivation and clearing. `Detection.data` remains best-effort
- *   because it is `Schema.Unknown`: fresh plain objects under-cut the gate but
- *   can never hide a real report change.
- */
+// Match state participates because a newly matched or removed glob scope must reach derivation.
 export const signalsEquivalence = (
   a: ReadonlyArray<WiringSignals>,
   b: ReadonlyArray<WiringSignals>
 ): boolean => wiringSignalsArrayEquivalence(a, b)
 
-/**
- * Derive report blocks from each complete wiring signal set.
- *
- * @remarks
- *   Derivation remains per wiring because each glob assignment is one independent
- *   policy boundary.
- */
+// Derivation stays per wiring because each glob assignment is an independent policy boundary.
 export const reportBlockUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
   <E, R>(
@@ -150,13 +118,7 @@ export const reportBlockUpdates =
 
 const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`
 
-/**
- * Render one event as the human-readable text block the --pretty flag prints.
- *
- * @remarks
- *   Kept separate from NDJSON encoding because --pretty needs a human-readable
- *   projection of the same events.
- */
+// Kept separate from NDJSON because --pretty needs a human-readable projection of the same events.
 export const renderEventText = (event: ReportEvent): string =>
   pipe(
     Match.value(event),
@@ -166,16 +128,7 @@ export const renderEventText = (event: ReportEvent): string =>
     Match.exhaustive
   )
 
-/**
- * Pure per-block delta: clearances first (previous order) — previous blocks
- * whose key is absent from current emit their cleared event; then changed and
- * new blocks (current order) — key absent from previous or text differs emit
- * their signal event. Unchanged blocks emit nothing.
- *
- * @remarks
- *   Clearances precede signals because consumers must retire stale blocks before
- *   applying replacements for the same identity.
- */
+// Clearances precede signals because consumers must retire stale blocks before replacements.
 export const blockDelta =
   (current: ReadonlyArray<ReportBlock>) =>
   (previous: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
@@ -209,15 +162,7 @@ export const blockDelta =
 
 const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> = Option.none()
 
-/**
- * Terminal gate: the first element emits every block as a signal event (or the
- * single empty-report event), each later element emits only its blockDelta —
- * nothing when no block changed, so quiet batches are silent.
- *
- * @remarks
- *   Quiet batches stay silent because continuous watch output should only surface
- *   real block changes after the initial report.
- */
+// Quiet batches stay silent because watch output should only surface real block changes.
 export const blockDeltas =
   (rootPath: string) =>
   <E, R>(
@@ -240,28 +185,7 @@ export const blockDeltas =
       })
     )
 
-/**
- * The continuous product: a linear pipeline of stream transformers whose
- * elements each carry one consistent batch.
- *
- * Change propagation model: every node is a stream; a node propagates only when
- * its value differs from the one before. The gates, in pipeline order: source —
- * diffCheckableFiles on ts.SourceFile identity (the only equality ts objects
- * support; the abstract builder reuses unchanged files, so identity is content
- * equality there); batch — empty diffs dropped in workspaceUpdates; signals —
- * Stream.changesWith(signalsEquivalence); report — blockDeltas on block key
- * plus rendered text (the canonical content projection).
- *
- * Fan-in never tears because it happens inside an element (derivation reads
- * every signal from one completed signal array), never across independently-
- * ticking streams. Per-node external subscribers are derived views — broadcast
- * the signal-array stream, Stream.map the projection, gate with
- * Stream.changesWith — never independently recomputed streams.
- *
- * @remarks
- *   Linear gated stages are required because each stage must drop unchanged
- *   values while keeping derivation fan-in inside one batch element.
- */
+// Linear gated stages are required because each stage drops unchanged values inside one batch.
 export const watchReportFromConfig =
   <E>(config: WiringConfig<E>) =>
   (

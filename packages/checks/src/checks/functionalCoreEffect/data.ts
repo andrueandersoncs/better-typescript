@@ -1,15 +1,6 @@
 import { Array, Schema } from "effect"
 
-/**
- * ArchitectureRole is the protocol vocabulary for functional-core module
- * placement.
- *
- * @remarks
- *   This union exists because boundary and shape checks must classify the same
- *   role literals. Removing it would duplicate role strings across detectors
- *   and let their accepted placements drift.
- * @modelRole protocol
- */
+// ArchitectureRole is role vocabulary because boundary and shape checks need same literals.
 export type ArchitectureRole = "domain" | "port" | "application" | "adapter" | "root" | "test"
 
 const architectureRoles = Array.make<["domain", "port", "application", "adapter", "root", "test"]>(
@@ -25,16 +16,7 @@ const architectureRoleSchema = Schema.Literals(architectureRoles)
 
 const optionalArchitectureRoleSchema = Schema.optional(architectureRoleSchema)
 
-/**
- * FunctionalCoreBoundaryKind is the protocol vocabulary for boundary violation
- * kinds.
- *
- * @remarks
- *   This union exists because detectors and advice copy must key the same kind
- *   literals. Removing it would duplicate strings and desynchronize
- *   remediation.
- * @modelRole protocol
- */
+// FunctionalCoreBoundaryKind is kind vocabulary because detectors and advice must share literals.
 export type FunctionalCoreBoundaryKind =
   | "dependency-direction"
   | "domain-effect-program"
@@ -78,16 +60,7 @@ const boundaryKinds = Array.make<
 
 const boundaryKindSchema = Schema.Literals(boundaryKinds)
 
-/**
- * FunctionalCoreBoundaryData is the boundary payload attached to boundary
- * detections.
- *
- * @remarks
- *   It remains explicit because check emission and advice derivation exchange one
- *   stable evidence record. Removing it would duplicate field contracts across
- *   those owners and let kind, role, and subject wiring drift.
- * @modelRole boundary
- */
+// FunctionalCoreBoundaryData is detection payload because emission and advice share one record.
 export class FunctionalCoreBoundaryData extends Schema.Class<FunctionalCoreBoundaryData>(
   "FunctionalCoreBoundaryData"
 )({
@@ -97,14 +70,7 @@ export class FunctionalCoreBoundaryData extends Schema.Class<FunctionalCoreBound
   targetRole: optionalArchitectureRoleSchema
 }) {}
 
-/**
- * FunctionalCoreShapeKind is the protocol vocabulary for shape advice kinds.
- *
- * @remarks
- *   This union exists because shape evidence and advice copy tables must key the
- *   same kinds. Removing it would duplicate literals and desynchronize advice.
- * @modelRole protocol
- */
+// FunctionalCoreShapeKind is kind vocabulary because evidence and advice must share kind keys.
 export type FunctionalCoreShapeKind =
   "effect-orchestrator" | "adapter-business-logic" | "thick-composition-root" | "pure-service"
 
@@ -114,15 +80,7 @@ const shapeKinds = Array.make<
 
 const shapeKindSchema = Schema.Literals(shapeKinds)
 
-/**
- * FunctionalCoreShapeData is the boundary payload attached to shape evidence.
- *
- * @remarks
- *   It remains explicit because silent shape checks and derive advice must share
- *   one metrics record. Removing it would restate counts in both owners and let
- *   thresholds diverge.
- * @modelRole boundary
- */
+// FunctionalCoreShapeData is shape payload because silent checks and derive share one record.
 export class FunctionalCoreShapeData extends Schema.Class<FunctionalCoreShapeData>(
   "FunctionalCoreShapeData"
 )({

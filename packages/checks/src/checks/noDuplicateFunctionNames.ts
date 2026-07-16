@@ -91,7 +91,7 @@ const duplicateNameListeners = (
     return Array.filterMap(fileFunctions, (candidate) => {
       const declarations = declarationsForName(index)(candidate.text)
 
-      // Compare mutual assignability because parameter renames preserve a copied signature while different domain data does not.
+      // Compare mutual assignability because renamed params keep a copied signature; domains may differ.
       const identicalDeclarations = Array.filter(declarations, (other) => {
         const candidateType = context.checker.getTypeAtLocation(candidate)
         const otherType = context.checker.getTypeAtLocation(other)

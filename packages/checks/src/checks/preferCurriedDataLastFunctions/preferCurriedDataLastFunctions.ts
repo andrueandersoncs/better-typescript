@@ -155,16 +155,7 @@ const symbolAtLocation =
       })
     )
 
-/**
- * NamedFunctionDeclaration is the compiler syntax protocol handled by
- * declaration-name lookup.
- *
- * @remarks
- *   It remains explicit because function and method declarations share one naming
- *   operation; removing it would repeat the union and let accepted cases
- *   drift.
- * @modelRole protocol
- */
+// NamedFunctionDeclaration is naming syntax protocol because function and method share lookup.
 export type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
 
 const namedFunctionDeclarationName = (
@@ -202,16 +193,7 @@ const symbolForDeclaration =
 const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulator: A) => A) =>
   foldAst((current: A, currentNode: ts.Node): A => visit(currentNode)(current))
 
-/**
- * NameDeclaration is the compiler syntax protocol handled by declaration- name
- * comparison.
- *
- * @remarks
- *   It remains explicit because variable, function, and method declarations share
- *   one lookup operation; removing it would repeat the union and let accepted
- *   cases drift.
- * @modelRole protocol
- */
+// NameDeclaration is naming syntax protocol because variable, function, and method share lookup.
 export type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
 const declarationHasName =

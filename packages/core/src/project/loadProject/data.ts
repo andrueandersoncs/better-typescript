@@ -2,49 +2,20 @@ import { Data, Schema } from "effect"
 import type * as ts from "typescript"
 import { TsProgram } from "../../engine/tsSchema.js"
 
-/**
- * A discovered leaf project: its config location and parsed command line, with
- * no ts.Program built yet. Watch mode consumes configs directly.
- *
- * @remarks
- *   Program construction is deferred because watch mode starts from configs and
- *   builds programs through the TypeScript watcher instead. This model remains
- *   explicit because its consumers need the documented contract; removing it
- *   would reintroduce that contract at each use site.
- * @modelRole shared
- */
+// ProjectConfig is leaf config + commandLine because watch starts first.
 export class ProjectConfig extends Data.Class<{
   readonly configPath: string
   readonly rootPath: string
   readonly parsed: ts.ParsedCommandLine
 }> {}
 
-/**
- * WorkspaceConfigs is the shared rootPath, projects contract used by
- * reportFromWorkspaceConfigs, discoverWorkspace, and
- * reportBlocksFromWorkspaceConfigs.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// WorkspaceConfigs is shared root/projects contract because owners need one term.
 export class WorkspaceConfigs extends Data.Class<{
   readonly rootPath: string
   readonly projects: ReadonlyArray<ProjectConfig>
 }> {}
 
-/**
- * LoadedProject is the shared program, configPath, rootPath contract used by
- * loadedProjectsSchema, astNodes, and loadProjectConfig.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// LoadedProject is shared program/paths contract because owners need one term.
 export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")({
   program: TsProgram,
   configPath: Schema.String,
@@ -53,31 +24,13 @@ export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")(
 
 const loadedProjectsSchema = Schema.Array(LoadedProject)
 
-/**
- * LoadedWorkspace is the shared rootPath, projects contract used by
- * reportFromWiring, loadProject, and reportEventsFromWiring.
- *
- * @remarks
- *   It remains explicit because these independent owners need one stable
- *   vocabulary. Removing it would duplicate the field contract across consumers
- *   and let their representations drift.
- * @modelRole shared
- */
+// LoadedWorkspace is shared root/projects contract because owners need one term.
 export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorkspace")({
   rootPath: Schema.String,
   projects: loadedProjectsSchema
 }) {}
 
-/**
- * MissingTsconfigError names the compiler syntax protocol handled by
- * discoverWorkspace.
- *
- * @remarks
- *   It remains explicit because those algorithms must agree on the accepted
- *   syntax vocabulary. Removing it would repeat the compiler-node union in each
- *   matcher and let their accepted cases drift.
- * @modelRole protocol
- */
+// MissingTsconfigError names syntax protocol because discoverWorkspace agrees.
 export class MissingTsconfigError extends Schema.TaggedErrorClass<MissingTsconfigError>()(
   "MissingTsconfigError",
   {
@@ -89,16 +42,7 @@ export class MissingTsconfigError extends Schema.TaggedErrorClass<MissingTsconfi
   }
 }
 
-/**
- * InvalidTsconfigError names the compiler syntax protocol handled by
- * discoverConfig.
- *
- * @remarks
- *   It remains explicit because those algorithms must agree on the accepted
- *   syntax vocabulary. Removing it would repeat the compiler-node union in each
- *   matcher and let their accepted cases drift.
- * @modelRole protocol
- */
+// InvalidTsconfigError names syntax protocol because discoverConfig must agree.
 export class InvalidTsconfigError extends Schema.TaggedErrorClass<InvalidTsconfigError>()(
   "InvalidTsconfigError",
   {
@@ -106,16 +50,7 @@ export class InvalidTsconfigError extends Schema.TaggedErrorClass<InvalidTsconfi
   }
 ) {}
 
-/**
- * CircularProjectReferenceError names the compiler syntax protocol handled by
- * discoverConfig.
- *
- * @remarks
- *   It remains explicit because those algorithms must agree on the accepted
- *   syntax vocabulary. Removing it would repeat the compiler-node union in each
- *   matcher and let their accepted cases drift.
- * @modelRole protocol
- */
+// CircularProjectReferenceError names syntax protocol because discoverConfig agrees.
 export class CircularProjectReferenceError extends Schema.TaggedErrorClass<CircularProjectReferenceError>()(
   "CircularProjectReferenceError",
   {
