@@ -1,6 +1,6 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
+import { withProgramIndex } from "@better-typescript/core/engine/check"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -154,7 +154,7 @@ const isCompositionForwarder = (arrow: ts.ArrowFunction): boolean => {
 const compositionForwarderElements =
   (index: ExportReferenceIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    if (isTestSourceFile(context.projectRoot)(context.sourceFile)) {
+    if (isTestSourceFile(context.workspaceRoot)(context.sourceFile)) {
       return Array.empty()
     }
 

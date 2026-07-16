@@ -1,4 +1,4 @@
-import { Data, Schema } from "effect"
+import { Data, MutableList, Schema } from "effect"
 import type * as ts from "typescript"
 import type { Detection } from "../location/data.js"
 import type { ProgramContext } from "../sources/data.js"
@@ -46,4 +46,23 @@ export type Subscription = NodeSubscription | FileSubscription
 // Check is the shared plan contract because runChecks owners need one vocabulary.
 export class Check extends Data.Class<{
   readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
+}> {}
+
+// CachedPlan is the program+subscriptions boundary because callers need one contract.
+export class CachedPlan extends Data.Class<{
+  readonly program: ts.Program
+  readonly subscriptions: ReadonlyArray<Subscription>
+}> {}
+
+// PlannedNodeSubscription is a planned OnNode boundary because runChecks needs one shape.
+export class PlannedNodeSubscription extends Data.Class<{
+  readonly checkIndex: number
+  readonly subscription: NodeSubscription
+}> {}
+
+// ActiveNodeSubscription is a live OnNode boundary because runChecks needs one shape.
+export class ActiveNodeSubscription extends Data.Class<{
+  readonly checkIndex: number
+  readonly handle: (node: ts.Node) => ReadonlyArray<Detection>
+  readonly detections: MutableList.MutableList<Detection>
 }> {}

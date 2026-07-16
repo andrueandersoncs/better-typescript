@@ -1,10 +1,7 @@
 import { Array, Equal, Function, HashMap, Option, Struct, Tuple, flow, pipe, Result } from "effect"
 import * as ts from "typescript"
-import {
-  withProgramIndex,
-  foldAst,
-  isProjectSourceFile
-} from "@better-typescript/core/engine/sources"
+import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { withProgramIndex } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -106,7 +103,7 @@ const seamCandidates =
   (
     sourceFiles: ReadonlyArray<ts.SourceFile>
   ): ReadonlyArray<readonly [ts.ClassDeclaration, ts.Symbol]> => {
-    const classifyTestSource = isTestSourceFile(context.projectRoot)
+    const classifyTestSource = isTestSourceFile(context.workspaceRoot)
 
     return Array.flatMap(sourceFiles, (sourceFile) => {
       if (classifyTestSource(sourceFile)) {
@@ -292,7 +289,7 @@ const buildIndex = (
     HashMap.fromIterable
   )
 
-  const classifyTestSource = isTestSourceFile(context.projectRoot)
+  const classifyTestSource = isTestSourceFile(context.workspaceRoot)
 
   const scanFile =
     (sourceFile: ts.SourceFile) =>

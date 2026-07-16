@@ -106,9 +106,9 @@ export const toWorkspacePath =
   }
 
 export const isTestSourceFile =
-  (projectRoot: string) =>
+  (root: string) =>
   (sourceFile: ts.SourceFile): boolean =>
-    pipe(sourceFile.fileName, (fileName) => path.relative(projectRoot, fileName), isTestPath)
+    pipe(sourceFile.fileName, (fileName) => path.relative(root, fileName), isTestPath)
 
 export const importElements =
   <Context, Element>(
@@ -412,7 +412,7 @@ const buildUsageMap =
 
     const entriesBySymbol = HashMap.fromIterable(entryPairs)
     const relative = toRelativeFileName(context.projectRoot)
-    const classifyTestSource = isTestSourceFile(context.projectRoot)
+    const classifyTestSource = isTestSourceFile(context.workspaceRoot)
 
     const scanFile =
       (sourceFile: ts.SourceFile) =>
@@ -554,7 +554,7 @@ const statementModuleSpecifier = (statement: ts.Statement): Option.Option<ts.Exp
 
 export const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleEdge> => {
   const relative = toRelativeFileName(context.projectRoot)
-  const classifyTestSource = isTestSourceFile(context.projectRoot)
+  const classifyTestSource = isTestSourceFile(context.workspaceRoot)
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   return Array.flatMap(projectFiles, (sourceFile) => {

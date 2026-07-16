@@ -1,5 +1,5 @@
 import { Array, Function, pipe, Result } from "effect"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
+import { withProgramIndex } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -22,7 +22,7 @@ const hint =
 const testOnlyExportElements =
   (index: ExportReferenceIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    if (isTestSourceFile(context.projectRoot)(context.sourceFile)) {
+    if (isTestSourceFile(context.workspaceRoot)(context.sourceFile)) {
       return Array.empty()
     }
 

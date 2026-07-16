@@ -1,6 +1,6 @@
 import { Array, Function, Option, Struct, Tuple, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
+import { withProgramIndex } from "@better-typescript/core/engine/check"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"

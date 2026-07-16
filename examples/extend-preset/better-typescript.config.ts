@@ -11,8 +11,10 @@ import {
   mergeWirings,
   namedCheck
 } from "@better-typescript/core/engine/wiring"
+import { withFallbackAdvice } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/check"
 
@@ -85,13 +87,28 @@ const localWiring = makeWiring({
   checks: [consoleLogCheck],
   derive: (signals) => {
     const elementsOf = signalOf(signals)
+    const specificAdvice = consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
 
-    return consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
+    const fallbackAdvice = deriveSignals((elements: ReadonlyArray<Detection>) =>
+      detectionPaths(elements).map(
+        (path) =>
+          new Advice({
+            location: adviceLocation(path),
+            level: "file",
+            title: "logging policy review",
+            remediation: "Adopt the structured logger before this file grows more console output.",
+            evidence: [evidenceItem("console.log calls", countAtPath(path, elements))]
+          })
+      )
+    )(elementsOf("acme/no-console-log"))
+
+    // withFallbackAdvice suppresses the generic nudge because covered files already get specifics.
+    return withFallbackAdvice(specificAdvice, fallbackAdvice)
   }
 })
 
 // mergeWirings concatenates checks and derive stages, so extending the preset
 // stays a single composition because the merge preserves both halves together.
-const extendedWiring = mergeWirings([defaultWiring, localWiring])
+const extendedWiring = mergeWirings([defaultWiring, functionalCoreEffectWiring, localWiring])
 
 export default defineConfig([{ files: ["**/*"], wiring: extendedWiring }])

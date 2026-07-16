@@ -122,7 +122,7 @@ const importUsageElement = (context: CheckContext) => {
   const element = detection(context)
   const relative = toRelativeFileName(context.projectRoot)
   const workspaceRelative = toWorkspacePath(context.projectRoot, context.workspaceRoot)
-  const fromTest = isTestSourceFile(context.projectRoot)(context.sourceFile)
+  const fromTest = isTestSourceFile(context.workspaceRoot)(context.sourceFile)
   const relativePath = relative(context.sourceFile.fileName)
   const importerWorkspacePath = workspaceRelative(relativePath)
 

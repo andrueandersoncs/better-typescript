@@ -47,3 +47,8 @@ export const afterThree = 6
 
 // stacked second line separated only by a blank line
 export const afterStacked = 8
+
+export const templated = `${1}.${2}`
+// stacked after template first line
+// stacked after template second line
+export const afterTemplate = 10

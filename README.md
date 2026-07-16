@@ -340,8 +340,12 @@ not universal TypeScript style. It classifies conventional `domain`, `port`, `ap
 `adapter`, `root`, and `test` paths; explicit role prefixes and capability/resource policy are
 available from its policy subpath.
 
-`examples/extend-preset/better-typescript.config.ts` contains a complete copyable consumer config.
-Config resolution does not discover examples subtrees while this repository self-hosts.
+`examples/extend-preset/better-typescript.config.ts` is a complete copyable consumer config;
+`examples/architecture-fleets/` shows the opt-in architecture fleets with explicit role prefixes,
+and `examples/programmatic/main.ts` runs one built-in check through the programmatic API. Config
+resolution does not discover examples subtrees while this repository self-hosts, but the root
+`tsconfig.json` references them (plus `bench/` and the self-host config) so the architecture
+evidence horizon sees this repository's own production usage of its public surface.
 
 ### Opting into an architecture paradigm
 
@@ -420,13 +424,17 @@ specifiers to `module-identity` aliases — no extra Programs.
 ## Source topology
 
 The repository is split into the core analysis package, built-in Checks package, and CLI package.
-Within core, wiring owns identity/configuration/composition, signal owns completed Check results,
-report owns rendering and wire vocabulary, and watch owns Workspace Update production and Workspace
-Update-to-Report Event composition. Project loading remains a separate boundary. Public package
-exports are the supported entrypoints; source paths are implementation details.
+Within core, check owns authoring and fused execution, wiring owns identity, configuration,
+composition, and Wiring execution into Signals, signal owns the completed result vocabulary and
+lookup, report owns rendering and wire vocabulary, and watch owns Workspace Update production and
+Workspace Update-to-Report Event composition. Project loading remains a separate boundary. Public
+package exports are the supported entrypoints; source paths are implementation details.
 
 ## Architecture notes
 
+- `adrs/0021-advice-clean-self-host.md` records that architecture Advice gates self-hosting: an
+  empty report, one-directional engine seams, workspace-relative test classification, and an
+  analysis horizon that includes the repository's own config, bench, and runnable examples.
 - `adrs/0020-files-are-module-boundaries.md` records the removal of the `prefer-data-last-module`
   placement check: files are the language's module boundary, so placement rules stop at file scope
   while data-last signature preference stays with the shape-based checks.

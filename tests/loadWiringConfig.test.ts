@@ -7,14 +7,12 @@ import { Effect, Stream } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
-import { workspaceSignals } from "@better-typescript/core/engine/signal"
-import { checkFromSubscriptions, fileCheck, locateNode } from "@better-typescript/core/engine/check"
+import { workspaceSignals } from "@better-typescript/core/engine/wiring"
+import { checkFromSubscriptions, detection, fileCheck } from "@better-typescript/core/engine/check"
 import { contextFromLoadedProject, loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
-import {
-  decodeWiringConfig,
-  loadWiringConfig
-} from "@better-typescript/core/project/loadWiringConfig"
+import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
@@ -175,8 +173,8 @@ test("decoded glob config drives workspace signals end to end", async () => {
                 {
                   name: "config-extra-check",
                   check: fileCheck((context) => [
-                    new Detection({
-                      location: locateNode(context)(context.sourceFile),
+                    detection(context)({
+                      node: context.sourceFile,
                       message: "configured detection",
                       hint: "loaded from project config"
                     })

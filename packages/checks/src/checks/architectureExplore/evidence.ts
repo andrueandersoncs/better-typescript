@@ -5,16 +5,13 @@ import {
   CompositionForwarderData,
   ContextTagSeamData,
   ExportSurfaceData,
-  ExternalDependencyConstructionData,
   ImportUsageData,
   ImportedNameUsage,
   InterfaceBurdenData,
   ModuleGraphData,
   ModuleIdentityData,
-  ModuleScopeEffectData,
   PassThroughWrapperData,
   SeamLeakageData,
-  SingleAdapterSeamData,
   TestOnlyExportData
 } from "./data.js"
 import {
@@ -51,15 +48,6 @@ export const testOnlyExportDataOf = (element: NamedDetection): Option.Option<Tes
 export const seamLeakageDataOf = (element: NamedDetection): Option.Option<SeamLeakageData> =>
   checkedData(Schema.is(SeamLeakageData), element)
 
-export const externalDependencyDataOf = (
-  element: NamedDetection
-): Option.Option<ExternalDependencyConstructionData> =>
-  checkedData(Schema.is(ExternalDependencyConstructionData), element)
-
-export const singleAdapterDataOf = (
-  element: NamedDetection
-): Option.Option<SingleAdapterSeamData> => checkedData(Schema.is(SingleAdapterSeamData), element)
-
 export const isDeletableWrapper = (element: NamedDetection): boolean =>
   pipe(
     passThroughDataOf(element),
@@ -74,9 +62,6 @@ export const isDeletableWrapper = (element: NamedDetection): boolean =>
 export const importUsageDataOf = (element: NamedDetection): Option.Option<ImportUsageData> =>
   checkedData(Schema.is(ImportUsageData), element)
 
-export const moduleIdentityDataOf = (element: NamedDetection): Option.Option<ModuleIdentityData> =>
-  checkedData(Schema.is(ModuleIdentityData), element)
-
 export const exportSurfaceDataOf = (element: NamedDetection): Option.Option<ExportSurfaceData> =>
   checkedData(Schema.is(ExportSurfaceData), element)
 
@@ -84,10 +69,6 @@ export const compositionForwarderDataOf = (
   element: NamedDetection
 ): Option.Option<CompositionForwarderData> =>
   checkedData(Schema.is(CompositionForwarderData), element)
-
-export const moduleScopeEffectDataOf = (
-  element: NamedDetection
-): Option.Option<ModuleScopeEffectData> => checkedData(Schema.is(ModuleScopeEffectData), element)
 
 export const contextTagSeamDataOf = (element: NamedDetection): Option.Option<ContextTagSeamData> =>
   checkedData(Schema.is(ContextTagSeamData), element)
@@ -147,9 +128,11 @@ export class WorkspaceImportEdge extends Data.Class<{
 
 const emptyImportedNames: ReadonlyArray<ImportedNameUsage> = Array.empty()
 
+const isModuleIdentityData = Schema.is(ModuleIdentityData)
+
 const aliasEntriesOf = (element: NamedDetection): ReadonlyArray<readonly [string, string]> =>
   pipe(
-    moduleIdentityDataOf(element),
+    checkedData(isModuleIdentityData, element),
     Option.map((data) =>
       Array.map(data.aliases, (alias): readonly [string, string] =>
         Tuple.make(alias, data.workspacePath)

@@ -13,7 +13,7 @@ import {
 } from "effect"
 import { formatRefactorExample } from "../example/example.js"
 import { Location } from "../location/data.js"
-import { AdviceReportKey, ReportBlock } from "../report/data.js"
+import type { Detection } from "../location/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
 export const collectSignals: <A, E, R>(
@@ -22,8 +22,18 @@ export const collectSignals: <A, E, R>(
 
 export const deriveSignals =
   <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
-  <E, R>(signals: Stream.Stream<A, E, R>): Stream.Stream<B, E, R> =>
-    pipe(collectSignals(signals), Effect.map(derive), Stream.fromArrayEffect)
+  <E, R>(signals: Stream.Stream<A, E, R>): Stream.Stream<B, E, R> => {
+    const collected = collectSignals(signals)
+    const derived = Effect.map(collected, derive)
+
+    return Stream.fromArrayEffect(derived)
+  }
+
+// The name pairs with its detection here because derive joins detections by check name.
+export const namedDetection =
+  (name: string) =>
+  (detectionValue: Detection): NamedDetection =>
+    new NamedDetection({ name, detection: detectionValue })
 
 const namedDetectionName = Struct.get<NamedDetection, "name">("name")
 
@@ -122,8 +132,11 @@ const countEntryEvidence = (entry: readonly [string, number]): EvidenceItem =>
 
 export const evidenceFromCounts = (
   counts: HashMap.HashMap<string, number>
-): ReadonlyArray<EvidenceItem> =>
-  pipe(HashMap.toEntries(counts), Array.map(countEntryEvidence), Array.sort(evidenceOrder))
+): ReadonlyArray<EvidenceItem> => {
+  const items = pipe(HashMap.toEntries(counts), Array.map(countEntryEvidence))
+
+  return Array.sort(items, evidenceOrder)
+}
 
 const lineKey = (named: NamedDetection): string => `${named.detection.location.line}`
 
@@ -206,27 +219,6 @@ export const adviceText = (advice: Advice): string => {
   const lines = Array.appendAll(remediationLines, evidence)
 
   return Array.join(lines, "\n")
-}
-
-const reportIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
-  pipe(Array.prepend(parts, kind), JSON.stringify)
-
-export const adviceReportBlock = (advice: Advice): ReportBlock => {
-  const pathLabel = advicePath(advice)
-  const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
-  const identity = reportIdentity("advice", adviceIdentityParts)
-
-  const key = new AdviceReportKey({
-    level: advice.level,
-    path: pathLabel,
-    title: advice.title
-  })
-
-  const text = adviceText(advice)
-  const header = adviceHeader(advice)
-  const cleared = `${header} — cleared`
-
-  return new ReportBlock({ identity, key, text, cleared })
 }
 
 export const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"

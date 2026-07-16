@@ -14,9 +14,6 @@ import {
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { foldAst } from "@better-typescript/core/engine/sources"
-import type { ArchitectureRole } from "./data.js"
-import type { FunctionalCoreEffectIndex } from "./index.js"
-import { roleForSourceFile } from "./index.js"
 import type { FunctionalCoreEffectPolicy } from "./policy.js"
 import {
   hasExportModifier,
@@ -775,11 +772,6 @@ export const effectServiceConfigFromExpression = (
     Option.flatMap(effectServiceMakerObject)
   )
 }
-
-export const sourceFileRole = (
-  index: FunctionalCoreEffectIndex,
-  context: CheckContext
-): Option.Option<ArchitectureRole> => roleForSourceFile(index, context.sourceFile)
 
 export const resolvedModuleSourceFile = (
   context: CheckContext,

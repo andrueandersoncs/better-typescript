@@ -1,6 +1,8 @@
-import { Array, Effect, pipe, Stream } from "effect"
+import { Array } from "effect"
+import type { Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/derive"
+import { adviceFromSignalPair } from "../support/advice.js"
 import { SystemicHotspotsInput, SystemicSignals } from "./data.js"
 import { packageExamples } from "../../defineCheck.js"
 
@@ -33,14 +35,18 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   return isSystemic ? Array.of(advice) : Array.empty()
 }
 
-export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice> => {
-  const hotSubsystem = collectSignals(input.hotSubsystem)
-  const highSignalDensity = collectSignals(input.highSignalDensity)
+const systemicSignals = (
+  hotSubsystem: ReadonlyArray<Advice>,
+  highSignalDensity: ReadonlyArray<Advice>
+): SystemicSignals => new SystemicSignals({ hotSubsystem, highSignalDensity })
 
-  return pipe(
-    Effect.all({ hotSubsystem, highSignalDensity }),
-    Effect.map(systemicAdvice),
-    Effect.map(Stream.fromIterable),
-    Stream.unwrap
+export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice> => {
+  const advice = adviceFromSignalPair(
+    input.hotSubsystem,
+    input.highSignalDensity,
+    systemicSignals,
+    systemicAdvice
   )
+
+  return advice
 }

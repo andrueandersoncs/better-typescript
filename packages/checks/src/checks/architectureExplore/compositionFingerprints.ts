@@ -1,6 +1,6 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
+import { withProgramIndex } from "@better-typescript/core/engine/check"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -147,7 +147,7 @@ const walkObjectProperty = (property: ts.ObjectLiteralElementLike): ReadonlyArra
     Match.orElse(emptyFingerprintNamesFallback)
   )
 
-// Point-free pipe/flow stages are bare identifier or property-access chains only.
+// Point-free stages are bare identifier or property chains because calls fingerprint themselves.
 const pointFreeStageName = (argument: ts.Expression): Option.Option<string> =>
   pipe(
     argument,
@@ -157,9 +157,7 @@ const pointFreeStageName = (argument: ts.Expression): Option.Option<string> =>
     Option.flatMap(calleeName)
   )
 
-// Preorder DFS over CallExpressions in source order. Every call contributes its callee
-// text; bare pipe/flow additionally contribute point-free stage names (pipe skips arg0).
-// Nested call arguments are covered by the DFS; other argument identities contribute nothing.
+// Preorder DFS collects callee and point-free stage names because fingerprints mirror source order.
 const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
   const callee = unwrapTransparentExpression(call.expression)
   const name = calleeName(callee)
@@ -282,7 +280,7 @@ const fingerprintNames = (
 const compositionFingerprintElements =
   (index: ExportReferenceIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    if (isTestSourceFile(context.projectRoot)(context.sourceFile)) {
+    if (isTestSourceFile(context.workspaceRoot)(context.sourceFile)) {
       return Array.empty()
     }
 

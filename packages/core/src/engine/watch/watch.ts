@@ -5,13 +5,14 @@ import {
   HashMap,
   HashSet,
   Option,
+  Queue,
   Stream,
   Struct,
   Tuple,
   pipe
 } from "effect"
-import type * as ts from "typescript"
-import type { WorkspaceConfigs } from "../../project/loadProject/data.js"
+import * as ts from "typescript"
+import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
 import type { ReportBlock, ReportEvent } from "../report/data.js"
 import {
   batchReportBlocks,
@@ -21,11 +22,106 @@ import {
   initialReportEvents
 } from "../report/report.js"
 import type { WiringSignals } from "../signal/data.js"
-import { wiringSignalsArrayEquivalence, workspaceSignals } from "../signal/signal.js"
-import type { ProgramContext, SourceUpdate } from "../sources/data.js"
-import { sourceUpdates } from "../sources/sources.js"
+import { wiringSignalsArrayEquivalence } from "../signal/signal.js"
+import type { ProgramContext } from "../sources/data.js"
+import { contextFor, isProjectSourceFile } from "../sources/sources.js"
 import type { WiringConfig } from "../wiring/data.js"
-import { WorkspaceUpdate } from "./data.js"
+import { workspaceSignals } from "../wiring/wiring.js"
+import { SourceUpdate, WorkspaceUpdate } from "./data.js"
+
+// Reporter diagnostics stay silent because the watcher must keep the last valid program on failure.
+const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
+
+const stopWatch = (watch: ts.WatchOfConfigFile<ts.BuilderProgram>): Effect.Effect<void> =>
+  Effect.sync(() => {
+    watch.close()
+  })
+
+// Fresh contexts per rebuild are required because diffs and checks must observe the new program.
+const programUpdates = (
+  config: ProjectConfig,
+  watchOptions: Option.Option<ts.WatchOptions>
+): Stream.Stream<ProgramContext> =>
+  Stream.callback<ProgramContext>((queue) => {
+    const onProgramCreate = (builder: ts.BuilderProgram): boolean => {
+      const program = builder.getProgram()
+      const context = contextFor(config.rootPath)(program)
+
+      return Queue.offerUnsafe(queue, context)
+    }
+
+    const acquire = Effect.sync(() => {
+      const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
+
+      const host = ts.createWatchCompilerHost(
+        config.configPath,
+        undefined,
+        ts.sys,
+        ts.createAbstractBuilder,
+        ignoreDiagnostic,
+        ignoreDiagnostic,
+        watchOptionsToExtend
+      )
+
+      // Set afterProgramCreate after host build because createWatchProgram emits the initial program now.
+      host.afterProgramCreate = onProgramCreate
+
+      return ts.createWatchProgram(host)
+    })
+
+    return Effect.acquireRelease(acquire, stopWatch)
+  })
+
+const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
+
+const fileIndexEntry = (sourceFile: ts.SourceFile): readonly [string, ts.SourceFile] =>
+  Tuple.make(sourceFile.fileName, sourceFile)
+
+// Over-reporting is acceptable because missing a changed file would leave stale detections.
+const diffCheckableFiles =
+  (previous: HashMap.HashMap<string, ts.SourceFile>) =>
+  (context: ProgramContext): readonly [HashMap.HashMap<string, ts.SourceFile>, SourceUpdate] => {
+    const allSourceFiles = context.program.getSourceFiles()
+    const currentFiles = Array.filter(allSourceFiles, isProjectSourceFile)
+    const entries = Array.map(currentFiles, fileIndexEntry)
+    const next = HashMap.fromIterable(entries)
+
+    const changed = Array.filter(currentFiles, (sourceFile) =>
+      pipe(
+        HashMap.get(previous, sourceFile.fileName),
+        Option.match({
+          onNone: Function.constant(true),
+          onSome: (known) => known !== sourceFile
+        })
+      )
+    )
+
+    const removed = pipe(
+      previous,
+      HashMap.keys,
+      Array.fromIterable,
+      Array.filter((fileName) => !HashMap.has(next, fileName))
+    )
+
+    const update = new SourceUpdate({ context, changed, removed })
+
+    return Tuple.make(next, update)
+  }
+
+// Changed and deleted paths emit together because workspace caching must drop removed files too.
+const sourceUpdates = (
+  config: ProjectConfig,
+  watchOptions: Option.Option<ts.WatchOptions>
+): Stream.Stream<SourceUpdate> =>
+  pipe(
+    programUpdates(config, watchOptions),
+    Stream.mapAccum(Function.constant(emptyFileIndex), (previous, context) => {
+      const [next, update] = diffCheckableFiles(previous)(context)
+      const updates = Array.of(update)
+
+      return Tuple.make(next, updates)
+    })
+  )
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty()
 
@@ -208,11 +304,9 @@ export const reportEvents =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
   <UpdateError, R>(
     updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
-  ): Stream.Stream<ReportEvent, UpdateError | DeriveError, R> =>
-    pipe(
-      updates,
-      signalUpdates(config),
-      Stream.changesWith(signalsEquivalence),
-      reportBlockUpdates(config),
-      blockDeltas
-    )
+  ): Stream.Stream<ReportEvent, UpdateError | DeriveError, R> => {
+    const recomputedSignals = pipe(updates, signalUpdates(config))
+    const gatedSignals = pipe(recomputedSignals, Stream.changesWith(signalsEquivalence))
+
+    return pipe(gatedSignals, reportBlockUpdates(config), blockDeltas)
+  }

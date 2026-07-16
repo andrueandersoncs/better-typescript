@@ -97,6 +97,14 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 1,
     message,
     hint
+  },
+  {
+    name: "comment stack after a template substitution",
+    fileName: "src/cases.ts",
+    line: 52,
+    column: 1,
+    message,
+    hint
   }
 ]
 
@@ -130,6 +138,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 14,
     column: 25
+  },
+  {
+    name: "isolated comment after a template substitution",
+    fileName: "src/allowed.ts",
+    line: 17,
+    column: 1
   }
 ]
 

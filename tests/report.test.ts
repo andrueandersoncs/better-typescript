@@ -30,9 +30,8 @@ import {
 } from "@better-typescript/core/project/loadProject"
 import {
   checkFromSubscriptions,
+  detection,
   fileCheck,
-  fileSubscription,
-  locateNode,
   nodeCheck
 } from "@better-typescript/core/engine/check"
 import type {
@@ -121,8 +120,8 @@ const collectAstSignatures = (project: LoadedProject): ReadonlyArray<string> => 
 
 const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   (context) => (node) => [
-    new Detection({
-      location: locateNode(context)(node),
+    detection(context)({
+      node,
       message: probeMessage,
       hint: probeHint
     })
@@ -213,8 +212,7 @@ const delayedSource = <A>(items: ReadonlyArray<A>): Stream.Stream<A> =>
 
 const noDerive: Wiring["derive"] = () => Stream.empty
 
-const fixedCheck = (elements: ReadonlyArray<Detection>): Check =>
-  checkFromSubscriptions(() => [fileSubscription(() => elements)])
+const fixedCheck = (elements: ReadonlyArray<Detection>): Check => fileCheck(() => elements)
 
 const testWiring = (
   checks: ReadonlyArray<NamedCheck>,
@@ -277,8 +275,8 @@ test("runCheckOnProject applies probe subscriptions to matching fixture nodes", 
 
 test("glob config runs every wiring whose file patterns match", async () => {
   const fileProbe: Check = fileCheck((context) => [
-    new Detection({
-      location: locateNode(context)(context.sourceFile),
+    detection(context)({
+      node: context.sourceFile,
       message: "visited glob-matched file",
       hint: "run each wiring only on matching files"
     })
@@ -312,8 +310,8 @@ test("glob config runs every wiring whose file patterns match", async () => {
 
 test("each glob wiring derives from only its matching files", async () => {
   const fileProbe: Check = fileCheck((context) => [
-    new Detection({
-      location: locateNode(context)(context.sourceFile),
+    detection(context)({
+      node: context.sourceFile,
       message: "derived glob input",
       hint: "derive independently per wiring"
     })
@@ -355,8 +353,8 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
   const check = namedCheck(
     "visited source files",
     fileCheck((context) => [
-      new Detection({
-        location: locateNode(context)(context.sourceFile),
+      detection(context)({
+        node: context.sourceFile,
         message: "visited source file",
         hint: "analyze every referenced project"
       })
@@ -443,16 +441,16 @@ test("reportEvents preserves two distinct detections emitted at the same AST loc
   const doubleDetectionCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(
     ts.isThrowStatement
   )((context) => (node) => {
-    const sharedLocation = locateNode(context)(node)
+    const element = detection(context)
 
     return [
-      new Detection({
-        location: sharedLocation,
+      element({
+        node,
         message: "first interpretation",
         hint: "handle the first interpretation"
       }),
-      new Detection({
-        location: sharedLocation,
+      element({
+        node,
         message: "second interpretation",
         hint: "handle the second interpretation"
       })

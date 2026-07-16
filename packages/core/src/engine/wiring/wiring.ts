@@ -1,22 +1,30 @@
-import { makeRe } from "minimatch"
+import * as path from "node:path"
+import { filter as compileFileGlob, makeRe } from "minimatch"
 import type { MinimatchOptions } from "minimatch"
 import {
   Array,
   Effect,
+  Equal,
   Function,
+  HashMap,
   HashSet,
+  MutableList,
   Option,
   Predicate,
   Result,
   Stream,
   Struct,
+  Tuple,
   pipe
 } from "effect"
+import type * as ts from "typescript"
 import type { Check } from "../check/data.js"
-import { collectSignals } from "../derive/derive.js"
-import type { Advice } from "../derive/data.js"
 import type { NonEmptyRefactorExamples, RefactorExample } from "../example/data.js"
-import type { Signal } from "../signal/data.js"
+import type { Detection } from "../location/data.js"
+import { Signal, WiringSignals } from "../signal/data.js"
+import { ProgramContext } from "../sources/data.js"
+import { isProjectSourceFile } from "../sources/sources.js"
+import { runChecks } from "../check/check.js"
 import {
   DuplicateCheckNamesError,
   DuplicateNameState,
@@ -150,12 +158,6 @@ export const mergeWirings = <E = never>(wirings: ReadonlyArray<Wiring<E>>): Wiri
   return makeWiring({ checks, derive })
 }
 
-// Derivation takes the full signal array because advice must see every signal from the same batch.
-export const deriveAdvice =
-  <E>(wiring: Wiring<E>) =>
-  (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, E> =>
-    pipe(wiring.derive(signals), collectSignals)
-
 // Glob compilation happens at config load because invalid patterns must not fail mid-analysis.
 export const defineConfig = <E = never>(
   config: ReadonlyArray<{
@@ -197,3 +199,191 @@ export const defineConfig = <E = never>(
 
   return validateCheckNames(checks, entries)
 }
+
+const emptyDetections: ReadonlyArray<Detection> = Array.empty()
+const noDetections = Function.constant(emptyDetections)
+
+const relativeWorkspacePath = (
+  workspaceRoot: string,
+  projectRoot: string,
+  candidatePath: string
+): string => {
+  const absoluteCandidatePath = path.resolve(projectRoot, candidatePath)
+
+  return path.relative(workspaceRoot, absoluteCandidatePath).replaceAll(path.sep, "/")
+}
+
+// Sequential project loading is required because retaining every Program can exhaust the heap.
+export const workspaceSignalsForProjects =
+  <E>(config: WiringConfig<E>) =>
+  (workspaceRoot: string) =>
+  <A>(projects: ReadonlyArray<A>) =>
+  (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>> => {
+    const matchersByWiring = Array.map(config, (entry) =>
+      Array.map(entry.files, (pattern) => compileFileGlob(pattern, globOptions))
+    )
+
+    const seenByWiring = Array.map(config, (entry) =>
+      Array.makeBy(entry.wiring.checks.length, () =>
+        pipe(HashMap.empty<string, ReadonlyArray<Detection>>(), HashMap.beginMutation)
+      )
+    )
+
+    const elementsByWiring = Array.map(config, (entry) =>
+      Array.makeBy(entry.wiring.checks.length, () => MutableList.make<Detection>())
+    )
+
+    const seenByCheck = Array.flatten(seenByWiring)
+    const elementsByCheck = Array.flatten(elementsByWiring)
+
+    const checks = Array.flatMap(config, (entry) =>
+      Array.map(entry.wiring.checks, Struct.get("check"))
+    )
+
+    const wiringIndexesByCheck = Array.flatMap(config, (entry, wiringIndex) =>
+      Array.makeBy(entry.wiring.checks.length, () => wiringIndex)
+    )
+
+    const matchedWiringIndexes = pipe(HashMap.empty<number, true>(), HashMap.beginMutation)
+
+    const collectProject = (project: A): Effect.Effect<void> =>
+      Effect.sync(() => {
+        const loadedContext = toContext(project)
+
+        // Contexts re-root here because evidence must compare paths across the whole workspace.
+        const context = new ProgramContext({
+          program: loadedContext.program,
+          checker: loadedContext.checker,
+          projectRoot: loadedContext.projectRoot,
+          workspaceRoot
+        })
+
+        const allSourceFiles = context.program.getSourceFiles()
+        const sourceFiles = Array.filter(allSourceFiles, isProjectSourceFile)
+
+        const sourceMatches = Array.map(sourceFiles, (sourceFile) => {
+          const candidatePath = relativeWorkspacePath(
+            workspaceRoot,
+            context.projectRoot,
+            sourceFile.fileName
+          )
+
+          const matches = Array.map(matchersByWiring, (matchers) =>
+            Array.some(matchers, (matcher) => matcher(candidatePath))
+          )
+
+          return Tuple.make(sourceFile, matches)
+        })
+
+        Array.forEach(sourceMatches, ([, matches]) =>
+          Array.forEach(matches, (matched, wiringIndex) => {
+            if (matched) {
+              HashMap.set(matchedWiringIndexes, wiringIndex, true)
+            }
+          })
+        )
+
+        const fileMatches = Array.map(sourceMatches, ([sourceFile, matches]) =>
+          Tuple.make(sourceFile.fileName, matches)
+        )
+
+        const matchesByFileName = HashMap.fromIterable(fileMatches)
+
+        const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile): boolean => {
+          const wiringIndex = wiringIndexesByCheck[checkIndex]
+          const matches = HashMap.getUnsafe(matchesByFileName, sourceFile.fileName)
+
+          return matches[wiringIndex] ?? false
+        }
+
+        const configuredChecks = runChecks(checks)(includesSourceFile)
+        const detectionsByCheck = configuredChecks(context)
+
+        Array.forEach(detectionsByCheck, (detections, checkIndex) => {
+          const wiringIndex = wiringIndexesByCheck[checkIndex]
+          const matchers = matchersByWiring[wiringIndex]
+
+          Array.forEach(detections, (element) => {
+            const detectionPath = relativeWorkspacePath(
+              workspaceRoot,
+              context.projectRoot,
+              element.location.path
+            )
+
+            const isIncluded = Array.some(matchers, (matcher) => matcher(detectionPath))
+
+            if (!isIncluded) {
+              return
+            }
+
+            const seen = seenByCheck[checkIndex]
+            const elements = elementsByCheck[checkIndex]
+            const location = element.location
+
+            const dedupeKeyParts = Array.make(
+              location.path,
+              location.line,
+              location.column,
+              element.message,
+              element.hint
+            )
+
+            const key = JSON.stringify(dedupeKeyParts)
+            const maybeBucket = HashMap.get(seen, key)
+            const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
+
+            const alreadySeen = Array.some(bucket, (candidate) =>
+              Equal.equals(candidate.data, element.data)
+            )
+
+            if (alreadySeen) {
+              return
+            }
+
+            const expandedBucket = Array.append(bucket, element)
+
+            HashMap.set(seen, key, expandedBucket)
+            MutableList.append(elements, element)
+          })
+        })
+      })
+
+    return pipe(
+      Effect.forEach(projects, collectProject, { discard: true }),
+      Effect.map(() => {
+        const matchedWiringIndexSet = HashMap.endMutation(matchedWiringIndexes)
+
+        return Array.map(config, (entry, wiringIndex) => {
+          const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
+            const elements = elementsByWiring[wiringIndex][checkIndex]
+            const detections = MutableList.toArray(elements)
+            const examples = check.examples()
+
+            return new Signal({
+              name: check.name,
+              reported: check.reported,
+              detections,
+              examples
+            })
+          })
+
+          const matched = HashMap.has(matchedWiringIndexSet, wiringIndex)
+
+          return new WiringSignals({
+            matched,
+            signals
+          })
+        })
+      })
+    )
+  }
+
+// Workspace root stays explicit because glob candidates normalize against one shared boundary.
+export const workspaceSignals =
+  <E>(config: WiringConfig<E>) =>
+  (workspaceRoot: string) =>
+  (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> => {
+    const collectContexts = workspaceSignalsForProjects(config)(workspaceRoot)(contexts)
+
+    return collectContexts(Function.identity)
+  }

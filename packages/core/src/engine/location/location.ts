@@ -1,6 +1,5 @@
 import * as path from "node:path"
 import { Array, Equal, pipe } from "effect"
-import { NamedDetection } from "../derive/data.js"
 import { Detection } from "./data.js"
 
 export const toRelativeFileName =
@@ -11,25 +10,18 @@ export const toRelativeFileName =
     return relative || fileName
   }
 
-export const namedDetection =
-  (name: string) =>
-  (detectionValue: Detection): NamedDetection =>
-    new NamedDetection({ name, detection: detectionValue })
-
 export const detectionAtPath =
   (pathName: string) =>
   (element: Detection): boolean =>
     element.location.path === pathName
 
-export const detectionsAtPath =
-  (pathName: string) =>
-  (elements: ReadonlyArray<Detection>): ReadonlyArray<Detection> =>
-    Array.filter(elements, detectionAtPath(pathName))
-
 export const countDetectionsAtPath =
   (pathName: string) =>
-  (elements: ReadonlyArray<Detection>): number =>
-    detectionsAtPath(pathName)(elements).length
+  (elements: ReadonlyArray<Detection>): number => {
+    const atPath = Array.filter(elements, detectionAtPath(pathName))
+
+    return atPath.length
+  }
 
 export const detectionEquals = (a: Detection, b: Detection): boolean => {
   const samePath = a.location.path === b.location.path

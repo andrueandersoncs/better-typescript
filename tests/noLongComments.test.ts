@@ -46,6 +46,14 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 1,
     message,
     hint
+  },
+  {
+    name: "overlong comment after a template substitution",
+    fileName: "src/cases.ts",
+    line: 10,
+    column: 1,
+    message,
+    hint
   }
 ]
 
@@ -60,6 +68,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     name: "short comment",
     fileName: "src/allowed.ts",
     line: 4,
+    column: 1
+  },
+  {
+    name: "capped comment after a template substitution",
+    fileName: "src/allowed.ts",
+    line: 8,
     column: 1
   }
 ]

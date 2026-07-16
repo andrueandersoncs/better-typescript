@@ -5,7 +5,9 @@ Always leave your changes uncomitted on the current branch unless explicitly ins
 them.
 
 Always run the self-hosting Better TypeScript check (`npm run dev`) on the codebase itself after
-making any changes **and fix all violations that are reported**.
+making any changes **and fix all violations that are reported**. This includes Advice blocks: follow
+each block's remediation until the report is empty. Architecture advice is not informational output
+— it is a failing gate.
 
 Always run the benchmark (`npm run bench`) after every code change, and require its measured report
 pass to remain below 100ms.

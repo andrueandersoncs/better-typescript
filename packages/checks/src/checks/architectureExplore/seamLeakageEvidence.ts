@@ -52,7 +52,7 @@ const leakageKind =
 
 const seamLeakageElement = (context: CheckContext) => {
   const element = detection(context)
-  const testClassifier = isTestSourceFile(context.projectRoot)
+  const testClassifier = isTestSourceFile(context.workspaceRoot)
   const fromTest = testClassifier(context.sourceFile)
 
   const elementForImport =

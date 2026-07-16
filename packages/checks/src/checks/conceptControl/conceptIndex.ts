@@ -863,7 +863,7 @@ const functionOwnerFrom =
 
         return HashMap.has(functionBySymbol, symbolKey)
       }),
-      // Lazy orElse required: parent walk is recursive and must not run eagerly.
+      // The orElse stays lazy because the parent walk is recursive and must not run eagerly.
       Option.orElse(() =>
         pipe(
           Option.fromNullishOr(current.parent),

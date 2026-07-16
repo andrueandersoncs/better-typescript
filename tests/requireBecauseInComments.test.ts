@@ -126,6 +126,14 @@ const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
     column: 1,
     message,
     hint
+  },
+  {
+    name: "comment after a template substitution without because",
+    fileName: "src/cases.ts",
+    line: 53,
+    column: 1,
+    message,
+    hint
   }
 ]
 
@@ -147,6 +155,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
     fileName: "src/allowed.ts",
     line: 7,
     column: 34
+  },
+  {
+    name: "because comment after a template substitution",
+    fileName: "src/allowed.ts",
+    line: 14,
+    column: 1
   }
 ]
 

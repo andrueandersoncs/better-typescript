@@ -338,5 +338,8 @@ const containsAnyKeyword = (node: ts.Node): boolean => {
   return Array.some(ambientConditions, Boolean)
 }
 
-export const hasAnyReturnType = (decl: ReturnTypeDeclaration): boolean =>
-  pipe(Option.fromNullishOr(decl.type), Option.exists(containsAnyKeyword))
+export const hasAnyReturnType = (decl: ReturnTypeDeclaration): boolean => {
+  const returnType = Option.fromNullishOr(decl.type)
+
+  return Option.exists(returnType, containsAnyKeyword)
+}

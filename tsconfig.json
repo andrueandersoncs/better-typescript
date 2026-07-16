@@ -4,6 +4,11 @@
     { "path": "packages/core" },
     { "path": "packages/checks" },
     { "path": "packages/cli" },
-    { "path": "tests" }
+    { "path": "tests" },
+    { "path": "tsconfig.selfhost.json" },
+    { "path": "bench" },
+    { "path": "examples/extend-preset" },
+    { "path": "examples/architecture-fleets" },
+    { "path": "examples/programmatic" }
   ]
 }

@@ -4,9 +4,10 @@ import * as ts from "typescript"
 import type { Check } from "../../engine/check/data.js"
 import type { Detection } from "../../engine/location/data.js"
 import type { WiringSignals } from "../../engine/signal/data.js"
-import { workspaceSignalsForProjects } from "../../engine/signal/signal.js"
 import type { WiringConfig } from "../../engine/wiring/data.js"
-import { contextFor, runChecks } from "../../engine/sources/sources.js"
+import { workspaceSignalsForProjects } from "../../engine/wiring/wiring.js"
+import { contextFor } from "../../engine/sources/sources.js"
+import { runChecks } from "../../engine/check/check.js"
 import type { ProgramContext } from "../../engine/sources/data.js"
 import {
   CircularProjectReferenceError,
@@ -74,12 +75,16 @@ const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext = flow
   contextFromLoadedProject
 )
 
+// One projection stays public because config callers load and analyze in one step.
 export const workspaceSignalsFromConfigs =
   <E>(config: WiringConfig<E>) =>
-  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>> =>
-    workspaceSignalsForProjects(config)(workspace.rootPath)(workspace.projects)(
-      contextFromProjectConfig
+  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>> => {
+    const collectProjects = workspaceSignalsForProjects(config)(workspace.rootPath)(
+      workspace.projects
     )
+
+    return collectProjects(contextFromProjectConfig)
+  }
 
 export const runCheckOnProject =
   (checks: ReadonlyArray<Check>) =>

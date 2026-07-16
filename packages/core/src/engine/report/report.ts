@@ -1,7 +1,9 @@
 import { Array, Effect, HashSet, Match, Record, Stream, Struct, Tuple, pipe } from "effect"
 import {
+  adviceHeader,
   adviceOrder,
-  adviceReportBlock,
+  advicePath,
+  adviceText,
   collectSignals,
   fileAdvicePath,
   isFileLevelAdvice
@@ -12,17 +14,50 @@ import type { RefactorExample } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 import { detectionBlockKey, locationText } from "../location/location.js"
 import type { Signal, WiringSignals } from "../signal/data.js"
-import type { WiringConfig } from "../wiring/data.js"
-import { deriveAdvice } from "../wiring/wiring.js"
-import { ClearedEvent, EmptyReportEvent, ReportBlock, RuleReportKey, SignalEvent } from "./data.js"
+import type { Wiring, WiringConfig } from "../wiring/data.js"
+import {
+  AdviceReportKey,
+  ClearedEvent,
+  EmptyReportEvent,
+  ReportBlock,
+  RuleReportKey,
+  SignalEvent
+} from "./data.js"
 import type { ReportEvent } from "./data.js"
 
 const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
   pipe(Array.prepend(parts, kind), JSON.stringify)
 
+const adviceReportBlock = (advice: Advice): ReportBlock => {
+  const pathLabel = advicePath(advice)
+  const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
+  const identity = reportKeyIdentity("advice", adviceIdentityParts)
+
+  const key = new AdviceReportKey({
+    level: advice.level,
+    path: pathLabel,
+    title: advice.title
+  })
+
+  const text = adviceText(advice)
+  const header = adviceHeader(advice)
+  const cleared = `${header} — cleared`
+
+  return new ReportBlock({ identity, key, text, cleared })
+}
+
+// Derivation takes the full signal array because advice must see every signal from the same batch.
+const deriveAdvice =
+  <E>(wiring: Wiring<E>) =>
+  (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, E> =>
+    pipe(wiring.derive(signals), collectSignals)
+
 // Advice blocks keep a stable sort order because consumers rely on that presentation order.
-export const adviceReportBlocks = (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> =>
-  pipe(advice, Array.sort(adviceOrder), Array.map(adviceReportBlock))
+export const adviceReportBlocks = (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> => {
+  const ordered = Array.sort(advice, adviceOrder)
+
+  return Array.map(ordered, adviceReportBlock)
+}
 
 // Local blocks keep the rule key kind because existing NDJSON consumers already key that way.
 export const checkReportBlocks =
@@ -129,44 +164,19 @@ export const withFallbackAdvice = <E, R>(
     Stream.unwrap
   )
 
-/**
- * Lift one report block into a signal wire event.
- *
- * @remarks
- *   Kept beside block construction so event shape stays aligned with rendered
- *   text and key identity.
- */
+// Signal lifting stays beside block construction because event shape must match rendered text.
 export const blockSignalEvent = (block: ReportBlock): SignalEvent =>
   new SignalEvent({ key: block.key, text: block.text })
 
-/**
- * Lift one report block into a cleared wire event.
- *
- * @remarks
- *   Cleared text is precomputed on the block so delta emission does not re-render
- *   after the block has left the current report.
- */
+// Cleared text is precomputed on the block because delta emission must not re-render gone blocks.
 export const blockClearedEvent = (block: ReportBlock): ClearedEvent =>
   new ClearedEvent({ key: block.key, text: block.cleared })
 
-/**
- * Map one report block to its identity entry for delta indexing.
- *
- * @remarks
- *   Identity is the stable comparison key; the full block remains the value so
- *   text diffs can be read without a second lookup.
- */
+// Identity keys the entry and the block stays the value because diffs need both without lookups.
 export const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =>
   Tuple.make(block.identity, block)
 
-/**
- * Initial watch/report emission: every block as a signal event, or one empty
- * event when the batch has no blocks.
- *
- * @remarks
- *   Empty stays an explicit event because --pretty and NDJSON both need a
- *   positive "nothing found" signal on first report.
- */
+// Empty stays an explicit event because consumers need a positive nothing-found first report.
 export const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
@@ -176,13 +186,7 @@ export const initialReportEvents =
 
 const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`
 
-/**
- * Render one event as the human-readable text block the --pretty flag prints.
- *
- * @remarks
- *   Kept separate from NDJSON encoding because --pretty needs a human-readable
- *   projection of the same events.
- */
+// Kept separate from NDJSON because --pretty needs a human-readable projection of the same events.
 export const renderEventText = (event: ReportEvent): string =>
   pipe(
     Match.value(event),

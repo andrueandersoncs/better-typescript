@@ -235,7 +235,7 @@ const classifiedModuleScopeEffectKind =
 
 const moduleScopeEffectElements = (context: CheckContext) => {
   const element = detection(context)
-  const testSource = isTestSourceFile(context.projectRoot)
+  const testSource = isTestSourceFile(context.workspaceRoot)
   const classifyEffectKind = classifiedModuleScopeEffectKind(context.checker)
 
   const handler = (node: ts.CallExpression): ReadonlyArray<Detection> => {

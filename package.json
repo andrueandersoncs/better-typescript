@@ -15,9 +15,9 @@
     "start": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts",
     "watch": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts --pretty --watch",
     "build": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && npm run build -w @better-typescript/cli",
-    "typecheck": "npm run build && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p examples/extend-preset/tsconfig.json",
+    "typecheck": "npm run build && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p tsconfig.selfhost.json && tsc --noEmit -p examples/extend-preset/tsconfig.json && tsc --noEmit -p examples/architecture-fleets/tsconfig.json && tsc --noEmit -p examples/programmatic/tsconfig.json",
     "test": "npm run build && node --import tsx --test tests/*.test.ts",
-    "bench": "npm run build && tsx bench/rules.bench.ts",
+    "bench": "npm run build && tsx bench/main.ts",
     "prepare": "npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

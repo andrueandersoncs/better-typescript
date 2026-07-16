@@ -12,3 +12,7 @@ export const z = 5
 
 export const first = 6 // trailing note on the first line
 export const second = 7 // trailing note on the second line
+
+export const templatedAllowed = `${1}.${2}`
+// Isolated comment after a template substitution
+export const afterTemplateAllowed = 6

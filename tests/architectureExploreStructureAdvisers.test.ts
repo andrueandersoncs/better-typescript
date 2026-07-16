@@ -18,7 +18,7 @@ import { registrationCeremony } from "@better-typescript/checks/architectureExpl
 import { hubModule } from "@better-typescript/checks/architectureExplore/hubModule"
 import { invisibleTests } from "@better-typescript/checks/architectureExplore/invisibleTests"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { namedDetection } from "@better-typescript/core/engine/location"
+import { namedDetection } from "@better-typescript/core/engine/derive"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>

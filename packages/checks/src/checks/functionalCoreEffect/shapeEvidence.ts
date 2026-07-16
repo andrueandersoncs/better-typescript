@@ -1,6 +1,7 @@
 import { Array, Function, Match, Option, Schema, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex, foldAst } from "@better-typescript/core/engine/sources"
+import { foldAst } from "@better-typescript/core/engine/sources"
+import { withProgramIndex } from "@better-typescript/core/engine/check"
 import {
   detection,
   fileSubscriptions,
@@ -792,5 +793,8 @@ const shapeSubscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<
   return Array.flatten(subscriptions)
 }
 
-export const makeFunctionalCoreShapeEvidence = (policy: FunctionalCoreEffectPolicy): Check =>
-  withProgramIndex(buildFunctionalCoreEffectIndex(policy))(shapeSubscriptionsFor)
+export const makeFunctionalCoreShapeEvidence = (policy: FunctionalCoreEffectPolicy): Check => {
+  const buildIndex = buildFunctionalCoreEffectIndex(policy)
+
+  return withProgramIndex(buildIndex)(shapeSubscriptionsFor)
+}

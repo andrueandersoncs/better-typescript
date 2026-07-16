@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import { Effect, Function, Option, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import { locateNode, nodeCheck } from "@better-typescript/core/engine/check"
+import { detection, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
@@ -36,8 +36,8 @@ const probeExamples = Function.constant([
 
 const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   (context) => (node) => [
-    new Detection({
-      location: locateNode(context)(node),
+    detection(context)({
+      node,
       message: probeMessage,
       hint: probeHint
     })

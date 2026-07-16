@@ -29,7 +29,8 @@
     "./project/loadWiringConfig": "./dist/project/loadWiringConfig/loadWiringConfig.js",
     "./package.json": "./package.json",
     "./project/loadProject/data": "./dist/project/loadProject/data.js",
-    "./project/loadWiringConfig/data": "./dist/project/loadWiringConfig/data.js"
+    "./project/loadWiringConfig/data": "./dist/project/loadWiringConfig/data.js",
+    "./project/loadWiringConfig/decode": "./dist/project/loadWiringConfig/decode.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

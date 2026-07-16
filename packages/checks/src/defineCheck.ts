@@ -1,6 +1,6 @@
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { Effect } from "effect"
+import { Effect, HashMap, Option, Ref } from "effect"
 import * as ts from "typescript"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -15,12 +15,34 @@ const moduleUrlPath = fileURLToPath(import.meta.url)
 const moduleDirectory = path.dirname(moduleUrlPath)
 const packageExamplesRoot = path.resolve(moduleDirectory, "..", "examples")
 
+// Examples memoize per check name because each check should read its example tree at most once.
+const emptyExamplesCache = HashMap.empty<string, NonEmptyRefactorExamples>()
+const loadedExamples = Ref.makeUnsafe(emptyExamplesCache)
+
 export const packageExamples = (name: string): (() => NonEmptyRefactorExamples) => {
   const exampleRoot = path.join(packageExamplesRoot, name)
-  const loadExamplesEffect = loadRefactorExamplesAt(exampleRoot)
-  const cachedLoad = Effect.cached(loadExamplesEffect)
-  const loadOnce = Effect.runSync(cachedLoad)
-  const loadExamples = (): NonEmptyRefactorExamples => Effect.runSync(loadOnce)
+  const loadEffect = loadRefactorExamplesAt(exampleRoot)
+
+  const loadAndCache = Effect.gen(function* () {
+    const loaded = yield* loadEffect
+
+    yield* Ref.update(loadedExamples, HashMap.set(name, loaded))
+
+    return loaded
+  })
+
+  const readOrLoad = Effect.gen(function* () {
+    const cache = yield* Ref.get(loadedExamples)
+    const cached = HashMap.get(cache, name)
+
+    if (Option.isSome(cached)) {
+      return cached.value
+    }
+
+    return yield* loadAndCache
+  })
+
+  const loadExamples = (): NonEmptyRefactorExamples => Effect.runSync(readOrLoad)
 
   return loadExamples
 }

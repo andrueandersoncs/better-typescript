@@ -1,7 +1,10 @@
-import { Array, Effect, Stream, pipe } from "effect"
+import { Array, pipe } from "effect"
+import type { Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
+import type { Detection } from "@better-typescript/core/engine/location/data"
+import { adviceFromSignalPair } from "../support/advice.js"
 import { packageExamples } from "../../defineCheck.js"
 import { PipelineHostileInput, PipelineSignals } from "./data.js"
 
@@ -49,14 +52,18 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
   )
 }
 
-export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice> => {
-  const noNestedCalls = collectSignals(input.noNestedCalls)
-  const preferCurriedDataLastFunctions = collectSignals(input.preferCurriedDataLastFunctions)
+const pipelineSignals = (
+  noNestedCalls: ReadonlyArray<Detection>,
+  preferCurriedDataLastFunctions: ReadonlyArray<Detection>
+): PipelineSignals => new PipelineSignals({ noNestedCalls, preferCurriedDataLastFunctions })
 
-  return pipe(
-    Effect.all({ noNestedCalls, preferCurriedDataLastFunctions }),
-    Effect.map(pipelineHostileAdviceFor),
-    Effect.map(Stream.fromIterable),
-    Stream.unwrap
+export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice> => {
+  const advice = adviceFromSignalPair(
+    input.noNestedCalls,
+    input.preferCurriedDataLastFunctions,
+    pipelineSignals,
+    pipelineHostileAdviceFor
   )
+
+  return advice
 }

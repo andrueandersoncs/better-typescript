@@ -48,3 +48,7 @@ export const emptyBlockComment = 8
 
 export const eofComment = 9
 // This end comment lacks the required explanation.
+
+export const templated = `${1}.${2}`
+// This comment after a template lacks the required explanation.
+export const afterTemplate = 10
