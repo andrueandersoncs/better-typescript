@@ -1,3 +1,4 @@
 dist/
 repos/
 tests/fixtures/
+.claude/
