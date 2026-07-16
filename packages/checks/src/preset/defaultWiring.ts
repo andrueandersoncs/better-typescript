@@ -103,10 +103,6 @@ import {
   preferConditionalReturnExamples
 } from "../checks/preferConditionalReturn.js"
 import {
-  preferDataLastModule,
-  preferDataLastModuleExamples
-} from "../checks/preferDataLastModule.js"
-import {
   preferDirectBooleanReturn,
   preferDirectBooleanReturnExamples
 } from "../checks/preferDirectBooleanReturn.js"
@@ -239,12 +235,6 @@ const preferEffectArrayAppendAllCheck = namedCheck(
   "prefer-effect-array-append-all",
   preferEffectArrayAppendAll,
   preferEffectArrayAppendAllExamples
-)
-
-const preferDataLastModuleCheck = namedCheck(
-  "prefer-data-last-module",
-  preferDataLastModule,
-  preferDataLastModuleExamples
 )
 
 const preferSchemaTaggedClassCheck = namedCheck(
@@ -506,7 +496,6 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectRecordFilterMapCheck,
   preferEffectArrayCheck,
   preferEffectArrayAppendAllCheck,
-  preferDataLastModuleCheck,
   preferSchemaTaggedClassCheck,
   requireWireSafeSchemaTaggedClassCheck,
   conceptControlCheck,
