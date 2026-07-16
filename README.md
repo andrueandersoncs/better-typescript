@@ -151,6 +151,10 @@ Re-exporting is valid when an entry module is that seam; callers must not bypass
 - `@better-typescript/checks/preset`: default `report` / `watchReport` runners
 - `@better-typescript/checks/preset/defaultWiring`: `defaultChecks`, `defaultDerive`,
   `defaultWiring`, `defaultConfig`
+- `@better-typescript/checks/preset/architectureExploreWiring`: `architectureExploreCoreChecks`,
+  `architectureExploreOopChecks`, `architectureExploreFpChecks`, `architectureExploreChecks`,
+  `architectureExploreDerive`, `architectureExploreWiring`, `architectureExploreOopWiring`,
+  `architectureExploreFpWiring`
 - `@better-typescript/checks/functionalCoreEffect/wiring`: opt-in functional-core boundary checks,
   derived architecture advice, and policy-aware wiring factories
 - `@better-typescript/checks/functionalCoreEffect/policy`: conventional and explicit
@@ -381,6 +385,38 @@ const wiring = makeFunctionalCoreEffectWiring(policy)
 export default defineConfig([{ files: ["**/*"], wiring }])
 ```
 
+### Opting into an architecture paradigm
+
+Architecture Explore is split by paradigm so end-users opt in explicitly. Core evidence
+(`pass-through-wrappers`, `interface-burden`, `module-graph`, `test-only-exports`,
+`seam-leakage-evidence`, `import-usage`, `module-identity`, `export-surface`) is paradigm-neutral.
+OOP adds `external-dependency-construction` and `single-adapter-seams`. FP adds
+`composition-forwarders`, `module-scope-effects`, `context-tag-seams`, and
+`composition-fingerprints`. One shared `architectureExploreDerive` tolerates absent evidence from
+either paradigm set.
+
+Wire `architectureExploreOopWiring` (core+oop) or `architectureExploreFpWiring` (core+fp) for a
+single paradigm. `architectureExploreWiring` is the union and remains the back-compat entry when a
+project mixes both:
+
+```ts
+import { Stream, pipe } from "effect"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { architectureExploreOopWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
+
+const wiring = makeWiring({
+  checks: [...defaultWiring.checks, ...architectureExploreOopWiring.checks],
+  derive: (signals) =>
+    pipe(defaultWiring.derive(signals), Stream.concat(architectureExploreOopWiring.derive(signals)))
+})
+
+export default defineConfig([{ files: ["**/*"], wiring }])
+```
+
+Replace `architectureExploreOopWiring` with `architectureExploreFpWiring` for the FP fleet, or with
+`architectureExploreWiring` when both paradigms apply.
+
 ### Extending or cherry-picking the preset
 
 To extend the built-in fleet, spread `defaultChecks` and add local `NamedCheck` values. To
@@ -497,6 +533,12 @@ Watch-mode caveat: membership changes in a solution-style root tsconfig's refere
 restart. Each leaf project's own tsconfig hot-reloads. Mid-run tsconfig breakage is tolerated
 silently — the watcher keeps the last good program and recovers when the config is fixed.
 
+Workspace evidence for Architecture Explore walks the root `tsconfig.json` project references. Test
+projects must be referenced for test-aware Advice; otherwise the fleet emits project-level
+`invisible tests` rather than silently omitting test evidence. Evidence paths are
+workspace-relative. Cross-package caller joins happen in `derive` by matching `import-usage`
+specifiers to `module-identity` aliases — no extra Programs.
+
 ## Source topology
 
 Built-in checks and their derivation helpers live under `packages/checks/src/checks/`; preset wiring
@@ -507,6 +549,8 @@ exports are the supported entrypoints; source paths are implementation details.
 
 ## Architecture notes
 
+- `adrs/0017-paradigm-split-architecture-fleets.md` records the Architecture Explore core/OOP/FP
+  split, shared derive, workspace evidence horizon, and invisible-tests diagnostic.
 - `adrs/0016-single-line-comments-only.md` records the comment policy: isolated single-line comments
   only, a universal because requirement, a 100-character cap, and concept rationale read from
   leading line comments instead of JSDoc.

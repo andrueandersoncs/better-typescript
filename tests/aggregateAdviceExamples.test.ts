@@ -147,6 +147,24 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
     pairId: "1",
     title: "imperative core",
     wiring: functionalCoreEffectWiring
+  },
+  {
+    fixtureId: "registration-ceremony",
+    pairId: "1",
+    title: "registration ceremony",
+    wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "hub-module",
+    pairId: "1",
+    title: "hub module",
+    wiring: architectureExploreWiring
+  },
+  {
+    fixtureId: "duplicated-orchestration",
+    pairId: "1",
+    title: "duplicated orchestration",
+    wiring: architectureExploreWiring
   }
 ]
 

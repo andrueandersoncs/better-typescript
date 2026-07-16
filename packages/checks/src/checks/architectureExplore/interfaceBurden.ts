@@ -5,7 +5,9 @@ import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { InterfaceBurdenData } from "./data.js"
+import { toWorkspacePath } from "./programSymbols.js"
 import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
+import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileCheck, detection } from "@better-typescript/core/engine/check"
 
 const minimumOperations = 4
@@ -215,7 +217,16 @@ const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection
     Option.getOrElse(Function.constant(context.sourceFile))
   )
 
-  const data = surface
+  const relative = toRelativeFileName(context.projectRoot)
+  const workspaceRelative = toWorkspacePath(context.projectRoot, context.workspaceRoot)
+  const filePath = relative(context.sourceFile.fileName)
+  const workspacePath = workspaceRelative(filePath)
+
+  const data = new InterfaceBurdenData({
+    operationCount: surface.operationCount,
+    requiredParameterCount: surface.requiredParameterCount,
+    workspacePath
+  })
 
   const reported = element({
     node,

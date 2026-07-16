@@ -16,7 +16,7 @@
     "watch": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && tsx packages/cli/src/index.ts --pretty --watch",
     "build": "npm run build -w @better-typescript/core && npm run build -w @better-typescript/checks && npm run build -w @better-typescript/cli",
     "typecheck": "npm run build && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p examples/extend-preset/tsconfig.json",
-    "test": "npm run build && node --import tsx --test tests/**/*.test.ts",
+    "test": "npm run build && node --import tsx --test tests/*.test.ts",
     "bench": "npm run build && tsx bench/rules.bench.ts",
     "prepare": "npm run build",
     "format": "prettier --write .",

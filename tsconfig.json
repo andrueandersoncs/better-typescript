@@ -3,6 +3,7 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/checks" },
-    { "path": "packages/cli" }
+    { "path": "packages/cli" },
+    { "path": "tests" }
   ]
 }

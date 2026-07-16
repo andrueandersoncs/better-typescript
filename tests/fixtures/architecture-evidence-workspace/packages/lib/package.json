@@ -1,0 +1,8 @@
+{
+  "name": "@fixture/lib",
+  "type": "module",
+  "exports": {
+    "./util": "./dist/util.js",
+    "./*": "./dist/*.js"
+  }
+}

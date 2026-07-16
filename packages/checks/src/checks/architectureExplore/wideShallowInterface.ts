@@ -4,7 +4,8 @@ import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
-import { interfaceBurdenDataOf, isDeletableWrapper } from "./evidence.js"
+import { interfaceBurdenDataOf, isDeletableShallowness, isShallownessName } from "./evidence.js"
+import { interfaceBurdenName } from "./names.js"
 
 export const wideShallowInterfaceExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("wide-shallow-interface")
@@ -12,12 +13,12 @@ export const wideShallowInterfaceExamples: NonEmptyRefactorExamples =
 const minimumForwarders = 3
 
 const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const burden = Array.filter(elements, (element) => element.name === "interface-burden")
+  const burden = Array.filter(elements, (element) => element.name === interfaceBurdenName)
 
   const wrappers = pipe(
     elements,
-    Array.filter((element) => element.name === "pass-through-wrappers"),
-    Array.filter(isDeletableWrapper)
+    Array.filter((element) => isShallownessName(element.name)),
+    Array.filter(isDeletableShallowness)
   )
 
   return Array.filterMap(burden, (burdenElement) => {

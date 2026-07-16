@@ -45,7 +45,8 @@ const loadConceptIndex = async () => {
     new ProgramContext({
       program: project.program,
       checker: project.program.getTypeChecker(),
-      projectRoot: project.rootPath
+      projectRoot: project.rootPath,
+      workspaceRoot: project.rootPath
     })
   )
 }

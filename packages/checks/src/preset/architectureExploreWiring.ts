@@ -3,6 +3,7 @@ import { makeWiring, silentCheck } from "@better-typescript/core/engine/report"
 import type { NamedCheck, Signal, Wiring } from "@better-typescript/core/engine/report/data"
 import { namedDetection } from "@better-typescript/core/engine/location"
 import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
+import * as names from "../checks/architectureExplore/names.js"
 import { passThroughWrappers } from "../checks/architectureExplore/passThroughWrappers.js"
 import { interfaceBurden } from "../checks/architectureExplore/interfaceBurden.js"
 import { moduleGraph } from "../checks/architectureExplore/moduleGraph.js"
@@ -17,6 +18,17 @@ import { leakedSeam } from "../checks/architectureExplore/leakedSeam.js"
 import { testPastInterface } from "../checks/architectureExplore/testPastInterface.js"
 import { hardToTestHotspot } from "../checks/architectureExplore/hardToTestHotspot.js"
 import { hypotheticalSeam } from "../checks/architectureExplore/hypotheticalSeam.js"
+import { importUsage } from "../checks/architectureExplore/importUsage.js"
+import { moduleIdentity } from "../checks/architectureExplore/moduleIdentity.js"
+import { exportSurface } from "../checks/architectureExplore/exportSurface.js"
+import { compositionForwarders } from "../checks/architectureExplore/compositionForwarders.js"
+import { moduleScopeEffects } from "../checks/architectureExplore/moduleScopeEffects.js"
+import { contextTagSeams } from "../checks/architectureExplore/contextTagSeams.js"
+import { compositionFingerprints } from "../checks/architectureExplore/compositionFingerprints.js"
+import { registrationCeremony } from "../checks/architectureExplore/registrationCeremony.js"
+import { hubModule } from "../checks/architectureExplore/hubModule.js"
+import { invisibleTests } from "../checks/architectureExplore/invisibleTests.js"
+import { duplicatedOrchestration } from "../checks/architectureExplore/duplicatedOrchestration.js"
 
 const nameArchitectureExploreDetections = (signal: Signal): Stream.Stream<NamedDetection> => {
   const toNamedDetection = namedDetection(signal.name)
@@ -24,31 +36,73 @@ const nameArchitectureExploreDetections = (signal: Signal): Stream.Stream<NamedD
   return pipe(Stream.fromIterable(signal.detections), Stream.map(toNamedDetection))
 }
 
-const passThroughWrappersCheck = silentCheck("pass-through-wrappers", passThroughWrappers)
+const passThroughWrappersCheck = silentCheck(names.passThroughWrappersName, passThroughWrappers)
 
-const interfaceBurdenCheck = silentCheck("interface-burden", interfaceBurden)
+const interfaceBurdenCheck = silentCheck(names.interfaceBurdenName, interfaceBurden)
 
-const moduleGraphCheck = silentCheck("module-graph", moduleGraph)
+const moduleGraphCheck = silentCheck(names.moduleGraphName, moduleGraph)
 
-const testOnlyExportsCheck = silentCheck("test-only-exports", testOnlyExports)
+const testOnlyExportsCheck = silentCheck(names.testOnlyExportsName, testOnlyExports)
 
-const seamLeakageEvidenceCheck = silentCheck("seam-leakage-evidence", seamLeakageEvidence)
+const seamLeakageEvidenceCheck = silentCheck(names.seamLeakageEvidenceName, seamLeakageEvidence)
 
 const externalDependencyConstructionCheck = silentCheck(
-  "external-dependency-construction",
+  names.externalDependencyConstructionName,
   externalDependencyConstruction
 )
 
-const singleAdapterSeamsCheck = silentCheck("single-adapter-seams", singleAdapterSeams)
+const singleAdapterSeamsCheck = silentCheck(names.singleAdapterSeamsName, singleAdapterSeams)
 
-export const architectureExploreChecks: ReadonlyArray<NamedCheck> = Array.make(
+const importUsageCheck = silentCheck(names.importUsageName, importUsage)
+
+const moduleIdentityCheck = silentCheck(names.moduleIdentityName, moduleIdentity)
+
+const exportSurfaceCheck = silentCheck(names.exportSurfaceName, exportSurface)
+
+const compositionForwardersCheck = silentCheck(
+  names.compositionForwardersName,
+  compositionForwarders
+)
+
+const moduleScopeEffectsCheck = silentCheck(names.moduleScopeEffectsName, moduleScopeEffects)
+
+const contextTagSeamsCheck = silentCheck(names.contextTagSeamsName, contextTagSeams)
+
+const compositionFingerprintsCheck = silentCheck(
+  names.compositionFingerprintsName,
+  compositionFingerprints
+)
+
+// Paradigm-neutral evidence stays shared because both fleets join the same workspace graph.
+export const architectureExploreCoreChecks: ReadonlyArray<NamedCheck> = Array.make(
   passThroughWrappersCheck,
   interfaceBurdenCheck,
   moduleGraphCheck,
   testOnlyExportsCheck,
   seamLeakageEvidenceCheck,
+  importUsageCheck,
+  moduleIdentityCheck,
+  exportSurfaceCheck
+)
+
+// OOP evidence stays separate because constructor and implements seams are one paradigm's shape.
+export const architectureExploreOopChecks: ReadonlyArray<NamedCheck> = Array.make(
   externalDependencyConstructionCheck,
   singleAdapterSeamsCheck
+)
+
+// FP evidence stays separate because curried pipes and Effect seams are the other paradigm's shape.
+export const architectureExploreFpChecks: ReadonlyArray<NamedCheck> = Array.make(
+  compositionForwardersCheck,
+  moduleScopeEffectsCheck,
+  contextTagSeamsCheck,
+  compositionFingerprintsCheck
+)
+
+export const architectureExploreChecks: ReadonlyArray<NamedCheck> = pipe(
+  architectureExploreCoreChecks,
+  Array.appendAll(architectureExploreOopChecks),
+  Array.appendAll(architectureExploreFpChecks)
 )
 
 export const architectureExploreDerive = (
@@ -66,6 +120,10 @@ export const architectureExploreDerive = (
   const testStream = testPastInterface(namedElements)
   const hardToTestStream = hardToTestHotspot(namedElements)
   const hypotheticalStream = hypotheticalSeam(namedElements)
+  const registrationStream = registrationCeremony(namedElements)
+  const hubStream = hubModule(namedElements)
+  const invisibleStream = invisibleTests(namedElements)
+  const orchestrationStream = duplicatedOrchestration(namedElements)
 
   const adviceStreams = Array.make(
     deletionStream,
@@ -74,7 +132,11 @@ export const architectureExploreDerive = (
     leakedStream,
     testStream,
     hardToTestStream,
-    hypotheticalStream
+    hypotheticalStream,
+    registrationStream,
+    hubStream,
+    invisibleStream,
+    orchestrationStream
   )
 
   return pipe(Stream.fromIterable(adviceStreams), Stream.flatten())
@@ -82,5 +144,27 @@ export const architectureExploreDerive = (
 
 export const architectureExploreWiring: Wiring = makeWiring({
   checks: architectureExploreChecks,
+  derive: architectureExploreDerive
+})
+
+// The OOP fleet composes neutral and constructor-shaped evidence because users opt into paradigms.
+const architectureExploreOopFleetChecks = Array.appendAll(
+  architectureExploreCoreChecks,
+  architectureExploreOopChecks
+)
+
+export const architectureExploreOopWiring: Wiring = makeWiring({
+  checks: architectureExploreOopFleetChecks,
+  derive: architectureExploreDerive
+})
+
+// The FP fleet composes neutral and composition-shaped evidence because users opt into paradigms.
+const architectureExploreFpFleetChecks = Array.appendAll(
+  architectureExploreCoreChecks,
+  architectureExploreFpChecks
+)
+
+export const architectureExploreFpWiring: Wiring = makeWiring({
+  checks: architectureExploreFpFleetChecks,
   derive: architectureExploreDerive
 })

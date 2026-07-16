@@ -60,3 +60,39 @@ dependency report
 
 **Hard-to-test Hotspot**: Advice that Hardwired Dependencies concentrate so the Module cannot be
 tested through its interface. _Avoid_: untestable code warning
+
+**Import Usage**: Silent evidence of import specifiers and their call sites used to join
+cross-package callers. _Avoid_: import graph service, usage index
+
+**Module Identity**: Silent evidence mapping a Module to `package.json` exports and
+`outDir`/`rootDir` aliases. _Avoid_: package resolver, path map
+
+**Export Surface**: Silent evidence of a Module's public export map for interface and caller joins.
+_Avoid_: public API inventory, barrel list
+
+**Composition Forwarder**: An export that only forwards through curried or `pipe` composition —
+shallow relative to its callers. _Avoid_: pipe helper, composition util
+
+**Module-scope Effect**: Module-scope I/O or `Effect.run*` outside a composition root — hardwires
+execution. _Avoid_: top-level await smell, global effect
+
+**Context Tag Seam**: An Effect `Context.Tag` / Service seam, including dead seams with zero
+consumers. _Avoid_: service locator finding, DI smell
+
+**Composition Fingerprint**: Silent evidence of a multi-step composition shape used to detect
+duplicated orchestration. _Avoid_: AST hash, clone detector
+
+**Registration Ceremony**: Advice that a Module imports many symbols that are almost never
+referenced. _Avoid_: unused import warning, import bloat
+
+**Hub Module**: Advice that a Module concentrates many operations with high fan-in and fan-out.
+_Avoid_: god module, central registry
+
+**Invisible Tests**: Project-level Advice that no test file is visible across the workspace evidence
+horizon. _Avoid_: missing coverage report, test discovery failure
+
+**Duplicated Orchestration**: Advice that the same multi-step composition fingerprint appears in
+multiple files. _Avoid_: copy-paste detector, clone report
+
+**Paradigm Fleet**: The Architecture Explore opt-in split into core, OOP, and FP check sets with
+three wirings and one shared derive. _Avoid_: architecture linter mode, paradigm plugin

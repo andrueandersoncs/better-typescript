@@ -6,6 +6,7 @@ import {
   Function,
   HashMap,
   Option,
+  Match,
   Predicate,
   Struct,
   Tuple,
@@ -26,6 +27,17 @@ export class ExportedFunctionEntry extends Data.Class<{
   readonly functionNode: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 }> {}
 
+// ExportedSymbolKind is shared because TypeScript declarations do not expose this evidence kind.
+export type ExportedSymbolKind = "function" | "class" | "type" | "value"
+
+// Generalized exports are shared because exportSurface inventories non-functions.
+export class ExportedSymbolEntry extends Data.Class<{
+  readonly symbol: ts.Symbol
+  readonly nameNode: ts.Identifier
+  readonly declarationNode: ts.Declaration
+  readonly kind: ExportedSymbolKind
+}> {}
+
 // ExportUsage is shared prod-vs-test usage because checks share one split.
 export class ExportUsage extends Data.Class<{
   readonly productionCallCount: number
@@ -38,6 +50,12 @@ export class ExportUsage extends Data.Class<{
 // ExportReferenceIndex joins entries to usage by symbol because checks need one inventory.
 export class ExportReferenceIndex extends Data.Class<{
   readonly entries: ReadonlyArray<ExportedFunctionEntry>
+  readonly usages: HashMap.HashMap<ts.Symbol, ExportUsage>
+}> {}
+
+// Generalized exports have their own index because home-file references are excluded.
+export class ExportSymbolIndex extends Data.Class<{
+  readonly entries: ReadonlyArray<ExportedSymbolEntry>
   readonly usages: HashMap.HashMap<ts.Symbol, ExportUsage>
 }> {}
 
@@ -61,21 +79,59 @@ const emptyUsage = (): ExportUsage => {
   })
 }
 
+// Path classification is shared string logic because derive stages see paths without source files.
+export const isTestPath = (relativePath: string): boolean => {
+  const normalized = relativePath.replaceAll("\\", "/")
+  const testDirectories = Array.make("test/", "tests/", "__tests__/")
+  const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
+
+  const inTestDirectory = Array.some(
+    testDirectories,
+    (directory) => normalized.startsWith(directory) || normalized.includes(`/${directory}`)
+  )
+
+  const hasTestSuffix = Array.some(testSuffixes, (suffix) => normalized.endsWith(suffix))
+
+  return inTestDirectory || hasTestSuffix
+}
+
+// Workspace paths normalize evidence because cross-package joins compare one path vocabulary.
+export const toWorkspacePath =
+  (projectRoot: string, workspaceRoot: string) =>
+  (projectRelativePath: string): string => {
+    const projectPath = path.resolve(projectRoot, projectRelativePath)
+    const workspacePath = path.relative(workspaceRoot, projectPath)
+
+    return workspacePath.replaceAll(path.sep, "/")
+  }
+
 export const isTestSourceFile =
   (projectRoot: string) =>
-  (sourceFile: ts.SourceFile): boolean => {
-    const normalized = path.relative(projectRoot, sourceFile.fileName).replaceAll("\\", "/")
-    const testDirectories = Array.make("test/", "tests/", "__tests__/")
-    const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
+  (sourceFile: ts.SourceFile): boolean =>
+    pipe(sourceFile.fileName, (fileName) => path.relative(projectRoot, fileName), isTestPath)
 
-    const inTestDirectory = Array.some(
-      testDirectories,
-      (directory) => normalized.startsWith(directory) || normalized.includes(`/${directory}`)
-    )
+export const importElements =
+  <Context, Element>(
+    elementFor: (
+      context: Context
+    ) => (node: ts.ImportDeclaration) => (specifier: string) => Option.Option<Element>
+  ) =>
+  (context: Context) => {
+    const elementForImport = elementFor(context)
 
-    const hasTestSuffix = Array.some(testSuffixes, (suffix) => normalized.endsWith(suffix))
+    const elementsForImport = (node: ts.ImportDeclaration): ReadonlyArray<Element> => {
+      const elementForSpecifier = elementForImport(node)
 
-    return inTestDirectory || hasTestSuffix
+      return pipe(
+        Option.fromNullishOr(node.moduleSpecifier),
+        Option.filter(ts.isStringLiteral),
+        Option.map(Struct.get("text")),
+        Option.flatMap(elementForSpecifier),
+        Option.toArray
+      )
+    }
+
+    return elementsForImport
   }
 
 const variableFunctionEntries =
@@ -153,6 +209,93 @@ const exportedFunctionsIn =
       )
     })
 
+const namedExportEntry =
+  (checker: ts.TypeChecker) =>
+  (
+    nameNode: ts.Identifier,
+    declarationNode: ts.Declaration,
+    kind: ExportedSymbolKind
+  ): Option.Option<ExportedSymbolEntry> =>
+    pipe(
+      resolvedSymbolAt(checker)(nameNode),
+      Option.map(
+        (symbol) =>
+          new ExportedSymbolEntry({
+            symbol,
+            nameNode,
+            declarationNode,
+            kind
+          })
+      )
+    )
+
+const variableSymbolEntries =
+  (checker: ts.TypeChecker) =>
+  (statement: ts.VariableStatement): ReadonlyArray<ExportedSymbolEntry> => {
+    if (!hasExportModifier(statement)) {
+      return Array.empty()
+    }
+
+    return Array.filterMap(statement.declarationList.declarations, (declaration) =>
+      pipe(
+        Option.liftPredicate(ts.isIdentifier)(declaration.name),
+        Option.flatMap((nameNode) => {
+          const initializer = functionInitializer(declaration)
+          const kind: ExportedSymbolKind = Option.isSome(initializer) ? "function" : "value"
+
+          return namedExportEntry(checker)(nameNode, declaration, kind)
+        }),
+        Result.fromOption(Function.constVoid)
+      )
+    )
+  }
+
+const noExportedSymbolEntries: ReadonlyArray<ExportedSymbolEntry> = Array.empty()
+
+const symbolEntriesForDeclaration =
+  (checker: ts.TypeChecker) =>
+  (kind: ExportedSymbolKind) =>
+  (declaration: ts.DeclarationStatement): ReadonlyArray<ExportedSymbolEntry> => {
+    if (!hasExportModifier(declaration)) {
+      return noExportedSymbolEntries
+    }
+
+    return pipe(
+      Option.fromNullishOr(declaration.name),
+      Option.filter(ts.isIdentifier),
+      Option.flatMap((nameNode) => namedExportEntry(checker)(nameNode, declaration, kind)),
+      Option.toArray
+    )
+  }
+
+const exportedSymbolEntriesFor = (
+  checker: ts.TypeChecker
+): ((statement: ts.Statement) => ReadonlyArray<ExportedSymbolEntry>) => {
+  const variableEntries = variableSymbolEntries(checker)
+  const declarationEntries = symbolEntriesForDeclaration(checker)
+  const functionEntries = declarationEntries("function")
+  const classEntries = declarationEntries("class")
+  const interfaceEntries = declarationEntries("type")
+  const typeAliasEntries = declarationEntries("type")
+  const enumEntries = declarationEntries("value")
+
+  return pipe(
+    Match.type<ts.Statement>(),
+    Match.when(ts.isVariableStatement, variableEntries),
+    Match.when(ts.isFunctionDeclaration, functionEntries),
+    Match.when(ts.isClassDeclaration, classEntries),
+    Match.when(ts.isInterfaceDeclaration, interfaceEntries),
+    Match.when(ts.isTypeAliasDeclaration, typeAliasEntries),
+    Match.when(ts.isEnumDeclaration, enumEntries),
+    Match.orElse(Function.constant(noExportedSymbolEntries))
+  )
+}
+
+const exportedSymbolsIn =
+  (checker: ts.TypeChecker) =>
+  (sourceFile: ts.SourceFile): ReadonlyArray<ExportedSymbolEntry> =>
+    Array.flatMap(sourceFile.statements, exportedSymbolEntriesFor(checker))
+
 const isImportBinding = (node: ts.Identifier): boolean => {
   const parent = node.parent
   const isImportSpecifier = ts.isImportSpecifier(parent)
@@ -201,6 +344,19 @@ const isInsideDeclaration =
     return Array.every(checks, Boolean)
   }
 
+const isOutsideDeclaration =
+  (declaration: ts.Declaration) =>
+  (node: ts.Identifier): boolean => {
+    const insideDeclaration = isInsideDeclaration(declaration)(node)
+
+    return !insideDeclaration
+  }
+
+const isOutsideDeclaringFile =
+  (declaration: ts.Declaration) =>
+  (node: ts.Identifier): boolean =>
+    node.getSourceFile() !== declaration.getSourceFile()
+
 const appendUnique =
   (value: string) =>
   (values: ReadonlyArray<string>): ReadonlyArray<string> =>
@@ -233,83 +389,114 @@ const updateUsage =
     })
   }
 
+// UsageScanEntry is shared because both export index entry types need one scan contract.
+type UsageScanEntry = {
+  readonly symbol: ts.Symbol
+  readonly declarationNode: ts.Declaration
+}
+
+const buildUsageMap =
+  (context: ProgramContext) =>
+  (
+    entries: ReadonlyArray<UsageScanEntry>,
+    referenceFilter: (declaration: ts.Declaration) => (node: ts.Identifier) => boolean
+  ): HashMap.HashMap<ts.Symbol, ExportUsage> => {
+    const checker = context.checker
+    const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+
+    const entryPairs = Array.map(entries, (entry) => {
+      const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+
+      return Tuple.make(symbolKey, entry)
+    })
+
+    const entriesBySymbol = HashMap.fromIterable(entryPairs)
+    const relative = toRelativeFileName(context.projectRoot)
+    const classifyTestSource = isTestSourceFile(context.projectRoot)
+
+    const scanFile =
+      (sourceFile: ts.SourceFile) =>
+      (
+        usages: HashMap.HashMap<ts.Symbol, ExportUsage>
+      ): HashMap.HashMap<ts.Symbol, ExportUsage> => {
+        const sourcePath = relative(sourceFile.fileName)
+        const fromTest = classifyTestSource(sourceFile)
+
+        return foldAst(
+          (
+            current: HashMap.HashMap<ts.Symbol, ExportUsage>,
+            node: ts.Node
+          ): HashMap.HashMap<ts.Symbol, ExportUsage> =>
+            pipe(
+              Option.liftPredicate(ts.isIdentifier)(node),
+              Option.filter(Predicate.not(isImportBinding)),
+              Option.flatMap((currentIdentifier) =>
+                pipe(
+                  resolvedSymbolAt(checker)(currentIdentifier),
+                  Option.flatMap((symbol) => {
+                    const symbolKey = Equal.byReferenceUnsafe(symbol)
+
+                    return HashMap.get(entriesBySymbol, symbolKey)
+                  }),
+                  Option.filter((candidate) =>
+                    referenceFilter(candidate.declarationNode)(currentIdentifier)
+                  ),
+                  Option.map((candidate) => {
+                    const candidateKey = Equal.byReferenceUnsafe(candidate.symbol)
+
+                    const usage = pipe(
+                      HashMap.get(current, candidateKey),
+                      Option.getOrElse(emptyUsage)
+                    )
+
+                    const isCall = isDirectCallReference(currentIdentifier)
+                    const updated = updateUsage(fromTest, isCall, sourcePath)(usage)
+
+                    return HashMap.set(current, candidateKey, updated)
+                  })
+                )
+              ),
+              Option.getOrElse(Function.constant(current))
+            )
+        )(sourceFile)(usages)
+      }
+
+    const initialUsages = HashMap.empty<ts.Symbol, ExportUsage>()
+
+    return Array.reduce(projectFiles, initialUsages, (current, sourceFile) =>
+      scanFile(sourceFile)(current)
+    )
+  }
+
 export const buildExportReferenceIndex = (context: ProgramContext): ExportReferenceIndex => {
   const checker = context.checker
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const entries = Array.flatMap(projectFiles, exportedFunctionsIn(checker))
-
-  const entryPairs = Array.map(entries, (entry) => {
-    const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
-
-    return Tuple.make(symbolKey, entry)
-  })
-
-  const entriesBySymbol = HashMap.fromIterable(entryPairs)
-  const currentEntryMap = entriesBySymbol
-  const relative = toRelativeFileName(context.projectRoot)
-  const classifyTestSource = isTestSourceFile(context.projectRoot)
-
-  const scanFile =
-    (sourceFile: ts.SourceFile) =>
-    (usages: HashMap.HashMap<ts.Symbol, ExportUsage>): HashMap.HashMap<ts.Symbol, ExportUsage> => {
-      const sourcePath = relative(sourceFile.fileName)
-      const fromTest = classifyTestSource(sourceFile)
-
-      return foldAst(
-        (
-          current: HashMap.HashMap<ts.Symbol, ExportUsage>,
-          node: ts.Node
-        ): HashMap.HashMap<ts.Symbol, ExportUsage> =>
-          pipe(
-            Option.liftPredicate(ts.isIdentifier)(node),
-            Option.filter(Predicate.not(isImportBinding)),
-            Option.flatMap((currentIdentifier) =>
-              pipe(
-                resolvedSymbolAt(checker)(currentIdentifier),
-                Option.flatMap((symbol) => {
-                  const symbolKey = Equal.byReferenceUnsafe(symbol)
-
-                  return HashMap.get(currentEntryMap, symbolKey)
-                }),
-                Option.filter((candidate) => {
-                  const insideDeclaration = isInsideDeclaration(candidate.declarationNode)(
-                    currentIdentifier
-                  )
-
-                  return !insideDeclaration
-                }),
-                Option.map((candidate) => {
-                  const candidateKey = Equal.byReferenceUnsafe(candidate.symbol)
-
-                  const usage = pipe(
-                    HashMap.get(current, candidateKey),
-                    Option.getOrElse(emptyUsage)
-                  )
-
-                  const isCall = isDirectCallReference(currentIdentifier)
-                  const updated = updateUsage(fromTest, isCall, sourcePath)(usage)
-
-                  return HashMap.set(current, candidateKey, updated)
-                })
-              )
-            ),
-            Option.getOrElse(Function.constant(current))
-          )
-      )(sourceFile)(usages)
-    }
-
-  const initialUsages = HashMap.empty<ts.Symbol, ExportUsage>()
-
-  const usages = Array.reduce(projectFiles, initialUsages, (current, sourceFile) =>
-    scanFile(sourceFile)(current)
-  )
+  const usages = buildUsageMap(context)(entries, isOutsideDeclaration)
 
   return new ExportReferenceIndex({ entries, usages })
+}
+
+export const buildExportSymbolIndex = (context: ProgramContext): ExportSymbolIndex => {
+  const checker = context.checker
+  const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+  const entries = Array.flatMap(projectFiles, exportedSymbolsIn(checker))
+  const usages = buildUsageMap(context)(entries, isOutsideDeclaringFile)
+
+  return new ExportSymbolIndex({ entries, usages })
 }
 
 export const usageFor =
   (index: ExportReferenceIndex) =>
   (entry: ExportedFunctionEntry): ExportUsage => {
+    const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+
+    return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(emptyUsage))
+  }
+
+export const symbolUsageFor =
+  (index: ExportSymbolIndex) =>
+  (entry: ExportedSymbolEntry): ExportUsage => {
     const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
 
     return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(emptyUsage))

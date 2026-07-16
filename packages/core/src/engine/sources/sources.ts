@@ -43,7 +43,8 @@ export const contextFor =
   (program: ts.Program): ProgramContext => {
     const checker = program.getTypeChecker()
 
-    return new ProgramContext({ program, checker, projectRoot })
+    // Standalone loads treat the project as its own workspace because no wider root is known here.
+    return new ProgramContext({ program, checker, projectRoot, workspaceRoot: projectRoot })
   }
 
 const mutableLists = <A>(count: number): Array<MutableList.MutableList<A>> =>
@@ -91,6 +92,7 @@ export const runChecks =
         program: context.program,
         checker: context.checker,
         projectRoot: context.projectRoot,
+        workspaceRoot: context.workspaceRoot,
         sourceFile
       })
 

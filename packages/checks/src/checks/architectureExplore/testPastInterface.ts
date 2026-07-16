@@ -1,32 +1,101 @@
-import { Array, Function, Option, Result, Struct, pipe } from "effect"
+import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
-import { seamLeakageDataOf, testOnlyExportDataOf } from "./evidence.js"
+import type { ExportSurfaceData, ExportedSymbolUsage } from "./data.js"
+import {
+  exportSurfaceDataOf,
+  seamLeakageDataOf,
+  testOnlyExportDataOf,
+  workspaceImportEdges
+} from "./evidence.js"
+import type { WorkspaceImportEdge } from "./evidence.js"
+import { exportSurfaceName, seamLeakageEvidenceName, testOnlyExportsName } from "./names.js"
 
 export const testPastInterfaceExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("test-past-interface")
 
+const edgesForSymbol = (
+  edges: ReadonlyArray<WorkspaceImportEdge>,
+  workspacePath: string,
+  symbolName: string,
+  fromTest: boolean
+): ReadonlyArray<WorkspaceImportEdge> =>
+  Array.filter(edges, (edge) => {
+    const importsWorkspacePath = edge.importedPath === workspacePath
+    const matchesTestOrigin = edge.fromTest === fromTest
+    const importsSymbol = Array.some(edge.names, (usage) => usage.name === symbolName)
+    const conditions = Array.make(importsWorkspacePath, matchesTestOrigin, importsSymbol)
+
+    return Array.every(conditions, Boolean)
+  })
+
+const crossTestCallCount = (
+  edges: ReadonlyArray<WorkspaceImportEdge>,
+  symbolName: string
+): number =>
+  pipe(
+    edges,
+    Array.flatMap(Struct.get("names")),
+    Array.filter((usage) => usage.name === symbolName),
+    Array.reduce(0, (total, usage) => total + usage.callCount)
+  )
+
+const workspaceTestOnlySymbols =
+  (edges: ReadonlyArray<WorkspaceImportEdge>) =>
+  (data: ExportSurfaceData): ReadonlyArray<ExportedSymbolUsage> =>
+    Array.filter(data.symbols, (symbol) => {
+      const crossProdImports = edgesForSymbol(edges, data.workspacePath, symbol.name, false)
+      const crossTestImports = edgesForSymbol(edges, data.workspacePath, symbol.name, true)
+      const inProjectProd = symbol.referencingFileCount - symbol.referencingTestFileCount
+      const productionCallers = inProjectProd + crossProdImports.length
+      const hasNoProductionCallers = productionCallers === 0
+      const hasCrossTestImports = crossTestImports.length > 0
+      const conditions = Array.make(hasNoProductionCallers, hasCrossTestImports)
+
+      return Array.every(conditions, Boolean)
+    })
+
 const testPastInterfaceAdvice = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
-  const testOnlyExports = Array.filter(elements, (element) => element.name === "test-only-exports")
+  const testOnlyExports = Array.filter(elements, (element) => element.name === testOnlyExportsName)
 
   const testImports = pipe(
     elements,
-    Array.filter((element) => element.name === "seam-leakage-evidence"),
+    Array.filter((element) => element.name === seamLeakageEvidenceName),
     Array.filter((element) =>
       pipe(seamLeakageDataOf(element), Option.exists(Struct.get("fromTest")))
     )
   )
 
-  const paths = pipe(
+  const edges = workspaceImportEdges(elements)
+  const exportSurfaces = Array.filter(elements, (element) => element.name === exportSurfaceName)
+  const testOnlySymbolsOf = workspaceTestOnlySymbols(edges)
+
+  const programPaths = pipe(
     Array.appendAll(testOnlyExports, testImports),
-    Array.map((element) => element.detection.location.path),
-    Array.dedupe
+    Array.map((element) => element.detection.location.path)
   )
+
+  const workspacePaths = pipe(
+    exportSurfaces,
+    Array.filter((element) =>
+      pipe(
+        exportSurfaceDataOf(element),
+        Option.exists((data) => {
+          const symbols = testOnlySymbolsOf(data)
+
+          return symbols.length > 0
+        })
+      )
+    ),
+    Array.map((element) => element.detection.location.path)
+  )
+
+  const paths = pipe(Array.appendAll(programPaths, workspacePaths), Array.dedupe)
 
   return Array.map(paths, (filePath) => {
     const exportsAtPath = Array.filter(
@@ -39,14 +108,52 @@ const testPastInterfaceAdvice = (
       (element) => element.detection.location.path === filePath
     )
 
-    const testCallCount = pipe(
+    const workspaceAtPath = Array.filter(
+      exportSurfaces,
+      (element) => element.detection.location.path === filePath
+    )
+
+    const workspaceDataAtPath = pipe(
+      workspaceAtPath,
+      Array.filterMap(Function.flow(exportSurfaceDataOf, Result.fromOption(Function.constVoid)))
+    )
+
+    const exportTestCallCount = pipe(
       exportsAtPath,
       Array.filterMap(Function.flow(testOnlyExportDataOf, Result.fromOption(Function.constVoid))),
       Array.reduce(0, (total, data) => total + data.testCallCount)
     )
 
+    const emptyWorkspaceEvidence = Tuple.make(0, 0)
+
+    const workspaceEvidence = pipe(
+      workspaceDataAtPath,
+      Array.reduce(emptyWorkspaceEvidence, (totals, data) => {
+        const symbols = testOnlySymbolsOf(data)
+
+        const callsAtSurface = pipe(
+          symbols,
+          Array.reduce(0, (total, symbol) => {
+            const crossTestImports = edgesForSymbol(edges, data.workspacePath, symbol.name, true)
+            const crossTestCalls = crossTestCallCount(crossTestImports, symbol.name)
+            return total + symbol.callCount + crossTestCalls
+          })
+        )
+
+        return Tuple.make(totals[0] + symbols.length, totals[1] + callsAtSurface)
+      })
+    )
+
+    const workspaceSymbolCount = workspaceEvidence[0]
+    const workspaceTestCallCount = workspaceEvidence[1]
+    const testCallCount = exportTestCallCount + workspaceTestCallCount
     const location = adviceLocation(filePath)
-    const exportsItem = evidenceItem("test-only-exports", exportsAtPath.length)
+
+    const exportsItem = evidenceItem(
+      "test-only-exports",
+      exportsAtPath.length + workspaceSymbolCount
+    )
+
     const callsItem = evidenceItem("test-helper-calls", testCallCount)
     const importsItem = evidenceItem("test-deep-imports", importsAtPath.length)
     const evidence = Array.make(exportsItem, callsItem, importsItem)

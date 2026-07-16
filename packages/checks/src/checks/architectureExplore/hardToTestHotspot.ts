@@ -4,16 +4,17 @@ import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { externalDependencyConstructionName, moduleScopeEffectsName } from "./names.js"
 
 export const hardToTestHotspotExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("hard-to-test-hotspot")
 
 const minimumConstructions = 2
+const constructionNames = Array.make(externalDependencyConstructionName, moduleScopeEffectsName)
 
 const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const constructions = Array.filter(
-    elements,
-    (element) => element.name === "external-dependency-construction"
+  const constructions = Array.filter(elements, (element) =>
+    Array.contains(constructionNames, element.name)
   )
 
   const paths = pipe(
@@ -30,14 +31,25 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
           .length >= minimumConstructions
     ),
     Array.map((filePath) => {
-      const count = Array.filter(
+      const atPath = Array.filter(
         constructions,
         (element) => element.detection.location.path === filePath
+      )
+
+      const constructorCount = Array.filter(
+        atPath,
+        (element) => element.name === externalDependencyConstructionName
+      ).length
+
+      const moduleScopeCount = Array.filter(
+        atPath,
+        (element) => element.name === moduleScopeEffectsName
       ).length
 
       const location = adviceLocation(filePath)
-      const constructionItem = evidenceItem("external-dependency-construction", count)
-      const evidence = Array.of(constructionItem)
+      const constructionItem = evidenceItem("external-dependency-construction", constructorCount)
+      const moduleScopeItem = evidenceItem("module-scope-effects", moduleScopeCount)
+      const evidence = Array.make(constructionItem, moduleScopeItem)
 
       return new Advice({
         location,

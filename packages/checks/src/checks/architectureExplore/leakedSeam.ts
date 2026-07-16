@@ -1,17 +1,22 @@
-import { Array, Function, Result, pipe } from "effect"
+import * as path from "node:path"
+import { Array, Function, Option, Result, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
-import { seamLeakageDataOf } from "./evidence.js"
+import { moduleGraphDataOf, seamLeakageDataOf } from "./evidence.js"
+import { moduleGraphName, seamLeakageEvidenceName } from "./names.js"
+import { isTestPath } from "./programSymbols.js"
 
 export const leakedSeamExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("leaked-seam")
 
 const minimumLeaks = 2
 
-const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const leaks = Array.filter(elements, (element) => element.name === "seam-leakage-evidence")
+const directoryOf: (workspacePath: string) => string = path.posix.dirname
+
+const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const leaks = Array.filter(elements, (element) => element.name === seamLeakageEvidenceName)
 
   const paths = pipe(
     leaks,
@@ -51,6 +56,101 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
 
     return Result.succeed(advice)
   })
+}
+
+const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const graphElements = Array.filter(elements, (element) => element.name === moduleGraphName)
+
+  const directoryEdges = Array.flatMap(graphElements, (element) =>
+    pipe(
+      moduleGraphDataOf(element),
+      Option.map((data) => {
+        if (isTestPath(data.workspacePath)) {
+          return Array.empty<readonly [string, string]>()
+        }
+
+        const fromDirectory = directoryOf(data.workspacePath)
+
+        return pipe(
+          data.importedWorkspacePaths,
+          Array.filter((importedPath) => !isTestPath(importedPath)),
+          Array.map((importedPath) => {
+            const importedDirectory = directoryOf(importedPath)
+
+            return Tuple.make(fromDirectory, importedDirectory)
+          }),
+          Array.filter(([from, to]) => from !== to)
+        )
+      }),
+      Option.getOrElse(Array.empty)
+    )
+  )
+
+  const directories = pipe(
+    directoryEdges,
+    Array.flatMap(([from, to]) => Array.make(from, to)),
+    Array.dedupe
+  )
+
+  const pairs = Array.flatMap(directories, (left) =>
+    pipe(
+      directories,
+      Array.filter((right) => left < right),
+      Array.filterMap((right) => {
+        const forwardCount = Array.filter(directoryEdges, ([from, to]) => {
+          const fromMatches = from === left
+          const toMatches = to === right
+          const conditions = Array.make(fromMatches, toMatches)
+
+          return Array.every(conditions, Boolean)
+        }).length
+
+        const reverseCount = Array.filter(directoryEdges, ([from, to]) => {
+          const fromMatches = from === right
+          const toMatches = to === left
+          const conditions = Array.make(fromMatches, toMatches)
+
+          return Array.every(conditions, Boolean)
+        }).length
+
+        const smallestDirectionCount = Math.min(forwardCount, reverseCount)
+
+        if (smallestDirectionCount === 0) {
+          return Result.failVoid
+        }
+
+        const crossImports = forwardCount + reverseCount
+        const pair = Tuple.make(left, right, crossImports)
+
+        return Result.succeed(pair)
+      })
+    )
+  )
+
+  return Array.map(pairs, ([left, right, crossImports]) => {
+    const smaller = left < right ? left : right
+    const location = adviceLocation(smaller)
+    const crossImportsItem = evidenceItem("cross-imports", crossImports)
+    const evidence = Array.of(crossImportsItem)
+
+    return new Advice({
+      location,
+      level: "directory",
+      title: "leaked seam",
+      remediation:
+        "Two directories import each other, so the seam between them leaks in both directions. " +
+        "Give the shared vocabulary one home so the dependency points one way.",
+      evidence,
+      examples: leakedSeamExamples
+    })
+  })
+}
+
+const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const fileAdvice = fileLeakAdvice(elements)
+  const directoryAdvice = directoryPairAdvice(elements)
+
+  return Array.appendAll(fileAdvice, directoryAdvice)
 }
 
 export const leakedSeam = deriveSignals(leakedSeamAdvice)

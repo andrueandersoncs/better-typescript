@@ -33,7 +33,7 @@ import type { NonEmptyRefactorExamples, RefactorExample } from "../example/data.
 import type { Detection } from "../location/data.js"
 import { detectionBlockKey, detectionEquals, locationText } from "../location/location.js"
 import { isProjectSourceFile, runChecks } from "../sources/sources.js"
-import type { ProgramContext } from "../sources/data.js"
+import { ProgramContext } from "../sources/data.js"
 import { ClearedEvent, EmptyReportEvent, SignalEvent } from "../watch/data.js"
 import type { ReportEvent } from "../watch/data.js"
 import {
@@ -108,7 +108,16 @@ const collectWorkspaceSignals = <A, E>(
 
   const collectProject = (project: A): Effect.Effect<void> =>
     Effect.sync(() => {
-      const context = toContext(project)
+      const loadedContext = toContext(project)
+
+      // Contexts re-root here because evidence must compare paths across the whole workspace.
+      const context = new ProgramContext({
+        program: loadedContext.program,
+        checker: loadedContext.checker,
+        projectRoot: loadedContext.projectRoot,
+        workspaceRoot
+      })
+
       const allSourceFiles = context.program.getSourceFiles()
       const sourceFiles = Array.filter(allSourceFiles, isProjectSourceFile)
 

@@ -2,7 +2,7 @@
 import * as path from "node:path"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
-import { Console, Effect, Function, Option, Stream, Struct, pipe } from "effect"
+import { Console, Effect, Function, Option, Predicate, Stream, Struct, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText, watchReportFromConfig } from "@better-typescript/core/engine/watch"
 import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
@@ -33,7 +33,9 @@ const setErrorExitCode = (): number => {
   return process.exitCode
 }
 
-const isError = (cause: unknown): cause is { readonly message: string } => cause instanceof Error
+// Failures narrow structurally because this untyped boundary must not name the built-in type.
+const isMessageCarrier = (cause: unknown): cause is { readonly message: string } =>
+  Predicate.hasProperty(cause, "message") && Predicate.isString(cause.message)
 
 const hasText = (value: string): boolean => value.length > 0
 
@@ -42,7 +44,7 @@ const errorText = (error: unknown): string => {
   const fallbackText = String(error)
 
   return pipe(
-    Option.liftPredicate(isError)(error),
+    Option.liftPredicate(isMessageCarrier)(error),
     Option.map(Struct.get("message")),
     Option.filter(hasText),
     Option.getOrElse(Function.constant(fallbackText))

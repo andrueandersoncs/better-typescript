@@ -70,7 +70,7 @@ const constructionRootIdentifier = (expression: ts.Expression): Option.Option<ts
   )
 }
 
-const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> =>
+export const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> =>
   ts.isImportDeclaration(node)
     ? Option.some(node)
     : pipe(Option.fromNullishOr(node.parent), Option.flatMap(importDeclarationAncestor))
@@ -101,7 +101,7 @@ const isCollaboratorName = (name: string): boolean => {
   return knownName || knownSuffix
 }
 
-const isCompositionRoot = (sourceFile: ts.SourceFile): boolean => {
+export const isCompositionRoot = (sourceFile: ts.SourceFile): boolean => {
   const extension = path.extname(sourceFile.fileName)
   const baseName = path.basename(sourceFile.fileName, extension)
 

@@ -6,7 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { ModuleGraphData } from "./data.js"
-import { ModuleEdge, buildModuleEdges } from "./programSymbols.js"
+import { ModuleEdge, buildModuleEdges, toWorkspacePath } from "./programSymbols.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
@@ -27,6 +27,7 @@ const moduleGraphElements =
     const [edges, projectRoot] = index
     const relative = toRelativeFileName(projectRoot)
     const filePath = relative(context.sourceFile.fileName)
+    const workspaceRelative = toWorkspacePath(projectRoot, context.workspaceRoot)
 
     const importedPaths = pipe(
       edges,
@@ -46,7 +47,15 @@ const moduleGraphElements =
       Option.getOrElse(Function.constant(context.sourceFile))
     )
 
-    const data = new ModuleGraphData({ importedPaths })
+    const workspacePath = workspaceRelative(filePath)
+    const importedWorkspacePaths = Array.map(importedPaths, workspaceRelative)
+
+    const data = new ModuleGraphData({
+      importedPaths,
+      workspacePath,
+      importedWorkspacePaths
+    })
+
     const reported = element({ node, message, hint, data })
 
     return Array.of(reported)

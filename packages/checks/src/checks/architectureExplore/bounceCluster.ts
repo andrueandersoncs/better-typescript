@@ -1,10 +1,16 @@
-import { Array, Function, Option, Tuple, pipe } from "effect"
+import { Array, Option, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
-import { isDeletableWrapper, moduleGraphDataOf } from "./evidence.js"
+import {
+  commonDirectory,
+  isDeletableShallowness,
+  isShallownessName,
+  moduleGraphDataOf
+} from "./evidence.js"
+import { moduleGraphName } from "./names.js"
 
 export const bounceClusterExamples: NonEmptyRefactorExamples =
   fixtureRefactorExamples("bounce-cluster")
@@ -91,37 +97,16 @@ const connectedComponents = (
   return collect(paths, components)
 }
 
-const directorySegments = (filePath: string): ReadonlyArray<string> => {
-  const normalized = filePath.replaceAll("\\", "/")
-  const separator = normalized.lastIndexOf("/")
-  const directory = separator === -1 ? "." : normalized.slice(0, separator)
-
-  return directory.split("/")
-}
-
-const commonDirectory = (paths: ReadonlyArray<string>): string => {
-  const allSegments = Array.map(paths, directorySegments)
-  const fallback = Array.of(".")
-  const first = pipe(Array.head(allSegments), Option.getOrElse(Function.constant(fallback)))
-  const remaining = Array.drop(allSegments, 1)
-
-  const common = Array.reduce(remaining, first, (prefix, segments) =>
-    Array.takeWhile(prefix, (segment, index) => segments[index] === segment)
-  )
-
-  return common.length === 0 ? "." : Array.join(common, "/")
-}
-
 const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const shallowPaths = pipe(
     elements,
-    Array.filter((element) => element.name === "pass-through-wrappers"),
-    Array.filter(isDeletableWrapper),
+    Array.filter((element) => isShallownessName(element.name)),
+    Array.filter(isDeletableShallowness),
     Array.map((element) => element.detection.location.path),
     Array.dedupe
   )
 
-  const graphElements = Array.filter(elements, (element) => element.name === "module-graph")
+  const graphElements = Array.filter(elements, (element) => element.name === moduleGraphName)
 
   const edges = Array.flatMap(graphElements, (element) => {
     const from = element.detection.location.path

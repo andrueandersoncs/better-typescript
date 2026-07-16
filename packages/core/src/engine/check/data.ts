@@ -9,6 +9,7 @@ export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
   program: TsProgram,
   checker: TsTypeChecker,
   projectRoot: Schema.String,
+  workspaceRoot: Schema.String,
   sourceFile: TsSourceFile
 }) {}
 

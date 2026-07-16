@@ -6,7 +6,8 @@ import { TsNode, TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
 export class ProgramContext extends Schema.Class<ProgramContext>("ProgramContext")({
   program: TsProgram,
   checker: TsTypeChecker,
-  projectRoot: Schema.String
+  projectRoot: Schema.String,
+  workspaceRoot: Schema.String
 }) {}
 
 // AstNodeElement is the shared node walk element because AST owners need one vocabulary.

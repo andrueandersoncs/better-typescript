@@ -1,20 +1,35 @@
-import { Array, Function, Result, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { fixtureRefactorExamples } from "../../fixtureExamples.js"
-import { isDeletableWrapper, passThroughDataOf } from "./evidence.js"
+import {
+  compositionForwarderDataOf,
+  isDeletableShallowness,
+  isShallownessName,
+  passThroughDataOf
+} from "./evidence.js"
 
 export const deletionTestShallownessExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
   "deletion-test-shallowness"
 )
 
+const callerCountOf = (element: NamedDetection): number =>
+  pipe(
+    passThroughDataOf(element),
+    Option.map(Struct.get("callerCount")),
+    Option.orElse(() =>
+      pipe(compositionForwarderDataOf(element), Option.map(Struct.get("callerCount")))
+    ),
+    Option.getOrElse(Function.constant(0))
+  )
+
 const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const wrappers = pipe(
     elements,
-    Array.filter((element) => element.name === "pass-through-wrappers"),
-    Array.filter(isDeletableWrapper)
+    Array.filter((element) => isShallownessName(element.name)),
+    Array.filter(isDeletableShallowness)
   )
 
   const paths = pipe(
@@ -28,8 +43,8 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 
     const callerCount = pipe(
       atPath,
-      Array.filterMap(Function.flow(passThroughDataOf, Result.fromOption(Function.constVoid))),
-      Array.reduce(0, (total, data) => total + data.callerCount)
+      Array.map(callerCountOf),
+      Array.reduce(0, (total, count) => total + count)
     )
 
     const forwardersItem = evidenceItem("deletable-forwarders", atPath.length)
