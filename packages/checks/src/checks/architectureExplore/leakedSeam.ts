@@ -3,13 +3,12 @@ import { Array, Function, Option, Result, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { moduleGraphDataOf, seamLeakageDataOf } from "./evidence.js"
 import { moduleGraphName, seamLeakageEvidenceName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
-export const leakedSeamExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("leaked-seam")
+export const leakedSeamExamples = packageExamples("leaked-seam")
 
 const minimumLeaks = 2
 
@@ -42,6 +41,7 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const internalItem = evidenceItem("internal-path-imports", internalCount)
     const sourceItem = evidenceItem("source-path-imports", sourceCount)
     const evidence = Array.make(internalItem, sourceItem)
+    const examples = leakedSeamExamples()
 
     const advice = new Advice({
       location,
@@ -51,7 +51,7 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
         "This Module repeatedly bypasses declared interfaces through internal or package-source imports. " +
         "Route dependencies through one public seam so implementation paths remain local and replaceable.",
       evidence,
-      examples: leakedSeamExamples
+      examples
     })
 
     return Result.succeed(advice)
@@ -132,6 +132,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
     const location = adviceLocation(smaller)
     const crossImportsItem = evidenceItem("cross-imports", crossImports)
     const evidence = Array.of(crossImportsItem)
+    const examples = leakedSeamExamples()
 
     return new Advice({
       location,
@@ -141,7 +142,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
         "Two directories import each other, so the seam between them leaks in both directions. " +
         "Give the shared vocabulary one home so the dependency points one way.",
       evidence,
-      examples: leakedSeamExamples
+      examples
     })
   })
 }

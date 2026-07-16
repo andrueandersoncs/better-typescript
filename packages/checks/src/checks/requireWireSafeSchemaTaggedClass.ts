@@ -1,13 +1,11 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { namedDetectionTarget } from "./support/tsNode.js"
-import { schemaTaggedClassEncodedType, typeIsWireSafe } from "./taggedClassPortability.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { schemaTaggedClassEncodedType, typeIsWireSafe } from "./support/taggedClassPortability.js"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const message = "Require Schema.TaggedClass to have a portable encoded representation."
 
@@ -43,9 +41,9 @@ const schemaTaggedClassMatches = (context: CheckContext) => {
 
 const classDeclarationKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-export const requireWireSafeSchemaTaggedClass: Check = nodeCheck(classDeclarationKinds)(
-  ts.isClassDeclaration
-)(schemaTaggedClassMatches)
-
-export const requireWireSafeSchemaTaggedClassExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("require-wire-safe-schema-tagged-class")
+export const requireWireSafeSchemaTaggedClass = defineCheck(
+  "require-wire-safe-schema-tagged-class",
+  classDeclarationKinds,
+  ts.isClassDeclaration,
+  schemaTaggedClassMatches
+)

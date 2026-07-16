@@ -3,12 +3,10 @@ import * as ts from "typescript"
 import { conciseArrowBody, unwrapCarrier } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid lambdas that only flip the order of a curried application."
 
@@ -192,9 +190,9 @@ const functionFlipMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(functionFlipMatches)
-
-export const preferFunctionFlip: Check = check
-
-export const preferFunctionFlipExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-function-flip")
+export const preferFunctionFlip = defineCheck(
+  "prefer-function-flip",
+  arrowFunctionKinds,
+  ts.isArrowFunction,
+  functionFlipMatches
+)

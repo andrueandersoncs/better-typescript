@@ -10,16 +10,16 @@ declare const y: number
 declare const z: boolean
 
 // Two &&
-const r1 = a && b && c
+const r1 = a && b && c // ~detect 12
 
 // Mixed && / ||
-const r2 = a || (b && c)
+const r2 = a || (b && c) // ~detect 12
 
 // === combined with &&
-const r3 = x === y && z
+const r3 = x === y && z // ~detect 12
 
 // Double negation
-const r4 = !!a
+const r4 = !!a // ~detect 12
 
 // Nested ternary
-const r5 = a ? b : c ? d : e
+const r5 = a ? b : c ? d : e // ~detect 12

@@ -4,106 +4,107 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Fiber, HashMap, Option, Queue, Stream, pipe } from "effect"
+import { Effect, Function, Option, Stream, pipe } from "effect"
 import * as ts from "typescript"
-import { Location } from "@better-typescript/core/engine/location/data"
-import {
-  AdviceReportKey,
-  ReportBlock,
-  RuleReportKey,
-  Signal,
-  WiringSignals
-} from "@better-typescript/core/engine/report/data"
-import type {
-  NamedCheck,
-  ReportKey,
-  Wiring,
-  WiringConfig
-} from "@better-typescript/core/engine/report/data"
-import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/report"
-import { reportBlocksFromConfig } from "@better-typescript/core/project/loadProject"
-import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import { Detection } from "@better-typescript/core/engine/location/data"
-import { contextFor, diffCheckableFiles } from "@better-typescript/core/engine/sources"
+import { locateNode, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  ClearedEvent,
-  EmptyReportEvent,
-  SignalEvent,
-  WorkspaceUpdate
-} from "@better-typescript/core/engine/watch/data"
-import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
-import {
-  reportBlockUpdates,
-  blockDelta,
-  blockDeltas,
-  renderEventText,
-  signalUpdates,
-  signalsEquivalence,
-  watchReportFromConfig
-} from "@better-typescript/core/engine/watch"
-import {
-  discoverWorkspace,
-  loadProject,
-  reportEventsFromConfig
-} from "@better-typescript/core/project/loadProject"
-import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
-import {
-  locateNode,
-  checkFromSubscriptions,
-  nodeSubscription
-} from "@better-typescript/core/engine/check"
+import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
+import { Detection, Location } from "@better-typescript/core/engine/location/data"
+import type { ReportEvent } from "@better-typescript/core/engine/report/data"
+import { contextFor } from "@better-typescript/core/engine/sources"
+import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
+import { reportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
+import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/wiring"
+import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")
-
-const probeExamples = [
-  refactorExample(
-    exampleSnippet("src/cases.ts", `throw new Error("boom")`),
-    exampleSnippet("src/cases.ts", `yield* new BoomError()`)
-  )
-] as const
-
+const syntheticRoot = path.resolve("/synthetic-report-events")
+const syntheticFilePath = path.join(syntheticRoot, "src", "cases.ts")
 const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
-const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(Stream.runCollect(stream))
+const probeExamples = Function.constant([
+  refactorExample(
+    exampleSnippet("src/cases.ts", `throw new Error("boom")`),
+    exampleSnippet("src/cases.ts", "yield* new BoomError()")
+  )
+] as const)
 
-const loadFixtureProject = async (): Promise<LoadedProject> => {
-  const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
-  const [project] = workspace.projects
-
-  assert.ok(project, "expected the no-throw fixture to load one project")
-
-  return project
-}
-
-const throwProbeCheck: Check = checkFromSubscriptions(() => [
-  nodeSubscription([ts.SyntaxKind.ThrowStatement])((context) => (node) => [
+const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
+  (context) => (node) => [
     new Detection({
       location: locateNode(context)(node),
       message: probeMessage,
       hint: probeHint
     })
-  ])
-])
+  ]
+)
 
-const throwProbeNamedCheck: NamedCheck = namedCheck(probeName, throwProbeCheck, probeExamples)
+const probeWiring = makeWiring({
+  checks: [namedCheck(probeName, throwProbeCheck, probeExamples)],
+  derive: (signals) => {
+    const detectionCount = signals[0]?.detections.length ?? 0
+    const advice: Advice = {
+      location: new Location({ path: "src/cases.ts", line: 1, column: 1 }),
+      level: "file",
+      title: "probe advice",
+      remediation: `handle ${detectionCount} throws`,
+      evidence: [{ measure: "throw statements", count: detectionCount }],
+      examples: probeExamples()
+    }
 
-const probeWiring: Wiring = makeWiring({
-  checks: [throwProbeNamedCheck],
-  derive: () => Stream.empty
+    return Stream.succeed(advice)
+  }
 })
 
-const configFor = (
-  wiring: Wiring,
-  files: WiringConfig[number]["files"] = ["src/cases.ts"]
-): WiringConfig => defineConfig([{ files, wiring }])
+const probeConfig = defineConfig([{ files: ["src/cases.ts"], wiring: probeWiring }])
 
-const probeConfig = configFor(probeWiring)
+const contextFromSource = (sourceText: string): ProgramContext => {
+  const compilerOptions: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    noLib: true,
+    target: ts.ScriptTarget.ESNext
+  }
+  const sourceFile = ts.createSourceFile(
+    syntheticFilePath,
+    sourceText,
+    ts.ScriptTarget.ESNext,
+    true,
+    ts.ScriptKind.TS
+  )
+  const host = ts.createCompilerHost(compilerOptions)
+
+  host.fileExists = (candidatePath) => candidatePath === syntheticFilePath
+  host.readFile = (candidatePath) => (candidatePath === syntheticFilePath ? sourceText : undefined)
+  host.getSourceFile = (candidatePath) =>
+    candidatePath === syntheticFilePath ? sourceFile : undefined
+  host.getCurrentDirectory = Function.constant(syntheticRoot)
+
+  const program = ts.createProgram({
+    rootNames: [syntheticFilePath],
+    options: compilerOptions,
+    host
+  })
+
+  return contextFor(syntheticRoot)(program)
+}
+
+const syntheticUpdate = (sourceText: string): WorkspaceUpdate =>
+  new WorkspaceUpdate({
+    rootPath: syntheticRoot,
+    contexts: [contextFromSource(sourceText)]
+  })
+
+const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
+  Effect.runPromise(Stream.runCollect(stream))
+
+const initialSource = `throw "first"\n`
+const movedSource = `\nthrow "first"\n`
+const clearedSource = `export const value = 1\n`
 
 const pollingWatchOptions: ts.WatchOptions = {
   watchFile: ts.WatchFileKind.FixedPollingInterval,
@@ -111,373 +112,150 @@ const pollingWatchOptions: ts.WatchOptions = {
   fallbackPolling: ts.PollingWatchKind.FixedInterval
 }
 
-const location = (filePath: string, line: number, column: number): Location =>
-  new Location({ path: filePath, line, column })
-
-const testReportKey = (name: string): ReportKey =>
-  new RuleReportKey({ name, message: name, hint: name })
-
-const block = (identity: string, text: string, cleared: string): ReportBlock =>
-  new ReportBlock({ identity, key: testReportKey(identity), text, cleared })
-
-const signal = (keyName: string, text: string): SignalEvent =>
-  new SignalEvent({ key: testReportKey(keyName), text })
-
-const clearedEvent = (keyName: string, text: string): ClearedEvent =>
-  new ClearedEvent({ key: testReportKey(keyName), text })
-
-const detectionAt = (line: number, message: string, data?: unknown): Detection =>
-  new Detection({
-    location: location("src/cases.ts", line, 1),
-    message,
-    hint: probeHint,
-    data
-  })
-
-const batchOf = (
-  detections: ReadonlyArray<Detection>,
-  matched = true
-): ReadonlyArray<WiringSignals> => [
-  new WiringSignals({
-    matched,
-    signals: [new Signal({ name: probeName, reported: true, detections, examples: [] })]
-  })
-]
-
-test("blockDelta emits every current block as a signal event when there is no previous report", () => {
-  const a = block("a", "text a", "a cleared")
-  const b = block("b", "text b", "b cleared")
-
-  assert.deepEqual(blockDelta([a, b])([]), [signal("a", "text a"), signal("b", "text b")])
-})
-
-test("blockDelta re-emits exactly the block whose text changed", () => {
-  const a = block("a", "text a", "a cleared")
-  const b = block("b", "text b", "b cleared")
-  const changedB = block("b", "text b changed", "b cleared")
-
-  assert.deepEqual(blockDelta([a, changedB])([a, b]), [signal("b", "text b changed")])
-})
-
-test("blockDelta emits the cleared event for a removed block key", () => {
-  const a = block("a", "text a", "a cleared")
-  const b = block("b", "text b", "b cleared")
-
-  assert.deepEqual(blockDelta([a])([a, b]), [clearedEvent("b", "b cleared")])
-})
-
-test("blockDelta emits clearances before changed and new blocks", () => {
-  const a = block("a", "text a", "a cleared")
-  const b = block("b", "text b", "b cleared")
-  const changedA = block("a", "text a changed", "a cleared")
-  const c = block("c", "text c", "c cleared")
-
-  assert.deepEqual(blockDelta([changedA, c])([a, b]), [
-    clearedEvent("b", "b cleared"),
-    signal("a", "text a changed"),
-    signal("c", "text c")
-  ])
-})
-
-test("blockDelta emits nothing for identical reports", () => {
-  const a = block("a", "text a", "a cleared")
-  const b = block("b", "text b", "b cleared")
-
-  assert.deepEqual(blockDelta([a, b])([a, b]), [])
-})
-
-test("blockDeltas emits the full first report and only deltas afterwards", async () => {
-  const a = block("a", "text a", "a cleared")
-  const changedA = block("a", "text a changed", "a cleared")
+test("reportEvents emits the initial advice and check blocks in report order", async () => {
   const events = await collectStream(
-    pipe(Stream.fromIterable([[a], [a], [changedA]]), blockDeltas("/root"))
+    reportEvents(probeConfig)(Stream.succeed(syntheticUpdate(initialSource)))
   )
+  const [adviceEvent, checkEvent] = events
 
-  assert.deepEqual(events, [signal("a", "text a"), signal("a", "text a changed")])
+  assert.ok(adviceEvent?._tag === "signal")
+  assert.equal(adviceEvent.key._tag, "advice")
+  assert.match(adviceEvent.text, /^src\/cases\.ts \[file\] — probe advice/)
+
+  assert.ok(checkEvent?._tag === "signal")
+  assert.equal(checkEvent.key._tag, "rule")
+  assert.equal(checkEvent.key.name, probeName)
+  assert.match(checkEvent.text, /src\/cases\.ts:1:1/)
 })
 
-test("blockDeltas emits the empty-report event for an empty first report", async () => {
-  const events = await collectStream(pipe(Stream.fromIterable([[]]), blockDeltas("/root")))
-
-  assert.deepEqual(events, [new EmptyReportEvent({ rootPath: "/root" })])
-})
-
-test("renderEventText renders events as the pretty text blocks", () => {
-  assert.equal(renderEventText(signal("a", "text a")), "text a")
-  assert.equal(renderEventText(clearedEvent("a", "a — cleared: m")), "a — cleared: m")
-  assert.equal(renderEventText(new EmptyReportEvent({ rootPath: "/root" })), "No signals in /root.")
-})
-
-test("report events stringify to NDJSON objects with structured keys", () => {
-  const key = { _tag: "rule", name: "k", message: "k", hint: "k" }
-
-  assert.deepEqual(JSON.parse(JSON.stringify(signal("k", "t"))), {
-    _tag: "signal",
-    key,
-    text: "t"
-  })
-  assert.deepEqual(JSON.parse(JSON.stringify(clearedEvent("k", "t"))), {
-    _tag: "cleared",
-    key,
-    text: "t"
-  })
-  assert.deepEqual(JSON.parse(JSON.stringify(new EmptyReportEvent({ rootPath: "/root" }))), {
-    _tag: "empty",
-    rootPath: "/root"
-  })
-})
-
-test("reportEventsFromConfig emits initial events from the same config projection", async () => {
-  const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
-  const blocks = await Effect.runPromise(reportBlocksFromConfig(probeConfig)(workspace))
-  const events = await collectStream(reportEventsFromConfig(probeConfig)(workspace))
-  const expected = blocks.map(
-    (reportBlock) =>
-      new SignalEvent({
-        key: reportBlock.key,
-        text: reportBlock.text
-      })
-  )
-
-  assert.ok(blocks.length > 0, "expected the fixture to produce report blocks")
-  assert.deepEqual(events, expected)
-})
-
-test("reportEventsFromConfig emits one empty event when no wiring matches", async () => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "report-events-empty-"))
-
-  try {
-    await fs.cp(noThrowFixturePath, tempDir, { recursive: true })
-    await fs.rm(path.join(tempDir, "src", "cases.ts"))
-
-    const workspace = await Effect.runPromise(loadProject(tempDir))
-    const events = await collectStream(reportEventsFromConfig(probeConfig)(workspace))
-
-    assert.deepEqual(events, [new EmptyReportEvent({ rootPath: workspace.rootPath })])
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true })
-  }
-})
-
-test("signalsEquivalence accepts equal detection sets", () => {
-  const a = batchOf([detectionAt(4, probeMessage), detectionAt(9, probeMessage)])
-  const b = batchOf([detectionAt(4, probeMessage), detectionAt(9, probeMessage)])
-
-  assert.equal(signalsEquivalence(a, b), true)
-})
-
-test("signalsEquivalence rejects a moved location or a changed message", () => {
-  const base = batchOf([detectionAt(4, probeMessage)])
-  const moved = batchOf([detectionAt(5, probeMessage)])
-  const reworded = batchOf([detectionAt(4, "throw expression")])
-
-  assert.equal(signalsEquivalence(base, moved), false)
-  assert.equal(signalsEquivalence(base, reworded), false)
-})
-
-test("signalsEquivalence under-cuts on fresh non-Equal detection data by design", () => {
-  const a = batchOf([detectionAt(4, probeMessage, { target: "local" })])
-  const b = batchOf([detectionAt(4, probeMessage, { target: "local" })])
-
-  assert.equal(signalsEquivalence(a, b), false)
-})
-
-test("signalsEquivalence rejects a changed wiring match state", () => {
-  assert.equal(signalsEquivalence(batchOf([], true), batchOf([], false)), false)
-})
-
-test("signalUpdates and reportBlockUpdates derive one signal array and advice-first blocks per element", async () => {
-  const project = await loadFixtureProject()
-  const context = contextFor(project.rootPath)(project.program)
-  const update = new WorkspaceUpdate({
-    rootPath: project.rootPath,
-    contexts: [context]
-  })
-  const fixedAdvice: Advice = {
-    location: location("src/cases.ts", 1, 1),
-    level: "file",
-    title: "probe advice",
-    remediation: "act on the probe evidence",
-    evidence: [{ measure: "probe", count: 4 }],
-    examples: probeExamples
-  }
-  const adviceProbeWiring: Wiring = makeWiring({
-    checks: [throwProbeNamedCheck],
-    derive: () => Stream.fromIterable([fixedAdvice])
-  })
-  const adviceProbeConfig = configFor(adviceProbeWiring)
-
-  const batches = await collectStream(
-    pipe(Stream.fromIterable([update]), signalUpdates(adviceProbeConfig))
-  )
-
-  assert.equal(batches.length, 1)
-  assert.equal(batches[0]?.length, 1)
-  const [wiringSignals] = batches[0] ?? []
-
-  assert.ok(wiringSignals, "expected one matched wiring signal set")
-  assert.equal(wiringSignals.matched, true)
-  const [probeSignal] = wiringSignals.signals
-
-  assert.ok(probeSignal, "expected the probe check to emit one signal")
-  assert.equal(probeSignal.name, probeName)
-  assert.equal(probeSignal.reported, true)
-  assert.equal(probeSignal.detections.length, 4)
-
-  const blockArrays = await collectStream(
-    pipe(
-      Stream.fromIterable([update]),
-      signalUpdates(adviceProbeConfig),
-      reportBlockUpdates(adviceProbeConfig)
+test("reportEvents suppresses identical batches and re-emits a changed block", async () => {
+  const events = await collectStream(
+    reportEvents(probeConfig)(
+      Stream.fromIterable([
+        syntheticUpdate(initialSource),
+        syntheticUpdate(initialSource),
+        syntheticUpdate(movedSource)
+      ])
     )
   )
 
-  assert.equal(blockArrays.length, 1)
+  assert.equal(events.length, 3, "expected two initial blocks and one changed block")
 
-  const blocks = blockArrays[0]
+  const changed = events[2]
 
-  assert.equal(blocks.length, 2)
-  assert.deepEqual(
-    blocks[0].key,
-    new AdviceReportKey({
-      level: "file",
-      path: "src/cases.ts",
-      title: "probe advice"
-    })
-  )
-  assert.equal(blocks[0].text.split("\n")[0], "src/cases.ts [file] — probe advice")
-  assert.deepEqual(
-    blocks[1].key,
-    new RuleReportKey({
-      name: probeName,
-      message: probeMessage,
-      hint: probeHint
-    })
-  )
+  assert.ok(changed?._tag === "signal")
+  assert.equal(changed.key._tag, "rule")
+  assert.match(changed.text, /src\/cases\.ts:2:1/)
 })
 
-test("diffCheckableFiles reports initial files, quiet rediffs, and removals", async () => {
-  const project = await loadFixtureProject()
-  const context = contextFor(project.rootPath)(project.program)
-  const emptyIndex = HashMap.empty<string, ts.SourceFile>()
+test("reportEvents clears removed blocks before emitting changed blocks", async () => {
+  const events = await collectStream(
+    reportEvents(probeConfig)(
+      Stream.fromIterable([syntheticUpdate(initialSource), syntheticUpdate(clearedSource)])
+    )
+  )
+  const delta = events.slice(2)
+  const [cleared, changedAdvice] = delta
 
-  const [index, initial] = diffCheckableFiles(emptyIndex)(context)
-  const changedNames = initial.changed
-    .map((sourceFile) => path.basename(sourceFile.fileName))
-    .sort()
+  assert.equal(delta.length, 2)
+  assert.ok(cleared?._tag === "cleared")
+  assert.equal(cleared.key._tag, "rule")
+  assert.equal(cleared.key.name, probeName)
+  assert.equal(cleared.text, `${probeName} — cleared: ${probeMessage}`)
 
-  assert.deepEqual(changedNames, ["allowed.ts", "cases.ts"])
-  assert.deepEqual(initial.removed, [])
-
-  const [, rediffed] = diffCheckableFiles(index)(context)
-
-  assert.deepEqual(rediffed.changed, [])
-  assert.deepEqual(rediffed.removed, [])
-
-  const [firstChanged] = initial.changed
-
-  assert.ok(firstChanged, "expected the fixture to contain a checkable file")
-
-  const phantomIndex = HashMap.set(index, "/gone.ts", firstChanged)
-  const [, withPhantom] = diffCheckableFiles(phantomIndex)(context)
-
-  assert.deepEqual(withPhantom.changed, [])
-  assert.deepEqual(withPhantom.removed, ["/gone.ts"])
+  assert.ok(changedAdvice?._tag === "signal")
+  assert.equal(changedAdvice.key._tag, "advice")
+  assert.match(changedAdvice.text, /handle 0 throws/)
 })
 
-test("watch pushes the initial report, updated blocks, and cleared events for fs changes", async () => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "watch-e2e-"))
-  const casesPath = path.join(tempDir, "src", "cases.ts")
-
-  await fs.cp(noThrowFixturePath, tempDir, { recursive: true })
-
-  const workspace = await Effect.runPromise(discoverWorkspace(tempDir))
-  const stream = watchReportFromConfig(probeConfig)(workspace, Option.some(pollingWatchOptions))
-  const originalText = await fs.readFile(casesPath, "utf8")
-  const appendedLine = originalText.split("\n").length + 1
-
-  await Effect.runPromise(
-    Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<ReportEvent>()
-      const consumer = yield* Effect.forkChild(
-        Stream.runForEach(stream, (event) => Queue.offer(queue, event))
-      )
-      const take = pipe(Queue.take(queue), Effect.timeout("30 seconds"))
-
-      const initial = yield* take
-
-      assert.ok(
-        initial._tag === "signal",
-        "expected the initial report to arrive as a signal event"
-      )
-      assert.ok(
-        initial.text.includes(probeMessage),
-        "expected the initial block to carry the probe message"
-      )
-      assert.match(
-        initial.text,
-        /src\/cases\.ts:\d+:\d+/,
-        "expected the initial block to carry source locations"
-      )
-
-      yield* Effect.promise(() => fs.appendFile(casesPath, '\nthrow "added"\n'))
-
-      const updated = yield* take
-
-      assert.ok(
-        updated._tag === "signal",
-        "expected the re-emitted block to arrive as a signal event"
-      )
-      assert.ok(
-        updated.text.includes(`  src/cases.ts:${appendedLine}:1`),
-        `expected the re-emitted block to carry the new location line ${appendedLine}`
-      )
-
-      yield* Effect.promise(() => fs.rm(casesPath))
-
-      const cleared = yield* take
-
-      assert.deepEqual(
-        cleared,
-        new ClearedEvent({
-          key: new RuleReportKey({
-            name: probeName,
-            message: probeMessage,
-            hint: probeHint
-          }),
-          text: `${probeName} — cleared: ${probeMessage}`
-        })
-      )
-
-      yield* Fiber.interrupt(consumer)
-    })
+test("reportEvents emits one root-scoped empty event for an empty initial report", async () => {
+  const unmatchedConfig = defineConfig([{ files: ["missing.ts"], wiring: probeWiring }])
+  const events = await collectStream(
+    reportEvents(unmatchedConfig)(Stream.succeed(syntheticUpdate(initialSource)))
   )
 
-  await fs.rm(tempDir, { recursive: true, force: true })
+  assert.equal(events.length, 1)
+  assert.ok(events[0]?._tag === "empty")
+  assert.equal(events[0].rootPath, syntheticRoot)
 })
 
-test("watch emits the empty-report event for a signal-free workspace", async () => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "watch-empty-"))
-
-  await fs.cp(noThrowFixturePath, tempDir, { recursive: true })
-  await fs.rm(path.join(tempDir, "src", "cases.ts"))
-
-  const workspace = await Effect.runPromise(discoverWorkspace(tempDir))
-  const stream = watchReportFromConfig(probeConfig)(workspace, Option.some(pollingWatchOptions))
-
-  await Effect.runPromise(
-    Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<ReportEvent>()
-      const consumer = yield* Effect.forkChild(
-        Stream.runForEach(stream, (event) => Queue.offer(queue, event))
-      )
-      const first = yield* pipe(Queue.take(queue), Effect.timeout("30 seconds"))
-
-      assert.deepEqual(first, new EmptyReportEvent({ rootPath: workspace.rootPath }))
-
-      yield* Fiber.interrupt(consumer)
-    })
+test("reportEvents preserves the workspace-update error channel", async () => {
+  const failure = "workspace update failure" as const
+  const output: Stream.Stream<ReportEvent, typeof failure> = reportEvents(probeConfig)(
+    Stream.fail(failure)
   )
+  const actual = await Effect.runPromise(pipe(output, Stream.runCollect, Effect.flip))
 
-  await fs.rm(tempDir, { recursive: true, force: true })
+  assert.equal(actual, failure)
+})
+
+test("workspaceUpdates emits an initial and edited batch, then closes its file watchers", async () => {
+  const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "workspace-updates-"))
+  const casesPath = path.join(tempDirectory, "src", "cases.ts")
+  const originalWatchFile = ts.sys.watchFile
+  let closedWatchers = 0
+
+  if (originalWatchFile === undefined) {
+    assert.fail("TypeScript system must expose watchFile for the producer smoke test")
+  }
+
+  ts.sys.watchFile = (fileName, callback, pollingInterval, options) => {
+    const watcher = originalWatchFile(fileName, callback, pollingInterval, options)
+
+    return {
+      close: () => {
+        closedWatchers += 1
+        watcher.close()
+      }
+    }
+  }
+
+  try {
+    await fs.cp(noThrowFixturePath, tempDirectory, { recursive: true })
+
+    const workspace = await Effect.runPromise(discoverWorkspace(tempDirectory))
+    let observedBatches = 0
+
+    const batches = await Effect.runPromise(
+      pipe(
+        workspaceUpdates(workspace, Option.some(pollingWatchOptions)),
+        Stream.tap(() => {
+          observedBatches += 1
+
+          if (observedBatches === 1) {
+            return Effect.promise(() =>
+              fs.appendFile(casesPath, "\nexport const producerEdit = true\n")
+            )
+          }
+
+          return Effect.void
+        }),
+        Stream.take(2),
+        Stream.runCollect,
+        Effect.timeout("30 seconds")
+      )
+    )
+
+    assert.equal(batches.length, 2)
+    assert.equal(batches[0]?.rootPath, workspace.rootPath)
+    assert.equal(batches[1]?.rootPath, workspace.rootPath)
+
+    const firstContext = batches[0]?.contexts[0]
+    const editedContext = batches[1]?.contexts[0]
+
+    assert.ok(firstContext, "expected the initial workspace context")
+    assert.ok(editedContext, "expected the edited workspace context")
+
+    const firstSourceFile = firstContext.program.getSourceFile(casesPath)
+    const editedSourceFile = editedContext.program.getSourceFile(casesPath)
+
+    assert.ok(firstSourceFile, "expected the initial source file")
+    assert.ok(editedSourceFile, "expected the edited source file")
+    assert.doesNotMatch(firstSourceFile.text, /producerEdit/)
+    assert.match(editedSourceFile.text, /producerEdit/)
+    assert.ok(closedWatchers > 0, "expected Stream.take completion to close TypeScript watchers")
+  } finally {
+    ts.sys.watchFile = originalWatchFile
+    await fs.rm(tempDirectory, { recursive: true, force: true })
+  }
 })

@@ -3,12 +3,9 @@ import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
 import { astChildren } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 // BooleanOperatorExpression is shared boolean syntax because owners need one vocabulary.
 export type BooleanOperatorExpression =
@@ -119,10 +116,9 @@ const kinds = Array.make(
   ts.SyntaxKind.ConditionalExpression
 )
 
-const check = nodeCheck(kinds)(isBooleanOperatorExpression)(multipleBooleanOperatorMatches)
-
-export const noMultipleBooleanOperators: Check = check
-
-export const noMultipleBooleanOperatorsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "no-multiple-boolean-operators"
+export const noMultipleBooleanOperators = defineCheck(
+  "no-multiple-boolean-operators",
+  kinds,
+  isBooleanOperatorExpression,
+  multipleBooleanOperatorMatches
 )

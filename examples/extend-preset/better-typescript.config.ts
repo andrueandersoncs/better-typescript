@@ -1,4 +1,4 @@
-import { Stream, pipe } from "effect"
+import { Function, Stream } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -8,9 +8,10 @@ import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/
 import {
   defineConfig,
   makeWiring,
-  namedCheck,
-  signalOf
-} from "@better-typescript/core/engine/report"
+  mergeWirings,
+  namedCheck
+} from "@better-typescript/core/engine/wiring"
+import { signalOf } from "@better-typescript/core/engine/signal"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { detection } from "@better-typescript/core/engine/check"
@@ -74,17 +75,23 @@ const consoleLogExamples = [
   )
 ] as const
 
-const consoleLogCheck = namedCheck("acme/no-console-log", noConsoleLog, consoleLogExamples)
+const consoleLogCheck = namedCheck(
+  "acme/no-console-log",
+  noConsoleLog,
+  Function.constant(consoleLogExamples)
+)
 
-const extendedWiring = makeWiring({
-  checks: [...defaultWiring.checks, consoleLogCheck],
+const localWiring = makeWiring({
+  checks: [consoleLogCheck],
   derive: (signals) => {
     const elementsOf = signalOf(signals)
-    const presetAdvice = defaultWiring.derive(signals)
-    const localAdvice = consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
 
-    return pipe(presetAdvice, Stream.concat(localAdvice))
+    return consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
   }
 })
+
+// mergeWirings concatenates checks and derive stages, so extending the preset
+// stays a single composition because the merge preserves both halves together.
+const extendedWiring = mergeWirings([defaultWiring, localWiring])
 
 export default defineConfig([{ files: ["**/*"], wiring: extendedWiring }])

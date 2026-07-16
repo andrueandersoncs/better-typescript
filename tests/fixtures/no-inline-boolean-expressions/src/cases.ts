@@ -1,7 +1,7 @@
 export {}
 
 function requiresBoth(isReady: boolean, hasAccess: boolean): string {
-  if (isReady && hasAccess) {
+  if (isReady && hasAccess) { // ~detect 7
     return "allowed"
   }
 
@@ -9,7 +9,7 @@ function requiresBoth(isReady: boolean, hasAccess: boolean): string {
 }
 
 function allowsEither(isReady: boolean, hasOverride: boolean): string {
-  if (isReady || hasOverride) {
+  if (isReady || hasOverride) { // ~detect 7
     return "allowed"
   }
 
@@ -17,7 +17,7 @@ function allowsEither(isReady: boolean, hasOverride: boolean): string {
 }
 
 function unwrapsParenthesized(isReady: boolean, hasAccess: boolean): string {
-  if (isReady && hasAccess) {
+  if (isReady && hasAccess) { // ~detect 7
     return "allowed"
   }
 

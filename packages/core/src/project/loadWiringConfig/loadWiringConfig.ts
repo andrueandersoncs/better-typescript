@@ -1,17 +1,24 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Array, Context, Effect, Function, Layer, flow, pipe, Option, Struct } from "effect"
+import { Array, Effect, Function, Predicate, flow, pipe, Option, Struct } from "effect"
 import { createJiti } from "jiti"
-import { NamedCheck, Wiring, WiringEntry } from "../../engine/report/data.js"
-import type { WiringConfig } from "../../engine/report/data.js"
-import { defineConfig } from "../../engine/report/report.js"
+import { NamedCheck, Wiring, WiringEntry } from "../../engine/wiring/data.js"
+import type { WiringConfig } from "../../engine/wiring/data.js"
+import { defineConfig, isFileGlob } from "../../engine/wiring/wiring.js"
 import type { Check } from "../../engine/check/data.js"
 import type { RefactorExample } from "../../engine/example/data.js"
-import { ConfigExport, configFileName, ProjectWiringConfigError } from "./data.js"
-import type { ConfigExportName } from "./data.js"
+import {
+  ConfigExport,
+  type ConfigExportName,
+  configFileName,
+  ProjectWiringConfigError
+} from "./data.js"
 
 const defaultExportName = "default"
 const configExportName = "config"
+
+const emptyExamples: ReadonlyArray<RefactorExample> = Array.empty()
+const emptyExamplesThunk = Function.constant(emptyExamples)
 
 const projectWiringConfigError = (configPath: string, reason: string): ProjectWiringConfigError => {
   const fields = { configPath, reason }
@@ -151,7 +158,7 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 })
 
 const checkShapeReason =
-  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExample[] }"
+  "{ name: string, check: { plan: function }, reported?: boolean, examples?: () => RefactorExample[] }"
 
 const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean => {
   const hasStringName = typeof record.name === "string"
@@ -177,7 +184,7 @@ const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean
     examples,
     Option.match({
       onNone: Function.constant(true),
-      onSome: Array.isArray
+      onSome: (examples) => typeof examples === "function"
     })
   )
 
@@ -208,8 +215,8 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
   const reported = Object.hasOwn(record, "reported") ? (record.reported as boolean) : true
 
   const examples = Object.hasOwn(record, "examples")
-    ? (record.examples as ReadonlyArray<RefactorExample>)
-    : Array.empty()
+    ? (record.examples as () => ReadonlyArray<RefactorExample>)
+    : emptyExamplesThunk
 
   return new NamedCheck({ name, check, reported, examples })
 }
@@ -275,12 +282,6 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
   return new Wiring<unknown>({ checks, derive })
 })
 
-const isFileGlob = (value: unknown): value is string => {
-  const isString = typeof value === "string"
-
-  return isString && value.trim().length > 0
-}
-
 const isUnknownArray: (value: unknown) => value is ReadonlyArray<unknown> = Array.isArray
 
 const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
@@ -302,8 +303,14 @@ const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
   const filesOption = pipe(
     record.files,
     Option.liftPredicate(isUnknownArray),
-    Option.filter(Array.every(isFileGlob)),
-    Option.filter(Array.isReadonlyArrayNonEmpty)
+    Option.filter((files): files is Array.NonEmptyReadonlyArray<string> => {
+      const hasOnlyFileGlobs = Array.every(
+        files,
+        (value): value is string => Predicate.isString(value) && isFileGlob(value)
+      )
+
+      return hasOnlyFileGlobs && Array.isReadonlyArrayNonEmpty(files)
+    })
   )
 
   if (Option.isNone(filesOption)) {
@@ -329,9 +336,8 @@ const validateWiringConfig = Effect.fn("validateWiringConfig")(function* (
     )
   }
 
-  const entries = yield* Effect.forEach(value, (entry, index) =>
-    validateWiringEntry(configPath, entry, index)
-  )
+  const entries: ReadonlyArray<Pick<WiringEntry<unknown>, "files" | "wiring">> =
+    yield* Effect.forEach(value, (entry, index) => validateWiringEntry(configPath, entry, index))
 
   return yield* Effect.try({
     try: () => defineConfig(entries),
@@ -341,6 +347,26 @@ const validateWiringConfig = Effect.fn("validateWiringConfig")(function* (
       return projectWiringConfigError(configPath, reason)
     }
   })
+})
+
+/**
+ * Decode a config-module export value into a validated WiringConfig.
+ *
+ * @remarks
+ *   Pure relative to the filesystem: callers supply the value jiti (or tests)
+ *   already produced. Export selection, factory invocation, shape checks, and
+ *   the single defineConfig construction path all live here so loadWiringConfig
+ *   stays an impure shell around existsSync + import.
+ */
+export const decodeWiringConfig: (
+  configPath: string,
+  moduleValue: unknown
+) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn(
+  "decodeWiringConfig"
+)(function* (configPath: string, moduleValue: unknown) {
+  const exportValue = yield* resolvedExport(configPath, moduleValue)
+
+  return yield* validateWiringConfig(configPath, exportValue)
 })
 
 const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function* (
@@ -360,20 +386,8 @@ const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function*
     }
   })
 
-  const exportValue = yield* resolvedExport(configPath, moduleValue)
-
-  return yield* validateWiringConfig(configPath, exportValue)
+  return yield* decodeWiringConfig(configPath, moduleValue)
 })
-
-export class LoadWiringConfig extends Context.Service<
-  LoadWiringConfig,
-  {
-    readonly loadWiringConfig: (
-      projectDirectory: string,
-      fallback: WiringConfig<unknown>
-    ) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError>
-  }
->()("LoadWiringConfig") {}
 
 export const loadWiringConfig: (
   projectDirectory: string,
@@ -391,7 +405,3 @@ export const loadWiringConfig: (
     return yield* loadExistingWiringConfig(configPath)
   }
 )
-
-export const LoadWiringConfigLive: Layer.Layer<LoadWiringConfig> = Layer.succeed(LoadWiringConfig, {
-  loadWiringConfig
-})

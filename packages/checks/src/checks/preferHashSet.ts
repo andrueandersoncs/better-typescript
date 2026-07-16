@@ -6,12 +6,10 @@ import {
   typeReferenceEscapesExternally
 } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { definePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const isSetIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Set"
 
@@ -228,7 +226,9 @@ const preferHashSetSubscriptions = Array.make(
   mutableHashSetNamespaceSubscriptions
 )
 
-export const preferHashSet: Check = combineAll(preferHashSetSubscriptions)
+const preferHashSetListeners = Array.flatten(preferHashSetSubscriptions)
 
-export const preferHashSetExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-hash-set")
+export const preferHashSet = definePlannedCheck(
+  "prefer-hash-set",
+  Function.constant(preferHashSetListeners)
+)

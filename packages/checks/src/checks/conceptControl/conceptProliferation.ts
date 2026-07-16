@@ -19,15 +19,12 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { ConceptSignalData, type ConceptSignalKind } from "./data.js"
 
-export const closedAbstractionClusterExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("concept-control")
+export const closedAbstractionClusterExamples = packageExamples("concept-control")
 
-export const conceptProliferationExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("concept-proliferation")
+export const conceptProliferationExamples = packageExamples("concept-proliferation")
 
 const proliferationKinds = HashSet.make<ConceptSignalKind[]>(
   "duplicate-shape",
@@ -63,6 +60,7 @@ const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): A
   const externalCallers = evidenceItem("external callers", data.externalCallers)
   const independentOwners = evidenceItem("independent model owners", data.independentOwners)
   const evidence = Array.make(externalCallers, independentOwners)
+  const examples = closedAbstractionClusterExamples()
 
   return new Advice({
     location: element.location,
@@ -74,7 +72,7 @@ const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): A
       "independent seam, invariant, protocol, or multiple consumers. Never evade this by " +
       "replacing the model with an anonymous object type.",
     evidence,
-    examples: closedAbstractionClusterExamples
+    examples
   })
 }
 
@@ -110,6 +108,7 @@ const proliferationAdvice = (
   const withSignals = Array.prepend(counts, signalCount)
   const evidence = Array.prepend(withSignals, conceptCount)
   const location = adviceLocation(directory)
+  const examples = conceptProliferationExamples()
 
   const advice = new Advice({
     location,
@@ -121,7 +120,7 @@ const proliferationAdvice = (
       "equivalent shapes, collapse pass-through conversions, then deepen the remaining " +
       "Module behind fewer enduring models. File separation does not make these independent concepts.",
     evidence,
-    examples: conceptProliferationExamples
+    examples
   })
 
   return Option.some(advice)

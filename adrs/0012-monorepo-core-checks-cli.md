@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. The fixture location and loader consequence is superseded by
+[ADR-0018](0018-check-owned-authoring-and-package-examples.md); the package split and dependency
+direction remain accepted.
 
 ## Date
 

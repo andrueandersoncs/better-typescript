@@ -2,8 +2,7 @@ import { Effect, Schema, pipe } from "effect"
 
 const defaultPosition = Effect.succeed(0)
 
-// positionSchema is the Location position boundary because callers need one contract.
-export const positionSchema = pipe(
+const positionSchema = pipe(
   Schema.Int,
   Schema.withDecodingDefaultType(defaultPosition),
   Schema.withConstructorDefault(defaultPosition)

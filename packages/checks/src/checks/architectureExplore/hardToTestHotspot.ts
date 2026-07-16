@@ -2,12 +2,10 @@ import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { externalDependencyConstructionName, moduleScopeEffectsName } from "./names.js"
 
-export const hardToTestHotspotExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("hard-to-test-hotspot")
+export const hardToTestHotspotExamples = packageExamples("hard-to-test-hotspot")
 
 const minimumConstructions = 2
 const constructionNames = Array.make(externalDependencyConstructionName, moduleScopeEffectsName)
@@ -50,6 +48,7 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
       const constructionItem = evidenceItem("external-dependency-construction", constructorCount)
       const moduleScopeItem = evidenceItem("module-scope-effects", moduleScopeCount)
       const evidence = Array.make(constructionItem, moduleScopeItem)
+      const examples = hardToTestHotspotExamples()
 
       return new Advice({
         location,
@@ -59,7 +58,7 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
           "External collaborator construction is concentrated inside behaviour. Classify the dependency first, construct production adapters " +
           "at the composition root, and inject a port only when a real test adapter supplies the second implementation.",
         evidence,
-        examples: hardToTestHotspotExamples
+        examples
       })
     })
   )

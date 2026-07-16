@@ -1,19 +1,19 @@
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { Effect, Stream, pipe } from "effect"
+import { Effect, Result, Stream, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
-import { defineConfig, makeWiring } from "@better-typescript/core/engine/report"
-import {
-  reportFromConfig,
-  reportFromWorkspaceConfigs
-} from "@better-typescript/core/project/loadProject"
+import { defineConfig, mergeWirings } from "@better-typescript/core/engine/wiring"
+import { reportEvents } from "@better-typescript/core/engine/watch"
+import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
 import {
-  architectureExploreChecks,
-  architectureExploreDerive
-} from "@better-typescript/checks/preset/architectureExploreWiring"
-import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
+  contextFromLoadedProject,
+  discoverWorkspace,
+  loadProject,
+  loadProjectConfig
+} from "@better-typescript/core/project/loadProject"
 import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
 
 const benchDir = path.dirname(fileURLToPath(import.meta.url))
@@ -22,11 +22,7 @@ const targetPath =
   cliArguments.find((argument) => !argument.startsWith("--")) ?? path.join(benchDir, "fixtures")
 const maximumMeanLatencyMs = 100
 
-const benchmarkWiring = makeWiring({
-  checks: [...defaultWiring.checks, ...architectureExploreChecks],
-  derive: (signals) =>
-    pipe(defaultWiring.derive(signals), Stream.concat(architectureExploreDerive(signals)))
-})
+const benchmarkWiring = mergeWirings([defaultWiring, architectureExploreWiring])
 
 const benchmarkConfig = defineConfig([{ files: ["**/*"], wiring: benchmarkWiring }])
 
@@ -40,8 +36,21 @@ const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
 
 const runLoadedBenchmark = async (): Promise<void> => {
   const workspace = await Effect.runPromise(loadProject(targetPath))
-  const collectReport = () =>
-    Effect.runPromise(Stream.runCollect(reportFromConfig(benchmarkConfig)(workspace)))
+  const collectReport = () => {
+    const update = new WorkspaceUpdate({
+      rootPath: workspace.rootPath,
+      contexts: workspace.projects.map(contextFromLoadedProject)
+    })
+    const blocks = pipe(
+      Stream.succeed(update),
+      reportEvents(benchmarkConfig),
+      Stream.filterMap((event) =>
+        event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
+      )
+    )
+
+    return Effect.runPromise(Stream.runCollect(blocks))
+  }
 
   const warmed = await collectReport()
   const bench = new Bench({ time: 1000 })
@@ -76,8 +85,21 @@ const runLoadedBenchmark = async (): Promise<void> => {
 
 const runBoundedWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
   const started = performance.now()
+  const update = new WorkspaceUpdate({
+    rootPath: workspace.rootPath,
+    contexts: workspace.projects.map((config) =>
+      pipe(config, loadProjectConfig, contextFromLoadedProject)
+    )
+  })
   const blocks = await Effect.runPromise(
-    Stream.runCollect(reportFromWorkspaceConfigs(benchmarkConfig)(workspace))
+    pipe(
+      Stream.succeed(update),
+      reportEvents(benchmarkConfig),
+      Stream.filterMap((event) =>
+        event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
+      ),
+      Stream.runCollect
+    )
   )
   const elapsedMs = performance.now() - started
 

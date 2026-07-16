@@ -3,7 +3,7 @@ import { Effect } from "effect"
 export const fetchUser = (id: number) => Effect.succeed(id)
 export const getCount = (id: number): Effect.Effect<number> =>
   Effect.succeed(id)
-export const compute = (n: number) =>
+export const compute = (n: number) => // ~detect 14
   Effect.gen(function* () {
     return n * 2
   })
@@ -19,14 +19,14 @@ type Service = {
 
 declare const service: Service
 
-export const loadName = (id: string) =>
+export const loadName = (id: string) => // ~detect 14
   Effect.gen({ self: service }, function* (this: Service) {
     return `${this.prefix}:${id}`
   })
 
 const self = service
 
-export const loadShortName = (id: string) =>
+export const loadShortName = (id: string) => // ~detect 14
   Effect.gen({ self }, function* (this: Service) {
     return `${this.prefix}:${id}`
   })

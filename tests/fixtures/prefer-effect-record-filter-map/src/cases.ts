@@ -9,13 +9,13 @@ interface SearchParams {
 const truthyValueAddsField = (
   params: SearchParams
 ): Record<string, string | number> => ({
-  ...(params.query ? { query: params.query } : {})
+  ...(params.query ? { query: params.query } : {}) // ~detect 3
 })
 
 const emptyObjectInTrueBranch = (
   params: SearchParams
 ): Record<string, string> => ({
-  ...(params.expressionType === "both"
+  ...(params.expressionType === "both" // ~detect 3
     ? {}
     : { expressionType: params.expressionType })
 })
@@ -23,13 +23,13 @@ const emptyObjectInTrueBranch = (
 const parenthesizedConditional = (
   params: SearchParams
 ): Record<string, number> => ({
-  ...(params.page ? { page: params.page } : {})
+  ...(params.page ? { page: params.page } : {}) // ~detect 3
 })
 
 const multiPropertyBranch = (
   params: SearchParams
 ): Record<string, string | number> => ({
-  ...(params.query ? { query: params.query, page: params.page } : {})
+  ...(params.query ? { query: params.query, page: params.page } : {}) // ~detect 3
 })
 
 void truthyValueAddsField

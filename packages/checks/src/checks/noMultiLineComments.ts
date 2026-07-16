@@ -1,14 +1,11 @@
 import { Array, Result, Struct } from "effect"
-import { fileCheck } from "@better-typescript/core/engine/check"
+import { defineFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { isSingleLineComment, onlyBlankBetween, sourceComments } from "./support/comments.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const message = "Avoid multi-line comments."
 
 const hint =
@@ -59,7 +56,4 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   })
 }
 
-export const noMultiLineComments: Check = fileCheck(fileMatches)
-
-export const noMultiLineCommentsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-multi-line-comments")
+export const noMultiLineComments = defineFileCheck("no-multi-line-comments", fileMatches)

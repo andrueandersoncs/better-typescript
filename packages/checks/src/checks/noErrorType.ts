@@ -1,12 +1,10 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const errorTypeName = (typeName: ts.EntityName): ts.Identifier =>
   ts.isIdentifier(typeName) ? typeName : typeName.right
@@ -55,9 +53,9 @@ const errorTypeMatches = (context: CheckContext) => {
 
 const typeReferenceKinds = Array.of(ts.SyntaxKind.TypeReference)
 
-const check = nodeCheck(typeReferenceKinds)(isErrorTypeReference)(errorTypeMatches)
-
-export const noErrorType: Check = check
-
-export const noErrorTypeExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-error-type")
+export const noErrorType = defineCheck(
+  "no-error-type",
+  typeReferenceKinds,
+  isErrorTypeReference,
+  errorTypeMatches
+)

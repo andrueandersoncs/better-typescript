@@ -2,14 +2,11 @@ import { Array, Function, Option, Record, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { commonDirectory, compositionFingerprintDataOf } from "./evidence.js"
 import { compositionFingerprintsName } from "./names.js"
 
-export const duplicatedOrchestrationExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "duplicated-orchestration"
-)
+export const duplicatedOrchestrationExamples = packageExamples("duplicated-orchestration")
 
 const minimumDuplicateSites = 2
 
@@ -54,6 +51,7 @@ const duplicatedOrchestrationAdvice = (
       const sitesItem = evidenceItem("duplicate-sites", paths.length)
       const stepsItem = evidenceItem("orchestration-steps", stepCount)
       const evidence = Array.make(sitesItem, stepsItem)
+      const examples = duplicatedOrchestrationExamples()
 
       const advice = new Advice({
         location,
@@ -63,7 +61,7 @@ const duplicatedOrchestrationAdvice = (
           "The same call shape is re-plumbed at several sites; name the operation once and let callers " +
           "compose it, because the duplicated derive/concat shape invites drift.",
         evidence,
-        examples: duplicatedOrchestrationExamples
+        examples
       })
 
       return Result.succeed(advice)

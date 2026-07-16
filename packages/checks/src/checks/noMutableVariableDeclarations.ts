@@ -1,12 +1,9 @@
 import { Tuple, Array, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 // MutableVariableDeclarationKind is shared binding vocabulary because owners exchange one contract.
 export type MutableVariableDeclarationKind = "let" | "var"
 
@@ -48,11 +45,9 @@ const mutableDeclarationMatches = (context: CheckContext) => {
 
 const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationList)
 
-const check = nodeCheck(variableDeclarationListKinds)(ts.isVariableDeclarationList)(
+export const noMutableVariableDeclarations = defineCheck(
+  "no-mutable-variable-declarations",
+  variableDeclarationListKinds,
+  ts.isVariableDeclarationList,
   mutableDeclarationMatches
 )
-
-export const noMutableVariableDeclarations: Check = check
-
-export const noMutableVariableDeclarationsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-mutable-variable-declarations")

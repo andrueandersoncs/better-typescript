@@ -3,13 +3,11 @@ import { Array, Function, HashSet, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { functionInitializer, hasParameters, unwrapExpression } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 
 const effectModuleFileNames = HashSet.make("Effect.ts", "Effect.d.ts")
 
@@ -197,9 +195,9 @@ const effectFnMatches = (context: CheckContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-const check = nodeCheck(variableDeclarationKinds)(ts.isVariableDeclaration)(effectFnMatches)
-
-export const preferEffectFn: Check = check
-
-export const preferEffectFnExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-fn")
+export const preferEffectFn = defineCheck(
+  "prefer-effect-fn",
+  variableDeclarationKinds,
+  ts.isVariableDeclaration,
+  effectFnMatches
+)

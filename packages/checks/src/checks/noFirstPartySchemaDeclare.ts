@@ -2,12 +2,9 @@ import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const accessExpression = Struct.get<ts.PropertyAccessExpression, "expression">("expression")
 
 const declarePropertyAccess = (
@@ -155,10 +152,9 @@ const schemaDeclareMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(callExpressionKinds)(isDeclareCall)(schemaDeclareMatches)
-
-export const noFirstPartySchemaDeclare: Check = check
-
-export const noFirstPartySchemaDeclareExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "no-first-party-schema-declare"
+export const noFirstPartySchemaDeclare = defineCheck(
+  "no-first-party-schema-declare",
+  callExpressionKinds,
+  isDeclareCall,
+  schemaDeclareMatches
 )

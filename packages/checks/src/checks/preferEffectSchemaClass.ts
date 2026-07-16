@@ -1,15 +1,12 @@
 import { Tuple, Array, Equal, Function, HashMap, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
+import { definePlannedCheck } from "../defineCheck.js"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
@@ -395,10 +392,9 @@ const schemaClassListeners = (
   )
 }
 
-const check = withProgramIndex(buildConstructionIndex)(schemaClassListeners)
+const schemaClassPlan = Function.compose(buildConstructionIndex, schemaClassListeners)
 
-export const preferEffectSchemaClass: Check = check
-
-export const preferEffectSchemaClassExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-effect-schema-class"
+export const preferEffectSchemaClass = definePlannedCheck(
+  "prefer-effect-schema-class",
+  schemaClassPlan
 )

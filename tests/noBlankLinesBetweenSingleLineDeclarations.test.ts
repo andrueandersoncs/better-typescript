@@ -88,7 +88,7 @@ const runNoBlankLinesBetweenSingleLineDeclarationsFixture = async (): Promise<
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
       Effect.runPromise(
-        runCheckOnProject(Array.of(noBlankLinesBetweenSingleLineDeclarations))(project)
+        runCheckOnProject(Array.of(noBlankLinesBetweenSingleLineDeclarations.check))(project)
       )
     )
   )

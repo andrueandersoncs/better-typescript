@@ -154,7 +154,7 @@ const runRequireBecauseInCommentsFixture = async (): Promise<ReadonlyArray<Detec
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(requireBecauseInComments))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(requireBecauseInComments.check))(project))
     )
   )
 

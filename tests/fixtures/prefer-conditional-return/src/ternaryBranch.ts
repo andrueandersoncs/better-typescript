@@ -6,7 +6,7 @@ export const pick = (flag: boolean, n: number): string => {
 }
 
 export const label = (on: boolean): string => {
-  if (on) {
+  if (on) { // ~detect 3
     return "on"
   } else {
     return "off"

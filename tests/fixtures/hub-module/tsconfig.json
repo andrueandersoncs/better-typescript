@@ -1,7 +1,0 @@
-{
-  "files": [],
-  "references": [
-    { "path": "./example/1/bad" },
-    { "path": "./example/1/good" }
-  ]
-}

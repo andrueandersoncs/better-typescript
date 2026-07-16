@@ -138,7 +138,7 @@ const runNoMultiLineCommentsFixture = async (): Promise<ReadonlyArray<Detection>
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(noMultiLineComments))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(noMultiLineComments.check))(project))
     )
   )
 

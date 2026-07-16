@@ -1,13 +1,11 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { isArrayLikeType } from "./support/tsType.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 
 // ArrayPrototypeMethod is shared method-name vocabulary because detection and policy must agree.
 export type ArrayPrototypeMethod =
@@ -141,9 +139,9 @@ const preferEffectArrayMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(preferEffectArrayMatches)
-
-export const preferEffectArray: Check = check
-
-export const preferEffectArrayExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-array")
+export const preferEffectArray = defineCheck(
+  "prefer-effect-array",
+  callExpressionKinds,
+  ts.isCallExpression,
+  preferEffectArrayMatches
+)

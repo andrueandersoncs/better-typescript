@@ -3,9 +3,9 @@ import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/der
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { Signal } from "@better-typescript/core/engine/report/data"
+import type { Signal } from "@better-typescript/core/engine/signal/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData,
@@ -21,15 +21,16 @@ const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "pure-service": "pure service candidate"
 }
 
-const shapeAdviceExamples: Readonly<Record<FunctionalCoreShapeKind, NonEmptyRefactorExamples>> = {
-  "effect-orchestrator": fixtureRefactorExamples("effect-orchestrator"),
-  "adapter-business-logic": fixtureRefactorExamples("adapter-business-logic"),
-  "thick-composition-root": fixtureRefactorExamples("thick-composition-root"),
-  "pure-service": fixtureRefactorExamples("pure-service")
+const shapeAdviceExamples: Readonly<
+  Record<FunctionalCoreShapeKind, () => NonEmptyRefactorExamples>
+> = {
+  "effect-orchestrator": packageExamples("effect-orchestrator"),
+  "adapter-business-logic": packageExamples("adapter-business-logic"),
+  "thick-composition-root": packageExamples("thick-composition-root"),
+  "pure-service": packageExamples("pure-service")
 }
 
-export const imperativeCoreExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("imperative-core")
+export const imperativeCoreExamples = packageExamples("imperative-core")
 
 const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "effect-orchestrator":
@@ -73,7 +74,7 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
     }
 
     const evidence = shapeEvidence(data)
-    const examples = shapeAdviceExamples[data.kind]
+    const examples = shapeAdviceExamples[data.kind]()
 
     const advice = new Advice({
       location: element.location,
@@ -140,6 +141,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       })
 
       const location = adviceLocation(path)
+      const examples = imperativeCoreExamples()
 
       const advice = new Advice({
         location,
@@ -148,7 +150,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
         remediation:
           "Several independent boundary violations concentrate in this core Module. Extract a pure decision function, express external needs as domain-owned Context.Service ports, and leave Layer selection plus runtime execution at the composition root.",
         evidence,
-        examples: imperativeCoreExamples
+        examples
       })
 
       return Array.of(advice)

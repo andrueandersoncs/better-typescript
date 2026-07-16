@@ -1,14 +1,11 @@
 import { Array } from "effect"
-import { fileCheck } from "@better-typescript/core/engine/check"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { commentText, sourceComments } from "./support/comments.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { defineFileCheck } from "../defineCheck.js"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
 const maximumCommentLength = 100
 
 const message = "Comments must be at most 100 characters."
@@ -43,7 +40,4 @@ const overlongComments = (context: CheckContext): ReadonlyArray<Detection> => {
   })
 }
 
-export const noLongComments: Check = fileCheck(overlongComments)
-
-export const noLongCommentsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-long-comments")
+export const noLongComments = defineFileCheck("no-long-comments", overlongComments)

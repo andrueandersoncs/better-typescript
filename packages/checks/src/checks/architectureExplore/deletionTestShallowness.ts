@@ -2,8 +2,7 @@ import { Array, Function, Option, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import {
   compositionForwarderDataOf,
   isDeletableShallowness,
@@ -11,9 +10,7 @@ import {
   passThroughDataOf
 } from "./evidence.js"
 
-export const deletionTestShallownessExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "deletion-test-shallowness"
-)
+export const deletionTestShallownessExamples = packageExamples("deletion-test-shallowness")
 
 const callerCountOf = (element: NamedDetection): number =>
   pipe(
@@ -51,6 +48,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const callersItem = evidenceItem("production-callers", callerCount)
     const evidence = Array.make(forwardersItem, callersItem)
     const location = adviceLocation(filePath)
+    const examples = deletionTestShallownessExamples()
 
     return new Advice({
       location,
@@ -61,7 +59,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
         "Inline the one-use operation or collapse the re-export into the intended public interface; keep a Module " +
         "when behaviour would reappear across multiple callers.",
       evidence,
-      examples: deletionTestShallownessExamples
+      examples
     })
   })
 }

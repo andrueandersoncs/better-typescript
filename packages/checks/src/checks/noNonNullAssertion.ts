@@ -1,12 +1,10 @@
 import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const nonNullExpressionKind = ts.SyntaxKind.NonNullExpression
 
 const nonNullAssertionElements = (context: CheckContext) => {
@@ -32,9 +30,9 @@ const nonNullAssertionElements = (context: CheckContext) => {
 
 const nonNullExpressionKinds = Array.of(nonNullExpressionKind)
 
-export const noNonNullAssertion: Check = nodeCheck(nonNullExpressionKinds)(ts.isNonNullExpression)(
+export const noNonNullAssertion = defineCheck(
+  "no-non-null-assertion",
+  nonNullExpressionKinds,
+  ts.isNonNullExpression,
   nonNullAssertionElements
 )
-
-export const noNonNullAssertionExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-non-null-assertion")

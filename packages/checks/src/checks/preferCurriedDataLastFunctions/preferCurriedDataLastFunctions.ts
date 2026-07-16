@@ -1,10 +1,6 @@
 import { Array, Equal, Function, HashMap, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  withProgramIndex,
-  foldAst,
-  isProjectSourceFile
-} from "@better-typescript/core/engine/sources"
+import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import {
   conciseArrowBody,
   namedDetectionTarget,
@@ -12,16 +8,24 @@ import {
   unwrapTransparentExpression
 } from "../support/tsNode.js"
 import { isFunctionDefinition, isFunctionInitializer } from "../support/tsNode.js"
-import { resolvedCallSignature, signatureIsExternal } from "../support/tsSignature.js"
+import {
+  callArguments,
+  isSameNode,
+  resolvedCallSignature,
+  signatureIsExternal
+} from "../support/tsSignature.js"
 import { hasCallSignature } from "../support/tsType.js"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { defineSilentPlannedCheck } from "../../defineCheck.js"
 import { SymbolUse, type SymbolUses, emptySymbolUses, fallbackEmptySymbolUse } from "./data.js"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+
+const message = "Avoid rest parameters and multiple runtime parameters in one function."
+
+const hint =
+  "Curry runtime parameters into unary functions so configuration comes first and the primary data value is supplied last."
 
 const updateSymbolUse =
   (symbol: ts.Symbol) =>
@@ -291,12 +295,8 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
           }
 
           const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
-          const isSameExpression = (candidate: ts.Expression): boolean => candidate === expression
-
-          const index = ts.isCallExpression(expression.parent)
-            ? Array.findFirstIndex(expression.parent.arguments, isSameExpression)
-            : Option.none()
-
+          const args = pipe(parentCall, Option.map(callArguments), Option.getOrElse(Array.empty))
+          const index = Array.findFirstIndex(args, isSameNode(expression))
           const expressionContextualType = contextualType(checker)(expression)
 
           const signatureType = pipe(
@@ -406,8 +406,8 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
 
       const detection = makeElement({
         node,
-        message: "",
-        hint: ""
+        message,
+        hint
       })
 
       return Array.of(detection)
@@ -419,9 +419,12 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
   return nodeSubscriptions(functionDefinitionKinds)(isFunctionDefinition)(elements)
 }
 
-const check = withProgramIndex(buildSymbolUses)(curriedDataLastListeners)
+const preferCurriedDataLastFunctionsPlan = Function.compose(
+  buildSymbolUses,
+  curriedDataLastListeners
+)
 
-export const preferCurriedDataLastFunctions: Check = check
-
-export const preferCurriedDataLastFunctionsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-curried-data-last-functions")
+export const preferCurriedDataLastFunctions = defineSilentPlannedCheck(
+  "prefer-curried-data-last-functions",
+  preferCurriedDataLastFunctionsPlan
+)

@@ -2,13 +2,11 @@ import { Array, Function, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { importUsageDataOf } from "./evidence.js"
 import { importUsageName } from "./names.js"
 
-export const registrationCeremonyExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("registration-ceremony")
+export const registrationCeremonyExamples = packageExamples("registration-ceremony")
 
 const minimumImportCount = 15
 const minimumLowRefRatio = 0.8
@@ -48,6 +46,7 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
     const importedModulesItem = evidenceItem("imported-modules", importCount)
     const singleUseItem = evidenceItem("single-use-imports", lowRefNames)
     const evidence = Array.make(importedModulesItem, singleUseItem)
+    const examples = registrationCeremonyExamples()
 
     const advice = new Advice({
       location,
@@ -57,7 +56,7 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
         "A registration ceremony restates every Module once as an import and again as a collected entry. " +
         "Collapse it behind one authoring interface so adding an entry touches one file.",
       evidence,
-      examples: registrationCeremonyExamples
+      examples
     })
 
     return Result.succeed(advice)

@@ -5,7 +5,7 @@ import { defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { Location } from "@better-typescript/core/engine/location/data"
-import { Signal } from "@better-typescript/core/engine/report/data"
+import { Signal } from "@better-typescript/core/engine/signal/data"
 
 const range = (count: number): ReadonlyArray<number> =>
   Array.from({ length: count }, (_, index) => index + 1)

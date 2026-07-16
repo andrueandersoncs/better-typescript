@@ -6,12 +6,10 @@ import {
   typeReferenceEscapesExternally
 } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { definePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const isMapIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Map"
 
@@ -228,7 +226,9 @@ const preferHashMapSubscriptions = Array.make(
   mutableHashMapNamespaceSubscriptions
 )
 
-export const preferHashMap: Check = combineAll(preferHashMapSubscriptions)
+const preferHashMapListeners = Array.flatten(preferHashMapSubscriptions)
 
-export const preferHashMapExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-hash-map")
+export const preferHashMap = definePlannedCheck(
+  "prefer-hash-map",
+  Function.constant(preferHashMapListeners)
+)

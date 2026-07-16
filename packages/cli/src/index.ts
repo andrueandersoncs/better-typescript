@@ -4,14 +4,12 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { Console, Effect, Function, Option, Predicate, Stream, Struct, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { renderEventText, watchReportFromConfig } from "@better-typescript/core/engine/watch"
-import type { ReportEvent } from "@better-typescript/core/engine/watch/data"
+import { renderEventText } from "@better-typescript/core/engine/report"
+import type { ReportEvent } from "@better-typescript/core/engine/report/data"
+import { reportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
-import {
-  reportEventsFromWorkspaceConfigs,
-  discoverWorkspace
-} from "@better-typescript/core/project/loadProject"
+import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 
 const workingDirectory = process.cwd()
 
@@ -82,29 +80,18 @@ const runCommand = Effect.fn("runCommand")(function* (
     onSome: Function.constant(printPrettyEvent)
   })
 
-  const oneShot = Effect.gen(function* () {
-    const workspace = yield* discoverWorkspace(projectDirectory)
-    const events = reportEventsFromWorkspaceConfigs(config)(workspace)
+  const workspace = yield* discoverWorkspace(projectDirectory)
+  const watchOptions = Option.none()
+  const updates = workspaceUpdates(workspace, watchOptions)
+  const selectedUpdates = watchForChanges ? updates : Stream.take(updates, 1)
+  const events = reportEvents(config)(selectedUpdates)
 
-    yield* Console.error(`Analyzing ${workspace.rootPath}.`)
-    yield* Stream.runForEach(events, printEvent)
-  })
+  const status = watchForChanges
+    ? `Watching ${workspace.rootPath} for changes.`
+    : `Analyzing ${workspace.rootPath}.`
 
-  const watched = Effect.gen(function* () {
-    const workspace = yield* discoverWorkspace(projectDirectory)
-    const watchOptions = Option.none()
-    const events = watchReportFromConfig(config)(workspace, watchOptions)
-
-    yield* Console.error(`Watching ${workspace.rootPath} for changes.`)
-    yield* Stream.runForEach(events, printEvent)
-  })
-
-  const watchMode = Option.liftPredicate(Boolean)(watchForChanges)
-
-  yield* Option.match(watchMode, {
-    onNone: Function.constant(oneShot),
-    onSome: Function.constant(watched)
-  })
+  yield* Console.error(status)
+  yield* Stream.runForEach(events, printEvent)
 })
 
 const rootCommand = Command.make(

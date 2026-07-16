@@ -1,7 +1,7 @@
 export {}
 
 function tryCatch(): string {
-  try {
+  try { // ~detect 3
     return doWork()
   } catch (e) {
     return "failed"
@@ -9,7 +9,7 @@ function tryCatch(): string {
 }
 
 function tryFinally(): string {
-  try {
+  try { // ~detect 3
     return doWork()
   } finally {
     doWork()
@@ -17,7 +17,7 @@ function tryFinally(): string {
 }
 
 function tryCatchFinally(): string {
-  try {
+  try { // ~detect 3
     return doWork()
   } catch (e) {
     return "failed"
@@ -27,7 +27,7 @@ function tryCatchFinally(): string {
 }
 
 const tryInArrow = (): string => {
-  try {
+  try { // ~detect 3
     return doWork()
   } catch (e) {
     return "failed"
@@ -35,8 +35,8 @@ const tryInArrow = (): string => {
 }
 
 function nestedTry(): string {
-  try {
-    try {
+  try { // ~detect 3
+    try { // ~detect 5
       return doWork()
     } catch (inner) {
       return "inner"

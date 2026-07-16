@@ -20,10 +20,10 @@ const piped = pipe(
 )
 
 // Arrow passed to a default-lib method (Array.prototype.map → unsanctioned)
-const viaDefaultLib = xs.map((x) => x)
+const viaDefaultLib = xs.map((x) => x) // ~detect 34
 
 // Arrow passed to a first-party function (unsanctioned)
 const runLocalFn = (f: (n: number) => number): number => f(1)
-const viaFirstParty = runLocalFn((n) => n)
+const viaFirstParty = runLocalFn((n) => n) // ~detect 38
 
 export { mapped, matched, piped, viaDefaultLib, viaFirstParty }

@@ -1,13 +1,11 @@
 import { Array } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 const message = "Avoid conditional array spreads."
 
 const hint =
@@ -53,10 +51,9 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
 
 const kinds = Array.of(ts.SyntaxKind.SpreadElement)
 
-const check = nodeCheck(kinds)(ts.isSpreadElement)(conditionalArraySpreadMatches)
-
-export const preferEffectArrayAppendAll: Check = check
-
-export const preferEffectArrayAppendAllExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-effect-array-append-all"
+export const preferEffectArrayAppendAll = defineCheck(
+  "prefer-effect-array-append-all",
+  kinds,
+  ts.isSpreadElement,
+  conditionalArraySpreadMatches
 )

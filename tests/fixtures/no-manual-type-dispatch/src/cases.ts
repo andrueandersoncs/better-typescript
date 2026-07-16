@@ -15,7 +15,7 @@ type Shape =
 
 // The motivating example: a chain of Schema.is(...) guards dispatching on `node`.
 function foldNode(node: unknown): string {
-  if (Schema.is(PureNode)(node)) return "pure"
+  if (Schema.is(PureNode)(node)) return "pure" // ~detect 3
   if (Schema.is(FailNode)(node)) return "fail"
   if (Schema.is(StepNode)(node)) return "step"
   if (Schema.is(AgentNode)(node)) return "agent"
@@ -24,7 +24,7 @@ function foldNode(node: unknown): string {
 
 // Dispatch on a discriminant property, every branch returning.
 function area(shape: Shape): number {
-  if (shape.kind === "circle") return Math.PI * shape.radius * shape.radius
+  if (shape.kind === "circle") return Math.PI * shape.radius * shape.radius // ~detect 3
   if (shape.kind === "square") return shape.side * shape.side
   if (shape.kind === "rect") return shape.width * shape.height
   return 0
@@ -36,7 +36,7 @@ declare const isDigit: (token: string) => boolean
 declare const isSpace: (token: string) => boolean
 
 function classify(token: string): string {
-  if (isAlpha(token)) {
+  if (isAlpha(token)) { // ~detect 3
     return "alpha"
   }
   if (isDigit(token)) {

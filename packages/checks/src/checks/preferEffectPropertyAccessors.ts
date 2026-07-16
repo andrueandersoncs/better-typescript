@@ -5,13 +5,11 @@ import {
   isFunctionDefinition,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 
 const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -159,9 +157,9 @@ const propertyAccessorMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(functionDefinitionKinds)(isFunctionDefinition)(propertyAccessorMatches)
-
-export const preferEffectPropertyAccessors: Check = check
-
-export const preferEffectPropertyAccessorsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-property-accessors")
+export const preferEffectPropertyAccessors = defineCheck(
+  "prefer-effect-property-accessors",
+  functionDefinitionKinds,
+  isFunctionDefinition,
+  propertyAccessorMatches
+)

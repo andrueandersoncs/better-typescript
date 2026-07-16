@@ -2,12 +2,9 @@ import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { isArrayLikeType } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 // MutableArrayMethod is shared method-name vocabulary because owners classify the same methods.
 export type MutableArrayMethod =
@@ -73,10 +70,9 @@ const mutableArrayMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(mutableArrayMatches)
-
-export const noMutableArrayMethods: Check = check
-
-export const noMutableArrayMethodsExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "no-mutable-array-methods"
+export const noMutableArrayMethods = defineCheck(
+  "no-mutable-array-methods",
+  callExpressionKinds,
+  ts.isCallExpression,
+  mutableArrayMatches
 )

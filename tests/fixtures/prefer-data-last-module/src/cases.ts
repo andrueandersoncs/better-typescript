@@ -10,25 +10,25 @@ const makeFunction = <A extends ReadonlyArray<unknown>, R>(
   implementation: (...args: A) => R
 ): ((...args: A) => R) => implementation
 
-const updateUser = (id: string, newData: User): User => ({
+const updateUser = (id: string, newData: User): User => ({ // ~detect 7
   ...newData,
   id
 })
 
-function archiveUser(reason: string, user: User): User {
+function archiveUser(reason: string, user: User): User { // ~detect 10
   return user
 }
 
-const saveUser = makeFunction((timestamp: Date, user: User): User => user)
+const saveUser = makeFunction((timestamp: Date, user: User): User => user) // ~detect 7
 
-const renameUser =
+const renameUser = // ~detect 7
   (name: string) =>
   (user: User): User => ({
     ...user,
     name
   })
 
-const updateOrganization = (
+const updateOrganization = ( // ~detect 7
   id: string,
   organization: Organization
 ): Organization => ({

@@ -2,7 +2,7 @@ export {}
 
 // Switch over a string union
 function handleKind(kind: "a" | "b" | "c"): number {
-  switch (kind) {
+  switch (kind) { // ~detect 3
     case "a":
       return 1
     case "b":
@@ -16,7 +16,7 @@ function handleKind(kind: "a" | "b" | "c"): number {
 
 // Switch over a number
 function classify(value: number): string {
-  switch (value) {
+  switch (value) { // ~detect 3
     case 0:
       return "zero"
     case 1:
@@ -28,9 +28,9 @@ function classify(value: number): string {
 
 // Nested switch (outer then inner match)
 function nestedSwitch(outer: "x" | "y", inner: 1 | 2): string {
-  switch (outer) {
+  switch (outer) { // ~detect 3
     case "x":
-      switch (inner) {
+      switch (inner) { // ~detect 7
         case 1:
           return "x1"
         default:

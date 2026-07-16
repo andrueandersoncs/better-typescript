@@ -1,12 +1,10 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const implicitReturnMatches = (context: CheckContext) => {
   const match = detection(context)
@@ -40,9 +38,9 @@ const implicitReturnMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(implicitReturnMatches)
-
-export const preferImplicitReturn: Check = check
-
-export const preferImplicitReturnExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-implicit-return")
+export const preferImplicitReturn = defineCheck(
+  "prefer-implicit-return",
+  arrowFunctionKinds,
+  ts.isArrowFunction,
+  implicitReturnMatches
+)

@@ -2,11 +2,9 @@ import { Array, Effect, pipe, Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import { SystemicHotspotsInput, SystemicSignals } from "./data.js"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 
-export const systemicHotspotsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("systemic-hotspots")
+export const systemicHotspotsExamples = packageExamples("systemic-hotspots")
 
 const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const hasHotSubsystem = signals.hotSubsystem.length >= 1
@@ -17,6 +15,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const subsystemItem = evidenceItem("hot-subsystem", signals.hotSubsystem.length)
   const densityItem = evidenceItem("high-signal-density", signals.highSignalDensity.length)
   const evidence = Array.make(subsystemItem, densityItem)
+  const examples = systemicHotspotsExamples()
 
   const advice = new Advice({
     location,
@@ -28,7 +27,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
       "subsystem's shape first (Ref/Layer inversion, data-last signatures), let that land " +
       "the architectural pattern, then sweep the remaining dense files against it.",
     evidence,
-    examples: systemicHotspotsExamples
+    examples
   })
 
   return isSystemic ? Array.of(advice) : Array.empty()

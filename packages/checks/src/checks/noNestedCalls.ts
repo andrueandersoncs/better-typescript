@@ -8,12 +8,9 @@ import {
 } from "./support/tsSignature.js"
 import { hasCallSignature } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const ruleHint =
   "A call whose result feeds another call hides a sequence of steps in one expression " +
@@ -73,9 +70,9 @@ const nestedCallMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.make(ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression)
 
-const check = nodeCheck(callExpressionKinds)(isCallLikeExpression)(nestedCallMatches)
-
-export const noNestedCalls: Check = check
-
-export const noNestedCallsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-nested-calls")
+export const noNestedCalls = defineCheck(
+  "no-nested-calls",
+  callExpressionKinds,
+  isCallLikeExpression,
+  nestedCallMatches
+)

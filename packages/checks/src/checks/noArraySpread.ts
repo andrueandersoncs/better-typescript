@@ -1,12 +1,10 @@
 import { Array } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const spreadElementKind = ts.SyntaxKind.SpreadElement
 
 const arraySpreadElements = (context: CheckContext) => {
@@ -30,9 +28,9 @@ const arraySpreadElements = (context: CheckContext) => {
 
 const spreadElementKinds = Array.of(spreadElementKind)
 
-export const noArraySpread: Check = nodeCheck(spreadElementKinds)(ts.isSpreadElement)(
+export const noArraySpread = defineCheck(
+  "no-array-spread",
+  spreadElementKinds,
+  ts.isSpreadElement,
   arraySpreadElements
 )
-
-export const noArraySpreadExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-array-spread")

@@ -1,12 +1,10 @@
 import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const throwStatementKind = ts.SyntaxKind.ThrowStatement
 
 const throwStatementElements = (context: CheckContext) => {
@@ -30,8 +28,9 @@ const throwStatementElements = (context: CheckContext) => {
 
 const throwStatementKinds = Array.of(throwStatementKind)
 
-export const noThrow: Check = nodeCheck(throwStatementKinds)(ts.isThrowStatement)(
+export const noThrow = defineCheck(
+  "no-throw",
+  throwStatementKinds,
+  ts.isThrowStatement,
   throwStatementElements
 )
-
-export const noThrowExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-throw")

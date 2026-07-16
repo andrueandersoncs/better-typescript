@@ -9,11 +9,9 @@ import {
   evidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { packageExamples } from "../defineCheck.js"
 
-export const highSignalDensityExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("high-signal-density")
+export const highSignalDensityExamples = packageExamples("high-signal-density")
 
 const densityAdvice = (file: FileDetections): Advice => {
   const summary = countSummary(file.elements)
@@ -21,6 +19,7 @@ const densityAdvice = (file: FileDetections): Advice => {
   const signalsItem = evidenceItem("signals", summary.total)
   const evidence = Array.prepend(checkEvidence, signalsItem)
   const location = adviceLocation(file.path)
+  const examples = highSignalDensityExamples()
 
   return new Advice({
     location,
@@ -32,7 +31,7 @@ const densityAdvice = (file: FileDetections): Advice => {
       "PubSub; wiring in Layer; one runtime entry at the boundary) instead of fixing " +
       "signals one at a time — the inversion dissolves most of them.",
     evidence,
-    examples: highSignalDensityExamples
+    examples
   })
 }
 

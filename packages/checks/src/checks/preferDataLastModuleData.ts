@@ -1,8 +1,8 @@
 import { Data } from "effect"
 import type * as ts from "typescript"
 
-// FunctionDefinition is shared name/reportNode contract because owners need one vocabulary.
-export class FunctionDefinition extends Data.Class<{
+// DataLastFunctionDefinition is shared name/reportNode contract because owners need one vocabulary.
+export class DataLastFunctionDefinition extends Data.Class<{
   readonly name: string
   readonly reportNode: ts.Node
 }> {}

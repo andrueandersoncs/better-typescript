@@ -11,8 +11,8 @@ interface EvidenceItem {
 
 type EvidenceCountGetter = (item: EvidenceItem) => number
 
-const signalText: (event: SignalEvent) => string = Struct.get("text")
-const evidenceCount: EvidenceCountGetter = Struct.get("count")
+const signalText: (event: SignalEvent) => string = Struct.get("text") // ~detect 19
+const evidenceCount: EvidenceCountGetter = Struct.get("count") // ~detect 22
 
 void signalText
 void evidenceCount

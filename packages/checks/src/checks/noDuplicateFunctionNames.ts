@@ -1,15 +1,12 @@
 import { Array, Function, HashMap, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { functionInitializer } from "./support/tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { definePlannedCheck } from "../defineCheck.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
@@ -141,10 +138,9 @@ const duplicateNameListeners = (
     })
   })
 
-const check = withProgramIndex(buildFunctionNameIndex)(duplicateNameListeners)
+const duplicateFunctionNamePlan = Function.compose(buildFunctionNameIndex, duplicateNameListeners)
 
-export const noDuplicateFunctionNames: Check = check
-
-export const noDuplicateFunctionNamesExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "no-duplicate-function-names"
+export const noDuplicateFunctionNames = definePlannedCheck(
+  "no-duplicate-function-names",
+  duplicateFunctionNamePlan
 )

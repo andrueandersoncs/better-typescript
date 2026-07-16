@@ -6,7 +6,7 @@ type MyData = { readonly name: string; readonly value: number }
 const isMyData = (input: unknown): input is MyData =>
   Predicate.hasProperty(input, "name")
 
-const MyDataSchema = Schema.declare(isMyData)
+const MyDataSchema = Schema.declare(isMyData) // ~detect 22
 
 // Case 2: Named predicate with a first-party interface
 interface AppConfig {
@@ -17,10 +17,10 @@ interface AppConfig {
 const isAppConfig = (input: unknown): input is AppConfig =>
   Predicate.hasProperty(input, "host")
 
-const AppConfigSchema = Schema.declare(isAppConfig)
+const AppConfigSchema = Schema.declare(isAppConfig) // ~detect 25
 
 // Case 3: Inline predicate with a first-party structural type
-const InlineSchema = Schema.declare((input: unknown): input is MyData =>
+const InlineSchema = Schema.declare((input: unknown): input is MyData => // ~detect 22
   Predicate.hasProperty(input, "name")
 )
 
@@ -32,14 +32,14 @@ class SessionState {
 const isSessionState = (input: unknown): input is SessionState =>
   input instanceof SessionState
 
-const SessionStateSchema = Schema.declare(isSessionState)
+const SessionStateSchema = Schema.declare(isSessionState) // ~detect 28
 
 type AppConfigAlias = AppConfig
 
 const isAppConfigAlias = (input: unknown): input is AppConfigAlias =>
   Predicate.hasProperty(input, "host")
 
-const AppConfigAliasSchema = Schema.declare(isAppConfigAlias)
+const AppConfigAliasSchema = Schema.declare(isAppConfigAlias) // ~detect 30
 
 void MyDataSchema
 void AppConfigSchema

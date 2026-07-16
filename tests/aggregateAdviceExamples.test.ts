@@ -1,18 +1,21 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
-import { Effect } from "effect"
+import { Effect, Stream } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
 import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+import { packageExampleRoot } from "./packageExamples.js"
 import {
-  fixtureExampleRoot,
-  fixtureRefactorExamples
-} from "@better-typescript/checks/fixtureExamples"
-import { formatRefactorExample } from "@better-typescript/core/engine/example"
-import { defineConfig } from "@better-typescript/core/engine/report"
-import type { ReportBlock, Wiring } from "@better-typescript/core/engine/report/data"
-import { loadProject, reportBlocksFromConfig } from "@better-typescript/core/project/loadProject"
+  formatRefactorExample,
+  loadRefactorExamplesAt
+} from "@better-typescript/core/engine/example"
+import type { SignalEvent } from "@better-typescript/core/engine/report/data"
+import { reportEvents } from "@better-typescript/core/engine/watch"
+import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
+import { defineConfig } from "@better-typescript/core/engine/wiring"
+import type { Wiring } from "@better-typescript/core/engine/wiring/data"
+import { contextFromLoadedProject, loadProject } from "@better-typescript/core/project/loadProject"
 
 interface AdviceExampleCase {
   readonly fixtureId: string
@@ -171,28 +174,36 @@ const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
 const reportAt = async (
   wiring: Wiring,
   projectRoot: string
-): Promise<ReadonlyArray<ReportBlock>> => {
+): Promise<ReadonlyArray<SignalEvent>> => {
   const workspace = await Effect.runPromise(loadProject(projectRoot))
   const config = defineConfig([{ files: ["**/*"], wiring }])
+  const update = new WorkspaceUpdate({
+    rootPath: workspace.rootPath,
+    contexts: workspace.projects.map(contextFromLoadedProject)
+  })
+  const events = await Effect.runPromise(
+    Stream.runCollect(reportEvents(config)(Stream.succeed(update)))
+  )
 
-  return Effect.runPromise(reportBlocksFromConfig(config)(workspace))
+  return events.filter((event): event is SignalEvent => event._tag === "signal")
 }
 
 const blocksWithTitle = (
-  blocks: ReadonlyArray<ReportBlock>,
+  blocks: ReadonlyArray<SignalEvent>,
   title: string
-): ReadonlyArray<ReportBlock> =>
+): ReadonlyArray<SignalEvent> =>
   blocks.filter((block) => block.key._tag === "advice" && block.key.title === title)
 
 for (const exampleCase of adviceExampleCases) {
   test(`aggregate advice example: ${exampleCase.title}`, async () => {
-    const pairRoot = path.join(fixtureExampleRoot(exampleCase.fixtureId), exampleCase.pairId)
+    const exampleRoot = packageExampleRoot(exampleCase.fixtureId)
+    const pairRoot = path.join(exampleRoot, exampleCase.pairId)
 
     const badBlocks = await reportAt(exampleCase.wiring, path.join(pairRoot, "bad"))
     const goodBlocks = await reportAt(exampleCase.wiring, path.join(pairRoot, "good"))
     const badAdvice = blocksWithTitle(badBlocks, exampleCase.title)
     const goodAdvice = blocksWithTitle(goodBlocks, exampleCase.title)
-    const examples = fixtureRefactorExamples(exampleCase.fixtureId)
+    const examples = await Effect.runPromise(loadRefactorExamplesAt(exampleRoot))
     const expectedExample = formatRefactorExample(examples[0])
 
     assert.equal(examples.length, 1, `${exampleCase.title} should declare exactly one fixture pair`)

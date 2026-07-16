@@ -11,8 +11,8 @@ const inline = JSON.stringify(new Map([["a", "1"]]))
 declare const loadHeaders: () => Map<string, string>
 
 // Control: construction only used locally still reports
-const local = new Map<string, number>()
+const local = new Map<string, number>() // ~detect 15
 const v = local.get("a")
 
 // Control: non-ambient written type still reports
-const annotated: Map<string, number> = local
+const annotated: Map<string, number> = local // ~detect 18

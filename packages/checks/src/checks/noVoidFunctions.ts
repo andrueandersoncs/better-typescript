@@ -4,12 +4,9 @@ import { namedDetectionTarget } from "./support/tsNode.js"
 import { isFunctionDefinition, isFunctionInitializer } from "./support/tsNode.js"
 import { isVoidType, permitsVoid } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
 
 const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -96,9 +93,9 @@ const voidFunctionMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(voidableFunctionKinds)(isFunctionDefinition)(voidFunctionMatches)
-
-export const noVoidFunctions: Check = check
-
-export const noVoidFunctionsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-void-functions")
+export const noVoidFunctions = defineCheck(
+  "no-void-functions",
+  voidableFunctionKinds,
+  isFunctionDefinition,
+  voidFunctionMatches
+)

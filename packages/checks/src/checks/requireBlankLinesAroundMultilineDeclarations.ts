@@ -2,12 +2,10 @@ import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const declarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -115,9 +113,9 @@ const blankLineMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(declarationKindList)(isDeclarationStatement)(blankLineMatches)
-
-export const requireBlankLinesAroundMultilineDeclarations: Check = check
-
-export const requireBlankLinesAroundMultilineDeclarationsExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("require-blank-lines-around-multiline-declarations")
+export const requireBlankLinesAroundMultilineDeclarations = defineCheck(
+  "require-blank-lines-around-multiline-declarations",
+  declarationKindList,
+  isDeclarationStatement,
+  blankLineMatches
+)

@@ -1,13 +1,11 @@
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
 import { namedDetectionTarget } from "./support/tsNode.js"
-import { dataTaggedClassHeritage, typeIsWireSafe } from "./taggedClassPortability.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { dataTaggedClassHeritage, typeIsWireSafe } from "./support/taggedClassPortability.js"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const message = "Prefer Schema.TaggedClass when every field has a portable wire representation."
 
@@ -64,10 +62,9 @@ const portableDataTaggedClassMatches = (context: CheckContext) => {
 
 const classDeclarationKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-export const preferSchemaTaggedClass: Check = nodeCheck(classDeclarationKinds)(
-  ts.isClassDeclaration
-)(portableDataTaggedClassMatches)
-
-export const preferSchemaTaggedClassExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-schema-tagged-class"
+export const preferSchemaTaggedClass = defineCheck(
+  "prefer-schema-tagged-class",
+  classDeclarationKinds,
+  ts.isClassDeclaration,
+  portableDataTaggedClassMatches
 )

@@ -3,12 +3,9 @@ import * as ts from "typescript"
 import { transparentWrapperKinds } from "./support/tsNode.js"
 import { isExternalPackageArgument } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 
 const sanctionedParentKinds = HashSet.make(
   ts.SyntaxKind.VariableDeclaration,
@@ -50,9 +47,9 @@ const arrowFunctionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(arrowFunctionKinds)(ts.isArrowFunction)(arrowFunctionMatches)
-
-export const noInlineClosures: Check = check
-
-export const noInlineClosuresExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("no-inline-closures")
+export const noInlineClosures = defineCheck(
+  "no-inline-closures",
+  arrowFunctionKinds,
+  ts.isArrowFunction,
+  arrowFunctionMatches
+)

@@ -1,9 +1,9 @@
 import {
   Array,
+  Effect,
   Function,
   HashMap,
   HashSet,
-  Match,
   Option,
   Stream,
   Struct,
@@ -12,20 +12,20 @@ import {
 } from "effect"
 import type * as ts from "typescript"
 import type { WorkspaceConfigs } from "../../project/loadProject/data.js"
-import { sourceUpdates } from "../sources/sources.js"
-import type { ProgramContext, SourceUpdate } from "../sources/data.js"
+import type { ReportBlock, ReportEvent } from "../report/data.js"
 import {
   batchReportBlocks,
   blockClearedEvent,
   blockEntry,
   blockSignalEvent,
-  initialReportEvents,
-  wiringSignalsArrayEquivalence,
-  workspaceSignals
+  initialReportEvents
 } from "../report/report.js"
-import type { ReportBlock, WiringConfig, WiringSignals } from "../report/data.js"
-import { ClearedEvent, EmptyReportEvent, SignalEvent, WorkspaceUpdate } from "./data.js"
-import type { ReportEvent } from "./data.js"
+import type { WiringSignals } from "../signal/data.js"
+import { wiringSignalsArrayEquivalence, workspaceSignals } from "../signal/signal.js"
+import type { ProgramContext, SourceUpdate } from "../sources/data.js"
+import { sourceUpdates } from "../sources/sources.js"
+import type { WiringConfig } from "../wiring/data.js"
+import { WorkspaceUpdate } from "./data.js"
 
 const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty()
 
@@ -91,45 +91,61 @@ export const workspaceUpdates = (
   return pipe(merged, Stream.mapAccum(Function.constant(emptyContextCache), applyUpdate))
 }
 
-// Full recompute is required because checker checks can depend on files outside the edit set.
-export const signalUpdates =
+const signalUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
-  <E, R>(
-    updates: Stream.Stream<WorkspaceUpdate, E, R>
-  ): Stream.Stream<ReadonlyArray<WiringSignals>, E, R> =>
+  <UpdateError, R>(
+    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
+  ): Stream.Stream<
+    readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
+    UpdateError,
+    R
+  > =>
     pipe(
       updates,
-      Stream.mapEffect((update) => workspaceSignals(config)(update.rootPath)(update.contexts))
+      Stream.mapEffect((update) =>
+        pipe(
+          workspaceSignals(config)(update.rootPath)(update.contexts),
+          Effect.map((signals) => Tuple.make(update.rootPath, signals))
+        )
+      )
     )
 
 // Match state participates because a newly matched or removed glob scope must reach derivation.
-export const signalsEquivalence = (
-  a: ReadonlyArray<WiringSignals>,
-  b: ReadonlyArray<WiringSignals>
-): boolean => wiringSignalsArrayEquivalence(a, b)
+const signalsEquivalence = (
+  a: readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
+  b: readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>]
+): boolean => {
+  const hasSameRootPath = a[0] === b[0]
+
+  return hasSameRootPath && wiringSignalsArrayEquivalence(a[1], b[1])
+}
 
 // Derivation stays per wiring because each glob assignment is an independent policy boundary.
-export const reportBlockUpdates =
+const reportBlockUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
-  <E, R>(
-    signals: Stream.Stream<ReadonlyArray<WiringSignals>, E, R>
-  ): Stream.Stream<ReadonlyArray<ReportBlock>, E | DeriveError, R> =>
-    pipe(signals, Stream.mapEffect(batchReportBlocks(config)))
-
-const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`
-
-// Kept separate from NDJSON because --pretty needs a human-readable projection of the same events.
-export const renderEventText = (event: ReportEvent): string =>
-  pipe(
-    Match.value(event),
-    Match.tag("signal", Struct.get<SignalEvent, "text">("text")),
-    Match.tag("cleared", Struct.get<ClearedEvent, "text">("text")),
-    Match.tag("empty", emptyReportText),
-    Match.exhaustive
-  )
+  <UpdateError, R>(
+    updates: Stream.Stream<
+      readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
+      UpdateError,
+      R
+    >
+  ): Stream.Stream<
+    readonly [rootPath: string, blocks: ReadonlyArray<ReportBlock>],
+    UpdateError | DeriveError,
+    R
+  > =>
+    pipe(
+      updates,
+      Stream.mapEffect(([rootPath, signals]) =>
+        pipe(
+          batchReportBlocks(config)(signals),
+          Effect.map((blocks) => Tuple.make(rootPath, blocks))
+        )
+      )
+    )
 
 // Clearances precede signals because consumers must retire stale blocks before replacements.
-export const blockDelta =
+const blockDelta =
   (current: ReadonlyArray<ReportBlock>) =>
   (previous: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     const previousEntries = Array.map(previous, blockEntry)
@@ -163,39 +179,40 @@ export const blockDelta =
 const initialDeltaState: Option.Option<ReadonlyArray<ReportBlock>> = Option.none()
 
 // Quiet batches stay silent because watch output should only surface real block changes.
-export const blockDeltas =
-  (rootPath: string) =>
-  <E, R>(
-    blocks: Stream.Stream<ReadonlyArray<ReportBlock>, E, R>
-  ): Stream.Stream<ReportEvent, E, R> =>
+const blockDeltas = <UpdateError, R>(
+  updates: Stream.Stream<
+    readonly [rootPath: string, blocks: ReadonlyArray<ReportBlock>],
+    UpdateError,
+    R
+  >
+): Stream.Stream<ReportEvent, UpdateError, R> =>
+  pipe(
+    updates,
+    Stream.mapAccum(Function.constant(initialDeltaState), (previous, [rootPath, current]) => {
+      const events = pipe(
+        previous,
+        Option.match({
+          onNone: () => initialReportEvents(rootPath)(current),
+          onSome: blockDelta(current)
+        })
+      )
+
+      const nextState = Option.some(current)
+
+      return Tuple.make(nextState, events)
+    })
+  )
+
+// Full recompute is required because checker checks can depend on files outside the edit set.
+export const reportEvents =
+  <DeriveError>(config: WiringConfig<DeriveError>) =>
+  <UpdateError, R>(
+    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
+  ): Stream.Stream<ReportEvent, UpdateError | DeriveError, R> =>
     pipe(
-      blocks,
-      Stream.mapAccum(Function.constant(initialDeltaState), (previous, current) => {
-        const events = pipe(
-          previous,
-          Option.match({
-            onNone: () => initialReportEvents(rootPath)(current),
-            onSome: blockDelta(current)
-          })
-        )
-
-        const nextState = Option.some(current)
-
-        return Tuple.make(nextState, events)
-      })
-    )
-
-// Linear gated stages are required because each stage drops unchanged values inside one batch.
-export const watchReportFromConfig =
-  <E>(config: WiringConfig<E>) =>
-  (
-    workspace: WorkspaceConfigs,
-    watchOptions: Option.Option<ts.WatchOptions>
-  ): Stream.Stream<ReportEvent, E> =>
-    pipe(
-      workspaceUpdates(workspace, watchOptions),
+      updates,
       signalUpdates(config),
       Stream.changesWith(signalsEquivalence),
       reportBlockUpdates(config),
-      blockDeltas(workspace.rootPath)
+      blockDeltas
     )

@@ -4,12 +4,9 @@ import { fileSubscriptions } from "@better-typescript/core/engine/check"
 import { withProgramIndex } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
+import { definePlannedCheck } from "../defineCheck.js"
 
 const message = "Avoid unused imports, declarations, and parameters."
 
@@ -85,6 +82,5 @@ const unusedListeners = (unusedProgram: ts.Program): ReadonlyArray<Subscription>
   return fileSubscriptions(matches)
 }
 
-export const noUnused: Check = withProgramIndex(buildUnusedProgram)(unusedListeners)
-
-export const noUnusedExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-unused")
+const plan = withProgramIndex(buildUnusedProgram)(unusedListeners).plan
+export const noUnused = definePlannedCheck("no-unused", plan)

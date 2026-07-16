@@ -2,12 +2,9 @@ import { Array, Option, pipe, Result, Function } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
 const maximumReturnExpressionLength = 100
 
 const containsYieldExpression = (node: ts.Node): boolean => {
@@ -109,10 +106,10 @@ const conditionalReturnDetections = (context: CheckContext) => {
 }
 
 const blockKinds = Array.of(ts.SyntaxKind.Block)
-const check = nodeCheck(blockKinds)(ts.isBlock)(conditionalReturnDetections)
 
-export const preferConditionalReturn: Check = check
-
-export const preferConditionalReturnExamples: NonEmptyRefactorExamples = fixtureRefactorExamples(
-  "prefer-conditional-return"
+export const preferConditionalReturn = defineCheck(
+  "prefer-conditional-return",
+  blockKinds,
+  ts.isBlock,
+  conditionalReturnDetections
 )

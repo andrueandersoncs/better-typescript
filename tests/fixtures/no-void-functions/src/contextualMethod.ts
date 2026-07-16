@@ -15,5 +15,5 @@ export const consoleLogger: Logger = {
 // Control: an object literal WITHOUT a type annotation has no contextual type,
 // so its void method still fires.
 export const bare = {
-  ping(): void {}
+  ping(): void {} // ~detect 3
 }

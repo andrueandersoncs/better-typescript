@@ -1,4 +1,4 @@
-import { Array, HashSet, pipe, Option } from "effect"
+import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 import type { ReturnedExpressionNode } from "./support/tsNode.js"
 import {
@@ -8,12 +8,9 @@ import {
   unwrapExpression
 } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { combineAll, nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { definePlannedCheck } from "../defineCheck.js"
 // UndefinedTypeDeclaration is undefined-type syntax protocol because owners share one matcher.
 export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
@@ -175,8 +172,8 @@ const listeners = Array.make(
   comparisonListeners
 )
 
-const check = combineAll(listeners)
+const flattenedListeners = Array.flatten(listeners)
 
-export const noUndefined: Check = check
+const plan = Function.constant(flattenedListeners)
 
-export const noUndefinedExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-undefined")
+export const noUndefined = definePlannedCheck("no-undefined", plan)

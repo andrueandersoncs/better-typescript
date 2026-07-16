@@ -2,17 +2,15 @@ import * as path from "node:path"
 import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { namedDetectionTarget, outermostTransparentWrapper } from "./support/tsNode.js"
+import { callArguments, isSameNode } from "./support/tsSignature.js"
 import { isFunctionDefinition as isAstFunctionDefinition } from "./support/tsNode.js"
-import { DataStructureModule, FunctionDefinition } from "./preferDataLastModuleData.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { hasCallSignature } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
+import { DataLastFunctionDefinition, DataStructureModule } from "./preferDataLastModuleData.js"
+import { defineCheck } from "../defineCheck.js"
 
 const astFunctionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -37,23 +35,20 @@ const primitiveTypeFlags =
 
 const isFalse = (value: boolean): boolean => !value
 
-const sameExpression =
-  (expression: ts.Expression) =>
-  (candidate: ts.Expression): boolean =>
-    candidate === expression
-
 const isVariableInitializer =
   (expression: ts.Expression) =>
   (declaration: ts.VariableDeclaration): boolean => {
     const initializer = Option.fromNullishOr(declaration.initializer)
 
-    return Option.exists(initializer, sameExpression(expression))
+    return Option.exists(initializer, isSameNode(expression))
   }
 
 const firstDefinition =
-  (initializer: Option.Option<FunctionDefinition>) =>
-  (callArgument: Option.Option<FunctionDefinition>) =>
-  (curried: Option.Option<FunctionDefinition>): Option.Option<FunctionDefinition> => {
+  (initializer: Option.Option<DataLastFunctionDefinition>) =>
+  (callArgument: Option.Option<DataLastFunctionDefinition>) =>
+  (
+    curried: Option.Option<DataLastFunctionDefinition>
+  ): Option.Option<DataLastFunctionDefinition> => {
     const initializerOrCallArgument = Option.isSome(initializer) ? initializer : callArgument
 
     return Option.isSome(initializerOrCallArgument) ? initializerOrCallArgument : curried
@@ -153,13 +148,17 @@ const dataLastModuleMatches = (context: CheckContext) => {
     return pipe(symbol, Option.flatMap(structureForSymbol(type)))
   }
 
-  const declarationDefinition = (declaration: ts.VariableDeclaration): FunctionDefinition => {
+  const declarationDefinition = (
+    declaration: ts.VariableDeclaration
+  ): DataLastFunctionDefinition => {
     const name = declaration.name.getText(sourceFile)
 
-    return new FunctionDefinition({ name, reportNode: declaration.name })
+    return new DataLastFunctionDefinition({ name, reportNode: declaration.name })
   }
 
-  const fromInitializer = (expression: ts.Expression): Option.Option<FunctionDefinition> => {
+  const fromInitializer = (
+    expression: ts.Expression
+  ): Option.Option<DataLastFunctionDefinition> => {
     const parent = expression.parent
 
     if (!ts.isVariableDeclaration(parent)) {
@@ -171,21 +170,26 @@ const dataLastModuleMatches = (context: CheckContext) => {
     return isVariableInitializer(expression)(parent) ? Option.some(definition) : Option.none()
   }
 
-  const fromCallable = (declaration: ts.VariableDeclaration): Option.Option<FunctionDefinition> => {
+  const fromCallable = (
+    declaration: ts.VariableDeclaration
+  ): Option.Option<DataLastFunctionDefinition> => {
     const definition = declarationDefinition(declaration)
     const declarationType = checker.getTypeAtLocation(declaration.name)
 
     return hasCallSignature(checker)(declarationType) ? Option.some(definition) : Option.none()
   }
 
-  const fromCallArgument = (expression: ts.Expression): Option.Option<FunctionDefinition> => {
+  const fromCallArgument = (
+    expression: ts.Expression
+  ): Option.Option<DataLastFunctionDefinition> => {
     const parent = expression.parent
 
     if (!ts.isCallExpression(parent)) {
       return Option.none()
     }
 
-    const hasMatchingArgument = Array.some(parent.arguments, sameExpression(expression))
+    const args = callArguments(parent)
+    const hasMatchingArgument = Array.some(args, isSameNode(expression))
 
     if (!hasMatchingArgument) {
       return Option.none()
@@ -202,10 +206,11 @@ const dataLastModuleMatches = (context: CheckContext) => {
     return pipe(declaration, Option.flatMap(fromCallable))
   }
 
-  const findCurriedLazy = (arrowParent: ts.ArrowFunction): Option.Option<FunctionDefinition> =>
-    pipe(arrowParent, findCurried)
+  const findCurriedLazy = (
+    arrowParent: ts.ArrowFunction
+  ): Option.Option<DataLastFunctionDefinition> => pipe(arrowParent, findCurried)
 
-  const fromConcise = (expression: ts.Expression): Option.Option<FunctionDefinition> =>
+  const fromConcise = (expression: ts.Expression): Option.Option<DataLastFunctionDefinition> =>
     pipe(
       expression.parent,
       Option.liftPredicate(ts.isArrowFunction),
@@ -213,7 +218,9 @@ const dataLastModuleMatches = (context: CheckContext) => {
       Option.flatMap(findCurriedLazy)
     )
 
-  const findCurried = (arrowParent: ts.ArrowFunction): Option.Option<FunctionDefinition> => {
+  const findCurried = (
+    arrowParent: ts.ArrowFunction
+  ): Option.Option<DataLastFunctionDefinition> => {
     const parentExpression = outermostTransparentWrapper(arrowParent)
     const initializer = fromInitializer(parentExpression)
     const callArgument = fromCallArgument(parentExpression)
@@ -223,7 +230,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
   }
 
   const structureMatch =
-    (definition: FunctionDefinition) =>
+    (definition: DataLastFunctionDefinition) =>
     (dataStructure: DataStructureModule): Option.Option<Detection> => {
       const relativeDirectory = path.relative(projectRoot, dataStructure.moduleDirectory)
       const displayDirectory = relativeDirectory.length > 0 ? relativeDirectory : "."
@@ -245,7 +252,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
 
   const matchForDefinition =
     (node: ts.Node) =>
-    (definition: FunctionDefinition): Option.Option<Detection> => {
+    (definition: DataLastFunctionDefinition): Option.Option<Detection> => {
       if (!isAstFunctionDefinition(node)) {
         return Option.none()
       }
@@ -273,7 +280,7 @@ const dataLastModuleMatches = (context: CheckContext) => {
       )
 
       const reportNode = namedDetectionTarget(node)
-      const definition = new FunctionDefinition({ name, reportNode })
+      const definition = new DataLastFunctionDefinition({ name, reportNode })
 
       return pipe(Option.some(definition), Option.flatMap(matchForDefinition(node)), Option.toArray)
     }
@@ -293,9 +300,9 @@ const dataLastModuleMatches = (context: CheckContext) => {
   return matches
 }
 
-const check = nodeCheck(astFunctionDefinitionKinds)(isAstFunctionDefinition)(dataLastModuleMatches)
-
-export const preferDataLastModule: Check = check
-
-export const preferDataLastModuleExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-data-last-module")
+export const preferDataLastModule = defineCheck(
+  "prefer-data-last-module",
+  astFunctionDefinitionKinds,
+  isAstFunctionDefinition,
+  dataLastModuleMatches
+)

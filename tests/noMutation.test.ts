@@ -6,150 +6,25 @@ import { Effect, Array } from "effect"
 import { noMutation } from "@better-typescript/checks/noMutation"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
-import {
-  assertAllowedFixtureItems,
-  assertDisallowedFixtureItems,
-  type ExpectedDetection,
-  type FixtureItem
-} from "./ruleTestAssertions.js"
+import { assertCheckFixture } from "./ruleTestAssertions.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-mutation")
-
-const message = "Avoid mutating first-party data."
-
-const hint =
-  "Match the fix to the scale of the state. Local data: derive a new value — " +
-  "Array.replace or Array.modify for elements (both return Option — handle absence " +
-  "with Option.getOrElse or Option.match; for a nonempty array's head or last element, " +
-  "use Array.setHeadNonEmpty, Array.modifyHeadNonEmpty, Array.setLastNonEmpty, or " +
-  "Array.modifyLastNonEmpty), " +
-  "Struct.evolve for record fields, a fresh const for rebindings. Shared, long-lived " +
-  "state (module-scope bindings, closure-captured cells, subscriber registries): do " +
-  "not patch the assignment — move the state into the Effect runtime, holding it in " +
-  "a Ref (SynchronizedRef under contention, PubSub for subscriber sets); when a " +
-  "whole file manages state this way, invert the module into Effect behind a Layer " +
-  "with one runtime entry at the boundary. Never mutate built-ins (prototypes, " +
-  "globals). Mutating a third-party structure whose API contract requires assignment " +
-  "(process.exitCode, a WebSocket handler slot, a React ref cell) is permitted."
-
-const expectedSignal = (name: string, line: number, column: number): ExpectedDetection => ({
-  name,
-  fileName: "src/cases.ts",
-  line,
-  column,
-  message,
-  hint
-})
-
-const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
-  expectedSignal("property assignment", 14, 1),
-  expectedSignal("compound property assignment", 15, 1),
-  expectedSignal("element assignment", 16, 1),
-  expectedSignal("nested element assignment", 17, 1),
-  expectedSignal("postfix increment", 18, 1),
-  expectedSignal("prefix decrement", 19, 3),
-  expectedSignal("delete property", 20, 8),
-  expectedSignal("logical assignment", 21, 1),
-  expectedSignal("rebinding a project-declared let", 25, 1),
-  expectedSignal("rebinding a parameter", 28, 63),
-  expectedSignal("mutating a built-in prototype", 31, 1),
-  expectedSignal("mutating through a type-parameter receiver", 42, 3)
-]
-
-const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
-  {
-    name: "Array.replace Option is resolved to an array",
-    fileName: "src/allowed.ts",
-    line: 10,
-    column: 3
-  },
-  {
-    name: "Array.modify Option is resolved to an array",
-    fileName: "src/allowed.ts",
-    line: 17,
-    column: 3
-  },
-  {
-    name: "nonempty replace helper derives a new array",
-    fileName: "src/allowed.ts",
-    line: 22,
-    column: 25
-  },
-  {
-    name: "nonempty modify helper derives a new array",
-    fileName: "src/allowed.ts",
-    line: 24,
-    column: 27
-  },
-  {
-    name: "comparison operator is not an assignment",
-    fileName: "src/allowed.ts",
-    line: 27,
-    column: 23
-  },
-  {
-    name: "arithmetic operator is not an assignment",
-    fileName: "src/allowed.ts",
-    line: 29,
-    column: 22
-  },
-  {
-    name: "logical not does not write to its operand",
-    fileName: "src/allowed.ts",
-    line: 32,
-    column: 25
-  },
-  {
-    name: "unary minus does not write to its operand",
-    fileName: "src/allowed.ts",
-    line: 34,
-    column: 26
-  },
-  {
-    name: "host-environment handler slot mutation is exempt",
-    fileName: "src/allowed.ts",
-    line: 39,
-    column: 1
-  },
-  {
-    name: "import-alias third-party mutation is exempt",
-    fileName: "src/allowed.ts",
-    line: 42,
-    column: 56
-  },
-  {
-    name: "third-party value in a first-party binding is exempt",
-    fileName: "src/allowed.ts",
-    line: 48,
-    column: 43
-  },
-  {
-    name: "nullish third-party receiver is still exempt",
-    fileName: "src/allowed.ts",
-    line: 54,
-    column: 37
-  }
-]
 
 const runNoMutationFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(noMutation))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(noMutation.check))(project))
     )
   )
 
   return projectElements.flat()
 }
 
-test("no-mutation reports disallowed and permits allowed fixture items", async () => {
-  const signals = await runNoMutationFixture()
-
-  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
-  assertAllowedFixtureItems(signals, allowedFixtureItems)
-})
+test("no-mutation reports disallowed and permits allowed fixture items", () =>
+  assertCheckFixture(noMutation))
 
 test("no-mutation classifies each signal with a mutation target", async () => {
   const signals = await runNoMutationFixture()

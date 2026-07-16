@@ -2,13 +2,11 @@ import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import { isReturnedExpressionNode } from "./support/tsNode.js"
+import { defineCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { detection } from "@better-typescript/core/engine/check"
 const tagPropertyName = "_tag"
 
 const shortCircuitOperatorKinds = HashSet.make(
@@ -130,9 +128,9 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
 
 const returnCandidateKinds = Array.make(ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction)
 
-const check = nodeCheck(returnCandidateKinds)(isReturnedExpressionNode)(objectLiteralReturnMatches)
-
-export const preferEffectSchemaConstructor: Check = check
-
-export const preferEffectSchemaConstructorExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("prefer-effect-schema-constructor")
+export const preferEffectSchemaConstructor = defineCheck(
+  "prefer-effect-schema-constructor",
+  returnCandidateKinds,
+  isReturnedExpressionNode,
+  objectLiteralReturnMatches
+)

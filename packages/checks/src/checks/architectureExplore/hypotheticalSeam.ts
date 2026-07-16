@@ -2,13 +2,11 @@ import { Array, Function, Option, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { contextTagSeamDataOf } from "./evidence.js"
 import { contextTagSeamsName, singleAdapterSeamsName } from "./names.js"
 
-export const hypotheticalSeamExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("hypothetical-seam")
+export const hypotheticalSeamExamples = packageExamples("hypothetical-seam")
 
 const baseRemediation =
   "These injected behavioural interfaces have one production adapter and no test adapter. " +
@@ -68,6 +66,7 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
         : Array.of(seamItem)
 
     const remediation = deadCount > 0 ? baseRemediation + deadRemediation : baseRemediation
+    const examples = hypotheticalSeamExamples()
 
     return new Advice({
       location,
@@ -75,7 +74,7 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
       title: "hypothetical seam",
       remediation,
       evidence,
-      examples: hypotheticalSeamExamples
+      examples
     })
   })
 }

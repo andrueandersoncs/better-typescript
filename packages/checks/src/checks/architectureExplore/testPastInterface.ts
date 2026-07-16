@@ -2,8 +2,7 @@ import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import type { ExportSurfaceData, ExportedSymbolUsage } from "./data.js"
 import {
   exportSurfaceDataOf,
@@ -14,8 +13,7 @@ import {
 import type { WorkspaceImportEdge } from "./evidence.js"
 import { exportSurfaceName, seamLeakageEvidenceName, testOnlyExportsName } from "./names.js"
 
-export const testPastInterfaceExamples: NonEmptyRefactorExamples =
-  fixtureRefactorExamples("test-past-interface")
+export const testPastInterfaceExamples = packageExamples("test-past-interface")
 
 const edgesForSymbol = (
   edges: ReadonlyArray<WorkspaceImportEdge>,
@@ -157,6 +155,7 @@ const testPastInterfaceAdvice = (
     const callsItem = evidenceItem("test-helper-calls", testCallCount)
     const importsItem = evidenceItem("test-deep-imports", importsAtPath.length)
     const evidence = Array.make(exportsItem, callsItem, importsItem)
+    const examples = testPastInterfaceExamples()
 
     return new Advice({
       location,
@@ -166,7 +165,7 @@ const testPastInterfaceAdvice = (
         "Tests and production callers must cross the same interface. Exercise observable behaviour through the public Module, " +
         "make test-only helpers private, and replace internal/source imports with the declared seam.",
       evidence,
-      examples: testPastInterfaceExamples
+      examples
     })
   })
 }

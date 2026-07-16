@@ -1,12 +1,10 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 
-import { fixtureRefactorExamples } from "../fixtureExamples.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineCheck } from "../defineCheck.js"
+import { detection } from "@better-typescript/core/engine/check"
 const newExpressionKind = ts.SyntaxKind.NewExpression
 
 const newErrorElements = (context: CheckContext) => {
@@ -34,6 +32,9 @@ const newErrorElements = (context: CheckContext) => {
 
 const newExpressionKinds = Array.of(newExpressionKind)
 
-export const noNewError: Check = nodeCheck(newExpressionKinds)(ts.isNewExpression)(newErrorElements)
-
-export const noNewErrorExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("no-new-error")
+export const noNewError = defineCheck(
+  "no-new-error",
+  newExpressionKinds,
+  ts.isNewExpression,
+  newErrorElements
+)

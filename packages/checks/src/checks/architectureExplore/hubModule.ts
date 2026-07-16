@@ -2,13 +2,12 @@ import { Array, Function, Option, Predicate, Result, Struct, pipe } from "effect
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { fixtureRefactorExamples } from "../../fixtureExamples.js"
+import { packageExamples } from "../../defineCheck.js"
 import { interfaceBurdenDataOf, moduleGraphDataOf, workspaceImportEdges } from "./evidence.js"
 import { interfaceBurdenName, moduleGraphName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
-export const hubModuleExamples: NonEmptyRefactorExamples = fixtureRefactorExamples("hub-module")
+export const hubModuleExamples = packageExamples("hub-module")
 
 const minimumOperations = 12
 const minimumFanIn = 3
@@ -86,6 +85,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
     const fanInItem = evidenceItem("fan-in-modules", fanIn)
     const fanOutItem = evidenceItem("fan-out-modules", fanOut)
     const evidence = Array.make(operationsItem, fanInItem, fanOutItem)
+    const examples = hubModuleExamples()
 
     const advice = new Advice({
       location,
@@ -95,7 +95,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
         "A hub Module hides several Modules behind one name. " +
         "Split along its consumer seams so each caller learns one smaller interface.",
       evidence,
-      examples: hubModuleExamples
+      examples
     })
 
     return Result.succeed(advice)

@@ -95,7 +95,7 @@ const runRequireBlankLinesAroundMultilineDeclarationsFixture = async (): Promise
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
       Effect.runPromise(
-        runCheckOnProject(Array.of(requireBlankLinesAroundMultilineDeclarations))(project)
+        runCheckOnProject(Array.of(requireBlankLinesAroundMultilineDeclarations.check))(project)
       )
     )
   )

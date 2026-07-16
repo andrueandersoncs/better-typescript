@@ -26,8 +26,8 @@ import {
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { Location } from "@better-typescript/core/engine/location/data"
-import { Signal } from "@better-typescript/core/engine/report/data"
-import { makeWiring } from "@better-typescript/core/engine/report"
+import { Signal } from "@better-typescript/core/engine/signal/data"
+import { makeWiring } from "@better-typescript/core/engine/wiring"
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>
   new Detection({
