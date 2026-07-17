@@ -73,11 +73,13 @@ const decodeFailure = (moduleValue: unknown): Promise<ProjectWiringConfigError> 
   Effect.runPromise(Effect.flip(decodeWiringConfig(virtualConfigPath, moduleValue)))
 
 const loadConfigFailure = (projectDirectory: string): Promise<ProjectWiringConfigError> =>
-  Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig)))
+  Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, Effect.succeed(fallbackConfig))))
 
 test("loadWiringConfig returns fallback config when a project has no config", async () => {
   await runInTempProject(async (projectDirectory) => {
-    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
+    const config = await Effect.runPromise(
+      loadWiringConfig(projectDirectory, Effect.succeed(fallbackConfig))
+    )
 
     assert.equal(config, fallbackConfig)
   })
@@ -109,7 +111,9 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
       ].join("\n")
     )
 
-    const config = await Effect.runPromise(loadWiringConfig(projectDirectory, fallbackConfig))
+    const config = await Effect.runPromise(
+      loadWiringConfig(projectDirectory, Effect.succeed(fallbackConfig))
+    )
 
     assert.equal(config.length, 2)
     assert.deepEqual(config[0]?.files, ["src/**/*.{ts,tsx}", "scripts/*.mts"])
@@ -271,16 +275,16 @@ test("decodeWiringConfig rejects legacy per-check paths", async () => {
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: \(\) => RefactorExample\[\] \}/
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExample\[\] \}/
   )
 })
 
-test("decodeWiringConfig rejects array-valued check examples", async () => {
+test("decodeWiringConfig rejects thunk-valued check examples", async () => {
   const error = await decodeFailure([
     {
       files: ["src/**/*.ts"],
       wiring: {
-        checks: [{ name: "array-examples", check: emptyCheck, examples: [] }],
+        checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
         derive: () => Stream.empty
       }
     }
@@ -288,25 +292,52 @@ test("decodeWiringConfig rejects array-valued check examples", async () => {
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: \(\) => RefactorExample\[\] \}/
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExample\[\] \}/
   )
 })
 
-test("decodeWiringConfig accepts thunk-valued check examples", async () => {
+test("decodeWiringConfig accepts array-valued check examples", async () => {
   const config = await Effect.runPromise(
     decodeWiringConfig(virtualConfigPath, [
       {
         files: ["src/**/*.ts"],
         wiring: {
-          checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
+          checks: [{ name: "array-examples", check: emptyCheck, examples: [] }],
           derive: () => Stream.empty
         }
       }
     ])
   )
 
-  assert.equal(config[0]?.wiring.checks[0]?.name, "thunk-examples")
-  assert.deepEqual(config[0]?.wiring.checks[0]?.examples(), [])
+  assert.equal(config[0]?.wiring.checks[0]?.name, "array-examples")
+  assert.deepEqual(config[0]?.wiring.checks[0]?.examples, [])
+})
+
+test("decodeWiringConfig accepts a config exported as Effect.succeed", async () => {
+  const config = await Effect.runPromise(
+    decodeWiringConfig(virtualConfigPath, {
+      default: Effect.succeed([
+        {
+          files: ["src/**/*.ts"],
+          wiring: {
+            checks: [{ name: "effect-export-check", check: emptyCheck }],
+            derive: () => Stream.empty
+          }
+        }
+      ])
+    })
+  )
+
+  assert.equal(config[0]?.wiring.checks[0]?.name, "effect-export-check")
+})
+
+test("decodeWiringConfig rejects a failing exported Effect", async () => {
+  const error = await decodeFailure({
+    default: Effect.fail(new Error("effect boom"))
+  })
+
+  assert.equal(error._tag, "ProjectWiringConfigError")
+  assert.match(error.message, /default export Effect failed: effect boom/)
 })
 
 test("decodeWiringConfig rejects duplicate check names across wiring entries", async () => {

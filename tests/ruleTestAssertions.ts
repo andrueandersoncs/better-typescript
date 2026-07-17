@@ -171,7 +171,10 @@ const columnKey = (fileName: string, line: number, column: number): string =>
 const sortedKeys = (keys: ReadonlyArray<string>): ReadonlyArray<string> =>
   [...keys].sort((left, right) => left.localeCompare(right))
 
-export const assertCheckFixture = async (named: NamedCheck): Promise<void> => {
+export const assertCheckFixture = async (
+  namedEffect: Effect.Effect<NamedCheck, unknown>
+): Promise<void> => {
+  const named = await Effect.runPromise(namedEffect)
   const fixturePath = path.join(fixturesRoot, named.name)
   const markers = markersInFixture(fixturePath)
   const elements = await runNamedCheckFixture(named)

@@ -22,6 +22,13 @@ import {
   roleByPrefixes
 } from "@better-typescript/checks/functionalCoreEffect/policy"
 
+const { functionalCoreEffectWiring: wiring, policyWiring } = await Effect.runPromise(
+  Effect.all({
+    functionalCoreEffectWiring,
+    policyWiring: makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy)
+  })
+)
+
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "functional-core-effect")
 
@@ -29,7 +36,7 @@ const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return Promise.all(
-    functionalCoreEffectWiring.checks.map(async (named) => {
+    wiring.checks.map(async (named) => {
       const detections = await Promise.all(
         workspace.projects.map((project) =>
           Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
@@ -40,7 +47,7 @@ const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
         name: named.name,
         reported: named.reported,
         detections: detections.flat(),
-        examples: named.examples()
+        examples: named.examples
       })
     })
   )
@@ -53,7 +60,7 @@ const signalNamed = (signals: ReadonlyArray<Signal>, name: string): Signal => {
 }
 
 const collectAdvice = (signals: ReadonlyArray<Signal>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(pipe(functionalCoreEffectWiring.derive(signals), Stream.runCollect))
+  Effect.runPromise(pipe(wiring.derive(signals), Stream.runCollect))
 
 const boundaryDataOf = (detection: Detection): FunctionalCoreBoundaryData => {
   assert.ok(Schema.is(FunctionalCoreBoundaryData)(detection.data))
@@ -246,6 +253,7 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
     ),
     false
   )
+  assert.ok(boundary.examples.length > 0)
 })
 
 test("shape evidence and advice require the documented thresholds", async () => {
@@ -277,10 +285,11 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/entrypoints/thick.ts:thick composition root",
     "src/ports/badPort.ts:pure service candidate"
   ])
+  assert.ok(advice.every((item) => item.examples.length > 0))
 })
 
 test("wiring exposes one reported policy check and silent shape evidence", () => {
-  const checks = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).checks
+  const checks = policyWiring.checks
 
   assert.deepEqual(
     checks.map((check) => [check.name, check.reported]),
@@ -289,5 +298,6 @@ test("wiring exposes one reported policy check and silent shape evidence", () =>
       ["functional-core-effect-shape-evidence", false]
     ]
   )
-  assert.equal(checks[0]?.examples().length, 1)
+  assert.equal(checks[0]?.examples.length, 1)
+  assert.ok(Array.isArray(checks[0]?.examples))
 })

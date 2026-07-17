@@ -1,4 +1,4 @@
-import { Function, Stream } from "effect"
+import { Effect, Stream } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -77,11 +77,7 @@ const consoleLogExamples = [
   )
 ] as const
 
-const consoleLogCheck = namedCheck(
-  "acme/no-console-log",
-  noConsoleLog,
-  Function.constant(consoleLogExamples)
-)
+const consoleLogCheck = namedCheck("acme/no-console-log", noConsoleLog, consoleLogExamples)
 
 const localWiring = makeWiring({
   checks: [consoleLogCheck],
@@ -109,6 +105,15 @@ const localWiring = makeWiring({
 
 // mergeWirings concatenates checks and derive stages, so extending the preset
 // stays a single composition because the merge preserves both halves together.
-const extendedWiring = mergeWirings([defaultWiring, functionalCoreEffectWiring, localWiring])
+const extendedWiring = Effect.all({
+  defaultWiring,
+  functionalCoreEffectWiring
+}).pipe(
+  Effect.map(({ defaultWiring, functionalCoreEffectWiring }) =>
+    mergeWirings([defaultWiring, functionalCoreEffectWiring, localWiring])
+  )
+)
 
-export default defineConfig([{ files: ["**/*"], wiring: extendedWiring }])
+export default extendedWiring.pipe(
+  Effect.map((wiring) => defineConfig([{ files: ["**/*"], wiring }]))
+)

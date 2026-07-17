@@ -1,6 +1,6 @@
-import { Array, Stream, pipe } from "effect"
+import { Array, Effect, Stream, pipe } from "effect"
 import { makeWiring, silentCheck } from "@better-typescript/core/engine/wiring"
-import type { NamedCheck, Wiring } from "@better-typescript/core/engine/wiring/data"
+import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 import { namedDetection } from "@better-typescript/core/engine/derive"
 import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -106,47 +106,70 @@ export const architectureExploreChecks: ReadonlyArray<NamedCheck> = pipe(
   Array.appendAll(architectureExploreFpChecks)
 )
 
-export const architectureExploreDerive = (
-  signals: ReadonlyArray<Signal>
-): Stream.Stream<Advice> => {
-  const namedElements = pipe(
-    Stream.fromIterable(signals),
-    Stream.flatMap(nameArchitectureExploreDetections)
-  )
-
-  const deletionStream = deletionTestShallowness(namedElements)
-  const wideStream = wideShallowInterface(namedElements)
-  const bounceStream = bounceCluster(namedElements)
-  const leakedStream = leakedSeam(namedElements)
-  const testStream = testPastInterface(namedElements)
-  const hardToTestStream = hardToTestHotspot(namedElements)
-  const hypotheticalStream = hypotheticalSeam(namedElements)
-  const registrationStream = registrationCeremony(namedElements)
-  const hubStream = hubModule(namedElements)
-  const invisibleStream = invisibleTests(namedElements)
-  const orchestrationStream = duplicatedOrchestration(namedElements)
-
-  const adviceStreams = Array.make(
-    deletionStream,
-    wideStream,
-    bounceStream,
-    leakedStream,
-    testStream,
-    hardToTestStream,
-    hypotheticalStream,
-    registrationStream,
-    hubStream,
-    invisibleStream,
-    orchestrationStream
-  )
-
-  return pipe(Stream.fromIterable(adviceStreams), Stream.flatten())
-}
-
-export const architectureExploreWiring: Wiring = makeWiring({
-  checks: architectureExploreChecks,
-  derive: architectureExploreDerive
+const architectureAdvice = Effect.all({
+  deletionTestShallowness,
+  wideShallowInterface,
+  bounceCluster,
+  leakedSeam,
+  testPastInterface,
+  hardToTestHotspot,
+  hypotheticalSeam,
+  registrationCeremony,
+  hubModule,
+  duplicatedOrchestration
 })
+
+export const architectureExploreDerive = pipe(
+  architectureAdvice,
+  Effect.map(
+    ({
+      deletionTestShallowness,
+      wideShallowInterface,
+      bounceCluster,
+      leakedSeam,
+      testPastInterface,
+      hardToTestHotspot,
+      hypotheticalSeam,
+      registrationCeremony,
+      hubModule,
+      duplicatedOrchestration
+    }) =>
+      (signals: ReadonlyArray<Signal>): Stream.Stream<Advice> => {
+        const namedElements = pipe(
+          Stream.fromIterable(signals),
+          Stream.flatMap(nameArchitectureExploreDetections)
+        )
+
+        const deletionStream = deletionTestShallowness(namedElements)
+        const wideStream = wideShallowInterface(namedElements)
+        const bounceStream = bounceCluster(namedElements)
+        const leakedStream = leakedSeam(namedElements)
+        const testStream = testPastInterface(namedElements)
+        const hardToTestStream = hardToTestHotspot(namedElements)
+        const hypotheticalStream = hypotheticalSeam(namedElements)
+        const registrationStream = registrationCeremony(namedElements)
+        const hubStream = hubModule(namedElements)
+        const invisibleStream = invisibleTests(namedElements)
+        const orchestrationStream = duplicatedOrchestration(namedElements)
+
+        const adviceStreams = Array.make(
+          deletionStream,
+          wideStream,
+          bounceStream,
+          leakedStream,
+          testStream,
+          hardToTestStream,
+          hypotheticalStream,
+          registrationStream,
+          hubStream,
+          invisibleStream,
+          orchestrationStream
+        )
+
+        return pipe(Stream.fromIterable(adviceStreams), Stream.flatten())
+      }
+  )
+)
 
 // The OOP fleet composes neutral and constructor-shaped evidence because users opt into paradigms.
 const architectureExploreOopFleetChecks = Array.appendAll(
@@ -154,18 +177,23 @@ const architectureExploreOopFleetChecks = Array.appendAll(
   architectureExploreOopChecks
 )
 
-export const architectureExploreOopWiring: Wiring = makeWiring({
-  checks: architectureExploreOopFleetChecks,
-  derive: architectureExploreDerive
-})
-
 // The FP fleet composes neutral and composition-shaped evidence because users opt into paradigms.
 const architectureExploreFpFleetChecks = Array.appendAll(
   architectureExploreCoreChecks,
   architectureExploreFpChecks
 )
 
-export const architectureExploreFpWiring: Wiring = makeWiring({
-  checks: architectureExploreFpFleetChecks,
-  derive: architectureExploreDerive
-})
+export const architectureExploreWiring = pipe(
+  architectureExploreDerive,
+  Effect.map((derive) => makeWiring({ checks: architectureExploreChecks, derive }))
+)
+
+export const architectureExploreOopWiring = pipe(
+  architectureExploreDerive,
+  Effect.map((derive) => makeWiring({ checks: architectureExploreOopFleetChecks, derive }))
+)
+
+export const architectureExploreFpWiring = pipe(
+  architectureExploreDerive,
+  Effect.map((derive) => makeWiring({ checks: architectureExploreFpFleetChecks, derive }))
+)

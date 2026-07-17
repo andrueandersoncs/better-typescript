@@ -9,10 +9,12 @@ import {
   packageExamplesRoot
 } from "./packageExamples.js"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import type { Check } from "@better-typescript/core/engine/check/data"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import { runCheckOnProject, loadProject } from "@better-typescript/core/project/loadProject"
+const wiring = await Effect.runPromise(defaultWiring)
 
-const runSide = async (check: (typeof defaultWiring.checks)[number]["check"], sideRoot: string) => {
+const runSide = async (check: Check, sideRoot: string) => {
   const workspace = await Effect.runPromise(loadProject(sideRoot))
   const nested = await Promise.all(
     workspace.projects.map((project) =>
@@ -23,11 +25,20 @@ const runSide = async (check: (typeof defaultWiring.checks)[number]["check"], si
   return nested.flat()
 }
 
-test("reported checks load fixture example trees with at least one pair", () => {
-  const reported = defaultWiring.checks.filter((check: NamedCheck) => check.reported)
+test("reported checks load fixture example trees with at least one pair", async () => {
+  const reported = wiring.checks.filter((check: NamedCheck) => check.reported)
 
   for (const named of reported) {
-    assert.ok(named.examples().length > 0, `${named.name} should declare refactor examples`)
+    const examples = named.examples
+    const rereadExamples = named.examples
+
+    assert.equal(Array.isArray(examples), true, `${named.name} examples must be a concrete array`)
+    assert.ok(examples.length > 0, `${named.name} should declare refactor examples`)
+    assert.equal(
+      examples,
+      rereadExamples,
+      `${named.name} examples must be an immutable value, not a reload thunk`
+    )
 
     const exampleRoot = packageExampleRoot(named.name)
     assert.ok(fs.existsSync(exampleRoot), `${named.name} should have ${exampleRoot}`)
@@ -39,9 +50,7 @@ test("reported checks load fixture example trees with at least one pair", () => 
 })
 
 test("fixture refactor examples: bad trees detect and good trees stay clean", async () => {
-  const withExamples = defaultWiring.checks.filter(
-    (check: NamedCheck) => check.examples().length > 0
-  )
+  const withExamples = wiring.checks.filter((check: NamedCheck) => check.examples.length > 0)
   const failures: Array<string> = []
 
   for (const named of withExamples) {

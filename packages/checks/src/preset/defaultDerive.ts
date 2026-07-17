@@ -22,82 +22,97 @@ const nameDetections = (signal: Signal) => {
 
 const replayAdvice = Stream.fromIterable
 
-export const defaultDerive = (signals: ReadonlyArray<Signal>) => {
-  const elementsOf = signalOf(signals)
-  const reportedSignals = Array.filter(signals, Struct.get("reported"))
-  const signalStream = Stream.fromIterable(reportedSignals)
-  const namedElements = pipe(signalStream, Stream.flatMap(nameDetections))
-  const noMutation = elementsOf("no-mutation")
-  const preferHashMap = elementsOf("prefer-hash-map")
-  const preferHashSet = elementsOf("prefer-hash-set")
-  const noMutableArrayMethods = elementsOf("no-mutable-array-methods")
-  const noMutableVariableDeclarations = elementsOf("no-mutable-variable-declarations")
-  const noNestedCalls = elementsOf("no-nested-calls")
-  const preferCurried = elementsOf("prefer-curried-data-last-functions")
-  const conceptSignals = elementsOf("concept-control")
-
-  const imperativeAdvice = imperativeStateManager({
-    noMutation,
-    preferHashMap,
-    preferHashSet,
-    noMutableArrayMethods,
-    noMutableVariableDeclarations
+export const defaultDerive = Effect.gen(function* () {
+  const advice = yield* Effect.all({
+    highSignalDensity,
+    hotSubsystem,
+    imperativeStateManager,
+    pipelineHostile,
+    conceptProliferation,
+    ruleDominance,
+    sideEffectLaundering,
+    systemicHotspots
   })
 
-  const launderingAdvice = sideEffectLaundering(namedElements)
-  const conceptAdvice = conceptProliferation(conceptSignals)
+  const defaultAdviceFromSignals = (signals: ReadonlyArray<Signal>) => {
+    const elementsOf = signalOf(signals)
+    const reportedSignals = Array.filter(signals, Struct.get("reported"))
+    const signalStream = Stream.fromIterable(reportedSignals)
+    const namedElements = pipe(signalStream, Stream.flatMap(nameDetections))
+    const noMutation = elementsOf("no-mutation")
+    const preferHashMap = elementsOf("prefer-hash-map")
+    const preferHashSet = elementsOf("prefer-hash-set")
+    const noMutableArrayMethods = elementsOf("no-mutable-array-methods")
+    const noMutableVariableDeclarations = elementsOf("no-mutable-variable-declarations")
+    const noNestedCalls = elementsOf("no-nested-calls")
+    const preferCurried = elementsOf("prefer-curried-data-last-functions")
+    const conceptSignals = elementsOf("concept-control")
 
-  const pipelineAdvice = pipelineHostile({
-    noNestedCalls,
-    preferCurriedDataLastFunctions: preferCurried
-  })
+    const imperativeAdvice = advice.imperativeStateManager({
+      noMutation,
+      preferHashMap,
+      preferHashSet,
+      noMutableArrayMethods,
+      noMutableVariableDeclarations
+    })
 
-  const specificAdviceStreamsSource = Array.make(
-    imperativeAdvice,
-    launderingAdvice,
-    pipelineAdvice,
-    conceptAdvice
-  )
+    const launderingAdvice = advice.sideEffectLaundering(namedElements)
+    const conceptAdvice = advice.conceptProliferation(conceptSignals)
 
-  const specificAdviceStreams = Stream.fromIterable(specificAdviceStreamsSource)
-  const specificAdvice = pipe(specificAdviceStreams, Stream.flatten())
-  const densityAdvice = highSignalDensity(namedElements)
-  const subsystemAdvice = hotSubsystem(namedElements)
-  const dominanceAdvice = ruleDominance(namedElements)
+    const pipelineAdvice = advice.pipelineHostile({
+      noNestedCalls,
+      preferCurriedDataLastFunctions: preferCurried
+    })
 
-  const materializedAdvice = Effect.gen(function* () {
-    const specificItems = yield* collectSignals(specificAdvice)
-
-    const densityAfterFallbackSuppression =
-      filterFallbackAdviceForUncoveredFiles(specificItems)(densityAdvice)
-
-    const densityItems = yield* collectSignals(densityAfterFallbackSuppression)
-    const subsystemItems = yield* collectSignals(subsystemAdvice)
-    const dominanceItems = yield* collectSignals(dominanceAdvice)
-    const specificReplay = replayAdvice(specificItems)
-    const densityReplay = replayAdvice(densityItems)
-    const subsystemReplay = replayAdvice(subsystemItems)
-    const dominanceReplay = replayAdvice(dominanceItems)
-
-    const systemicInput = {
-      hotSubsystem: subsystemReplay,
-      highSignalDensity: densityReplay
-    }
-
-    const systemicAdvice = systemicHotspots(systemicInput)
-
-    const outputAdviceStreamsSource = Array.make(
-      specificReplay,
-      densityReplay,
-      subsystemReplay,
-      dominanceReplay,
-      systemicAdvice
+    const specificAdviceStreamsSource = Array.make(
+      imperativeAdvice,
+      launderingAdvice,
+      pipelineAdvice,
+      conceptAdvice
     )
 
-    const outputAdviceStreams = Stream.fromIterable(outputAdviceStreamsSource)
+    const specificAdviceStreams = Stream.fromIterable(specificAdviceStreamsSource)
+    const specificAdvice = pipe(specificAdviceStreams, Stream.flatten())
+    const densityAdvice = advice.highSignalDensity(namedElements)
+    const subsystemAdvice = advice.hotSubsystem(namedElements)
+    const dominanceAdvice = advice.ruleDominance(namedElements)
 
-    return pipe(outputAdviceStreams, Stream.flatten())
-  })
+    const materializedAdvice = Effect.gen(function* () {
+      const specificItems = yield* collectSignals(specificAdvice)
 
-  return pipe(materializedAdvice, Stream.unwrap)
-}
+      const densityAfterFallbackSuppression =
+        filterFallbackAdviceForUncoveredFiles(specificItems)(densityAdvice)
+
+      const densityItems = yield* collectSignals(densityAfterFallbackSuppression)
+      const subsystemItems = yield* collectSignals(subsystemAdvice)
+      const dominanceItems = yield* collectSignals(dominanceAdvice)
+      const specificReplay = replayAdvice(specificItems)
+      const densityReplay = replayAdvice(densityItems)
+      const subsystemReplay = replayAdvice(subsystemItems)
+      const dominanceReplay = replayAdvice(dominanceItems)
+
+      const systemicInput = {
+        hotSubsystem: subsystemReplay,
+        highSignalDensity: densityReplay
+      }
+
+      const systemicAdvice = advice.systemicHotspots(systemicInput)
+
+      const outputAdviceStreamsSource = Array.make(
+        specificReplay,
+        densityReplay,
+        subsystemReplay,
+        dominanceReplay,
+        systemicAdvice
+      )
+
+      const outputAdviceStreams = Stream.fromIterable(outputAdviceStreamsSource)
+
+      return pipe(outputAdviceStreams, Stream.flatten())
+    })
+
+    return pipe(materializedAdvice, Stream.unwrap)
+  }
+
+  return defaultAdviceFromSignals
+})

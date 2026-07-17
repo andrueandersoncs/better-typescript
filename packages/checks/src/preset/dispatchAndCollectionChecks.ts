@@ -9,10 +9,9 @@ import { preferHashMap } from "../checks/preferHashMap.js"
 import { preferOptionMatch } from "../checks/preferOptionMatch.js"
 import { preferPipeFunction } from "../checks/preferPipeFunction.js"
 import { preferCurriedDataLastFunctions } from "../checks/preferCurriedDataLastFunctions/preferCurriedDataLastFunctions.js"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 
 // Member order is pinned because concatenated categories define the public report block order.
-export const dispatchAndCollectionChecks: ReadonlyArray<NamedCheck> = Array.make(
+export const dispatchAndCollectionChecks = Array.make(
   noManualTypeDispatch,
   noMonomorphicStructGet,
   noRawObjectTypes,

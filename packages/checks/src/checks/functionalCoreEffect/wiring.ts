@@ -1,6 +1,5 @@
-import { Array } from "effect"
+import { Array, Effect } from "effect"
 import { makeWiring, namedCheck, silentCheck } from "@better-typescript/core/engine/wiring"
-import { Wiring } from "@better-typescript/core/engine/wiring/data"
 import { packageExamples } from "../../defineCheck.js"
 import { functionalCoreEffectDerive } from "./advice.js"
 import { makeFunctionalCoreEffect } from "./functionalCoreEffect.js"
@@ -8,23 +7,31 @@ import { functionalCoreBoundaryCheckName, functionalCoreShapeCheckName } from ".
 import { defaultFunctionalCoreEffectPolicy, type FunctionalCoreEffectPolicy } from "./policy.js"
 import { makeFunctionalCoreShapeEvidence } from "./shapeEvidence.js"
 
-const boundaryExamples = packageExamples("functional-core-effect-boundaries")
+export const makeFunctionalCoreEffectWiring = Effect.fn("makeFunctionalCoreEffectWiring")(
+  function* (policy: FunctionalCoreEffectPolicy) {
+    const boundaryExamplesEffect = packageExamples("functional-core-effect-boundaries")
 
-export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy): Wiring => {
-  const boundaryPlan = makeFunctionalCoreEffect(policy)
-  const boundaryCheck = namedCheck(functionalCoreBoundaryCheckName, boundaryPlan, boundaryExamples)
-  const shapeEvidence = makeFunctionalCoreShapeEvidence(policy)
-  const shapeCheck = silentCheck(functionalCoreShapeCheckName, shapeEvidence)
-  const checks = Array.make(boundaryCheck, shapeCheck)
+    const { boundaryExamples, derive } = yield* Effect.all({
+      boundaryExamples: boundaryExamplesEffect,
+      derive: functionalCoreEffectDerive
+    })
 
-  const wiring = new Wiring({
-    checks,
-    derive: functionalCoreEffectDerive
-  })
+    const boundaryPlan = makeFunctionalCoreEffect(policy)
 
-  return makeWiring(wiring)
-}
+    const boundaryCheck = namedCheck(
+      functionalCoreBoundaryCheckName,
+      boundaryPlan,
+      boundaryExamples
+    )
 
-export const functionalCoreEffectWiring: Wiring = makeFunctionalCoreEffectWiring(
+    const shapeEvidence = makeFunctionalCoreShapeEvidence(policy)
+    const shapeCheck = silentCheck(functionalCoreShapeCheckName, shapeEvidence)
+    const checks = Array.make(boundaryCheck, shapeCheck)
+
+    return makeWiring({ checks, derive })
+  }
+)
+
+export const functionalCoreEffectWiring = makeFunctionalCoreEffectWiring(
   defaultFunctionalCoreEffectPolicy
 )

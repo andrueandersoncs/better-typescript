@@ -24,150 +24,162 @@ interface AdviceExampleCase {
   readonly wiring: Wiring
 }
 
+const {
+  defaultWiring: resolvedDefaultWiring,
+  architectureExploreWiring: resolvedArchitectureExploreWiring,
+  functionalCoreEffectWiring: resolvedFunctionalCoreEffectWiring
+} = await Effect.runPromise(
+  Effect.all({
+    defaultWiring,
+    architectureExploreWiring,
+    functionalCoreEffectWiring
+  })
+)
+
 const adviceExampleCases: ReadonlyArray<AdviceExampleCase> = [
   {
     fixtureId: "high-signal-density",
     pairId: "1",
     title: "high signal density",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "side-effect-laundering",
     pairId: "1",
     title: "colliding fixes on shared expressions",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "pipeline-hostile",
     pairId: "1",
     title: "pipeline-hostile module",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "imperative-state-manager",
     pairId: "1",
     title: "imperative state manager",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "concept-control",
     pairId: "1",
     title: "closed abstraction cluster",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "concept-proliferation",
     pairId: "1",
     title: "concept proliferation",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "hot-subsystem",
     pairId: "1",
     title: "hot subsystem",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "rule-dominance",
     pairId: "1",
     title: "one rule dominates the run",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "systemic-hotspots",
     pairId: "1",
     title: "systemic hotspots",
-    wiring: defaultWiring
+    wiring: resolvedDefaultWiring
   },
   {
     fixtureId: "deletion-test-shallowness",
     pairId: "1",
     title: "deletion-test shallowness",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "wide-shallow-interface",
     pairId: "1",
     title: "wide shallow interface",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "bounce-cluster",
     pairId: "1",
     title: "bounce cluster",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "leaked-seam",
     pairId: "1",
     title: "leaked seam",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "test-past-interface",
     pairId: "1",
     title: "test past interface",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "hard-to-test-hotspot",
     pairId: "1",
     title: "hard-to-test hotspot",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "hypothetical-seam",
     pairId: "1",
     title: "hypothetical seam",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "effect-orchestrator",
     pairId: "1",
     title: "overgrown Effect orchestrator",
-    wiring: functionalCoreEffectWiring
+    wiring: resolvedFunctionalCoreEffectWiring
   },
   {
     fixtureId: "adapter-business-logic",
     pairId: "1",
     title: "business logic in an adapter",
-    wiring: functionalCoreEffectWiring
+    wiring: resolvedFunctionalCoreEffectWiring
   },
   {
     fixtureId: "thick-composition-root",
     pairId: "1",
     title: "thick composition root",
-    wiring: functionalCoreEffectWiring
+    wiring: resolvedFunctionalCoreEffectWiring
   },
   {
     fixtureId: "pure-service",
     pairId: "1",
     title: "pure service candidate",
-    wiring: functionalCoreEffectWiring
+    wiring: resolvedFunctionalCoreEffectWiring
   },
   {
     fixtureId: "imperative-core",
     pairId: "1",
     title: "imperative core",
-    wiring: functionalCoreEffectWiring
+    wiring: resolvedFunctionalCoreEffectWiring
   },
   {
     fixtureId: "registration-ceremony",
     pairId: "1",
     title: "registration ceremony",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "hub-module",
     pairId: "1",
     title: "hub module",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   },
   {
     fixtureId: "duplicated-orchestration",
     pairId: "1",
     title: "duplicated orchestration",
-    wiring: architectureExploreWiring
+    wiring: resolvedArchitectureExploreWiring
   }
 ]
 
@@ -207,6 +219,8 @@ for (const exampleCase of adviceExampleCases) {
     const expectedExample = formatRefactorExample(examples[0])
 
     assert.equal(examples.length, 1, `${exampleCase.title} should declare exactly one fixture pair`)
+    assert.ok(Array.isArray(examples), `${exampleCase.title} examples should be a concrete array`)
+    assert.ok(examples.length > 0, `${exampleCase.title} examples must be non-empty`)
     assert.ok(badAdvice.length > 0, `${exampleCase.title} bad fixture should emit advice`)
     assert.equal(goodAdvice.length, 0, `${exampleCase.title} good fixture should not emit advice`)
     assert.ok(

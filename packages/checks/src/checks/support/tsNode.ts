@@ -122,6 +122,15 @@ const expressionBodiedArrow = (definition: FunctionDefinition): Option.Option<ts
     Option.filter((body): body is ts.Expression => !ts.isBlock(body))
   )
 
+export const singleStatementReturnExpression = (body: ts.Block): Option.Option<ts.Expression> =>
+  pipe(
+    body.statements,
+    Option.liftPredicate((statements) => statements.length === 1),
+    Option.flatMap(Array.head),
+    Option.filter(ts.isReturnStatement),
+    Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
+  )
+
 const singleReturnExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
   pipe(
     Option.fromNullishOr(definition.body),

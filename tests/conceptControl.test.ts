@@ -25,10 +25,11 @@ const kindOf = (element: Detection): string | undefined => {
 }
 
 const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
+  const named = await Effect.runPromise(conceptControl)
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projects = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(conceptControl.check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
     )
   )
 

@@ -9,7 +9,7 @@ export class NamedCheck extends Data.Class<{
   readonly name: string
   readonly check: Check
   readonly reported: boolean
-  readonly examples: () => ReadonlyArray<RefactorExample>
+  readonly examples: ReadonlyArray<RefactorExample>
 }> {}
 
 // Wiring is the check set plus advice derivation for one scope because both halves travel together.

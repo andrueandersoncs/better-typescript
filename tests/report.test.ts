@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Array, Effect, Function, Result, Stream, pipe } from "effect"
+import { Array, Effect, Result, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
@@ -39,18 +39,19 @@ import type {
   LoadedWorkspace
 } from "@better-typescript/core/project/loadProject/data"
 
-const probeExamples = Function.constant([
+const probeExamples = [
   refactorExample(
     exampleSnippet("src/cases.ts", `throw new Error("boom")`),
     exampleSnippet("src/cases.ts", `yield* new BoomError()`)
   )
-] as const)
+] as const
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = (name: string): string => path.join(testDirectory, "fixtures", name)
 const noThrowFixturePath = fixturePath("no-throw")
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
+const resolvedDefaultConfig = await Effect.runPromise(defaultConfig)
 
 const loadFixtureWorkspace = (name: string): Promise<LoadedWorkspace> =>
   Effect.runPromise(loadProject(fixturePath(name)))
@@ -198,7 +199,7 @@ const advice = (
   title,
   remediation,
   evidence: [{ measure: `${title} evidence`, count: 1 }],
-  examples: probeExamples()
+  examples: probeExamples
 })
 
 const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
@@ -488,7 +489,7 @@ test("reportEvents renders advice remediation examples before evidence", async (
       { measure: "signals", count: 12 },
       { measure: "no-throw", count: 4 }
     ],
-    examples: probeExamples()
+    examples: probeExamples
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
@@ -706,7 +707,7 @@ test("reportEvents preserves the derivation error channel", async () => {
 
 test("report stream emits check blocks and omits silent checks", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(reportTexts(defaultConfig)(workspace))
+  const blocks = await collectStream(reportTexts(resolvedDefaultConfig)(workspace))
   const headers = firstLines(blocks)
 
   assert.ok(headers.includes("no-throw"), "expected the no-throw check to emit a report block")
@@ -734,7 +735,7 @@ test("reportEvents lets silent checks influence advice without rendering local c
                 count: silentDetections.length
               }
             ],
-            examples: probeExamples()
+            examples: probeExamples
           }
         ]
       : []
@@ -770,7 +771,7 @@ test("reportEvents lets silent checks influence advice without rendering local c
 
 test("report collects the exported report stream for a loaded workspace", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectStream(reportTexts(defaultConfig)(workspace))
+  const blocks = await collectStream(reportTexts(resolvedDefaultConfig)(workspace))
 
   assert.equal(
     blocks.some((block) => block.length === 0),

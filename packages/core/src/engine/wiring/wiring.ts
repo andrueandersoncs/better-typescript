@@ -47,13 +47,11 @@ const hasNonWhitespace = (pattern: string): boolean => pattern.trim().length > 0
 export const isFileGlob = Predicate.and(Predicate.isString, hasNonWhitespace)
 
 const emptyRefactorExamples: ReadonlyArray<RefactorExample> = Array.empty()
-const emptyRefactorExamplesThunk = Function.constant(emptyRefactorExamples)
 
-// Examples stay a thunk because construction must not load fixtures before a report needs them.
 export const namedCheck = (
   name: string,
   check: Check,
-  examples: () => NonEmptyRefactorExamples
+  examples: NonEmptyRefactorExamples
 ): NamedCheck =>
   new NamedCheck({
     name,
@@ -62,11 +60,10 @@ export const namedCheck = (
     examples
   })
 
-// Silent checks default to one empty thunk because callers should not allocate fresh empty arrays.
 export const silentCheck = (
   name: string,
   check: Check,
-  examples: () => ReadonlyArray<RefactorExample> = emptyRefactorExamplesThunk
+  examples: ReadonlyArray<RefactorExample> = emptyRefactorExamples
 ): NamedCheck =>
   new NamedCheck({
     name,
@@ -357,7 +354,7 @@ export const workspaceSignalsForProjects =
           const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
             const elements = elementsByWiring[wiringIndex][checkIndex]
             const detections = MutableList.toArray(elements)
-            const examples = check.examples()
+            const examples = check.examples
 
             return new Signal({
               name: check.name,

@@ -165,10 +165,11 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 const runRequireBecauseInCommentsFixture = async (): Promise<ReadonlyArray<Detection>> => {
+  const named = await Effect.runPromise(requireBecauseInComments)
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(requireBecauseInComments.check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
     )
   )
 

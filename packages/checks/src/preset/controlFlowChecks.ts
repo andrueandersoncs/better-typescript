@@ -10,10 +10,9 @@ import { noSwitchStatements } from "../checks/noSwitchStatements.js"
 import { noFunctionKeyword } from "../checks/noFunctionKeyword.js"
 import { noInlineClosures } from "../checks/noInlineClosures.js"
 import { noNestedCalls } from "../checks/noNestedCalls.js"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 
 // Member order is pinned because concatenated categories define the public report block order.
-export const controlFlowChecks: ReadonlyArray<NamedCheck> = Array.make(
+export const controlFlowChecks = Array.make(
   noCallbacks,
   noAsyncFunctions,
   noArraySpread,

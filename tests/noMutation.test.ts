@@ -12,11 +12,12 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-mutation")
 
 const runNoMutationFixture = async (): Promise<ReadonlyArray<Detection>> => {
+  const named = await Effect.runPromise(noMutation)
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(noMutation.check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
     )
   )
 

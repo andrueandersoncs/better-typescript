@@ -8,10 +8,11 @@ const projectDirectory = process.argv[2] ?? "."
 const detections = await Effect.runPromise(
   Effect.gen(function* () {
     const workspace = yield* loadProject(projectDirectory)
+    const named = yield* noThrow
 
     const perProject = yield* Effect.forEach(
       workspace.projects,
-      runCheckOnProject(Array.of(noThrow.check))
+      runCheckOnProject(Array.of(named.check))
     )
 
     return Array.flatten(perProject)

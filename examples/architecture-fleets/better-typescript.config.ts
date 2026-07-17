@@ -1,4 +1,4 @@
-import { Option, pipe } from "effect"
+import { Effect, Option, pipe } from "effect"
 import { defineConfig, makeWiring, mergeWirings } from "@better-typescript/core/engine/wiring"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import {
@@ -34,15 +34,30 @@ const layeredPolicy = new FunctionalCoreEffectPolicy({
   roleOf
 })
 
-const boundaryWiring = mergeWirings([defaultWiring, makeFunctionalCoreEffectWiring(layeredPolicy)])
+const boundaryWiring = Effect.all({
+  defaultWiring,
+  functionalCoreEffectWiring: makeFunctionalCoreEffectWiring(layeredPolicy)
+}).pipe(
+  Effect.map(({ defaultWiring, functionalCoreEffectWiring }) =>
+    mergeWirings([defaultWiring, functionalCoreEffectWiring])
+  )
+)
 
 // The union evidence list pairs with the shared derive because advisers tolerate absent signals.
-const exploreWiring = makeWiring({
-  checks: architectureExploreChecks,
-  derive: architectureExploreDerive
-})
+const exploreWiring = architectureExploreDerive.pipe(
+  Effect.map((derive) =>
+    makeWiring({
+      checks: architectureExploreChecks,
+      derive
+    })
+  )
+)
 
-export default defineConfig([
-  { files: ["lib/**", "src/**"], wiring: boundaryWiring },
-  { files: ["**/*"], wiring: exploreWiring }
-])
+export default Effect.all({ boundaryWiring, exploreWiring }).pipe(
+  Effect.map(({ boundaryWiring, exploreWiring }) =>
+    defineConfig([
+      { files: ["lib/**", "src/**"], wiring: boundaryWiring },
+      { files: ["**/*"], wiring: exploreWiring }
+    ])
+  )
+)

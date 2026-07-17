@@ -1,7 +1,8 @@
-import { Array, Option, Tuple, pipe } from "effect"
+import { Array, Effect, Option, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { packageExamples } from "../../defineCheck.js"
 import {
   commonDirectory,
@@ -10,8 +11,6 @@ import {
   moduleGraphDataOf
 } from "./evidence.js"
 import { moduleGraphName } from "./names.js"
-
-export const bounceClusterExamples = packageExamples("bounce-cluster")
 
 const minimumThinFiles = 3
 
@@ -95,77 +94,80 @@ const connectedComponents = (
   return collect(paths, components)
 }
 
-const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const shallowPaths = pipe(
-    elements,
-    Array.filter((element) => isShallownessName(element.name)),
-    Array.filter(isDeletableShallowness),
-    Array.map((element) => element.detection.location.path),
-    Array.dedupe
-  )
-
-  const graphElements = Array.filter(elements, (element) => element.name === moduleGraphName)
-
-  const edges = Array.flatMap(graphElements, (element) => {
-    const from = element.detection.location.path
-
-    return pipe(
-      moduleGraphDataOf(element),
-      Option.map((data) =>
-        pipe(
-          data.importedPaths,
-          Array.filter((to) => {
-            const fromIsShallow = Array.contains(shallowPaths, from)
-            const toIsShallow = Array.contains(shallowPaths, to)
-
-            return fromIsShallow && toIsShallow
-          }),
-          Array.map((to) => Tuple.make(from, to))
-        )
-      ),
-      Option.getOrElse(Array.empty)
+const makeBounceCluster = (examples: NonEmptyRefactorExamples) => {
+  const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+    const shallowPaths = pipe(
+      elements,
+      Array.filter((element) => isShallownessName(element.name)),
+      Array.filter(isDeletableShallowness),
+      Array.map((element) => element.detection.location.path),
+      Array.dedupe
     )
-  })
 
-  const components = pipe(
-    connectedComponents(shallowPaths, edges),
-    Array.filter((component) => component.length >= minimumThinFiles),
-    Array.filter((component) =>
-      Array.some(edges, (edge) => {
+    const graphElements = Array.filter(elements, (element) => element.name === moduleGraphName)
+
+    const edges = Array.flatMap(graphElements, (element) => {
+      const from = element.detection.location.path
+
+      return pipe(
+        moduleGraphDataOf(element),
+        Option.map((data) =>
+          pipe(
+            data.importedPaths,
+            Array.filter((to) => {
+              const fromIsShallow = Array.contains(shallowPaths, from)
+              const toIsShallow = Array.contains(shallowPaths, to)
+
+              return fromIsShallow && toIsShallow
+            }),
+            Array.map((to) => Tuple.make(from, to))
+          )
+        ),
+        Option.getOrElse(Array.empty)
+      )
+    })
+
+    const components = pipe(
+      connectedComponents(shallowPaths, edges),
+      Array.filter((component) => component.length >= minimumThinFiles),
+      Array.filter((component) =>
+        Array.some(edges, (edge) => {
+          const containsFrom = Array.contains(component, edge[0])
+          const containsTo = Array.contains(component, edge[1])
+
+          return containsFrom && containsTo
+        })
+      )
+    )
+
+    return Array.map(components, (component) => {
+      const edgeCount = Array.filter(edges, (edge) => {
         const containsFrom = Array.contains(component, edge[0])
         const containsTo = Array.contains(component, edge[1])
 
         return containsFrom && containsTo
+      }).length
+
+      const directory = commonDirectory(component)
+      const location = adviceLocation(directory)
+      const thinModulesItem = evidenceItem("thin-modules", component.length)
+      const moduleEdgesItem = evidenceItem("module-edges", edgeCount)
+      const evidence = Array.make(thinModulesItem, moduleEdgesItem)
+
+      return new Advice({
+        location,
+        level: "directory",
+        title: "bounce cluster",
+        remediation:
+          "Understanding one flow requires traversing connected low-leverage forwarding Modules. " +
+          "Collapse this import path behind one deeper interface so policy and verification become local.",
+        evidence,
+        examples
       })
-    )
-  )
-
-  return Array.map(components, (component) => {
-    const edgeCount = Array.filter(edges, (edge) => {
-      const containsFrom = Array.contains(component, edge[0])
-      const containsTo = Array.contains(component, edge[1])
-
-      return containsFrom && containsTo
-    }).length
-
-    const directory = commonDirectory(component)
-    const location = adviceLocation(directory)
-    const thinModulesItem = evidenceItem("thin-modules", component.length)
-    const moduleEdgesItem = evidenceItem("module-edges", edgeCount)
-    const evidence = Array.make(thinModulesItem, moduleEdgesItem)
-    const examples = bounceClusterExamples()
-
-    return new Advice({
-      location,
-      level: "directory",
-      title: "bounce cluster",
-      remediation:
-        "Understanding one flow requires traversing connected low-leverage forwarding Modules. " +
-        "Collapse this import path behind one deeper interface so policy and verification become local.",
-      evidence,
-      examples
     })
-  })
+  }
+
+  return deriveSignals(bounceAdvice)
 }
 
-export const bounceCluster = deriveSignals(bounceAdvice)
+export const bounceCluster = pipe(packageExamples("bounce-cluster"), Effect.map(makeBounceCluster))

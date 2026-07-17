@@ -10,7 +10,6 @@ const defaultExportName = "default"
 const configExportName = "config"
 
 const emptyExamples: ReadonlyArray<RefactorExample> = Array.empty()
-const emptyExamplesThunk = Function.constant(emptyExamples)
 
 // The loader shell reuses this constructor because both paths must fail with one error shape.
 export const projectWiringConfigError = (
@@ -136,26 +135,47 @@ const callFactory = Effect.fn("callFactory")(function* (
   })
 })
 
+const resolveEffectExport = Effect.fn("resolveEffectExport")(function* (
+  configPath: string,
+  exportName: ConfigExportName,
+  value: unknown
+) {
+  if (!Effect.isEffect(value)) {
+    return value
+  }
+
+  return yield* pipe(
+    value as Effect.Effect<unknown, unknown, never>,
+    Effect.mapError((cause) => {
+      const causeMessage = formatCause(cause)
+      const reason = `${exportName} export Effect failed: ${causeMessage}`
+
+      return projectWiringConfigError(configPath, reason)
+    })
+  )
+})
+
 const resolvedExport = Effect.fn("resolvedExport")(function* (
   configPath: string,
   moduleValue: unknown
 ) {
   const exported = yield* selectedExport(configPath, moduleValue)
-  const value = exported.value
-  const factoryOption = Option.liftPredicate(isFunctionValue)(value)
-  const plainExport = Effect.succeed(value)
+  const factoryOption = Option.liftPredicate(isFunctionValue)(exported.value)
+  const plainExport = Effect.succeed(exported.value)
 
-  return yield* pipe(
+  const value = yield* pipe(
     factoryOption,
     Option.match({
       onNone: Function.constant(plainExport),
       onSome: (factory) => callFactory(configPath, exported.name, factory)
     })
   )
+
+  return yield* resolveEffectExport(configPath, exported.name, value)
 })
 
 const checkShapeReason =
-  "{ name: string, check: { plan: function }, reported?: boolean, examples?: () => RefactorExample[] }"
+  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExample[] }"
 
 const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean => {
   const hasStringName = typeof record.name === "string"
@@ -181,7 +201,7 @@ const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean
     examples,
     Option.match({
       onNone: Function.constant(true),
-      onSome: (examples) => typeof examples === "function"
+      onSome: Array.isArray
     })
   )
 
@@ -212,8 +232,8 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
   const reported = Object.hasOwn(record, "reported") ? (record.reported as boolean) : true
 
   const examples = Object.hasOwn(record, "examples")
-    ? (record.examples as () => ReadonlyArray<RefactorExample>)
-    : emptyExamplesThunk
+    ? (record.examples as ReadonlyArray<RefactorExample>)
+    : emptyExamples
 
   return new NamedCheck({ name, check, reported, examples })
 }

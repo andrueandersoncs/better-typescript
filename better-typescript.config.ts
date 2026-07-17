@@ -1,3 +1,4 @@
+import { Effect } from "effect"
 import { defineConfig, mergeWirings } from "@better-typescript/core/engine/wiring"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
@@ -16,10 +17,24 @@ const functionalCoreEffectPolicy = policyWithRolePrefixes([
 const functionalCoreEffectWiring = makeFunctionalCoreEffectWiring(functionalCoreEffectPolicy)
 
 // Reported style checks stay scoped to package sources because tests and fixtures are exempt surfaces.
-const reportedWiring = mergeWirings([defaultWiring, functionalCoreEffectWiring])
+const reportedWiring = Effect.all({
+  defaultWiring,
+  functionalCoreEffectWiring
+}).pipe(
+  Effect.map(({ defaultWiring, functionalCoreEffectWiring }) =>
+    mergeWirings([defaultWiring, functionalCoreEffectWiring])
+  )
+)
 
 // The architecture fleet spans the whole workspace because caller evidence lives in tests too.
-export default defineConfig([
-  { files: ["packages/**"], wiring: reportedWiring },
-  { files: ["**/*"], wiring: architectureExploreWiring }
-])
+export default Effect.all({
+  reportedWiring,
+  architectureExploreWiring
+}).pipe(
+  Effect.map(({ reportedWiring, architectureExploreWiring }) =>
+    defineConfig([
+      { files: ["packages/**"], wiring: reportedWiring },
+      { files: ["**/*"], wiring: architectureExploreWiring }
+    ])
+  )
+)

@@ -27,12 +27,12 @@ const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
-const probeExamples = Function.constant([
+const probeExamples = [
   refactorExample(
     exampleSnippet("src/cases.ts", `throw new Error("boom")`),
     exampleSnippet("src/cases.ts", "yield* new BoomError()")
   )
-] as const)
+] as const
 
 const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   (context) => (node) => [
@@ -54,7 +54,7 @@ const probeWiring = makeWiring({
       title: "probe advice",
       remediation: `handle ${detectionCount} throws`,
       evidence: [{ measure: "throw statements", count: detectionCount }],
-      examples: probeExamples()
+      examples: probeExamples
     }
 
     return Stream.succeed(advice)

@@ -7,6 +7,8 @@ import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/signal/data"
 
+const derive = await Effect.runPromise(defaultDerive)
+
 const range = (count: number): ReadonlyArray<number> =>
   Array.from({ length: count }, (_, index) => index + 1)
 
@@ -38,7 +40,7 @@ const adviceCount = (advice: ReadonlyArray<Advice>, title: string): number =>
 
 test("defaultDerive excludes silent signals from reported aggregate advice", async () => {
   const advice = await collectAdvice(
-    defaultDerive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])
+    derive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])
   )
 
   assert.equal(adviceCount(advice, "high signal density"), 0)
@@ -52,7 +54,7 @@ test("defaultDerive feeds systemic hotspots density after fallback suppression",
   const noMutation = suppressedDensityFiles.flatMap((path) => detectionsAt(path, 10, sharedState))
   const noThrow = detectionsAt("src/dense.ts", 10)
   const advice = await collectAdvice(
-    defaultDerive([reportedSignal("no-mutation", noMutation), reportedSignal("no-throw", noThrow)])
+    derive([reportedSignal("no-mutation", noMutation), reportedSignal("no-throw", noThrow)])
   )
   const densityAdvice = adviceWithTitle(advice, "high signal density")
 
@@ -63,4 +65,5 @@ test("defaultDerive feeds systemic hotspots density after fallback suppression",
     ["src/dense.ts"]
   )
   assert.equal(adviceCount(advice, "systemic hotspots"), 0)
+  assert.ok(densityAdvice[0]!.examples.length > 0)
 })

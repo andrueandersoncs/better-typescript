@@ -15,10 +15,10 @@ places. Its module exported a raw `Check` and a separate examples value; `defaul
 the name, reporting policy, Check, and examples when constructing a `NamedCheck`; and a separate
 test repeated the expected line, column, message, and hint for every characterization case.
 
-The example loader also made production wiring depend on repository test assets. Refactor examples
-lived below `tests/fixtures`, so constructing the default fleet eagerly crossed package ownership
-and loaded data that a run might never render. Characterization fixtures and user-facing refactor
-examples consequently shared a directory even though they serve different contracts.
+Moving refactor examples below `packages/checks/examples` fixed package ownership, but the first
+loader design kept a module-global `Ref` cache and exposed examples through a synchronous thunk.
+That thunk called `Effect.runSync` solely to unwrap filesystem loading, hiding I/O behind a plain
+property-like interface and making wiring construction appear pure when it was not.
 
 This ceremony made a Check's identity easy to split from its behavior, made adding a built-in
 require coordinated registry edits, and kept prose and location mirrors synchronized by hand.
@@ -27,26 +27,28 @@ require coordinated registry edits, and kept prose and location mirrors synchron
 
 ### Built-in modules own complete NamedChecks
 
-Every individual built-in module exports one `NamedCheck`. The `@better-typescript/checks` package
-provides `defineCheck`, `defineFileCheck`, and `definePlannedCheck` for reported built-ins, plus
-`defineSilentPlannedCheck` for the one planned Check that contributes evidence without a local
-report. These constructors bind the stable name, executable Check, reporting policy, and examples at
-the module that owns the detection behavior.
+Every individual built-in module exports an `Effect` that constructs one `NamedCheck`. The
+`@better-typescript/checks` package provides effectful `defineCheck`, `defineFileCheck`, and
+`definePlannedCheck` constructors for reported built-ins, plus `defineSilentPlannedCheck` for the
+one planned Check that contributes evidence without a local report. These constructors bind the
+stable name, executable Check, reporting policy, and examples at the module that owns the detection
+behavior.
 
-The preset's `defaultChecks` is a direct ordered list of those exports. It does not register names,
-reporting policy, or examples again. The migration is a clean cutover: individual built-in modules
-no longer export a raw Check plus a separate examples value, and no compatibility aliases or paired
-legacy exports remain.
+The preset's `defaultChecks` is a direct ordered Effect collection of those exports. It does not
+register names, reporting policy, or examples again. The migration is a clean cutover: individual
+built-in modules no longer export a raw Check plus a separate examples value, and no compatibility
+aliases or paired legacy exports remain.
 
-### Refactor examples belong to the checks package and stay lazy
+### Refactor examples load at the effectful wiring seam
 
 Built-in refactor examples live at `packages/checks/examples/<name>/<pair>/{bad,good}/`. Each side
 is a source tree, so a remediation may add, remove, or reorganize several files. These trees are
 package assets, independent of the repository's characterization fixtures.
 
-A built-in authoring constructor associates the package-owned examples with the `NamedCheck` by
-name. Loading is lazy and memoized per Check: wiring construction does not read every example tree,
-while the first report that needs a Check's examples loads them once for subsequent reports.
+An authoring constructor loads its package-owned examples while constructing the `NamedCheck`.
+Preset and project wiring compose those Effects and execute them once when configuration loads.
+`NamedCheck`, `Signal`, and `Advice` then retain the same concrete immutable arrays for every report
+and watch pass. No global `Ref`, synchronous unwrap, or reload thunk remains.
 
 ### Characterization tests describe detections in the source corpus
 
@@ -65,8 +67,9 @@ expressed by location markers alone. They are exceptions rather than a second de
 
 This decision changes built-in package authoring, not the programmable kernel. Core continues to
 expose `nodeCheck`, `fileCheck`, `checkFromSubscriptions`, and `namedCheck` for external and custom
-fleets; `silentCheck` remains the corresponding evidence-only reporting choice. Package-specific
-constructors do not replace those lower-level seams.
+fleets; `silentCheck` remains the corresponding evidence-only reporting choice. `namedCheck` and
+`silentCheck` accept already-loaded example arrays, while package-specific effectful constructors
+own filesystem loading.
 
 This ADR supersedes only the fixture location and loader consequence in
 [ADR-0012](0012-monorepo-core-checks-cli.md) that placed preset examples under `tests/fixtures` and
@@ -99,12 +102,20 @@ plans, fused dispatch, memoization, traversal, and bounded-workspace decisions r
 - Rejected: package-owned trees serve readers and reports, while markers characterize detection
   behavior at its natural source location.
 
+### Keep examples lazy behind a global cache
+
+- Pros: avoids reading example trees that a report never renders.
+- Cons: hides filesystem I/O behind a synchronous thunk, requires global mutable cache state, and
+  forces an `Effect.runSync` unwrap below an otherwise effectful construction path.
+- Rejected: wiring is long-lived static configuration; load its package data once at the outer
+  Effect seam and keep downstream reporting pure.
+
 ## Consequences
 
-- Importing an individual built-in yields a ready-to-wire `NamedCheck` with stable identity and
-  reporting policy.
-- `defaultChecks` enrolls built-ins directly and cannot disagree with their module-owned names or
-  examples.
+- Importing an individual built-in yields an Effect that constructs a `NamedCheck` with stable
+  identity, reporting policy, and concrete immutable examples.
+- `defaultChecks` composes built-in Effects in report order and cannot disagree with their
+  module-owned names or examples.
 - Production packages no longer depend on repository test assets for report examples.
 - Characterization fixtures are the detection corpus; package examples are the remediation corpus.
 - Most per-Check tests become one marker-driven assertion through the same interface used by Wiring.

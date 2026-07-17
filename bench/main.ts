@@ -22,9 +22,18 @@ const targetPath =
   cliArguments.find((argument) => !argument.startsWith("--")) ?? path.join(benchDir, "fixtures")
 const maximumMeanLatencyMs = 100
 
-const benchmarkWiring = mergeWirings([defaultWiring, architectureExploreWiring])
-
-const benchmarkConfig = defineConfig([{ files: ["**/*"], wiring: benchmarkWiring }])
+const benchmarkConfig = await Effect.runPromise(
+  Effect.all({ defaultWiring, architectureExploreWiring }).pipe(
+    Effect.map(({ defaultWiring, architectureExploreWiring }) =>
+      defineConfig([
+        {
+          files: ["**/*"],
+          wiring: mergeWirings([defaultWiring, architectureExploreWiring])
+        }
+      ])
+    )
+  )
+)
 
 interface TaskStatistics {
   readonly latency: Statistics

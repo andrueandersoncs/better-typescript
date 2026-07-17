@@ -83,13 +83,12 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 const runNoBlankLinesBetweenSingleLineDeclarationsFixture = async (): Promise<
   ReadonlyArray<Detection>
 > => {
+  const named = await Effect.runPromise(noBlankLinesBetweenSingleLineDeclarations)
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runCheckOnProject(Array.of(noBlankLinesBetweenSingleLineDeclarations.check))(project)
-      )
+      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
     )
   )
 

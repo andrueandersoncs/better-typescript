@@ -8,12 +8,14 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Detection as DetectionData } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import { compositionFingerprints } from "@better-typescript/checks/architectureExplore/compositionFingerprints"
-import { duplicatedOrchestration } from "@better-typescript/checks/architectureExplore/duplicatedOrchestration"
 import { CompositionFingerprintData } from "@better-typescript/checks/architectureExplore/data"
 import { compositionFingerprintsName } from "@better-typescript/checks/architectureExplore/names"
+import { architectureExploreDerive } from "@better-typescript/checks/preset/architectureExploreWiring"
+import { Signal } from "@better-typescript/core/engine/signal/data"
+
+const derive = await Effect.runPromise(architectureExploreDerive)
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-orchestration")
@@ -35,7 +37,7 @@ const dataAs = <A>(
 ): Option.Option<A> => {
   const data = detection.data
 
-  return guard(data) ? Option.some(data) : Option.none()
+  return Option.fromNullishOr(data).pipe(Option.filter(guard))
 }
 
 const fingerprintData = (
@@ -53,18 +55,19 @@ const detectionAt = (filePath: string, line: number, data: CompositionFingerprin
     data
   })
 
-const namedFingerprint = (
-  filePath: string,
-  line: number,
-  data: CompositionFingerprintData
-): NamedDetection =>
-  new NamedDetection({
+const fingerprintSignal = (detections: ReadonlyArray<Detection>): Signal =>
+  new Signal({
     name: compositionFingerprintsName,
-    detection: detectionAt(filePath, line, data)
+    reported: false,
+    detections,
+    examples: []
   })
 
 const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(Stream.runCollect(advice))
+
+const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
+  advice.filter((item) => item.title === title)
 
 test("composition fingerprints match across clones and skip sub-threshold exports", async () => {
   const detections = await runFixture(compositionFingerprints)
@@ -99,25 +102,27 @@ test("composition fingerprints match across clones and skip sub-threshold export
 test("duplicated orchestration fires for shared fingerprints across files", async () => {
   const shared = fingerprintData("pipe>stageOne>stageTwo>stageThree", 4, "runCloneA")
   const advice = await collectAdvice(
-    duplicatedOrchestration(
-      Stream.fromIterable([
-        namedFingerprint("src/cloneA.ts", 4, shared),
-        namedFingerprint("src/cloneB.ts", 4, fingerprintData(shared.fingerprint, 4, "runCloneB"))
+    derive([
+      fingerprintSignal([
+        detectionAt("src/cloneA.ts", 4, shared),
+        detectionAt("src/cloneB.ts", 4, fingerprintData(shared.fingerprint, 4, "runCloneB"))
       ])
-    )
+    ])
   )
+  const orchestration = adviceWithTitle(advice, "duplicated orchestration")
 
-  assert.equal(advice.length, 1)
-  assert.equal(advice[0]?.title, "duplicated orchestration")
-  assert.equal(advice[0]?.level, "directory")
-  assert.equal(advice[0]?.location.path, "src")
+  assert.equal(orchestration.length, 1)
+  assert.equal(orchestration[0]?.title, "duplicated orchestration")
+  assert.equal(orchestration[0]?.level, "directory")
+  assert.equal(orchestration[0]?.location.path, "src")
   assert.deepEqual(
-    advice[0]?.evidence.map((item) => [item.measure, item.count]),
+    orchestration[0]?.evidence.map((item) => [item.measure, item.count]),
     [
       ["duplicate-sites", 2],
       ["orchestration-steps", 4]
     ]
   )
+  assert.ok(orchestration[0]!.examples.length > 0)
 })
 
 test("duplicated orchestration stays silent for one site or distinct fingerprints", async () => {
@@ -125,17 +130,17 @@ test("duplicated orchestration stays silent for one site or distinct fingerprint
   const other = fingerprintData("pipe>otherOne>otherTwo>otherThree", 4, "runDifferent")
 
   const singleSite = await collectAdvice(
-    duplicatedOrchestration(Stream.fromIterable([namedFingerprint("src/cloneA.ts", 4, shared)]))
+    derive([fingerprintSignal([detectionAt("src/cloneA.ts", 4, shared)])])
   )
   const distinct = await collectAdvice(
-    duplicatedOrchestration(
-      Stream.fromIterable([
-        namedFingerprint("src/cloneA.ts", 4, shared),
-        namedFingerprint("src/different.ts", 4, other)
+    derive([
+      fingerprintSignal([
+        detectionAt("src/cloneA.ts", 4, shared),
+        detectionAt("src/different.ts", 4, other)
       ])
-    )
+    ])
   )
 
-  assert.equal(singleSite.length, 0)
-  assert.equal(distinct.length, 0)
+  assert.equal(adviceWithTitle(singleSite, "duplicated orchestration").length, 0)
+  assert.equal(adviceWithTitle(distinct, "duplicated orchestration").length, 0)
 })
