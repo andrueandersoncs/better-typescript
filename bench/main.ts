@@ -3,18 +3,21 @@ import { fileURLToPath } from "node:url"
 import { Effect, Result, Stream, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
-import { defineConfig, mergeWirings } from "@better-typescript/core/engine/wiring"
-import { reportEvents } from "@better-typescript/core/engine/watch"
+import {
+  compilerOptionsForConfig,
+  defineConfig,
+  mergeWirings
+} from "@better-typescript/core/engine/wiring"
+import { reportEvents, workspacePrograms } from "@better-typescript/core/engine/watch"
+import { contextFor } from "@better-typescript/core/engine/sources"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
-import {
-  contextFromLoadedProject,
-  discoverWorkspace,
-  loadProject,
-  loadProjectConfig
-} from "@better-typescript/core/project/loadProject"
-import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
+import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
+import type {
+  LoadedProject,
+  WorkspaceConfigs
+} from "@better-typescript/core/project/loadProject/data"
 
 const benchDir = path.dirname(fileURLToPath(import.meta.url))
 const cliArguments = process.argv.slice(2)
@@ -25,6 +28,7 @@ const maximumMeanLatencyMs = 100
 const benchmarkWiring = mergeWirings([defaultWiring, architectureExploreWiring])
 
 const benchmarkConfig = defineConfig([{ files: ["**/*"], wiring: benchmarkWiring }])
+const benchmarkCompilerOptions = compilerOptionsForConfig(benchmarkConfig)
 
 interface TaskStatistics {
   readonly latency: Statistics
@@ -34,8 +38,11 @@ interface TaskStatistics {
 const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
   task?.result !== undefined && "latency" in task.result ? task.result : null
 
+const contextFromLoadedProject = (project: LoadedProject) =>
+  contextFor(project.rootPath)(project.program)
+
 const runLoadedBenchmark = async (): Promise<void> => {
-  const workspace = await Effect.runPromise(loadProject(targetPath))
+  const workspace = await Effect.runPromise(loadProject(targetPath, benchmarkCompilerOptions))
   const collectReport = () => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
@@ -83,17 +90,11 @@ const runLoadedBenchmark = async (): Promise<void> => {
   }
 }
 
-const runBoundedWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
+const runOneShotWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
   const started = performance.now()
-  const update = new WorkspaceUpdate({
-    rootPath: workspace.rootPath,
-    contexts: workspace.projects.map((config) =>
-      pipe(config, loadProjectConfig, contextFromLoadedProject)
-    )
-  })
   const blocks = await Effect.runPromise(
     pipe(
-      Stream.succeed(update),
+      workspacePrograms(workspace, benchmarkCompilerOptions),
       reportEvents(benchmarkConfig),
       Stream.filterMap((event) =>
         event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
@@ -104,11 +105,11 @@ const runBoundedWorkspacePass = async (workspace: WorkspaceConfigs): Promise<voi
   const elapsedMs = performance.now() - started
 
   console.log(`\nProject: ${workspace.rootPath}`)
-  console.log(`Projects analyzed sequentially: ${workspace.projects.length}`)
+  console.log(`Projects analyzed: ${workspace.projects.length}`)
   console.log(`Blocks emitted: ${Array.from(blocks).length}`)
   console.table([
     {
-      task: "bounded workspace report",
+      task: "one-shot workspace report",
       "elapsed (ms/pass)": elapsedMs.toFixed(3)
     }
   ])
@@ -120,5 +121,5 @@ const workspace = await Effect.runPromise(discoverWorkspace(targetPath))
 if (workspace.projects.length === 1) {
   await runLoadedBenchmark()
 } else {
-  await runBoundedWorkspacePass(workspace)
+  await runOneShotWorkspacePass(workspace)
 }

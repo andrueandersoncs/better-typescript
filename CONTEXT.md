@@ -29,6 +29,10 @@ config soup, plugin set, registry
 **Workspace Update**: One complete workspace-wide analysis snapshot. It is the input seam shared by
 one-shot and continuous reporting. _Avoid_: watch callback, file-change event
 
+**Workspace Programs**: The one-shot Workspace Update producer whose project Programs share
+TypeScript `DocumentRegistry` SourceFiles and one scoped lifetime. _Avoid_: one-shot watcher, global
+Program cache
+
 **Report Event**: One emitted report transition — a signal block, a cleared block, or an explicit
 empty report. _Avoid_: log line, diagnostic event
 

@@ -6,6 +6,7 @@ import { Array, Effect } from "effect"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { compilerOptionsForChecks } from "@better-typescript/core/engine/check"
 
 interface SourceLocation {
   readonly fileName: string
@@ -152,7 +153,8 @@ const markersInFixture = (fixturePath: string): ReadonlyArray<LineMarker> => {
 
 const runNamedCheckFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
   const fixturePath = path.join(fixturesRoot, named.name)
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
+  const compilerOptions = compilerOptionsForChecks(Array.of(named.check))
+  const workspace = await Effect.runPromise(loadProject(fixturePath, compilerOptions))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>

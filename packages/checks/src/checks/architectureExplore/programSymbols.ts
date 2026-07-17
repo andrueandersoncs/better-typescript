@@ -79,20 +79,20 @@ const emptyUsage = (): ExportUsage => {
   })
 }
 
-// Path classification is shared string logic because derive stages see paths without source files.
+// Benchmarks are test-like because derivation must distinguish them from production callers.
 export const isTestPath = (relativePath: string): boolean => {
   const normalized = relativePath.replaceAll("\\", "/")
-  const testDirectories = Array.make("test/", "tests/", "__tests__/")
+  const testLikeDirectories = Array.make("bench/", "test/", "tests/", "__tests__/")
   const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
 
-  const inTestDirectory = Array.some(
-    testDirectories,
+  const inTestLikeDirectory = Array.some(
+    testLikeDirectories,
     (directory) => normalized.startsWith(directory) || normalized.includes(`/${directory}`)
   )
 
   const hasTestSuffix = Array.some(testSuffixes, (suffix) => normalized.endsWith(suffix))
 
-  return inTestDirectory || hasTestSuffix
+  return inTestLikeDirectory || hasTestSuffix
 }
 
 // Workspace paths normalize evidence because cross-package joins compare one path vocabulary.

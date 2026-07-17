@@ -45,9 +45,24 @@ export const isNodeSubscription = (subscription: Subscription): subscription is 
 export const isFileSubscription = (subscription: Subscription): subscription is FileSubscription =>
   subscription.kind === "OnFile"
 
+const emptyCompilerOptions: ts.CompilerOptions = {}
+
 export const checkFromSubscriptions = (
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-): Check => new Check({ plan })
+): Check => new Check({ plan, compilerOptions: emptyCompilerOptions })
+
+export const withCompilerOptions =
+  (compilerOptions: ts.CompilerOptions) =>
+  (check: Check): Check =>
+    new Check({
+      plan: check.plan,
+      compilerOptions: { ...check.compilerOptions, ...compilerOptions }
+    })
+
+export const compilerOptionsForChecks = (checks: ReadonlyArray<Check>): ts.CompilerOptions =>
+  Array.reduce(checks, {} as ts.CompilerOptions, (options, check) =>
+    Object.assign(options, check.compilerOptions)
+  )
 
 const locateNode =
   (context: CheckContext) =>

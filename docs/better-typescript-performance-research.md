@@ -2,269 +2,518 @@
 
 Date: 2026-07-16
 
-Status: research only. No production implementation was changed.
+Status: all five recommendations implemented and measured on branch `performance-research`.
+
+Scope: source verification of the one-shot path in this isolated worktree against repository code,
+ADRs, vendored Effect source, and TypeScript **6.0.3** primary sources, followed by fresh
+measurements on the built CLI. Numbers labeled **[MEASURED]** were observed in this worktree;
+structural claims labeled **Observed** come from source reads; conclusions that combine both are
+**[INFERENCE]**.
 
 ## Decision
 
-The largest opportunity is not report rendering or process startup. It is duplicate compiler state
-and duplicate semantic work across the nine TypeScript projects.
+The dominant one-shot cost is **duplicate TypeScript compiler state and duplicate Better
+TypeScript-derived evidence work**, not report rendering, JSON serialization, or process startup.
 
-The top five recommendations, ranked by expected impact on this repository's full one-shot run, are:
+Exactly five recommendations, ranked by expected end-to-end impact on this repository’s full
+one-shot run:
 
-1. share TypeScript `SourceFile` objects across project Programs with one `DocumentRegistry`;
-2. make `no-unused` use the primary Program instead of constructing a second Program;
-3. set the compiler host's JSDoc mode to `ParseForTypeErrors`;
-4. build shared program evidence once instead of rebuilding the same indexes per Check; and
-5. give one-shot execution a non-watching, bounded project producer.
+1. **Put one-shot compiler construction behind a deep workspace-program module backed by one shared
+   TypeScript `DocumentRegistry`.**
+2. **Eliminate `no-unused`’s second Program** by enabling unused locals/parameters on the primary
+   Program and filtering the existing diagnostic codes.
+3. **Build shared program evidence once per Program identity** for export references, module edges,
+   and related architecture facts that several Checks rebuild today.
+4. **Make `import-usage` file-linear** by counting every imported binding during one AST walk per
+   source file instead of one full walk per binding.
+5. **Set JSDoc parsing to `ParseForTypeErrors`** on the compiler/watch host and shared registry.
 
-The measured effects below are not additive. In particular, shared `SourceFile` state absorbs much
-of the separate JSDoc win.
+These are **not additive**. Shared `SourceFile` state and primary-Program unused diagnostics compose
+to a measured upper-bound harness; recommendation 4 can become one facet of recommendation 3; JSDoc
+savings shrink once ASTs are shared. A sequential/bounded one-shot producer is a **memory and
+architecture enabler**, not a top-five wall-clock claim on this repo’s current harness.
 
-## Scope and baseline
+## Implementation result **[MEASURED]**
 
-The representative command was the built CLI against this repository, with the checked-in
-`better-typescript.config.ts`: 67 reported/package checks plus 14 architecture checks, across nine
-referenced projects.
+`npm run bench:self` builds once, verifies that the repository config enrolls all **80** Checks,
+then times three fresh built-CLI processes. Build time is outside every recorded duration.
 
-Four unprofiled runs took 16.56 s, 16.71 s, 16.74 s, and 17.16 s. Median: **16.72 s**. One timed run
-reached **3.18 GiB maximum RSS** and emitted about 107 KiB of NDJSON.
+| Distribution | Pre-change | Implemented |
+| ------------ | ---------: | ----------: |
+| Minimum      |   15.457 s |     7.420 s |
+| Median       |   16.754 s |     7.464 s |
+| Maximum      |   17.388 s |     7.738 s |
 
-A stage harness over the same public engine interfaces measured:
+The median fell by **55.45%**, from **16.754 s** to **7.464 s**: a **2.24×** throughput improvement.
+The implementation benchmark measured wall clock only; the earlier isolated RSS probes remain below
+as supporting design evidence, not as a new post-implementation memory claim.
 
-| Stage                                     | Elapsed | RSS after stage |
-| ----------------------------------------- | ------: | --------------: |
-| Config load                               |   22 ms |         181 MiB |
-| Workspace discovery                       |   12 ms |         183 MiB |
-| First complete watched snapshot           |  3.41 s |       1,740 MiB |
-| All 81 configured checks                  | 12.03 s |       3,233 MiB |
-| Derivation and block rendering            |  424 ms |       3,233 MiB |
-| Event construction and JSON serialization | 0.17 ms |       3,233 MiB |
+All five changes compose in production: non-watch runs use shared-registry Workspace Programs,
+`no-unused` filters primary-Program diagnostics, named architecture evidence is lazy per Program,
+`import-usage` walks each file once, and every analysis host uses `ParseForTypeErrors`.
 
-The workspace Programs contained 3,566 `SourceFile` occurrences but only 746 unique paths. **2,820
-occurrences (79.1%) were duplicates across Programs**; 339 paths appeared in all nine Programs.
+## Evidence table and baseline
 
-A 0.5 ms Node CPU profile sampled 18.54 s under profiler overhead:
+### Pre-implementation observed configuration (source)
 
-- garbage collection: 4.65 s, or 25.1% of samples;
-- `runChecks`: 9.86 s inclusive;
-- initial `createWatchProgram`: 3.04 s inclusive;
-- check planning/index construction: 5.36 s inclusive;
-- file subscriptions: 3.09 s inclusive; and
-- fused node traversal and handlers: 1.40 s inclusive.
+| Fact                        | Observation                                                                                                                                                              | Source                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| TypeScript version          | Locked/installed **6.0.3** (`^6.0.3` range)                                                                                                                              | `package.json`, `package-lock.json`, `node_modules/typescript/package.json` |
+| Solution projects           | Root `tsconfig.json` has **9** project references                                                                                                                        | `tsconfig.json`                                                             |
+| Enrolled Checks             | **80** enrolled: **66** under `packages/**` (64 default + 2 functional-core-effect) and **14** architecture-explore under `**/*`                                         | `packages/checks/src/preset/*`, `better-typescript.config.ts`               |
+| One-shot entry              | CLI always builds `workspaceUpdates`, then `Stream.take(updates, 1)` when not watching                                                                                   | `packages/cli/src/index.ts`                                                 |
+| Watch producer              | One `createWatchProgram` per project; streams merged with **unbounded** concurrency; first `WorkspaceUpdate` waits until **all** projects have a cached `ProgramContext` | `packages/core/src/engine/watch/watch.ts`                                   |
+| JSDoc mode                  | Host built with `createWatchCompilerHost` / `createProgram`; **`jsDocParsingMode` never set** (parser default `ParseAll`)                                                | `watch.ts`, `loadProject.ts`; TS 6.0.3 `JSDocParsingMode`                   |
+| `no-unused`                 | `withProgramIndex(buildUnusedProgram)` → `ts.createProgram({ rootNames, options, oldProgram })` **without host**; per-file `getSemanticDiagnostics`                      | `packages/checks/src/checks/noUnused.ts`                                    |
+| Index cache scope           | `withProgramIndex` is a **per-Check** latest-entry `Ref` keyed by Program identity; cannot dedupe identical builders across Checks                                       | `packages/core/src/engine/check/check.ts`                                   |
+| Repeated export/module work | `buildExportReferenceIndex` enrolled **4×**; `buildModuleEdges` **2×**                                                                                                   | architectureExplore checks                                                  |
+| Expensive uncached planners | `prefer-effect-schema-class` and `concept-control` plan via `Function.compose(build…, subscriptions)` (no `withProgramIndex`)                                            | `preferEffectSchemaClass.ts`, `conceptControl.ts`                           |
+| Comment policy              | Comment Checks use `sourceComments` / `getLeadingCommentRanges` on full text; **no** consumption of TypeScript JSDoc AST nodes found under `packages/checks`             | comment checks + `support/comments.ts`                                      |
+| Bounded sequential path     | `workspaceSignalsFromConfigs` → `workspaceSignalsForProjects` uses `Effect.forEach` **default sequential** concurrency                                                   | `loadProject.ts`, `wiring.ts`; Effect `forEach` docs                        |
+| ADR tension                 | ADR-0013: one-shot should construct/analyze/release one Program at a time. ADR-0019: one-shot is `Stream.take(updates, 1)` over the watch producer                       | `adrs/0013-…`, `adrs/0019-…`                                                |
 
-A sampling heap profile attributed 120 MiB of retained sampled allocation to `no-unused`'s second
-Program and 318 MiB below initial watch-Program creation. TypeScript parser, binder, symbol, and AST
-allocations dominated the retained profile.
+### Pre-implementation research measurements **[MEASURED]**
 
-The working tree was actively changing during this research. Absolute detection counts changed
-between early and late snapshots. Every semantic comparison reported below was therefore paired on
-one snapshot and required an identical SHA-256 hash of ordered detection rows. Re-run the baseline
-before implementation.
+Taken in this isolated worktree on the **built CLI** and temporary harnesses. Prefer these over
+older draft numbers.
 
-## Top five
+#### Original full CLI baseline
 
-### 1. Share `SourceFile` objects across project Programs
+| Run        |  Wall clock |
+| ---------- | ----------: |
+| 1          |     19.99 s |
+| 2          |     20.10 s |
+| 3          |     21.08 s |
+| 4          |     16.49 s |
+| **Median** | **20.05 s** |
 
-**Recommendation:** prototype the one-shot project provider with one TypeScript `DocumentRegistry`
-shared by semantic `LanguageService` instances. Do not build an ad hoc cache of `SourceFile`
-objects.
+Peak RSS on one timed run: **2.89 GiB** (macOS also reported a **3.64 GB / 3.39 GiB** peak memory
+footprint on that run). Config: **80** checks (**66** package + **14** architecture), **9**
+projects.
 
-TypeScript documents `DocumentRegistry` specifically as a way for multiple language services to
-share ASTs. Its source notes that `SourceFile` objects account for most language-service memory and
-that sharing a registry lets projects share at least `lib.d.ts`.
+#### Watch-stage control (current producer)
 
-This directly targets the measured 79.1% duplicate `SourceFile` occurrences. A research-only
-prototype produced the same 2,841 ordered detection rows and the same hash as its paired watch-based
-control:
+| Metric                                                   | Value                                                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `SourceFile` occurrences / unique paths / unique objects | **3,563 / 743 / 3,563**                                                                       |
+| Implication                                              | Path overlap is large, but **no object sharing** today: every occurrence is a distinct object |
+| Config + discover + program + checks                     | **~15.11–16.51 s**                                                                            |
+| RSS after that span                                      | **~3.25–3.37 GiB**                                                                            |
 
-| Program provider, `ParseAll` | Program creation |  Checks | Combined | RSS after checks |
-| ---------------------------- | ---------------: | ------: | -------: | ---------------: |
-| Current watch Programs       |           3.74 s | 14.16 s |  17.91 s |        3,305 MiB |
-| Shared `DocumentRegistry`    |           0.80 s |  9.79 s |  10.59 s |        2,286 MiB |
+#### Shared `DocumentRegistry` prototype (temporary LanguageServices)
 
-That paired harness showed **41% less program-plus-check time** and about **1.0 GiB less RSS**. The
-control harness is slower than the ordinary CLI, so 41% is not a promised end-to-end percentage.
-[INFERENCE] Adding the currently measured 424 ms derivation stage to the shared-registry process
-suggests an approximately 11.4 s full run, around 32% below the 16.72 s median.
+| Metric                      | Value                                                    |
+| --------------------------- | -------------------------------------------------------- |
+| Detection parity            | **Identical 2,551-row SHA-256 digest** vs paired control |
+| Unique `SourceFile` objects | **743** (one per path in the harness)                    |
+| Combined program + checks   | **10.41–11.94 s**                                        |
+| RSS                         | **2.35–2.38 GiB**                                        |
+| Paired reduction            | **~21–31%** wall clock, **~1.0 GiB** RSS                 |
 
-Risks to validate before adopting it:
+#### `no-unused` exclusion on current path
 
-- exact config diagnostics and project-reference behavior;
-- file-version and invalidation behavior if the provider is later used for watch mode;
-- disposal and registry reference counts; and
-- parity on JavaScript projects and projects with different source-file-affecting compiler options.
+| Metric                | With `no-unused` |     Without |              Delta |
+| --------------------- | ---------------: | ----------: | -----------------: |
+| Check stage           |    10.45–12.51 s | 6.77–7.26 s |    **~−3.7–5.3 s** |
+| RSS                   |         (paired) |    (paired) | **−0.73–0.95 GiB** |
+| Repo detection digest |        preserved |   preserved |          parity OK |
 
-Primary source:
-[TypeScript 6.0.3 `DocumentRegistry`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/services/documentRegistry.ts).
+#### Registry + `no-unused` exclusion upper bound
 
-### 2. Eliminate `no-unused`'s second Program
+| Metric   | Value                                     |
+| -------- | ----------------------------------------- |
+| Combined | **6.63 s**                                |
+| RSS      | **1.10 GiB**                              |
+| Digest   | identical to repo control in that harness |
 
-**Recommendation:** when `no-unused` is enrolled, extend the primary Program's options with
-`noUnusedLocals`, `noUnusedParameters`, and `noEmit`, then filter unused diagnostics from that same
-Program.
+**[INFERENCE]** ~6.6 s combined is an upper-bound research process (not full CLI with
+derive/render), but it shows recommendations 1 and 2 compose without double-counting the same work.
 
-Today, `buildUnusedProgram` calls `ts.createProgram` with `oldProgram: context.program`, then each
-file handler requests semantic diagnostics from the new Program. TypeScript states that `oldProgram`
-reuses program structure; the new Program still lazily creates its own checker.
+#### JSDoc mode on current watch host (opposite-order pairs, identical digest)
 
-Measured evidence:
+| Mode                 |             Combined |               RSS |
+| -------------------- | -------------------: | ----------------: |
+| `ParseAll`           |        14.75–15.28 s |     3.34–3.35 GiB |
+| `ParseForTypeErrors` |        14.36–14.61 s |     2.99–3.21 GiB |
+| Delta                | **only 0.39–0.92 s** | **~0.1–0.35 GiB** |
 
-- excluding only `no-unused` reduced the check stage from 11.96 s to 7.60 s: **4.36 s, or 36%**;
-- RSS after checks fell from 3,287 MiB to 2,530 MiB: **758 MiB**;
-- its CPU subtree contained 686 ms in `buildUnusedProgram` and 2.73 s in semantic-diagnostic file
-  handlers, before separately sampled GC; and
-- its second Program retained 120 MiB in the sampling heap profile.
+Smaller than earlier draft claims; still positive and nearly free to ship, but not a multi-second
+headline on this path.
 
-A primary-Program diagnostic probe produced exactly the same six file/line/column locations as the
-existing check on `tests/fixtures/no-unused`.
+#### Sequential `workspaceSignalsFromConfigs` vs one watch sample
 
-Combined with recommendation 1, a research process using a shared registry and primary-Program
-unused diagnostics took **7.14 s** and peaked at **1.05 GiB maximum RSS**, with the same ordered
-2,841-detection hash as the paired current-semantics run. It omitted the 424 ms derive/render stage.
-[INFERENCE] This establishes a credible path to a full run near 7.6 s, not a production benchmark.
+| Path                     |  Wall clock |      Max RSS |
+| ------------------------ | ----------: | -----------: |
+| Sequential config path   | **14.34 s** | **2.46 GiB** |
+| One current watch sample | **13.95 s** | **3.33 GiB** |
 
-Do not switch to `Program.getSuggestionDiagnostics`; upstream marks that API internal. Preserve the
-existing diagnostic-code filter and fixture parity.
+**Memory win, no reliable time win** on this repo sample. Bounded one-shot is therefore **not**
+ranked as a top-five runtime recommendation here; keep it as a memory/architecture enabler and as
+part of how a registry-backed loader should dispose Programs.
 
-Sources:
+#### CPU profile and planner evidence **[MEASURED]**
 
-- [`noUnused.ts`](../packages/checks/src/checks/noUnused.ts)
-- [TypeScript `createProgram` and `oldProgram`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/program.ts#L1499-L1518)
-- [TypeScript checker creation](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/program.ts#L2684-L2686)
-- [`noUnusedLocals`](https://www.typescriptlang.org/tsconfig/noUnusedLocals.html)
-- [`noUnusedParameters`](https://www.typescriptlang.org/tsconfig/noUnusedParameters.html)
+The 0.5 ms CPU profile sampled 16.01 s. Inclusive callsite time includes TypeScript work triggered
+under that callsite; it is not automatically removable.
 
-### 3. Skip unnecessary JSDoc AST parsing
+| Bucket / callsite                    |                                            Measurement |
+| ------------------------------------ | -----------------------------------------------------: |
+| TypeScript self                      |                                              **59.4%** |
+| GC                                   |                                              **17.8%** |
+| Effect                               |                                              **12.6%** |
+| Better TypeScript checks + core self |                                               **4.6%** |
+| `no-unused` inclusive                |                                             **3.29 s** |
+| Watch creation inclusive             |                                             **3.24 s** |
+| `programSymbols.ts` inclusive        | **1.33 s**, including the `import-usage` overlap below |
+| `importUsage.ts` inclusive           |                                             **0.60 s** |
+| Repeated export-index plans          |                **~1.08 s** under instrumented planning |
+| Full architecture fleet exclusion    |                         **~2.52 s** paired upper bound |
 
-**Recommendation:** set `WatchCompilerHost.jsDocParsingMode` to
-`ts.JSDocParsingMode.ParseForTypeErrors`.
+Plan instrumentation attributed **2.97 s** to `prefer-effect-schema-class` and **1.62 s** to
+`concept-control`, but adjacent exclusion probes did **not** produce a reliable wall-clock
+improvement. In particular, excluding schema-class took 15.83–16.13 s combined versus 15.09–15.31 s
+controls. **[INFERENCE]** Those plan timings include lazy checker work that warms TypeScript caches
+for later Checks; they are attribution, not savings estimates. Re-profile them after recommendations
+1–2 rather than optimizing speculative candidate filters now.
 
-The current checks reject JSDoc text through comment scanning but do not consume TypeScript JSDoc
-AST nodes. `ParseForTypeErrors` preserves JSDoc needed for correct type errors, including required
-JavaScript-file behavior.
+**[INFERENCE]** The defensible wall-clock targets are compiler state, the second unused Program, and
+demonstrably duplicated/asymptotically repeated evidence work—not fused node dispatch or reporting.
 
-Two paired, opposite-order experiments produced identical ordered detection hashes:
+## Implemented one-shot execution path
 
-| Mode                 | Snapshot plus checks | Difference from `ParseAll` |
-| -------------------- | -------------------: | -------------------------: |
-| `ParseAll`           |        17.91–18.59 s |                   baseline |
-| `ParseForTypeErrors` |        15.17–15.22 s |     **2.69–3.43 s faster** |
+```text
+CLI runCommand
+  → loadWiringConfig
+  → discoverWorkspace
+  → mode boundary
+       one-shot → workspacePrograms
+                    → one DocumentRegistry for the workspace
+                    → one LanguageService per project
+                    → shared snapshots and option-bucketed SourceFiles
+                    → one WorkspaceUpdate
+       watch    → workspaceUpdates
+                    → createWatchProgram per project
+                    → continuous WorkspaceUpdates
+  → reportEvents
+       → workspaceSignals      # fused runChecks over all enrolled Checks
+       → batchReportBlocks / derive
+       → block delta events
+```
 
-TypeScript's own release notes say skipping JSDoc parsing reduces parsing time, memory used to store
-comments, and garbage-collection time, and expose `JSDocParsingMode` for tools to obtain the same
-benefit.
+Relevant code:
 
-This recommendation overlaps strongly with recommendation 1. With shared source files, `ParseAll`
-and `ParseForTypeErrors` differed by only about 0.14 s in the prototype because duplicated
-dependency AST parsing had already been removed. Treat this as the fastest current-path win, not an
-additional three seconds after adopting a registry.
+- `packages/cli/src/index.ts` selects `workspacePrograms` for one-shot execution and
+  `workspaceUpdates` for `--watch`.
+- `packages/core/src/engine/watch/workspacePrograms.ts` owns the shared `DocumentRegistry`,
+  LanguageService hosts, snapshots, Programs, and scoped disposal.
+- `packages/core/src/engine/watch/watch.ts` retains the continuous watch producer.
+- `packages/core/src/project/loadProject/analysisCompilerOptions.ts` owns the analysis-only compiler
+  option and JSDoc mode policy.
+- `packages/core/src/engine/check/check.ts` retains fused kind dispatch; named cross-Check
+  architecture evidence now lives in `architectureEvidence.ts`.
 
-Sources:
+Both producers cross the same `WorkspaceUpdate` seam, so report execution, derivation, rendering,
+empty reports, and output ordering remain shared. The one-shot path no longer constructs watcher
+state whose future-update behavior cannot be used.
 
-- [TypeScript 5.3: Optimizations by Skipping JSDoc Parsing](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-3.html#optimizations-by-skipping-jsdoc-parsing)
-- [TypeScript 6.0.3 `JSDocParsingMode`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/types.ts)
+## Top five: original ranking and implemented form
 
-### 4. Build shared program evidence once
+### 1. Implemented: deep workspace-program module with shared `SourceFile` objects
 
-**Recommendation:** introduce a Program-identity-bounded evidence provider that builds common facts
-once, then lets Checks project their subscriptions and detections from those facts. Keep it owned by
-the analysis run; do not use module-global mutable state or a generic checker-query cache.
+**Implementation:** `workspacePrograms` creates one LanguageService per project with one shared
+`DocumentRegistry`, exposes only `ProgramContext` through a single `WorkspaceUpdate`, and disposes
+every service when downstream stream consumption ends. Keep LanguageService hosts, registry keys,
+snapshots, and refcounts inside the module. Do **not** implement a parallel ad hoc `SourceFile`
+cache.
 
-The first snapshot currently repeats higher-level work that TypeScript's checker cache cannot
-remove:
+**Why this ranks first**
 
-- `buildExportReferenceIndex` performs a whole-project identifier/symbol scan and is independently
-  called by `compositionFingerprints`, `compositionForwarders`, `testOnlyExports`, and
-  `passThroughWrappers`;
-- `buildModuleEdges` is built for both `moduleGraph` and `passThroughWrappers`;
-- `importUsage` scans the entire importing file once per imported binding;
-- `preferEffectSchemaClass` performs another whole-program object-literal/type scan; and
-- `conceptControl` builds several overlapping project-wide declaration/function indexes.
+- Observed producer builds **nine** independent watch Programs and retains all contexts
+  (`workspaceUpdates`).
+- **[MEASURED]** 3,563 occurrences / 743 paths / **3,563 unique objects**—every occurrence has
+  distinct identity today.
+- **[MEASURED]** temporary shared-registry LanguageService instances produced an **identical
+  2,551-row digest**, **743** unique objects, **10.41–11.94 s** program+check time, and **2.35–2.38
+  GiB** RSS: **~21–31%** faster and **~1.0 GiB** lower.
+- TypeScript documents that `SourceFile` objects dominate language-service memory and that a shared
+  registry lets projects share at least `lib.d.ts` when settings allow
+  ([`documentRegistry.ts` header](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/services/documentRegistry.ts));
+  acquire creates only on bucket miss
+  ([acquire path](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/services/documentRegistry.ts)).
+- Sharing is **bucketed** by source-file-affecting options
+  ([bucket key](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/services/documentRegistry.ts));
+  do not promise unconditional single-copy `lib.d.ts` for every project pair.
 
-`withProgramIndex` caches per Check, so it cannot deduplicate identical first-snapshot builds across
-Checks. The CPU profile placed 5.36 s under planning. Excluding the 14-check architecture fleet
-reduced the check stage by 2.51 s and RSS by 207 MiB; that is an upper bound, not the expected
-shared- index win. Individual repeated export scans sampled at roughly 0.27–0.33 s each, and
-`importUsage` sampled around 0.60 s.
+**Simplification / maintainability / usability**
 
-The shared evidence pass should collect, in one source-ordered walk where possible:
+- Two real behaviors already exist—one snapshot and continuous watch—so two adapters justify the
+  seam; callers keep a small workspace-analysis interface.
+- TypeScript owns option bucketing and refcounts. Better TypeScript should not duplicate registry
+  correctness.
+- `ProgramContext` remains the Check-facing interface, so Check and Wiring extensibility is
+  unchanged.
+- The continuous watch producer remains intact; it shares only the analysis option and JSDoc policy
+  required for diagnostic parity.
 
-- imports and binding-use counts;
-- exported symbols/functions and their references;
-- module edges and test/production paths; and
-- common declaration/function metadata used by architecture and concept checks.
+**Risks / parity**
 
-Use mutable local maps/lists in this internal hot kernel, then construct immutable public evidence
-at the boundary. Preserve file-major and Check-major detection order. TypeScript already caches raw
-node/symbol/type work internally, so wrapping every checker call in another cache is unlikely to
-pay; cache the expensive Better TypeScript-derived facts instead.
+- Config diagnostics and project-reference behavior under a custom host/LS.
+- Invalidation and versioning if reused in watch mode.
+- Disposal / refcounts so Programs can release without use-after-free of shared ASTs.
+- Heterogeneous source-file-affecting options → multiple correct bucket entries.
+- Combine with recommendation 5: construct the registry with the same `JSDocParsingMode` its hosts
+  use.
 
-Sources:
+**Primary sources**
+
+- [TypeScript 6.0.3 `DocumentRegistry`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/services/documentRegistry.ts)
+- [TypeScript 6.0.3 LanguageService default registry and disposal](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/services/services.ts)
+- Repo: `packages/core/src/engine/watch/workspacePrograms.ts`,
+  `packages/core/src/engine/watch/watch.ts`
+
+### 2. Implemented: eliminate `no-unused`’s second Program
+
+**Implementation:** every Better TypeScript analysis Program is created with `noUnusedLocals`,
+`noUnusedParameters`, and `noEmit` before semantic work. `no-unused` reads the primary Program’s
+per-file semantic diagnostics and filters the existing code set
+`{6133, 6192, 6196, 6138, 6198, 6199, 6205}`; `buildUnusedProgram` no longer exists.
+
+**Why this ranks second**
+
+- Pre-change: `noUnused.ts` created a second Program with `oldProgram` and **no compiler host**,
+  then requested per-file semantic diagnostics.
+- TypeScript documents that `oldProgram` can reuse program structure, but a fresh default host still
+  supplies new `SourceFile` objects and the new Program always owns a separate lazy checker
+  ([`createProgram`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/program.ts)).
+- Unused diagnostics are gated on those compiler options in the checker (`unusedIsError` /
+  `checkUnusedIdentifiers` in 6.0.3).
+- **[MEASURED]** excluding only `no-unused`: check stage **10.45–12.51 s → 6.77–7.26 s**, RSS
+  **−0.73–0.95 GiB**, repo digest preserved; profile callsite **~3.29 s**.
+- **[MEASURED]** a primary-Program probe on `tests/fixtures/no-unused` returned the same six
+  diagnostic code/file/start/length rows as the existing secondary Program.
+- Combined with registry: **6.63 s / 1.10 GiB**, identical repo digest—recommendations 1 and 2
+  stack.
+- Do **not** use `Program.getSuggestionDiagnostics` (`/** @internal */`, absent from public
+  `Program`). Unused-as-error via construction-time options matches this Check.
+
+**Simplification / maintainability / usability**
+
+- Removes a second semantic universe that can drift from the primary Program.
+- Check body becomes “filter semantic diagnostics,” matching TypeScript’s unused model.
+- Public name, messages, hints, and diagnostic-code filter stay stable; fixture parity is the gate.
+
+**Risks / parity**
+
+- Apply options at Program construction for enrolled analysis; do not mutate options after checking
+  has begun.
+- Preserve underscore-parameter and ambient behavior already encoded upstream.
+- If other callers consume raw Program diagnostics, keep analysis options scoped to Better
+  TypeScript’s Programs.
+
+**Primary sources**
+
+- [`packages/checks/src/checks/noUnused.ts`](../packages/checks/src/checks/noUnused.ts)
+- [TypeScript `createProgram` / `oldProgram`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/program.ts)
+- [`noUnusedLocals`](https://www.typescriptlang.org/tsconfig/noUnusedLocals.html) /
+  [`noUnusedParameters`](https://www.typescriptlang.org/tsconfig/noUnusedParameters.html)
+
+### 3. Implemented: build shared program evidence once
+
+**Implementation:** the named `architectureEvidence` module exposes two lazy facets:
+`exportReferenceIndex(context)` and `moduleEdges(context)`. A `WeakMap` scopes those immutable
+results to Program identity, permits superseded Programs to be collected, and avoids a generic
+checker-query cache.
+
+**Why this ranks third**
+
+Pre-change duplication TypeScript’s internal checker caches could not remove:
+
+| Work                          | Independent enrollments / pattern                         | Location                                          |
+| ----------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
+| `buildExportReferenceIndex`   | **4** Checks                                              | `programSymbols.ts` + architecture-explore Checks |
+| `buildModuleEdges`            | **2** Checks                                              | `moduleGraph`, `passThroughWrappers`              |
+| Export-symbol/reference scans | Rewalk project files and resolve symbols                  | `programSymbols.ts`                               |
+| FCE indexes                   | Separate `withProgramIndex` builders for boundary + shape | `functionalCoreEffect`                            |
+
+`withProgramIndex` memoizes only within one Check. **[MEASURED]** `programSymbols.ts` held **1.33 s
+inclusive** in the CPU profile, repeated export-index plans held **~1.08 s** under instrumentation,
+and excluding the full architecture fleet saved **~2.52 s** as an upper bound. The 1.33 s includes
+recommendation 4’s 0.60 s, so do not add those numbers.
+
+**Simplification / maintainability / usability**
+
+- One fact owner replaces four independent export-index lifecycles and two module-edge lifecycles.
+- Use mutable local maps/lists in the hot implementation, then expose immutable, named projections.
+- Checks consume narrow evidence facets rather than a “god index”; new Checks reuse facts without
+  learning cache mechanics.
+- Preserve enrollment order and file order when projecting detections, so CLI output and
+  architecture joins remain stable.
+
+**Risks / parity**
+
+- Invalidate on Program identity change, matching the current `withProgramIndex` rule.
+- Keep evidence facets separately owned; do not force unrelated Checks through one opaque schema.
+- Hash ordered detection rows and architecture advice after each migrated facet.
+
+**Primary sources**
 
 - [`programSymbols.ts`](../packages/checks/src/checks/architectureExplore/programSymbols.ts)
-- [`importUsage.ts`](../packages/checks/src/checks/architectureExplore/importUsage.ts)
 - [`withProgramIndex`](../packages/core/src/engine/check/check.ts)
-- [TypeScript checker link caches](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/checker.ts#L2934-L2942)
+- [TypeScript checker caches](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/checker.ts)
 
-### 5. Use a non-watching, bounded one-shot producer
+### 4. Implemented: make `import-usage` file-linear
 
-**Recommendation:** stop constructing nine watch Programs merely to take the first
-`WorkspaceUpdate`. One-shot should load, analyze, aggregate signals, and release one project at a
-time. Watch mode should retain the existing continuous producer.
+**Implementation:** the file-level Check registers each import declaration and local binding, walks
+the source file once, updates matching counters, then emits the same one detection per import
+declaration in source order.
 
-The CLI currently calls `workspaceUpdates` in both modes and implements one-shot as
-`Stream.take(updates, 1)`. `workspaceUpdates` merges nine project streams with unbounded
-concurrency, retains every `ProgramContext`, and emits only after all have arrived. This contradicts
-ADR-0013's stated one-project lifetime even though ADR-0019 intentionally unified the producer.
+For a valid file with \(N\) AST nodes and \(B\) uniquely named imported bindings, the implementation
+is \(\Theta(N + B)\), replacing the previous \(\Theta(BN)\) behavior.
 
-The existing config-native bounded path was tested without production changes. On the same early
-snapshot it produced the same 2,911 detections and 20 blocks:
+**Why this ranks fourth**
 
-| Path                                                       | Whole process | Maximum RSS |
-| ---------------------------------------------------------- | ------------: | ----------: |
-| Current CLI                                                |       16.56 s |    3.18 GiB |
-| Bounded `workspaceSignalsFromConfigs` path plus derivation |       14.61 s |    2.57 GiB |
+- Pre-change: `importUsageElement` mapped every binding to `countBinding`, and `countBinding`
+  traversed the complete source file.
+- **[MEASURED]** the CPU profile attributed **0.60 s inclusive** to `importUsage.ts`; nearly all of
+  it overlapped `foldAst` / `astNodesIn`.
+- The improvement preserves all 14 architecture Checks. It removes repeated work rather than
+  weakening evidence.
 
-Observed improvement: **1.95 s (12%)** and **0.60 GiB (19%)**.
+**Simplification / maintainability / usability**
 
-This needs an architecture decision, not a local branch in the CLI. The report seam currently
-accepts complete context snapshots; a genuinely bounded one-shot cannot construct that array.
-Preserve one reporting implementation by moving the common seam after signal aggregation, rather
-than duplicating derivation, rendering, or event semantics.
+- One file pass mirrors the domain statement: “count uses of this file’s imports.”
+- Preserve the current intentionally syntactic, name-based behavior—including its documented
+  shadowing caveat. Switching to symbol identity would be a product change, not this optimization.
+- The collector can become an import facet of recommendation 3, but must be measured once rather
+  than credited twice.
 
-This also trades against recommendation 1: a registry gains speed by retaining shared language-
-service state, while strict sequential loading minimizes live Programs. Measure both on the vendored
-Effect workspace before choosing one universal policy; a bounded batch or size-aware strategy may be
-necessary.
+**Risks / parity**
 
-Sources:
+- Preserve default, namespace, and named-import call counts.
+- Exclude identifiers inside their own import declaration exactly as today.
+- Preserve import-declaration and binding order in `ImportUsageData`.
 
-- [`runCommand`](../packages/cli/src/index.ts)
-- [`workspaceUpdates`](../packages/core/src/engine/watch/watch.ts)
-- [`workspaceSignalsFromConfigs`](../packages/core/src/project/loadProject/loadProject.ts)
-- [ADR-0013](../adrs/0013-fused-dispatch-and-bounded-workspaces.md)
-- [ADR-0019](../adrs/0019-workspace-update-report-seam.md)
-- [TypeScript watch implementation](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/watchPublic.ts#L420-L505)
+**Primary sources**
 
-## What not to prioritize first
+- [`importUsage.ts`](../packages/checks/src/checks/architectureExplore/importUsage.ts)
+- [`foldAst` / `astNodesIn`](../packages/core/src/engine/sources/sources.ts)
 
-- **Rendering and JSON:** 424 ms for derive/render and 0.17 ms for event construction/serialization.
-- **A standalone AST-stack rewrite:** a stack-safe mutable traversal was 3.1 times faster than the
-  current persistent frontier over 166,498 nodes, but the median changed only from 38.8 ms to 12.3
-  ms per complete traversal. Fold it into recommendation 4; it is not a top-level multi-second win.
+### 5. Implemented: skip unnecessary JSDoc AST parsing
+
+**Implementation:** compiler, watch, and LanguageService hosts use
+`ts.JSDocParsingMode.ParseForTypeErrors`; the shared registry receives the same mode.
+
+**Why this ranks fifth**
+
+- Nearly free, low product risk, and aligned with `tsc` 6.0.3:
+  [`executeCommandLine.ts`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/executeCommandLine.ts)
+  sets `ParseForTypeErrors`; the pre-change repository inherited the parser default `ParseAll`.
+- **[MEASURED]** opposite-order pairs on the current watch host saved only **0.39–0.92 s** with
+  modest RSS relief—still worthwhile, but not a multi-second claim after recommendation 1.
+- Semantics: always parse JSDoc in non-TS files; in `.ts`/`.tsx` parse only `@see` / `@link`
+  ([enum](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/types.ts),
+  [scanner](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/scanner.ts)).
+- Observed Checks scan comment **text**, not JSDoc AST nodes.
+
+**Simplification / maintainability / usability**
+
+- One host field; no Check interface change.
+- TypeScript 5.3 notes: less parse time, less comment memory, less GC
+  ([release notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-3.html#optimizations-by-skipping-jsdoc-parsing)).
+
+**Risks / parity**
+
+- Future Checks needing full JSDoc AST must opt in deliberately.
+- Mode must match between the shared registry and every host that uses it.
+
+**Primary sources**
+
+- [TypeScript 5.3 JSDoc parsing optimizations](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-3.html#optimizations-by-skipping-jsdoc-parsing)
+- [TypeScript 6.0.3 `JSDocParsingMode`](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/types.ts)
+- Repo: `packages/core/src/engine/watch/watch.ts`, comment Checks under `packages/checks/src/checks`
+
+## Implementation and verification
+
+The implementation follows the dependency order the research identified:
+
+1. Central analysis options and `ParseForTypeErrors`.
+2. Shared-registry `workspacePrograms` at the existing mode boundary.
+3. Primary-Program unused diagnostics.
+4. File-linear import usage.
+5. Named, lazy architecture evidence facets.
+
+Focused contracts cover fresh-process benchmark enrollment and summaries, one-shot versus watch CLI
+lifecycle, shared `SourceFile` identity for compatible registry buckets, primary unused-diagnostic
+parity, JSDoc mode, evidence reuse/invalidation by Program identity, detection ordering, and
+default, named, aliased, and namespace import counts.
+
+The reproducible whole-process command is:
+
+```sh
+npm run bench:self
+```
+
+## Interactions and non-additivity
+
+| Pair                | Interaction                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 + 2               | **[MEASURED]** compose to **6.63 s / 1.10 GiB** upper bound with identical digest.                                                   |
+| 1 + 5               | Shared trees parse once; residual JSDoc savings shrink, so set the mode at registry construction.                                    |
+| 1 + lifetime policy | LanguageServices live through one report stream, then dispose together; the registry removes duplicate compatible ASTs while active. |
+| 3 + 4               | Import usage can be an evidence facet; measure it once and never add overlapping CPU samples.                                        |
+| All + render        | Reporting remains secondary once compiler and evidence work dominate.                                                                |
+
+## What not to prioritize first (rejected alternatives)
+
+- **Bounded one-shot producer as a standalone runtime win:** **[MEASURED]** sequential
+  `workspaceSignalsFromConfigs` was **14.34 s / 2.46 GiB** vs watch sample **13.95 s / 3.33
+  GiB**—clear RSS, no reliable time win.
+- **Blind schema-class/concept-control rewrites:** inclusive plan attribution was high, but
+  exclusion did not improve wall clock reliably. Candidate narrowing also risks missed detections.
+  Re-profile after recommendations 1–2 before changing their algorithms.
+- **Rendering and JSON first:** not where CPU samples or stage time concentrate.
+- **Standalone AST-stack rewrite:** `foldAst` / `astNodesIn` already use an explicit stack. Fix the
+  measured repeated caller in recommendation 4 instead.
 - **Generic checker memoization:** TypeScript already caches node links, expression types, and
-  resolved signatures. Share Better TypeScript's derived indexes instead.
-- **Worker threads:** Programs and checkers are not transferable, and rebuilding them in workers
-  would multiply the dominant memory cost. ADR-0013 already rejected concurrent Program analysis
-  after OOM evidence.
-- **Incremental builder flavor alone:** Better TypeScript still performs full custom scans and
-  indexes; `.tsbuildinfo` cannot make those checks incremental without a dependency/invalidation
+  signatures. Cache Better TypeScript-derived facts instead.
+- **Worker threads for Programs:** Programs are not transferable and rebuilding them multiplies
+  memory. ADR-0013 rejected concurrent Program analysis after OOM evidence.
+- **`.tsbuildinfo` alone:** custom scans still run fully without a Check-evidence invalidation
   model.
+- **`Program.getSuggestionDiagnostics` for unused:** internal; use compiler options instead.
+- **Ad hoc global `SourceFile` map:** recreates TypeScript’s option bucketing and refcount bugs. Use
+  `DocumentRegistry`.
+- **Dropping the architecture fleet for speed:** violates the usability constraint. Optimize its
+  evidence without removing Checks.
 
-## Profiling sources
+## Risks and parity checklist
+
+- Freeze a workspace snapshot; hash ordered detection rows (path, line, column, check name, message)
+  before/after each change.
+- Include JavaScript files, project references, and projects with differing `module`/`target`
+  settings.
+- Watch mode: no regression in update batching, quiet rebuilds, or disposal (`watch.close`).
+- Memory: max RSS and whether shared caches leak across sequential projects.
+- Vendored Effect workspace: sequential Program lifetime must still avoid OOM (ADR-0013).
+- Public CLI output (NDJSON / pretty blocks) and silent architecture evidence joins.
+- Re-run full CLI medians after each stacked change; do not sum the independent deltas.
+
+## Claim labels
+
+| Label           | Meaning                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| **Observed**    | Read from this worktree’s source, lockfile, vendored Effect source, or installed TypeScript 6.0.3. |
+| **[MEASURED]**  | Timing, RSS, digest, or profile observed in temporary harnesses in this worktree.                  |
+| **[INFERENCE]** | Conclusion from observed structure + measurements; not a production guarantee.                     |
+
+## Profiling references
 
 - [Node `--cpu-prof`](https://nodejs.org/download/release/v22.17.1/docs/api/cli.html#--cpu-prof)
 - [Node `--heap-prof`](https://nodejs.org/download/release/v22.17.1/docs/api/cli.html#--heap-prof)
 - [V8 sampling profiler](https://v8.dev/docs/profile)
-- [V8 young-generation collection](https://v8.dev/blog/orinoco-parallel-scavenger)
 - [TypeScript performance tracing](https://github.com/microsoft/TypeScript/wiki/Performance#performance-tracing)
+
+## Outcome
+
+The five recommendations are implemented in this isolated worktree. Production code, regression
+tests, the self-host benchmark, README, and architecture decisions now record the cutover.

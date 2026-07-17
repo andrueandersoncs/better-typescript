@@ -46,6 +46,7 @@ export type Subscription = NodeSubscription | FileSubscription
 // Check is the shared plan contract because runChecks owners need one vocabulary.
 export class Check extends Data.Class<{
   readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
+  readonly compilerOptions: ts.CompilerOptions
 }> {}
 
 // CachedPlan is the program+subscriptions boundary because callers need one contract.

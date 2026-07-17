@@ -13,9 +13,10 @@ import {
 import type { SignalEvent } from "@better-typescript/core/engine/report/data"
 import { reportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
+import { contextFor } from "@better-typescript/core/engine/sources"
 import { defineConfig } from "@better-typescript/core/engine/wiring"
 import type { Wiring } from "@better-typescript/core/engine/wiring/data"
-import { contextFromLoadedProject, loadProject } from "@better-typescript/core/project/loadProject"
+import { loadProject } from "@better-typescript/core/project/loadProject"
 
 interface AdviceExampleCase {
   readonly fixtureId: string
@@ -179,7 +180,7 @@ const reportAt = async (
   const config = defineConfig([{ files: ["**/*"], wiring }])
   const update = new WorkspaceUpdate({
     rootPath: workspace.rootPath,
-    contexts: workspace.projects.map(contextFromLoadedProject)
+    contexts: workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
   })
   const events = await Effect.runPromise(
     Stream.runCollect(reportEvents(config)(Stream.succeed(update)))

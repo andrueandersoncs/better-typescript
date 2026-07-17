@@ -24,7 +24,7 @@ import type { Detection } from "../location/data.js"
 import { Signal, WiringSignals } from "../signal/data.js"
 import { ProgramContext } from "../sources/data.js"
 import { isProjectSourceFile } from "../sources/sources.js"
-import { runChecks } from "../check/check.js"
+import { compilerOptionsForChecks, runChecks } from "../check/check.js"
 import {
   DuplicateCheckNamesError,
   DuplicateNameState,
@@ -157,6 +157,14 @@ export const mergeWirings = <E = never>(wirings: ReadonlyArray<Wiring<E>>): Wiri
 
   return makeWiring({ checks, derive })
 }
+
+// Compiler requirements follow enrolled Check order because the same fleet owns analysis semantics.
+export const compilerOptionsForConfig = <E>(config: WiringConfig<E>): ts.CompilerOptions =>
+  pipe(
+    config,
+    Array.flatMap((entry) => Array.map(entry.wiring.checks, Struct.get("check"))),
+    compilerOptionsForChecks
+  )
 
 // Glob compilation happens at config load because invalid patterns must not fail mid-analysis.
 export const defineConfig = <E = never>(

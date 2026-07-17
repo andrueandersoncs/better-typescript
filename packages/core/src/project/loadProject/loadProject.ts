@@ -1,13 +1,16 @@
 import * as path from "node:path"
-import { Array, Effect, Function, HashSet, Option, flow, pipe } from "effect"
+import { Array, Effect, Equal, Function, HashSet, Option, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "../../engine/check/data.js"
 import type { Detection } from "../../engine/location/data.js"
 import type { WiringSignals } from "../../engine/signal/data.js"
 import type { WiringConfig } from "../../engine/wiring/data.js"
-import { workspaceSignalsForProjects } from "../../engine/wiring/wiring.js"
+import {
+  compilerOptionsForConfig,
+  workspaceSignalsForProjects
+} from "../../engine/wiring/wiring.js"
 import { contextFor } from "../../engine/sources/sources.js"
-import { runChecks } from "../../engine/check/check.js"
+import { compilerOptionsForChecks, runChecks } from "../../engine/check/check.js"
 import type { ProgramContext } from "../../engine/sources/data.js"
 import {
   CircularProjectReferenceError,
@@ -18,6 +21,7 @@ import {
   ProjectConfig,
   WorkspaceConfigs
 } from "./data.js"
+import { createAnalysisProgram } from "./analysisCompilerOptions.js"
 
 export const discoverWorkspace: (
   projectPath: string
@@ -46,12 +50,18 @@ export const discoverWorkspace: (
   return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
 })
 
-export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
-  const program = ts.createProgram({
-    rootNames: config.parsed.fileNames,
-    options: config.parsed.options,
-    projectReferences: config.parsed.projectReferences
-  })
+const loadProjectConfig = (
+  config: ProjectConfig,
+  compilerOptions: ts.CompilerOptions = {}
+): LoadedProject => {
+  const program = createAnalysisProgram(
+    {
+      rootNames: config.parsed.fileNames,
+      options: config.parsed.options,
+      projectReferences: config.parsed.projectReferences
+    },
+    compilerOptions
+  )
 
   return new LoadedProject({
     configPath: config.configPath,
@@ -60,7 +70,7 @@ export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   })
 }
 
-export const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
+const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
   const createContext = contextFor(project.rootPath)
 
   return createContext(project.program)
@@ -70,41 +80,80 @@ const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
 const includeEverySourceFile = Function.constant(true)
 
-const contextFromProjectConfig: (config: ProjectConfig) => ProgramContext = flow(
-  loadProjectConfig,
-  contextFromLoadedProject
-)
+const contextFromProjectConfig = (compilerOptions: ts.CompilerOptions) =>
+  flow(
+    (config: ProjectConfig) => loadProjectConfig(config, compilerOptions),
+    contextFromLoadedProject
+  )
+
+// The one-Check runner owns compiler requirements because callers should not know Check internals.
+const programForChecks =
+  (checks: ReadonlyArray<Check>) =>
+  (program: ts.Program): ts.Program => {
+    const compilerOptions = compilerOptionsForChecks(checks)
+    const currentOptions = program.getCompilerOptions()
+
+    const optionMatches = ([name, value]: [string, unknown]): boolean => {
+      const currentValue = Reflect.get(currentOptions, name)
+
+      return Equal.equals(currentValue, value)
+    }
+
+    const compilerOptionEntries = Object.entries(compilerOptions)
+    const alreadyConfigured = pipe(compilerOptionEntries, Array.every(optionMatches))
+
+    if (alreadyConfigured) {
+      return program
+    }
+
+    const rootNames = program.getRootFileNames()
+    const projectReferences = program.getProjectReferences()
+
+    return createAnalysisProgram(
+      {
+        rootNames,
+        options: currentOptions,
+        projectReferences
+      },
+      compilerOptions
+    )
+  }
 
 // One projection stays public because config callers load and analyze in one step.
 export const workspaceSignalsFromConfigs =
   <E>(config: WiringConfig<E>) =>
   (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>> => {
+    const compilerOptions = compilerOptionsForConfig(config)
+
     const collectProjects = workspaceSignalsForProjects(config)(workspace.rootPath)(
       workspace.projects
     )
 
-    return collectProjects(contextFromProjectConfig)
+    return collectProjects(contextFromProjectConfig(compilerOptions))
   }
 
 export const runCheckOnProject =
   (checks: ReadonlyArray<Check>) =>
   (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
     Effect.sync(() => {
-      const context = contextFromLoadedProject(project)
+      const program = programForChecks(checks)(project.program)
+      const createContext = contextFor(project.rootPath)
+      const context = createContext(program)
       const checksInEveryFile = runChecks(checks)(includeEverySourceFile)
       const detections = checksInEveryFile(context)
 
       return pipe(detections, Array.head, Option.getOrElse(noDetections))
     })
 
-export const loadProject: (
-  projectPath: string
-) => Effect.Effect<
-  LoadedWorkspace,
-  MissingTsconfigError | CircularProjectReferenceError | InvalidTsconfigError
-> = Effect.fn("loadProject")(function* (projectPath: string) {
+export const loadProject = Effect.fn("loadProject")(function* (
+  projectPath: string,
+  compilerOptions: ts.CompilerOptions = {}
+) {
   const workspace = yield* discoverWorkspace(projectPath)
-  const projects = Array.map(workspace.projects, loadProjectConfig)
+
+  const projects = Array.map(workspace.projects, (config) =>
+    loadProjectConfig(config, compilerOptions)
+  )
 
   return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
 })

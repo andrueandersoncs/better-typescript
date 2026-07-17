@@ -144,11 +144,11 @@ Re-exporting is valid when an entry module is that seam; callers must not bypass
 | `@better-typescript/core/engine/signal/data`                 | The `Signal` result vocabulary                                                                                                                                                                                                                       |
 | `@better-typescript/core/engine/report`                      | Report rendering, including `withFallbackAdvice` and `renderEventText`                                                                                                                                                                               |
 | `@better-typescript/core/engine/report/data`                 | `ReportEvent`, `SignalEvent`, `ClearedEvent`, and `EmptyReportEvent` wire vocabulary                                                                                                                                                                 |
-| `@better-typescript/core/engine/watch`                       | `reportEvents` composition and the production `workspaceUpdates` adapter                                                                                                                                                                             |
+| `@better-typescript/core/engine/watch`                       | `reportEvents` composition plus the one-shot `workspacePrograms` and continuous `workspaceUpdates` production adapters                                                                                                                               |
 | `@better-typescript/core/engine/watch/data`                  | The `WorkspaceUpdate` input contract                                                                                                                                                                                                                 |
 | `@better-typescript/core/engine/sources`                     | Program/source execution helpers                                                                                                                                                                                                                     |
 | `@better-typescript/core/engine/sources/data`                | Program and source context types                                                                                                                                                                                                                     |
-| `@better-typescript/core/project/loadProject`                | `discoverWorkspace`, `loadProjectConfig`, `contextFromLoadedProject`, `workspaceSignalsFromConfigs`, `runCheckOnProject`, `loadProject`                                                                                                              |
+| `@better-typescript/core/project/loadProject`                | `discoverWorkspace`, `workspaceSignalsFromConfigs`, `runCheckOnProject`, `loadProject`                                                                                                                                                               |
 | `@better-typescript/core/project/loadProject/data`           | Discovered and loaded project/workspace types and project-loading errors                                                                                                                                                                             |
 | `@better-typescript/core/project/loadWiringConfig`           | Project config loading                                                                                                                                                                                                                               |
 | `@better-typescript/core/project/loadWiringConfig/data`      | `ProjectWiringConfigError` and config-loading vocabulary                                                                                                                                                                                             |
@@ -392,24 +392,34 @@ Better TypeScript intentionally does not provide:
 
 ## Analysis modes
 
-`workspaceUpdates(workspace, watchOptions)` is the production adapter from a discovered workspace to
-a `Stream<WorkspaceUpdate>`. `reportEvents(config)(updates)` is the public report composition from
-that stream to `Stream<ReportEvent>`. Programmatic callers and tests can provide synthetic Workspace
-Updates directly without replacing the compiler or importing pipeline stages.
+`workspacePrograms(workspace)` is the one-shot adapter from a discovered workspace to one
+`WorkspaceUpdate`. It uses a workspace-scoped TypeScript `DocumentRegistry` so compatible project
+Programs share `SourceFile` objects, then disposes its LanguageServices when the report stream
+completes. `workspaceUpdates(workspace, watchOptions)` is the continuous watch adapter.
+`reportEvents(config)(updates)` is the public composition from either producer’s
+`Stream<WorkspaceUpdate>` to `Stream<ReportEvent>`. Programmatic callers and tests can still provide
+synthetic Workspace Updates directly.
 
-The CLI constructs the producer once and selects only how much of it to consume:
+The CLI selects the producer at the mode boundary:
 
 ```ts
-const updates = workspaceUpdates(workspace, watchOptions)
-const selectedUpdates = watchForChanges ? updates : Stream.take(updates, 1)
-const events = reportEvents(config)(selectedUpdates)
+const updates = watchForChanges
+  ? workspaceUpdates(workspace, watchOptions)
+  : workspacePrograms(workspace)
+const events = reportEvents(config)(updates)
 ```
 
-The default one-shot path therefore takes the first complete workspace snapshot, emits its report,
-and exits after stdout drains. `--watch` consumes the same producer continuously. Both modes share
-glob activation, fused Check execution, full batch recomputation, derivation, rendering, empty
-reports, and report-event deltas. The initial batch emits one `signal` event per visible block or
-one `empty` event; later watch batches emit changed `signal` and disappeared `cleared` events only.
+The default one-shot path emits one complete report and exits after stdout drains. `--watch`
+continues to observe project edits. Both modes share glob activation, fused Check execution, full
+batch recomputation, derivation, rendering, empty reports, and report-event ordering after the
+Workspace Update boundary. The initial batch emits one `signal` event per visible block or one
+`empty` event; later watch batches emit changed `signal` and disappeared `cleared` events only.
+
+### Whole-process performance benchmark
+
+`npm run bench:self` builds once, verifies that all Checks configured for this repository are
+enrolled, then times three fresh built-CLI processes. Its reported minimum, median, and maximum
+exclude build time. `BETTER_TYPESCRIPT_SELF_HOST_RUNS=<n>` changes the repetition count.
 
 Watch-mode caveat: membership changes in a solution-style root tsconfig's reference list need a
 restart. Each leaf project's own tsconfig hot-reloads. Mid-run tsconfig breakage is tolerated
@@ -432,6 +442,9 @@ package exports are the supported entrypoints; source paths are implementation d
 
 ## Architecture notes
 
+- `adrs/0022-shared-one-shot-compiler-state.md` records the shared-registry one-shot producer,
+  primary unused diagnostics, Program-scoped architecture evidence, file-linear import usage,
+  `ParseForTypeErrors`, and the fresh-process benchmark.
 - `adrs/0021-advice-clean-self-host.md` records that architecture Advice gates self-hosting: an
   empty report, one-directional engine seams, workspace-relative test classification, and an
   analysis horizon that includes the repository's own config, bench, and runnable examples.
@@ -455,9 +468,9 @@ package exports are the supported entrypoints; source paths are implementation d
 - `adrs/0014-interface-depth-and-seam-evidence.md` records the evidence model for module leverage,
   locality, seam placement, and testability.
 - `adrs/0013-fused-dispatch-and-bounded-workspaces.md` records declarative Check plans, fused
-  `SyntaxKind` dispatch, stack-safe traversal, and bounded one-project-at-a-time workspace analysis.
-  ADR-0016 supersedes its built-in authoring consequence; ADR-0017 preserves its execution and
-  workspace decisions behind the new stream seam.
+  `SyntaxKind` dispatch, stack-safe traversal, and bounded config-native workspace analysis.
+  ADR-0016 supersedes its built-in authoring consequence; ADR-0022 supersedes its
+  one-Program-at-a-time CLI one-shot lifetime with shared-registry Workspace Programs.
 - `adrs/0012-monorepo-core-checks-cli.md` records the split into core, checks, and CLI workspace
   packages. ADR-0016 supersedes only its fixture location and loader consequence.
 - `adrs/0011-rules-and-advice-are-one-concept.md` records the unified Check, Signal, `reported`, and

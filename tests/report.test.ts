@@ -18,16 +18,15 @@ import { signalOf } from "@better-typescript/core/engine/signal"
 import { withFallbackAdvice } from "@better-typescript/core/engine/report"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
-import { astNodesIn, foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import {
+  astNodesIn,
+  contextFor,
+  foldAst,
+  isProjectSourceFile
+} from "@better-typescript/core/engine/sources"
 import { reportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
-import {
-  contextFromLoadedProject,
-  discoverWorkspace,
-  loadProject,
-  loadProjectConfig,
-  runCheckOnProject
-} from "@better-typescript/core/project/loadProject"
+import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   checkFromSubscriptions,
   detection,
@@ -72,7 +71,7 @@ const reportTexts =
   (workspace: LoadedWorkspace): Stream.Stream<string, E> => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
-      contexts: workspace.projects.map(contextFromLoadedProject)
+      contexts: workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
     })
 
     return pipe(
@@ -361,12 +360,10 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
     ]),
     probeExamples
   )
-  const workspace = await Effect.runPromise(discoverWorkspace(fixturePath("glob-wirings")))
+  const workspace = await Effect.runPromise(loadProject(fixturePath("glob-wirings")))
   const update = new WorkspaceUpdate({
     rootPath: workspace.rootPath,
-    contexts: workspace.projects.map((project) =>
-      pipe(project, loadProjectConfig, contextFromLoadedProject)
-    )
+    contexts: workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
   })
   const blocks = await collectStream(
     pipe(

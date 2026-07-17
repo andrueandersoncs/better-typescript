@@ -1,17 +1,13 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/check"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { CompositionFingerprintData } from "./data.js"
-import {
-  ExportReferenceIndex,
-  buildExportReferenceIndex,
-  isTestSourceFile
-} from "./programSymbols.js"
+import { ExportReferenceIndex, isTestSourceFile } from "./programSymbols.js"
+import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
 
 const minimumSteps = 3
@@ -322,6 +318,6 @@ const compositionFingerprintSubscriptions = Function.compose(
   fileSubscriptions
 )
 
-export const compositionFingerprints: Check = withProgramIndex(buildExportReferenceIndex)(
+export const compositionFingerprints: Check = evidenceCheck(exportReferenceIndex)(
   compositionFingerprintSubscriptions
 )

@@ -13,6 +13,7 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
+import { analysisJsDocParsingMode } from "../../project/loadProject/analysisCompilerOptions.js"
 import type { ReportBlock, ReportEvent } from "../report/data.js"
 import {
   batchReportBlocks,
@@ -29,6 +30,8 @@ import type { WiringConfig } from "../wiring/data.js"
 import { workspaceSignals } from "../wiring/wiring.js"
 import { SourceUpdate, WorkspaceUpdate } from "./data.js"
 
+export { workspacePrograms } from "./workspacePrograms.js"
+
 // Reporter diagnostics stay silent because the watcher must keep the last valid program on failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 
@@ -40,7 +43,8 @@ const stopWatch = (watch: ts.WatchOfConfigFile<ts.BuilderProgram>): Effect.Effec
 // Fresh contexts per rebuild are required because diffs and checks must observe the new program.
 const programUpdates = (
   config: ProjectConfig,
-  watchOptions: Option.Option<ts.WatchOptions>
+  watchOptions: Option.Option<ts.WatchOptions>,
+  compilerOptions: ts.CompilerOptions
 ): Stream.Stream<ProgramContext> =>
   Stream.callback<ProgramContext>((queue) => {
     const onProgramCreate = (builder: ts.BuilderProgram): boolean => {
@@ -55,13 +59,15 @@ const programUpdates = (
 
       const host = ts.createWatchCompilerHost(
         config.configPath,
-        undefined,
+        compilerOptions,
         ts.sys,
         ts.createAbstractBuilder,
         ignoreDiagnostic,
         ignoreDiagnostic,
         watchOptionsToExtend
       )
+
+      host.jsDocParsingMode = analysisJsDocParsingMode
 
       // Set afterProgramCreate after host build because createWatchProgram emits the initial program now.
       host.afterProgramCreate = onProgramCreate
@@ -111,10 +117,11 @@ const diffCheckableFiles =
 // Changed and deleted paths emit together because workspace caching must drop removed files too.
 const sourceUpdates = (
   config: ProjectConfig,
-  watchOptions: Option.Option<ts.WatchOptions>
+  watchOptions: Option.Option<ts.WatchOptions>,
+  compilerOptions: ts.CompilerOptions
 ): Stream.Stream<SourceUpdate> =>
   pipe(
-    programUpdates(config, watchOptions),
+    programUpdates(config, watchOptions, compilerOptions),
     Stream.mapAccum(Function.constant(emptyFileIndex), (previous, context) => {
       const [next, update] = diffCheckableFiles(previous)(context)
       const updates = Array.of(update)
@@ -128,13 +135,14 @@ const emptyContextCache: HashMap.HashMap<number, ProgramContext> = HashMap.empty
 // Cached contexts are kept because each batch needs every project's latest program without ASTs.
 export const workspaceUpdates = (
   workspace: WorkspaceConfigs,
-  watchOptions: Option.Option<ts.WatchOptions>
+  watchOptions: Option.Option<ts.WatchOptions>,
+  compilerOptions: ts.CompilerOptions = {}
 ): Stream.Stream<WorkspaceUpdate> => {
   const projectCount = workspace.projects.length
 
   const updateStreams = Array.map(workspace.projects, (config, index) =>
     pipe(
-      sourceUpdates(config, watchOptions),
+      sourceUpdates(config, watchOptions, compilerOptions),
       Stream.map((update) => Tuple.make(index, update))
     )
   )

@@ -8,8 +8,9 @@ import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { workspaceSignals } from "@better-typescript/core/engine/wiring"
+import { contextFor } from "@better-typescript/core/engine/sources"
 import { checkFromSubscriptions, detection, fileCheck } from "@better-typescript/core/engine/check"
-import { contextFromLoadedProject, loadProject } from "@better-typescript/core/project/loadProject"
+import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
@@ -190,7 +191,9 @@ test("decoded glob config drives workspace signals end to end", async () => {
 
     const workspace = await Effect.runPromise(loadProject(projectDirectory))
     const wiringSignals = await Effect.runPromise(
-      workspaceSignals(config)(workspace.rootPath)(workspace.projects.map(contextFromLoadedProject))
+      workspaceSignals(config)(workspace.rootPath)(
+        workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
+      )
     )
 
     assert.equal(wiringSignals[0]?.matched, true)
