@@ -1,30 +1,19 @@
-import { Array, Match, Option, Struct, Tuple, pipe } from "effect"
+import { Array, Data, Match, HashMap, MutableRef, Option, Result, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { fileCheck, detection } from "@better-typescript/core/engine/check"
 
 import { ImportUsageData, ImportedNameUsage } from "./data.js"
-import { importElements, isTestSourceFile, toWorkspacePath } from "./programSymbols.js"
+import { isTestSourceFile, toWorkspacePath } from "./programSymbols.js"
 
 const message = "Import usage evidence — this import declaration binds names used in the file."
 
 const hint =
   "Counts are purely syntactic within the importing file; local shadowing of an import binding can inflate or hide references."
-
-const isInsideNode =
-  (container: ts.Node) =>
-  (node: ts.Node): boolean => {
-    const sameFile = node.getSourceFile() === container.getSourceFile()
-    const afterStart = node.pos >= container.pos
-    const beforeEnd = node.end <= container.end
-    const conditions = Array.make(sameFile, afterStart, beforeEnd)
-
-    return Array.every(conditions, Boolean)
-  }
 
 const isNamedCallReference = (node: ts.Identifier): boolean =>
   pipe(
@@ -54,43 +43,6 @@ const isNamespaceCallReference = (node: ts.Identifier): boolean => {
   return Array.some(callKinds, Boolean)
 }
 
-const countBinding =
-  (sourceFile: ts.SourceFile, importDeclaration: ts.ImportDeclaration) =>
-  (binding: ts.Identifier): ImportedNameUsage => {
-    const insideImport = isInsideNode(importDeclaration)
-    const isNamespace = ts.isNamespaceImport(binding.parent)
-    const isCallReference = isNamespace ? isNamespaceCallReference : isNamedCallReference
-    const bindingName = binding.text
-    const initialCount = Tuple.make(0, 0)
-
-    const counted = foldAst(
-      (current: readonly [number, number], node: ts.Node): readonly [number, number] => {
-        const candidate = pipe(
-          Option.liftPredicate(ts.isIdentifier)(node),
-          Option.filter((identifier) => identifier.text === bindingName),
-          Option.filter((identifier) => !insideImport(identifier))
-        )
-
-        if (Option.isNone(candidate)) {
-          return current
-        }
-
-        const [referenceCount, callCount] = current
-        const callIncrement = isCallReference(candidate.value) ? 1 : 0
-
-        return Tuple.make(referenceCount + 1, callCount + callIncrement)
-      }
-    )(sourceFile)(initialCount)
-
-    const [referenceCount, callCount] = counted
-
-    return new ImportedNameUsage({
-      name: bindingName,
-      referenceCount,
-      callCount
-    })
-  }
-
 const importBindings = (node: ts.ImportDeclaration): ReadonlyArray<ts.Identifier> => {
   const clause = Option.fromNullishOr(node.importClause)
 
@@ -118,39 +70,173 @@ const importBindings = (node: ts.ImportDeclaration): ReadonlyArray<ts.Identifier
   return Array.appendAll(defaultBinding, namedBindings)
 }
 
-const importUsageElement = (context: CheckContext) => {
+// BindingCounter uses explicit mutable cells because one hot AST pass updates every imported name.
+class BindingCounter extends Data.Class<{
+  readonly binding: ts.Identifier
+  readonly importStart: number
+  readonly importEnd: number
+  readonly isNamespace: boolean
+  readonly referenceCount: MutableRef.MutableRef<number>
+  readonly callCount: MutableRef.MutableRef<number>
+}> {}
+
+// ImportRecord preserves declaration order because emitted evidence must match source order.
+class ImportRecord extends Data.Class<{
+  readonly declaration: ts.ImportDeclaration
+  readonly specifier: string
+  readonly counters: ReadonlyArray<BindingCounter>
+}> {}
+
+const collectImportRecords = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> =>
+  Array.filterMap(sourceFile.statements, (statement) => {
+    if (!ts.isImportDeclaration(statement)) {
+      return Result.failVoid
+    }
+
+    const specifier = pipe(
+      Option.fromNullishOr(statement.moduleSpecifier),
+      Option.filter(ts.isStringLiteral),
+      Option.map(Struct.get("text"))
+    )
+
+    if (Option.isNone(specifier)) {
+      return Result.failVoid
+    }
+
+    const bindings = importBindings(statement)
+
+    const counters = Array.map(bindings, (binding) => {
+      const isNamespace = ts.isNamespaceImport(binding.parent)
+      const referenceCount = MutableRef.make(0)
+      const callCount = MutableRef.make(0)
+
+      return new BindingCounter({
+        binding,
+        importStart: statement.pos,
+        importEnd: statement.end,
+        isNamespace,
+        referenceCount,
+        callCount
+      })
+    })
+
+    const record = new ImportRecord({
+      declaration: statement,
+      specifier: specifier.value,
+      counters
+    })
+
+    return Result.succeed(record)
+  })
+
+const indexCounter = (
+  countersByName: HashMap.HashMap<string, ReadonlyArray<BindingCounter>>,
+  counter: BindingCounter
+): HashMap.HashMap<string, ReadonlyArray<BindingCounter>> => {
+  const name = counter.binding.text
+
+  const counters = pipe(
+    HashMap.get(countersByName, name),
+    Option.getOrElse(Array.empty),
+    Array.append(counter)
+  )
+
+  return HashMap.set(countersByName, name, counters)
+}
+
+const indexRecord = (
+  countersByName: HashMap.HashMap<string, ReadonlyArray<BindingCounter>>,
+  record: ImportRecord
+): HashMap.HashMap<string, ReadonlyArray<BindingCounter>> =>
+  Array.reduce(record.counters, countersByName, indexCounter)
+
+const countNode =
+  (countersByName: HashMap.HashMap<string, ReadonlyArray<BindingCounter>>) =>
+  (state: false, node: ts.Node): false => {
+    if (!ts.isIdentifier(node)) {
+      return state
+    }
+
+    const counters = HashMap.get(countersByName, node.text)
+
+    if (Option.isSome(counters)) {
+      Array.forEach(counters.value, (counter) => {
+        const startsInsideImport = node.pos >= counter.importStart
+        const endsInsideImport = node.end <= counter.importEnd
+        const bounds = Array.make(startsInsideImport, endsInsideImport)
+        const insideImport = Array.every(bounds, Boolean)
+
+        if (insideImport) {
+          return
+        }
+
+        MutableRef.increment(counter.referenceCount)
+
+        const isCallReference = counter.isNamespace
+          ? isNamespaceCallReference(node)
+          : isNamedCallReference(node)
+
+        if (isCallReference) {
+          MutableRef.increment(counter.callCount)
+        }
+      })
+    }
+
+    return state
+  }
+
+const countImportUsages = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> => {
+  const records = collectImportRecords(sourceFile)
+
+  if (records.length === 0) {
+    return records
+  }
+
+  const emptyCounters = HashMap.empty<string, ReadonlyArray<BindingCounter>>()
+  const countersByName = Array.reduce(records, emptyCounters, indexRecord)
+
+  foldAst(countNode(countersByName))(sourceFile)(false)
+
+  return records
+}
+
+const importedNameUsage = (counter: BindingCounter): ImportedNameUsage => {
+  const referenceCount = MutableRef.get(counter.referenceCount)
+  const callCount = MutableRef.get(counter.callCount)
+
+  return new ImportedNameUsage({
+    name: counter.binding.text,
+    referenceCount,
+    callCount
+  })
+}
+
+const importUsageElements = (context: CheckContext): ReadonlyArray<Detection> => {
   const element = detection(context)
   const relative = toRelativeFileName(context.projectRoot)
   const workspaceRelative = toWorkspacePath(context.projectRoot, context.workspaceRoot)
   const fromTest = isTestSourceFile(context.workspaceRoot)(context.sourceFile)
   const relativePath = relative(context.sourceFile.fileName)
   const importerWorkspacePath = workspaceRelative(relativePath)
+  const records = countImportUsages(context.sourceFile)
 
-  const elementForImport =
-    (node: ts.ImportDeclaration) =>
-    (specifier: string): Option.Option<Detection> => {
-      const bindings = importBindings(node)
-      const bindingUsage = countBinding(context.sourceFile, node)
-      const names = Array.map(bindings, bindingUsage)
+  return Array.map(records, (record) => {
+    const names = Array.map(record.counters, importedNameUsage)
 
-      const data = new ImportUsageData({
-        specifier,
-        importerWorkspacePath,
-        fromTest,
-        names
-      })
+    const data = new ImportUsageData({
+      specifier: record.specifier,
+      importerWorkspacePath,
+      fromTest,
+      names
+    })
 
-      const reported = element({ node, message, hint, data })
-      return Option.some(reported)
-    }
-
-  return elementForImport
+    return element({
+      node: record.declaration,
+      message,
+      hint,
+      data
+    })
+  })
 }
 
-const importUsageElements = importElements(importUsageElement)
-
-const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
-
-export const importUsage: Check = nodeCheck(importDeclarationKinds)(ts.isImportDeclaration)(
-  importUsageElements
-)
+export const importUsage: Check = fileCheck(importUsageElements)

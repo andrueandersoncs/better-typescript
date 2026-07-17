@@ -1,14 +1,14 @@
 import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
-import { withProgramIndex } from "../../defineCheck.js"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { ModuleGraphData } from "./data.js"
-import { ModuleEdge, buildModuleEdges, toWorkspacePath } from "./programSymbols.js"
+import { ModuleEdge, toWorkspacePath } from "./programSymbols.js"
+import { evidenceCheck, moduleEdges } from "./architectureEvidence.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const message = "Module graph evidence — this Module imports other project Modules."
 
@@ -16,7 +16,7 @@ const hint =
   "Architecture Explore uses resolved edges to find connected bounce paths; an import count alone is not an architectural defect."
 
 const buildIndex = (context: ProgramContext): readonly [ReadonlyArray<ModuleEdge>, string] => {
-  const edges = buildModuleEdges(context)
+  const edges = moduleEdges(context)
 
   return Tuple.make(edges, context.projectRoot)
 }
@@ -63,4 +63,4 @@ const moduleGraphElements =
 
 const moduleGraphSubscriptions = Function.compose(moduleGraphElements, fileSubscriptions)
 
-export const moduleGraph: Check = withProgramIndex(buildIndex)(moduleGraphSubscriptions)
+export const moduleGraph: Check = evidenceCheck(buildIndex)(moduleGraphSubscriptions)

@@ -13,6 +13,7 @@ preserves every required invariant and distinction.
 
 1. **Code MUST optimize for a correct mental model**, not merely easy scanning.
 
+> what do you mean by "the unit
    A correct mental model lets a reader predict, from the unit and its immediate contract:
 
    - its purpose and result,
@@ -25,40 +26,120 @@ preserves every required invariant and distinction.
    running the code. A plausible prediction contradicted by runtime behavior, types, or tests is
    evidence that the code miscommunicates its behavior.
 
-> what's an example of "domain intent" and code "expressing" it? I'd also like to see an example of
-> code "expressing" implementation mechanics to get a feel for the difference between the two
-
 2. **Code MUST express domain intent rather than implementation mechanics.**
 
-> what's a concrete example of this? give me some specific rules that I can apply to typescript code
-> to enforce this.
+   Domain intent is the problem-space operation or decision: reserve a seat, approve an invoice, or
+   expire a session. Implementation mechanics are the storage and control operations required to
+   perform it: assign fields, update counters, index collections, or call persistence APIs. Code
+   expresses domain intent when its names and public operations state why those mechanics happen.
+
+   This caller expresses mechanics:
+
+   ```ts
+   const seat = show.seats[seatIndex]
+   seat.status = "reserved"
+   seat.customerId = customerId
+   show.availableSeatCount -= 1
+   ```
+
+   This caller expresses the domain operation:
+
+   ```ts
+   const updatedShow = reserveSeat(show, seatId, customerId)
+   ```
+
+   `reserveSeat` still implements the necessary mechanics, but keeps them inside the abstraction
+   that owns the reservation invariant. A reader of the caller sees the intended outcome without
+   reconstructing it from state updates.
 
 3. **Each unit SHOULD support local reasoning.** Dependencies, inputs, outputs, errors, effects, and
    state changes must be discoverable nearby.
 
-> what is the scope of this statement, do you mean on a function-level? on a module-level?
-> file-level? something else?
+   For example, this function cannot be understood from its signature because exchange rates and
+   discounts come from ambient mutable state:
+
+   ```ts
+   const priceOrder = (order: Order): Money => {
+     const converted = convertMoney(order.total, activeExchangeRate)
+
+     return applyDiscount(converted, currentDiscount)
+   }
+   ```
+
+   Make those influences explicit:
+
+   ```ts
+   const priceOrder = (order: Order, exchangeRate: ExchangeRate, discount: Discount): Money => {
+     const converted = convertMoney(order.total, exchangeRate)
+
+     return applyDiscount(converted, discount)
+   }
+   ```
+
+   Apply these rules:
+
+   - Dependencies MUST appear in parameters, constructor fields, or module imports; service locators
+     and undeclared ambient state are prohibited.
+   - Time, randomness, environment variables, feature flags, and the current user MUST be passed or
+     captured by an explicitly named boundary.
+   - A function SHOULD NOT mutate caller-owned inputs. Mutation is acceptable only when ownership
+     and the mutating operation are explicit in the API.
+   - I/O MUST occur behind an operation whose name and contract expose the effect. Predicates,
+     getters, and value constructors MUST NOT perform hidden I/O.
+   - Failures and optional results MUST be represented by the declared return, error, or effect
+     channel rather than undocumented sentinels or hidden throws.
+   - A dependency's public contract MUST be sufficient for using it; callers SHOULD NOT need to read
+     its implementation to understand ordinary behavior.
 
 4. **Control and data flow MUST be obvious** without mentally simulating unnecessarily complex
    expressions, branching, or mutation.
 
-> How do you define or enumerate "existing project conventions"? Complexity is unnecessary when
-> behavior and invariants can be preserved using existing project conventions while reducing any of
-> the following:
+   This applies recursively at every semantic boundary:
 
-- independent values the reader must track simultaneously,
+   - **Expression:** evaluation order and intermediate meanings are apparent.
+   - **Function or method:** branches, exits, loops, and state transitions can be followed one path
+     at a time.
+   - **Module:** initialization, state ownership, and data passed between exports are apparent.
+   - **Cross-module or asynchronous workflow:** sequencing, concurrency, cancellation, and failure
+     propagation are apparent.
 
-> what does "simultaneously active" mean?
+   In TypeScript, a file containing imports or exports is normally a module, so file and module
+   scope often coincide. A directory is not a readability scope by itself; evaluate the contracts
+   that cross its module boundaries.
 
-- simultaneously active branches or cases,
-- prior values that must be reconstructed after mutation,
-- dependencies on evaluation order, or
-- jumps to nonlocal definitions required to understand the current path.
+   An existing project convention is either explicitly required by project documentation or
+   configuration, or repeated across multiple independent, analogous production units. One
+   occurrence is a precedent, not yet a convention. Determine conventions in this order:
 
-Typical evidence includes nested expressions with separately meaningful intermediate results,
-branches that repeat behavior while changing only data, repeated conditions, and mutation whose
-outcome depends on execution history. Complexity is necessary when removing it would erase a domain
-case, invariant, error behavior, or demonstrated performance constraint.
+   1. documented standards and executable configuration,
+   2. the dominant pattern in the nearest analogous subsystem,
+   3. a repeated repository-wide pattern, then
+   4. the idiom of the language or library in use.
+
+   Enumerate at least the project's conventions for data representation, error handling, effects and
+   asynchrony, dependency provision, naming and API shape, module placement, and testing. An
+   explicit standard wins over an incidental pattern. Correctness wins over every convention.
+
+   Complexity is unnecessary when behavior and invariants can be preserved under those conventions
+   while reducing any of the following:
+
+   - independent values the reader must track simultaneously,
+   - simultaneously active branches or cases,
+   - prior values that must be reconstructed after mutation,
+   - dependencies on evaluation order, or
+   - jumps to nonlocal definitions required to understand the current path.
+
+   “Simultaneously active” describes the reader's burden, not runtime concurrency. A branch remains
+   cognitively active while later behavior still depends on whether it ran. For example, three
+   independent conditionals that each mutate a final price create up to eight histories the reader
+   must consider at the return statement. Finish cases independently or represent genuine
+   combinations as named domain states so earlier branch history need not remain in mind.
+
+   Typical evidence of unnecessary complexity includes nested expressions with separately meaningful
+   intermediate results, branches that repeat behavior while changing only data, repeated
+   conditions, and mutation whose outcome depends on execution history. Complexity is necessary when
+   removing it would erase a domain case, invariant, error behavior, or demonstrated performance
+   constraint.
 
 5. **Types MUST communicate meaningful invariants and possible states.**
 
@@ -66,12 +147,25 @@ case, invariant, error behavior, or demonstrated performance constraint.
 
    - replacing correlated booleans or optional fields with discriminated unions,
 
-   > what would be an example of an "interchangeable" vs "non-interchangeable" domain value be?
    - giving non-interchangeable domain values distinct types,
 
-   > what would an example of a "real relationship" vs a "non-real relationship" between inputs and
-   > outputs be?
+     Values are interchangeable when swapping them preserves meaning and validity. Two `UserId`
+     values compared by a symmetric `sameUser(left, right)` operation are interchangeable and need
+     the same type. A `UserId` and an `InvoiceId` are not interchangeable even if both serialize as
+     strings: passing a user identifier to `loadInvoice` is invalid and distinct types should make
+     that call fail to compile. Units such as `Meters` and `Milliseconds` are another
+     non-interchangeable pair. Introduce role-specific types only when swapping roles violates a
+     domain invariant; otherwise precise parameter names are sufficient.
+
    - expressing real relationships between inputs and outputs, and
+
+     A relationship is real when the implementation derives the output type from typed input or from
+     a runtime witness. For example, `<A>(items: ReadonlyArray<A>) => A | undefined` guarantees that
+     its result, when present, has the input element type. `<A>(raw: string) => A` expresses no real
+     relationship: the caller can choose any `A`, while the string provides no evidence for that
+     choice. Such a parser should return `unknown` and accept a validator or schema that can
+     establish `A` at runtime.
+
    - exposing possible failures and effects at boundaries.
 
    For example, this type permits contradictory states:

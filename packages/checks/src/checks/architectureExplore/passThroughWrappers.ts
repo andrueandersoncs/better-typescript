@@ -1,21 +1,16 @@
 import { Array, Function, Option, Struct, Tuple, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "../../defineCheck.js"
-import { toRelativeFileName } from "@better-typescript/core/engine/location"
+
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { PassThroughWrapperData } from "./data.js"
-import {
-  ExportReferenceIndex,
-  ModuleEdge,
-  buildExportReferenceIndex,
-  buildModuleEdges,
-  usageFor
-} from "./programSymbols.js"
+import { ExportReferenceIndex, ModuleEdge, usageFor } from "./programSymbols.js"
+import { evidenceCheck, exportReferenceIndex, moduleEdges } from "./architectureEvidence.js"
 import { unwrapExpression } from "../support/tsNode.js"
 
 const reexportMessage =
@@ -256,12 +251,12 @@ const passThroughElements =
 const buildIndex = (
   context: ProgramContext
 ): readonly [ExportReferenceIndex, ReadonlyArray<ModuleEdge>, string] => {
-  const references = buildExportReferenceIndex(context)
-  const edges = buildModuleEdges(context)
+  const references = exportReferenceIndex(context)
+  const edges = moduleEdges(context)
 
   return Tuple.make(references, edges, context.projectRoot)
 }
 
 const passThroughSubscriptions = Function.compose(passThroughElements, fileSubscriptions)
 
-export const passThroughWrappers: Check = withProgramIndex(buildIndex)(passThroughSubscriptions)
+export const passThroughWrappers: Check = evidenceCheck(buildIndex)(passThroughSubscriptions)

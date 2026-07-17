@@ -12,6 +12,7 @@ import { loadProject } from "@better-typescript/core/project/loadProject"
 import { compositionForwarders } from "@better-typescript/checks/architectureExplore/compositionForwarders"
 import { moduleScopeEffects } from "@better-typescript/checks/architectureExplore/moduleScopeEffects"
 import { testOnlyExports } from "@better-typescript/checks/architectureExplore/testOnlyExports"
+import { isTestPath } from "@better-typescript/checks/architectureExplore/programSymbols"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "workspace-test-helpers")
@@ -58,6 +59,11 @@ const runWorkspaceChecks = async (
 }
 
 const isUnderTestsDirectory = (workspacePath: string): boolean => workspacePath.startsWith("tests/")
+
+test("benchmarks are test-like architecture consumers", () => {
+  assert.equal(isTestPath("bench/selfHost.ts"), true)
+  assert.equal(isTestPath("packages/core/src/engine/watch.ts"), false)
+})
 
 test("fixture discovers src and tests projects", async () => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))

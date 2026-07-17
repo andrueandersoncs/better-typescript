@@ -1,9 +1,9 @@
 import { Array, HashSet, Option, pipe, Result, Function } from "effect"
-import * as ts from "typescript"
-import { defineFileCheck } from "../defineCheck.js"
+import type * as ts from "typescript"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
+import { defineFileCheck } from "../defineCheck.js"
 
 const message = "Avoid unused imports, declarations, and parameters."
 
@@ -12,6 +12,12 @@ const hint =
   "If a parameter is required by a signature but intentionally unused, prefix its name with an underscore."
 
 const unusedDiagnosticCodes = HashSet.make(6133, 6192, 6196, 6138, 6198, 6199, 6205)
+
+const compilerOptions: ts.CompilerOptions = {
+  noEmit: true,
+  noUnusedLocals: true,
+  noUnusedParameters: true
+}
 
 const isUnusedDiagnostic = (diagnostic: ts.Diagnostic): boolean =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
@@ -51,4 +57,4 @@ const unusedMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   })
 }
 
-export const noUnused = defineFileCheck("no-unused", unusedMatches)
+export const noUnused = defineFileCheck("no-unused", unusedMatches, compilerOptions)

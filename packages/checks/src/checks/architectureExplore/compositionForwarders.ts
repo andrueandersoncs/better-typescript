@@ -1,18 +1,14 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "../../defineCheck.js"
+
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { CompositionForwarderData } from "./data.js"
-import {
-  ExportReferenceIndex,
-  buildExportReferenceIndex,
-  isTestSourceFile,
-  usageFor
-} from "./programSymbols.js"
+import { ExportReferenceIndex, isTestSourceFile, usageFor } from "./programSymbols.js"
+import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
 
 const message =
@@ -202,6 +198,6 @@ const compositionForwarderSubscriptions = Function.compose(
   fileSubscriptions
 )
 
-export const compositionForwarders: Check = withProgramIndex(buildExportReferenceIndex)(
+export const compositionForwarders: Check = evidenceCheck(exportReferenceIndex)(
   compositionForwarderSubscriptions
 )

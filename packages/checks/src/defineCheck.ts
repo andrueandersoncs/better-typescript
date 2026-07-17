@@ -8,7 +8,12 @@ import type { RefactorExampleSource } from "@better-typescript/core/engine/examp
 import { directoryRefactorExamples } from "@better-typescript/core/engine/example"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
-import { checkFromSubscriptions, fileCheck, nodeCheck } from "@better-typescript/core/engine/check"
+import {
+  checkFromSubscriptions,
+  fileCheck,
+  nodeCheck,
+  withCompilerOptions
+} from "@better-typescript/core/engine/check"
 import { namedCheck, silentCheck } from "@better-typescript/core/engine/wiring"
 
 const moduleUrlPath = fileURLToPath(import.meta.url)
@@ -44,9 +49,11 @@ export const defineCheck = <N extends ts.Node>(
 
 export const defineFileCheck = (
   name: string,
-  detect: (context: CheckContext) => ReadonlyArray<Detection>
+  detect: (context: CheckContext) => ReadonlyArray<Detection>,
+  compilerOptions: ts.CompilerOptions = {}
 ): NamedCheck => {
-  const check = fileCheck(detect)
+  const detected = fileCheck(detect)
+  const check = withCompilerOptions(compilerOptions)(detected)
   const examples = packageExamples(name)
 
   return namedCheck(name, check, examples)

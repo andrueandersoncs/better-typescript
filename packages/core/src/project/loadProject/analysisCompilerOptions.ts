@@ -1,0 +1,21 @@
+import * as ts from "typescript"
+
+// ParseForTypeErrors keeps type-bearing JSDoc because Checks do not consume full JSDoc trees.
+export const analysisJsDocParsingMode = ts.JSDocParsingMode.ParseForTypeErrors
+
+export const withAnalysisCompilerOptions = (
+  options: ts.CompilerOptions,
+  required: ts.CompilerOptions
+): ts.CompilerOptions => Object.assign({}, options, required)
+
+export const createAnalysisProgram = (
+  input: ts.CreateProgramOptions,
+  requiredOptions: ts.CompilerOptions
+): ts.Program => {
+  const options = withAnalysisCompilerOptions(input.options, requiredOptions)
+  const host = ts.createCompilerHost(options)
+
+  host.jsDocParsingMode = analysisJsDocParsingMode
+
+  return ts.createProgram({ ...input, options, host })
+}

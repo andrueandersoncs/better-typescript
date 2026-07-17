@@ -129,6 +129,12 @@ const pollingWatchOptions: ts.WatchOptions = {
   fallbackPolling: ts.PollingWatchKind.FixedInterval
 }
 
+const unusedCompilerOptions: ts.CompilerOptions = {
+  noEmit: true,
+  noUnusedLocals: true,
+  noUnusedParameters: true
+}
+
 test("reportEvents emits the initial advice and check blocks in report order", async () => {
   const events = await collectStream(
     reportEvents(probeConfig)(Stream.succeed(syntheticUpdate(initialSource)))
@@ -235,7 +241,7 @@ test("workspaceUpdates emits an initial and edited batch, then closes its file w
 
     const batches = await Effect.runPromise(
       pipe(
-        workspaceUpdates(workspace, Option.some(pollingWatchOptions)),
+        workspaceUpdates(workspace, Option.some(pollingWatchOptions), unusedCompilerOptions),
         Stream.tap(() => {
           observedBatches += 1
 
@@ -270,6 +276,9 @@ test("workspaceUpdates emits an initial and edited batch, then closes its file w
     assert.ok(editedSourceFile, "expected the edited source file")
     assert.doesNotMatch(firstSourceFile.text, /producerEdit/)
     assert.match(editedSourceFile.text, /producerEdit/)
+    assert.equal(firstContext.program.getCompilerOptions().noUnusedLocals, true)
+    assert.equal(firstContext.program.getCompilerOptions().noUnusedParameters, true)
+    assert.equal(firstContext.program.getCompilerOptions().noEmit, true)
     assert.ok(closedWatchers > 0, "expected Stream.take completion to close TypeScript watchers")
   } finally {
     ts.sys.watchFile = originalWatchFile

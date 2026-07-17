@@ -1,17 +1,12 @@
 import { Array, Function, pipe, Result } from "effect"
-import { withProgramIndex } from "../../defineCheck.js"
+import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { TestOnlyExportData } from "./data.js"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
-import {
-  ExportReferenceIndex,
-  buildExportReferenceIndex,
-  isTestSourceFile,
-  usageFor
-} from "./programSymbols.js"
+import { ExportReferenceIndex, isTestSourceFile, usageFor } from "./programSymbols.js"
+import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 
 const message =
   "Test-only export evidence — production exposes this callable only so tests can reach implementation."
@@ -61,6 +56,6 @@ const testOnlyExportElements =
 
 const testOnlyExportSubscriptions = Function.compose(testOnlyExportElements, fileSubscriptions)
 
-export const testOnlyExports: Check = withProgramIndex(buildExportReferenceIndex)(
+export const testOnlyExports: Check = evidenceCheck(exportReferenceIndex)(
   testOnlyExportSubscriptions
 )

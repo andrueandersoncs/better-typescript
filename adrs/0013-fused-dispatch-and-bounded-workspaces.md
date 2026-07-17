@@ -2,10 +2,11 @@
 
 ## Status
 
-Accepted. The built-in authoring consequence is superseded by
-[ADR-0018](0018-check-owned-authoring-and-package-examples.md). Its fused execution, full-recompute,
-bounded-workspace, and loaded-workspace decisions remain accepted through
-[ADR-0019](0019-workspace-update-report-seam.md).
+Accepted in part. The built-in authoring consequence is superseded by
+[ADR-0018](0018-check-owned-authoring-and-package-examples.md). The CLI one-shot
+one-Program-at-a-time lifetime is superseded by [ADR-0022](0022-shared-one-shot-compiler-state.md).
+Fused execution, full recompute, the bounded config-native API, and loaded-workspace decisions
+remain accepted.
 
 ## Date
 
