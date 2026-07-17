@@ -6,7 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { detection } from "@better-typescript/core/engine/check"
 import { defineCheck } from "../defineCheck.js"
 
-const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> => {
+const booleanLiteralValue = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
 
   return pipe(
@@ -17,16 +17,16 @@ const booleanLiteralValue = (expression: ts.Expression): Option.Option<boolean> 
   )
 }
 
-const isNonBooleanLiteral = (expression: ts.Expression): boolean =>
+const isNonBooleanLiteral = (expression: ts.Expression) =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
 
-const returnStatementExpression = (statement: ts.ReturnStatement): Option.Option<ts.Expression> =>
+const returnStatementExpression = (statement: ts.ReturnStatement) =>
   Option.fromNullishOr(statement.expression)
 
-const isFalseKeyword = (expression: ts.Expression): boolean =>
+const isFalseKeyword = (expression: ts.Expression) =>
   unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
 
-const isFalseLiteralReturn = (statement: ts.Statement): boolean =>
+const isFalseLiteralReturn = (statement: ts.Statement) =>
   pipe(
     Option.liftPredicate(ts.isReturnStatement)(statement),
     Option.flatMap(returnStatementExpression),
@@ -61,11 +61,7 @@ const booleanReturnMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
 
-  const literalBranchMatch = (
-    node: ts.Node,
-    condition: ts.Expression,
-    literalValue: boolean
-  ): Detection => {
+  const literalBranchMatch = (node: ts.Node, condition: ts.Expression, literalValue: boolean) => {
     const conditionText = condition.getText(sourceFile)
     const returnExpression = literalValue ? `(${conditionText})` : `!(${conditionText})`
     const literalText = String(literalValue)
@@ -77,7 +73,7 @@ const booleanReturnMatches = (context: CheckContext) => {
     })
   }
 
-  const andFalseMatch = (node: ts.Node): Detection =>
+  const andFalseMatch = (node: ts.Node) =>
     match({
       node,
       message: "Avoid conditional return followed by return false.",

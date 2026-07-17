@@ -14,8 +14,7 @@ export class FunctionalCoreEffectIndex extends Data.Class<{
 }> {}
 
 export const buildFunctionalCoreEffectIndex =
-  (policy: FunctionalCoreEffectPolicy) =>
-  (context: ProgramContext): FunctionalCoreEffectIndex => {
+  (policy: FunctionalCoreEffectPolicy) => (context: ProgramContext) => {
     const relative = toRelativeFileName(context.projectRoot)
     const sourceFiles = context.program.getSourceFiles()
 
@@ -41,7 +40,5 @@ export const buildFunctionalCoreEffectIndex =
     })
   }
 
-export const roleForSourceFile = (
-  index: FunctionalCoreEffectIndex,
-  sourceFile: ts.SourceFile
-): Option.Option<ArchitectureRole> => HashMap.get(index.roles, sourceFile.fileName)
+export const roleForSourceFile = (index: FunctionalCoreEffectIndex, sourceFile: ts.SourceFile) =>
+  HashMap.get(index.roles, sourceFile.fileName)

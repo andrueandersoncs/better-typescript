@@ -187,7 +187,7 @@ export const workspaceUpdates = (
       return Tuple.make(nextCache, emptyUpdates)
     }
 
-    const contexts = Array.makeBy(projectCount, (order: number) =>
+    const contexts = Array.makeBy(projectCount, (order) =>
       pipe(
         HashMap.get(nextCache, order),
         Option.getOrElse(() => update.context)
@@ -230,7 +230,7 @@ const signalUpdates =
 const signalsEquivalence = (
   a: readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
   b: readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>]
-): boolean => {
+) => {
   const hasSameRootPath = a[0] === b[0]
 
   return hasSameRootPath && wiringSignalsArrayEquivalence(a[1], b[1])

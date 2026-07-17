@@ -3,7 +3,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Effect, Option, Schema, pipe, Array } from "effect"
-import type { Check } from "@better-typescript/core/engine/check/data"
+import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { compositionForwarders } from "@better-typescript/checks/architectureExplore/compositionForwarders"
 import { moduleScopeEffects } from "@better-typescript/checks/architectureExplore/moduleScopeEffects"
@@ -16,11 +16,11 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-fp")
 
-const runFixture = async (check: Check): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (namedCheck: NamedCheck): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(namedCheck.check))(project))
     )
   )
 

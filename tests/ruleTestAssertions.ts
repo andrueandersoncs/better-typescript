@@ -3,6 +3,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { Array, Effect } from "effect"
+import type * as ts from "typescript"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
@@ -151,9 +152,13 @@ const markersInFixture = (fixturePath: string): ReadonlyArray<LineMarker> => {
   })
 }
 
-const runNamedCheckFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
+const runNamedCheckFixture = async (
+  named: NamedCheck,
+  compilerOptionOverrides: ts.CompilerOptions
+): Promise<ReadonlyArray<Detection>> => {
   const fixturePath = path.join(fixturesRoot, named.name)
-  const compilerOptions = compilerOptionsForChecks(Array.of(named.check))
+  const checkCompilerOptions = compilerOptionsForChecks(Array.of(named.check))
+  const compilerOptions = { ...checkCompilerOptions, ...compilerOptionOverrides }
   const workspace = await Effect.runPromise(loadProject(fixturePath, compilerOptions))
 
   const projectElements = await Promise.all(
@@ -173,10 +178,13 @@ const columnKey = (fileName: string, line: number, column: number): string =>
 const sortedKeys = (keys: ReadonlyArray<string>): ReadonlyArray<string> =>
   [...keys].sort((left, right) => left.localeCompare(right))
 
-export const assertCheckFixture = async (named: NamedCheck): Promise<void> => {
+export const assertCheckFixture = async (
+  named: NamedCheck,
+  compilerOptionOverrides: ts.CompilerOptions = {}
+): Promise<void> => {
   const fixturePath = path.join(fixturesRoot, named.name)
   const markers = markersInFixture(fixturePath)
-  const elements = await runNamedCheckFixture(named)
+  const elements = await runNamedCheckFixture(named, compilerOptionOverrides)
 
   for (const element of elements) {
     assert.ok(element.message.length > 0, "expected every detection to carry a nonempty message")
@@ -286,7 +294,7 @@ export const assertCheckFixtureExpectations = async (
   disallowed: ReadonlyArray<ExpectedDetection>,
   allowed: ReadonlyArray<FixtureItem> = []
 ): Promise<void> => {
-  const elements = await runNamedCheckFixture(named)
+  const elements = await runNamedCheckFixture(named, {})
 
   assertDisallowedFixtureItems(elements, disallowed)
 

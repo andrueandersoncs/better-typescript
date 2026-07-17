@@ -7,10 +7,7 @@ import { isCallLikeExpression, type CallLikeExpression } from "./tsNode.js"
 export type { CallLikeExpression }
 export { isCallLikeExpression }
 
-export const isSameNode =
-  (node: ts.Node) =>
-  (candidate: ts.Node): boolean =>
-    candidate === node
+export const isSameNode = (node: ts.Node) => (candidate: ts.Node) => candidate === node
 
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()
@@ -57,27 +54,23 @@ export const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> 
   return isForwarding ? consumingCall(node.parent) : Option.none()
 }
 
-export const calleeText =
-  (sourceFile: ts.SourceFile) =>
-  (target: CallLikeExpression): string => {
-    const text = target.expression.getText(sourceFile)
+export const calleeText = (sourceFile: ts.SourceFile) => (target: CallLikeExpression) => {
+  const text = target.expression.getText(sourceFile)
 
-    return ts.isNewExpression(target) ? `new ${text}` : text
-  }
+  return ts.isNewExpression(target) ? `new ${text}` : text
+}
 
-export const resolvedCallSignature =
-  (checker: ts.TypeChecker) =>
-  (call: CallLikeExpression): Option.Option<ts.Signature> =>
-    pipe(checker.getResolvedSignature(call), Option.fromNullishOr)
+export const resolvedCallSignature = (checker: ts.TypeChecker) => (call: CallLikeExpression) =>
+  pipe(checker.getResolvedSignature(call), Option.fromNullishOr)
 
-export const signatureDeclarationIsExternal = (declaration: ts.Declaration): boolean => {
+export const signatureDeclarationIsExternal = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
 
   return !isProjectSourceFile(sourceFile)
 }
 
 // Missing declarations count as external because their shape is not author-controlled.
-export const signatureIsExternal = (signature: ts.Signature): boolean =>
+export const signatureIsExternal = (signature: ts.Signature) =>
   pipe(
     signature.getDeclaration(),
     Option.fromNullishOr,
@@ -90,7 +83,7 @@ export const signatureDeclarationOption = (
 ): Option.Option<ts.Declaration> => pipe(signature.getDeclaration(), Option.fromNullishOr)
 
 // Missing declarations do not grant escape because exemptions need a proven external boundary.
-const hasExternalDeclaration = (signature: ts.Signature): boolean =>
+const hasExternalDeclaration = (signature: ts.Signature) =>
   pipe(signatureDeclarationOption(signature), Option.exists(signatureDeclarationIsExternal))
 
 const argumentForwardingKinds = HashSet.make(
@@ -119,9 +112,7 @@ export const argumentConsumingCall = (node: ts.Node): Option.Option<CallLikeExpr
 
 // Exclude the default library because only dependency combinators form external callback bounds.
 export const isExternalPackageArgument =
-  (checker: ts.TypeChecker) =>
-  (program: ts.Program) =>
-  (node: ts.Node): boolean =>
+  (checker: ts.TypeChecker) => (program: ts.Program) => (node: ts.Node) =>
     pipe(
       argumentConsumingCall(node),
       Option.flatMap(resolvedCallSignature(checker)),
@@ -140,19 +131,15 @@ export const isExternalPackageArgument =
       })
     )
 
-const isExternalArgumentPosition =
-  (checker: ts.TypeChecker) =>
-  (node: ts.Node): boolean =>
-    pipe(
-      argumentConsumingCall(node),
-      Option.flatMap(resolvedCallSignature(checker)),
-      Option.exists(hasExternalDeclaration)
-    )
+const isExternalArgumentPosition = (checker: ts.TypeChecker) => (node: ts.Node) =>
+  pipe(
+    argumentConsumingCall(node),
+    Option.flatMap(resolvedCallSignature(checker)),
+    Option.exists(hasExternalDeclaration)
+  )
 
-const symbolAtNode =
-  (checker: ts.TypeChecker) =>
-  (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
+const symbolAtNode = (checker: ts.TypeChecker) => (node: ts.Node) =>
+  pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
 const nameNodeEscapes =
   (checker: ts.TypeChecker) =>
@@ -196,8 +183,7 @@ const nameNodeEscapes =
 
 // A construction escapes because an external signature receives it directly or through a variable.
 export const constructionEscapesExternally =
-  (checker: ts.TypeChecker) =>
-  (expression: ts.Expression): boolean => {
+  (checker: ts.TypeChecker) => (expression: ts.Expression) => {
     const outermost = outermostTransparentWrapper(expression)
     const isDirectExternalArgument = isExternalArgumentPosition(checker)(outermost)
     const sourceFile = expression.getSourceFile()
@@ -238,8 +224,7 @@ const functionDeclarationName = (declaration: ts.FunctionDeclaration): Option.Op
 
 // A written Map or Set type escapes because its carrier crosses an external boundary.
 export const typeReferenceEscapesExternally =
-  (checker: ts.TypeChecker) =>
-  (typeRef: ts.TypeReferenceNode): boolean =>
+  (checker: ts.TypeChecker) => (typeRef: ts.TypeReferenceNode) =>
     pipe(
       escapeCarrier(typeRef),
       Option.exists((carrier) => {
@@ -275,14 +260,14 @@ const effectPackagePathSegments: ReadonlyArray<string> = Array.make(
   "/node_modules/@effect/"
 )
 
-const declarationInEffectPackage = (declaration: ts.Declaration): boolean => {
+const declarationInEffectPackage = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
 
   return Array.some(effectPackagePathSegments, (segment) => fileName.includes(segment))
 }
 
-export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol): boolean => {
+export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol) => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
 
   return Array.some(declarations, declarationInEffectPackage)

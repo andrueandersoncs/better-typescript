@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { InterfaceBurdenData } from "./data.js"
@@ -9,6 +9,8 @@ import { toWorkspacePath } from "./programSymbols.js"
 import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileCheck, detection } from "@better-typescript/core/engine/check"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { interfaceBurdenName } from "./names.js"
 
 const minimumOperations = 4
 
@@ -23,7 +25,7 @@ const emptySurface = new InterfaceBurdenData({
   requiredParameterCount: 0
 })
 
-const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>): number =>
+const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>) =>
   Array.countBy(parameters, (parameter) => {
     const optional = Option.fromNullishOr(parameter.questionToken)
     const defaulted = Option.fromNullishOr(parameter.initializer)
@@ -45,7 +47,7 @@ const callableSurface = (
     | ts.GetAccessorDeclaration
     | ts.SetAccessorDeclaration
     | ts.ConstructorDeclaration
-): InterfaceBurdenData => {
+) => {
   const requiredParameterCount = requiredParameters(node.parameters)
 
   return new InterfaceBurdenData({
@@ -54,16 +56,13 @@ const callableSurface = (
   })
 }
 
-const combineSurface = (
-  left: InterfaceBurdenData,
-  right: InterfaceBurdenData
-): InterfaceBurdenData =>
+const combineSurface = (left: InterfaceBurdenData, right: InterfaceBurdenData) =>
   new InterfaceBurdenData({
     operationCount: left.operationCount + right.operationCount,
     requiredParameterCount: left.requiredParameterCount + right.requiredParameterCount
   })
 
-const isPublicClassMember = (member: ts.ClassElement): boolean => {
+const isPublicClassMember = (member: ts.ClassElement) => {
   const modifiers = pipe(
     Option.liftPredicate(ts.canHaveModifiers)(member),
     Option.map(ts.getModifiers),
@@ -93,7 +92,7 @@ const callableClassMemberKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const isCallableClassMember = (member: ts.ClassElement): member is CallableClassMember =>
   Array.contains(callableClassMemberKinds, member.kind)
 
-const classSurface = (declaration: ts.ClassDeclaration): InterfaceBurdenData => {
+const classSurface = (declaration: ts.ClassDeclaration) => {
   const publicMembers = Array.filter(declaration.members, isPublicClassMember)
 
   const memberSurfaces = pipe(
@@ -114,7 +113,7 @@ const classSurface = (declaration: ts.ClassDeclaration): InterfaceBurdenData => 
   return Array.reduce(memberSurfaces, constructorSurface, combineSurface)
 }
 
-const objectLiteralSurface = (literal: ts.ObjectLiteralExpression): InterfaceBurdenData =>
+const objectLiteralSurface = (literal: ts.ObjectLiteralExpression) =>
   pipe(
     literal.properties,
     Array.filterMap((member) => {
@@ -146,7 +145,7 @@ const objectLiteralSurface = (literal: ts.ObjectLiteralExpression): InterfaceBur
     Array.reduce(emptySurface, combineSurface)
   )
 
-const variableStatementSurface = (statement: ts.VariableStatement): InterfaceBurdenData => {
+const variableStatementSurface = (statement: ts.VariableStatement) => {
   if (!hasExportModifier(statement)) {
     return emptySurface
   }
@@ -172,7 +171,7 @@ const variableStatementSurface = (statement: ts.VariableStatement): InterfaceBur
   )
 }
 
-const statementSurface = (statement: ts.Statement): InterfaceBurdenData => {
+const statementSurface = (statement: ts.Statement) => {
   const variableSurface = pipe(
     Option.liftPredicate(ts.isVariableStatement)(statement),
     Option.map(variableStatementSurface)
@@ -238,4 +237,6 @@ const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection
   return Array.of(reported)
 }
 
-export const interfaceBurden: Check = fileCheck(interfaceBurdenElements)
+const interfaceBurdenCheck = fileCheck(interfaceBurdenElements)
+
+export const interfaceBurden = defineSilentCheck(interfaceBurdenName, interfaceBurdenCheck)

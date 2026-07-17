@@ -16,16 +16,14 @@ const taggedClassSymbolNode = (expression: ts.Expression): Option.Option<ts.Node
 }
 
 const declarationComesFromEffectModule =
-  (moduleSuffixes: ReadonlyArray<string>) =>
-  (declaration: ts.Declaration): boolean => {
+  (moduleSuffixes: ReadonlyArray<string>) => (declaration: ts.Declaration) => {
     const fileName = declaration.getSourceFile().fileName.replaceAll("\\", "/")
 
     return Array.some(moduleSuffixes, (suffix) => fileName.endsWith(suffix))
   }
 
 const symbolIsEffectTaggedClass =
-  (moduleSuffixes: ReadonlyArray<string>) =>
-  (symbol: ts.Symbol): boolean => {
+  (moduleSuffixes: ReadonlyArray<string>) => (symbol: ts.Symbol) => {
     const nameIsTaggedClass = symbol.getName() === "TaggedClass"
 
     const declarations = pipe(
@@ -47,12 +45,12 @@ const symbolIsEffectTaggedClass =
 const taggedClassHeritage =
   (moduleSuffixes: ReadonlyArray<string>) =>
   (checker: ts.TypeChecker) =>
-  (declaration: ts.ClassDeclaration): Option.Option<ts.ExpressionWithTypeArguments> => {
+  (declaration: ts.ClassDeclaration) => {
     const clauses = declaration.heritageClauses ?? Array.empty()
     const extendsClauses = Array.filter(clauses, isExtendsClause)
     const heritageTypes = Array.flatMap(extendsClauses, Struct.get("types"))
 
-    const heritageIsEffectTaggedClass = (heritage: ts.ExpressionWithTypeArguments): boolean =>
+    const heritageIsEffectTaggedClass = (heritage: ts.ExpressionWithTypeArguments) =>
       pipe(
         heritage.expression,
         unwrapCallee,
@@ -85,10 +83,7 @@ const rejectedWireTypeFlags =
   ts.TypeFlags.BigIntLike |
   ts.TypeFlags.NonPrimitive
 
-const typeHasAnyFlags =
-  (flags: ts.TypeFlags) =>
-  (type: ts.Type): boolean =>
-    (type.flags & flags) !== 0
+const typeHasAnyFlags = (flags: ts.TypeFlags) => (type: ts.Type) => (type.flags & flags) !== 0
 
 const typeIsObject = (type: ts.Type): type is ts.ObjectType =>
   (type.flags & ts.TypeFlags.Object) !== 0
@@ -109,8 +104,7 @@ const typeWasSeen =
 const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
   Array.filter(type.types, (member) => (member.flags & ts.TypeFlags.Undefined) === 0)
 
-const propertyHasCompilerName = (property: ts.Symbol): boolean =>
-  property.getName().startsWith("__@")
+const propertyHasCompilerName = (property: ts.Symbol) => property.getName().startsWith("__@")
 
 const propertyTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
@@ -142,8 +136,7 @@ const propertyTypeIsWireSafe =
     )
 
 const intersectionTypeIsWireSafe =
-  (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.IntersectionType): boolean =>
+  (checkType: (type: ts.Type) => boolean) => (type: ts.IntersectionType) =>
     pipe(
       Array.findFirst(type.types, typeIsWirePrimitive),
       Option.match({
@@ -152,7 +145,7 @@ const intersectionTypeIsWireSafe =
       })
     )
 
-const objectTypeHasSignatures = (type: ts.ObjectType): boolean => {
+const objectTypeHasSignatures = (type: ts.ObjectType) => {
   const callSignatureCount = type.getCallSignatures().length
   const constructSignatureCount = type.getConstructSignatures().length
   const signatureCounts = Array.make(callSignatureCount, constructSignatureCount)
@@ -160,35 +153,30 @@ const objectTypeHasSignatures = (type: ts.ObjectType): boolean => {
   return Array.some(signatureCounts, (count) => count > 0)
 }
 
-const objectTypeIsCollection =
-  (checker: ts.TypeChecker) =>
-  (type: ts.ObjectType): boolean => {
-    const isArray = checker.isArrayType(type)
-    const isTuple = checker.isTupleType(type)
-    const collectionChecks = Array.make(isArray, isTuple)
+const objectTypeIsCollection = (checker: ts.TypeChecker) => (type: ts.ObjectType) => {
+  const isArray = checker.isArrayType(type)
+  const isTuple = checker.isTupleType(type)
+  const collectionChecks = Array.make(isArray, isTuple)
 
-    return Array.some(collectionChecks, Boolean)
-  }
+  return Array.some(collectionChecks, Boolean)
+}
 
 const collectionTypeIsWireSafe =
-  (checker: ts.TypeChecker) =>
-  (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.ObjectType): boolean =>
+  (checker: ts.TypeChecker) => (checkType: (type: ts.Type) => boolean) => (type: ts.ObjectType) =>
     pipe(
       checker.getIndexTypeOfType(type, ts.IndexKind.Number),
       Option.fromNullishOr,
       Option.exists(checkType)
     )
 
-const objectTypeIsClass = (type: ts.ObjectType): boolean =>
-  (type.objectFlags & ts.ObjectFlags.Class) !== 0
+const objectTypeIsClass = (type: ts.ObjectType) => (type.objectFlags & ts.ObjectFlags.Class) !== 0
 
 const structuralObjectTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
   (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.ObjectType): boolean => {
+  (type: ts.ObjectType) => {
     const stringIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.String)
     const numberIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.Number)
     const possibleIndexTypes = Array.make(stringIndexType, numberIndexType)
@@ -213,7 +201,7 @@ const objectTypeIsWireSafe =
   (location: ts.Node) =>
   (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.ObjectType): boolean =>
+  (type: ts.ObjectType) =>
     pipe(
       Match.value(type),
       Match.when(objectTypeHasSignatures, Function.constFalse),
@@ -227,7 +215,7 @@ const unconstrainedTypeIsWireSafe =
   (location: ts.Node) =>
   (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.Type): boolean =>
+  (type: ts.Type) =>
     pipe(
       Match.value(type),
       Match.when(typeIsObject, objectTypeIsWireSafe(checker)(location)(seen)(checkType)),
@@ -239,7 +227,7 @@ const constrainedOrStructuralTypeIsWireSafe =
   (location: ts.Node) =>
   (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
-  (type: ts.Type): boolean => {
+  (type: ts.Type) => {
     const baseConstraint = differentBaseConstraint(checker)(type)
     const checkUnconstrained = unconstrainedTypeIsWireSafe(checker)(location)(seen)(checkType)
 
@@ -286,8 +274,7 @@ export const typeIsWireSafe =
   }
 
 export const schemaTaggedClassEncodedType =
-  (checker: ts.TypeChecker) =>
-  (declaration: ts.ClassDeclaration): Option.Option<ts.Type> =>
+  (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
     pipe(
       schemaTaggedClassHeritage(checker)(declaration),
       Option.flatMap(() =>

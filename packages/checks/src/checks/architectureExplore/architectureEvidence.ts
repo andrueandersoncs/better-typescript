@@ -25,14 +25,14 @@ class CachedArchitectureEvidence extends Data.Class<{
 const emptyEvidenceCache = Option.none<CachedArchitectureEvidence>()
 const evidenceCache = MutableRef.make(emptyEvidenceCache)
 
-const buildArchitectureEvidence = (context: ProgramContext): ArchitectureEvidence => {
+const buildArchitectureEvidence = (context: ProgramContext) => {
   const exportReferenceIndex = buildExportReferenceIndex(context)
   const moduleEdges = buildModuleEdges(context)
 
   return new ArchitectureEvidence({ exportReferenceIndex, moduleEdges })
 }
 
-const architectureEvidence = (context: ProgramContext): ArchitectureEvidence => {
+const architectureEvidence = (context: ProgramContext) => {
   const cached = MutableRef.get(evidenceCache)
 
   const current = pipe(

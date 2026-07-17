@@ -11,10 +11,7 @@ const defaultExportName = "default"
 const configExportName = "config"
 
 // The loader shell reuses this constructor because both paths must fail with one error shape.
-export const projectWiringConfigError = (
-  configPath: string,
-  reason: string
-): ProjectWiringConfigError => {
+export const projectWiringConfigError = (configPath: string, reason: string) => {
   const fields = { configPath, reason }
 
   return new ProjectWiringConfigError(fields)
@@ -37,10 +34,10 @@ const isFunctionValue = (value: unknown): value is () => unknown => typeof value
 
 const isError = (cause: unknown): cause is { readonly message: string } => cause instanceof Error
 
-const hasText = (value: string): boolean => value.length > 0
+const hasText = (value: string) => value.length > 0
 
 // The loader shell reuses this formatter because module-load failures render like decode failures.
-export const formatCause = (cause: unknown): string => {
+export const formatCause = (cause: unknown) => {
   const fallbackText = String(cause)
 
   return pipe(
@@ -51,10 +48,8 @@ export const formatCause = (cause: unknown): string => {
   )
 }
 
-const configExport =
-  (name: ConfigExportName) =>
-  (value: unknown): ConfigExport =>
-    new ConfigExport({ name, value })
+const configExport = (name: ConfigExportName) => (value: unknown) =>
+  new ConfigExport({ name, value })
 
 const defaultConfigExport = configExport(defaultExportName)
 
@@ -73,7 +68,7 @@ const defaultOwnConfigExport = ownConfigExport(defaultExportName)(Struct.get(def
 
 const configOwnConfigExport = ownConfigExport(configExportName)(Struct.get(configExportName))
 
-const configExportFromRecord = (record: Readonly<Record<string, unknown>>): ConfigExport => {
+const configExportFromRecord = (record: Readonly<Record<string, unknown>>) => {
   const defaultOwn = defaultOwnConfigExport(record)
   const directExport = defaultConfigExport(record)
 
@@ -155,21 +150,21 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 const checkShapeReason =
   "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExampleSource }"
 
-const isInlineExampleSource = (examples: Readonly<Record<string, unknown>>): boolean => {
+const isInlineExampleSource = (examples: Readonly<Record<string, unknown>>) => {
   const hasInlineTag = examples._tag === "inline"
   const hasExamplesArray = Array.isArray(examples.examples)
   const conditions = Array.make(hasInlineTag, hasExamplesArray)
   return Array.every(conditions, Boolean)
 }
 
-const isDirectoryExampleSource = (examples: Readonly<Record<string, unknown>>): boolean => {
+const isDirectoryExampleSource = (examples: Readonly<Record<string, unknown>>) => {
   const hasDirectoryTag = examples._tag === "directory"
   const hasRootString = typeof examples.root === "string"
   const conditions = Array.make(hasDirectoryTag, hasRootString)
   return Array.every(conditions, Boolean)
 }
 
-const isRefactorExampleSource = (value: unknown): boolean =>
+const isRefactorExampleSource = (value: unknown) =>
   pipe(
     Option.liftPredicate(isRecord)(value),
     Option.exists(
@@ -177,7 +172,7 @@ const isRefactorExampleSource = (value: unknown): boolean =>
     )
   )
 
-const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean => {
+const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>) => {
   const hasStringName = typeof record.name === "string"
 
   const hasCheckPlan = pipe(
@@ -218,14 +213,14 @@ const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean
   return Array.every(namedCheckShapeConditions, Boolean)
 }
 
-const invalidNamedCheck = (value: unknown): boolean => {
+const invalidNamedCheck = (value: unknown) => {
   const recordOption = Option.liftPredicate(isRecord)(value)
   const hasValidShape = Option.exists(recordOption, hasNamedCheckFields)
 
   return !hasValidShape
 }
 
-const namedCheckFrom = (value: unknown): NamedCheck => {
+const namedCheckFrom = (value: unknown) => {
   const record = value as Readonly<Record<string, unknown>>
   const name = record.name as string
   const check = record.check as Check

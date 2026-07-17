@@ -32,8 +32,7 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   return Array.some(conditions, Boolean)
 }
 
-const parameterTypeNode = (param: ts.ParameterDeclaration): Option.Option<ts.TypeNode> =>
-  Option.fromNullishOr(param.type)
+const parameterTypeNode = (param: ts.ParameterDeclaration) => Option.fromNullishOr(param.type)
 
 // RawObjectTarget is shared raw-object syntax because owners need one node vocabulary.
 export type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration

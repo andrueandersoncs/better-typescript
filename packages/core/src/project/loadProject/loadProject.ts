@@ -11,7 +11,6 @@ import {
 } from "../../engine/wiring/wiring.js"
 import { contextFor } from "../../engine/sources/sources.js"
 import { compilerOptionsForChecks, runChecks } from "../../engine/check/check.js"
-import type { ProgramContext } from "../../engine/sources/data.js"
 import {
   CircularProjectReferenceError,
   InvalidTsconfigError,
@@ -50,10 +49,7 @@ export const discoverWorkspace: (
   return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
 })
 
-const loadProjectConfig = (
-  config: ProjectConfig,
-  compilerOptions: ts.CompilerOptions = {}
-): LoadedProject => {
+const loadProjectConfig = (config: ProjectConfig, compilerOptions: ts.CompilerOptions = {}) => {
   const program = createAnalysisProgram(
     {
       rootNames: config.parsed.fileNames,
@@ -70,7 +66,7 @@ const loadProjectConfig = (
   })
 }
 
-const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
+const contextFromLoadedProject = (project: LoadedProject) => {
   const createContext = contextFor(project.rootPath)
 
   return createContext(project.program)
@@ -93,7 +89,7 @@ const programForChecks =
     const compilerOptions = compilerOptionsForChecks(checks)
     const currentOptions = program.getCompilerOptions()
 
-    const optionMatches = ([name, value]: [string, unknown]): boolean => {
+    const optionMatches = ([name, value]: [string, unknown]) => {
       const currentValue = Reflect.get(currentOptions, name)
 
       return Equal.equals(currentValue, value)
@@ -226,7 +222,7 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   return Array.flatten(projects)
 })
 
-const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
+const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>) =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {
     getCanonicalFileName: Function.identity,
     getCurrentDirectory: ts.sys.getCurrentDirectory,

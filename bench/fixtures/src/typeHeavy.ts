@@ -22,7 +22,7 @@ export const insertChild = <T extends Primitive>(tree: TreeNode<T>, value: T): T
 }
 
 // Mutators on unions of array types.
-export const drainQueue = (queue: Array<string> | Array<number>): number => {
+export const drainQueue = (queue: Array<string> | Array<number>) => {
   let drained = 0
   while (queue.length > 0) {
     queue.pop()
@@ -37,7 +37,7 @@ interface Buffers {
   readonly settled: Array<string>
 }
 
-export const settle = (buffers: Buffers, id: string): void => {
+export const settle = (buffers: Buffers, id: string) => {
   buffers.pending.splice(0, 1)
   buffers.settled.push(id)
   buffers.settled.sort()
@@ -62,7 +62,7 @@ class Stack {
   }
 }
 
-export const churnStack = (iterations: number): number => {
+export const churnStack = (iterations: number) => {
   const stack = new Stack()
   let index = 0
   while (index < iterations) {
@@ -109,4 +109,4 @@ export const traverseResults = <T extends Primitive>(
 }
 
 // no-duplicate-function-names: `formatValue` is also declared in disallowed cases.ts.
-export const formatValue = (value: number): string => `${value}`
+export const formatValue = (value: number) => `${value}`

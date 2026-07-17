@@ -11,7 +11,7 @@ const compositionRootNames = HashSet.make(
   "wiring"
 )
 
-export const isCompositionRoot = (sourceFile: ts.SourceFile): boolean => {
+export const isCompositionRoot = (sourceFile: ts.SourceFile) => {
   const extension = path.extname(sourceFile.fileName)
   const baseName = path.basename(sourceFile.fileName, extension)
 

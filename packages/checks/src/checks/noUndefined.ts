@@ -25,10 +25,9 @@ const optionHint =
   "annotate it with the library's own callback type so the undefined stays in the " +
   "library's declaration, not yours."
 
-const isUndefinedIdentifier = (identifier: ts.Identifier): boolean =>
-  identifier.text === "undefined"
+const isUndefinedIdentifier = (identifier: ts.Identifier) => identifier.text === "undefined"
 
-const isUndefinedExpression = (expression: ts.Expression): boolean => {
+const isUndefinedExpression = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
   const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
 
@@ -42,7 +41,7 @@ const equalityComparisonOperators = HashSet.make(
   ts.SyntaxKind.ExclamationEqualsEqualsToken
 )
 
-const isEqualityWithUndefined = (expr: ts.BinaryExpression): boolean => {
+const isEqualityWithUndefined = (expr: ts.BinaryExpression) => {
   const isEqualityComparison = HashSet.has(equalityComparisonOperators, expr.operatorToken.kind)
   const comparisonOperands = Array.make(expr.left, expr.right)
   const hasUndefinedOperand = Array.some(comparisonOperands, isUndefinedExpression)
@@ -56,7 +55,7 @@ const isUndefinedComparison = (node: ts.Node): node is ts.BinaryExpression => {
   return Option.exists(binaryExpr, isEqualityWithUndefined)
 }
 
-const parameterAcceptsUndefined = (param: ts.ParameterDeclaration): boolean => {
+const parameterAcceptsUndefined = (param: ts.ParameterDeclaration) => {
   const hasQuestionToken = pipe(param.questionToken, Option.fromNullishOr, Option.isSome)
   const typeNode = Option.fromNullishOr(param.type)
   const hasUndefinedType = containsUndefinedType(typeNode)
@@ -67,8 +66,7 @@ const parameterAcceptsUndefined = (param: ts.ParameterDeclaration): boolean => {
 const isParameterAcceptingUndefined = (node: ts.Node): node is ts.ParameterDeclaration =>
   pipe(Option.liftPredicate(ts.isParameter)(node), Option.exists(parameterAcceptsUndefined))
 
-const getReturnExpression = (stmt: ts.ReturnStatement): Option.Option<ts.Expression> =>
-  Option.fromNullishOr(stmt.expression)
+const getReturnExpression = (stmt: ts.ReturnStatement) => Option.fromNullishOr(stmt.expression)
 
 const getArrowExpressionBody = (fn: ts.ArrowFunction): Option.Option<ts.Expression> =>
   ts.isBlock(fn.body) ? Option.none() : Option.some(fn.body)
@@ -84,10 +82,9 @@ const isUndefinedReturnedExpression = (node: ts.Node): node is ReturnedExpressio
   return Array.some(checks, Boolean)
 }
 
-const isNotMinusToken = (questionToken: ts.Node): boolean =>
-  questionToken.kind !== ts.SyntaxKind.MinusToken
+const isNotMinusToken = (questionToken: ts.Node) => questionToken.kind !== ts.SyntaxKind.MinusToken
 
-const propertySignatureAcceptsUndefined = (node: ts.PropertySignature): boolean => {
+const propertySignatureAcceptsUndefined = (node: ts.PropertySignature) => {
   const hasQuestionToken = pipe(node.questionToken, Option.fromNullishOr, Option.isSome)
   const typeNode = Option.fromNullishOr(node.type)
   const hasUndefinedType = containsUndefinedType(typeNode)
@@ -95,7 +92,7 @@ const propertySignatureAcceptsUndefined = (node: ts.PropertySignature): boolean 
   return hasQuestionToken || hasUndefinedType
 }
 
-const mappedTypeAcceptsUndefined = (node: ts.MappedTypeNode): boolean => {
+const mappedTypeAcceptsUndefined = (node: ts.MappedTypeNode) => {
   const questionToken = Option.fromNullishOr(node.questionToken)
   const hasQuestionToken = Option.exists(questionToken, isNotMinusToken)
   const typeNode = Option.fromNullishOr(node.type)

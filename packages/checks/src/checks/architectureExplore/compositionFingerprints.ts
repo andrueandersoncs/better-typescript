@@ -3,13 +3,15 @@ import * as ts from "typescript"
 
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { CompositionFingerprintData } from "./data.js"
 import { ExportReferenceIndex, isTestSourceFile } from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { compositionFingerprintsName } from "./names.js"
 
 const minimumSteps = 3
 
@@ -145,7 +147,7 @@ const walkObjectProperty = (property: ts.ObjectLiteralElementLike): ReadonlyArra
   )
 
 // Point-free stages are bare identifier or property chains because calls fingerprint themselves.
-const pointFreeStageName = (argument: ts.Expression): Option.Option<string> =>
+const pointFreeStageName = (argument: ts.Expression) =>
   pipe(
     argument,
     unwrapTransparentExpression,
@@ -319,6 +321,11 @@ const compositionFingerprintSubscriptions = Function.compose(
   fileSubscriptions
 )
 
-export const compositionFingerprints: Check = evidenceCheck(exportReferenceIndex)(
+const compositionFingerprintCheck = evidenceCheck(exportReferenceIndex)(
   compositionFingerprintSubscriptions
+)
+
+export const compositionFingerprints = defineSilentCheck(
+  compositionFingerprintsName,
+  compositionFingerprintCheck
 )

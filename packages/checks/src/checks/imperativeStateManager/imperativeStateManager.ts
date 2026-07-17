@@ -8,7 +8,7 @@ import { ImperativeStateManagerInput, ImperativeStateSignals, MutationElementDat
 
 export const imperativeStateManagerExamples = packageExamples("imperative-state-manager")
 
-const isSharedStateMutation = (element: Detection): boolean => {
+const isSharedStateMutation = (element: Detection) => {
   const data = Option.fromNullishOr(element.data)
 
   const sharedState = pipe(
@@ -21,14 +21,12 @@ const isSharedStateMutation = (element: Detection): boolean => {
   return sharedState
 }
 
-const sharedMutationCountAt =
-  (path: string) =>
-  (elements: ReadonlyArray<Detection>): number => {
-    const atPath = Array.filter(elements, detectionAtPath(path))
-    const sharedStateMutations = Array.filter(atPath, isSharedStateMutation)
+const sharedMutationCountAt = (path: string) => (elements: ReadonlyArray<Detection>) => {
+  const atPath = Array.filter(elements, detectionAtPath(path))
+  const sharedStateMutations = Array.filter(atPath, isSharedStateMutation)
 
-    return sharedStateMutations.length
-  }
+  return sharedStateMutations.length
+}
 
 const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArray<Advice> => {
   const mutationPaths = Array.map(signals.noMutation, (element) => element.location.path)

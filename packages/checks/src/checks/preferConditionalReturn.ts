@@ -26,7 +26,7 @@ const ternaryText =
   (sourceFile: ts.SourceFile) =>
   (condition: ts.Expression) =>
   (whenTrue: ts.Expression) =>
-  (whenFalse: ts.Expression): string => {
+  (whenFalse: ts.Expression) => {
     const conditionText = condition.getText(sourceFile)
     const whenTrueText = whenTrue.getText(sourceFile)
     const whenFalseText = whenFalse.getText(sourceFile)
@@ -40,7 +40,7 @@ const conditionalReturnDetections = (context: CheckContext) => {
   const match = detection(context)
 
   // Leave ternary return branches alone because collapsing them nests ternaries another rule forbids.
-  const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
+  const returnExpression = (statement: ts.Statement) =>
     Option.gen(function* () {
       const unwrappedStatement = unwrapSingleStatementBlock(statement)
       const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(unwrappedStatement)

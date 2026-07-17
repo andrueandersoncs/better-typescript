@@ -6,7 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { defineCheck } from "../defineCheck.js"
 import { detection } from "@better-typescript/core/engine/check"
 
-const isInstanceofOperator = (expr: ts.BinaryExpression): boolean =>
+const isInstanceofOperator = (expr: ts.BinaryExpression) =>
   expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
 
 const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>

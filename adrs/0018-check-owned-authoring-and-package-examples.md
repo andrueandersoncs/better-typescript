@@ -28,10 +28,10 @@ require coordinated registry edits, and kept prose and location mirrors synchron
 ### Built-in modules own complete NamedChecks
 
 Every individual built-in module exports one `NamedCheck`. The `@better-typescript/checks` package
-provides `defineCheck`, `defineFileCheck`, and `definePlannedCheck` for reported built-ins, plus
-`defineSilentPlannedCheck` for the one planned Check that contributes evidence without a local
-report. These constructors bind the stable name, executable Check, reporting policy, and examples at
-the module that owns the detection behavior.
+provides `defineCheck`, `defineFileCheck`, and `definePlannedCheck` for reported built-ins.
+Evidence-only built-ins use `defineSilentCheck` to own an existing `Check`, or
+`defineSilentPlannedCheck` to own a subscription plan. These constructors bind the stable name,
+executable Check, reporting policy, and examples at the module that owns the detection behavior.
 
 The preset's `defaultChecks` is a direct ordered list of those exports. It does not register names,
 reporting policy, or examples again. The migration is a clean cutover: individual built-in modules

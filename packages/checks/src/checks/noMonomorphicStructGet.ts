@@ -18,7 +18,7 @@ const effectPackagePathSegments: ReadonlyArray<string> = Array.make(
 
 const structModuleSuffixes: ReadonlyArray<string> = Array.make("/Struct.d.ts", "/Struct.ts")
 
-const declarationIsEffectStructModule = (declaration: ts.Declaration): boolean => {
+const declarationIsEffectStructModule = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
 
@@ -32,7 +32,7 @@ const declarationIsEffectStructModule = (declaration: ts.Declaration): boolean =
   return Array.every(effectStructModuleConditions, Boolean)
 }
 
-const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol): boolean => {
+const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol) => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
 
   return Array.some(declarations, declarationIsEffectStructModule)
@@ -42,14 +42,14 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const declarationIsExported = (declaration: ts.VariableDeclaration): boolean =>
+  const declarationIsExported = (declaration: ts.VariableDeclaration) =>
     pipe(
       Option.some(declaration.parent.parent),
       Option.filter(ts.isVariableStatement),
       Option.exists(hasExportModifier)
     )
 
-  const typeNodeIsNonGenericCallable = (typeNode: ts.TypeNode): boolean => {
+  const typeNodeIsNonGenericCallable = (typeNode: ts.TypeNode) => {
     const declaredType = checker.getTypeFromTypeNode(typeNode)
     const signatures = declaredType.getCallSignatures()
     const hasCallSignature = signatures.length > 0
@@ -65,7 +65,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
     return Array.every(nonGenericCallableConditions, Boolean)
   }
 
-  const initializerIsStructGet = (initializer: ts.Expression): boolean =>
+  const initializerIsStructGet = (initializer: ts.Expression) =>
     pipe(
       initializer,
       unwrapTransparentExpression,

@@ -6,7 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { defineCheck } from "../defineCheck.js"
 import { detection } from "@better-typescript/core/engine/check"
 
-const errorTypeName = (typeName: ts.EntityName): ts.Identifier =>
+const errorTypeName = (typeName: ts.EntityName) =>
   ts.isIdentifier(typeName) ? typeName : typeName.right
 
 const isErrorTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>

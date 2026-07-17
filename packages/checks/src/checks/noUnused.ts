@@ -19,7 +19,7 @@ const compilerOptions: ts.CompilerOptions = {
   noUnusedParameters: true
 }
 
-const isUnusedDiagnostic = (diagnostic: ts.Diagnostic): boolean =>
+const isUnusedDiagnostic = (diagnostic: ts.Diagnostic) =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
 
 const unusedMatches = (context: CheckContext): ReadonlyArray<Detection> => {

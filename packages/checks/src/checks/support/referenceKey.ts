@@ -7,7 +7,7 @@ const recordSeparator = "\u0001"
 // ReferenceKey uses compiler declarations because raw TypeScript objects have no stable equality.
 export type ReferenceKey<_Symbol extends ts.Symbol = ts.Symbol> = string
 
-const declarationKey = (declaration: ts.Declaration): string => {
+const declarationKey = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
 
   return `${sourceFile.fileName.replaceAll("\\", "/")}${fieldSeparator}${declaration.pos}${fieldSeparator}${declaration.end}${fieldSeparator}${declaration.kind}`
@@ -28,7 +28,7 @@ export const referenceKey = (symbol: ts.Symbol): ReferenceKey =>
     Array.join(recordSeparator)
   )
 
-export const referenceKeySourceFileName = (key: ReferenceKey): Option.Option<string> =>
+export const referenceKeySourceFileName = (key: ReferenceKey) =>
   pipe(
     key.split(recordSeparator),
     Array.get(1),

@@ -3,7 +3,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
-import type { Check } from "@better-typescript/core/engine/check/data"
+import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { runChecks } from "@better-typescript/core/engine/check"
 import { contextFor } from "@better-typescript/core/engine/sources"
@@ -34,11 +34,11 @@ const importUsageFixturePath = path.join(
 
 const includeEverySourceFile = (): boolean => true
 
-const runFixture = async (check: Check): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (namedCheck: NamedCheck): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(evidenceFixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(namedCheck.check))(project))
     )
   )
 
@@ -47,7 +47,7 @@ const runFixture = async (check: Check): Promise<ReadonlyArray<Detection>> => {
 
 const runChecksOnFixture = async (
   fixturePath: string,
-  checks: ReadonlyArray<Check>
+  checks: ReadonlyArray<NamedCheck>
 ): Promise<ReadonlyArray<ReadonlyArray<Detection>>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const project = workspace.projects[0]
@@ -55,7 +55,9 @@ const runChecksOnFixture = async (
   assert.ok(project !== undefined)
 
   const context = contextFor(project.rootPath)(project.program)
-  return runChecks(checks)(includeEverySourceFile)(context)
+  return runChecks(Array.map(checks, (namedCheck) => namedCheck.check))(includeEverySourceFile)(
+    context
+  )
 }
 
 const dataAs = <A>(

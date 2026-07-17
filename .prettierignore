@@ -2,3 +2,4 @@ dist/
 repos/
 tests/fixtures/
 .claude/
+docs/

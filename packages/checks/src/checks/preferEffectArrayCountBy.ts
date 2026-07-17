@@ -21,7 +21,7 @@ const hint =
 
 const effectArrayModuleFileNames = Array.make("Array.ts", "Array.d.ts")
 
-const symbolIsFromEffectArrayModule = (symbol: ts.Symbol): boolean => {
+const symbolIsFromEffectArrayModule = (symbol: ts.Symbol) => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
 
   const declaredInArrayModule = Array.some(declarations, (declaration) => {
@@ -48,7 +48,7 @@ const effectArrayFilterAccess =
       )
     )
 
-const calleeNameNode = (call: ts.CallExpression): Option.Option<ts.Identifier> => {
+const calleeNameNode = (call: ts.CallExpression) => {
   const callee = pipe(call.expression, unwrapCallee, unwrapTransparentExpression)
 
   if (ts.isIdentifier(callee)) {

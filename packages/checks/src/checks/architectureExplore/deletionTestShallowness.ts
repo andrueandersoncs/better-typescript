@@ -12,7 +12,7 @@ import {
 
 export const deletionTestShallownessExamples = packageExamples("deletion-test-shallowness")
 
-const callerCountOf = (element: NamedDetection): number =>
+const callerCountOf = (element: NamedDetection) =>
   pipe(
     passThroughDataOf(element),
     Option.map(Struct.get("callerCount")),

@@ -49,7 +49,7 @@ const createProjectLanguageService = (
   snapshots: MutableRef.MutableRef<HashMap.HashMap<string, ts.IScriptSnapshot>>,
   config: ProjectConfig,
   compilerOptions: ts.CompilerOptions
-): ts.LanguageService => {
+) => {
   const options = withAnalysisCompilerOptions(config.parsed.options, compilerOptions)
   const rootNames = config.parsed.fileNames
   const scriptVersion = "0"
@@ -76,10 +76,7 @@ const createProjectLanguageService = (
   return ts.createLanguageService(host, documentRegistry)
 }
 
-const contextFromLanguageService = (
-  config: ProjectConfig,
-  languageService: ts.LanguageService
-): ProgramContext =>
+const contextFromLanguageService = (config: ProjectConfig, languageService: ts.LanguageService) =>
   pipe(
     languageService.getProgram(),
     Option.fromNullishOr,
@@ -90,7 +87,7 @@ const contextFromLanguageService = (
 const createWorkspaceServices = (
   workspace: WorkspaceConfigs,
   compilerOptions: ts.CompilerOptions
-): WorkspaceServices => {
+) => {
   const documentRegistry = ts.createDocumentRegistry(
     ts.sys.useCaseSensitiveFileNames,
     workspace.rootPath,

@@ -26,17 +26,17 @@ const importOrExportNameKinds = HashSet.make(
   ts.SyntaxKind.NamespaceExport
 )
 
-const identifierIsAccessName = (identifier: ts.Identifier): boolean =>
+const identifierIsAccessName = (identifier: ts.Identifier) =>
   pipe(
     identifier.parent,
     Option.liftPredicate(ts.isPropertyAccessExpression),
     Option.exists((access) => access.name === identifier)
   )
 
-const identifierIsImportOrExportName = (identifier: ts.Identifier): boolean =>
+const identifierIsImportOrExportName = (identifier: ts.Identifier) =>
   HashSet.has(importOrExportNameKinds, identifier.parent.kind)
 
-const identifierMayReferenceRuntimeValue = (identifier: ts.Identifier): boolean =>
+const identifierMayReferenceRuntimeValue = (identifier: ts.Identifier) =>
   pipe(
     Option.some(identifier),
     Option.filter((candidate) => !identifierIsAccessName(candidate)),
@@ -56,7 +56,7 @@ const isEffectApiReference = (node: ts.Node): node is EffectApiReference =>
 
 const symbolName = Struct.get<ts.Symbol, "name">("name")
 
-const textContainsUnsafe = (name: string): boolean => name.toLowerCase().includes("unsafe")
+const textContainsUnsafe = (name: string) => name.toLowerCase().includes("unsafe")
 
 const nameContainsUnsafe = Function.flow(symbolName, textContainsUnsafe)
 
@@ -66,7 +66,7 @@ const elementAccessArgument = Struct.get<ts.ElementAccessExpression, "argumentEx
   "argumentExpression"
 )
 
-const referenceText = (reference: EffectApiReference): string => {
+const referenceText = (reference: EffectApiReference) => {
   if (ts.isIdentifier(reference)) {
     return reference.text
   }
@@ -79,7 +79,7 @@ const referenceText = (reference: EffectApiReference): string => {
   return ts.isStringLiteralLike(argument) ? argument.text : ""
 }
 
-const unsafeImportedNames = (context: CheckContext): HashSet.HashSet<string> => {
+const unsafeImportedNames = (context: CheckContext) => {
   const resolveSymbol = resolvedSymbolAt(context.checker)
 
   const importedNames = pipe(

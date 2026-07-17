@@ -18,7 +18,7 @@ import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 // Methods stay excluded because typed adapters are valid runtime boundaries.
 type EffectfulFunctionDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration
 
-const functionResult = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
+const functionResult = (definition: FunctionDefinition) =>
   pipe(
     Option.fromNullishOr(definition.body),
     Option.flatMap((body) =>

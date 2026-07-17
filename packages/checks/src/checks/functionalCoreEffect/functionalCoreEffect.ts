@@ -12,7 +12,7 @@ import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check, Subscription } from "@better-typescript/core/engine/check/data"
+import type { Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import {
   FunctionalCoreBoundaryData,
@@ -110,13 +110,9 @@ const noneString: Option.Option<string> = Option.none()
 const constantNoneIdentifier = Function.constant(noneIdentifier)
 const constantNoneString = Function.constant(noneString)
 
-const adapterOrRootRoles: HashSet.HashSet<ArchitectureRole> = HashSet.make(
-  "adapter" as ArchitectureRole,
-  "root" as ArchitectureRole
-)
+const adapterOrRootRoles = HashSet.make("adapter" as ArchitectureRole, "root" as ArchitectureRole)
 
-const isAdapterOrRootRole = (role: ArchitectureRole): boolean =>
-  HashSet.has(adapterOrRootRoles, role)
+const isAdapterOrRootRole = (role: ArchitectureRole) => HashSet.has(adapterOrRootRoles, role)
 
 const boundaryDetection = (
   context: CheckContext,
@@ -125,7 +121,7 @@ const boundaryDetection = (
   kind: FunctionalCoreBoundaryKind,
   subject: string,
   targetRole: Option.Option<ArchitectureRole> = Option.none()
-): Detection => {
+) => {
   const resolvedTargetRole = Option.getOrUndefined(targetRole)
 
   const data = new FunctionalCoreBoundaryData({
@@ -205,7 +201,7 @@ const capabilityForbiddenRoles: Readonly<Record<ArchitectureRole, boolean>> = {
   test: false
 }
 
-const canImportRole = (importer: ArchitectureRole, imported: ArchitectureRole): boolean =>
+const canImportRole = (importer: ArchitectureRole, imported: ArchitectureRole) =>
   allowedTargetRoles[importer][imported]
 
 const forbiddenDomainNamespaces: Readonly<Record<string, true>> = {
@@ -228,10 +224,9 @@ const forbiddenDomainNamespaces: Readonly<Record<string, true>> = {
   Semaphore: true
 }
 
-const namespaceIsForbidden = (namespace: string): boolean =>
-  forbiddenDomainNamespaces[namespace] === true
+const namespaceIsForbidden = (namespace: string) => forbiddenDomainNamespaces[namespace] === true
 
-const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<string>): boolean => {
+const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<string>) => {
   if (moduleSpecifier.startsWith("effect/")) {
     const namespace = moduleSpecifier.slice("effect/".length).split("/")[0]
     return namespaceIsForbidden(namespace)
@@ -267,7 +262,7 @@ const propertyAccessForbiddenSubject = (
   context: CheckContext,
   current: ts.PropertyAccessExpression,
   referencesBinding: (candidate: ts.Identifier) => boolean
-): Option.Option<string> =>
+) =>
   pipe(
     propertyAccessRootIdentifier(current.expression),
     Option.filter(referencesBinding),
@@ -294,31 +289,26 @@ const qualifiedNameForbiddenSubject = (
   )
 }
 
-const bareBindingForbiddenSubject = (
-  binding: Option.Option<ImportedMember>
-): Option.Option<string> =>
+const bareBindingForbiddenSubject = (binding: Option.Option<ImportedMember>) =>
   pipe(
     binding,
     Option.filter((member) => isForbiddenDomainMember(member.moduleSpecifier, member.path)),
     Option.map(Struct.get("moduleSpecifier"))
   )
 
-const identifierIsPropertyAccessRoot = (parent: ts.Node, current: ts.Identifier): boolean =>
+const identifierIsPropertyAccessRoot = (parent: ts.Node, current: ts.Identifier) =>
   pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
     Option.exists((access) => access.expression === current)
   )
 
-const identifierIsQualifiedNameRoot = (parent: ts.Node, current: ts.Identifier): boolean =>
+const identifierIsQualifiedNameRoot = (parent: ts.Node, current: ts.Identifier) =>
   pipe(
     Option.liftPredicate(ts.isQualifiedName)(parent),
     Option.exists((qualified) => qualified.left === current)
   )
 
-const namespaceBindingSubject = (
-  context: CheckContext,
-  identifier: ts.Identifier
-): Option.Option<string> => {
+const namespaceBindingSubject = (context: CheckContext, identifier: ts.Identifier) => {
   const symbolAtIdentifier = context.checker.getSymbolAtLocation(identifier)
   const bindingSymbolOption = Option.fromNullishOr(symbolAtIdentifier)
   const binding = importedMemberAt(context.checker, identifier)
@@ -326,7 +316,7 @@ const namespaceBindingSubject = (
   return pipe(
     Option.all({ bindingSymbol: bindingSymbolOption, binding }),
     Option.flatMap(({ bindingSymbol }) => {
-      const referencesBinding = (candidate: ts.Identifier): boolean =>
+      const referencesBinding = (candidate: ts.Identifier) =>
         context.checker.getSymbolAtLocation(candidate) === bindingSymbol
 
       const subjectFromIdentifier = (current: ts.Identifier): Option.Option<string> => {
@@ -376,7 +366,7 @@ const forbiddenDomainMemberAt = (
   context: CheckContext,
   identifier: ts.Identifier,
   inspectNamespaceUsage: boolean
-): Option.Option<string> =>
+) =>
   pipe(
     importedMemberAt(context.checker, identifier),
     Option.flatMap((member) => {
@@ -428,7 +418,7 @@ const firstForbiddenDomainMember = (
   context: CheckContext,
   identifiers: ReadonlyArray<ts.Identifier>,
   inspectNamespaceUsage: boolean
-): Option.Option<string> =>
+) =>
   pipe(
     identifiers,
     Array.map((identifier) => forbiddenDomainMemberAt(context, identifier, inspectNamespaceUsage)),
@@ -436,10 +426,7 @@ const firstForbiddenDomainMember = (
     Option.flatten
   )
 
-const forbiddenDomainImport = (
-  context: CheckContext,
-  declaration: ts.ImportDeclaration
-): Option.Option<string> => {
+const forbiddenDomainImport = (context: CheckContext, declaration: ts.ImportDeclaration) => {
   const identifiers = importBindingIdentifiers(declaration)
   return firstForbiddenDomainMember(context, identifiers, true)
 }
@@ -553,10 +540,7 @@ const exportBindingIdentifiers = (
   return Array.filter(names, ts.isIdentifier)
 }
 
-const forbiddenDomainExport = (
-  context: CheckContext,
-  declaration: ts.ExportDeclaration
-): Option.Option<string> => {
+const forbiddenDomainExport = (context: CheckContext, declaration: ts.ExportDeclaration) => {
   const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
 
   if (Option.isNone(exportClauseOption)) {
@@ -570,9 +554,9 @@ const forbiddenDomainExport = (
   return firstForbiddenDomainMember(context, identifiers, false)
 }
 
-const exportElementIsValue = (element: ts.ExportSpecifier): boolean => element.isTypeOnly === false
+const exportElementIsValue = (element: ts.ExportSpecifier) => element.isTypeOnly === false
 
-const exportClauseAllowsRuntime = (exportClause: ts.NamedExportBindings): boolean =>
+const exportClauseAllowsRuntime = (exportClause: ts.NamedExportBindings) =>
   pipe(
     Match.value(exportClause),
     Match.when(ts.isNamespaceExport, Function.constTrue),
@@ -580,7 +564,7 @@ const exportClauseAllowsRuntime = (exportClause: ts.NamedExportBindings): boolea
     Match.exhaustive
   )
 
-const exportHasRuntimeValue = (declaration: ts.ExportDeclaration): boolean => {
+const exportHasRuntimeValue = (declaration: ts.ExportDeclaration) => {
   const isValueExport = declaration.isTypeOnly === false
   const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
 
@@ -751,7 +735,7 @@ const stateConstructors: Readonly<Record<string, ReadonlyArray<string>>> = {
 
 const stateConstructorEntries = EffectRecord.toEntries(stateConstructors)
 
-const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression): boolean => {
+const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression) => {
   const directEffect = importedEffectApiAt(context.checker, node.expression, "Effect", runtimeNames)
 
   const managedRuntimeMethod = pipe(
@@ -783,7 +767,7 @@ const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression):
   return Array.some(checks, Boolean)
 }
 
-const callIsProvisioning = (context: CheckContext, node: ts.CallExpression): boolean => {
+const callIsProvisioning = (context: CheckContext, node: ts.CallExpression) => {
   const effectProvide = importedEffectApiAt(
     context.checker,
     node.expression,
@@ -814,7 +798,7 @@ const callIsProvisioning = (context: CheckContext, node: ts.CallExpression): boo
   return Array.some(checks, Boolean)
 }
 
-const callIsServiceLocator = (context: CheckContext, node: ts.CallExpression): boolean => {
+const callIsServiceLocator = (context: CheckContext, node: ts.CallExpression) => {
   const effectContext = importedEffectApiAt(
     context.checker,
     node.expression,
@@ -833,10 +817,10 @@ const callIsServiceLocator = (context: CheckContext, node: ts.CallExpression): b
   return Array.some(checks, Boolean)
 }
 
-const callIsPortLayer = (context: CheckContext, node: ts.CallExpression): boolean =>
+const callIsPortLayer = (context: CheckContext, node: ts.CallExpression) =>
   importedEffectApiAt(context.checker, node.expression, "Layer", portLayerNames)
 
-const callIsEscapingState = (context: CheckContext, node: ts.CallExpression): boolean =>
+const callIsEscapingState = (context: CheckContext, node: ts.CallExpression) =>
   Array.some(stateConstructorEntries, ([namespace, names]) =>
     importedEffectApiAt(context.checker, node.expression, namespace, names)
   )
@@ -1263,7 +1247,7 @@ const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
   Semaphore: true
 }
 
-const effectNamespaceFromMember = (member: ImportedMember): string =>
+const effectNamespaceFromMember = (member: ImportedMember) =>
   pipe(
     Option.liftPredicate((specifier: string) => specifier === "effect")(member.moduleSpecifier),
     Option.map(() => member.path[0] ?? ""),
@@ -1372,7 +1356,7 @@ const typeIsServiceLocator = (
       const nextVisited = Array.append(visited, symbol)
       const targets = localTypeReferenceTargets(context.checker, node)
 
-      const targetIsServiceLocator = (target: ts.TypeReferenceNode): boolean =>
+      const targetIsServiceLocator = (target: ts.TypeReferenceNode) =>
         typeIsServiceLocator(context, target, nextVisited)
 
       return Array.some(targets, targetIsServiceLocator)
@@ -1537,7 +1521,7 @@ const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subsc
   return Array.flatten(groups)
 }
 
-export const makeFunctionalCoreEffect = (policy: FunctionalCoreEffectPolicy): Check => {
+export const makeFunctionalCoreEffect = (policy: FunctionalCoreEffectPolicy) => {
   const indexBuilder = buildFunctionalCoreEffectIndex(policy)
   const withIndex = withProgramIndex(indexBuilder)
   return withIndex(subscriptionsFor)

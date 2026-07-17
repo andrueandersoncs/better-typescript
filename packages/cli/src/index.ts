@@ -30,7 +30,7 @@ const watch = pipe(
   Flag.withDescription("Continue watching for changes after the initial report.")
 )
 
-const setErrorExitCode = (): number => {
+const setErrorExitCode = () => {
   process.exitCode = 2
 
   return process.exitCode
@@ -40,10 +40,10 @@ const setErrorExitCode = (): number => {
 const isMessageCarrier = (cause: unknown): cause is { readonly message: string } =>
   Predicate.hasProperty(cause, "message") && Predicate.isString(cause.message)
 
-const hasText = (value: string): boolean => value.length > 0
+const hasText = (value: string) => value.length > 0
 
 // Render unknown failures ourselves because config wiring reports errors with an unknown type.
-const errorText = (error: unknown): string => {
+const errorText = (error: unknown) => {
   const fallbackText = String(error)
 
   return pipe(

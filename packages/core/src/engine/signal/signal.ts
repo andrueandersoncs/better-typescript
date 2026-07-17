@@ -20,7 +20,7 @@ export const signalOf =
 const detectionsEquivalence = Array.makeEquivalence(detectionEquals)
 
 // Name plus detections is the watch change gate because policy and examples are configuration.
-export const signalEquals = (a: Signal, b: Signal): boolean => {
+export const signalEquals = (a: Signal, b: Signal) => {
   const sameName = a.name === b.name
   const sameDetections = detectionsEquivalence(a.detections, b.detections)
 
@@ -30,7 +30,7 @@ export const signalEquals = (a: Signal, b: Signal): boolean => {
 const signalArrayEquivalence = Array.makeEquivalence(signalEquals)
 
 // Match state participates because a newly matched or removed glob scope must reach derivation.
-export const wiringSignalsEquals = (a: WiringSignals, b: WiringSignals): boolean => {
+export const wiringSignalsEquals = (a: WiringSignals, b: WiringSignals) => {
   const sameMatchState = a.matched === b.matched
   const sameSignals = signalArrayEquivalence(a.signals, b.signals)
 

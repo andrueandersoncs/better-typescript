@@ -3,13 +3,15 @@ import * as ts from "typescript"
 
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { CompositionForwarderData } from "./data.js"
 import { ExportReferenceIndex, isTestSourceFile, usageFor } from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { compositionForwardersName } from "./names.js"
 
 const message =
   "Composition forwarder evidence — this export threads parameters through a pipe or call chain without policy."
@@ -19,7 +21,7 @@ const hint =
 
 const emptyParameterNames: ReadonlyArray<string> = Array.empty()
 
-const expressionFromConciseBody = (body: ts.ConciseBody): Option.Option<ts.Expression> => {
+const expressionFromConciseBody = (body: ts.ConciseBody) => {
   const expressionBody = pipe(
     Option.some(body),
     Option.filter((candidate): candidate is ts.Expression => !ts.isBlock(candidate)),
@@ -137,7 +139,7 @@ const referencesNonParameterOperation =
     )
   }
 
-const isCompositionForwarder = (arrow: ts.ArrowFunction): boolean => {
+const isCompositionForwarder = (arrow: ts.ArrowFunction) => {
   const parameterNames = compositionParameterNames(arrow)
 
   return pipe(
@@ -198,6 +200,11 @@ const compositionForwarderSubscriptions = Function.compose(
   fileSubscriptions
 )
 
-export const compositionForwarders: Check = evidenceCheck(exportReferenceIndex)(
+const compositionForwarderCheck = evidenceCheck(exportReferenceIndex)(
   compositionForwarderSubscriptions
+)
+
+export const compositionForwarders = defineSilentCheck(
+  compositionForwardersName,
+  compositionForwarderCheck
 )

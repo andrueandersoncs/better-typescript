@@ -39,25 +39,25 @@ const updateSymbolUse =
     return HashMap.set(uses, symbolKey, updatedUse)
   }
 
-const markContextualReference = (use: SymbolUse): SymbolUse =>
+const markContextualReference = (use: SymbolUse) =>
   new SymbolUse({
     ...use,
     hasContextualReference: true
   })
 
-const markDirectCall = (use: SymbolUse): SymbolUse =>
+const markDirectCall = (use: SymbolUse) =>
   new SymbolUse({
     ...use,
     hasDirectCall: true
   })
 
-const markOtherReference = (use: SymbolUse): SymbolUse =>
+const markOtherReference = (use: SymbolUse) =>
   new SymbolUse({
     ...use,
     hasOtherReference: true
   })
 
-const isContextualOnlyUse = (use: SymbolUse): boolean => {
+const isContextualOnlyUse = (use: SymbolUse) => {
   const isContextualReference = use.hasContextualReference
   const hasNoDirectCall = !use.hasDirectCall
   const hasNoOtherReference = !use.hasOtherReference
@@ -78,17 +78,17 @@ const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.MethodDeclaration
 )
 
-const isRuntimeParameter = (parameter: ts.ParameterDeclaration): boolean => {
+const isRuntimeParameter = (parameter: ts.ParameterDeclaration) => {
   const sourceFile = parameter.getSourceFile()
   const parameterName = parameter.name.getText(sourceFile)
 
   return parameterName !== "this"
 }
 
-const parameterHasRestToken = (parameter: ts.ParameterDeclaration): boolean =>
+const parameterHasRestToken = (parameter: ts.ParameterDeclaration) =>
   pipe(Option.fromNullishOr(parameter.dotDotDotToken), Option.isSome)
 
-const hasRestParameter = (declaration: ts.Node): boolean =>
+const hasRestParameter = (declaration: ts.Node) =>
   pipe(
     Option.liftPredicate(isFunctionDefinition)(declaration),
     Option.exists((functionDefinition) =>
@@ -105,7 +105,7 @@ const runtimeParameters = (declaration: ts.Node): ReadonlyArray<ts.ParameterDecl
     Option.getOrElse(Array.empty)
   )
 
-const hasDisallowedParameterList = (declaration: ts.Node): boolean => {
+const hasDisallowedParameterList = (declaration: ts.Node) => {
   const declarationHasRestParameter = hasRestParameter(declaration)
   const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
   const conditions = Array.make(declarationHasRestParameter, hasMultipleRuntimeParameters)
@@ -113,7 +113,7 @@ const hasDisallowedParameterList = (declaration: ts.Node): boolean => {
   return Array.some(conditions, Boolean)
 }
 
-const hasCurriedArrowBody = (declaration: ts.Node): boolean => {
+const hasCurriedArrowBody = (declaration: ts.Node) => {
   const parameters = runtimeParameters(declaration)
   const hasSingleRuntimeParameter = parameters.length === 1
   const hasNoRestParameter = !hasRestParameter(declaration)
@@ -132,33 +132,27 @@ const hasCurriedArrowBody = (declaration: ts.Node): boolean => {
   return Array.every(curriedInitializerChecks, Boolean)
 }
 
-const contextualType =
-  (checker: ts.TypeChecker) =>
-  (expression: ts.Expression): Option.Option<ts.Type> =>
-    pipe(checker.getContextualType(expression), Option.fromNullishOr)
+const contextualType = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
+  pipe(checker.getContextualType(expression), Option.fromNullishOr)
 
-const isContextuallyTypedFunction =
-  (checker: ts.TypeChecker) =>
-  (declaration: ts.Node): boolean =>
-    pipe(
-      Option.liftPredicate(isFunctionInitializer)(declaration),
-      Option.exists((expression) =>
-        pipe(contextualType(checker)(expression), Option.exists(hasCallSignature(checker)))
-      )
+const isContextuallyTypedFunction = (checker: ts.TypeChecker) => (declaration: ts.Node) =>
+  pipe(
+    Option.liftPredicate(isFunctionInitializer)(declaration),
+    Option.exists((expression) =>
+      pipe(contextualType(checker)(expression), Option.exists(hasCallSignature(checker)))
     )
+  )
 
-const symbolAtLocation =
-  (checker: ts.TypeChecker) =>
-  (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(
-      checker.getSymbolAtLocation(node),
-      Option.fromNullishOr,
-      Option.map((candidate) => {
-        const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
+const symbolAtLocation = (checker: ts.TypeChecker) => (node: ts.Node) =>
+  pipe(
+    checker.getSymbolAtLocation(node),
+    Option.fromNullishOr,
+    Option.map((candidate) => {
+      const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
 
-        return isAlias ? checker.getAliasedSymbol(candidate) : candidate
-      })
-    )
+      return isAlias ? checker.getAliasedSymbol(candidate) : candidate
+    })
+  )
 
 // NamedFunctionDeclaration is naming syntax protocol because function and method share lookup.
 export type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
@@ -167,33 +161,29 @@ const namedFunctionDeclarationName = (
   declaration: NamedFunctionDeclaration
 ): Option.Option<ts.Node> => Option.fromNullishOr(declaration.name)
 
-const variableDeclarationIdentifierName = (
-  declaration: ts.VariableDeclaration
-): Option.Option<ts.Identifier> =>
+const variableDeclarationIdentifierName = (declaration: ts.VariableDeclaration) =>
   pipe(Option.some(declaration.name), Option.flatMap(Option.liftPredicate(ts.isIdentifier)))
 
-const symbolForDeclaration =
-  (checker: ts.TypeChecker) =>
-  (declaration: ts.Node): Option.Option<ts.Symbol> => {
-    const methodName = pipe(
-      Option.liftPredicate(ts.isMethodDeclaration)(declaration),
-      Option.flatMap(namedFunctionDeclarationName)
-    )
+const symbolForDeclaration = (checker: ts.TypeChecker) => (declaration: ts.Node) => {
+  const methodName = pipe(
+    Option.liftPredicate(ts.isMethodDeclaration)(declaration),
+    Option.flatMap(namedFunctionDeclarationName)
+  )
 
-    const variableName = pipe(
-      Option.liftPredicate(ts.isVariableDeclaration)(declaration.parent),
-      Option.flatMap(variableDeclarationIdentifierName)
-    )
+  const variableName = pipe(
+    Option.liftPredicate(ts.isVariableDeclaration)(declaration.parent),
+    Option.flatMap(variableDeclarationIdentifierName)
+  )
 
-    const declarationName = pipe(
-      Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
-      Option.flatMap(namedFunctionDeclarationName),
-      Option.orElse(Function.constant(methodName)),
-      Option.orElse(Function.constant(variableName))
-    )
+  const declarationName = pipe(
+    Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
+    Option.flatMap(namedFunctionDeclarationName),
+    Option.orElse(Function.constant(methodName)),
+    Option.orElse(Function.constant(variableName))
+  )
 
-    return pipe(declarationName, Option.flatMap(symbolAtLocation(checker)))
-  }
+  return pipe(declarationName, Option.flatMap(symbolAtLocation(checker)))
+}
 
 const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulator: A) => A) =>
   foldAst((current: A, currentNode: ts.Node): A => visit(currentNode)(current))
@@ -201,12 +191,10 @@ const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulato
 // NameDeclaration is naming syntax protocol because variable, function, and method share lookup.
 export type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
-const declarationHasName =
-  (identifier: ts.Identifier) =>
-  (declaration: NameDeclaration): boolean =>
-    declaration.name === identifier
+const declarationHasName = (identifier: ts.Identifier) => (declaration: NameDeclaration) =>
+  declaration.name === identifier
 
-const buildSymbolUses = (context: ProgramContext): SymbolUses => {
+const buildSymbolUses = (context: ProgramContext) => {
   const checker = context.checker
   const programSourceFiles = context.program.getSourceFiles()
   const sourceFiles = Array.filter(programSourceFiles, isProjectSourceFile)
@@ -246,109 +234,100 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
     foldCurriedDataLastDescendants(collectTrackedSymbol)(sourceFile)(symbols)
   )
 
-  const classifyNode =
-    (node: ts.Node) =>
-    (currentUses: SymbolUses): SymbolUses => {
-      if (!ts.isIdentifier(node)) {
-        return currentUses
-      }
+  const classifyNode = (node: ts.Node) => (currentUses: SymbolUses) => {
+    if (!ts.isIdentifier(node)) {
+      return currentUses
+    }
 
-      return pipe(
-        symbolAtLocation(checker)(node),
-        Option.filter((symbol) => {
-          const symbolKey = referenceKey(symbol)
+    return pipe(
+      symbolAtLocation(checker)(node),
+      Option.filter((symbol) => {
+        const symbolKey = referenceKey(symbol)
 
-          return HashSet.has(trackedSymbols, symbolKey)
-        }),
-        Option.map((symbol) => {
-          const identifierParent = node.parent
+        return HashSet.has(trackedSymbols, symbolKey)
+      }),
+      Option.map((symbol) => {
+        const identifierParent = node.parent
 
-          const isVariableName = pipe(
-            Option.liftPredicate(ts.isVariableDeclaration)(identifierParent),
-            Option.exists(declarationHasName(node))
-          )
+        const isVariableName = pipe(
+          Option.liftPredicate(ts.isVariableDeclaration)(identifierParent),
+          Option.exists(declarationHasName(node))
+        )
 
-          const isFunctionName = pipe(
-            Option.liftPredicate(ts.isFunctionDeclaration)(identifierParent),
-            Option.exists(declarationHasName(node))
-          )
+        const isFunctionName = pipe(
+          Option.liftPredicate(ts.isFunctionDeclaration)(identifierParent),
+          Option.exists(declarationHasName(node))
+        )
 
-          const isMethodName = pipe(
-            Option.liftPredicate(ts.isMethodDeclaration)(identifierParent),
-            Option.exists(declarationHasName(node))
-          )
+        const isMethodName = pipe(
+          Option.liftPredicate(ts.isMethodDeclaration)(identifierParent),
+          Option.exists(declarationHasName(node))
+        )
 
-          const declarationNameChecks = Array.make(isVariableName, isFunctionName, isMethodName)
-          const isDeclaration = Array.some(declarationNameChecks, Boolean)
+        const declarationNameChecks = Array.make(isVariableName, isFunctionName, isMethodName)
+        const isDeclaration = Array.some(declarationNameChecks, Boolean)
 
-          if (isDeclaration) {
-            return currentUses
-          }
+        if (isDeclaration) {
+          return currentUses
+        }
 
-          const expression = outermostTransparentWrapper(node)
-          const expressionParent = expression.parent
+        const expression = outermostTransparentWrapper(node)
+        const expressionParent = expression.parent
 
-          const isDirectCall = pipe(
-            Option.liftPredicate(ts.isCallExpression)(expressionParent),
-            Option.exists((call) => call.expression === expression)
-          )
+        const isDirectCall = pipe(
+          Option.liftPredicate(ts.isCallExpression)(expressionParent),
+          Option.exists((call) => call.expression === expression)
+        )
 
-          if (isDirectCall) {
-            return updateSymbolUse(symbol)(markDirectCall)(currentUses)
-          }
+        if (isDirectCall) {
+          return updateSymbolUse(symbol)(markDirectCall)(currentUses)
+        }
 
-          const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
-          const args = pipe(parentCall, Option.map(callArguments), Option.getOrElse(Array.empty))
-          const index = Array.findFirstIndex(args, isSameNode(expression))
-          const expressionContextualType = contextualType(checker)(expression)
+        const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
+        const args = pipe(parentCall, Option.map(callArguments), Option.getOrElse(Array.empty))
+        const index = Array.findFirstIndex(args, isSameNode(expression))
+        const expressionContextualType = contextualType(checker)(expression)
 
-          const signatureType = pipe(
-            parentCall,
-            Option.flatMap((call) =>
-              pipe(
-                index,
-                Option.flatMap((position) =>
-                  pipe(
-                    resolvedCallSignature(checker)(call),
-                    Option.flatMap((signature) =>
-                      Option.fromNullishOr(signature.parameters[position])
-                    ),
-                    Option.map((parameter) => checker.getTypeOfSymbolAtLocation(parameter, call))
-                  )
+        const signatureType = pipe(
+          parentCall,
+          Option.flatMap((call) =>
+            pipe(
+              index,
+              Option.flatMap((position) =>
+                pipe(
+                  resolvedCallSignature(checker)(call),
+                  Option.flatMap((signature) =>
+                    Option.fromNullishOr(signature.parameters[position])
+                  ),
+                  Option.map((parameter) => checker.getTypeOfSymbolAtLocation(parameter, call))
                 )
               )
             )
           )
+        )
 
-          const optionHasCallableType = (type: Option.Option<ts.Type>): boolean =>
-            Option.exists(type, hasCallSignature(checker))
+        const optionHasCallableType = (type: Option.Option<ts.Type>) =>
+          Option.exists(type, hasCallSignature(checker))
 
-          const contextualTypes = Array.make(expressionContextualType, signatureType)
-          const hasCallableContext = Array.some(contextualTypes, optionHasCallableType)
+        const contextualTypes = Array.make(expressionContextualType, signatureType)
+        const hasCallableContext = Array.some(contextualTypes, optionHasCallableType)
 
-          const hasExternalCallbackBoundary = pipe(
-            parentCall,
-            Option.exists((call) =>
-              pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
-            )
+        const hasExternalCallbackBoundary = pipe(
+          parentCall,
+          Option.exists((call) =>
+            pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
           )
+        )
 
-          const contextualArgumentChecks = Array.make(
-            hasCallableContext,
-            hasExternalCallbackBoundary
-          )
+        const contextualArgumentChecks = Array.make(hasCallableContext, hasExternalCallbackBoundary)
+        const isContextualArgument = Array.every(contextualArgumentChecks, Boolean)
+        const referenceUpdate = isContextualArgument ? markContextualReference : markOtherReference
 
-          const isContextualArgument = Array.every(contextualArgumentChecks, Boolean)
-
-          const referenceUpdate = isContextualArgument
-            ? markContextualReference
-            : markOtherReference
-
-          return updateSymbolUse(symbol)(referenceUpdate)(currentUses)
-        }),
-        Option.getOrElse(() => currentUses)
-      )
-    }
+        return updateSymbolUse(symbol)(referenceUpdate)(currentUses)
+      }),
+      Option.getOrElse(() => currentUses)
+    )
+  }
 
   return Array.reduce(sourceFiles, emptySymbolUses, (uses, sourceFile) =>
     foldCurriedDataLastDescendants(classifyNode)(sourceFile)(uses)

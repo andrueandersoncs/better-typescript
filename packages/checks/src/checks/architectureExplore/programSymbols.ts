@@ -39,7 +39,7 @@ export class ExportedSymbolEntry extends Data.Class<{
 }> {}
 
 // ExportUsage is shared prod-vs-test usage because checks share one split.
-export class ExportUsage extends Data.Class<{
+class ExportUsage extends Data.Class<{
   readonly productionCallCount: number
   readonly testCallCount: number
   readonly productionPaths: ReadonlyArray<string>
@@ -66,7 +66,7 @@ export class ModuleEdge extends Data.Class<{
   readonly fromTest: boolean
 }> {}
 
-const emptyUsage = (): ExportUsage => {
+const emptyUsage = () => {
   const productionPaths = Array.empty<string>()
   const testPaths = Array.empty<string>()
 
@@ -80,7 +80,7 @@ const emptyUsage = (): ExportUsage => {
 }
 
 // Benchmarks are test-like because derivation must distinguish them from production callers.
-export const isTestPath = (relativePath: string): boolean => {
+export const isTestPath = (relativePath: string) => {
   const normalized = relativePath.replaceAll("\\", "/")
   const testLikeDirectories = Array.make("bench/", "test/", "tests/", "__tests__/")
   const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
@@ -97,18 +97,15 @@ export const isTestPath = (relativePath: string): boolean => {
 
 // Workspace paths normalize evidence because cross-package joins compare one path vocabulary.
 export const toWorkspacePath =
-  (projectRoot: string, workspaceRoot: string) =>
-  (projectRelativePath: string): string => {
+  (projectRoot: string, workspaceRoot: string) => (projectRelativePath: string) => {
     const projectPath = path.resolve(projectRoot, projectRelativePath)
     const workspacePath = path.relative(workspaceRoot, projectPath)
 
     return workspacePath.replaceAll(path.sep, "/")
   }
 
-export const isTestSourceFile =
-  (root: string) =>
-  (sourceFile: ts.SourceFile): boolean =>
-    pipe(sourceFile.fileName, (fileName) => path.relative(root, fileName), isTestPath)
+export const isTestSourceFile = (root: string) => (sourceFile: ts.SourceFile) =>
+  pipe(sourceFile.fileName, (fileName) => path.relative(root, fileName), isTestPath)
 
 export const importElements =
   <Context, Element>(
@@ -211,11 +208,7 @@ const exportedFunctionsIn =
 
 const namedExportEntry =
   (checker: ts.TypeChecker) =>
-  (
-    nameNode: ts.Identifier,
-    declarationNode: ts.Declaration,
-    kind: ExportedSymbolKind
-  ): Option.Option<ExportedSymbolEntry> =>
+  (nameNode: ts.Identifier, declarationNode: ts.Declaration, kind: ExportedSymbolKind) =>
     pipe(
       resolvedSymbolAt(checker)(nameNode),
       Option.map(
@@ -296,7 +289,7 @@ const exportedSymbolsIn =
   (sourceFile: ts.SourceFile): ReadonlyArray<ExportedSymbolEntry> =>
     Array.flatMap(sourceFile.statements, exportedSymbolEntriesFor(checker))
 
-const isImportBinding = (node: ts.Identifier): boolean => {
+const isImportBinding = (node: ts.Identifier) => {
   const parent = node.parent
   const isImportSpecifier = ts.isImportSpecifier(parent)
   const isImportClause = ts.isImportClause(parent)
@@ -307,7 +300,7 @@ const isImportBinding = (node: ts.Identifier): boolean => {
   return Array.some(checks, Boolean)
 }
 
-const isDirectCallReference = (node: ts.Identifier): boolean => {
+const isDirectCallReference = (node: ts.Identifier) => {
   const parent = node.parent
 
   const directCall = pipe(
@@ -333,61 +326,53 @@ const isDirectCallReference = (node: ts.Identifier): boolean => {
   return directCall || propertyCall
 }
 
-const isInsideDeclaration =
-  (declaration: ts.Declaration) =>
-  (node: ts.Identifier): boolean => {
-    const sameFile = node.getSourceFile() === declaration.getSourceFile()
-    const afterStart = node.pos >= declaration.pos
-    const beforeEnd = node.end <= declaration.end
-    const checks = Array.make(sameFile, afterStart, beforeEnd)
+const isInsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifier) => {
+  const sameFile = node.getSourceFile() === declaration.getSourceFile()
+  const afterStart = node.pos >= declaration.pos
+  const beforeEnd = node.end <= declaration.end
+  const checks = Array.make(sameFile, afterStart, beforeEnd)
 
-    return Array.every(checks, Boolean)
-  }
+  return Array.every(checks, Boolean)
+}
 
-const isOutsideDeclaration =
-  (declaration: ts.Declaration) =>
-  (node: ts.Identifier): boolean => {
-    const insideDeclaration = isInsideDeclaration(declaration)(node)
+const isOutsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifier) => {
+  const insideDeclaration = isInsideDeclaration(declaration)(node)
 
-    return !insideDeclaration
-  }
+  return !insideDeclaration
+}
 
-const isOutsideDeclaringFile =
-  (declaration: ts.Declaration) =>
-  (node: ts.Identifier): boolean =>
-    node.getSourceFile() !== declaration.getSourceFile()
+const isOutsideDeclaringFile = (declaration: ts.Declaration) => (node: ts.Identifier) =>
+  node.getSourceFile() !== declaration.getSourceFile()
 
 const appendUnique =
   (value: string) =>
   (values: ReadonlyArray<string>): ReadonlyArray<string> =>
     Array.contains(values, value) ? values : Array.append(values, value)
 
-const updateUsage =
-  (isTest: boolean, isCall: boolean, path: string) =>
-  (usage: ExportUsage): ExportUsage => {
-    const callIncrement = isCall ? 1 : 0
+const updateUsage = (isTest: boolean, isCall: boolean, path: string) => (usage: ExportUsage) => {
+  const callIncrement = isCall ? 1 : 0
 
-    if (isTest) {
-      const testPaths = appendUnique(path)(usage.testPaths)
-
-      return new ExportUsage({
-        ...usage,
-        testCallCount: usage.testCallCount + callIncrement,
-        testPaths
-      })
-    }
-
-    const productionPaths = appendUnique(path)(usage.productionPaths)
-    const nonCallReference = !isCall
-    const hasProductionNonCallReference = usage.hasProductionNonCallReference || nonCallReference
+  if (isTest) {
+    const testPaths = appendUnique(path)(usage.testPaths)
 
     return new ExportUsage({
       ...usage,
-      productionCallCount: usage.productionCallCount + callIncrement,
-      productionPaths,
-      hasProductionNonCallReference
+      testCallCount: usage.testCallCount + callIncrement,
+      testPaths
     })
   }
+
+  const productionPaths = appendUnique(path)(usage.productionPaths)
+  const nonCallReference = !isCall
+  const hasProductionNonCallReference = usage.hasProductionNonCallReference || nonCallReference
+
+  return new ExportUsage({
+    ...usage,
+    productionCallCount: usage.productionCallCount + callIncrement,
+    productionPaths,
+    hasProductionNonCallReference
+  })
+}
 
 // UsageScanEntry is shared because both export index entry types need one scan contract.
 type UsageScanEntry = {
@@ -468,7 +453,7 @@ const buildUsageMap =
     )
   }
 
-export const buildExportReferenceIndex = (context: ProgramContext): ExportReferenceIndex => {
+export const buildExportReferenceIndex = (context: ProgramContext) => {
   const checker = context.checker
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const entries = Array.flatMap(projectFiles, exportedFunctionsIn(checker))
@@ -477,7 +462,7 @@ export const buildExportReferenceIndex = (context: ProgramContext): ExportRefere
   return new ExportReferenceIndex({ entries, usages })
 }
 
-export const buildExportSymbolIndex = (context: ProgramContext): ExportSymbolIndex => {
+export const buildExportSymbolIndex = (context: ProgramContext) => {
   const checker = context.checker
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const entries = Array.flatMap(projectFiles, exportedSymbolsIn(checker))
@@ -503,8 +488,7 @@ export const symbolUsageFor =
   }
 
 const moduleSourceFile =
-  (context: ProgramContext, containingFile: ts.SourceFile) =>
-  (moduleSpecifier: ts.Expression): Option.Option<ts.SourceFile> => {
+  (context: ProgramContext, containingFile: ts.SourceFile) => (moduleSpecifier: ts.Expression) => {
     const checkerSource = pipe(
       context.checker.getSymbolAtLocation(moduleSpecifier),
       Option.fromNullishOr,
@@ -541,7 +525,7 @@ const moduleSourceFile =
     )
   }
 
-const statementModuleSpecifier = (statement: ts.Statement): Option.Option<ts.Expression> => {
+const statementModuleSpecifier = (statement: ts.Statement) => {
   if (ts.isImportDeclaration(statement)) {
     return Option.some(statement.moduleSpecifier)
   }

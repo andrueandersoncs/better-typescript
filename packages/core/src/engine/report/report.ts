@@ -36,7 +36,7 @@ import {
 } from "./data.js"
 import type { ReportEvent } from "./data.js"
 
-const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
+const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>) =>
   pipe(Array.prepend(parts, kind), JSON.stringify)
 
 const adviceReportBlock =
@@ -119,7 +119,7 @@ export const checkReportBlocks =
       })
     )
 
-const hasDetections = (signal: Signal): boolean => signal.detections.length > 0
+const hasDetections = (signal: Signal) => signal.detections.length > 0
 
 // Empty signals skip example loading because they render no report block.
 export const reportBlocks =
@@ -206,11 +206,11 @@ export const withFallbackAdvice = <E, R>(
   )
 
 // Signal lifting stays beside block construction because event shape must match rendered text.
-export const blockSignalEvent = (block: ReportBlock): SignalEvent =>
+export const blockSignalEvent = (block: ReportBlock) =>
   new SignalEvent({ key: block.key, text: block.text })
 
 // Cleared text is precomputed on the block because delta emission must not re-render gone blocks.
-export const blockClearedEvent = (block: ReportBlock): ClearedEvent =>
+export const blockClearedEvent = (block: ReportBlock) =>
   new ClearedEvent({ key: block.key, text: block.cleared })
 
 // Identity keys the entry and the block stays the value because diffs need both without lookups.
@@ -230,10 +230,10 @@ export const initialReportEvents =
     return Array.map(blocks, blockSignalEvent)
   }
 
-const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`
+const emptyReportText = (event: EmptyReportEvent) => `No signals in ${event.rootPath}.`
 
 // Kept separate from NDJSON because --pretty needs a human-readable projection of the same events.
-export const renderEventText = (event: ReportEvent): string =>
+export const renderEventText = (event: ReportEvent) =>
   pipe(
     Match.value(event),
     Match.tag("signal", Struct.get<SignalEvent, "text">("text")),

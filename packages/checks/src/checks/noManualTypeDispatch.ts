@@ -29,7 +29,7 @@ const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
 }
 
 // Compare guard discriminants because a dispatch ladder must inspect the same subject.
-const discriminants = (ifStatement: ts.IfStatement): HashSet.HashSet<string> =>
+const discriminants = (ifStatement: ts.IfStatement) =>
   pipe(identifierNames(ifStatement.expression), HashSet.fromIterable)
 
 const siblingDispatchGuard =
@@ -48,21 +48,19 @@ const siblingDispatchGuard =
     )
   }
 
-const continuesChain =
-  (offset: number) =>
-  (ifStatement: ts.IfStatement): boolean =>
-    pipe(
-      siblingDispatchGuard(offset)(ifStatement),
-      Option.exists((sibling) => {
-        const firstDiscriminants = discriminants(ifStatement)
-        const secondDiscriminants = discriminants(sibling)
+const continuesChain = (offset: number) => (ifStatement: ts.IfStatement) =>
+  pipe(
+    siblingDispatchGuard(offset)(ifStatement),
+    Option.exists((sibling) => {
+      const firstDiscriminants = discriminants(ifStatement)
+      const secondDiscriminants = discriminants(sibling)
 
-        return HashSet.some(firstDiscriminants, (name) => HashSet.has(secondDiscriminants, name))
-      })
-    )
+      return HashSet.some(firstDiscriminants, (name) => HashSet.has(secondDiscriminants, name))
+    })
+  )
 
 // Report only the chain head because it shares a subject with the next guard but not a prior guard.
-const isChainHead = (ifStatement: ts.IfStatement): boolean => {
+const isChainHead = (ifStatement: ts.IfStatement) => {
   const precedesAnotherGuard = continuesChain(1)(ifStatement)
   const startsTheChain = !continuesChain(-1)(ifStatement)
 
@@ -82,7 +80,7 @@ const chainLengthFrom = (ifStatement: ts.IfStatement): number =>
 
 const returnsOne: () => number = Function.constant(1)
 
-const isLongEnough = (head: ts.IfStatement): boolean => chainLengthFrom(head) >= minimumChainLength
+const isLongEnough = (head: ts.IfStatement) => chainLengthFrom(head) >= minimumChainLength
 
 const manualTypeDispatchMatches = (context: CheckContext) => {
   const match = detection(context)

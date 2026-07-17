@@ -1,6 +1,17 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Array, Effect, HashMap, Match, Option, Order, SynchronizedRef, Tuple, pipe } from "effect"
+import {
+  Array,
+  Effect,
+  Function,
+  HashMap,
+  Match,
+  Option,
+  Order,
+  SynchronizedRef,
+  Tuple,
+  pipe
+} from "effect"
 import {
   DirectoryRefactorExamples,
   ExampleLoadError,
@@ -11,10 +22,10 @@ import {
   RefactorExample
 } from "./data.js"
 
-export const exampleSnippet = (filePath: string, code: string): ExampleSnippet =>
+export const exampleSnippet = (filePath: string, code: string) =>
   new ExampleSnippet({ filePath, code })
 
-export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet): RefactorExample => {
+export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet) => {
   const badExamples = Array.of(bad)
   const goodExamples = Array.of(good)
 
@@ -24,17 +35,13 @@ export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet): Refa
   })
 }
 
-export const refactorExampleTrees = (
-  bad: NonEmptyExampleTree,
-  good: NonEmptyExampleTree
-): RefactorExample => new RefactorExample({ bad, good })
+export const refactorExampleTrees = (bad: NonEmptyExampleTree, good: NonEmptyExampleTree) =>
+  new RefactorExample({ bad, good })
 
-export const inlineRefactorExamples = (
-  examples: ReadonlyArray<RefactorExample>
-): InlineRefactorExamples => new InlineRefactorExamples({ examples })
+export const inlineRefactorExamples = (examples: ReadonlyArray<RefactorExample>) =>
+  new InlineRefactorExamples({ examples })
 
-export const directoryRefactorExamples = (root: string): DirectoryRefactorExamples =>
-  new DirectoryRefactorExamples({ root })
+export const directoryRefactorExamples = (root: string) => new DirectoryRefactorExamples({ root })
 
 const emptyExamples = Array.empty<RefactorExample>()
 
@@ -55,12 +62,14 @@ const formatExampleTree =
     return Array.join(sections, "\n")
   }
 
-export const formatRefactorExample = (example: RefactorExample): string => {
+const formatRefactorExampleUncached = (example: RefactorExample) => {
   const badText = formatExampleTree("Bad")(example.bad)
   const goodText = formatExampleTree("Good")(example.good)
   const joinedParts = Array.make(badText, goodText)
   return Array.join(joinedParts, "\n")
 }
+
+export const formatRefactorExample = Function.memoize(formatRefactorExampleUncached)
 
 const byPath = Order.String
 const byPairName = Order.String
@@ -76,7 +85,7 @@ const readDirectoryEntries = (
       })
   })
 
-const directoryExists = (absolutePath: string): boolean => {
+const directoryExists = (absolutePath: string) => {
   const exists = fs.existsSync(absolutePath)
 
   return exists && fs.statSync(absolutePath).isDirectory()
@@ -215,56 +224,54 @@ export type ResolveRefactorExamples = (
 ) => Effect.Effect<ReadonlyArray<RefactorExample>, ExampleLoadError>
 
 // One resolver caches successful directory loads because a watch run shares one report program.
-export const makeRefactorExampleResolver: Effect.Effect<ResolveRefactorExamples> = Effect.gen(
-  function* () {
-    const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
-    const cache = yield* SynchronizedRef.make(emptyCache)
+export const makeRefactorExampleResolver = Effect.gen(function* () {
+  const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
+  const cache = yield* SynchronizedRef.make(emptyCache)
 
-    const loadDirectory = (
-      root: string
-    ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
-      SynchronizedRef.modifyEffect(cache, (current) => {
-        const cached = HashMap.get(current, root)
+  const loadDirectory = (
+    root: string
+  ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
+    SynchronizedRef.modifyEffect(cache, (current) => {
+      const cached = HashMap.get(current, root)
 
-        if (Option.isSome(cached)) {
-          const cachedEntry = Tuple.make(cached.value, current)
-          return Effect.succeed(cachedEntry)
-        }
+      if (Option.isSome(cached)) {
+        const cachedEntry = Tuple.make(cached.value, current)
+        return Effect.succeed(cachedEntry)
+      }
 
-        return pipe(
-          loadRefactorExamplesAt(root),
-          Effect.map((loaded) => {
-            const next = HashMap.set(current, root, loaded)
+      return pipe(
+        loadRefactorExamplesAt(root),
+        Effect.map((loaded) => {
+          const next = HashMap.set(current, root, loaded)
 
-            return Tuple.make(loaded, next)
+          return Tuple.make(loaded, next)
+        })
+      )
+    })
+
+  const directoryExamples = (
+    root: string
+  ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
+    pipe(
+      SynchronizedRef.get(cache),
+      Effect.flatMap((current) =>
+        pipe(
+          HashMap.get(current, root),
+          Option.match({
+            onNone: () => loadDirectory(root),
+            onSome: Effect.succeed
           })
         )
-      })
-
-    const directoryExamples = (
-      root: string
-    ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
-      pipe(
-        SynchronizedRef.get(cache),
-        Effect.flatMap((current) =>
-          pipe(
-            HashMap.get(current, root),
-            Option.match({
-              onNone: () => loadDirectory(root),
-              onSome: Effect.succeed
-            })
-          )
-        )
       )
+    )
 
-    const resolve: ResolveRefactorExamples = (source) =>
-      pipe(
-        Match.value(source),
-        Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
-        Match.tag("directory", (directory) => directoryExamples(directory.root)),
-        Match.exhaustive
-      )
+  const resolve: ResolveRefactorExamples = (source) =>
+    pipe(
+      Match.value(source),
+      Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
+      Match.tag("directory", (directory) => directoryExamples(directory.root)),
+      Match.exhaustive
+    )
 
-    return resolve
-  }
-)
+  return resolve
+})

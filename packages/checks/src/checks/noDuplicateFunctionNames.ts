@@ -10,16 +10,15 @@ import { definePlannedCheck } from "../defineCheck.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-const declaredFunction = (declaration: ts.VariableDeclaration): Option.Option<ts.Identifier> =>
+const declaredFunction = (declaration: ts.VariableDeclaration) =>
   Option.gen(function* () {
     yield* functionInitializer(declaration)
 
     return yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
   })
 
-const namedFunctionDeclaration = (
-  declaration: ts.FunctionDeclaration
-): Option.Option<ts.Identifier> => Option.fromNullishOr(declaration.name)
+const namedFunctionDeclaration = (declaration: ts.FunctionDeclaration) =>
+  Option.fromNullishOr(declaration.name)
 
 const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => {
   const variableDeclarationFunctions = ts.isVariableStatement(statement)
@@ -61,7 +60,7 @@ const addFunctionToIndex = (
   return HashMap.set(index, nameNode.text, nextDeclarations)
 }
 
-const declaredFileName = (nameNode: ts.Identifier): string => nameNode.getSourceFile().fileName
+const declaredFileName = (nameNode: ts.Identifier) => nameNode.getSourceFile().fileName
 
 const maxListedFileNames = 3
 

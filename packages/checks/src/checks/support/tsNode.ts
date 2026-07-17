@@ -44,18 +44,16 @@ export type ReturnTypeDeclaration =
 export const namedDetectionTarget = (node: ts.NamedDeclaration): ts.Node =>
   pipe(Option.fromNullishOr(node.name), Option.getOrElse(Function.constant(node)))
 
-export const resolvedSymbolAt =
-  (checker: ts.TypeChecker) =>
-  (node: ts.Node): Option.Option<ts.Symbol> =>
-    pipe(
-      checker.getSymbolAtLocation(node),
-      Option.fromNullishOr,
-      Option.map((symbol) => {
-        const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+export const resolvedSymbolAt = (checker: ts.TypeChecker) => (node: ts.Node) =>
+  pipe(
+    checker.getSymbolAtLocation(node),
+    Option.fromNullishOr,
+    Option.map((symbol) => {
+      const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
-        return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-      })
-    )
+      return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+    })
+  )
 
 export const isFunctionInitializer = (node: ts.Node): node is FunctionInitializer =>
   ts.isArrowFunction(node) || ts.isFunctionExpression(node)
@@ -115,14 +113,14 @@ export const isReturnedExpressionNode = (node: ts.Node): node is ReturnedExpress
 export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
   ts.isCallExpression(node) || ts.isNewExpression(node)
 
-const expressionBodiedArrow = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
+const expressionBodiedArrow = (definition: FunctionDefinition) =>
   pipe(
     Option.liftPredicate(ts.isArrowFunction)(definition),
     Option.map(Struct.get("body")),
     Option.filter((body): body is ts.Expression => !ts.isBlock(body))
   )
 
-export const singleStatementReturnExpression = (body: ts.Block): Option.Option<ts.Expression> =>
+export const singleStatementReturnExpression = (body: ts.Block) =>
   pipe(
     body.statements,
     Option.liftPredicate((statements) => statements.length === 1),
@@ -131,7 +129,7 @@ export const singleStatementReturnExpression = (body: ts.Block): Option.Option<t
     Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
   )
 
-const singleReturnExpression = (definition: FunctionDefinition): Option.Option<ts.Expression> =>
+const singleReturnExpression = (definition: FunctionDefinition) =>
   pipe(
     Option.fromNullishOr(definition.body),
     Option.filter(ts.isBlock),
@@ -140,16 +138,13 @@ const singleReturnExpression = (definition: FunctionDefinition): Option.Option<t
     Option.flatMap((returns) => Option.fromNullishOr(returns[0].expression))
   )
 
-export const returnedExpression = (
-  definition: FunctionDefinition
-): Option.Option<ts.Expression> => {
+export const returnedExpression = (definition: FunctionDefinition) => {
   const blockReturn = singleReturnExpression(definition)
 
   return pipe(expressionBodiedArrow(definition), Option.orElse(Function.constant(blockReturn)))
 }
 
-export const hasParameters = (initializer: FunctionInitializer): boolean =>
-  initializer.parameters.length > 0
+export const hasParameters = (initializer: FunctionInitializer) => initializer.parameters.length > 0
 
 export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
   const isFunctionDeclaration = ts.isFunctionDeclaration(node)
@@ -175,9 +170,7 @@ export const isReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclar
   return Array.some(conditions, Boolean)
 }
 
-export const functionInitializer = (
-  declaration: ts.VariableDeclaration
-): Option.Option<FunctionInitializer> =>
+export const functionInitializer = (declaration: ts.VariableDeclaration) =>
   pipe(Option.fromNullishOr(declaration.initializer), Option.filter(isFunctionInitializer))
 
 export const conciseArrowBody = (arrowFunction: ts.ArrowFunction): Option.Option<ts.Expression> =>
@@ -231,7 +224,7 @@ export const outermostTransparentWrapper = (expression: ts.Expression): ts.Expre
   })
 }
 
-export const unwrapSingleStatementBlock = (statement: ts.Statement): ts.Statement => {
+export const unwrapSingleStatementBlock = (statement: ts.Statement) => {
   if (!ts.isBlock(statement)) {
     return statement
   }
@@ -260,13 +253,13 @@ export const alwaysExitsScope = (statement: ts.Statement): boolean => {
   return HashSet.has(exitStatementKinds, statement.kind)
 }
 
-export const isExtendsClause = (clause: ts.HeritageClause): boolean =>
+export const isExtendsClause = (clause: ts.HeritageClause) =>
   clause.token === ts.SyntaxKind.ExtendsKeyword
 
-export const isProjectFile = (sourceFile: ts.SourceFile): boolean =>
+export const isProjectFile = (sourceFile: ts.SourceFile) =>
   !sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
 
-export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
+export const isFirstPartySymbol = (symbol: ts.Symbol) => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
   const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
 
@@ -276,7 +269,7 @@ export const isFirstPartySymbol = (symbol: ts.Symbol): boolean => {
 const isExportKeyword = (modifier: ts.Modifier): boolean =>
   modifier.kind === ts.SyntaxKind.ExportKeyword
 
-export const hasExportModifier = (statement: ts.Statement): boolean => {
+export const hasExportModifier = (statement: ts.Statement) => {
   const modifiers = ts.canHaveModifiers(statement)
     ? (ts.getModifiers(statement) ?? Array.empty())
     : Array.empty()
@@ -327,10 +320,10 @@ export const containsUndefinedKeyword = (node: ts.Node): boolean => {
   return Array.some(conditions, Boolean)
 }
 
-export const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>): boolean =>
+export const containsUndefinedType = (typeNode: Option.Option<ts.TypeNode>) =>
   Option.exists(typeNode, containsUndefinedKeyword)
 
-export const hasUndefinedReturnType = (decl: ReturnTypeDeclaration): boolean =>
+export const hasUndefinedReturnType = (decl: ReturnTypeDeclaration) =>
   pipe(Option.fromNullishOr(decl.type), containsUndefinedType)
 
 export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
@@ -347,7 +340,7 @@ const containsAnyKeyword = (node: ts.Node): boolean => {
   return Array.some(ambientConditions, Boolean)
 }
 
-export const hasAnyReturnType = (decl: ReturnTypeDeclaration): boolean => {
+export const hasAnyReturnType = (decl: ReturnTypeDeclaration) => {
   const returnType = Option.fromNullishOr(decl.type)
 
   return Option.exists(returnType, containsAnyKeyword)

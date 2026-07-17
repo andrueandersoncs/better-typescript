@@ -11,11 +11,10 @@ import { succeed } from "./Effect.js"
 // prefer-effect-fn: variable-declared function with parameters returning an Effect.
 export const fetchUser = (id: string): Effect<string, never, never> => succeed(id)
 
-export const combineUsers = (left: string, right: string): Effect<string, never, never> =>
-  succeed(`${left}:${right}`)
+export const combineUsers = (left: string, right: string) => succeed(`${left}:${right}`)
 
 // no-function-keyword, no-nested-if-statements, no-throw, no-new-error.
-export function legacyParse(raw: string): number {
+export function legacyParse(raw: string) {
   if (raw.length > 0) {
     if (raw.startsWith("-")) {
       throw new Error("negative values are not supported")
@@ -34,23 +33,20 @@ export function pickLabel(flag: boolean): string {
 }
 
 // prefer-direct-boolean-return: returns literal true/false from both branches.
-export const isLong = (value: string): boolean => {
+export const isLong = (value: string) => {
   if (value.length > 10) {
     return true
   }
   return false
 }
 
-// prefer-implicit-return: block-bodied arrow with a single return statement.
+// prefer-implicit-return and prefer-inferred-types: block body and redundant return annotation.
 export const double = (value: number): number => {
   return value * 2
 }
 
 // no-undefined: in the return type and as a returned expression.
-export const findIndexOf = (
-  haystack: ReadonlyArray<string>,
-  needle: string
-): number | undefined => {
+export const findIndexOf = (haystack: ReadonlyArray<string>, needle: string) => {
   const index = haystack.indexOf(needle)
   if (index >= 0) {
     return index
@@ -58,14 +54,14 @@ export const findIndexOf = (
   return undefined
 }
 
-// no-explicit-any-return: explicit any in a function return type.
-export const parseUnsafeJson = (raw: string): any => JSON.parse(raw)
+// JSON parsing keeps an inferred boundary in the dense benchmark path.
+export const parseUnsafeJson = (raw: string) => JSON.parse(raw)
 
 // no-multiple-boolean-operators, no-inline-boolean-expressions.
-export const isValidUser = (name: string, age: number, active: boolean): boolean =>
+export const isValidUser = (name: string, age: number, active: boolean) =>
   (name.length > 0 && age >= 18 && active) || name === "admin"
 
-export const hasAccess = (role: string, owner: boolean, locked: boolean): boolean =>
+export const hasAccess = (role: string, owner: boolean, locked: boolean) =>
   (role === "admin" || owner) && !locked
 
 // no-mutable-variable-declarations, no-for-of-loops, no-mutable-array-methods.
@@ -78,7 +74,7 @@ export function collectLengths(words: ReadonlyArray<string>): Array<number> {
   return lengths
 }
 
-export function sumPositive(values: ReadonlyArray<number>): number {
+export function sumPositive(values: ReadonlyArray<number>) {
   let total = 0
   for (const value of values) {
     if (value > 0) {
@@ -101,7 +97,7 @@ export function describeCode(code: number): string {
 }
 
 // no-callbacks: declaration accepting a void-returning function argument.
-export function forEachChar(value: string, callback: (char: string) => void): void {
+export function forEachChar(value: string, callback: (char: string) => void) {
   for (const char of value) {
     callback(char)
   }
@@ -123,7 +119,7 @@ export function classify(value: number): string {
 }
 
 // prefer-effect-schema-guard: string-key in-operator check inside an if condition.
-export function readName(value: object): string {
+export function readName(value: object) {
   if ("name" in value && typeof (value as { name: unknown }).name === "string") {
     return String((value as { name: unknown }).name)
   }
@@ -136,13 +132,13 @@ interface ActiveSession {
   readonly id: string
 }
 
-export const isActiveSession = (session: ActiveSession): boolean => session._tag === "ActiveSession"
+export const isActiveSession = (session: ActiveSession) => session._tag === "ActiveSession"
 
 // prefer-effect-property-accessors: property-access-only functions should use
 // Struct.get for structs or Record.get / Record.has for records.
-export const sessionId = (session: ActiveSession): string => session.id
+export const sessionId = (session: ActiveSession) => session.id
 
-export const acceptHeader = (headers: Record<string, string>): string => headers.accept
+export const acceptHeader = (headers: Record<string, string>) => headers.accept
 
 // prefer-effect-schema-constructor: raw object literals in return position instead of
 // values constructed through a schema. prefer-effect-schema-class: FlatMapStep is an
@@ -153,7 +149,7 @@ interface FlatMapStep {
   readonly f: (input: string) => string
 }
 
-const echoInput = (input: string): string => input
+const echoInput = (input: string) => input
 
 export const flatMapStep = (node: string): FlatMapStep => {
   const first = node.trim()
@@ -178,9 +174,9 @@ export const shoutedWords = (words: ReadonlyArray<string>): ReadonlyArray<string
   words.map((word) => word.toUpperCase())
 
 // no-nested-calls: a value-producing call computed inline in another call's arguments.
-const halfOf = (value: number): number => value / 2
+const halfOf = (value: number) => value / 2
 
-export const roundedHalf = (value: number): number => Math.round(halfOf(value))
+export const roundedHalf = (value: number) => Math.round(halfOf(value))
 
 // no-duplicate-function-names: `formatValue` is also declared in typeHeavy.ts.
-export const formatValue = (value: number): string => value.toFixed(2)
+export const formatValue = (value: number) => value.toFixed(2)

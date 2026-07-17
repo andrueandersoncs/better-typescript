@@ -11,7 +11,7 @@ const logicalOperatorKinds = HashSet.make(
   ts.SyntaxKind.BarBarToken
 )
 
-const hasLogicalOperator = (expression: ts.BinaryExpression): boolean =>
+const hasLogicalOperator = (expression: ts.BinaryExpression) =>
   HashSet.has(logicalOperatorKinds, expression.operatorToken.kind)
 
 const inlineBooleanConditionMatches = (context: CheckContext) => {

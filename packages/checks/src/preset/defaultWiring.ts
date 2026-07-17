@@ -8,7 +8,7 @@ import { controlFlowChecks } from "./controlFlowChecks.js"
 import { dispatchAndCollectionChecks } from "./dispatchAndCollectionChecks.js"
 import { defaultDerive } from "./defaultDerive.js"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
-import type { NamedCheck, Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
+import type { NamedCheck, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 
 export { defaultDerive }
 
@@ -23,7 +23,7 @@ export const defaultChecks: ReadonlyArray<NamedCheck> = pipe(
   Array.appendAll(dispatchAndCollectionChecks)
 )
 
-export const defaultWiring: Wiring = makeWiring({ checks: defaultChecks, derive: defaultDerive })
+export const defaultWiring = makeWiring({ checks: defaultChecks, derive: defaultDerive })
 
 const defaultFiles = Array.of("**/*")
 

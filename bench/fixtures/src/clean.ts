@@ -17,31 +17,30 @@ interface OrderLine {
   readonly unitPriceCents: number
 }
 
-const isPaid = (order: Order): boolean => order.status === "paid"
+const isPaid = (order: Order) => order.status === "paid"
 
-const addOrderAmountCents = (total: number, order: Order): number => total + order.amountCents
+const addOrderAmountCents = (total: number, order: Order) => total + order.amountCents
 
-export const totalPaidCents = (orders: ReadonlyArray<Order>): number =>
+export const totalPaidCents = (orders: ReadonlyArray<Order>) =>
   orders.filter(isPaid).reduce(addOrderAmountCents, 0)
 
-const orderLabel = (order: Order): string => `${order.id}: ${(order.amountCents / 100).toFixed(2)}`
+const orderLabel = (order: Order) => `${order.id}: ${(order.amountCents / 100).toFixed(2)}`
 
 export const orderLabels = (orders: ReadonlyArray<Order>): ReadonlyArray<string> =>
   orders.map(orderLabel)
 
 export const parseOrderPayload = (raw: string): unknown => JSON.parse(raw)
 
-export const isOpen = (order: Order): boolean => order.status === "open"
+export const isOpen = (order: Order) => order.status === "open"
 
 export const statusRank = (order: Order): number =>
   order.status === "open" ? 0 : order.status === "paid" ? 1 : 2
 
-export const lineTotalCents = (line: OrderLine): number => line.quantity * line.unitPriceCents
+export const lineTotalCents = (line: OrderLine) => line.quantity * line.unitPriceCents
 
-const addLineTotalCents = (total: number, line: OrderLine): number => total + lineTotalCents(line)
+const addLineTotalCents = (total: number, line: OrderLine) => total + lineTotalCents(line)
 
-export const computedAmountCents = (order: Order): number =>
-  order.lines.reduce(addLineTotalCents, 0)
+export const computedAmountCents = (order: Order) => order.lines.reduce(addLineTotalCents, 0)
 
 const lineSku = Struct.get<OrderLine, "sku">("sku")
 
@@ -56,10 +55,10 @@ export const distinctSkus = (orders: ReadonlyArray<Order>): ReadonlyArray<string
 const largerOrder = (largest: Order | null, order: Order): Order | null =>
   largest === null || order.amountCents > largest.amountCents ? order : largest
 
-export const largestOrder = (orders: ReadonlyArray<Order>): Order | null =>
+export const largestOrder = (orders: ReadonlyArray<Order>) =>
   orders.reduce<Order | null>(largerOrder, null)
 
-export const formatStatus = (order: Order): string =>
+export const formatStatus = (order: Order) =>
   order.status === "cancelled" ? `${order.id} (cancelled)` : order.id
 
 const hasStatus =
@@ -72,7 +71,7 @@ export const ordersByStatus = (
   status: Order["status"]
 ): ReadonlyArray<Order> => orders.filter(hasStatus(status))
 
-export const averageAmountCents = (orders: ReadonlyArray<Order>): number => {
+export const averageAmountCents = (orders: ReadonlyArray<Order>) => {
   if (orders.length === 0) {
     return 0
   }

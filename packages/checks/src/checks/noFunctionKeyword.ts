@@ -10,8 +10,7 @@ export type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
   ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
-const isFunctionKeywordToken = (child: ts.Node): boolean =>
-  child.kind === ts.SyntaxKind.FunctionKeyword
+const isFunctionKeywordToken = (child: ts.Node) => child.kind === ts.SyntaxKind.FunctionKeyword
 
 const functionKeywordMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile

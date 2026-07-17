@@ -4,34 +4,27 @@ import * as ts from "typescript"
 // SeenTypes tracks recursion because TypeScript types can revisit compiler objects.
 export type SeenTypes = ReadonlyArray<ts.Type>
 
-export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
+export const isVoidType = (type: ts.Type) => (type.flags & ts.TypeFlags.Void) !== 0
 
 // Contextual any or unknown permits void because consumers accept void-returning implementations.
 const voidCompatibleFlags = ts.TypeFlags.Void | ts.TypeFlags.Any | ts.TypeFlags.Unknown
 
-const isVoidCompatibleType = (type: ts.Type): boolean => (type.flags & voidCompatibleFlags) !== 0
+const isVoidCompatibleType = (type: ts.Type) => (type.flags & voidCompatibleFlags) !== 0
 
-export const permitsVoid = (type: ts.Type): boolean =>
+export const permitsVoid = (type: ts.Type) =>
   type.isUnion() ? Array.some(type.types, isVoidCompatibleType) : isVoidCompatibleType(type)
 
-const isDifferentType =
-  (type: ts.Type) =>
-  (other: ts.Type): boolean =>
-    other !== type
+const isDifferentType = (type: ts.Type) => (other: ts.Type) => other !== type
 
-export const differentBaseConstraint =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): Option.Option<ts.Type> =>
-    pipe(
-      checker.getBaseConstraintOfType(type),
-      Option.fromNullishOr,
-      Option.filter(isDifferentType(type))
-    )
+export const differentBaseConstraint = (checker: ts.TypeChecker) => (type: ts.Type) =>
+  pipe(
+    checker.getBaseConstraintOfType(type),
+    Option.fromNullishOr,
+    Option.filter(isDifferentType(type))
+  )
 
-const differentApparentType =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): Option.Option<ts.Type> =>
-    pipe(checker.getApparentType(type), Option.liftPredicate(isDifferentType(type)))
+const differentApparentType = (checker: ts.TypeChecker) => (type: ts.Type) =>
+  pipe(checker.getApparentType(type), Option.liftPredicate(isDifferentType(type)))
 
 export const isUnseenType =
   (seen: SeenTypes) =>

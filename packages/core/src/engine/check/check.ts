@@ -39,7 +39,7 @@ const emptyCompilerOptions: ts.CompilerOptions = {}
 
 export const checkFromSubscriptions = (
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-): Check => new Check({ plan, compilerOptions: emptyCompilerOptions })
+) => new Check({ plan, compilerOptions: emptyCompilerOptions })
 
 export const withCompilerOptions =
   (compilerOptions: ts.CompilerOptions) =>
@@ -49,39 +49,35 @@ export const withCompilerOptions =
       compilerOptions: { ...check.compilerOptions, ...compilerOptions }
     })
 
-export const compilerOptionsForChecks = (checks: ReadonlyArray<Check>): ts.CompilerOptions =>
+export const compilerOptionsForChecks = (checks: ReadonlyArray<Check>) =>
   Array.reduce(checks, {} as ts.CompilerOptions, (options, check) =>
     Object.assign(options, check.compilerOptions)
   )
 
-const locateNode =
-  (context: CheckContext) =>
-  (node: ts.Node): Location => {
-    const sourceFile = context.sourceFile
-    const start = node.getStart(sourceFile)
-    const position = sourceFile.getLineAndCharacterOfPosition(start)
-    const relative = path.relative(context.projectRoot, sourceFile.fileName)
-    const fileName = relative || sourceFile.fileName
+const locateNode = (context: CheckContext) => (node: ts.Node) => {
+  const sourceFile = context.sourceFile
+  const start = node.getStart(sourceFile)
+  const position = sourceFile.getLineAndCharacterOfPosition(start)
+  const relative = path.relative(context.projectRoot, sourceFile.fileName)
+  const fileName = relative || sourceFile.fileName
 
-    return new Location({
-      path: fileName,
-      line: position.line + 1,
-      column: position.character + 1
-    })
-  }
+  return new Location({
+    path: fileName,
+    line: position.line + 1,
+    column: position.character + 1
+  })
+}
 
-export const detection =
-  (context: CheckContext) =>
-  (source: DetectionSource): Detection => {
-    const location = locateNode(context)(source.node)
+export const detection = (context: CheckContext) => (source: DetectionSource) => {
+  const location = locateNode(context)(source.node)
 
-    return new Detection({
-      location,
-      message: source.message,
-      hint: source.hint,
-      data: source.data
-    })
-  }
+  return new Detection({
+    location,
+    message: source.message,
+    hint: source.hint,
+    data: source.data
+  })
+}
 
 export const nodeSubscriptions =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
@@ -103,9 +99,8 @@ export const nodeSubscriptions =
     return Array.of(subscription)
   }
 
-const fileSubscription = (
-  handler: (context: CheckContext) => ReadonlyArray<Detection>
-): FileSubscription => new FileSubscription({ handler })
+const fileSubscription = (handler: (context: CheckContext) => ReadonlyArray<Detection>) =>
+  new FileSubscription({ handler })
 
 export const fileSubscriptions: (
   handler: (context: CheckContext) => ReadonlyArray<Detection>

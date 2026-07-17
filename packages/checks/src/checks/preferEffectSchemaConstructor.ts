@@ -15,7 +15,7 @@ const shortCircuitOperatorKinds = HashSet.make(
   ts.SyntaxKind.AmpersandAmpersandToken
 )
 
-const hasShortCircuitOperator = (expression: ts.BinaryExpression): boolean =>
+const hasShortCircuitOperator = (expression: ts.BinaryExpression) =>
   HashSet.has(shortCircuitOperatorKinds, expression.operatorToken.kind)
 
 const isShortCircuitExpression = (expression: ts.Expression): expression is ts.BinaryExpression => {
@@ -48,10 +48,9 @@ const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expressi
   return pipe(Option.firstSomeOf(branches), Option.getOrElse(Function.constant(leafBranches)))
 }
 
-const hasProperties = (literal: ts.ObjectLiteralExpression): boolean =>
-  literal.properties.length > 0
+const hasProperties = (literal: ts.ObjectLiteralExpression) => literal.properties.length > 0
 
-const hasTagText = (identifier: ts.Identifier): boolean => identifier.text === tagPropertyName
+const hasTagText = (identifier: ts.Identifier) => identifier.text === tagPropertyName
 
 const isTagAssignment = (
   property: ts.ObjectLiteralElementLike
@@ -59,18 +58,18 @@ const isTagAssignment = (
   ts.isPropertyAssignment(property) &&
   pipe(Option.liftPredicate(ts.isIdentifier)(property.name), Option.exists(hasTagText))
 
-const tagValueText = (property: ts.PropertyAssignment): Option.Option<string> =>
+const tagValueText = (property: ts.PropertyAssignment) =>
   pipe(
     unwrapTransparentExpression(property.initializer),
     Option.liftPredicate(ts.isStringLiteralLike),
     Option.map(Struct.get("text"))
   )
 
-const taggedMessage = (tag: string): string => `Avoid returning a raw "${tag}" object literal.`
+const taggedMessage = (tag: string) => `Avoid returning a raw "${tag}" object literal.`
 
 const untaggedMessage = "Avoid returning a raw object literal."
 
-const taggedHint = (tag: string): string =>
+const taggedHint = (tag: string) =>
   `Reuse the existing Effect Schema for the "${tag}" protocol variant and construct it ` +
   `through that schema. If no such model exists, first decide whether "${tag}" is an ` +
   "independent protocol concept or this function is only a procedural seam. Introduce a " +

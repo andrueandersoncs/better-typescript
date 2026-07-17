@@ -20,7 +20,7 @@ const moduleUrlPath = fileURLToPath(import.meta.url)
 const moduleDirectory = path.dirname(moduleUrlPath)
 const packageExamplesRoot = path.resolve(moduleDirectory, "..", "examples")
 
-const exampleRootFor = (name: string): string => path.join(packageExamplesRoot, name)
+const exampleRootFor = (name: string) => path.join(packageExamplesRoot, name)
 
 // packageExamples stays an inert directory descriptor because loading belongs to report rendering.
 export const packageExamples: (name: string) => RefactorExampleSource = Function.compose(
@@ -32,6 +32,8 @@ export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
   (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check =>
     checkFromSubscriptions(flow(build, subscriptions))
+
+export const defineSilentCheck = (name: string, check: Check) => silentCheck(name, check)
 
 export const defineCheck = <N extends ts.Node>(
   name: string,
@@ -51,7 +53,7 @@ export const defineFileCheck = (
   name: string,
   detect: (context: CheckContext) => ReadonlyArray<Detection>,
   compilerOptions: ts.CompilerOptions = {}
-): NamedCheck => {
+) => {
   const detected = fileCheck(detect)
   const check = withCompilerOptions(compilerOptions)(detected)
   const examples = packageExamples(name)
@@ -62,7 +64,7 @@ export const defineFileCheck = (
 export const definePlannedCheck = (
   name: string,
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-): NamedCheck => {
+) => {
   const check = checkFromSubscriptions(plan)
   const examples = packageExamples(name)
 
@@ -72,7 +74,7 @@ export const definePlannedCheck = (
 export const defineSilentPlannedCheck = (
   name: string,
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-): NamedCheck => {
+) => {
   const check = checkFromSubscriptions(plan)
   const examples = packageExamples(name)
 

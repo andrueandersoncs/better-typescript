@@ -13,7 +13,7 @@ const guardMethodNames = HashSet.make("isSome", "isNone")
 
 const isOptionText = (text: string): boolean => text === "Option"
 
-const isGuardMethodName = (name: string): boolean => HashSet.has(guardMethodNames, name)
+const isGuardMethodName = (name: string) => HashSet.has(guardMethodNames, name)
 
 const containsDotValue =
   (name: string) =>

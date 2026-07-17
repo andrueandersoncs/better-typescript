@@ -14,19 +14,15 @@ import { namedDetection } from "@better-typescript/core/engine/derive"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 
 // Advice stream types stay inferred because a fifteenth import would re-fire the ceremony adviser.
-const nameDetections = (signal: Signal) => {
-  const toNamedDetection = namedDetection(signal.name)
-
-  return pipe(Stream.fromIterable(signal.detections), Stream.map(toNamedDetection))
-}
+const nameDetections = (signal: Signal) => Array.map(signal.detections, namedDetection(signal.name))
 
 const replayAdvice = Stream.fromIterable
 
 export const defaultDerive = (signals: ReadonlyArray<Signal>) => {
   const elementsOf = signalOf(signals)
   const reportedSignals = Array.filter(signals, Struct.get("reported"))
-  const signalStream = Stream.fromIterable(reportedSignals)
-  const namedElements = pipe(signalStream, Stream.flatMap(nameDetections))
+  const namedElementsSource = Array.flatMap(reportedSignals, nameDetections)
+  const namedElements = Stream.fromIterable(namedElementsSource)
   const noMutation = elementsOf("no-mutation")
   const preferHashMap = elementsOf("prefer-hash-map")
   const preferHashSet = elementsOf("prefer-hash-set")

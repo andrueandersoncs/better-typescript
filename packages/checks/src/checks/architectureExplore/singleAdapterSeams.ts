@@ -2,7 +2,7 @@ import { Array, Function, HashMap, HashSet, Option, Struct, Tuple, pipe, Result 
 import * as ts from "typescript"
 import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
@@ -14,6 +14,8 @@ import { hasCallSignature } from "../support/tsType.js"
 import { isTestSourceFile } from "./programSymbols.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { singleAdapterSeamsName } from "./names.js"
 
 const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
 
@@ -23,43 +25,39 @@ const message =
 const hint =
   "One adapter is a hypothetical seam. Architecture Explore recommends removing the port until behaviour actually varies across production and test adapters."
 
-const typeSymbol =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): Option.Option<ts.Symbol> => {
-    const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
-    const symbol = type.getSymbol()
-    const directSymbol = Option.fromNullishOr(symbol)
+const typeSymbol = (checker: ts.TypeChecker) => (type: ts.Type) => {
+  const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
+  const symbol = type.getSymbol()
+  const directSymbol = Option.fromNullishOr(symbol)
 
-    return pipe(
-      aliasSymbol,
-      Option.orElse(Function.constant(directSymbol)),
-      Option.map((symbol) => {
-        const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+  return pipe(
+    aliasSymbol,
+    Option.orElse(Function.constant(directSymbol)),
+    Option.map((symbol) => {
+      const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
-        return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-      })
-    )
-  }
+      return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+    })
+  )
+}
 
 const behaviouralSignatureKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.MethodSignature,
   ts.SyntaxKind.CallSignature
 )
 
-const isBehaviouralMember =
-  (checker: ts.TypeChecker) =>
-  (member: ts.TypeElement): boolean => {
-    const isSignature = Array.contains(behaviouralSignatureKinds, member.kind)
-    const acceptsCall = hasCallSignature(checker)
+const isBehaviouralMember = (checker: ts.TypeChecker) => (member: ts.TypeElement) => {
+  const isSignature = Array.contains(behaviouralSignatureKinds, member.kind)
+  const acceptsCall = hasCallSignature(checker)
 
-    const callableProperty = pipe(
-      Option.liftPredicate(ts.isPropertySignature)(member),
-      Option.map((property) => checker.getTypeAtLocation(property)),
-      Option.exists(acceptsCall)
-    )
+  const callableProperty = pipe(
+    Option.liftPredicate(ts.isPropertySignature)(member),
+    Option.map((property) => checker.getTypeAtLocation(property)),
+    Option.exists(acceptsCall)
+  )
 
-    return isSignature || callableProperty
-  }
+  return isSignature || callableProperty
+}
 
 const seamCandidates =
   (context: ProgramContext) =>
@@ -86,9 +84,7 @@ const seamCandidates =
       )
     )
 
-const exportedVariableStatement = (
-  declaration: ts.VariableDeclaration
-): Option.Option<ts.VariableStatement> =>
+const exportedVariableStatement = (declaration: ts.VariableDeclaration) =>
   pipe(
     Option.liftPredicate(ts.isVariableDeclarationList)(declaration.parent),
     Option.map(Struct.get("parent")),
@@ -116,7 +112,7 @@ const isVariableDependencyOwner = (
 ): node is ts.ArrowFunction | ts.FunctionExpression =>
   Array.contains(variableDependencyOwnerKinds, node.kind)
 
-const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration): boolean => {
+const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration) => {
   const owner = parameter.parent
 
   const functionExport = pipe(
@@ -171,8 +167,7 @@ const implementedSymbols =
   }
 
 const contextualInterfaceSymbol =
-  (checker: ts.TypeChecker) =>
-  (literal: ts.ObjectLiteralExpression): Option.Option<ts.Symbol> =>
+  (checker: ts.TypeChecker) => (literal: ts.ObjectLiteralExpression) =>
     pipe(
       checker.getContextualType(literal),
       Option.fromNullishOr,
@@ -370,4 +365,6 @@ const singleAdapterElements =
 
 const singleAdapterSubscriptions = Function.compose(singleAdapterElements, fileSubscriptions)
 
-export const singleAdapterSeams: Check = withProgramIndex(buildIndex)(singleAdapterSubscriptions)
+const singleAdapterSeamCheck = withProgramIndex(buildIndex)(singleAdapterSubscriptions)
+
+export const singleAdapterSeams = defineSilentCheck(singleAdapterSeamsName, singleAdapterSeamCheck)

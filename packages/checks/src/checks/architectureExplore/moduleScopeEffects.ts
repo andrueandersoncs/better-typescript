@@ -2,7 +2,7 @@ import { Array, Function, HashSet, Match, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { ModuleScopeEffectData } from "./data.js"
@@ -11,6 +11,8 @@ import { isCompositionRoot } from "../support/compositionRoot.js"
 import { isTestSourceFile } from "./programSymbols.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { moduleScopeEffectsName } from "./names.js"
 
 const message =
   "Module-scope effect evidence — this call runs effectful work outside an injectable seam."
@@ -38,7 +40,7 @@ const effectRunMethodNames = HashSet.make(
   "runPromiseExit"
 )
 
-const functionLikeAncestorKinds: HashSet.HashSet<ts.SyntaxKind> = HashSet.make(
+const functionLikeAncestorKinds = HashSet.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.FunctionExpression,
   ts.SyntaxKind.ArrowFunction,
@@ -48,7 +50,7 @@ const functionLikeAncestorKinds: HashSet.HashSet<ts.SyntaxKind> = HashSet.make(
   ts.SyntaxKind.SetAccessor
 )
 
-const scopeContainerAncestorKinds: HashSet.HashSet<ts.SyntaxKind> = HashSet.make(
+const scopeContainerAncestorKinds = HashSet.make(
   ts.SyntaxKind.ClassDeclaration,
   ts.SyntaxKind.ModuleDeclaration
 )
@@ -104,10 +106,7 @@ const rootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier>
 
 const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 
-const importedModuleSpecifier = (
-  checker: ts.TypeChecker,
-  expression: ts.Expression
-): Option.Option<string> =>
+const importedModuleSpecifier = (checker: ts.TypeChecker, expression: ts.Expression) =>
   pipe(
     rootIdentifier(expression),
     Option.flatMap((identifier) =>
@@ -148,7 +147,7 @@ const isTsSysRooted = (expression: ts.Expression): boolean =>
     Match.orElse(Function.constFalse)
   )
 
-const isProcessMemberCall = (call: ts.CallExpression): boolean =>
+const isProcessMemberCall = (call: ts.CallExpression) =>
   pipe(
     call.expression,
     unwrapTransparentExpression,
@@ -157,7 +156,7 @@ const isProcessMemberCall = (call: ts.CallExpression): boolean =>
     Option.exists((identifier) => identifier.text === "process")
   )
 
-const isBuiltinEffectfulCall = (checker: ts.TypeChecker, call: ts.CallExpression): boolean => {
+const isBuiltinEffectfulCall = (checker: ts.TypeChecker, call: ts.CallExpression) => {
   const fromBuiltinImport = pipe(
     importedModuleSpecifier(checker, call.expression),
     Option.exists((specifier) => HashSet.has(effectfulBuiltinModules, specifier))
@@ -170,10 +169,7 @@ const isBuiltinEffectfulCall = (checker: ts.TypeChecker, call: ts.CallExpression
   return Array.some(candidates, Boolean)
 }
 
-const effectPackageRootSymbol = (
-  checker: ts.TypeChecker,
-  expression: ts.Expression
-): Option.Option<ts.Symbol> =>
+const effectPackageRootSymbol = (checker: ts.TypeChecker, expression: ts.Expression) =>
   pipe(
     rootIdentifier(expression),
     Option.flatMap((identifier) =>
@@ -181,7 +177,7 @@ const effectPackageRootSymbol = (
     )
   )
 
-const isEffectPackageSpecifier = (specifier: string): boolean => {
+const isEffectPackageSpecifier = (specifier: string) => {
   const exactPackage = specifier === "effect"
   const packageSubpath = specifier.startsWith("effect/")
   const candidates = Array.make(exactPackage, packageSubpath)
@@ -189,7 +185,7 @@ const isEffectPackageSpecifier = (specifier: string): boolean => {
   return Array.some(candidates, Boolean)
 }
 
-const isEffectPackageCalleeRoot = (checker: ts.TypeChecker, expression: ts.Expression): boolean => {
+const isEffectPackageCalleeRoot = (checker: ts.TypeChecker, expression: ts.Expression) => {
   const declaredInEffect = pipe(
     effectPackageRootSymbol(checker, expression),
     Option.exists(symbolDeclaredInEffectPackage)
@@ -205,7 +201,7 @@ const isEffectPackageCalleeRoot = (checker: ts.TypeChecker, expression: ts.Expre
   return Array.some(candidates, Boolean)
 }
 
-const isEffectRunCall = (checker: ts.TypeChecker, call: ts.CallExpression): boolean =>
+const isEffectRunCall = (checker: ts.TypeChecker, call: ts.CallExpression) =>
   pipe(
     call.expression,
     unwrapTransparentExpression,
@@ -267,6 +263,8 @@ const moduleScopeEffectElements = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-export const moduleScopeEffects: Check = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
+const moduleScopeEffectCheck = nodeCheck(callExpressionKinds)(ts.isCallExpression)(
   moduleScopeEffectElements
 )
+
+export const moduleScopeEffects = defineSilentCheck(moduleScopeEffectsName, moduleScopeEffectCheck)

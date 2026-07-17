@@ -1,27 +1,29 @@
 import { Array, Data, Match, HashMap, MutableRef, Option, Result, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
+
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileCheck, detection } from "@better-typescript/core/engine/check"
 
 import { ImportUsageData, ImportedNameUsage } from "./data.js"
 import { isTestSourceFile, toWorkspacePath } from "./programSymbols.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { importUsageName } from "./names.js"
 
 const message = "Import usage evidence — this import declaration binds names used in the file."
 
 const hint =
   "Counts are purely syntactic within the importing file; local shadowing of an import binding can inflate or hide references."
 
-const isNamedCallReference = (node: ts.Identifier): boolean =>
+const isNamedCallReference = (node: ts.Identifier) =>
   pipe(
     Option.liftPredicate(ts.isCallExpression)(node.parent),
     Option.exists((call) => call.expression === node)
   )
 
-const isNamespaceCallReference = (node: ts.Identifier): boolean => {
+const isNamespaceCallReference = (node: ts.Identifier) => {
   const namedCall = isNamedCallReference(node)
 
   const namespaceCall = pipe(
@@ -200,7 +202,7 @@ const countImportUsages = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecor
   return records
 }
 
-const importedNameUsage = (counter: BindingCounter): ImportedNameUsage => {
+const importedNameUsage = (counter: BindingCounter) => {
   const referenceCount = MutableRef.get(counter.referenceCount)
   const callCount = MutableRef.get(counter.callCount)
 
@@ -239,4 +241,6 @@ const importUsageElements = (context: CheckContext): ReadonlyArray<Detection> =>
   })
 }
 
-export const importUsage: Check = fileCheck(importUsageElements)
+const importUsageCheck = fileCheck(importUsageElements)
+
+export const importUsage = defineSilentCheck(importUsageName, importUsageCheck)

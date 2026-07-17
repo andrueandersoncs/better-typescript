@@ -27,7 +27,7 @@ const hint =
 export type MutationNode =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression | ts.DeleteExpression
 
-const hasAssignmentOperator = (expression: ts.BinaryExpression): boolean =>
+const hasAssignmentOperator = (expression: ts.BinaryExpression) =>
   expression.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
   expression.operatorToken.kind <= ts.SyntaxKind.LastAssignment
 
@@ -36,10 +36,10 @@ const incrementDecrementKinds = HashSet.make(
   ts.SyntaxKind.MinusMinusToken
 )
 
-const mutatesOperand = (unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression): boolean =>
+const mutatesOperand = (unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression) =>
   HashSet.has(incrementDecrementKinds, unary.operator)
 
-const binaryAssignmentTarget = (expression: ts.BinaryExpression): Option.Option<ts.Expression> =>
+const binaryAssignmentTarget = (expression: ts.BinaryExpression) =>
   pipe(Option.liftPredicate(hasAssignmentOperator)(expression), Option.map(Struct.get("left")))
 
 const unaryMutationTarget = (
@@ -57,7 +57,7 @@ const ecmaScriptLibPrefixes: ReadonlyArray<string> = Array.make(
   "lib.d.ts"
 )
 
-const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
+const isEcmaScriptLibFile = (sourceFile: ts.SourceFile) => {
   const normalized = sourceFile.fileName.replaceAll("\\", "/")
   const separatorIndex = normalized.lastIndexOf("/")
   const baseName = normalized.slice(separatorIndex + 1)
@@ -66,7 +66,7 @@ const isEcmaScriptLibFile = (sourceFile: ts.SourceFile): boolean => {
 }
 
 // Mark a symbol uncontrolled only because every declaration is outside the project and ES library.
-const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
+const isUncontrolledSymbol = (symbol: ts.Symbol) => {
   const declarations = symbol.getDeclarations() ?? Array.empty()
   const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
   const hasDeclarations = sourceFiles.length > 0
@@ -83,18 +83,16 @@ const isUncontrolledSymbol = (symbol: ts.Symbol): boolean => {
 }
 
 // Follow an import alias because its local declaration cannot show whether the import is external.
-const resolveAlias =
-  (checker: ts.TypeChecker) =>
-  (symbol: ts.Symbol): ts.Symbol => {
-    const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+const resolveAlias = (checker: ts.TypeChecker) => (symbol: ts.Symbol) => {
+  const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
-    return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-  }
+  return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+}
 
 // Avoid getNonNullableType because it stack-overflows on Effect params like Struct.evolve's O.
 const nullishTypeFlags = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
 
-const isNullishType = (type: ts.Type): boolean => (type.flags & nullishTypeFlags) !== 0
+const isNullishType = (type: ts.Type) => (type.flags & nullishTypeFlags) !== 0
 
 const emptyTypeSeen: SeenTypes = Array.empty()
 
@@ -187,7 +185,7 @@ const mutationMatches = (context: CheckContext) => {
   const match = detection(context)
 
   // Treat module and captured bindings as shared because they outlive the function that writes them.
-  const scopeOf = (target: ts.Expression): MutationScope => {
+  const scopeOf = (target: ts.Expression) => {
     const root = rootReceiver(target)
 
     if (root.kind === ts.SyntaxKind.ThisKeyword) {
