@@ -13,18 +13,18 @@ preserves every required invariant and distinction.
 
 1. **Code MUST optimize for a correct mental model**, not merely easy scanning.
 
-> what do you mean by "the unit
-   A correct mental model lets a reader predict, from the unit and its immediate contract:
+> what do you mean by "the unit A correct mental model lets a reader predict, from the unit and its
+> immediate contract:
 
-   - its purpose and result,
-   - its valid inputs and possible states,
-   - its return values, failures, and side effects,
-   - the dependencies and state that influence it, and
-   - the likely scope and consequences of a change.
+- its purpose and result,
+- its valid inputs and possible states,
+- its return values, failures, and side effects,
+- the dependencies and state that influence it, and
+- the likely scope and consequences of a change.
 
-   Evaluate this by stating those predictions before reading unrelated implementation details or
-   running the code. A plausible prediction contradicted by runtime behavior, types, or tests is
-   evidence that the code miscommunicates its behavior.
+Evaluate this by stating those predictions before reading unrelated implementation details or
+running the code. A plausible prediction contradicted by runtime behavior, types, or tests is
+evidence that the code miscommunicates its behavior.
 
 2. **Code MUST express domain intent rather than implementation mechanics.**
 

@@ -3,6 +3,7 @@ import * as ts from "typescript"
 import {
   conciseArrowBody,
   isFunctionDefinition,
+  singleStatementReturnExpression,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
 import { defineCheck } from "../defineCheck.js"
@@ -17,19 +18,6 @@ const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
   ts.SyntaxKind.MethodDeclaration
 )
-
-const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
-  ts.isReturnStatement(statement) ? Option.fromNullishOr(statement.expression) : Option.none()
-
-const singleReturnExpression = (body: ts.Block): Option.Option<ts.Expression> => {
-  const hasSingleStatement = body.statements.length === 1
-
-  const statement = hasSingleStatement
-    ? Option.fromNullishOr(body.statements[0])
-    : Option.none<ts.Statement>()
-
-  return pipe(statement, Option.flatMap(returnExpression))
-}
 
 const directPropertyAccessExpression = (
   expression: ts.Expression
@@ -133,7 +121,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
         const blockExpression = pipe(
           Option.fromNullishOr(node.body),
           Option.filter(ts.isBlock),
-          Option.flatMap(singleReturnExpression)
+          Option.flatMap(singleStatementReturnExpression)
         )
 
         const expressionCandidates = Array.make(implicitExpression, blockExpression)

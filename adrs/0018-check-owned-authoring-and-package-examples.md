@@ -15,10 +15,10 @@ places. Its module exported a raw `Check` and a separate examples value; `defaul
 the name, reporting policy, Check, and examples when constructing a `NamedCheck`; and a separate
 test repeated the expected line, column, message, and hint for every characterization case.
 
-The example loader also made production wiring depend on repository test assets. Refactor examples
-lived below `tests/fixtures`, so constructing the default fleet eagerly crossed package ownership
-and loaded data that a run might never render. Characterization fixtures and user-facing refactor
-examples consequently shared a directory even though they serve different contracts.
+The first package-owned example loader kept a module-global `Ref` cache and exposed filesystem
+loading through a synchronous thunk. That thunk called `Effect.runSync` solely to unwrap the loader,
+hiding I/O behind a property-like interface. Loading every example while constructing effectful
+wiring would remove the unwrap, but would also read package assets that a run might never render.
 
 This ceremony made a Check's identity easy to split from its behavior, made adding a built-in
 require coordinated registry edits, and kept prose and location mirrors synchronized by hand.
@@ -38,15 +38,20 @@ reporting policy, or examples again. The migration is a clean cutover: individua
 no longer export a raw Check plus a separate examples value, and no compatibility aliases or paired
 legacy exports remain.
 
-### Refactor examples belong to the checks package and stay lazy
+### Refactor examples are inert sources resolved by reporting
 
 Built-in refactor examples live at `packages/checks/examples/<name>/<pair>/{bad,good}/`. Each side
 is a source tree, so a remediation may add, remove, or reorganize several files. These trees are
 package assets, independent of the repository's characterization fixtures.
 
-A built-in authoring constructor associates the package-owned examples with the `NamedCheck` by
-name. Loading is lazy and memoized per Check: wiring construction does not read every example tree,
-while the first report that needs a Check's examples loads them once for subsequent reports.
+An authoring constructor stores an inert `RefactorExampleSource` on the `NamedCheck`. Package
+examples use a directory descriptor; custom fleets may provide already-built inline examples.
+Constructing Checks, Wiring, and configuration therefore performs no filesystem I/O.
+
+The report program owns the effectful resolution seam. It creates one resolver for a report or watch
+stream, loads a directory only when an emitted block needs its examples, and caches successful loads
+for the lifetime of that resolver. No global `Ref`, synchronous unwrap, or eager wiring load
+remains.
 
 ### Characterization tests describe detections in the source corpus
 
@@ -65,8 +70,9 @@ expressed by location markers alone. They are exceptions rather than a second de
 
 This decision changes built-in package authoring, not the programmable kernel. Core continues to
 expose `nodeCheck`, `fileCheck`, `checkFromSubscriptions`, and `namedCheck` for external and custom
-fleets; `silentCheck` remains the corresponding evidence-only reporting choice. Package-specific
-constructors do not replace those lower-level seams.
+fleets; `silentCheck` remains the corresponding evidence-only reporting choice. `namedCheck` and
+`silentCheck` accept inert example sources, and `inlineRefactorExamples` supports callers that
+already own concrete examples.
 
 This ADR supersedes only the fixture location and loader consequence in
 [ADR-0012](0012-monorepo-core-checks-cli.md) that placed preset examples under `tests/fixtures` and
@@ -99,12 +105,23 @@ plans, fused dispatch, memoization, traversal, and bounded-workspace decisions r
 - Rejected: package-owned trees serve readers and reports, while markers characterize detection
   behavior at its natural source location.
 
+### Load examples while constructing effectful wiring
+
+- Pros: all downstream reporting receives concrete immutable example arrays and no synchronous
+  unwrap is required.
+- Cons: configuration construction reads every package example tree even when no report renders it,
+  and Wiring becomes effectful solely because it owns filesystem-backed presentation data.
+- Rejected: an inert source keeps authoring and Wiring pure while the report Effect owns both
+  loading and cache lifetime.
+
 ## Consequences
 
-- Importing an individual built-in yields a ready-to-wire `NamedCheck` with stable identity and
-  reporting policy.
+- Importing an individual built-in yields a ready-to-wire `NamedCheck` with stable identity,
+  reporting policy, and an inert example source.
 - `defaultChecks` enrolls built-ins directly and cannot disagree with their module-owned names or
   examples.
+- Check and Wiring construction remain pure; report and watch Effects resolve only examples they
+  render.
 - Production packages no longer depend on repository test assets for report examples.
 - Characterization fixtures are the detection corpus; package examples are the remediation corpus.
 - Most per-Check tests become one marker-driven assertion through the same interface used by Wiring.

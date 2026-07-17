@@ -1,4 +1,3 @@
-import * as path from "node:path"
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -7,6 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { ExternalDependencyConstructionData } from "./data.js"
 import { unwrapExpression } from "../support/tsNode.js"
+import { isCompositionRoot } from "../support/compositionRoot.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 const message =
@@ -30,15 +30,6 @@ const collaboratorSuffixes = Array.make(
 )
 
 const collaboratorNames = HashSet.make("Stripe", "Twilio")
-
-const compositionRootNames = HashSet.make(
-  "main",
-  "index",
-  "bootstrap",
-  "runtime",
-  "layer",
-  "wiring"
-)
 
 const collaboratorName = (expression: ts.Expression): Option.Option<string> => {
   const unwrapped = unwrapExpression(expression)
@@ -99,13 +90,6 @@ const isCollaboratorName = (name: string): boolean => {
   const knownSuffix = Array.some(collaboratorSuffixes, (suffix) => name.endsWith(suffix))
 
   return knownName || knownSuffix
-}
-
-export const isCompositionRoot = (sourceFile: ts.SourceFile): boolean => {
-  const extension = path.extname(sourceFile.fileName)
-  const baseName = path.basename(sourceFile.fileName, extension)
-
-  return HashSet.has(compositionRootNames, baseName)
 }
 
 const isDirectFactoryResult = (node: ts.NewExpression): boolean => {

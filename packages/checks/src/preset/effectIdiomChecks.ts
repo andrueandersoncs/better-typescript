@@ -4,6 +4,7 @@ import { preferEffectSchemaIs } from "../checks/preferEffectSchemaIs.js"
 import { preferEffectSchemaConstructor } from "../checks/preferEffectSchemaConstructor.js"
 import { preferEffectSchemaClass } from "../checks/preferEffectSchemaClass.js"
 import { preferEffectFn } from "../checks/preferEffectFn.js"
+import { preferEffectfulFunction } from "../checks/preferEffectfulFunction.js"
 import { preferEffectFunctionConstant } from "../checks/preferEffectFunctionConstant.js"
 import { preferEffectPropertyAccessors } from "../checks/preferEffectPropertyAccessors.js"
 import { preferSchemaTaggedClass } from "../checks/preferSchemaTaggedClass.js"
@@ -21,6 +22,7 @@ const effectSchemaChecks: ReadonlyArray<NamedCheck> = Array.make(
 
 const effectFunctionChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectFn,
+  preferEffectfulFunction,
   preferEffectFunctionConstant,
   preferEffectPropertyAccessors
 )
