@@ -7,7 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { definePlannedCheck } from "../defineCheck.js"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-const isArrayIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Array"
+const isArrayIdentifier = (identifier: ts.Identifier) => identifier.text === "Array"
 
 const message = "Avoid primitive Array constructors."
 

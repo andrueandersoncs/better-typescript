@@ -40,9 +40,9 @@ const fallbackFalse = Function.constant(false)
 
 const fallbackMissingIndex = Function.constant(-1)
 
-const isFunctionLike = (node: ts.Node): boolean => HashSet.has(functionLikeKinds, node.kind)
+const isFunctionLike = (node: ts.Node) => HashSet.has(functionLikeKinds, node.kind)
 
-const parentContinuesFunctionSearch = (parent: ts.Node): boolean => {
+const parentContinuesFunctionSearch = (parent: ts.Node) => {
   const parentIsFunction = isFunctionLike(parent)
   const parentIsSourceFile = ts.isSourceFile(parent)
   const parentIsNotFunction = parentIsFunction === false

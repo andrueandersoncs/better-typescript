@@ -10,13 +10,13 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-const schemaPropertyNameText = (name: ts.PropertyName): Option.Option<string> =>
+const schemaPropertyNameText = (name: ts.PropertyName) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
 
-const namedPropertyText = (property: ts.ObjectLiteralElementLike): Option.Option<string> =>
+const namedPropertyText = (property: ts.ObjectLiteralElementLike) =>
   pipe(Option.fromNullishOr(property.name), Option.flatMap(schemaPropertyNameText))
 
-const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean => {
+const isProjectObjectTypeDeclaration = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
   const isInterfaceDeclaration = ts.isInterfaceDeclaration(declaration)
   const isTypeAliasDeclaration = ts.isTypeAliasDeclaration(declaration)
@@ -27,13 +27,13 @@ const isProjectObjectTypeDeclaration = (declaration: ts.Declaration): boolean =>
   return isProjectSourceFile(sourceFile) && isRelevantDeclaration
 }
 
-const isProjectObjectTypeSymbol = (symbol: ts.Symbol): boolean => {
+const isProjectObjectTypeSymbol = (symbol: ts.Symbol) => {
   const declarations = symbol.declarations ?? Array.empty()
 
   return Array.some(declarations, isProjectObjectTypeDeclaration)
 }
 
-const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
+const typeObjectTypeSymbol = (type: ts.Type) => {
   const symbol = type.getSymbol()
   const directSymbol = pipe(Option.fromNullishOr(symbol), Option.filter(isProjectObjectTypeSymbol))
 
@@ -50,7 +50,7 @@ const typeObjectTypeSymbol = (type: ts.Type): Option.Option<ts.Symbol> => {
 const isObjectType = (type: ts.Type): type is ts.ObjectType =>
   (type.flags & ts.TypeFlags.Object) !== 0
 
-const hasReferenceObjectFlag = (type: ts.ObjectType): boolean =>
+const hasReferenceObjectFlag = (type: ts.ObjectType) =>
   (type.objectFlags & ts.ObjectFlags.Reference) !== 0
 
 const isTypeReference = (type: ts.Type): type is ts.TypeReference => {
@@ -62,7 +62,7 @@ const isTypeReference = (type: ts.Type): type is ts.TypeReference => {
 const typeMembers = (type: ts.Type): ReadonlyArray<ts.Type> =>
   type.isUnion() ? type.types : Array.of(type)
 
-const isSignatureTypeParameter = (type: ts.Type): boolean => type.isTypeParameter()
+const isSignatureTypeParameter = (type: ts.Type) => type.isTypeParameter()
 
 const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (literals, node) =>
   ts.isObjectLiteralExpression(node) ? Array.append(literals, node) : literals
@@ -70,35 +70,31 @@ const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (li
 const addConstructionEntry = (
   index: HashMap.HashMap<ts.Symbol, string>,
   entry: readonly [ts.Symbol, string]
-): HashMap.HashMap<ts.Symbol, string> => {
+) => {
   const symbolKey = Equal.byReferenceUnsafe(entry[0])
 
   return HashMap.has(index, symbolKey) ? index : HashMap.set(index, symbolKey, entry[1])
 }
 
-const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Symbol, string> => {
+const buildConstructionIndex = (context: ProgramContext) => {
   const emptyIndex = HashMap.empty<ts.Symbol, string>()
   const checker = context.checker
 
-  const typeHasProperty =
-    (type: ts.Type) =>
-    (name: string): boolean => {
-      const declaredProperty = type.getProperty(name)
-      const property = Option.fromNullishOr(declaredProperty)
+  const typeHasProperty = (type: ts.Type) => (name: string) => {
+    const declaredProperty = type.getProperty(name)
+    const property = Option.fromNullishOr(declaredProperty)
 
-      return Option.isSome(property)
-    }
+    return Option.isSome(property)
+  }
 
-  const matchesLiteralShape =
-    (literal: ts.ObjectLiteralExpression) =>
-    (type: ts.Type): boolean => {
-      const propertyNames = Array.filterMap(
-        literal.properties,
-        Function.flow(namedPropertyText, Result.fromOption(Function.constVoid))
-      )
+  const matchesLiteralShape = (literal: ts.ObjectLiteralExpression) => (type: ts.Type) => {
+    const propertyNames = Array.filterMap(
+      literal.properties,
+      Function.flow(namedPropertyText, Result.fromOption(Function.constVoid))
+    )
 
-      return Array.every(propertyNames, typeHasProperty(type))
-    }
+    return Array.every(propertyNames, typeHasProperty(type))
+  }
 
   const candidateTypes =
     (literal: ts.ObjectLiteralExpression) =>
@@ -107,10 +103,8 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
         ? Array.filter(contextualType.types, matchesLiteralShape(literal))
         : Array.of(contextualType)
 
-  const hasTypeReferenceTarget =
-    (target: ts.GenericType) =>
-    (reference: ts.TypeReference): boolean =>
-      reference.target === target
+  const hasTypeReferenceTarget = (target: ts.GenericType) => (reference: ts.TypeReference) =>
+    reference.target === target
 
   const sameTypeReferenceTarget =
     (declaredMember: ts.TypeReference) =>
@@ -120,13 +114,11 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
       return Option.exists(reference, hasTypeReferenceTarget(declaredMember.target))
     }
 
-  const typeArgumentAt =
-    (parameterPosition: number) =>
-    (reference: ts.TypeReference): Option.Option<ts.Type> => {
-      const typeArguments = checker.getTypeArguments(reference)
+  const typeArgumentAt = (parameterPosition: number) => (reference: ts.TypeReference) => {
+    const typeArguments = checker.getTypeArguments(reference)
 
-      return Option.fromNullishOr(typeArguments[parameterPosition])
-    }
+    return Option.fromNullishOr(typeArguments[parameterPosition])
+  }
 
   const referenceTypeArgument =
     (typeParameter: ts.Type) =>
@@ -170,8 +162,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
       )
     }
 
-  const declaredParameterType = (parameter: ts.Symbol): ts.Type =>
-    checker.getTypeOfSymbol(parameter)
+  const declaredParameterType = (parameter: ts.Symbol) => checker.getTypeOfSymbol(parameter)
 
   const boxedExtraction =
     (signature: ts.Signature) =>

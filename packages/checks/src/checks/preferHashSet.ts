@@ -11,7 +11,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { definePlannedCheck } from "../defineCheck.js"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-const isSetIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Set"
+const isSetIdentifier = (identifier: ts.Identifier) => identifier.text === "Set"
 
 const constructorMessage = "Avoid constructing a built-in Set."
 
@@ -24,7 +24,7 @@ const constructorHint =
 
 const setTypeNames: ReadonlyArray<string> = Array.make("Set", "ReadonlySet")
 
-const isSetTypeName = (id: ts.Identifier): boolean => Array.contains(setTypeNames, id.text)
+const isSetTypeName = (id: ts.Identifier) => Array.contains(setTypeNames, id.text)
 
 const typeRefHint =
   "Use HashSet.HashSet<T> from Effect instead. HashSet uses Equal and Hash with " +

@@ -11,10 +11,7 @@ const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatemen
   pipe(
     Option.liftPredicate(ts.isIfStatement)(statement),
     Option.exists(
-      Function.flow(
-        (ifStatement: ts.IfStatement) => Option.fromNullishOr(ifStatement.elseStatement),
-        Option.isNone
-      )
+      Function.flow((ifStatement) => Option.fromNullishOr(ifStatement.elseStatement), Option.isNone)
     )
   )
 
@@ -32,7 +29,7 @@ const tokenTexts =
   }
 
 const duplicateIfMatches = (context: CheckContext) => {
-  const fingerprint = (statement: ts.Statement): string => {
+  const fingerprint = (statement: ts.Statement) => {
     const unwrappedBody = unwrapSingleStatementBlock(statement)
     const textsForFile = tokenTexts(context.sourceFile)
     const tokens = textsForFile(unwrappedBody)
@@ -40,23 +37,19 @@ const duplicateIfMatches = (context: CheckContext) => {
     return Array.join(tokens, " ")
   }
 
-  const conditionText = (ifStatement: ts.IfStatement): string =>
+  const conditionText = (ifStatement: ts.IfStatement) =>
     ifStatement.expression.getText(context.sourceFile)
 
-  const sameBody =
-    (firstIfStatement: ts.IfStatement) =>
-    (secondIfStatement: ts.IfStatement): boolean =>
-      fingerprint(firstIfStatement.thenStatement) === fingerprint(secondIfStatement.thenStatement)
+  const sameBody = (firstIfStatement: ts.IfStatement) => (secondIfStatement: ts.IfStatement) =>
+    fingerprint(firstIfStatement.thenStatement) === fingerprint(secondIfStatement.thenStatement)
 
-  const combineConditions =
-    (firstIfStatement: ts.IfStatement) =>
-    (ifStatement: ts.IfStatement): string => {
-      const firstCondition = conditionText(firstIfStatement)
-      const secondCondition = conditionText(ifStatement)
-      const conditionTexts = Array.make(firstCondition, secondCondition)
+  const combineConditions = (firstIfStatement: ts.IfStatement) => (ifStatement: ts.IfStatement) => {
+    const firstCondition = conditionText(firstIfStatement)
+    const secondCondition = conditionText(ifStatement)
+    const conditionTexts = Array.make(firstCondition, secondCondition)
 
-      return Array.join(conditionTexts, " || ")
-    }
+    return Array.join(conditionTexts, " || ")
+  }
 
   const guardDup =
     (ifStatement: ts.IfStatement) =>
@@ -81,23 +74,21 @@ const duplicateIfMatches = (context: CheckContext) => {
 
   const match = detection(context)
 
-  const ruleMatch =
-    (ifStatement: ts.IfStatement) =>
-    (combinedCondition: string): Detection =>
-      match({
-        node: ifStatement,
-        message: "Avoid if branches that repeat the body of the branch before them.",
-        hint:
-          "These branches are pseudo-duplicates: the bodies are identical and only the " +
-          "conditions differ. Combine them into a single branch: " +
-          `if (${combinedCondition}) { ... }.`
-      })
+  const ruleMatch = (ifStatement: ts.IfStatement) => (combinedCondition: string) =>
+    match({
+      node: ifStatement,
+      message: "Avoid if branches that repeat the body of the branch before them.",
+      hint:
+        "These branches are pseudo-duplicates: the bodies are identical and only the " +
+        "conditions differ. Combine them into a single branch: " +
+        `if (${combinedCondition}) { ... }.`
+    })
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const guardDuplicateMatch = isGuardIfStatement(ifStatement)
       ? pipe(
           Option.liftPredicate(ts.isBlock)(ifStatement.parent),
-          Option.flatMap((block: ts.Block) =>
+          Option.flatMap((block) =>
             pipe(
               Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
               Option.flatMap((statementIndex) =>
@@ -114,7 +105,7 @@ const duplicateIfMatches = (context: CheckContext) => {
       ? guardDuplicateMatch
       : pipe(
           Option.liftPredicate(ts.isIfStatement)(ifStatement.parent),
-          Option.filter((parent: ts.IfStatement): boolean => parent.elseStatement === ifStatement),
+          Option.filter((parent) => parent.elseStatement === ifStatement),
           Option.flatMap(parentDup(ifStatement))
         )
 

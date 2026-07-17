@@ -16,7 +16,7 @@ const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expre
   return pipe(Array.flatMap(filtered, conditionExpressions), Array.prepend(unwrapped))
 }
 
-const binaryExpressionIsStringKeyIn = (expression: ts.BinaryExpression): boolean => {
+const binaryExpressionIsStringKeyIn = (expression: ts.BinaryExpression) => {
   const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
   const keyExpression = unwrapExpression(expression.left)
 

@@ -21,7 +21,7 @@ const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const returnExpression = (statement: ts.Statement): Option.Option<ts.Expression> =>
   ts.isReturnStatement(statement) ? Option.fromNullishOr(statement.expression) : Option.none()
 
-const singleReturnExpression = (body: ts.Block): Option.Option<ts.Expression> => {
+const singleReturnExpression = (body: ts.Block) => {
   const hasSingleStatement = body.statements.length === 1
 
   const statement = hasSingleStatement
@@ -31,18 +31,16 @@ const singleReturnExpression = (body: ts.Block): Option.Option<ts.Expression> =>
   return pipe(statement, Option.flatMap(returnExpression))
 }
 
-const directPropertyAccessExpression = (
-  expression: ts.Expression
-): Option.Option<ts.PropertyAccessExpression> =>
+const directPropertyAccessExpression = (expression: ts.Expression) =>
   pipe(unwrapTransparentExpression(expression), Option.liftPredicate(ts.isPropertyAccessExpression))
 
-const identifierBindingNameText = (name: ts.BindingName): Option.Option<string> =>
+const identifierBindingNameText = (name: ts.BindingName) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
 
-const identifierParameterName = (parameter: ts.ParameterDeclaration): Option.Option<string> =>
+const identifierParameterName = (parameter: ts.ParameterDeclaration) =>
   identifierBindingNameText(parameter.name)
 
-const hasIndexSignature = (type: ts.Type): boolean => {
+const hasIndexSignature = (type: ts.Type) => {
   const stringIndex = type.getStringIndexType()
   const stringIndexType = Option.fromNullishOr(stringIndex)
   const hasStringIndex = Option.isSome(stringIndexType)
@@ -71,43 +69,41 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = detection(context)
   const isRecord = isRecordType(checker)
-  const propertyNameText = (name: ts.PropertyName): string => name.getText(sourceFile)
+  const propertyNameText = (name: ts.PropertyName) => name.getText(sourceFile)
 
-  const ruleMatch =
-    (node: ts.Node) =>
-    (access: ts.PropertyAccessExpression): Detection => {
-      const definition = Option.liftPredicate(isFunctionDefinition)(node)
+  const ruleMatch = (node: ts.Node) => (access: ts.PropertyAccessExpression) => {
+    const definition = Option.liftPredicate(isFunctionDefinition)(node)
 
-      const name = pipe(
-        definition,
-        Option.flatMap((functionDefinition) => Option.fromNullishOr(functionDefinition.name)),
-        Option.map(propertyNameText),
-        Option.orElse(() =>
-          pipe(
-            definition,
-            Option.map(Struct.get("parent")),
-            Option.flatMap(Option.liftPredicate(ts.isVariableDeclaration)),
-            Option.map(Struct.get("name")),
-            Option.flatMap(identifierBindingNameText)
-          )
-        ),
-        Option.getOrElse(Function.constant("this function"))
-      )
+    const name = pipe(
+      definition,
+      Option.flatMap((functionDefinition) => Option.fromNullishOr(functionDefinition.name)),
+      Option.map(propertyNameText),
+      Option.orElse(() =>
+        pipe(
+          definition,
+          Option.map(Struct.get("parent")),
+          Option.flatMap(Option.liftPredicate(ts.isVariableDeclaration)),
+          Option.map(Struct.get("name")),
+          Option.flatMap(identifierBindingNameText)
+        )
+      ),
+      Option.getOrElse(Function.constant("this function"))
+    )
 
-      const accessedText = access.getText(sourceFile)
-      const accessedType = checker.getTypeAtLocation(access.expression)
-      const moduleName = isRecord(accessedType) ? "Record" : "Struct"
-      const propertyKey = JSON.stringify(access.name.text)
-      const suggestion = `${moduleName}.get(${propertyKey})`
+    const accessedText = access.getText(sourceFile)
+    const accessedType = checker.getTypeAtLocation(access.expression)
+    const moduleName = isRecord(accessedType) ? "Record" : "Struct"
+    const propertyKey = JSON.stringify(access.name.text)
+    const suggestion = `${moduleName}.get(${propertyKey})`
 
-      return match({
-        node: access,
-        message: `Avoid defining ${name} only to read ${accessedText}.`,
-        hint:
-          `Replace this property-access-only function with ${suggestion} from Effect. ` +
-          "Use Struct.get for non-record data types, and Record.get or Record.has for records."
-      })
-    }
+    return match({
+      node: access,
+      message: `Avoid defining ${name} only to read ${accessedText}.`,
+      hint:
+        `Replace this property-access-only function with ${suggestion} from Effect. ` +
+        "Use Struct.get for non-record data types, and Record.get or Record.has for records."
+    })
+  }
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> => {
     if (!isFunctionDefinition(node)) {

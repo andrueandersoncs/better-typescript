@@ -23,10 +23,10 @@ const functionFlipMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const symbolOption = (node: ts.Node): Option.Option<ts.Symbol> =>
+  const symbolOption = (node: ts.Node) =>
     pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
-  const resolvedSymbol = (node: ts.Node): Option.Option<ts.Symbol> =>
+  const resolvedSymbol = (node: ts.Node) =>
     pipe(
       symbolOption(node),
       Option.map((symbol) => {
@@ -36,7 +36,7 @@ const functionFlipMatches = (context: CheckContext) => {
       })
     )
 
-  const isNamespaceSymbol = (symbol: ts.Symbol): boolean => {
+  const isNamespaceSymbol = (symbol: ts.Symbol) => {
     const declarationList = symbol.getDeclarations()
 
     const declarations = pipe(
@@ -54,7 +54,7 @@ const functionFlipMatches = (context: CheckContext) => {
     return isModule || ambientOrModule
   }
 
-  const propertyAccessRequiresThis = (propertyAccess: ts.PropertyAccessExpression): boolean => {
+  const propertyAccessRequiresThis = (propertyAccess: ts.PropertyAccessExpression) => {
     const namedSymbol = symbolOption(propertyAccess.name)
     const accessSymbol = symbolOption(propertyAccess)
     const propertySymbol = pipe(namedSymbol, Option.orElse(Function.constant(accessSymbol)))
@@ -82,7 +82,7 @@ const functionFlipMatches = (context: CheckContext) => {
     return instanceMethod
   }
 
-  const calleeRequiresThis = (callee: ts.Expression): boolean => {
+  const calleeRequiresThis = (callee: ts.Expression) => {
     const unwrapped = unwrapCarrier(callee)
     const isCall = ts.isCallExpression(unwrapped)
     const isIdentifier = ts.isIdentifier(unwrapped)
@@ -108,7 +108,7 @@ const functionFlipMatches = (context: CheckContext) => {
       )
     )(0)
 
-  const unaryCall = (expression: ts.Expression): Option.Option<ts.CallExpression> =>
+  const unaryCall = (expression: ts.Expression) =>
     pipe(
       expression,
       unwrapCarrier,

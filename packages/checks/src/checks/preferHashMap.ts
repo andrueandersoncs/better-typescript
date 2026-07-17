@@ -11,7 +11,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { definePlannedCheck } from "../defineCheck.js"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
 
-const isMapIdentifier = (identifier: ts.Identifier): boolean => identifier.text === "Map"
+const isMapIdentifier = (identifier: ts.Identifier) => identifier.text === "Map"
 
 const constructorMessage = "Avoid constructing a built-in Map."
 
@@ -24,7 +24,7 @@ const constructorHint =
 
 const mapTypeNames: ReadonlyArray<string> = Array.make("Map", "ReadonlyMap")
 
-const isMapTypeName = (id: ts.Identifier): boolean => Array.contains(mapTypeNames, id.text)
+const isMapTypeName = (id: ts.Identifier) => Array.contains(mapTypeNames, id.text)
 
 const typeRefHint =
   "Use HashMap.HashMap<K, V> from Effect instead. HashMap uses Equal and Hash with " +

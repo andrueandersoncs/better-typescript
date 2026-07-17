@@ -46,7 +46,7 @@ export const discoverWorkspace: (
   return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
 })
 
-export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
+export const loadProjectConfig = (config: ProjectConfig) => {
   const program = ts.createProgram({
     rootNames: config.parsed.fileNames,
     options: config.parsed.options,
@@ -60,7 +60,7 @@ export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
   })
 }
 
-export const contextFromLoadedProject = (project: LoadedProject): ProgramContext => {
+export const contextFromLoadedProject = (project: LoadedProject) => {
   const createContext = contextFor(project.rootPath)
 
   return createContext(project.program)
@@ -177,7 +177,7 @@ const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
   return Array.flatten(projects)
 })
 
-const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>): string =>
+const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>) =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {
     getCanonicalFileName: Function.identity,
     getCurrentDirectory: ts.sys.getCurrentDirectory,

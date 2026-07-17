@@ -15,9 +15,7 @@ const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.MethodDeclaration
 )
 
-const objectLiteralParent = (
-  declaration: ts.MethodDeclaration
-): Option.Option<ts.ObjectLiteralExpression> =>
+const objectLiteralParent = (declaration: ts.MethodDeclaration) =>
   Option.liftPredicate(ts.isObjectLiteralExpression)(declaration.parent)
 
 const voidFunctionMatches = (context: CheckContext) => {

@@ -4,7 +4,7 @@ import { withProgramIndex } from "@better-typescript/core/engine/check"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
@@ -17,6 +17,8 @@ import {
   usageFor
 } from "./programSymbols.js"
 import { unwrapExpression } from "../support/tsNode.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { passThroughWrappersName } from "./names.js"
 
 const reexportMessage =
   "Pass-through Module evidence — this public file only re-exports other Modules."
@@ -34,7 +36,7 @@ const isExpressionBody = (body: ts.ConciseBody): body is ts.Expression => !ts.is
 
 const callExpressionBody = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
-): Option.Option<ts.CallExpression> =>
+) =>
   pipe(
     Option.fromNullishOr(node.body),
     Option.flatMap((body) => {
@@ -138,7 +140,7 @@ const consumedParameterNames = (
 
 const isExactForwarder = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
-): boolean =>
+) =>
   pipe(
     parameterIdentifiers(node),
     Option.flatMap((parameters) =>
@@ -264,4 +266,9 @@ const buildIndex = (
 
 const passThroughSubscriptions = Function.compose(passThroughElements, fileSubscriptions)
 
-export const passThroughWrappers: Check = withProgramIndex(buildIndex)(passThroughSubscriptions)
+const passThroughWrapperCheck = withProgramIndex(buildIndex)(passThroughSubscriptions)
+
+export const passThroughWrappers = defineSilentCheck(
+  passThroughWrappersName,
+  passThroughWrapperCheck
+)

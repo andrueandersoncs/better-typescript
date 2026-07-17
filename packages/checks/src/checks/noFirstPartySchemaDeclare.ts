@@ -7,13 +7,10 @@ import { defineCheck } from "../defineCheck.js"
 import { detection } from "@better-typescript/core/engine/check"
 const accessExpression = Struct.get<ts.PropertyAccessExpression, "expression">("expression")
 
-const declarePropertyAccess = (
-  call: ts.CallExpression
-): Option.Option<ts.PropertyAccessExpression> =>
+const declarePropertyAccess = (call: ts.CallExpression) =>
   Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
 
-const hasDeclareText = (access: ts.PropertyAccessExpression): boolean =>
-  access.name.text === "declare"
+const hasDeclareText = (access: ts.PropertyAccessExpression) => access.name.text === "declare"
 
 const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
   pipe(
@@ -22,15 +19,13 @@ const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
     Option.exists(hasDeclareText)
   )
 
-const typePredicateAssertedType = (predicate: ts.TypePredicate): Option.Option<ts.Type> =>
+const typePredicateAssertedType = (predicate: ts.TypePredicate) =>
   Option.fromNullishOr(predicate.type)
 
-const typeSymbol = (type: ts.Type): Option.Option<ts.Symbol> =>
+const typeSymbol = (type: ts.Type) =>
   pipe(
     Option.fromNullishOr(type.aliasSymbol),
-    Option.orElse(() =>
-      pipe(type, (candidate: ts.Type) => candidate.getSymbol(), Option.fromNullishOr)
-    )
+    Option.orElse(() => pipe(type, (candidate) => candidate.getSymbol(), Option.fromNullishOr))
   )
 
 const opaquePrimitiveKinds = HashSet.make(
@@ -41,7 +36,7 @@ const opaquePrimitiveKinds = HashSet.make(
   ts.SyntaxKind.SymbolKeyword
 )
 
-const isOpaqueAliasDeclaration = (declaration: ts.Declaration): boolean =>
+const isOpaqueAliasDeclaration = (declaration: ts.Declaration) =>
   pipe(
     Option.liftPredicate(ts.isTypeAliasDeclaration)(declaration),
     Option.map(Struct.get("type")),
@@ -57,7 +52,7 @@ const isOpaqueAliasDeclaration = (declaration: ts.Declaration): boolean =>
     })
   )
 
-const isStructuralOwnedDeclaration = (declaration: ts.Declaration): boolean => {
+const isStructuralOwnedDeclaration = (declaration: ts.Declaration) => {
   const isInterface = ts.isInterfaceDeclaration(declaration)
   const isClass = ts.isClassDeclaration(declaration)
   const isNominalDeclaration = isInterface || isClass
@@ -72,10 +67,10 @@ const isStructuralOwnedDeclaration = (declaration: ts.Declaration): boolean => {
 const symbolDeclarations = (symbol: ts.Symbol): ReadonlyArray<ts.Declaration> =>
   symbol.getDeclarations() ?? Array.empty()
 
-const isStructuralOwnedSymbol = (symbol: ts.Symbol): boolean =>
+const isStructuralOwnedSymbol = (symbol: ts.Symbol) =>
   pipe(symbol, symbolDeclarations, Array.some(isStructuralOwnedDeclaration))
 
-const isFirstPartyStructuralModel = (type: ts.Type): boolean => {
+const isFirstPartyStructuralModel = (type: ts.Type) => {
   const symbol = typeSymbol(type)
   const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
   const isStructural = Option.exists(symbol, isStructuralOwnedSymbol)
@@ -101,7 +96,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
   const { checker } = context
   const match = detection(context)
 
-  const assertedType = (predicate: ts.Expression): Option.Option<ts.Type> => {
+  const assertedType = (predicate: ts.Expression) => {
     const type = checker.getTypeAtLocation(predicate)
     const signatures = type.getCallSignatures()
 

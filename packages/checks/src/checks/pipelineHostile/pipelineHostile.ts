@@ -11,7 +11,7 @@ import { PipelineHostileInput, PipelineSignals } from "./data.js"
 export const pipelineHostileExamples = packageExamples("pipeline-hostile")
 
 const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advice> => {
-  const isPipelineHostile = (path: string): boolean => {
+  const isPipelineHostile = (path: string) => {
     const hasNestedCalls = countDetectionsAtPath(path)(signals.noNestedCalls) >= 5
 
     const hasUncurriedFunctions =
@@ -55,7 +55,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
 const pipelineSignals = (
   noNestedCalls: ReadonlyArray<Detection>,
   preferCurriedDataLastFunctions: ReadonlyArray<Detection>
-): PipelineSignals => new PipelineSignals({ noNestedCalls, preferCurriedDataLastFunctions })
+) => new PipelineSignals({ noNestedCalls, preferCurriedDataLastFunctions })
 
 export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice> => {
   const advice = adviceFromSignalPair(

@@ -38,7 +38,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
 const systemicSignals = (
   hotSubsystem: ReadonlyArray<Advice>,
   highSignalDensity: ReadonlyArray<Advice>
-): SystemicSignals => new SystemicSignals({ hotSubsystem, highSignalDensity })
+) => new SystemicSignals({ hotSubsystem, highSignalDensity })
 
 export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice> => {
   const advice = adviceFromSignalPair(

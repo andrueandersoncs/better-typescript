@@ -11,14 +11,14 @@ import { detection } from "@better-typescript/core/engine/check"
 
 const effectModuleFileNames = HashSet.make("Effect.ts", "Effect.d.ts")
 
-const isEffectModuleDeclaration = (declaration: ts.Declaration): boolean => {
+const isEffectModuleDeclaration = (declaration: ts.Declaration) => {
   const declarationFileName = declaration.getSourceFile().fileName
   const baseFileName = path.basename(declarationFileName)
 
   return HashSet.has(effectModuleFileNames, baseFileName)
 }
 
-const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
+const isEffectInterfaceSymbol = (symbol: ts.Symbol) => {
   const isNamedEffect = symbol.name === "Effect"
   const declarations = symbol.declarations ?? Array.empty()
   const hasEffectModuleDeclaration = Array.some(declarations, isEffectModuleDeclaration)
@@ -29,12 +29,9 @@ const isEffectInterfaceSymbol = (symbol: ts.Symbol): boolean => {
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
   block.statements.length === 1 ? Option.fromNullishOr(block.statements[0]) : Option.none()
 
-const isGenPropertyName = (access: ts.PropertyAccessExpression): boolean =>
-  access.name.text === "gen"
+const isGenPropertyName = (access: ts.PropertyAccessExpression) => access.name.text === "gen"
 
-const returnedExpression = (
-  initializer: ts.ArrowFunction | ts.FunctionExpression
-): Option.Option<ts.Expression> => {
+const returnedExpression = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
   const body = initializer.body
 
   const blockResult = pipe(
@@ -49,19 +46,16 @@ const returnedExpression = (
   return Option.orElse(blockResult, Function.constant(conciseResult))
 }
 
-const isEffectGenAccess =
-  (checker: ts.TypeChecker) =>
-  (access: ts.PropertyAccessExpression): boolean =>
-    isGenPropertyName(access) &&
-    pipe(
-      checker.getSymbolAtLocation(access.name),
-      Option.fromNullishOr,
-      Option.exists(symbolDeclaredInEffectPackage)
-    )
+const isEffectGenAccess = (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
+  isGenPropertyName(access) &&
+  pipe(
+    checker.getSymbolAtLocation(access.name),
+    Option.fromNullishOr,
+    Option.exists(symbolDeclaredInEffectPackage)
+  )
 
 const effectGenCall =
-  (checker: ts.TypeChecker) =>
-  (initializer: ts.ArrowFunction | ts.FunctionExpression): Option.Option<ts.CallExpression> =>
+  (checker: ts.TypeChecker) => (initializer: ts.ArrowFunction | ts.FunctionExpression) =>
     pipe(
       returnedExpression(initializer),
       Option.map(unwrapExpression),
@@ -74,7 +68,7 @@ const effectGenCall =
       )
     )
 
-const selfBindingLiteral = (call: ts.CallExpression): Option.Option<ts.ObjectLiteralExpression> =>
+const selfBindingLiteral = (call: ts.CallExpression) =>
   pipe(
     Option.fromNullishOr(call.arguments[0]),
     Option.filter(ts.isObjectLiteralExpression),
@@ -100,32 +94,29 @@ const selfBindingLiteral = (call: ts.CallExpression): Option.Option<ts.ObjectLit
     )
   )
 
-const generatorThisTypeText =
-  (sourceFile: ts.SourceFile) =>
-  (call: ts.CallExpression): string =>
-    pipe(
-      Array.findFirst(call.arguments, ts.isFunctionExpression),
-      Option.flatMap((generator) =>
-        Array.findFirst(generator.parameters, (parameter) =>
-          pipe(
-            Option.liftPredicate(ts.isIdentifier)(parameter.name),
-            Option.exists((name) => name.text === "this")
-          )
+const generatorThisTypeText = (sourceFile: ts.SourceFile) => (call: ts.CallExpression) =>
+  pipe(
+    Array.findFirst(call.arguments, ts.isFunctionExpression),
+    Option.flatMap((generator) =>
+      Array.findFirst(generator.parameters, (parameter) =>
+        pipe(
+          Option.liftPredicate(ts.isIdentifier)(parameter.name),
+          Option.exists((name) => name.text === "this")
         )
-      ),
-      Option.flatMap((parameter) => Option.fromNullishOr(parameter.type)),
-      Option.map((typeNode) => typeNode.getText(sourceFile)),
-      Option.getOrElse(Function.constant("..."))
-    )
+      )
+    ),
+    Option.flatMap((parameter) => Option.fromNullishOr(parameter.type)),
+    Option.map((typeNode) => typeNode.getText(sourceFile)),
+    Option.getOrElse(Function.constant("..."))
+  )
 
-const ordinaryHint = (functionName: string): string =>
+const ordinaryHint = (functionName: string) =>
   `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
   "{ ... }): Effect.fn subsumes the Effect.gen wrapper and runs every call inside a " +
   "traced span."
 
 const selfBoundHint =
-  (sourceFile: ts.SourceFile) =>
-  (functionName: string, call: ts.CallExpression): string => {
+  (sourceFile: ts.SourceFile) => (functionName: string, call: ts.CallExpression) => {
     const selfBinding = pipe(
       selfBindingLiteral(call),
       Option.map((literal) => literal.getText(sourceFile)),
@@ -142,8 +133,7 @@ const selfBoundHint =
   }
 
 const rewriteHint =
-  (sourceFile: ts.SourceFile) =>
-  (functionName: string, call: ts.CallExpression): string =>
+  (sourceFile: ts.SourceFile) => (functionName: string, call: ts.CallExpression) =>
     pipe(
       selfBindingLiteral(call),
       Option.match({

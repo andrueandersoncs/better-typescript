@@ -13,7 +13,7 @@ import { packageExamples } from "../defineCheck.js"
 
 export const highSignalDensityExamples = packageExamples("high-signal-density")
 
-const densityAdvice = (file: FileDetections): Advice => {
+const densityAdvice = (file: FileDetections) => {
   const summary = countSummary(file.elements)
   const checkEvidence = evidenceFromCounts(summary.countsByCheck)
   const signalsItem = evidenceItem("signals", summary.total)

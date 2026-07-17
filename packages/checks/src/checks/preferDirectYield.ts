@@ -15,7 +15,7 @@ const hint =
   "extracting nested call arguments into their own consts so no-nested-calls " +
   "stays satisfied."
 
-const isYieldStarOfIdentifier = (identifier: ts.Identifier): boolean =>
+const isYieldStarOfIdentifier = (identifier: ts.Identifier) =>
   pipe(
     Option.liftPredicate(ts.isYieldExpression)(identifier.parent),
     Option.filter((yieldExpression) =>
@@ -28,24 +28,22 @@ const preferDirectYieldMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = detection(context)
 
-  const isEffectPropertyCall =
-    (methodName: string) =>
-    (call: ts.CallExpression): boolean =>
-      pipe(
-        Option.some(call.expression),
-        Option.filter(ts.isPropertyAccessExpression),
-        Option.filter((access) => access.name.text === methodName),
-        Option.filter((access) =>
-          pipe(
-            Option.liftPredicate(ts.isIdentifier)(access.expression),
-            Option.exists((identifier) => identifier.text === "Effect")
-          )
-        ),
-        Option.flatMap((access) =>
-          pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
-        ),
-        Option.exists(symbolDeclaredInEffectPackage)
-      )
+  const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) =>
+    pipe(
+      Option.some(call.expression),
+      Option.filter(ts.isPropertyAccessExpression),
+      Option.filter((access) => access.name.text === methodName),
+      Option.filter((access) =>
+        pipe(
+          Option.liftPredicate(ts.isIdentifier)(access.expression),
+          Option.exists((identifier) => identifier.text === "Effect")
+        )
+      ),
+      Option.flatMap((access) =>
+        pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
+      ),
+      Option.exists(symbolDeclaredInEffectPackage)
+    )
 
   const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
     pipe(

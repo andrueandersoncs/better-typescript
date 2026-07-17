@@ -24,19 +24,18 @@ const primitiveLiteralKinds = HashSet.make(
 
 const emptyModifiers: ReadonlyArray<ts.ModifierLike> = Array.empty()
 
-const fallbackModifiers: Function.LazyArg<ReadonlyArray<ts.ModifierLike>> =
-  Function.constant(emptyModifiers)
+const fallbackModifiers = Function.constant(emptyModifiers)
 
 const message = "Avoid a handwritten constant thunk."
 
 const modifierIsAsync = (modifier: ts.ModifierLike): boolean =>
   modifier.kind === ts.SyntaxKind.AsyncKeyword
 
-const hasElements = (items: ReadonlyArray<unknown>): boolean => items.length > 0
+const hasElements = (items: ReadonlyArray<unknown>) => items.length > 0
 
-const hasSingleElement = (items: ReadonlyArray<unknown>): boolean => items.length === 1
+const hasSingleElement = (items: ReadonlyArray<unknown>) => items.length === 1
 
-const isEligibleFunction = (node: ts.Node): boolean =>
+const isEligibleFunction = (node: ts.Node) =>
   pipe(
     Option.liftPredicate(isFunctionInitializer)(node),
     Option.map((initializer) => {
@@ -80,7 +79,7 @@ const isEligibleFunction = (node: ts.Node): boolean =>
     Option.getOrElse(Function.constFalse)
   )
 
-const blockReturnedExpression = (body: ts.Block): Option.Option<ts.Expression> =>
+const blockReturnedExpression = (body: ts.Block) =>
   Option.gen(function* () {
     yield* Option.liftPredicate(hasSingleElement)(body.statements)
     const statement = yield* Option.fromNullishOr(body.statements[0])
@@ -108,26 +107,23 @@ const constantThunkReturnedExpression = (node: ts.Node): Option.Option<ts.Expres
     : blockReturnedExpression(node.body)
 }
 
-const isPrimitiveLiteralExpression = (expression: ts.Expression): boolean => {
+const isPrimitiveLiteralExpression = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
 
   return HashSet.has(primitiveLiteralKinds, unwrapped.kind)
 }
 
-const declarationNameIsIdentifier = (declaration: ts.VariableDeclaration): boolean =>
+const declarationNameIsIdentifier = (declaration: ts.VariableDeclaration) =>
   ts.isIdentifier(declaration.name)
 
-const variableDeclarationList = (
-  declaration: ts.VariableDeclaration
-): Option.Option<ts.VariableDeclarationList> =>
+const variableDeclarationList = (declaration: ts.VariableDeclaration) =>
   pipe(Option.some(declaration.parent), Option.filter(ts.isVariableDeclarationList))
 
-const declarationListIsConst = (declarationList: ts.VariableDeclarationList): boolean =>
+const declarationListIsConst = (declarationList: ts.VariableDeclarationList) =>
   (declarationList.flags & ts.NodeFlags.Const) !== 0
 
-const declarationListHasSingleDeclaration = (
-  declarationList: ts.VariableDeclarationList
-): boolean => hasSingleElement(declarationList.declarations)
+const declarationListHasSingleDeclaration = (declarationList: ts.VariableDeclarationList) =>
+  hasSingleElement(declarationList.declarations)
 
 const functionConstantMatches = (context: CheckContext) => {
   const match = detection(context)
@@ -152,7 +148,7 @@ const functionConstantMatches = (context: CheckContext) => {
 
         const isStableIdentifier = pipe(
           Option.liftPredicate(ts.isIdentifier)(unwrapped),
-          Option.exists((identifier: ts.Identifier): boolean =>
+          Option.exists((identifier) =>
             pipe(
               Option.gen(function* () {
                 const symbolCandidate = context.checker.getSymbolAtLocation(identifier)

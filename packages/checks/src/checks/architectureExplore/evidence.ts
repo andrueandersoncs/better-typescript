@@ -32,23 +32,22 @@ const checkedData = <A>(
   return guard(data) ? Option.some(data) : Option.none()
 }
 
-export const passThroughDataOf = (element: NamedDetection): Option.Option<PassThroughWrapperData> =>
+export const passThroughDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(PassThroughWrapperData), element)
 
-export const interfaceBurdenDataOf = (
-  element: NamedDetection
-): Option.Option<InterfaceBurdenData> => checkedData(Schema.is(InterfaceBurdenData), element)
+export const interfaceBurdenDataOf = (element: NamedDetection) =>
+  checkedData(Schema.is(InterfaceBurdenData), element)
 
-export const moduleGraphDataOf = (element: NamedDetection): Option.Option<ModuleGraphData> =>
+export const moduleGraphDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(ModuleGraphData), element)
 
-export const testOnlyExportDataOf = (element: NamedDetection): Option.Option<TestOnlyExportData> =>
+export const testOnlyExportDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(TestOnlyExportData), element)
 
-export const seamLeakageDataOf = (element: NamedDetection): Option.Option<SeamLeakageData> =>
+export const seamLeakageDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(SeamLeakageData), element)
 
-export const isDeletableWrapper = (element: NamedDetection): boolean =>
+export const isDeletableWrapper = (element: NamedDetection) =>
   pipe(
     passThroughDataOf(element),
     Option.exists((data) => {
@@ -59,27 +58,23 @@ export const isDeletableWrapper = (element: NamedDetection): boolean =>
     })
   )
 
-export const importUsageDataOf = (element: NamedDetection): Option.Option<ImportUsageData> =>
+export const importUsageDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(ImportUsageData), element)
 
-export const exportSurfaceDataOf = (element: NamedDetection): Option.Option<ExportSurfaceData> =>
+export const exportSurfaceDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(ExportSurfaceData), element)
 
-export const compositionForwarderDataOf = (
-  element: NamedDetection
-): Option.Option<CompositionForwarderData> =>
+export const compositionForwarderDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(CompositionForwarderData), element)
 
-export const contextTagSeamDataOf = (element: NamedDetection): Option.Option<ContextTagSeamData> =>
+export const contextTagSeamDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(ContextTagSeamData), element)
 
-export const compositionFingerprintDataOf = (
-  element: NamedDetection
-): Option.Option<CompositionFingerprintData> =>
+export const compositionFingerprintDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(CompositionFingerprintData), element)
 
 // Composition forwarders join the deletable set because FP wrappers carry the same judgment.
-export const isDeletableComposition = (element: NamedDetection): boolean =>
+export const isDeletableComposition = (element: NamedDetection) =>
   pipe(
     compositionForwarderDataOf(element),
     Option.exists((data) => {
@@ -90,12 +85,12 @@ export const isDeletableComposition = (element: NamedDetection): boolean =>
     })
   )
 
-export const isDeletableShallowness = (element: NamedDetection): boolean =>
+export const isDeletableShallowness = (element: NamedDetection) =>
   isDeletableWrapper(element) || isDeletableComposition(element)
 
 const shallownessNames = Array.make(passThroughWrappersName, compositionForwardersName)
 
-export const isShallownessName = (name: string): boolean => Array.contains(shallownessNames, name)
+export const isShallownessName = (name: string) => Array.contains(shallownessNames, name)
 
 const directorySegments = (filePath: string): ReadonlyArray<string> => {
   const normalized = filePath.replaceAll("\\", "/")
@@ -105,7 +100,7 @@ const directorySegments = (filePath: string): ReadonlyArray<string> => {
   return directory.split("/")
 }
 
-export const commonDirectory = (paths: ReadonlyArray<string>): string => {
+export const commonDirectory = (paths: ReadonlyArray<string>) => {
   const allSegments = Array.map(paths, directorySegments)
   const fallback = Array.of(".")
   const first = pipe(Array.head(allSegments), Option.getOrElse(Function.constant(fallback)))
@@ -161,26 +156,24 @@ const graphEdgesOf = (element: NamedDetection): ReadonlyArray<WorkspaceImportEdg
     Option.getOrElse(Array.empty)
   )
 
-const usageEdgeOf =
-  (aliasTable: HashMap.HashMap<string, string>) =>
-  (element: NamedDetection): Option.Option<WorkspaceImportEdge> =>
-    pipe(
-      importUsageDataOf(element),
-      Option.flatMap((data) =>
-        pipe(
-          HashMap.get(aliasTable, data.specifier),
-          Option.map(
-            (importedPath) =>
-              new WorkspaceImportEdge({
-                importerPath: data.importerWorkspacePath,
-                importedPath,
-                fromTest: data.fromTest,
-                names: data.names
-              })
-          )
+const usageEdgeOf = (aliasTable: HashMap.HashMap<string, string>) => (element: NamedDetection) =>
+  pipe(
+    importUsageDataOf(element),
+    Option.flatMap((data) =>
+      pipe(
+        HashMap.get(aliasTable, data.specifier),
+        Option.map(
+          (importedPath) =>
+            new WorkspaceImportEdge({
+              importerPath: data.importerWorkspacePath,
+              importedPath,
+              fromTest: data.fromTest,
+              names: data.names
+            })
         )
       )
     )
+  )
 
 // Graph and alias edges stay disjoint because project edges never carry bare package specifiers.
 export const workspaceImportEdges = (

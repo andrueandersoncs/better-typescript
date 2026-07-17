@@ -2,12 +2,14 @@ import * as path from "node:path"
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { ExternalDependencyConstructionData } from "./data.js"
 import { unwrapExpression } from "../support/tsNode.js"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { externalDependencyConstructionName } from "./names.js"
 
 const message =
   "External collaborator construction evidence — behaviour creates an imported collaborator away from the composition root."
@@ -40,7 +42,7 @@ const compositionRootNames = HashSet.make(
   "wiring"
 )
 
-const collaboratorName = (expression: ts.Expression): Option.Option<string> => {
+const collaboratorName = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
 
   if (ts.isIdentifier(unwrapped)) {
@@ -77,10 +79,7 @@ export const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.Impor
 
 const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 
-const importedPathFor = (
-  checker: ts.TypeChecker,
-  expression: ts.Expression
-): Option.Option<string> =>
+const importedPathFor = (checker: ts.TypeChecker, expression: ts.Expression) =>
   pipe(
     constructionRootIdentifier(expression),
     Option.flatMap((identifier) =>
@@ -94,21 +93,21 @@ const importedPathFor = (
     Option.map(Struct.get("text"))
   )
 
-const isCollaboratorName = (name: string): boolean => {
+const isCollaboratorName = (name: string) => {
   const knownName = HashSet.has(collaboratorNames, name)
   const knownSuffix = Array.some(collaboratorSuffixes, (suffix) => name.endsWith(suffix))
 
   return knownName || knownSuffix
 }
 
-export const isCompositionRoot = (sourceFile: ts.SourceFile): boolean => {
+export const isCompositionRoot = (sourceFile: ts.SourceFile) => {
   const extension = path.extname(sourceFile.fileName)
   const baseName = path.basename(sourceFile.fileName, extension)
 
   return HashSet.has(compositionRootNames, baseName)
 }
 
-const isDirectFactoryResult = (node: ts.NewExpression): boolean => {
+const isDirectFactoryResult = (node: ts.NewExpression) => {
   const parent = node.parent
 
   const returned = pipe(
@@ -170,6 +169,11 @@ const constructionElements = (context: CheckContext) => {
 
 const newExpressionKinds = Array.of(ts.SyntaxKind.NewExpression)
 
-export const externalDependencyConstruction: Check = nodeCheck(newExpressionKinds)(
-  ts.isNewExpression
-)(constructionElements)
+const externalDependencyConstructionCheck = nodeCheck(newExpressionKinds)(ts.isNewExpression)(
+  constructionElements
+)
+
+export const externalDependencyConstruction = defineSilentCheck(
+  externalDependencyConstructionName,
+  externalDependencyConstructionCheck
+)

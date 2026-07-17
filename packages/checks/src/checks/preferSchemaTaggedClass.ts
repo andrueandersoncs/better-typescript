@@ -15,27 +15,25 @@ const hint =
   "decoding share one contract. Reserve Data.TaggedClass for process-bound values such as " +
   "streams, effects, functions, compiler objects, and live handles."
 
-const fieldsAreWireSafe =
-  (checker: ts.TypeChecker) =>
-  (heritage: ts.ExpressionWithTypeArguments): boolean =>
-    pipe(
-      Option.fromNullishOr(heritage.typeArguments),
-      Option.getOrElse(Array.empty),
-      Array.head,
-      Option.match({
-        onNone: Function.constant(true),
-        onSome: (fieldsNode) =>
-          pipe(
-            Option.liftPredicate(ts.isTypeLiteralNode)(fieldsNode),
-            Option.filter((literal) => literal.members.length === 0),
-            Option.match({
-              onSome: Function.constant(true),
-              onNone: () =>
-                pipe(checker.getTypeFromTypeNode(fieldsNode), typeIsWireSafe(checker)(fieldsNode))
-            })
-          )
-      })
-    )
+const fieldsAreWireSafe = (checker: ts.TypeChecker) => (heritage: ts.ExpressionWithTypeArguments) =>
+  pipe(
+    Option.fromNullishOr(heritage.typeArguments),
+    Option.getOrElse(Array.empty),
+    Array.head,
+    Option.match({
+      onNone: Function.constant(true),
+      onSome: (fieldsNode) =>
+        pipe(
+          Option.liftPredicate(ts.isTypeLiteralNode)(fieldsNode),
+          Option.filter((literal) => literal.members.length === 0),
+          Option.match({
+            onSome: Function.constant(true),
+            onNone: () =>
+              pipe(checker.getTypeFromTypeNode(fieldsNode), typeIsWireSafe(checker)(fieldsNode))
+          })
+        )
+    })
+  )
 
 const portableDataTaggedClassMatches = (context: CheckContext) => {
   const { checker } = context

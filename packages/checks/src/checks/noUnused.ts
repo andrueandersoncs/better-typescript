@@ -16,10 +16,10 @@ const hint =
 
 const unusedDiagnosticCodes = HashSet.make(6133, 6192, 6196, 6138, 6198, 6199, 6205)
 
-const isUnusedDiagnostic = (diagnostic: ts.Diagnostic): boolean =>
+const isUnusedDiagnostic = (diagnostic: ts.Diagnostic) =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
 
-const buildUnusedProgram = (context: ProgramContext): ts.Program => {
+const buildUnusedProgram = (context: ProgramContext) => {
   const rootNames = context.program.getRootFileNames()
   const compilerOptions = context.program.getCompilerOptions()
   const options: ts.CompilerOptions = { ...compilerOptions }

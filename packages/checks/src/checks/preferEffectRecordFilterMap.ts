@@ -12,17 +12,15 @@ const hint =
   "Build a record of candidate properties and use Record.filterMap from Effect with " +
   "Result.succeed/Result.fail (or Result.fromNullishOr) to keep only present entries."
 
-const objectLiteralPropertyCount = (expression: ts.Expression): number => {
+const objectLiteralPropertyCount = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
 
   return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
 }
 
-const hasNoProperties = (expression: ts.Expression): boolean =>
-  objectLiteralPropertyCount(expression) === 0
+const hasNoProperties = (expression: ts.Expression) => objectLiteralPropertyCount(expression) === 0
 
-const hasSomeProperties = (expression: ts.Expression): boolean =>
-  objectLiteralPropertyCount(expression) > 0
+const hasSomeProperties = (expression: ts.Expression) => objectLiteralPropertyCount(expression) > 0
 
 const conditionalObjectSpreadMatches = (context: CheckContext) => {
   const match = detection(context)

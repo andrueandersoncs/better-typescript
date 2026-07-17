@@ -11,11 +11,9 @@ const nested6 = Tuple.make(ts.SyntaxKind.LetKeyword, "let" as MutableVariableDec
 
 const nested7 = Tuple.make(ts.SyntaxKind.VarKeyword, "var" as MutableVariableDeclarationKind)
 
-const mutableKeywordKinds: HashMap.HashMap<ts.SyntaxKind, MutableVariableDeclarationKind> =
-  HashMap.make(nested6, nested7)
+const mutableKeywordKinds = HashMap.make(nested6, nested7)
 
-const tokenMutableKind = (firstToken: ts.Node): Option.Option<MutableVariableDeclarationKind> =>
-  HashMap.get(mutableKeywordKinds, firstToken.kind)
+const tokenMutableKind = (firstToken: ts.Node) => HashMap.get(mutableKeywordKinds, firstToken.kind)
 
 const mutableDeclarationMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile

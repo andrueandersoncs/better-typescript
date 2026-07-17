@@ -4,7 +4,7 @@ import { ProgramContext } from "./data.js"
 
 export type AstFold<A> = (accumulator: A, node: ts.Node) => A
 
-export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
+export const isProjectSourceFile = (sourceFile: ts.SourceFile) => {
   const normalizedPath = sourceFile.fileName.replaceAll("\\", "/")
   const isInNodeModules = normalizedPath.includes("/node_modules/")
   const isSkippable = sourceFile.isDeclarationFile || isInNodeModules
@@ -12,14 +12,12 @@ export const isProjectSourceFile = (sourceFile: ts.SourceFile): boolean => {
   return !isSkippable
 }
 
-export const contextFor =
-  (projectRoot: string) =>
-  (program: ts.Program): ProgramContext => {
-    const checker = program.getTypeChecker()
+export const contextFor = (projectRoot: string) => (program: ts.Program) => {
+  const checker = program.getTypeChecker()
 
-    // Standalone loads treat the project as its own workspace because no wider root is known here.
-    return new ProgramContext({ program, checker, projectRoot, workspaceRoot: projectRoot })
-  }
+  // Standalone loads treat the project as its own workspace because no wider root is known here.
+  return new ProgramContext({ program, checker, projectRoot, workspaceRoot: projectRoot })
+}
 
 export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
   const children = MutableList.make<ts.Node>()
@@ -34,7 +32,7 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
 }
 
 // Explicit stack traversal is required because TypeScript trees can exceed the JS call stack.
-export const astNodesIn = (root: ts.Node): Iterable<ts.Node> => {
+export const astNodesIn = (root: ts.Node) => {
   const initial: ReadonlyArray<ts.Node> = Array.of(root)
 
   return Iterable.unfold(initial, (pending) => {

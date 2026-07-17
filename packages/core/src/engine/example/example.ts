@@ -9,10 +9,10 @@ import {
   RefactorExample
 } from "./data.js"
 
-export const exampleSnippet = (filePath: string, code: string): ExampleSnippet =>
+export const exampleSnippet = (filePath: string, code: string) =>
   new ExampleSnippet({ filePath, code })
 
-export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet): RefactorExample => {
+export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet) => {
   const badExamples = Array.of(bad)
   const goodExamples = Array.of(good)
 
@@ -22,26 +22,22 @@ export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet): Refa
   })
 }
 
-export const refactorExampleTrees = (
-  bad: NonEmptyExampleTree,
-  good: NonEmptyExampleTree
-): RefactorExample => new RefactorExample({ bad, good })
+export const refactorExampleTrees = (bad: NonEmptyExampleTree, good: NonEmptyExampleTree) =>
+  new RefactorExample({ bad, good })
 
-const formatExampleTree =
-  (label: string) =>
-  (files: ReadonlyArray<ExampleSnippet>): string => {
-    const sections = Array.map(files, (snippet) => {
-      const codeLines = snippet.code.split("\n")
-      const indentedLines = Array.map(codeLines, (line) => `    ${line}`)
-      const indentedCode = Array.join(indentedLines, "\n")
+const formatExampleTree = (label: string) => (files: ReadonlyArray<ExampleSnippet>) => {
+  const sections = Array.map(files, (snippet) => {
+    const codeLines = snippet.code.split("\n")
+    const indentedLines = Array.map(codeLines, (line) => `    ${line}`)
+    const indentedCode = Array.join(indentedLines, "\n")
 
-      return `  ${label} (${snippet.filePath}):\n${indentedCode}`
-    })
+    return `  ${label} (${snippet.filePath}):\n${indentedCode}`
+  })
 
-    return Array.join(sections, "\n")
-  }
+  return Array.join(sections, "\n")
+}
 
-export const formatRefactorExample = (example: RefactorExample): string => {
+export const formatRefactorExample = (example: RefactorExample) => {
   const badText = formatExampleTree("Bad")(example.bad)
   const goodText = formatExampleTree("Good")(example.good)
   const joinedParts = Array.make(badText, goodText)
@@ -62,7 +58,7 @@ const readDirectoryEntries = (
       })
   })
 
-const directoryExists = (absolutePath: string): boolean => {
+const directoryExists = (absolutePath: string) => {
   const exists = fs.existsSync(absolutePath)
 
   return exists && fs.statSync(absolutePath).isDirectory()

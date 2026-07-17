@@ -41,7 +41,7 @@ const globOptions: MinimatchOptions = {
   platform: "linux"
 }
 
-const hasNonWhitespace = (pattern: string): boolean => pattern.trim().length > 0
+const hasNonWhitespace = (pattern: string) => pattern.trim().length > 0
 
 // One glob predicate is canonical here because config loading and defineConfig must not drift.
 export const isFileGlob = Predicate.and(Predicate.isString, hasNonWhitespace)
@@ -50,11 +50,7 @@ const emptyRefactorExamples: ReadonlyArray<RefactorExample> = Array.empty()
 const emptyRefactorExamplesThunk = Function.constant(emptyRefactorExamples)
 
 // Examples stay a thunk because construction must not load fixtures before a report needs them.
-export const namedCheck = (
-  name: string,
-  check: Check,
-  examples: () => NonEmptyRefactorExamples
-): NamedCheck =>
+export const namedCheck = (name: string, check: Check, examples: () => NonEmptyRefactorExamples) =>
   new NamedCheck({
     name,
     check,
@@ -67,7 +63,7 @@ export const silentCheck = (
   name: string,
   check: Check,
   examples: () => ReadonlyArray<RefactorExample> = emptyRefactorExamplesThunk
-): NamedCheck =>
+) =>
   new NamedCheck({
     name,
     check,
@@ -79,13 +75,13 @@ const emptyDuplicateNamesSeen = HashSet.empty<string>()
 const emptyDuplicateNameCollisions = HashSet.empty<string>()
 const emptyDuplicateNames = Array.empty<string>()
 
-const emptyDuplicateNameState: DuplicateNameState = new DuplicateNameState({
+const emptyDuplicateNameState = new DuplicateNameState({
   seen: emptyDuplicateNamesSeen,
   collisions: emptyDuplicateNameCollisions,
   names: emptyDuplicateNames
 })
 
-const addDuplicateName = (state: DuplicateNameState, check: NamedCheck): DuplicateNameState => {
+const addDuplicateName = (state: DuplicateNameState, check: NamedCheck) => {
   const name = check.name
   const alreadySeen = HashSet.has(state.seen, name)
   const alreadyCollision = HashSet.has(state.collisions, name)
@@ -207,7 +203,7 @@ const relativeWorkspacePath = (
   workspaceRoot: string,
   projectRoot: string,
   candidatePath: string
-): string => {
+) => {
   const absoluteCandidatePath = path.resolve(projectRoot, candidatePath)
 
   return path.relative(workspaceRoot, absoluteCandidatePath).replaceAll(path.sep, "/")
@@ -289,7 +285,7 @@ export const workspaceSignalsForProjects =
 
         const matchesByFileName = HashMap.fromIterable(fileMatches)
 
-        const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile): boolean => {
+        const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile) => {
           const wiringIndex = wiringIndexesByCheck[checkIndex]
           const matches = HashMap.getUnsafe(matchesByFileName, sourceFile.fileName)
 

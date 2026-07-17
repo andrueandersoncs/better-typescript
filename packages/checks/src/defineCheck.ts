@@ -2,7 +2,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { Effect, HashMap, Option, Ref } from "effect"
 import * as ts from "typescript"
-import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
+import type { Check, CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
@@ -47,6 +47,8 @@ export const packageExamples = (name: string): (() => NonEmptyRefactorExamples) 
   return loadExamples
 }
 
+export const defineSilentCheck = (name: string, check: Check) => silentCheck(name, check)
+
 export const defineCheck = <N extends ts.Node>(
   name: string,
   kinds: ReadonlyArray<ts.SyntaxKind>,
@@ -64,7 +66,7 @@ export const defineCheck = <N extends ts.Node>(
 export const defineFileCheck = (
   name: string,
   detect: (context: CheckContext) => ReadonlyArray<Detection>
-): NamedCheck => {
+) => {
   const check = fileCheck(detect)
   const examples = packageExamples(name)
 
@@ -74,7 +76,7 @@ export const defineFileCheck = (
 export const definePlannedCheck = (
   name: string,
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-): NamedCheck => {
+) => {
   const check = checkFromSubscriptions(plan)
   const examples = packageExamples(name)
 
@@ -84,7 +86,7 @@ export const definePlannedCheck = (
 export const defineSilentPlannedCheck = (
   name: string,
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-): NamedCheck => {
+) => {
   const check = checkFromSubscriptions(plan)
   const examples = packageExamples(name)
 

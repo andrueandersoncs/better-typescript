@@ -7,7 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { defineCheck } from "../defineCheck.js"
 import { detection } from "@better-typescript/core/engine/check"
 
-const isPipeName = (access: ts.PropertyAccessExpression): boolean => access.name.text === "pipe"
+const isPipeName = (access: ts.PropertyAccessExpression) => access.name.text === "pipe"
 
 const pipeMethodCallMatches = (context: CheckContext) => {
   const checker = context.checker

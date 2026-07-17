@@ -25,6 +25,6 @@ export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolic
   return makeWiring(wiring)
 }
 
-export const functionalCoreEffectWiring: Wiring = makeFunctionalCoreEffectWiring(
+export const functionalCoreEffectWiring = makeFunctionalCoreEffectWiring(
   defaultFunctionalCoreEffectPolicy
 )

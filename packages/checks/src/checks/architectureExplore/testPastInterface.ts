@@ -30,10 +30,7 @@ const edgesForSymbol = (
     return Array.every(conditions, Boolean)
   })
 
-const crossTestCallCount = (
-  edges: ReadonlyArray<WorkspaceImportEdge>,
-  symbolName: string
-): number =>
+const crossTestCallCount = (edges: ReadonlyArray<WorkspaceImportEdge>, symbolName: string) =>
   pipe(
     edges,
     Array.flatMap(Struct.get("names")),

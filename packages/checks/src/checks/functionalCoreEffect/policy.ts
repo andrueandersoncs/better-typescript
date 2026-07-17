@@ -19,7 +19,7 @@ export class FunctionalCoreEffectPolicy extends Data.Class<{
   readonly resourceTypeSuffixes: ReadonlyArray<string>
 }> {}
 
-const normalizePath = (value: string): string => {
+const normalizePath = (value: string) => {
   const withForwardSlashes = value.replaceAll("\\", "/")
 
   const withoutLeadingDotSlash = withForwardSlashes.startsWith("./")
@@ -67,12 +67,10 @@ const rootFileNames = HashSet.make(
 
 const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
 
-const containsSegment =
-  (segments: ReadonlyArray<string>) =>
-  (names: HashSet.HashSet<string>): boolean =>
-    Array.some(segments, (segment) => HashSet.has(names, segment))
+const containsSegment = (segments: ReadonlyArray<string>) => (names: HashSet.HashSet<string>) =>
+  Array.some(segments, (segment) => HashSet.has(names, segment))
 
-const hasTestSuffix = (fileName: string): boolean =>
+const hasTestSuffix = (fileName: string) =>
   Array.some(testSuffixes, (suffix) => fileName.endsWith(suffix))
 
 export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (projectRelativePath) => {
@@ -118,7 +116,7 @@ const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
   (entry) => normalizePath(entry.path).length
 )
 
-const normalizedRolePath = (entry: ArchitectureRolePath): ArchitectureRolePath => {
+const normalizedRolePath = (entry: ArchitectureRolePath) => {
   const path = normalizePath(entry.path)
 
   return new ArchitectureRolePath({
@@ -127,7 +125,7 @@ const normalizedRolePath = (entry: ArchitectureRolePath): ArchitectureRolePath =
   })
 }
 
-const pathContains = (prefix: string, candidate: string): boolean => {
+const pathContains = (prefix: string, candidate: string) => {
   const exact = candidate === prefix
   const nested = candidate.startsWith(`${prefix}/`)
 
@@ -139,7 +137,7 @@ export const roleByPrefixes = (
 ): ArchitectureRoleClassifier => {
   const ordered = pipe(rolePaths, Array.map(normalizedRolePath), Array.sort(pathLengthOrder))
 
-  const roleForPath = (projectRelativePath: string): Option.Option<ArchitectureRole> => {
+  const roleForPath = (projectRelativePath: string) => {
     const normalized = normalizePath(projectRelativePath)
 
     return pipe(
@@ -194,9 +192,7 @@ export const defaultFunctionalCoreEffectPolicy = new FunctionalCoreEffectPolicy(
   resourceTypeSuffixes: defaultResourceTypeSuffixes
 })
 
-export const policyWithRolePrefixes = (
-  rolePaths: ReadonlyArray<ArchitectureRolePath>
-): FunctionalCoreEffectPolicy =>
+export const policyWithRolePrefixes = (rolePaths: ReadonlyArray<ArchitectureRolePath>) =>
   new FunctionalCoreEffectPolicy({
     ...defaultFunctionalCoreEffectPolicy,
     roleOf: roleByPrefixes(rolePaths)

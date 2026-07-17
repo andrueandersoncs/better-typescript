@@ -1,7 +1,7 @@
 import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
 import { withProgramIndex } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
@@ -9,6 +9,8 @@ import { ModuleGraphData } from "./data.js"
 import { ModuleEdge, buildModuleEdges, toWorkspacePath } from "./programSymbols.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { moduleGraphName } from "./names.js"
 
 const message = "Module graph evidence — this Module imports other project Modules."
 
@@ -63,4 +65,6 @@ const moduleGraphElements =
 
 const moduleGraphSubscriptions = Function.compose(moduleGraphElements, fileSubscriptions)
 
-export const moduleGraph: Check = withProgramIndex(buildIndex)(moduleGraphSubscriptions)
+const moduleGraphCheck = withProgramIndex(buildIndex)(moduleGraphSubscriptions)
+
+export const moduleGraph = defineSilentCheck(moduleGraphName, moduleGraphCheck)

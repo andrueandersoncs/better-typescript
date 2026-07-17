@@ -30,29 +30,23 @@ export const deriveSignals =
   }
 
 // The name pairs with its detection here because derive joins detections by check name.
-export const namedDetection =
-  (name: string) =>
-  (detectionValue: Detection): NamedDetection =>
-    new NamedDetection({ name, detection: detectionValue })
+export const namedDetection = (name: string) => (detectionValue: Detection) =>
+  new NamedDetection({ name, detection: detectionValue })
 
 const namedDetectionName = Struct.get<NamedDetection, "name">("name")
 
-export const countAt =
-  (counts: HashMap.HashMap<string, number>) =>
-  (key: string): number =>
-    pipe(HashMap.get(counts, key), Option.getOrElse(Function.constant(0)))
+export const countAt = (counts: HashMap.HashMap<string, number>) => (key: string) =>
+  pipe(HashMap.get(counts, key), Option.getOrElse(Function.constant(0)))
 
-const addCount =
-  (key: string) =>
-  (counts: HashMap.HashMap<string, number>): HashMap.HashMap<string, number> => {
-    const next = countAt(counts)(key) + 1
+const addCount = (key: string) => (counts: HashMap.HashMap<string, number>) => {
+  const next = countAt(counts)(key) + 1
 
-    return HashMap.set(counts, key, next)
-  }
+  return HashMap.set(counts, key, next)
+}
 
-const detectionPath = (named: NamedDetection): string => named.detection.location.path
+const detectionPath = (named: NamedDetection) => named.detection.location.path
 
-const fileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]): FileDetections =>
+const fileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]) =>
   new FileDetections({ path: entry[0], elements: entry[1] })
 
 export const byFile = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<FileDetections> => {
@@ -73,20 +67,13 @@ export const parentDirectories = (filePath: string): ReadonlyArray<string> => {
   })
 }
 
-const addDetectionCount = (
-  counts: HashMap.HashMap<string, number>,
-  element: NamedDetection
-): HashMap.HashMap<string, number> => addCount(element.name)(counts)
+const addDetectionCount = (counts: HashMap.HashMap<string, number>, element: NamedDetection) =>
+  addCount(element.name)(counts)
 
-const addNameCount = (
-  counts: HashMap.HashMap<string, number>,
-  name: string
-): HashMap.HashMap<string, number> => addCount(name)(counts)
+const addNameCount = (counts: HashMap.HashMap<string, number>, name: string) =>
+  addCount(name)(counts)
 
-const addFileCheckCounts = (
-  counts: HashMap.HashMap<string, number>,
-  file: FileDetections
-): HashMap.HashMap<string, number> => {
+const addFileCheckCounts = (counts: HashMap.HashMap<string, number>, file: FileDetections) => {
   const distinctNames = pipe(
     file.elements,
     Array.map(namedDetectionName),
@@ -97,7 +84,7 @@ const addFileCheckCounts = (
   return Array.reduce(distinctNames, counts, addNameCount)
 }
 
-export const countSummary = (elements: ReadonlyArray<NamedDetection>): CountSummary => {
+export const countSummary = (elements: ReadonlyArray<NamedDetection>) => {
   const files = byFile(elements)
   const emptyCounts = HashMap.empty<string, number>()
   const countsByCheck = Array.reduce(elements, emptyCounts, addDetectionCount)
@@ -120,15 +107,13 @@ const byCountDescending: Order.Order<EvidenceItem> = Order.mapInput(
 
 const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.String, Struct.get("measure"))
 
-export const evidenceOrder: Order.Order<EvidenceItem> = Order.combine(byCountDescending, byMeasure)
+export const evidenceOrder = Order.combine(byCountDescending, byMeasure)
 
-export const evidenceItem = (measure: string, count: number): EvidenceItem =>
-  new EvidenceItem({ measure, count })
+export const evidenceItem = (measure: string, count: number) => new EvidenceItem({ measure, count })
 
-export const adviceLocation = (path: string): Location => new Location({ path })
+export const adviceLocation = (path: string) => new Location({ path })
 
-const countEntryEvidence = (entry: readonly [string, number]): EvidenceItem =>
-  evidenceItem(entry[0], entry[1])
+const countEntryEvidence = (entry: readonly [string, number]) => evidenceItem(entry[0], entry[1])
 
 export const evidenceFromCounts = (
   counts: HashMap.HashMap<string, number>
@@ -138,18 +123,16 @@ export const evidenceFromCounts = (
   return Array.sort(items, evidenceOrder)
 }
 
-const lineKey = (named: NamedDetection): string => `${named.detection.location.line}`
+const lineKey = (named: NamedDetection) => `${named.detection.location.line}`
 
-const hasDistinctChecks = (entry: readonly [string, ReadonlyArray<NamedDetection>]): boolean => {
+const hasDistinctChecks = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
   const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
 
   return HashSet.size(distinct) > 1
 }
 
-const collisionEvidence = (
-  entry: readonly [string, ReadonlyArray<NamedDetection>]
-): EvidenceItem => {
+const collisionEvidence = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
   const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
   const nameList = Array.fromIterable(distinct)
@@ -189,27 +172,26 @@ export const dominantCheckEvidence =
     return Array.sort(evidence, evidenceOrder)
   }
 
-export const evidenceText = (item: EvidenceItem): string =>
-  `  evidence: ${item.measure}: ${item.count}`
+export const evidenceText = (item: EvidenceItem) => `  evidence: ${item.measure}: ${item.count}`
 
 const adviceLevelRanks = { file: 0, directory: 1, project: 2 } as const
 
 export const adviceLevelRank = (advice: Advice): number => adviceLevelRanks[advice.level]
 
-export const advicePath = (advice: Advice): string =>
+export const advicePath = (advice: Advice) =>
   advice.level === "project" ? "project" : advice.location.path
 
 const byAdviceLevel = Order.mapInput(Order.Number, adviceLevelRank)
 const byAdvicePath = Order.mapInput(Order.String, advicePath)
 export const adviceOrder = Order.combine(byAdviceLevel, byAdvicePath)
 
-export const adviceHeader = (advice: Advice): string => {
+export const adviceHeader = (advice: Advice) => {
   const pathLabel = advicePath(advice)
 
   return `${pathLabel} [${advice.level}] — ${advice.title}`
 }
 
-export const adviceText = (advice: Advice): string => {
+export const adviceText = (advice: Advice) => {
   const header = adviceHeader(advice)
   const remediation = `  fix: ${advice.remediation}`
   const examples = Array.map(advice.examples, formatRefactorExample)
@@ -221,6 +203,6 @@ export const adviceText = (advice: Advice): string => {
   return Array.join(lines, "\n")
 }
 
-export const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
+export const isFileLevelAdvice = (advice: Advice) => advice.level === "file"
 
-export const fileAdvicePath = (advice: Advice): string => advice.location.path
+export const fileAdvicePath = (advice: Advice) => advice.location.path

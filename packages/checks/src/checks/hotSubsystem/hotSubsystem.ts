@@ -15,7 +15,7 @@ import { DirectorySignals } from "./data.js"
 
 export const hotSubsystemExamples = packageExamples("hot-subsystem")
 
-const isHotSubsystem = (directory: DirectorySignals): boolean => {
+const isHotSubsystem = (directory: DirectorySignals) => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
   const total = elements.length
   const hasEnoughSignals = total >= 25
@@ -26,7 +26,7 @@ const isHotSubsystem = (directory: DirectorySignals): boolean => {
   return Array.every(signalsEvidence, Boolean)
 }
 
-const subsystemAdvice = (directory: DirectorySignals): Advice => {
+const subsystemAdvice = (directory: DirectorySignals) => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
   const summary = countSummary(elements)
   const checkEvidence = evidenceFromCounts(summary.countsByCheck)
@@ -90,7 +90,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
     return HashMap.set(groups, path, groupedFiles)
   })
 
-  const directories = Array.map(directoryNames, (path): DirectorySignals => {
+  const directories = Array.map(directoryNames, (path) => {
     const filesOption = HashMap.get(directoryFiles, path)
 
     const belongingFiles = pipe(

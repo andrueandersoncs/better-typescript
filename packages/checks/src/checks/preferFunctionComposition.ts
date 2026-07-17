@@ -22,27 +22,24 @@ const unwrapTowerCarrier = (expression: ts.Expression): ts.Expression =>
 
 const identifierText = Struct.get<ts.Identifier, "text">("text")
 
-const carrierIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> =>
+const carrierIdentifier = (expression: ts.Expression) =>
   pipe(expression, unwrapTowerCarrier, Option.some, Option.filter(ts.isIdentifier))
 
-const isPipeCallee = (expression: ts.Expression): boolean =>
+const isPipeCallee = (expression: ts.Expression) =>
   pipe(
     carrierIdentifier(expression),
     Option.map(identifierText),
     Option.exists((text) => text === "pipe")
   )
 
-const isSeedIdentifier =
-  (name: string) =>
-  (expression: ts.Expression): boolean =>
-    pipe(
-      carrierIdentifier(expression),
-      Option.map(identifierText),
-      Option.exists((text) => text === name)
-    )
+const isSeedIdentifier = (name: string) => (expression: ts.Expression) =>
+  pipe(
+    carrierIdentifier(expression),
+    Option.map(identifierText),
+    Option.exists((text) => text === name)
+  )
 
-const callFirstArgument = (call: ts.CallExpression): Option.Option<ts.Expression> =>
-  Option.fromNullishOr(call.arguments[0])
+const callFirstArgument = (call: ts.CallExpression) => Option.fromNullishOr(call.arguments[0])
 
 const isUnaryCallTowerOver =
   (name: string) =>

@@ -16,7 +16,7 @@ export const adviceFromSignalPair = <L, R, S>(
 
   const joined = Effect.map(
     collected,
-    ([leftSignals, rightSignals]: readonly [ReadonlyArray<L>, ReadonlyArray<R>]): S =>
+    ([leftSignals, rightSignals]: readonly [ReadonlyArray<L>, ReadonlyArray<R>]) =>
       toSignals(leftSignals, rightSignals)
   )
 

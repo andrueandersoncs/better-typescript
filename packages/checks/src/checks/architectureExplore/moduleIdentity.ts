@@ -15,7 +15,7 @@ import {
 import * as ts from "typescript"
 import { withProgramIndex } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
@@ -24,6 +24,8 @@ import { fileSubscriptions, detection } from "@better-typescript/core/engine/che
 
 import { ModuleIdentityData } from "./data.js"
 import { toWorkspacePath } from "./programSymbols.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { moduleIdentityName } from "./names.js"
 
 const message =
   "Module identity evidence — this source file publishes one or more package export aliases."
@@ -50,7 +52,7 @@ const packageExportsJson = Schema.fromJsonString(PackageExports)
 const decodePackageExports = Schema.decodeUnknownOption(packageExportsJson)
 const decodeUnknownRecord = Schema.decodeUnknownOption(unknownRecordSchema)
 
-const readPackageExports = (projectRoot: string): Option.Option<PackageExports> => {
+const readPackageExports = (projectRoot: string) => {
   const packagePath = path.join(projectRoot, "package.json")
   const contents = ts.sys.readFile(packagePath)
 
@@ -59,9 +61,7 @@ const readPackageExports = (projectRoot: string): Option.Option<PackageExports> 
 
 const preferredExportConditions = Array.make("import", "default")
 
-const firstStringFromRecord = (
-  record: Record.ReadonlyRecord<string, unknown>
-): Option.Option<string> => {
+const firstStringFromRecord = (record: Record.ReadonlyRecord<string, unknown>) => {
   const preferredValues = Array.filterMap(preferredExportConditions, (key) =>
     pipe(
       Record.get(record, key),
@@ -77,7 +77,7 @@ const firstStringFromRecord = (
   return Option.orElse(preferred, Function.constant(fallback))
 }
 
-const firstStringValue = (value: unknown): Option.Option<string> =>
+const firstStringValue = (value: unknown) =>
   pipe(
     Match.value(value),
     Match.when(Predicate.isString, Option.some<string>),
@@ -113,16 +113,14 @@ const exportEntries = (exportsField: unknown): ReadonlyArray<readonly [string, s
     )
   )
 
-const toEmittedPath =
-  (rootDir: string, outDir: string) =>
-  (fileName: string): string => {
-    const relative = path.relative(rootDir, fileName)
-    const javascriptName = relative.replace(/\.tsx?$/u, ".js")
+const toEmittedPath = (rootDir: string, outDir: string) => (fileName: string) => {
+  const relative = path.relative(rootDir, fileName)
+  const javascriptName = relative.replace(/\.tsx?$/u, ".js")
 
-    return path.join(outDir, javascriptName)
-  }
+  return path.join(outDir, javascriptName)
+}
 
-const aliasFromSubpath = (packageName: string, subpath: string): string =>
+const aliasFromSubpath = (packageName: string, subpath: string) =>
   subpath === "." ? packageName : `${packageName}${subpath.slice(1)}`
 
 const matchWildcard = (pattern: string, value: string): Option.Option<string> => {
@@ -180,7 +178,7 @@ const aliasesForEmittedPath =
       )
     })
 
-const buildAliasIndex = (context: ProgramContext): AliasIndex => {
+const buildAliasIndex = (context: ProgramContext) => {
   const options = context.program.getCompilerOptions()
   const rootDir = options.rootDir ?? context.projectRoot
   const outDirOption = Option.fromNullishOr(options.outDir)
@@ -263,4 +261,6 @@ const moduleIdentityElements =
 
 const moduleIdentitySubscriptions = Function.compose(moduleIdentityElements, fileSubscriptions)
 
-export const moduleIdentity: Check = withProgramIndex(buildAliasIndex)(moduleIdentitySubscriptions)
+const moduleIdentityCheck = withProgramIndex(buildAliasIndex)(moduleIdentitySubscriptions)
+
+export const moduleIdentity = defineSilentCheck(moduleIdentityName, moduleIdentityCheck)

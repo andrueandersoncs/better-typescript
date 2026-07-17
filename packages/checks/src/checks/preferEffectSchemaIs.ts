@@ -13,26 +13,26 @@ const strictTagComparisonOperators = HashSet.make(
   ts.SyntaxKind.ExclamationEqualsEqualsToken
 )
 
-const hasTagPropertyName = (expression: ts.PropertyAccessExpression): boolean =>
+const hasTagPropertyName = (expression: ts.PropertyAccessExpression) =>
   expression.name.text === tagPropertyName
 
-const tagPropertyAccess = (expression: ts.Expression): Option.Option<ts.PropertyAccessExpression> =>
+const tagPropertyAccess = (expression: ts.Expression) =>
   pipe(
     unwrapExpression(expression),
     Option.liftPredicate(ts.isPropertyAccessExpression),
     Option.filter(hasTagPropertyName)
   )
 
-const stringLiteralExpression = (expression: ts.Expression): Option.Option<ts.StringLiteralLike> =>
+const stringLiteralExpression = (expression: ts.Expression) =>
   pipe(unwrapExpression(expression), Option.liftPredicate(ts.isStringLiteralLike))
 
-const hasTagPropertyOperand = (expression: ts.Expression): boolean =>
+const hasTagPropertyOperand = (expression: ts.Expression) =>
   pipe(tagPropertyAccess(expression), Option.isSome)
 
-const hasStringLiteralOperand = (expression: ts.Expression): boolean =>
+const hasStringLiteralOperand = (expression: ts.Expression) =>
   pipe(stringLiteralExpression(expression), Option.isSome)
 
-const isSchemaTagComparisonBinary = (node: ts.BinaryExpression): boolean => {
+const isSchemaTagComparisonBinary = (node: ts.BinaryExpression) => {
   const isStrictComparison = HashSet.has(strictTagComparisonOperators, node.operatorToken.kind)
   const leftTagRightString = hasTagPropertyOperand(node.left) && hasStringLiteralOperand(node.right)
   const leftStringRightTag = hasStringLiteralOperand(node.left) && hasTagPropertyOperand(node.right)
@@ -47,7 +47,7 @@ const isSchemaTagComparison = (node: ts.Node): node is ts.BinaryExpression =>
     Option.exists(isSchemaTagComparisonBinary)
   )
 
-const constituentIsFirstParty = (type: ts.Type): boolean => {
+const constituentIsFirstParty = (type: ts.Type) => {
   const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
   const typeSymbol = type.getSymbol()
   const ownSymbol = Option.fromNullishOr(typeSymbol)

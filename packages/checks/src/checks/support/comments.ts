@@ -6,7 +6,7 @@ const memoizeLatest = <Key extends object, Value>(load: (key: Key) => Value) => 
   const emptyCache = Option.none<LatestCacheEntry<Key, Value>>()
   const cache = Ref.makeUnsafe(emptyCache)
 
-  const memoized = (key: Key): Value => {
+  const memoized = (key: Key) => {
     const readOrLoad = (
       cached: Option.Option<LatestCacheEntry<Key, Value>>
     ): readonly [Value, Option.Option<LatestCacheEntry<Key, Value>>] => {
@@ -41,13 +41,13 @@ const commentSyntaxKinds = HashSet.make(
   ts.SyntaxKind.MultiLineCommentTrivia
 )
 
-const isCommentToken = (scanner: ts.Scanner): boolean => {
+const isCommentToken = (scanner: ts.Scanner) => {
   const kind = scanner.getToken()
 
   return HashSet.has(commentSyntaxKinds, kind)
 }
 
-const sourceCommentFrom = (scanner: ts.Scanner): SourceComment => {
+const sourceCommentFrom = (scanner: ts.Scanner) => {
   const kind = scanner.getToken()
   const pos = scanner.getTokenStart()
   const end = scanner.getTokenEnd()
@@ -189,16 +189,11 @@ const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComm
 export const sourceComments: (sourceFile: ts.SourceFile) => ReadonlyArray<SourceComment> =
   memoizeLatest(scanSourceComments)
 
-export const commentText =
-  (text: string) =>
-  (comment: SourceComment): string =>
-    text.slice(comment.pos, comment.end)
+export const commentText = (text: string) => (comment: SourceComment) =>
+  text.slice(comment.pos, comment.end)
 
-export const isSingleLineComment = (comment: SourceComment): boolean =>
+export const isSingleLineComment = (comment: SourceComment) =>
   comment.kind === ts.SyntaxKind.SingleLineCommentTrivia
 
-export const onlyBlankBetween =
-  (text: string) =>
-  (a: SourceComment) =>
-  (b: SourceComment): boolean =>
-    text.slice(a.end, b.pos).trim().length === 0
+export const onlyBlankBetween = (text: string) => (a: SourceComment) => (b: SourceComment) =>
+  text.slice(a.end, b.pos).trim().length === 0

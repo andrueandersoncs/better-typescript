@@ -1,38 +1,37 @@
 import { Array, Match, Option, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
+
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { nodeCheck, detection } from "@better-typescript/core/engine/check"
 
 import { ImportUsageData, ImportedNameUsage } from "./data.js"
 import { importElements, isTestSourceFile, toWorkspacePath } from "./programSymbols.js"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { importUsageName } from "./names.js"
 
 const message = "Import usage evidence — this import declaration binds names used in the file."
 
 const hint =
   "Counts are purely syntactic within the importing file; local shadowing of an import binding can inflate or hide references."
 
-const isInsideNode =
-  (container: ts.Node) =>
-  (node: ts.Node): boolean => {
-    const sameFile = node.getSourceFile() === container.getSourceFile()
-    const afterStart = node.pos >= container.pos
-    const beforeEnd = node.end <= container.end
-    const conditions = Array.make(sameFile, afterStart, beforeEnd)
+const isInsideNode = (container: ts.Node) => (node: ts.Node) => {
+  const sameFile = node.getSourceFile() === container.getSourceFile()
+  const afterStart = node.pos >= container.pos
+  const beforeEnd = node.end <= container.end
+  const conditions = Array.make(sameFile, afterStart, beforeEnd)
 
-    return Array.every(conditions, Boolean)
-  }
+  return Array.every(conditions, Boolean)
+}
 
-const isNamedCallReference = (node: ts.Identifier): boolean =>
+const isNamedCallReference = (node: ts.Identifier) =>
   pipe(
     Option.liftPredicate(ts.isCallExpression)(node.parent),
     Option.exists((call) => call.expression === node)
   )
 
-const isNamespaceCallReference = (node: ts.Identifier): boolean => {
+const isNamespaceCallReference = (node: ts.Identifier) => {
   const namedCall = isNamedCallReference(node)
 
   const namespaceCall = pipe(
@@ -126,23 +125,21 @@ const importUsageElement = (context: CheckContext) => {
   const relativePath = relative(context.sourceFile.fileName)
   const importerWorkspacePath = workspaceRelative(relativePath)
 
-  const elementForImport =
-    (node: ts.ImportDeclaration) =>
-    (specifier: string): Option.Option<Detection> => {
-      const bindings = importBindings(node)
-      const bindingUsage = countBinding(context.sourceFile, node)
-      const names = Array.map(bindings, bindingUsage)
+  const elementForImport = (node: ts.ImportDeclaration) => (specifier: string) => {
+    const bindings = importBindings(node)
+    const bindingUsage = countBinding(context.sourceFile, node)
+    const names = Array.map(bindings, bindingUsage)
 
-      const data = new ImportUsageData({
-        specifier,
-        importerWorkspacePath,
-        fromTest,
-        names
-      })
+    const data = new ImportUsageData({
+      specifier,
+      importerWorkspacePath,
+      fromTest,
+      names
+    })
 
-      const reported = element({ node, message, hint, data })
-      return Option.some(reported)
-    }
+    const reported = element({ node, message, hint, data })
+    return Option.some(reported)
+  }
 
   return elementForImport
 }
@@ -151,6 +148,8 @@ const importUsageElements = importElements(importUsageElement)
 
 const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
 
-export const importUsage: Check = nodeCheck(importDeclarationKinds)(ts.isImportDeclaration)(
+const importUsageCheck = nodeCheck(importDeclarationKinds)(ts.isImportDeclaration)(
   importUsageElements
 )
+
+export const importUsage = defineSilentCheck(importUsageName, importUsageCheck)

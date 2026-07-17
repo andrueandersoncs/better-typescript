@@ -95,7 +95,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       owner: string,
       relatedConcepts: ReadonlyArray<string>,
       externalCallers: number
-    ): ConceptSignalData => {
+    ) => {
       const owners = ownersFor(entry)
       const independentOwners = HashSet.size(owners)
 
@@ -109,12 +109,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       })
     }
 
-    const append = (
-      node: ts.Node,
-      message: string,
-      hint: string,
-      data: ConceptSignalData
-    ): Detection => {
+    const append = (node: ts.Node, message: string, hint: string, data: ConceptSignalData) => {
       const element = match({ node, message, hint, data })
 
       MutableList.append(found, element)
@@ -122,10 +117,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       return element
     }
 
-    const canonicalSymbol = (symbol: ts.Symbol): ts.Symbol =>
+    const canonicalSymbol = (symbol: ts.Symbol) =>
       (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : checker.getAliasedSymbol(symbol)
 
-    const modelAt = (node: ts.Node): Option.Option<DataStructureEntry> =>
+    const modelAt = (node: ts.Node) =>
       pipe(
         checker.getSymbolAtLocation(node),
         Option.fromNullishOr,
@@ -212,7 +207,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       })
     }
 
-    const duplicateTarget = (entry: DataStructureEntry): Option.Option<DataStructureEntry> =>
+    const duplicateTarget = (entry: DataStructureEntry) =>
       pipe(
         entry.shape,
         Option.flatMap((shape) => HashMap.get(index.shapeGroups, shape)),
@@ -222,7 +217,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.filter((canonical) => canonical.symbol !== entry.symbol)
       )
 
-    const ownerSourceFile = (symbol: ts.Symbol): Option.Option<ts.SourceFile> => {
+    const ownerSourceFile = (symbol: ts.Symbol) => {
       const symbolKey = Equal.byReferenceUnsafe(symbol)
 
       const functionOwner = pipe(
@@ -251,7 +246,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       )
     }
 
-    const rationaleIsComplete = (entry: DataStructureEntry): boolean => {
+    const rationaleIsComplete = (entry: DataStructureEntry) => {
       const sourceText = entry.sourceFile.getFullText()
       const emptyRanges = Array.empty<ts.CommentRange>()
 

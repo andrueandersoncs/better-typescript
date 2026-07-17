@@ -106,7 +106,7 @@ const boundaryPairs = (
 const countKind = (
   elements: ReadonlyArray<readonly [Detection, FunctionalCoreBoundaryData]>,
   kind: FunctionalCoreBoundaryKind
-): number => Array.filter(elements, ([, data]) => data.kind === kind).length
+) => Array.filter(elements, ([, data]) => data.kind === kind).length
 
 const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
   const relevant = pipe(

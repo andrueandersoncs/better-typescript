@@ -15,7 +15,7 @@ const baseRemediation =
 const deadRemediation =
   " A seam with no consumers is dead surface; delete the service until a caller and a second adapter exist."
 
-const isHypotheticalContext = (element: NamedDetection): boolean =>
+const isHypotheticalContext = (element: NamedDetection) =>
   pipe(
     contextTagSeamDataOf(element),
     Option.exists((data) => {

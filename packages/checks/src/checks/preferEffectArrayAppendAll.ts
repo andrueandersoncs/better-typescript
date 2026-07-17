@@ -12,16 +12,16 @@ const hint =
   "Use Array.appendAll from Effect to combine arrays instead of spreading a conditional " +
   "expression that chooses between an array and an empty array literal."
 
-const arrayLiteralElementCount = (expression: ts.Expression): number => {
+const arrayLiteralElementCount = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
 
   return ts.isArrayLiteralExpression(unwrapped) ? unwrapped.elements.length : -1
 }
 
-const isEmptyArrayLiteral = (expression: ts.Expression): boolean =>
+const isEmptyArrayLiteral = (expression: ts.Expression) =>
   arrayLiteralElementCount(expression) === 0
 
-const isNonEmptyArrayBranch = (expression: ts.Expression): boolean =>
+const isNonEmptyArrayBranch = (expression: ts.Expression) =>
   arrayLiteralElementCount(expression) !== 0
 
 const conditionalArraySpreadMatches = (context: CheckContext) => {

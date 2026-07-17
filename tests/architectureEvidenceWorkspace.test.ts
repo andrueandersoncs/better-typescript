@@ -3,7 +3,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect, Function, Option, Order, Result, Schema, pipe } from "effect"
-import type { Check } from "@better-typescript/core/engine/check/data"
+import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { namedDetection } from "@better-typescript/core/engine/derive"
 import { ProgramContext } from "@better-typescript/core/engine/sources/data"
@@ -19,12 +19,6 @@ import {
   ImportUsageData,
   ModuleIdentityData
 } from "@better-typescript/checks/architectureExplore/data"
-import {
-  exportSurfaceName,
-  importUsageName,
-  moduleGraphName,
-  moduleIdentityName
-} from "@better-typescript/checks/architectureExplore/names"
 import { workspaceImportEdges } from "@better-typescript/checks/architectureExplore/evidence"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -50,16 +44,17 @@ const decodeData = <A>(
   )
 
 const runWorkspaceChecks = async (
-  checks: ReadonlyArray<Check>
+  checks: ReadonlyArray<NamedCheck>
 ): Promise<{
   readonly rootPath: string
   readonly detectionsByCheck: ReadonlyArray<ReadonlyArray<Detection>>
 }> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
+  const executableChecks = Array.map(checks, (namedCheck) => namedCheck.check)
 
   const detectionsByCheck = Array.reduce(
     workspace.projects,
-    Array.map(checks, () => Array.empty<Detection>()),
+    Array.map(executableChecks, () => Array.empty<Detection>()),
     (current, project) => {
       const loaded = contextFor(project.rootPath)(project.program)
 
@@ -70,7 +65,7 @@ const runWorkspaceChecks = async (
         workspaceRoot: workspace.rootPath
       })
 
-      const projectDetections = runChecks(checks)(includeEverySourceFile)(context)
+      const projectDetections = runChecks(executableChecks)(includeEverySourceFile)(context)
 
       return Array.map(current, (detections, checkIndex) =>
         Array.appendAll(detections, projectDetections[checkIndex] ?? Array.empty())
@@ -216,7 +211,7 @@ test("exportSurface excludes home-file refs and splits test references", async (
 test("workspaceImportEdges joins checks test import to lib util via aliases", async () => {
   const checks = Array.make(importUsage, moduleIdentity, exportSurface, moduleGraph)
   const { detectionsByCheck } = await runWorkspaceChecks(checks)
-  const names = Array.make(importUsageName, moduleIdentityName, exportSurfaceName, moduleGraphName)
+  const names = Array.map(checks, (namedCheck) => namedCheck.name)
 
   const named = Array.flatten(
     Array.map(detectionsByCheck, (detections, checkIndex) =>

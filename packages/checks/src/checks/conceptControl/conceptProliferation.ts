@@ -36,7 +36,7 @@ const proliferationKinds = HashSet.make<ConceptSignalKind[]>(
   "unused-field"
 )
 
-const immediateDirectory = (filePath: string): string => {
+const immediateDirectory = (filePath: string) => {
   const normalized = filePath.replaceAll("\\", "/")
   const segments = normalized.split("/")
   const parents = Array.dropRight(segments, 1)
@@ -44,19 +44,16 @@ const immediateDirectory = (filePath: string): string => {
   return Array.join(parents, "/") || "."
 }
 
-const signalData = (element: Detection): Option.Option<ConceptSignalData> =>
+const signalData = (element: Detection) =>
   pipe(element.data, Option.fromNullishOr, Option.filter(Schema.is(ConceptSignalData)))
 
-const signalKindCount = (
-  counts: HashMap.HashMap<string, number>,
-  data: ConceptSignalData
-): HashMap.HashMap<string, number> => {
+const signalKindCount = (counts: HashMap.HashMap<string, number>, data: ConceptSignalData) => {
   const current = pipe(HashMap.get(counts, data.kind), Option.getOrElse(Function.constant(0)))
 
   return HashMap.set(counts, data.kind, current + 1)
 }
 
-const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): Advice => {
+const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData) => {
   const externalCallers = evidenceItem("external callers", data.externalCallers)
   const independentOwners = evidenceItem("independent model owners", data.independentOwners)
   const evidence = Array.make(externalCallers, independentOwners)

@@ -2,8 +2,10 @@ import { Array, Equal, Function, HashMap, Option, Struct, Tuple, flow, pipe, Res
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { withProgramIndex } from "@better-typescript/core/engine/check"
+import { defineSilentCheck } from "../../defineCheck.js"
+import { contextTagSeamsName } from "./names.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import type { Check } from "@better-typescript/core/engine/check/data"
+
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
@@ -25,30 +27,28 @@ const contextSeamMembers: ReadonlyArray<string> = Array.make("Tag", "Service", "
 
 const effectSeamMembers: ReadonlyArray<string> = Array.make("Service")
 
-const effectRootSymbol =
-  (checker: ts.TypeChecker) =>
-  (access: ts.PropertyAccessExpression): Option.Option<ts.Symbol> =>
-    pipe(
-      Option.liftPredicate(ts.isIdentifier)(access.expression),
-      Option.flatMap(resolvedSymbolAt(checker)),
-      Option.filter(symbolDeclaredInEffectPackage)
-    )
+const effectRootSymbol = (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
+  pipe(
+    Option.liftPredicate(ts.isIdentifier)(access.expression),
+    Option.flatMap(resolvedSymbolAt(checker)),
+    Option.filter(symbolDeclaredInEffectPackage)
+  )
 
-const rootIsContextSeam = (root: ts.Identifier, member: string): boolean => {
+const rootIsContextSeam = (root: ts.Identifier, member: string) => {
   const isContextRoot = root.text === "Context"
   const isContextMember = Array.contains(contextSeamMembers, member)
 
   return isContextRoot && isContextMember
 }
 
-const rootIsEffectSeam = (root: ts.Identifier, member: string): boolean => {
+const rootIsEffectSeam = (root: ts.Identifier, member: string) => {
   const isEffectRoot = root.text === "Effect"
   const isEffectMember = Array.contains(effectSeamMembers, member)
 
   return isEffectRoot && isEffectMember
 }
 
-const accessNamesSeamApi = (access: ts.PropertyAccessExpression): boolean =>
+const accessNamesSeamApi = (access: ts.PropertyAccessExpression) =>
   pipe(
     Option.liftPredicate(ts.isIdentifier)(access.expression),
     Option.exists((root) => {
@@ -60,17 +60,15 @@ const accessNamesSeamApi = (access: ts.PropertyAccessExpression): boolean =>
     })
   )
 
-const isContextOrEffectSeamAccess =
-  (checker: ts.TypeChecker) =>
-  (expression: ts.Expression): boolean =>
-    pipe(
-      expression,
-      unwrapCallee,
-      Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.filter(accessNamesSeamApi),
-      Option.flatMap(effectRootSymbol(checker)),
-      Option.isSome
-    )
+const isContextOrEffectSeamAccess = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
+  pipe(
+    expression,
+    unwrapCallee,
+    Option.liftPredicate(ts.isPropertyAccessExpression),
+    Option.filter(accessNamesSeamApi),
+    Option.flatMap(effectRootSymbol(checker)),
+    Option.isSome
+  )
 
 const seamHeritageExpression = (declaration: ts.ClassDeclaration): Option.Option<ts.Expression> => {
   const clauses = declaration.heritageClauses ?? Array.empty()
@@ -84,15 +82,13 @@ const seamHeritageExpression = (declaration: ts.ClassDeclaration): Option.Option
   )
 }
 
-const isSeamClassDeclaration =
-  (checker: ts.TypeChecker) =>
-  (declaration: ts.ClassDeclaration): boolean =>
-    pipe(seamHeritageExpression(declaration), Option.exists(isContextOrEffectSeamAccess(checker)))
+const isSeamClassDeclaration = (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
+  pipe(seamHeritageExpression(declaration), Option.exists(isContextOrEffectSeamAccess(checker)))
 
-const classDeclarationName = (declaration: ts.ClassDeclaration): Option.Option<ts.Identifier> =>
+const classDeclarationName = (declaration: ts.ClassDeclaration) =>
   Option.fromNullishOr(declaration.name)
 
-const namedClassDeclaration = (statement: ts.Statement): Option.Option<ts.ClassDeclaration> =>
+const namedClassDeclaration = (statement: ts.Statement) =>
   pipe(
     Option.liftPredicate(ts.isClassDeclaration)(statement),
     Option.filter((declaration) => pipe(declaration, classDeclarationName, Option.isSome))
@@ -144,16 +140,14 @@ const ancestorMatching =
     return visit(node.parent)
   }
 
-const referenceIsInsideDeclaration =
-  (declaration: ts.Node) =>
-  (node: ts.Node): boolean => {
-    const sameFile = node.getSourceFile() === declaration.getSourceFile()
-    const afterStart = node.pos >= declaration.pos
-    const beforeEnd = node.end <= declaration.end
-    const checks = Array.make(sameFile, afterStart, beforeEnd)
+const referenceIsInsideDeclaration = (declaration: ts.Node) => (node: ts.Node) => {
+  const sameFile = node.getSourceFile() === declaration.getSourceFile()
+  const afterStart = node.pos >= declaration.pos
+  const beforeEnd = node.end <= declaration.end
+  const checks = Array.make(sameFile, afterStart, beforeEnd)
 
-    return Array.every(checks, Boolean)
-  }
+  return Array.every(checks, Boolean)
+}
 
 const isImportDeclarationAncestor = flow(ancestorMatching(ts.isImportDeclaration), Option.isSome)
 
@@ -166,12 +160,10 @@ const isTypeNodeAncestor = (current: ts.Node): boolean => {
 
 const isTypePositionReference = flow(ancestorMatching(isTypeNodeAncestor), Option.isSome)
 
-const argumentEqualsCurrent =
-  (current: ts.Node) =>
-  (argument: ts.Expression): boolean =>
-    argument === current
+const argumentEqualsCurrent = (current: ts.Node) => (argument: ts.Expression) =>
+  argument === current
 
-const argumentCallExpression = (node: ts.Node): Option.Option<ts.CallExpression> => {
+const argumentCallExpression = (node: ts.Node) => {
   const visit = (current: ts.Node): Option.Option<ts.CallExpression> => {
     const parent = current.parent
     const parenthesizedParent = Option.liftPredicate(ts.isParenthesizedExpression)(parent)
@@ -197,23 +189,21 @@ const argumentCallExpression = (node: ts.Node): Option.Option<ts.CallExpression>
   return visit(node)
 }
 
-const accessIsLayerRoot = (access: ts.PropertyAccessExpression): boolean =>
+const accessIsLayerRoot = (access: ts.PropertyAccessExpression) =>
   pipe(
     Option.liftPredicate(ts.isIdentifier)(access.expression),
     Option.exists((root) => root.text === "Layer")
   )
 
-const isLayerPropertyCall =
-  (checker: ts.TypeChecker) =>
-  (call: ts.CallExpression): boolean =>
-    pipe(
-      Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression),
-      Option.filter(accessIsLayerRoot),
-      Option.flatMap(effectRootSymbol(checker)),
-      Option.isSome
-    )
+const isLayerPropertyCall = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression),
+    Option.filter(accessIsLayerRoot),
+    Option.flatMap(effectRootSymbol(checker)),
+    Option.isSome
+  )
 
-const isTagOfCall = (node: ts.Identifier): boolean => {
+const isTagOfCall = (node: ts.Identifier) => {
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(node.parent)
 
   const ofAccess = pipe(
@@ -233,22 +223,18 @@ const isTagOfCall = (node: ts.Identifier): boolean => {
   })
 }
 
-const isAdapterReference =
-  (checker: ts.TypeChecker) =>
-  (identifier: ts.Identifier): boolean => {
-    const layerCall = argumentCallExpression(identifier)
-    const layerAdapter = Option.exists(layerCall, isLayerPropertyCall(checker))
-    const tagOfAdapter = isTagOfCall(identifier)
+const isAdapterReference = (checker: ts.TypeChecker) => (identifier: ts.Identifier) => {
+  const layerCall = argumentCallExpression(identifier)
+  const layerAdapter = Option.exists(layerCall, isLayerPropertyCall(checker))
+  const tagOfAdapter = isTagOfCall(identifier)
 
-    return layerAdapter || tagOfAdapter
-  }
+  return layerAdapter || tagOfAdapter
+}
 
 const incrementCounts =
   (kind: "productionAdapter" | "testAdapter" | "consumer") =>
   (symbol: ts.Symbol) =>
-  (
-    counts: HashMap.HashMap<ts.Symbol, readonly [number, number, number]>
-  ): HashMap.HashMap<ts.Symbol, readonly [number, number, number]> => {
+  (counts: HashMap.HashMap<ts.Symbol, readonly [number, number, number]>) => {
     const symbolKey = Equal.byReferenceUnsafe(symbol)
     const current = pipe(HashMap.get(counts, symbolKey), Option.getOrElse(emptySeamCounts))
     const production = kind === "productionAdapter" ? current[0] + 1 : current[0]
@@ -398,4 +384,6 @@ const contextTagSeamElements =
 
 const contextTagSeamSubscriptions = Function.compose(contextTagSeamElements, fileSubscriptions)
 
-export const contextTagSeams: Check = withProgramIndex(buildIndex)(contextTagSeamSubscriptions)
+const contextTagSeamCheck = withProgramIndex(buildIndex)(contextTagSeamSubscriptions)
+
+export const contextTagSeams = defineSilentCheck(contextTagSeamsName, contextTagSeamCheck)
