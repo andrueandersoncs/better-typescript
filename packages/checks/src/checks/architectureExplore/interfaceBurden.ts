@@ -24,7 +24,7 @@ const emptySurface = new InterfaceBurdenData({
 })
 
 const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>): number =>
-  Array.filter(parameters, (parameter) => {
+  Array.countBy(parameters, (parameter) => {
     const optional = Option.fromNullishOr(parameter.questionToken)
     const defaulted = Option.fromNullishOr(parameter.initializer)
     const rest = Option.fromNullishOr(parameter.dotDotDotToken)
@@ -34,7 +34,7 @@ const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>): 
     const omissions = Array.make(optionalMissing, defaultMissing, restMissing)
 
     return Array.every(omissions, Boolean)
-  }).length
+  })
 
 const callableSurface = (
   node:

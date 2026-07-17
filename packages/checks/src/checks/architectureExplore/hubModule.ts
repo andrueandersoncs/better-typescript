@@ -85,7 +85,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
     const fanInItem = evidenceItem("fan-in-modules", fanIn)
     const fanOutItem = evidenceItem("fan-out-modules", fanOut)
     const evidence = Array.make(operationsItem, fanInItem, fanOutItem)
-    const examples = hubModuleExamples()
+    const examples = hubModuleExamples
 
     const advice = new Advice({
       location,

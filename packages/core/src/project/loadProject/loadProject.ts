@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Effect, Function, HashSet, Option, flow, pipe } from "effect"
+import { Array, Effect, Function, HashSet, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "../../engine/check/data.js"
 import type { Detection } from "../../engine/location/data.js"
@@ -46,10 +46,21 @@ export const discoverWorkspace: (
   return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
 })
 
+const analysisOptions: ts.CompilerOptions = {
+  noEmit: true,
+  noUnusedLocals: true,
+  noUnusedParameters: true
+}
+
+export const compilerOptionsForAnalysis = (options: ts.CompilerOptions): ts.CompilerOptions =>
+  pipe(options, Struct.assign(analysisOptions))
+
 export const loadProjectConfig = (config: ProjectConfig): LoadedProject => {
+  const options = compilerOptionsForAnalysis(config.parsed.options)
+
   const program = ts.createProgram({
     rootNames: config.parsed.fileNames,
-    options: config.parsed.options,
+    options,
     projectReferences: config.parsed.projectReferences
   })
 

@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Array, Effect, Function, Result, Stream, pipe } from "effect"
+import { Array, Effect, Result, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
@@ -16,10 +16,17 @@ import {
 } from "@better-typescript/core/engine/wiring"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { withFallbackAdvice } from "@better-typescript/core/engine/report"
-import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
+import type { ReportEvent } from "@better-typescript/core/engine/report/data"
+import {
+  directoryRefactorExamples,
+  exampleSnippet,
+  inlineRefactorExamples,
+  refactorExample
+} from "@better-typescript/core/engine/example"
+import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import { astNodesIn, foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { reportEvents } from "@better-typescript/core/engine/watch"
+import { makeReportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import {
   contextFromLoadedProject,
@@ -39,12 +46,12 @@ import type {
   LoadedWorkspace
 } from "@better-typescript/core/project/loadProject/data"
 
-const probeExamples = Function.constant([
+const probeExamples = inlineRefactorExamples([
   refactorExample(
     exampleSnippet("src/cases.ts", `throw new Error("boom")`),
     exampleSnippet("src/cases.ts", `yield* new BoomError()`)
   )
-] as const)
+])
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = (name: string): string => path.join(testDirectory, "fixtures", name)
@@ -67,9 +74,21 @@ const loadFixtureProject = async (name: string): Promise<LoadedProject> => {
 const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
   Effect.runPromise(Stream.runCollect(stream))
 
+const reportEvents =
+  <DeriveError>(config: WiringConfig<DeriveError>) =>
+  <UpdateError, R>(
+    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
+  ): Stream.Stream<ReportEvent, DeriveError | UpdateError | ExampleLoadError, R> =>
+    Stream.unwrap(
+      pipe(
+        makeReportEvents(config),
+        Effect.map((report) => report(updates))
+      )
+    )
+
 const reportTexts =
   <E>(config: WiringConfig<E>) =>
-  (workspace: LoadedWorkspace): Stream.Stream<string, E> => {
+  (workspace: LoadedWorkspace): Stream.Stream<string, E | ExampleLoadError> => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
       contexts: workspace.projects.map(contextFromLoadedProject)
@@ -198,7 +217,7 @@ const advice = (
   title,
   remediation,
   evidence: [{ measure: `${title} evidence`, count: 1 }],
-  examples: probeExamples()
+  examples: probeExamples
 })
 
 const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
@@ -399,6 +418,15 @@ test("an unmatched glob wiring invokes neither checks nor derive", async () => {
   assert.deepEqual(blocks, [])
 })
 
+test("reportEvents does not load examples for a check without detections", async () => {
+  const missingExamples = directoryRefactorExamples(fixturePath("missing-report-examples"))
+  const noOutputCheck = namedCheck("no output", noOpCheck, missingExamples)
+  const workspace = await loadFixtureWorkspace("no-throw")
+  const blocks = await collectStream(reportFromTestWiring(testWiring([noOutputCheck]))(workspace))
+
+  assert.deepEqual(blocks, [])
+})
+
 test("glob wiring drops detections outside its matched files", async () => {
   const outsideDetection = new Detection({
     location: location("src/allowed.ts", 1, 1),
@@ -488,7 +516,7 @@ test("reportEvents renders advice remediation examples before evidence", async (
       { measure: "signals", count: 12 },
       { measure: "no-throw", count: 4 }
     ],
-    examples: probeExamples()
+    examples: probeExamples
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
@@ -697,7 +725,8 @@ test("reportEvents preserves the derivation error channel", async () => {
 
   const fallibleConfig = defineConfig([{ files: ["**/*"], wiring: fallibleWiring }])
 
-  const output: Stream.Stream<string, typeof failure> = reportTexts(fallibleConfig)(workspace)
+  const output: Stream.Stream<string, typeof failure | ExampleLoadError> =
+    reportTexts(fallibleConfig)(workspace)
 
   const actual = await Effect.runPromise(pipe(output, Stream.runCollect, Effect.flip))
 
@@ -734,7 +763,7 @@ test("reportEvents lets silent checks influence advice without rendering local c
                 count: silentDetections.length
               }
             ],
-            examples: probeExamples()
+            examples: probeExamples
           }
         ]
       : []

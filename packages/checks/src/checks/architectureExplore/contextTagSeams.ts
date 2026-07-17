@@ -1,7 +1,7 @@
-import { Array, Equal, Function, HashMap, Option, Struct, Tuple, flow, pipe, Result } from "effect"
+import { Array, Function, HashMap, Option, Struct, Tuple, flow, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { withProgramIndex } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -11,6 +11,7 @@ import { ContextTagSeamData } from "./data.js"
 import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "../support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { isTestSourceFile } from "./programSymbols.js"
+import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const emptySeamCounts = (): readonly [number, number, number] => Tuple.make(0, 0, 0)
@@ -247,9 +248,9 @@ const incrementCounts =
   (kind: "productionAdapter" | "testAdapter" | "consumer") =>
   (symbol: ts.Symbol) =>
   (
-    counts: HashMap.HashMap<ts.Symbol, readonly [number, number, number]>
-  ): HashMap.HashMap<ts.Symbol, readonly [number, number, number]> => {
-    const symbolKey = Equal.byReferenceUnsafe(symbol)
+    counts: HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]>
+  ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]> => {
+    const symbolKey = referenceKey(symbol)
     const current = pipe(HashMap.get(counts, symbolKey), Option.getOrElse(emptySeamCounts))
     const production = kind === "productionAdapter" ? current[0] + 1 : current[0]
     const test = kind === "testAdapter" ? current[1] + 1 : current[1]
@@ -263,7 +264,7 @@ const buildIndex = (
   context: ProgramContext
 ): readonly [
   ReadonlyArray<readonly [ts.ClassDeclaration, ts.Symbol]>,
-  HashMap.HashMap<ts.Symbol, readonly [number, number, number]>
+  HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]>
 ] => {
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const candidates = seamCandidates(context)(sourceFiles)
@@ -271,7 +272,7 @@ const buildIndex = (
   const candidateCounts = pipe(
     candidates,
     Array.map((candidate) => {
-      const symbolKey = Equal.byReferenceUnsafe(candidate[1])
+      const symbolKey = referenceKey(candidate[1])
       const emptyCounts = emptySeamCounts()
 
       return Tuple.make(symbolKey, emptyCounts)
@@ -282,7 +283,7 @@ const buildIndex = (
   const candidateLookup = pipe(
     candidates,
     Array.map((candidate) => {
-      const symbolKey = Equal.byReferenceUnsafe(candidate[1])
+      const symbolKey = referenceKey(candidate[1])
 
       return Tuple.make(symbolKey, candidate)
     }),
@@ -294,15 +295,15 @@ const buildIndex = (
   const scanFile =
     (sourceFile: ts.SourceFile) =>
     (
-      counts: HashMap.HashMap<ts.Symbol, readonly [number, number, number]>
-    ): HashMap.HashMap<ts.Symbol, readonly [number, number, number]> => {
+      counts: HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]>
+    ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]> => {
       const fromTest = classifyTestSource(sourceFile)
 
       return foldAst(
         (
-          current: HashMap.HashMap<ts.Symbol, readonly [number, number, number]>,
+          current: HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]>,
           node: ts.Node
-        ): HashMap.HashMap<ts.Symbol, readonly [number, number, number]> =>
+        ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]> =>
           pipe(
             Option.liftPredicate(ts.isIdentifier)(node),
             Option.filter((identifier) => {
@@ -319,7 +320,7 @@ const buildIndex = (
               pipe(
                 resolvedSymbolAt(context.checker)(identifier),
                 Option.flatMap((symbol) => {
-                  const symbolKey = Equal.byReferenceUnsafe(symbol)
+                  const symbolKey = referenceKey(symbol)
 
                   return HashMap.get(candidateLookup, symbolKey)
                 }),
@@ -357,7 +358,7 @@ const contextTagSeamElements =
   (
     index: readonly [
       ReadonlyArray<readonly [ts.ClassDeclaration, ts.Symbol]>,
-      HashMap.HashMap<ts.Symbol, readonly [number, number, number]>
+      HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]>
     ]
   ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
@@ -367,7 +368,7 @@ const contextTagSeamElements =
       index[0],
       Array.filter((candidate) => candidate[0].getSourceFile() === context.sourceFile),
       Array.map((candidate) => {
-        const candidateKey = Equal.byReferenceUnsafe(candidate[1])
+        const candidateKey = referenceKey(candidate[1])
         const counts = pipe(HashMap.get(index[1], candidateKey), Option.getOrElse(emptySeamCounts))
         const className = Option.fromNullishOr(candidate[0].name)
 

@@ -1,4 +1,4 @@
-import { Array } from "effect"
+import { Array, pipe } from "effect"
 import { preferEffectSchemaGuard } from "../checks/preferEffectSchemaGuard.js"
 import { preferEffectSchemaIs } from "../checks/preferEffectSchemaIs.js"
 import { preferEffectSchemaConstructor } from "../checks/preferEffectSchemaConstructor.js"
@@ -6,25 +6,35 @@ import { preferEffectSchemaClass } from "../checks/preferEffectSchemaClass.js"
 import { preferEffectFn } from "../checks/preferEffectFn.js"
 import { preferEffectFunctionConstant } from "../checks/preferEffectFunctionConstant.js"
 import { preferEffectPropertyAccessors } from "../checks/preferEffectPropertyAccessors.js"
-import { preferEffectRecordFilterMap } from "../checks/preferEffectRecordFilterMap.js"
-import { preferEffectArray } from "../checks/preferEffectArray.js"
-import { preferEffectArrayAppendAll } from "../checks/preferEffectArrayAppendAll.js"
 import { preferSchemaTaggedClass } from "../checks/preferSchemaTaggedClass.js"
 import { requireWireSafeSchemaTaggedClass } from "../checks/requireWireSafeSchemaTaggedClass.js"
+import { effectCollectionChecks } from "./effectCollectionChecks.js"
+import { noUnsafeEffectApis } from "../checks/noUnsafeEffectApis.js"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 
-// Member order is pinned because concatenated categories define the public report block order.
-export const effectIdiomChecks: ReadonlyArray<NamedCheck> = Array.make(
+const effectSchemaChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectSchemaGuard,
   preferEffectSchemaIs,
   preferEffectSchemaConstructor,
-  preferEffectSchemaClass,
+  preferEffectSchemaClass
+)
+
+const effectFunctionChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferEffectFn,
   preferEffectFunctionConstant,
-  preferEffectPropertyAccessors,
-  preferEffectRecordFilterMap,
-  preferEffectArray,
-  preferEffectArrayAppendAll,
+  preferEffectPropertyAccessors
+)
+
+const schemaModelingChecks: ReadonlyArray<NamedCheck> = Array.make(
   preferSchemaTaggedClass,
   requireWireSafeSchemaTaggedClass
+)
+
+// Member order is pinned because concatenated categories define the public report block order.
+export const effectIdiomChecks: ReadonlyArray<NamedCheck> = pipe(
+  effectSchemaChecks,
+  Array.appendAll(effectFunctionChecks),
+  Array.appendAll(effectCollectionChecks),
+  Array.appendAll(schemaModelingChecks),
+  Array.append(noUnsafeEffectApis)
 )

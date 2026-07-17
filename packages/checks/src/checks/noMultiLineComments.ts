@@ -3,7 +3,10 @@ import { defineFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { isSingleLineComment, onlyBlankBetween, sourceComments } from "./support/comments.js"
+import {
+  isSingleLineComment,
+  onlyBlankBetween
+} from "@better-typescript/core/engine/sources/comments"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 const message = "Avoid multi-line comments."
@@ -22,7 +25,7 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
-  const comments = sourceComments(sourceFile)
+  const comments = context.comments
   const blockComments = Array.filter(comments, (comment) => !isSingleLineComment(comment))
   const blockPositions = Array.map(blockComments, commentPosition)
   const singleLineComments = Array.filter(comments, isSingleLineComment)

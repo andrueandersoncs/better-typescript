@@ -12,6 +12,7 @@ import {
   pipe
 } from "effect"
 import { formatRefactorExample } from "../example/example.js"
+import type { RefactorExample } from "../example/data.js"
 import { Location } from "../location/data.js"
 import type { Detection } from "../location/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
@@ -209,17 +210,19 @@ export const adviceHeader = (advice: Advice): string => {
   return `${pathLabel} [${advice.level}] — ${advice.title}`
 }
 
-export const adviceText = (advice: Advice): string => {
-  const header = adviceHeader(advice)
-  const remediation = `  fix: ${advice.remediation}`
-  const examples = Array.map(advice.examples, formatRefactorExample)
-  const evidence = Array.map(advice.evidence, evidenceText)
-  const prefixLines = Array.make(header, remediation)
-  const remediationLines = Array.appendAll(prefixLines, examples)
-  const lines = Array.appendAll(remediationLines, evidence)
+export const adviceText =
+  (examples: ReadonlyArray<RefactorExample>) =>
+  (advice: Advice): string => {
+    const header = adviceHeader(advice)
+    const remediation = `  fix: ${advice.remediation}`
+    const exampleText = Array.map(examples, formatRefactorExample)
+    const evidence = Array.map(advice.evidence, evidenceText)
+    const prefixLines = Array.make(header, remediation)
+    const remediationLines = Array.appendAll(prefixLines, exampleText)
+    const lines = Array.appendAll(remediationLines, evidence)
 
-  return Array.join(lines, "\n")
-}
+    return Array.join(lines, "\n")
+  }
 
 export const isFileLevelAdvice = (advice: Advice): boolean => advice.level === "file"
 

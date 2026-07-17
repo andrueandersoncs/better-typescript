@@ -2,9 +2,10 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Array, Effect, Equal, HashMap, HashSet, Option } from "effect"
+import { Array, Effect, HashMap, HashSet, Option } from "effect"
 import { conceptControl } from "@better-typescript/checks/conceptControl"
 import { buildConceptIndex } from "@better-typescript/checks/conceptControl/conceptIndex"
+import { referenceKey } from "@better-typescript/checks/support/referenceKey"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
@@ -110,7 +111,7 @@ test("concept index recognizes Effect v4 data classes without spelling false pos
 
   const rolesFor = (name: string) => {
     const entry = entryNamed(name)
-    const roles = HashMap.get(index.rolesByData, Equal.byReferenceUnsafe(entry.symbol))
+    const roles = HashMap.get(index.rolesByData, referenceKey(entry.symbol))
 
     assert.ok(Option.isSome(roles), `missing concept roles for ${name}`)
 

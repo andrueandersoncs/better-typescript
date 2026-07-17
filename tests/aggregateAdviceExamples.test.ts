@@ -7,11 +7,12 @@ import { architectureExploreWiring } from "@better-typescript/checks/preset/arch
 import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 import { packageExampleRoot } from "./packageExamples.js"
 import {
+  directoryRefactorExamples,
   formatRefactorExample,
-  loadRefactorExamplesAt
+  makeRefactorExampleResolver
 } from "@better-typescript/core/engine/example"
 import type { SignalEvent } from "@better-typescript/core/engine/report/data"
-import { reportEvents } from "@better-typescript/core/engine/watch"
+import { makeReportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defineConfig } from "@better-typescript/core/engine/wiring"
 import type { Wiring } from "@better-typescript/core/engine/wiring/data"
@@ -181,9 +182,8 @@ const reportAt = async (
     rootPath: workspace.rootPath,
     contexts: workspace.projects.map(contextFromLoadedProject)
   })
-  const events = await Effect.runPromise(
-    Stream.runCollect(reportEvents(config)(Stream.succeed(update)))
-  )
+  const report = await Effect.runPromise(makeReportEvents(config))
+  const events = await Effect.runPromise(Stream.runCollect(report(Stream.succeed(update))))
 
   return events.filter((event): event is SignalEvent => event._tag === "signal")
 }
@@ -203,7 +203,8 @@ for (const exampleCase of adviceExampleCases) {
     const goodBlocks = await reportAt(exampleCase.wiring, path.join(pairRoot, "good"))
     const badAdvice = blocksWithTitle(badBlocks, exampleCase.title)
     const goodAdvice = blocksWithTitle(goodBlocks, exampleCase.title)
-    const examples = await Effect.runPromise(loadRefactorExamplesAt(exampleRoot))
+    const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+    const examples = await Effect.runPromise(resolve(directoryRefactorExamples(exampleRoot)))
     const expectedExample = formatRefactorExample(examples[0])
 
     assert.equal(examples.length, 1, `${exampleCase.title} should declare exactly one fixture pair`)

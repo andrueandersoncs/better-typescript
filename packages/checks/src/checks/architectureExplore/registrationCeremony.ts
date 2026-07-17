@@ -31,7 +31,7 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
       return Result.failVoid
     }
 
-    const lowRefNames = Array.filter(names, (name) => name.referenceCount <= 2).length
+    const lowRefNames = Array.countBy(names, (name) => name.referenceCount <= 2)
     const ratio = lowRefNames / totalNames
     const importsBelowMinimum = importCount < minimumImportCount
     const ratioBelowMinimum = ratio < minimumLowRefRatio
@@ -46,7 +46,7 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
     const importedModulesItem = evidenceItem("imported-modules", importCount)
     const singleUseItem = evidenceItem("single-use-imports", lowRefNames)
     const evidence = Array.make(importedModulesItem, singleUseItem)
-    const examples = registrationCeremonyExamples()
+    const examples = registrationCeremonyExamples
 
     const advice = new Advice({
       location,

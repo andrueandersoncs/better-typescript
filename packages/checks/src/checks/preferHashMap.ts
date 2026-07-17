@@ -17,21 +17,21 @@ const constructorMessage = "Avoid constructing a built-in Map."
 
 const constructorHint =
   'Use Effect\'s HashMap instead — for example HashMap.fromIterable([["a", 1]]) or ' +
-  "HashMap.empty(). HashMap uses Equal and Hash with structural equality by default; " +
-  "for reference-identity object keys (for example TypeScript checker symbols), wrap " +
-  "keys with Equal.byReferenceUnsafe at the creation boundary. Constructing a Map is " +
-  "permitted only when it is handed to a third-party API that requires one."
+  "HashMap.empty(). HashMap uses Equal and Hash with structural equality by default. For " +
+  "reference-identity object keys, wrap each key in an Equal.Equal value that compares the " +
+  "underlying objects with === and returns Hash.random(object) from Hash.symbol. Constructing " +
+  "a Map is permitted only when it is handed to a third-party API that requires one."
 
 const mapTypeNames: ReadonlyArray<string> = Array.make("Map", "ReadonlyMap")
 
 const isMapTypeName = (id: ts.Identifier): boolean => Array.contains(mapTypeNames, id.text)
 
 const typeRefHint =
-  "Use HashMap.HashMap<K, V> from Effect instead. HashMap uses Equal and Hash with " +
-  "structural equality by default; wrap reference-identity object keys with " +
-  "Equal.byReferenceUnsafe at the creation boundary. Writing the built-in Map type is " +
-  "permitted only where it mirrors a third-party contract: ambient declarations and " +
-  "values that cross into a third-party call."
+  "Use HashMap.HashMap<K, V> from Effect instead. HashMap uses Equal and Hash with structural " +
+  "equality by default. For reference-identity object keys, use an Equal.Equal wrapper whose " +
+  "equality compares the underlying objects with === and whose Hash.symbol method returns " +
+  "Hash.random(object). Writing the built-in Map type is permitted only where it mirrors a " +
+  "third-party contract: ambient declarations and values that cross into a third-party call."
 
 const effectModuleName = "effect"
 

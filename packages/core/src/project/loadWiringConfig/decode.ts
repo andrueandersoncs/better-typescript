@@ -3,14 +3,12 @@ import { NamedCheck, Wiring, WiringEntry } from "../../engine/wiring/data.js"
 import type { WiringConfig } from "../../engine/wiring/data.js"
 import { defineConfig, isFileGlob } from "../../engine/wiring/wiring.js"
 import type { Check } from "../../engine/check/data.js"
-import type { RefactorExample } from "../../engine/example/data.js"
+import type { RefactorExampleSource } from "../../engine/example/data.js"
+import { emptyRefactorExampleSource } from "../../engine/example/example.js"
 import { ConfigExport, type ConfigExportName, ProjectWiringConfigError } from "./data.js"
 
 const defaultExportName = "default"
 const configExportName = "config"
-
-const emptyExamples: ReadonlyArray<RefactorExample> = Array.empty()
-const emptyExamplesThunk = Function.constant(emptyExamples)
 
 // The loader shell reuses this constructor because both paths must fail with one error shape.
 export const projectWiringConfigError = (
@@ -155,7 +153,29 @@ const resolvedExport = Effect.fn("resolvedExport")(function* (
 })
 
 const checkShapeReason =
-  "{ name: string, check: { plan: function }, reported?: boolean, examples?: () => RefactorExample[] }"
+  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExampleSource }"
+
+const isInlineExampleSource = (examples: Readonly<Record<string, unknown>>): boolean => {
+  const hasInlineTag = examples._tag === "inline"
+  const hasExamplesArray = Array.isArray(examples.examples)
+  const conditions = Array.make(hasInlineTag, hasExamplesArray)
+  return Array.every(conditions, Boolean)
+}
+
+const isDirectoryExampleSource = (examples: Readonly<Record<string, unknown>>): boolean => {
+  const hasDirectoryTag = examples._tag === "directory"
+  const hasRootString = typeof examples.root === "string"
+  const conditions = Array.make(hasDirectoryTag, hasRootString)
+  return Array.every(conditions, Boolean)
+}
+
+const isRefactorExampleSource = (value: unknown): boolean =>
+  pipe(
+    Option.liftPredicate(isRecord)(value),
+    Option.exists(
+      (examples) => isInlineExampleSource(examples) || isDirectoryExampleSource(examples)
+    )
+  )
 
 const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean => {
   const hasStringName = typeof record.name === "string"
@@ -181,7 +201,7 @@ const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>): boolean
     examples,
     Option.match({
       onNone: Function.constant(true),
-      onSome: (examples) => typeof examples === "function"
+      onSome: isRefactorExampleSource
     })
   )
 
@@ -212,8 +232,8 @@ const namedCheckFrom = (value: unknown): NamedCheck => {
   const reported = Object.hasOwn(record, "reported") ? (record.reported as boolean) : true
 
   const examples = Object.hasOwn(record, "examples")
-    ? (record.examples as () => ReadonlyArray<RefactorExample>)
-    : emptyExamplesThunk
+    ? (record.examples as RefactorExampleSource)
+    : emptyRefactorExampleSource
 
   return new NamedCheck({ name, check, reported, examples })
 }

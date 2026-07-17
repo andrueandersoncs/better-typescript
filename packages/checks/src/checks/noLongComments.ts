@@ -2,7 +2,7 @@ import { Array } from "effect"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { commentText, sourceComments } from "./support/comments.js"
+import { commentText } from "@better-typescript/core/engine/sources/comments"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { defineFileCheck } from "../defineCheck.js"
 
@@ -19,7 +19,7 @@ const overlongComments = (context: CheckContext): ReadonlyArray<Detection> => {
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
-  const comments = sourceComments(sourceFile)
+  const comments = context.comments
 
   const overlong = Array.filter(comments, (comment) => {
     const length = commentText(text)(comment).length

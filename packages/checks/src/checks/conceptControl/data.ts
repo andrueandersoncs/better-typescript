@@ -1,6 +1,7 @@
 import { Array, Data, HashMap, HashSet, Option, Schema } from "effect"
 import type * as ts from "typescript"
 import type { FunctionDefinition } from "../support/tsNode.js"
+import type { ReferenceKey } from "../support/referenceKey.js"
 
 // DataStructureDeclaration is the first-party model syntax union because ownership is shared.
 export type DataStructureDeclaration =
@@ -80,7 +81,7 @@ export class FunctionEntry extends Data.Class<{
 // FieldRead attributes a field access to its owner because construction is not consumption.
 export class FieldRead extends Data.Class<{
   readonly model: DataStructureEntry
-  readonly field: ts.Symbol
+  readonly field: ReferenceKey<ts.Symbol>
   readonly owner: Option.Option<ts.Symbol>
   readonly node: ts.Node
 }> {}
@@ -105,11 +106,17 @@ export class ConceptIndex extends Data.Class<{
   readonly projectRoot: string
   readonly dataStructures: ReadonlyArray<DataStructureEntry>
   readonly functions: ReadonlyArray<FunctionEntry>
-  readonly dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>
-  readonly functionBySymbol: HashMap.HashMap<ts.Symbol, FunctionEntry>
-  readonly ownersByData: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>>
-  readonly ownersByFunction: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>>
-  readonly rolesByData: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ModelRole>>
+  readonly dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>
+  readonly functionBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry>
+  readonly ownersByData: HashMap.HashMap<
+    ReferenceKey<ts.Symbol>,
+    HashSet.HashSet<ReferenceKey<ts.Symbol>>
+  >
+  readonly ownersByFunction: HashMap.HashMap<
+    ReferenceKey<ts.Symbol>,
+    HashSet.HashSet<ReferenceKey<ts.Symbol>>
+  >
+  readonly rolesByData: HashMap.HashMap<ReferenceKey<ts.Symbol>, HashSet.HashSet<ModelRole>>
   readonly fieldReads: ReadonlyArray<FieldRead>
   readonly readFieldNames: HashSet.HashSet<string>
   readonly shapeGroups: HashMap.HashMap<string, ReadonlyArray<DataStructureEntry>>

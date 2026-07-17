@@ -1,7 +1,7 @@
 import { Array, Data, HashSet, Schema, Stream } from "effect"
 import type { Check } from "../check/data.js"
 import type { Advice } from "../derive/data.js"
-import type { RefactorExample } from "../example/data.js"
+import type { RefactorExampleSource } from "../example/data.js"
 import type { Signal } from "../signal/data.js"
 
 // NamedCheck binds name and policy to its check because consumers share identity.
@@ -9,7 +9,7 @@ export class NamedCheck extends Data.Class<{
   readonly name: string
   readonly check: Check
   readonly reported: boolean
-  readonly examples: () => ReadonlyArray<RefactorExample>
+  readonly examples: RefactorExampleSource
 }> {}
 
 // Wiring is the check set plus advice derivation for one scope because both halves travel together.

@@ -1,5 +1,8 @@
-import { Array, Equal, HashSet, Option, pipe } from "effect"
+import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
+
+// SeenTypes tracks recursion because TypeScript types can revisit compiler objects.
+export type SeenTypes = ReadonlyArray<ts.Type>
 
 export const isVoidType = (type: ts.Type): boolean => (type.flags & ts.TypeFlags.Void) !== 0
 
@@ -31,25 +34,21 @@ const differentApparentType =
     pipe(checker.getApparentType(type), Option.liftPredicate(isDifferentType(type)))
 
 export const isUnseenType =
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean => {
-    const typeKey = Equal.byReferenceUnsafe(type)
-
-    return !HashSet.has(seen, typeKey)
-  }
+  (seen: SeenTypes) =>
+  (type: ts.Type): boolean =>
+    Array.every(seen, isDifferentType(type))
 
 const isUnionOrIntersectionType = (type: ts.Type): type is ts.UnionOrIntersectionType =>
   type.isUnionOrIntersection()
 
 const isArrayLikeTypeWithSeen =
   (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (type: ts.Type): boolean =>
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((type) => {
-        const typeKey = Equal.byReferenceUnsafe(type)
-        const nextSeen = HashSet.add(seen, typeKey)
+        const nextSeen = Array.append(seen, type)
         const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
         const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
 
@@ -86,7 +85,7 @@ export const isArrayLikeType =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): boolean => {
     const withSeen = isArrayLikeTypeWithSeen(checker)
-    const emptySeen = HashSet.empty<ts.Type>()
+    const emptySeen = Array.empty<ts.Type>()
     const checkType = withSeen(emptySeen)
 
     return checkType(type)
@@ -94,13 +93,12 @@ export const isArrayLikeType =
 
 const hasCallSignatureWithSeen =
   (checker: ts.TypeChecker) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (type: ts.Type): boolean =>
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((type) => {
-        const typeKey = Equal.byReferenceUnsafe(type)
-        const nextSeen = HashSet.add(seen, typeKey)
+        const nextSeen = Array.append(seen, type)
         const hasDirectCallSignature = type.getCallSignatures().length > 0
 
         if (type.isUnionOrIntersection()) {
@@ -131,7 +129,7 @@ const hasCallSignatureWithSeen =
 
 export const hasCallSignature = (checker: ts.TypeChecker) => {
   const withSeen = hasCallSignatureWithSeen(checker)
-  const emptySeen = HashSet.empty<ts.Type>()
+  const emptySeen = Array.empty<ts.Type>()
 
   return withSeen(emptySeen)
 }

@@ -1,7 +1,6 @@
 import * as path from "node:path"
 import {
   Array,
-  Equal,
   Data,
   Function,
   HashMap,
@@ -15,6 +14,7 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import { hasExportModifier, functionInitializer, resolvedSymbolAt } from "../support/tsNode.js"
+import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
@@ -50,13 +50,13 @@ export class ExportUsage extends Data.Class<{
 // ExportReferenceIndex joins entries to usage by symbol because checks need one inventory.
 export class ExportReferenceIndex extends Data.Class<{
   readonly entries: ReadonlyArray<ExportedFunctionEntry>
-  readonly usages: HashMap.HashMap<ts.Symbol, ExportUsage>
+  readonly usages: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>
 }> {}
 
 // Generalized exports have their own index because home-file references are excluded.
 export class ExportSymbolIndex extends Data.Class<{
   readonly entries: ReadonlyArray<ExportedSymbolEntry>
-  readonly usages: HashMap.HashMap<ts.Symbol, ExportUsage>
+  readonly usages: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>
 }> {}
 
 // ModuleEdge is the shared normalized import edge because graph checks need it.
@@ -400,12 +400,12 @@ const buildUsageMap =
   (
     entries: ReadonlyArray<UsageScanEntry>,
     referenceFilter: (declaration: ts.Declaration) => (node: ts.Identifier) => boolean
-  ): HashMap.HashMap<ts.Symbol, ExportUsage> => {
+  ): HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage> => {
     const checker = context.checker
     const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
     const entryPairs = Array.map(entries, (entry) => {
-      const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+      const symbolKey = referenceKey(entry.symbol)
 
       return Tuple.make(symbolKey, entry)
     })
@@ -417,16 +417,16 @@ const buildUsageMap =
     const scanFile =
       (sourceFile: ts.SourceFile) =>
       (
-        usages: HashMap.HashMap<ts.Symbol, ExportUsage>
-      ): HashMap.HashMap<ts.Symbol, ExportUsage> => {
+        usages: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>
+      ): HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage> => {
         const sourcePath = relative(sourceFile.fileName)
         const fromTest = classifyTestSource(sourceFile)
 
         return foldAst(
           (
-            current: HashMap.HashMap<ts.Symbol, ExportUsage>,
+            current: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>,
             node: ts.Node
-          ): HashMap.HashMap<ts.Symbol, ExportUsage> =>
+          ): HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage> =>
             pipe(
               Option.liftPredicate(ts.isIdentifier)(node),
               Option.filter(Predicate.not(isImportBinding)),
@@ -434,7 +434,7 @@ const buildUsageMap =
                 pipe(
                   resolvedSymbolAt(checker)(currentIdentifier),
                   Option.flatMap((symbol) => {
-                    const symbolKey = Equal.byReferenceUnsafe(symbol)
+                    const symbolKey = referenceKey(symbol)
 
                     return HashMap.get(entriesBySymbol, symbolKey)
                   }),
@@ -442,7 +442,7 @@ const buildUsageMap =
                     referenceFilter(candidate.declarationNode)(currentIdentifier)
                   ),
                   Option.map((candidate) => {
-                    const candidateKey = Equal.byReferenceUnsafe(candidate.symbol)
+                    const candidateKey = referenceKey(candidate.symbol)
 
                     const usage = pipe(
                       HashMap.get(current, candidateKey),
@@ -461,7 +461,7 @@ const buildUsageMap =
         )(sourceFile)(usages)
       }
 
-    const initialUsages = HashMap.empty<ts.Symbol, ExportUsage>()
+    const initialUsages = HashMap.empty<ReferenceKey<ts.Symbol>, ExportUsage>()
 
     return Array.reduce(projectFiles, initialUsages, (current, sourceFile) =>
       scanFile(sourceFile)(current)
@@ -489,7 +489,7 @@ export const buildExportSymbolIndex = (context: ProgramContext): ExportSymbolInd
 export const usageFor =
   (index: ExportReferenceIndex) =>
   (entry: ExportedFunctionEntry): ExportUsage => {
-    const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+    const symbolKey = referenceKey(entry.symbol)
 
     return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(emptyUsage))
   }
@@ -497,7 +497,7 @@ export const usageFor =
 export const symbolUsageFor =
   (index: ExportSymbolIndex) =>
   (entry: ExportedSymbolEntry): ExportUsage => {
-    const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+    const symbolKey = referenceKey(entry.symbol)
 
     return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(emptyUsage))
   }

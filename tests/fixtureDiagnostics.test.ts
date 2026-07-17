@@ -18,6 +18,17 @@ interface FixtureProject {
   readonly projectPath: string
 }
 
+// Ignore noUnused diagnostics because fixtures intentionally isolate unused syntax patterns.
+const analysisOnlyDiagnosticCodes: Readonly<Record<number, true>> = {
+  6133: true,
+  6138: true,
+  6192: true,
+  6196: true,
+  6198: true,
+  6199: true,
+  6205: true
+}
+
 const fixtureProjects: ReadonlyArray<FixtureProject> = fs
   .readdirSync(fixturesRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -78,7 +89,7 @@ const sourceFileProblems =
     const diagnostics = [
       ...program.getSyntacticDiagnostics(sourceFile),
       ...program.getSemanticDiagnostics(sourceFile)
-    ]
+    ].filter((diagnostic) => !(diagnostic.code in analysisOnlyDiagnosticCodes))
 
     return diagnostics.map((diagnostic) =>
       ts

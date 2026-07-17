@@ -1,8 +1,6 @@
 import { Effect, HashMap, Ref } from "effect"
 
-const plansByProgram = Ref.makeUnsafe(
-  HashMap.empty<object, ReadonlyArray<string>>()
-)
+const plansByProgram = Ref.make(HashMap.empty<object, ReadonlyArray<string>>())
 
 const makeCache = Effect.gen(function*() {
   const state = yield* Ref.make(HashMap.empty<object, number>())

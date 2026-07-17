@@ -1,7 +1,7 @@
-import { Array, Equal, Function, HashSet, Match, Option, Struct, pipe, Result } from "effect"
+import { Array, Function, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "./tsNode.js"
-import { differentBaseConstraint } from "./tsType.js"
+import { differentBaseConstraint, type SeenTypes } from "./tsType.js"
 
 const effectDataModuleSuffixes = Array.make("/effect/dist/Data.d.ts", "/effect/src/Data.ts")
 
@@ -102,12 +102,9 @@ const typeIsWirePrimitive = typeHasAnyFlags(wirePrimitiveTypeFlags)
 const typeIsRejectedWireValue = typeHasAnyFlags(rejectedWireTypeFlags)
 
 const typeWasSeen =
-  (seen: HashSet.HashSet<ts.Type>) =>
-  (type: ts.Type): boolean => {
-    const typeKey = Equal.byReferenceUnsafe(type)
-
-    return HashSet.has(seen, typeKey)
-  }
+  (seen: SeenTypes) =>
+  (type: ts.Type): boolean =>
+    Array.some(seen, (candidate) => candidate === type)
 
 const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
   Array.filter(type.types, (member) => (member.flags & ts.TypeFlags.Undefined) === 0)
@@ -118,7 +115,7 @@ const propertyHasCompilerName = (property: ts.Symbol): boolean =>
 const propertyTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (property: ts.Symbol): boolean =>
     pipe(
       Match.value(property),
@@ -189,7 +186,7 @@ const objectTypeIsClass = (type: ts.ObjectType): boolean =>
 const structuralObjectTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.ObjectType): boolean => {
     const stringIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.String)
@@ -214,7 +211,7 @@ const structuralObjectTypeIsWireSafe =
 const objectTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.ObjectType): boolean =>
     pipe(
@@ -228,7 +225,7 @@ const objectTypeIsWireSafe =
 const unconstrainedTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.Type): boolean =>
     pipe(
@@ -240,7 +237,7 @@ const unconstrainedTypeIsWireSafe =
 const constrainedOrStructuralTypeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (checkType: (type: ts.Type) => boolean) =>
   (type: ts.Type): boolean => {
     const baseConstraint = differentBaseConstraint(checker)(type)
@@ -258,10 +255,9 @@ const constrainedOrStructuralTypeIsWireSafe =
 const typeIsWireSafeWithSeen =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (type: ts.Type): boolean => {
-    const typeKey = Equal.byReferenceUnsafe(type)
-    const nextSeen = HashSet.add(seen, typeKey)
+    const nextSeen = Array.append(seen, type)
     const checkType = typeIsWireSafeWithSeen(checker)(location)(nextSeen)
 
     const checkConstrainedOrStructural =
@@ -283,7 +279,7 @@ export const typeIsWireSafe =
   (checker: ts.TypeChecker) =>
   (location: ts.Node) =>
   (type: ts.Type): boolean => {
-    const seen = HashSet.empty<ts.Type>()
+    const seen = Array.empty<ts.Type>()
     const checkType = typeIsWireSafeWithSeen(checker)(location)(seen)
 
     return checkType(type)

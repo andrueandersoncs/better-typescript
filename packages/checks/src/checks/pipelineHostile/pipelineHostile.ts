@@ -35,7 +35,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
       const nestedItem = evidenceItem("no-nested-calls", nestedCount)
       const uncurriedItem = evidenceItem("prefer-curried-data-last-functions", uncurriedCount)
       const evidence = Array.make(nestedItem, uncurriedItem)
-      const examples = pipelineHostileExamples()
+      const examples = pipelineHostileExamples
 
       return new Advice({
         location,

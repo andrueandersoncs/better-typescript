@@ -23,6 +23,8 @@
     "./engine/watch/data": "./dist/engine/watch/data.js",
     "./engine/sources": "./dist/engine/sources/sources.js",
     "./engine/sources/data": "./dist/engine/sources/data.js",
+    "./engine/sources/comments": "./dist/engine/sources/comments.js",
+    "./engine/sources/comments/data": "./dist/engine/sources/commentsData.js",
     "./engine/example": "./dist/engine/example/example.js",
     "./engine/example/data": "./dist/engine/example/data.js",
     "./project/loadProject": "./dist/project/loadProject/loadProject.js",

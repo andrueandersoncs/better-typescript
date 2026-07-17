@@ -19,7 +19,7 @@ const densityAdvice = (file: FileDetections): Advice => {
   const signalsItem = evidenceItem("signals", summary.total)
   const evidence = Array.prepend(checkEvidence, signalsItem)
   const location = adviceLocation(file.path)
-  const examples = highSignalDensityExamples()
+  const examples = highSignalDensityExamples
 
   return new Advice({
     location,

@@ -19,7 +19,8 @@ import {
 } from "effect"
 import type * as ts from "typescript"
 import type { Check } from "../check/data.js"
-import type { NonEmptyRefactorExamples, RefactorExample } from "../example/data.js"
+import type { RefactorExampleSource } from "../example/data.js"
+import { emptyRefactorExampleSource } from "../example/example.js"
 import type { Detection } from "../location/data.js"
 import { Signal, WiringSignals } from "../signal/data.js"
 import { ProgramContext } from "../sources/data.js"
@@ -46,14 +47,11 @@ const hasNonWhitespace = (pattern: string): boolean => pattern.trim().length > 0
 // One glob predicate is canonical here because config loading and defineConfig must not drift.
 export const isFileGlob = Predicate.and(Predicate.isString, hasNonWhitespace)
 
-const emptyRefactorExamples: ReadonlyArray<RefactorExample> = Array.empty()
-const emptyRefactorExamplesThunk = Function.constant(emptyRefactorExamples)
-
-// Examples stay a thunk because construction must not load fixtures before a report needs them.
+// Examples stay a source descriptor because construction must not load fixtures for reports.
 export const namedCheck = (
   name: string,
   check: Check,
-  examples: () => NonEmptyRefactorExamples
+  examples: RefactorExampleSource
 ): NamedCheck =>
   new NamedCheck({
     name,
@@ -62,11 +60,11 @@ export const namedCheck = (
     examples
   })
 
-// Silent checks default to one empty thunk because callers should not allocate fresh empty arrays.
+// Silent checks default to one empty source because callers should not allocate fresh empty arrays.
 export const silentCheck = (
   name: string,
   check: Check,
-  examples: () => ReadonlyArray<RefactorExample> = emptyRefactorExamplesThunk
+  examples: RefactorExampleSource = emptyRefactorExampleSource
 ): NamedCheck =>
   new NamedCheck({
     name,
@@ -291,9 +289,12 @@ export const workspaceSignalsForProjects =
 
         const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile): boolean => {
           const wiringIndex = wiringIndexesByCheck[checkIndex]
-          const matches = HashMap.getUnsafe(matchesByFileName, sourceFile.fileName)
 
-          return matches[wiringIndex] ?? false
+          return pipe(
+            HashMap.get(matchesByFileName, sourceFile.fileName),
+            Option.map((matches) => matches[wiringIndex] ?? false),
+            Option.getOrElse(Function.constFalse)
+          )
         }
 
         const configuredChecks = runChecks(checks)(includesSourceFile)
@@ -357,7 +358,7 @@ export const workspaceSignalsForProjects =
           const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
             const elements = elementsByWiring[wiringIndex][checkIndex]
             const detections = MutableList.toArray(elements)
-            const examples = check.examples()
+            const examples = check.examples
 
             return new Signal({
               name: check.name,

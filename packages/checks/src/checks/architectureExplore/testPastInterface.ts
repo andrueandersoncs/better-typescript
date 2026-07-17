@@ -155,7 +155,7 @@ const testPastInterfaceAdvice = (
     const callsItem = evidenceItem("test-helper-calls", testCallCount)
     const importsItem = evidenceItem("test-deep-imports", importsAtPath.length)
     const evidence = Array.make(exportsItem, callsItem, importsItem)
-    const examples = testPastInterfaceExamples()
+    const examples = testPastInterfaceExamples
 
     return new Advice({
       location,

@@ -1,40 +1,6 @@
-import { Array, Effect, HashSet, Iterable, Match, Option, Ref, Tuple, pipe } from "effect"
+import { Array, HashSet, Iterable, Match, Option, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { LatestCacheEntry, SourceComment } from "./commentsData.js"
-
-const memoizeLatest = <Key extends object, Value>(load: (key: Key) => Value) => {
-  const emptyCache = Option.none<LatestCacheEntry<Key, Value>>()
-  const cache = Ref.makeUnsafe(emptyCache)
-
-  const memoized = (key: Key): Value => {
-    const readOrLoad = (
-      cached: Option.Option<LatestCacheEntry<Key, Value>>
-    ): readonly [Value, Option.Option<LatestCacheEntry<Key, Value>>] => {
-      const current = pipe(
-        cached,
-        Option.filter((entry) => entry.key === key)
-      )
-
-      if (Option.isSome(current)) {
-        const value = current.value.value
-
-        return Tuple.make(value, cached)
-      }
-
-      const value = load(key)
-      const entry = new LatestCacheEntry({ key, value })
-      const updated = Option.some(entry)
-
-      return Tuple.make(value, updated)
-    }
-
-    const cachedValue = Ref.modify(cache, readOrLoad)
-
-    return Effect.runSync(cachedValue)
-  }
-
-  return memoized
-}
+import { SourceComment } from "./commentsData.js"
 
 const commentSyntaxKinds = HashSet.make(
   ts.SyntaxKind.SingleLineCommentTrivia,
@@ -186,8 +152,7 @@ const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComm
   )
 }
 
-export const sourceComments: (sourceFile: ts.SourceFile) => ReadonlyArray<SourceComment> =
-  memoizeLatest(scanSourceComments)
+export const sourceComments = scanSourceComments
 
 export const commentText =
   (text: string) =>

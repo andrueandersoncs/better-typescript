@@ -54,8 +54,8 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
       atPath,
       Array.filter((element) => element.name === contextTagSeamsName),
       Array.filterMap(Function.flow(contextTagSeamDataOf, Result.fromOption(Function.constVoid))),
-      Array.filter((data) => data.consumerCount === 0)
-    ).length
+      Array.countBy((data) => data.consumerCount === 0)
+    )
 
     const location = adviceLocation(filePath)
     const seamItem = evidenceItem("single-adapter-seams", atPath.length)
@@ -66,7 +66,7 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
         : Array.of(seamItem)
 
     const remediation = deadCount > 0 ? baseRemediation + deadRemediation : baseRemediation
-    const examples = hypotheticalSeamExamples()
+    const examples = hypotheticalSeamExamples
 
     return new Advice({
       location,

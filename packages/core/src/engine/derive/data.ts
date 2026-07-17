@@ -1,5 +1,9 @@
 import { Array, Effect, HashMap, Schema, pipe } from "effect"
-import { RefactorExample } from "../example/data.js"
+import {
+  InlineRefactorExamples,
+  type RefactorExampleSource,
+  refactorExampleSourceSchema
+} from "../example/data.js"
 import { Detection, Location } from "../location/data.js"
 
 // AdviceLevel names the advice-scope protocol because consumers must agree on vocabulary.
@@ -19,12 +23,17 @@ const adviceLevelValues = Array.make<["file", "directory", "project"]>(
 
 const adviceLevelSchema = Schema.Literals(adviceLevelValues)
 const evidenceArraySchema = Schema.Array(EvidenceItem)
-const emptyRefactorExamples = Array.empty<RefactorExample>()
-const emptyRefactorExamplesEffect = Effect.succeed(emptyRefactorExamples)
+const emptyExamples = Array.empty()
+
+const emptyRefactorExampleSource: RefactorExampleSource = new InlineRefactorExamples({
+  examples: emptyExamples
+})
+
+const emptyRefactorExampleSourceEffect = Effect.succeed(emptyRefactorExampleSource)
 
 const refactorExamplesSchema = pipe(
-  Schema.Array(RefactorExample),
-  Schema.withConstructorDefault(emptyRefactorExamplesEffect)
+  refactorExampleSourceSchema,
+  Schema.withConstructorDefault(emptyRefactorExampleSourceEffect)
 )
 
 // Advice is the shared advice payload because report owners need one vocabulary.

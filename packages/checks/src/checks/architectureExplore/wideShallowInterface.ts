@@ -40,7 +40,7 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
         const parametersItem = evidenceItem("required-parameters", data.requiredParameterCount)
         const forwardersItem = evidenceItem("deletable-forwarders", forwarders.length)
         const evidence = Array.make(operationsItem, parametersItem, forwardersItem)
-        const examples = wideShallowInterfaceExamples()
+        const examples = wideShallowInterfaceExamples
 
         return new Advice({
           location,

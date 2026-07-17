@@ -1,6 +1,5 @@
 import {
   Array,
-  Equal,
   Function,
   HashMap,
   HashSet,
@@ -17,6 +16,11 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { definePlannedCheck } from "../../defineCheck.js"
 import { buildConceptIndex, functionDerivedStem } from "./conceptIndex.js"
+import {
+  type ReferenceKey,
+  referenceKey,
+  referenceKeySourceFileName
+} from "../support/referenceKey.js"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 import {
   ConceptSignalData,
@@ -60,13 +64,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     )
 
     const rolesFor = (entry: DataStructureEntry): HashSet.HashSet<ModelRole> => {
-      const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+      const symbolKey = referenceKey(entry.symbol)
 
       return pipe(HashMap.get(index.rolesByData, symbolKey), Option.getOrElse(HashSet.empty))
     }
 
-    const ownersFor = (entry: DataStructureEntry): HashSet.HashSet<ts.Symbol> => {
-      const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+    const ownersFor = (entry: DataStructureEntry): HashSet.HashSet<ReferenceKey<ts.Symbol>> => {
+      const symbolKey = referenceKey(entry.symbol)
 
       return pipe(HashMap.get(index.ownersByData, symbolKey), Option.getOrElse(HashSet.empty))
     }
@@ -76,15 +80,14 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         ownersFor(entry),
         Array.fromIterable,
         Array.filterMap((owner) => {
-          const ownerKey = Equal.byReferenceUnsafe(owner)
-          const functionOption = HashMap.get(index.functionBySymbol, ownerKey)
+          const functionOption = HashMap.get(index.functionBySymbol, owner)
 
           return Result.fromOption(functionOption, Function.constVoid)
         })
       )
 
-    const callersFor = (entry: FunctionEntry): HashSet.HashSet<ts.Symbol> => {
-      const symbolKey = Equal.byReferenceUnsafe(entry.symbol)
+    const callersFor = (entry: FunctionEntry): HashSet.HashSet<ReferenceKey<ts.Symbol>> => {
+      const symbolKey = referenceKey(entry.symbol)
 
       return pipe(HashMap.get(index.ownersByFunction, symbolKey), Option.getOrElse(HashSet.empty))
     }
@@ -131,7 +134,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.fromNullishOr,
         Option.map(canonicalSymbol),
         Option.flatMap((symbol) => {
-          const symbolKey = Equal.byReferenceUnsafe(symbol)
+          const symbolKey = referenceKey(symbol)
 
           return HashMap.get(index.dataBySymbol, symbolKey)
         })
@@ -196,15 +199,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
       return Array.findFirst(candidates, (candidate) => {
         const callers = callersFor(candidate)
-        const candidateKey = Equal.byReferenceUnsafe(candidate.symbol)
+        const candidateKey = referenceKey(candidate.symbol)
         const allowedOwners = pipe(callers, HashSet.add(candidateKey))
         const hasAtMostOneExternalOwner = HashSet.size(callers) <= 1
 
-        const ownersStayInsideCluster = HashSet.every(owners, (owner) => {
-          const ownerKey = Equal.byReferenceUnsafe(owner)
-
-          return HashSet.has(allowedOwners, ownerKey)
-        })
+        const ownersStayInsideCluster = HashSet.every(owners, (owner) =>
+          HashSet.has(allowedOwners, owner)
+        )
 
         const clusterConditions = Array.make(hasAtMostOneExternalOwner, ownersStayInsideCluster)
 
@@ -222,26 +223,22 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.filter((canonical) => canonical.symbol !== entry.symbol)
       )
 
-    const ownerSourceFile = (symbol: ts.Symbol): Option.Option<ts.SourceFile> => {
-      const symbolKey = Equal.byReferenceUnsafe(symbol)
-
+    const ownerSourceFile = (owner: ReferenceKey<ts.Symbol>): Option.Option<ts.SourceFile> => {
       const functionOwner = pipe(
-        HashMap.get(index.functionBySymbol, symbolKey),
+        HashMap.get(index.functionBySymbol, owner),
         Option.map(Struct.get("sourceFile"))
       )
 
       const dataOwner = pipe(
-        HashMap.get(index.dataBySymbol, symbolKey),
+        HashMap.get(index.dataBySymbol, owner),
         Option.map(Struct.get("sourceFile"))
       )
 
-      const emptyDeclarations = Array.empty<ts.Declaration>()
-      const declarations = symbol.declarations ?? emptyDeclarations
-
       const declarationOwner = pipe(
-        declarations,
-        Array.head,
-        Option.map((declaration) => declaration.getSourceFile())
+        referenceKeySourceFileName(owner),
+        Option.flatMap((fileName) =>
+          pipe(context.program.getSourceFile(fileName), Option.fromNullishOr)
+        )
       )
 
       return pipe(
@@ -285,12 +282,12 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const redundantSymbols = pipe(
       redundantPairs,
-      Array.map(([entry]) => Equal.byReferenceUnsafe(entry.symbol)),
+      Array.map(([entry]) => referenceKey(entry.symbol)),
       HashSet.fromIterable
     )
 
     const closedPairs = Array.filterMap(entries, (entry) => {
-      const entryKey = Equal.byReferenceUnsafe(entry.symbol)
+      const entryKey = referenceKey(entry.symbol)
 
       return HashSet.has(redundantSymbols, entryKey)
         ? Result.failVoid
@@ -303,12 +300,12 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const closedSymbols = pipe(
       closedPairs,
-      Array.map(([entry]) => Equal.byReferenceUnsafe(entry.symbol)),
+      Array.map(([entry]) => referenceKey(entry.symbol)),
       HashSet.fromIterable
     )
 
     const duplicatePairs = Array.filterMap(entries, (entry) => {
-      const entryKey = Equal.byReferenceUnsafe(entry.symbol)
+      const entryKey = referenceKey(entry.symbol)
       const excluded = HashSet.has(closedSymbols, entryKey)
       const isRedundant = HashSet.has(redundantSymbols, entryKey)
       const exclusions = Array.make(excluded, isRedundant)
@@ -325,7 +322,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const duplicateSymbols = pipe(
       duplicatePairs,
-      Array.map(([entry]) => Equal.byReferenceUnsafe(entry.symbol)),
+      Array.map(([entry]) => referenceKey(entry.symbol)),
       HashSet.fromIterable
     )
 
@@ -374,15 +371,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       )
     })
 
-    const readFields = pipe(
-      index.fieldReads,
-      Array.map(Struct.get("field")),
-      Array.map(Equal.byReferenceUnsafe),
-      HashSet.fromIterable
-    )
+    const readFields = pipe(index.fieldReads, Array.map(Struct.get("field")), HashSet.fromIterable)
 
     Array.forEach(entries, (entry) => {
-      const entryKey = Equal.byReferenceUnsafe(entry.symbol)
+      const entryKey = referenceKey(entry.symbol)
       const isClosed = HashSet.has(closedSymbols, entryKey)
       const isRedundant = HashSet.has(redundantSymbols, entryKey)
       const isDuplicate = HashSet.has(duplicateSymbols, entryKey)
@@ -423,14 +415,12 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         functionDerivedOwner,
         Option.flatMap((owner) => {
           const callers = callersFor(owner)
-          const ownerKey = Equal.byReferenceUnsafe(owner.symbol)
+          const ownerKey = referenceKey(owner.symbol)
           const allowedOwners = pipe(callers, HashSet.add(ownerKey))
 
-          const ownersStayInsideCluster = HashSet.every(owners, (candidate) => {
-            const candidateKey = Equal.byReferenceUnsafe(candidate)
-
-            return HashSet.has(allowedOwners, candidateKey)
-          })
+          const ownersStayInsideCluster = HashSet.every(owners, (candidate) =>
+            HashSet.has(allowedOwners, candidate)
+          )
 
           if (!ownersStayInsideCluster) {
             return Option.none()
@@ -496,7 +486,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const unusedFields = reflectsExternally
         ? Array.empty<ts.Symbol>()
         : Array.filter(entry.fieldSymbols, (field) => {
-            const fieldKey = Equal.byReferenceUnsafe(field)
+            const fieldKey = referenceKey(field)
             const directlyRead = HashSet.has(readFields, fieldKey)
             const fieldName = field.getName()
             const functionallyRead = HashSet.has(index.readFieldNames, fieldName)
@@ -546,7 +536,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const occupiedModels = pipe(
       entries,
       Array.filter((entry) => {
-        const entryKey = Equal.byReferenceUnsafe(entry.symbol)
+        const entryKey = referenceKey(entry.symbol)
         const isClosed = HashSet.has(closedSymbols, entryKey)
         const isRedundant = HashSet.has(redundantSymbols, entryKey)
         const isDuplicate = HashSet.has(duplicateSymbols, entryKey)
@@ -554,7 +544,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
         return Array.some(occupationFlags, Boolean)
       }),
-      Array.map((entry) => Equal.byReferenceUnsafe(entry.symbol)),
+      Array.map((entry) => referenceKey(entry.symbol)),
       HashSet.fromIterable
     )
 
@@ -562,7 +552,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       index.parameterBags,
       Array.filter((bag) => bag.node.getSourceFile() === context.sourceFile),
       Array.filter((bag) => {
-        const modelKey = Equal.byReferenceUnsafe(bag.model.symbol)
+        const modelKey = referenceKey(bag.model.symbol)
 
         return !HashSet.has(occupiedModels, modelKey)
       }),
@@ -601,8 +591,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       index.passThroughConversions,
       Array.filter((conversion) => conversion.node.getSourceFile() === context.sourceFile),
       Array.filter((conversion) => {
-        const sourceKey = Equal.byReferenceUnsafe(conversion.source.symbol)
-        const targetKey = Equal.byReferenceUnsafe(conversion.target.symbol)
+        const sourceKey = referenceKey(conversion.source.symbol)
+        const targetKey = referenceKey(conversion.target.symbol)
         const sourceOccupied = HashSet.has(occupiedModels, sourceKey)
         const targetOccupied = HashSet.has(occupiedModels, targetKey)
         const occupationFlags = Array.make(sourceOccupied, targetOccupied)

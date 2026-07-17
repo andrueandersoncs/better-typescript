@@ -8,6 +8,7 @@ import { pipelineHostile } from "@better-typescript/checks/pipelineHostile"
 import { ruleDominance } from "@better-typescript/checks/ruleDominance"
 import { sideEffectLaundering } from "@better-typescript/checks/sideEffectLaundering"
 import { systemicHotspots } from "@better-typescript/checks/systemicHotspots"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
@@ -209,7 +210,7 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
     title: "hot subsystem",
     remediation: "fix subsystem",
     evidence: [{ measure: "signals", count: 27 }],
-    examples: []
+    examples: emptyRefactorExampleSource
   }
   const firstDense: Advice = {
     location: new Location({ path: "src/one.ts" }),
@@ -217,7 +218,7 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
     title: "high signal density",
     remediation: "fix one",
     evidence: [{ measure: "signals", count: 10 }],
-    examples: []
+    examples: emptyRefactorExampleSource
   }
   const secondDense: Advice = {
     location: new Location({ path: "src/two.ts" }),
@@ -225,7 +226,7 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
     title: "high signal density",
     remediation: "fix two",
     evidence: [{ measure: "signals", count: 10 }],
-    examples: []
+    examples: emptyRefactorExampleSource
   }
 
   assert.deepEqual(

@@ -60,7 +60,7 @@ const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData): A
   const externalCallers = evidenceItem("external callers", data.externalCallers)
   const independentOwners = evidenceItem("independent model owners", data.independentOwners)
   const evidence = Array.make(externalCallers, independentOwners)
-  const examples = closedAbstractionClusterExamples()
+  const examples = closedAbstractionClusterExamples
 
   return new Advice({
     location: element.location,
@@ -108,7 +108,7 @@ const proliferationAdvice = (
   const withSignals = Array.prepend(counts, signalCount)
   const evidence = Array.prepend(withSignals, conceptCount)
   const location = adviceLocation(directory)
-  const examples = conceptProliferationExamples()
+  const examples = conceptProliferationExamples
 
   const advice = new Advice({
     location,

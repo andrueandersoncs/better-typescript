@@ -1,4 +1,4 @@
-import { Array, Equal, Function, HashMap, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashMap, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import {
@@ -15,6 +15,7 @@ import {
   signatureIsExternal
 } from "../support/tsSignature.js"
 import { hasCallSignature } from "../support/tsType.js"
+import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
@@ -31,7 +32,7 @@ const updateSymbolUse =
   (symbol: ts.Symbol) =>
   (update: (use: SymbolUse) => SymbolUse) =>
   (uses: SymbolUses): SymbolUses => {
-    const symbolKey = Equal.byReferenceUnsafe(symbol)
+    const symbolKey = referenceKey(symbol)
     const currentUse = pipe(HashMap.get(uses, symbolKey), Option.getOrElse(fallbackEmptySymbolUse))
     const updatedUse = update(currentUse)
 
@@ -212,7 +213,9 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
 
   const collectTrackedSymbol =
     (node: ts.Node) =>
-    (currentSymbols: HashSet.HashSet<ts.Symbol>): HashSet.HashSet<ts.Symbol> =>
+    (
+      currentSymbols: HashSet.HashSet<ReferenceKey<ts.Symbol>>
+    ): HashSet.HashSet<ReferenceKey<ts.Symbol>> =>
       pipe(
         Option.liftPredicate(isFunctionDefinition)(node),
         Option.filter((declaration) => {
@@ -230,14 +233,14 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
         }),
         Option.flatMap(symbolForDeclaration(checker)),
         Option.map((symbol) => {
-          const symbolKey = Equal.byReferenceUnsafe(symbol)
+          const symbolKey = referenceKey(symbol)
 
           return HashSet.add(currentSymbols, symbolKey)
         }),
         Option.getOrElse(() => currentSymbols)
       )
 
-  const emptyTrackedSymbols = HashSet.empty<ts.Symbol>()
+  const emptyTrackedSymbols = HashSet.empty<ReferenceKey<ts.Symbol>>()
 
   const trackedSymbols = Array.reduce(sourceFiles, emptyTrackedSymbols, (symbols, sourceFile) =>
     foldCurriedDataLastDescendants(collectTrackedSymbol)(sourceFile)(symbols)
@@ -253,7 +256,7 @@ const buildSymbolUses = (context: ProgramContext): SymbolUses => {
       return pipe(
         symbolAtLocation(checker)(node),
         Option.filter((symbol) => {
-          const symbolKey = Equal.byReferenceUnsafe(symbol)
+          const symbolKey = referenceKey(symbol)
 
           return HashSet.has(trackedSymbols, symbolKey)
         }),
@@ -368,7 +371,7 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
       const hasOnlyContextualUse = pipe(
         symbolForDeclaration(context.checker)(declaration),
         Option.flatMap((symbol) => {
-          const symbolKey = Equal.byReferenceUnsafe(symbol)
+          const symbolKey = referenceKey(symbol)
 
           return HashMap.get(symbolUses, symbolKey)
         }),

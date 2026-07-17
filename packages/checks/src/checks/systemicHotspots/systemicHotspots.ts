@@ -17,7 +17,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const subsystemItem = evidenceItem("hot-subsystem", signals.hotSubsystem.length)
   const densityItem = evidenceItem("high-signal-density", signals.highSignalDensity.length)
   const evidence = Array.make(subsystemItem, densityItem)
-  const examples = systemicHotspotsExamples()
+  const examples = systemicHotspotsExamples
 
   const advice = new Advice({
     location,

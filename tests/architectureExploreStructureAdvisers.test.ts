@@ -19,6 +19,7 @@ import { hubModule } from "@better-typescript/checks/architectureExplore/hubModu
 import { invisibleTests } from "@better-typescript/checks/architectureExplore/invisibleTests"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { namedDetection } from "@better-typescript/core/engine/derive"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>
@@ -231,7 +232,7 @@ test("invisible tests fires when evidence has no test paths", async () => {
   assert.equal(advice[0]?.level, "project")
   assert.equal(advice[0]?.location.path, ".")
   assert.equal(measureCount(advice[0]!, "analyzed-modules"), 2)
-  assert.equal(advice[0]?.examples.length, 0)
+  assert.deepEqual(advice[0]?.examples, emptyRefactorExampleSource)
 })
 
 test("invisible tests stays silent when any path is a test path", async () => {

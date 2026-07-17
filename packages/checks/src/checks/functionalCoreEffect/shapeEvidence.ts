@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, Schema, Tuple, pipe } from "effect"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
-import { withProgramIndex } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "../../defineCheck.js"
 import {
   detection,
   fileSubscriptions,

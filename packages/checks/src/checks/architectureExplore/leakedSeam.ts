@@ -33,15 +33,15 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const internalCount = pipe(
       atPath,
       Array.filterMap(Function.flow(seamLeakageDataOf, Result.fromOption(Function.constVoid))),
-      Array.filter((data) => data.kind === "internal-path")
-    ).length
+      Array.countBy((data) => data.kind === "internal-path")
+    )
 
     const sourceCount = atPath.length - internalCount
     const location = adviceLocation(filePath)
     const internalItem = evidenceItem("internal-path-imports", internalCount)
     const sourceItem = evidenceItem("source-path-imports", sourceCount)
     const evidence = Array.make(internalItem, sourceItem)
-    const examples = leakedSeamExamples()
+    const examples = leakedSeamExamples
 
     const advice = new Advice({
       location,
@@ -97,21 +97,21 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
       directories,
       Array.filter((right) => left < right),
       Array.filterMap((right) => {
-        const forwardCount = Array.filter(directoryEdges, ([from, to]) => {
+        const forwardCount = Array.countBy(directoryEdges, ([from, to]) => {
           const fromMatches = from === left
           const toMatches = to === right
           const conditions = Array.make(fromMatches, toMatches)
 
           return Array.every(conditions, Boolean)
-        }).length
+        })
 
-        const reverseCount = Array.filter(directoryEdges, ([from, to]) => {
+        const reverseCount = Array.countBy(directoryEdges, ([from, to]) => {
           const fromMatches = from === right
           const toMatches = to === left
           const conditions = Array.make(fromMatches, toMatches)
 
           return Array.every(conditions, Boolean)
-        }).length
+        })
 
         const smallestDirectionCount = Math.min(forwardCount, reverseCount)
 
@@ -132,7 +132,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
     const location = adviceLocation(smaller)
     const crossImportsItem = evidenceItem("cross-imports", crossImports)
     const evidence = Array.of(crossImportsItem)
-    const examples = leakedSeamExamples()
+    const examples = leakedSeamExamples
 
     return new Advice({
       location,

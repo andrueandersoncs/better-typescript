@@ -4,7 +4,7 @@ import { Effect, Result, Stream, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
 import { defineConfig, mergeWirings } from "@better-typescript/core/engine/wiring"
-import { reportEvents } from "@better-typescript/core/engine/watch"
+import { makeReportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
@@ -36,6 +36,7 @@ const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
 
 const runLoadedBenchmark = async (): Promise<void> => {
   const workspace = await Effect.runPromise(loadProject(targetPath))
+  const report = await Effect.runPromise(makeReportEvents(benchmarkConfig))
   const collectReport = () => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
@@ -43,7 +44,7 @@ const runLoadedBenchmark = async (): Promise<void> => {
     })
     const blocks = pipe(
       Stream.succeed(update),
-      reportEvents(benchmarkConfig),
+      report,
       Stream.filterMap((event) =>
         event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
       )
@@ -84,6 +85,7 @@ const runLoadedBenchmark = async (): Promise<void> => {
 }
 
 const runBoundedWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
+  const report = await Effect.runPromise(makeReportEvents(benchmarkConfig))
   const started = performance.now()
   const update = new WorkspaceUpdate({
     rootPath: workspace.rootPath,
@@ -94,7 +96,7 @@ const runBoundedWorkspacePass = async (workspace: WorkspaceConfigs): Promise<voi
   const blocks = await Effect.runPromise(
     pipe(
       Stream.succeed(update),
-      reportEvents(benchmarkConfig),
+      report,
       Stream.filterMap((event) =>
         event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
       ),

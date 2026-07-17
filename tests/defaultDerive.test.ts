@@ -4,6 +4,7 @@ import { Effect, Stream } from "effect"
 import { defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/signal/data"
 
@@ -22,10 +23,10 @@ const detectionsAt = (path: string, count: number, data?: unknown): ReadonlyArra
   range(count).map((line) => detectionAt(path, line, data))
 
 const reportedSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
-  new Signal({ name, reported: true, detections, examples: [] })
+  new Signal({ name, reported: true, detections, examples: emptyRefactorExampleSource })
 
 const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
-  new Signal({ name, reported: false, detections, examples: [] })
+  new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
 
 const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(Stream.runCollect(advice))

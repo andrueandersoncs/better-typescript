@@ -1,7 +1,6 @@
 import {
   Array,
   Data,
-  Equal,
   Function,
   HashMap,
   HashSet,
@@ -26,6 +25,7 @@ import {
   unwrapTransparentExpression
 } from "../support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 
 const noneTypeShape: Option.Option<string> = Option.none()
 import {
@@ -140,15 +140,10 @@ const structuralRoleSuffixes = HashSet.make(
 )
 
 const emptyDataStructureEntries: ReadonlyArray<DataStructureEntry> = Array.empty()
-
 const noneDeclarationName: Option.Option<ts.DeclarationName> = Option.none()
-
 const noneIdentifier: Option.Option<ts.Identifier> = Option.none()
-
 const noneDataStructureEntry: Option.Option<DataStructureEntry> = Option.none()
-
 const noneObjectLiteral: Option.Option<ts.ObjectLiteralExpression> = Option.none()
-
 const noneFunctionEntry: Option.Option<FunctionEntry> = Option.none()
 
 const canonicalSymbol =
@@ -645,7 +640,7 @@ const functionEntryForVariable = (
   checker: ts.TypeChecker,
   declaration: ts.VariableDeclaration,
   exported: boolean,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>
 ): Option.Option<FunctionEntry> =>
   pipe(
     Option.liftPredicate(ts.isIdentifier)(declaration.name),
@@ -653,7 +648,7 @@ const functionEntryForVariable = (
       pipe(
         symbolAt(checker)(nameNode),
         Option.filter((symbol) => {
-          const symbolKey = Equal.byReferenceUnsafe(symbol)
+          const symbolKey = referenceKey(symbol)
 
           return !HashMap.has(dataBySymbol, symbolKey)
         }),
@@ -709,7 +704,7 @@ const functionEntryForMethod = (
 
 const functionEntries = (
   context: ProgramContext,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>
 ): ReadonlyArray<FunctionEntry> => {
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
@@ -744,12 +739,12 @@ const functionEntries = (
 }
 
 const addOwner = (
-  index: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>>,
+  index: HashMap.HashMap<ReferenceKey<ts.Symbol>, HashSet.HashSet<ReferenceKey<ts.Symbol>>>,
   target: ts.Symbol,
   owner: ts.Symbol
-): HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>> => {
-  const targetKey = Equal.byReferenceUnsafe(target)
-  const ownerKey = Equal.byReferenceUnsafe(owner)
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, HashSet.HashSet<ReferenceKey<ts.Symbol>>> => {
+  const targetKey = referenceKey(target)
+  const ownerKey = referenceKey(owner)
   const existing = HashMap.get(index, targetKey)
   const owners = pipe(existing, Option.getOrElse(HashSet.empty))
   const updatedOwners = HashSet.add(owners, ownerKey)
@@ -853,13 +848,13 @@ const functionOwnerName = (node: ts.Node): Option.Option<ts.Identifier> => {
 
 const functionOwnerFrom =
   (checker: ts.TypeChecker) =>
-  (functionBySymbol: HashMap.HashMap<ts.Symbol, FunctionEntry>) =>
+  (functionBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry>) =>
   (current: ts.Node): Option.Option<ts.Symbol> =>
     pipe(
       functionOwnerName(current),
       Option.flatMap(symbolAt(checker)),
       Option.filter((symbol) => {
-        const symbolKey = Equal.byReferenceUnsafe(symbol)
+        const symbolKey = referenceKey(symbol)
 
         return HashMap.has(functionBySymbol, symbolKey)
       }),
@@ -883,7 +878,7 @@ const topLevelOwnerSymbol =
 
 const ownerSymbol = (
   checker: ts.TypeChecker,
-  functionBySymbol: HashMap.HashMap<ts.Symbol, FunctionEntry>,
+  functionBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry>,
   node: ts.Node
 ): Option.Option<ts.Symbol> => {
   const topLevelOwner = topLevelOwnerSymbol(checker)(node)
@@ -902,17 +897,55 @@ const declarationNameIs = (
 
 const fieldEntries = (
   entry: DataStructureEntry
-): ReadonlyArray<readonly [ts.Symbol, DataStructureEntry]> =>
+): ReadonlyArray<readonly [ReferenceKey<ts.Symbol>, DataStructureEntry]> =>
   Array.map(entry.fieldSymbols, (field) => {
-    const fieldKey = Equal.byReferenceUnsafe(field)
+    const fieldKey = referenceKey(field)
 
     return Tuple.make(fieldKey, entry)
   })
 
+const setReplacingValue = <Key, Value>(
+  index: HashMap.HashMap<Key, Value>,
+  key: Key,
+  value: Value
+): HashMap.HashMap<Key, Value> => pipe(index, HashMap.remove(key), HashMap.set(key, value))
+
+const addFieldModel = (
+  index: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
+  entry: readonly [ReferenceKey<ts.Symbol>, DataStructureEntry]
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry> =>
+  setReplacingValue(index, entry[0], entry[1])
+
+const emptyDataBySymbol = HashMap.empty<ReferenceKey<ts.Symbol>, DataStructureEntry>()
+
+const addDataStructureEntry = (
+  index: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
+  entry: DataStructureEntry
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry> => {
+  const key = referenceKey(entry.symbol)
+
+  return setReplacingValue(index, key, entry)
+}
+
+const emptyFunctionBySymbol = HashMap.empty<ReferenceKey<ts.Symbol>, FunctionEntry>()
+
+const addFunctionEntry = (
+  index: HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry>,
+  entry: FunctionEntry
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry> => {
+  const key = referenceKey(entry.symbol)
+
+  return setReplacingValue(index, key, entry)
+}
+
 const fieldModelIndex = (
   dataStructures: ReadonlyArray<DataStructureEntry>
-): HashMap.HashMap<ts.Symbol, DataStructureEntry> =>
-  pipe(dataStructures, Array.flatMap(fieldEntries), HashMap.fromIterable)
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry> => {
+  const entries = Array.flatMap(dataStructures, fieldEntries)
+  const emptyIndex = HashMap.empty<ReferenceKey<ts.Symbol>, DataStructureEntry>()
+
+  return Array.reduce(entries, emptyIndex, addFieldModel)
+}
 
 const mechanicalForwardingRead = (node: ts.Node): boolean =>
   pipe(
@@ -932,7 +965,7 @@ const mechanicalForwardingRead = (node: ts.Node): boolean =>
 
 const modelFromResolvedType =
   (checker: ts.TypeChecker) =>
-  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>) =>
   (type: ts.Type): Option.Option<DataStructureEntry> => {
     const alias = Option.fromNullishOr(type.aliasSymbol)
     const symbol = type.getSymbol()
@@ -943,7 +976,7 @@ const modelFromResolvedType =
       Option.orElse(Function.constant(symbolOption)),
       Option.map(canonicalSymbol(checker)),
       Option.flatMap((candidate) => {
-        const candidateKey = Equal.byReferenceUnsafe(candidate)
+        const candidateKey = referenceKey(candidate)
 
         return HashMap.get(dataBySymbol, candidateKey)
       })
@@ -952,14 +985,14 @@ const modelFromResolvedType =
 
 const modelFromType = (
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   node: ts.Node
 ): Option.Option<DataStructureEntry> =>
   pipe(checker.getTypeAtLocation(node), modelFromResolvedType(checker)(dataBySymbol))
 
 const modelsFromResolvedType = (
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   type: ts.Type
 ): ReadonlyArray<DataStructureEntry> => {
   const direct = pipe(type, modelFromResolvedType(checker)(dataBySymbol), Option.toArray)
@@ -979,12 +1012,12 @@ const modelsFromResolvedType = (
 
 const fieldReferences = (
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
-  fields: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
+  fields: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   node: ts.Identifier,
   symbol: ts.Symbol
 ): ReadonlyArray<readonly [DataStructureEntry, ts.Symbol]> => {
-  const symbolKey = Equal.byReferenceUnsafe(symbol)
+  const symbolKey = referenceKey(symbol)
   const direct = HashMap.get(fields, symbolKey)
 
   if (Option.isSome(direct)) {
@@ -1017,7 +1050,7 @@ const fieldReferences = (
 
 const modelFromObjectLiteral =
   (checker: ts.TypeChecker) =>
-  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>) =>
   (literal: ts.ObjectLiteralExpression): Option.Option<DataStructureEntry> =>
     pipe(
       checker.getContextualType(literal),
@@ -1027,13 +1060,13 @@ const modelFromObjectLiteral =
 
 const modelFromConstructorSymbol =
   (checker: ts.TypeChecker) =>
-  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>) =>
   (expression: ts.Expression): Option.Option<DataStructureEntry> =>
     pipe(
       unwrapCallee(expression),
       symbolAt(checker),
       Option.flatMap((symbol) => {
-        const symbolKey = Equal.byReferenceUnsafe(symbol)
+        const symbolKey = referenceKey(symbol)
 
         return HashMap.get(dataBySymbol, symbolKey)
       })
@@ -1041,7 +1074,7 @@ const modelFromConstructorSymbol =
 
 const modelFromMakeCall =
   (checker: ts.TypeChecker) =>
-  (dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>) =>
+  (dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>) =>
   (expression: ts.CallExpression): Option.Option<DataStructureEntry> =>
     pipe(
       unwrapCallee(expression.expression),
@@ -1050,7 +1083,7 @@ const modelFromMakeCall =
       Option.map((access) => unwrapCallee(access.expression)),
       Option.flatMap(symbolAt(checker)),
       Option.flatMap((symbol) => {
-        const symbolKey = Equal.byReferenceUnsafe(symbol)
+        const symbolKey = referenceKey(symbol)
 
         return HashMap.get(dataBySymbol, symbolKey)
       })
@@ -1058,7 +1091,7 @@ const modelFromMakeCall =
 
 const modelFromConstruction = (
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   expression: ts.Expression
 ): Option.Option<DataStructureEntry> =>
   pipe(
@@ -1139,7 +1172,7 @@ const propertyCopiesParameter = (
 const parameterModel = (
   definition: FunctionDefinition,
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>
 ): Option.Option<readonly [ts.Identifier, DataStructureEntry]> => {
   const models = Array.filterMap(definition.parameters, (parameter) =>
     pipe(
@@ -1162,7 +1195,7 @@ const parameterModel = (
 const returnModel = (
   definition: FunctionDefinition,
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   expression: ts.Expression
 ): Option.Option<DataStructureEntry> => {
   const constructed = modelFromConstruction(checker, dataBySymbol, expression)
@@ -1186,7 +1219,7 @@ const returnModel = (
         Option.orElse(Function.constant(symbolOption)),
         Option.map(canonicalSymbol(checker)),
         Option.flatMap((candidate) => {
-          const candidateKey = Equal.byReferenceUnsafe(candidate)
+          const candidateKey = referenceKey(candidate)
 
           return HashMap.get(dataBySymbol, candidateKey)
         })
@@ -1203,7 +1236,7 @@ const modelShapesMatch = (source: DataStructureEntry, target: DataStructureEntry
 
 const passThroughConversion = (
   checker: ts.TypeChecker,
-  dataBySymbol: HashMap.HashMap<ts.Symbol, DataStructureEntry>,
+  dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   entry: FunctionEntry
 ): Option.Option<PassThroughConversion> =>
   pipe(
@@ -1329,34 +1362,33 @@ const declarationIsRuntimeSchema = (
 const structuralRoles = (
   checker: ts.TypeChecker,
   dataStructures: ReadonlyArray<DataStructureEntry>,
-  ownersByData: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>>,
-  ownersByFunction: HashMap.HashMap<ts.Symbol, HashSet.HashSet<ts.Symbol>>,
-  functionBySymbol: HashMap.HashMap<ts.Symbol, FunctionEntry>
-): HashMap.HashMap<ts.Symbol, HashSet.HashSet<ModelRole>> =>
+  ownersByData: HashMap.HashMap<ReferenceKey<ts.Symbol>, HashSet.HashSet<ReferenceKey<ts.Symbol>>>,
+  ownersByFunction: HashMap.HashMap<
+    ReferenceKey<ts.Symbol>,
+    HashSet.HashSet<ReferenceKey<ts.Symbol>>
+  >,
+  functionBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry>
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, HashSet.HashSet<ModelRole>> =>
   pipe(
     dataStructures,
     Array.map((entry) => {
-      const entryKey = Equal.byReferenceUnsafe(entry.symbol)
+      const entryKey = referenceKey(entry.symbol)
       const owners = pipe(HashMap.get(ownersByData, entryKey), Option.getOrElse(HashSet.empty))
       const roles = HashSet.empty<ModelRole>()
       const directlyShared = HashSet.size(owners) >= 2
 
-      const sharedThroughFunction = HashSet.some(owners, (owner) => {
-        const ownerKey = Equal.byReferenceUnsafe(owner)
-
-        return pipe(
-          HashMap.get(ownersByFunction, ownerKey),
+      const sharedThroughFunction = HashSet.some(owners, (owner) =>
+        pipe(
+          HashMap.get(ownersByFunction, owner),
           Option.exists((callers) => HashSet.size(callers) >= 2)
         )
-      })
+      )
 
       const shared = directlyShared || sharedThroughFunction
 
-      const usedByExportedFunction = HashSet.some(owners, (owner) => {
-        const ownerKey = Equal.byReferenceUnsafe(owner)
-
-        return pipe(HashMap.get(functionBySymbol, ownerKey), Option.exists(Struct.get("exported")))
-      })
+      const usedByExportedFunction = HashSet.some(owners, (owner) =>
+        pipe(HashMap.get(functionBySymbol, owner), Option.exists(Struct.get("exported")))
+      )
 
       const isRuntimeSchema = declarationIsRuntimeSchema(checker, entry)
       const boundaryEvidence = Array.make(usedByExportedFunction, isRuntimeSchema)
@@ -1401,7 +1433,7 @@ const shapeGroups = (
         const group = pipe(HashMap.get(groups, shape), Option.getOrElse(Array.empty))
         const nextGroup = Array.append(group, entry)
 
-        return HashMap.set(groups, shape, nextGroup)
+        return setReplacingValue(groups, shape, nextGroup)
       }),
       Option.getOrElse(Function.constant(groups))
     )
@@ -1421,36 +1453,17 @@ export const functionDerivedStem = structuralRoleStem
 export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
   const checker = context.checker
   const dataStructures = dataStructureEntries(context)
-
-  const dataBySymbol = pipe(
-    dataStructures,
-    Array.map((entry) => {
-      const entryKey = Equal.byReferenceUnsafe(entry.symbol)
-
-      return Tuple.make(entryKey, entry)
-    }),
-    HashMap.fromIterable
-  )
-
+  const dataBySymbol = Array.reduce(dataStructures, emptyDataBySymbol, addDataStructureEntry)
   const functions = functionEntries(context, dataBySymbol)
-
-  const functionBySymbol = pipe(
-    functions,
-    Array.map((entry) => {
-      const entryKey = Equal.byReferenceUnsafe(entry.symbol)
-
-      return Tuple.make(entryKey, entry)
-    }),
-    HashMap.fromIterable
-  )
+  const functionBySymbol = Array.reduce(functions, emptyFunctionBySymbol, addFunctionEntry)
 
   const ownersByDataBuilder = pipe(
-    HashMap.empty<ts.Symbol, HashSet.HashSet<ts.Symbol>>(),
+    HashMap.empty<ReferenceKey<ts.Symbol>, HashSet.HashSet<ReferenceKey<ts.Symbol>>>(),
     HashMap.beginMutation
   )
 
   const ownersByFunctionBuilder = pipe(
-    HashMap.empty<ts.Symbol, HashSet.HashSet<ts.Symbol>>(),
+    HashMap.empty<ReferenceKey<ts.Symbol>, HashSet.HashSet<ReferenceKey<ts.Symbol>>>(),
     HashMap.beginMutation
   )
 
@@ -1471,7 +1484,7 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
             symbolAt(checker)(identifier),
             Option.map((symbol) => {
               const owner = ownerSymbol(checker, functionBySymbol, identifier)
-              const symbolKey = Equal.byReferenceUnsafe(symbol)
+              const symbolKey = referenceKey(symbol)
               const data = HashMap.get(dataBySymbol, symbolKey)
               const fn = HashMap.get(functionBySymbol, symbolKey)
               const references = fieldReferences(checker, dataBySymbol, fields, identifier, symbol)
@@ -1524,7 +1537,7 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
                 )(isIndependentRead),
                 Option.map(() => {
                   Array.forEach(references, ([model, field]) => {
-                    const fieldKey = Equal.byReferenceUnsafe(field)
+                    const fieldKey = referenceKey(field)
 
                     const fieldRead = new FieldRead({
                       model,
@@ -1572,7 +1585,7 @@ export const buildConceptIndex = (context: ProgramContext): ConceptIndex => {
           const called = pipe(
             symbolAt(checker)(callee),
             Option.flatMap((symbol) => {
-              const symbolKey = Equal.byReferenceUnsafe(symbol)
+              const symbolKey = referenceKey(symbol)
 
               return HashMap.get(functionBySymbol, symbolKey)
             })

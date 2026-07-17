@@ -6,7 +6,7 @@ import { Console, Effect, Function, Option, Predicate, Stream, Struct, pipe } fr
 import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText } from "@better-typescript/core/engine/report"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
-import { reportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { makeReportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
@@ -84,7 +84,8 @@ const runCommand = Effect.fn("runCommand")(function* (
   const watchOptions = Option.none()
   const updates = workspaceUpdates(workspace, watchOptions)
   const selectedUpdates = watchForChanges ? updates : Stream.take(updates, 1)
-  const events = reportEvents(config)(selectedUpdates)
+  const report = yield* makeReportEvents(config)
+  const events = report(selectedUpdates)
 
   const status = watchForChanges
     ? `Watching ${workspace.rootPath} for changes.`

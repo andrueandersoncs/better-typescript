@@ -1,4 +1,4 @@
-import { Tuple, Array, Equal, Function, HashMap, Match, Option, Struct, pipe, Result } from "effect"
+import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
@@ -9,6 +9,8 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+
+import { type ReferenceKey, referenceKey } from "./support/referenceKey.js"
 
 const schemaPropertyNameText = (name: ts.PropertyName): Option.Option<string> =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
@@ -68,16 +70,18 @@ const addObjectLiteral: AstFold<ReadonlyArray<ts.ObjectLiteralExpression>> = (li
   ts.isObjectLiteralExpression(node) ? Array.append(literals, node) : literals
 
 const addConstructionEntry = (
-  index: HashMap.HashMap<ts.Symbol, string>,
-  entry: readonly [ts.Symbol, string]
-): HashMap.HashMap<ts.Symbol, string> => {
-  const symbolKey = Equal.byReferenceUnsafe(entry[0])
+  index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>,
+  entry: readonly [ReferenceKey<ts.Symbol>, string]
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, string> => {
+  const symbolKey = entry[0]
 
   return HashMap.has(index, symbolKey) ? index : HashMap.set(index, symbolKey, entry[1])
 }
 
-const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Symbol, string> => {
-  const emptyIndex = HashMap.empty<ts.Symbol, string>()
+const buildConstructionIndex = (
+  context: ProgramContext
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, string> => {
+  const emptyIndex = HashMap.empty<ReferenceKey<ts.Symbol>, string>()
   const checker = context.checker
 
   const typeHasProperty =
@@ -202,15 +206,17 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
 
   const symbolFileEntry =
     (fileName: string) =>
-    (symbol: ts.Symbol): readonly [ts.Symbol, string] => {
-      const symbolKey = Equal.byReferenceUnsafe(symbol)
+    (symbol: ts.Symbol): readonly [ReferenceKey<ts.Symbol>, string] => {
+      const symbolKey = referenceKey(symbol)
 
       return Tuple.make(symbolKey, fileName)
     }
 
   const literalConstructionEntries =
     (fileName: string) =>
-    (literal: ts.ObjectLiteralExpression): ReadonlyArray<readonly [ts.Symbol, string]> => {
+    (
+      literal: ts.ObjectLiteralExpression
+    ): ReadonlyArray<readonly [ReferenceKey<ts.Symbol>, string]> => {
       const contextualType = checker.getContextualType(literal)
       const directContextualType = Option.fromNullishOr(contextualType)
       const emptyBoxedTypes = Array.empty()
@@ -251,7 +257,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
 
   const fileConstructionEntries = (
     sourceFile: ts.SourceFile
-  ): ReadonlyArray<readonly [ts.Symbol, string]> =>
+  ): ReadonlyArray<readonly [ReferenceKey<ts.Symbol>, string]> =>
     pipe(
       Array.empty(),
       foldAst(addObjectLiteral)(sourceFile),
@@ -266,7 +272,7 @@ const buildConstructionIndex = (context: ProgramContext): HashMap.HashMap<ts.Sym
 }
 
 const objectTypeDeclarationMatches =
-  (index: HashMap.HashMap<ts.Symbol, string>) => (context: CheckContext) => {
+  (index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>) => (context: CheckContext) => {
     const checker = context.checker
     const toRelative = toRelativeFileName(context.projectRoot)
     const match = detection(context)
@@ -278,7 +284,7 @@ const objectTypeDeclarationMatches =
         checker.getSymbolAtLocation(declaration.name),
         Option.fromNullishOr,
         Option.flatMap((symbol) => {
-          const symbolKey = Equal.byReferenceUnsafe(symbol)
+          const symbolKey = referenceKey(symbol)
 
           return HashMap.get(index, symbolKey)
         }),
@@ -367,7 +373,7 @@ const isObjectTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclar
   ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)
 
 const schemaClassListeners = (
-  index: HashMap.HashMap<ts.Symbol, string>
+  index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>
 ): ReadonlyArray<Subscription> => {
   const interfaceDeclarationKinds = Array.of(ts.SyntaxKind.InterfaceDeclaration)
 

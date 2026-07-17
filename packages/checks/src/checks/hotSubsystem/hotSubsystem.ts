@@ -40,7 +40,7 @@ const subsystemAdvice = (directory: DirectorySignals): Advice => {
   const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
   const evidence = Array.appendAll(leadingEvidence, checkEvidence)
   const location = adviceLocation(directory.path)
-  const examples = hotSubsystemExamples()
+  const examples = hotSubsystemExamples
 
   return new Advice({
     location,

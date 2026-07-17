@@ -1,5 +1,5 @@
 import { Array, Function, Option, pipe } from "effect"
-import { withProgramIndex } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"

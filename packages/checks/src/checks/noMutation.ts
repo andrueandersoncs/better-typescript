@@ -1,7 +1,7 @@
-import { Array, Equal, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
-import { isUnseenType } from "./support/tsType.js"
+import { isUnseenType, type SeenTypes } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { defineCheck } from "../defineCheck.js"
@@ -96,16 +96,15 @@ const nullishTypeFlags = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFla
 
 const isNullishType = (type: ts.Type): boolean => (type.flags & nullishTypeFlags) !== 0
 
-const emptyTypeSeen: HashSet.HashSet<ts.Type> = HashSet.empty()
+const emptyTypeSeen: SeenTypes = Array.empty()
 
 const isUncontrolledTypeWithSeen =
-  (seen: HashSet.HashSet<ts.Type>) =>
+  (seen: SeenTypes) =>
   (type: ts.Type): boolean =>
     pipe(
       Option.liftPredicate(isUnseenType(seen))(type),
       Option.exists((candidate) => {
-        const candidateKey = Equal.byReferenceUnsafe(candidate)
-        const nextSeen = HashSet.add(seen, candidateKey)
+        const nextSeen = Array.append(seen, candidate)
         const checkMember = isUncontrolledTypeWithSeen(nextSeen)
 
         // Exempt union only when every non-nullish member is uncontrolled because any can occur at runtime.

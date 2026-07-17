@@ -25,8 +25,8 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
     paths,
     Array.filter(
       (filePath) =>
-        Array.filter(constructions, (element) => element.detection.location.path === filePath)
-          .length >= minimumConstructions
+        Array.countBy(constructions, (element) => element.detection.location.path === filePath) >=
+        minimumConstructions
     ),
     Array.map((filePath) => {
       const atPath = Array.filter(
@@ -34,21 +34,21 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
         (element) => element.detection.location.path === filePath
       )
 
-      const constructorCount = Array.filter(
+      const constructorCount = Array.countBy(
         atPath,
         (element) => element.name === externalDependencyConstructionName
-      ).length
+      )
 
-      const moduleScopeCount = Array.filter(
+      const moduleScopeCount = Array.countBy(
         atPath,
         (element) => element.name === moduleScopeEffectsName
-      ).length
+      )
 
       const location = adviceLocation(filePath)
       const constructionItem = evidenceItem("external-dependency-construction", constructorCount)
       const moduleScopeItem = evidenceItem("module-scope-effects", moduleScopeCount)
       const evidence = Array.make(constructionItem, moduleScopeItem)
-      const examples = hardToTestHotspotExamples()
+      const examples = hardToTestHotspotExamples
 
       return new Advice({
         location,

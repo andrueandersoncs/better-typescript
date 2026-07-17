@@ -1,6 +1,7 @@
 import {
   Array,
   Effect,
+  FiberSet,
   Function,
   HashMap,
   HashSet,
@@ -12,7 +13,10 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
+import { compilerOptionsForAnalysis } from "../../project/loadProject/loadProject.js"
 import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
+import type { ExampleLoadError } from "../example/data.js"
+import { makeRefactorExampleResolver, type ResolveRefactorExamples } from "../example/example.js"
 import type { ReportBlock, ReportEvent } from "../report/data.js"
 import {
   batchReportBlocks,
@@ -42,35 +46,45 @@ const programUpdates = (
   config: ProjectConfig,
   watchOptions: Option.Option<ts.WatchOptions>
 ): Stream.Stream<ProgramContext> =>
-  Stream.callback<ProgramContext>((queue) => {
-    const onProgramCreate = (builder: ts.BuilderProgram): boolean => {
-      const program = builder.getProgram()
-      const context = contextFor(config.rootPath)(program)
+  Stream.callback<ProgramContext>((queue) =>
+    Effect.gen(function* () {
+      // FiberSet owns callback fibers because offers stay Effect-managed for the stream scope.
+      const fibers = yield* FiberSet.make()
+      const run = yield* FiberSet.runtime(fibers)<never>()
 
-      return Queue.offerUnsafe(queue, context)
-    }
+      const onProgramCreate: NonNullable<
+        ts.WatchCompilerHost<ts.BuilderProgram>["afterProgramCreate"]
+      > = (builder) => {
+        const program = builder.getProgram()
+        const context = contextFor(config.rootPath)(program)
+        const offer = Queue.offer(queue, context)
 
-    const acquire = Effect.sync(() => {
-      const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
+        run(offer)
+      }
 
-      const host = ts.createWatchCompilerHost(
-        config.configPath,
-        undefined,
-        ts.sys,
-        ts.createAbstractBuilder,
-        ignoreDiagnostic,
-        ignoreDiagnostic,
-        watchOptionsToExtend
-      )
+      const acquire = Effect.sync(() => {
+        const watchOptionsToExtend = Option.getOrUndefined(watchOptions)
+        const compilerOptions = compilerOptionsForAnalysis(config.parsed.options)
 
-      // Set afterProgramCreate after host build because createWatchProgram emits the initial program now.
-      host.afterProgramCreate = onProgramCreate
+        const host = ts.createWatchCompilerHost(
+          config.configPath,
+          compilerOptions,
+          ts.sys,
+          ts.createAbstractBuilder,
+          ignoreDiagnostic,
+          ignoreDiagnostic,
+          watchOptionsToExtend
+        )
 
-      return ts.createWatchProgram(host)
+        // Set afterProgramCreate after host build because createWatchProgram emits the initial program now.
+        host.afterProgramCreate = onProgramCreate
+
+        return ts.createWatchProgram(host)
+      })
+
+      return yield* Effect.acquireRelease(acquire, stopWatch)
     })
-
-    return Effect.acquireRelease(acquire, stopWatch)
-  })
+  )
 
 const emptyFileIndex: HashMap.HashMap<string, ts.SourceFile> = HashMap.empty()
 
@@ -219,6 +233,7 @@ const signalsEquivalence = (
 // Derivation stays per wiring because each glob assignment is an independent policy boundary.
 const reportBlockUpdates =
   <DeriveError>(config: WiringConfig<DeriveError>) =>
+  (resolve: ResolveRefactorExamples) =>
   <UpdateError, R>(
     updates: Stream.Stream<
       readonly [rootPath: string, signals: ReadonlyArray<WiringSignals>],
@@ -227,14 +242,14 @@ const reportBlockUpdates =
     >
   ): Stream.Stream<
     readonly [rootPath: string, blocks: ReadonlyArray<ReportBlock>],
-    UpdateError | DeriveError,
+    UpdateError | DeriveError | ExampleLoadError,
     R
   > =>
     pipe(
       updates,
       Stream.mapEffect(([rootPath, signals]) =>
         pipe(
-          batchReportBlocks(config)(signals),
+          batchReportBlocks(config)(resolve)(signals),
           Effect.map((blocks) => Tuple.make(rootPath, blocks))
         )
       )
@@ -299,14 +314,27 @@ const blockDeltas = <UpdateError, R>(
     })
   )
 
-// Full recompute is required because checker checks can depend on files outside the edit set.
-export const reportEvents =
-  <DeriveError>(config: WiringConfig<DeriveError>) =>
+export interface ReportEvents<DeriveError> {
   <UpdateError, R>(
     updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
-  ): Stream.Stream<ReportEvent, UpdateError | DeriveError, R> => {
-    const recomputedSignals = pipe(updates, signalUpdates(config))
-    const gatedSignals = pipe(recomputedSignals, Stream.changesWith(signalsEquivalence))
+  ): Stream.Stream<ReportEvent, UpdateError | DeriveError | ExampleLoadError, R>
+}
 
-    return pipe(gatedSignals, reportBlockUpdates(config), blockDeltas)
-  }
+// Resolve report dependencies once because repeated report streams must share their cache.
+export const makeReportEvents = <DeriveError>(
+  config: WiringConfig<DeriveError>
+): Effect.Effect<ReportEvents<DeriveError>> =>
+  pipe(
+    makeRefactorExampleResolver,
+    Effect.map(
+      (resolve): ReportEvents<DeriveError> =>
+        (updates) =>
+          pipe(
+            updates,
+            signalUpdates(config),
+            Stream.changesWith(signalsEquivalence),
+            reportBlockUpdates(config)(resolve),
+            blockDeltas
+          )
+    )
+  )

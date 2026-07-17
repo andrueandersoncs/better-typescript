@@ -1,49 +1,39 @@
 import * as path from "node:path"
-import {
-  Array,
-  Effect,
-  Function,
-  Iterable,
-  MutableList,
-  Option,
-  Ref,
-  Tuple,
-  flow,
-  pipe
-} from "effect"
+import { Array, Data, Function, Iterable, MutableList, Option, Predicate, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { ProgramContext } from "../sources/data.js"
 import { astNodesIn, isProjectSourceFile } from "../sources/sources.js"
+import { sourceComments } from "../sources/comments.js"
 import { Detection, Location } from "../location/data.js"
 import {
-  ActiveNodeSubscription,
-  CachedPlan,
   Check,
   CheckContext,
   FileSubscription,
   NodeSubscription,
-  PlannedNodeSubscription,
   type DetectionSource,
-  type FileHandler,
-  type NodeHandler,
   type Subscription
 } from "./data.js"
 
 export type CheckFilePredicate = (checkIndex: number, sourceFile: ts.SourceFile) => boolean
 
-export const nodeSubscription =
-  (kinds: ReadonlyArray<ts.SyntaxKind>) =>
-  (handler: NodeHandler): Subscription =>
-    new NodeSubscription({ kind: "OnNode", kinds, handler })
+// Planned subscriptions keep check slots because fused dispatch needs both.
+class PlannedNodeSubscription extends Data.Class<{
+  readonly checkIndex: number
+  readonly subscription: NodeSubscription
+}> {}
 
-const fileSubscription = (handler: FileHandler): Subscription =>
-  new FileSubscription({ kind: "OnFile", handler })
+// Active subscriptions buffer detections because traversal is fused by syntax kind.
+class ActiveNodeSubscription extends Data.Class<{
+  readonly checkIndex: number
+  readonly handle: (node: ts.Node) => ReadonlyArray<Detection>
+  readonly detections: MutableList.MutableList<Detection>
+}> {}
 
-export const isNodeSubscription = (subscription: Subscription): subscription is NodeSubscription =>
-  subscription.kind === "OnNode"
+const isNodeSubscription = (subscription: Subscription): subscription is NodeSubscription =>
+  Predicate.hasProperty(subscription, "kinds")
 
-export const isFileSubscription = (subscription: Subscription): subscription is FileSubscription =>
-  subscription.kind === "OnFile"
+const isFileSubscription = (subscription: Subscription): subscription is FileSubscription =>
+  !isNodeSubscription(subscription)
 
 export const checkFromSubscriptions = (
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
@@ -84,7 +74,7 @@ export const nodeSubscriptions =
   (
     handler: (context: CheckContext) => (node: N) => ReadonlyArray<Detection>
   ): ReadonlyArray<Subscription> => {
-    const wrapped: NodeHandler = (context) => {
+    const wrapped = (context: CheckContext) => {
       const elements = handler(context)
 
       const refined = (node: ts.Node): ReadonlyArray<Detection> =>
@@ -93,14 +83,18 @@ export const nodeSubscriptions =
       return refined
     }
 
-    const subscribe = nodeSubscription(kinds)
+    const subscription = new NodeSubscription({ kinds, handler: wrapped })
 
-    return pipe(wrapped, subscribe, Array.of)
+    return Array.of(subscription)
   }
 
-export const fileSubscriptions = (
+const fileSubscription = (
   handler: (context: CheckContext) => ReadonlyArray<Detection>
-): ReadonlyArray<Subscription> => pipe(handler, fileSubscription, Array.of)
+): FileSubscription => new FileSubscription({ handler })
+
+export const fileSubscriptions: (
+  handler: (context: CheckContext) => ReadonlyArray<Detection>
+) => ReadonlyArray<Subscription> = flow(fileSubscription, Array.of)
 
 export const nodeCheck =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
@@ -111,9 +105,6 @@ export const nodeCheck =
   }
 
 export const fileCheck = flow(fileSubscriptions, Function.constant, checkFromSubscriptions)
-
-export const combineAll: (subscriptionGroups: ReadonlyArray<ReadonlyArray<Subscription>>) => Check =
-  flow(Array.flatten, Function.constant, checkFromSubscriptions)
 
 // Fused dispatch is required because separate AST streams multiply traversal cost by check count.
 export const runChecks =
@@ -135,7 +126,13 @@ export const runChecks =
       pipe(
         subscriptions,
         Array.filter(isNodeSubscription),
-        Array.map((subscription) => new PlannedNodeSubscription({ checkIndex, subscription }))
+        Array.map(
+          (subscription): PlannedNodeSubscription =>
+            new PlannedNodeSubscription({
+              checkIndex,
+              subscription
+            })
+        )
       )
     )
 
@@ -156,12 +153,15 @@ export const runChecks =
         : Array.makeBy(checks.length, () => MutableList.make<Detection>())
 
     Array.forEach(sourceFiles, (sourceFile) => {
+      const comments = sourceComments(sourceFile)
+
       const checkContext = new CheckContext({
         program: context.program,
         checker: context.checker,
         projectRoot: context.projectRoot,
         workspaceRoot: context.workspaceRoot,
-        sourceFile
+        sourceFile,
+        comments
       })
 
       Array.forEach(plans, (subscriptions, checkIndex) => {
@@ -222,46 +222,4 @@ export const runChecks =
     })
 
     return Array.map(detectionsByCheck, MutableList.toArray)
-  }
-
-export const withProgramIndex =
-  <Index>(build: (context: ProgramContext) => Index) =>
-  (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check => {
-    const emptyPlanCache = Option.none<CachedPlan>()
-    const planCache = Ref.makeUnsafe(emptyPlanCache)
-
-    const plan: (context: ProgramContext) => ReadonlyArray<Subscription> = (context) => {
-      const readOrBuild = (
-        cached: Option.Option<CachedPlan>
-      ): readonly [ReadonlyArray<Subscription>, Option.Option<CachedPlan>] => {
-        const current = pipe(
-          cached,
-          Option.filter((entry) => entry.program === context.program)
-        )
-
-        if (Option.isSome(current)) {
-          const planned = current.value.subscriptions
-
-          return Tuple.make(planned, cached)
-        }
-
-        const index = build(context)
-        const planned = subscriptions(index)
-
-        const entry = new CachedPlan({
-          program: context.program,
-          subscriptions: planned
-        })
-
-        const updated = Option.some(entry)
-
-        return Tuple.make(planned, updated)
-      }
-
-      const cachedPlan = Ref.modify(planCache, readOrBuild)
-
-      return Effect.runSync(cachedPlan)
-    }
-
-    return checkFromSubscriptions(plan)
   }

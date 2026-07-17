@@ -1,8 +1,11 @@
-import { Data, MutableList, Schema } from "effect"
+import { Data, Schema } from "effect"
 import type * as ts from "typescript"
 import type { Detection } from "../location/data.js"
 import type { ProgramContext } from "../sources/data.js"
+import { SourceComment } from "../sources/commentsData.js"
 import { TsNode, TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
+
+const sourceCommentsSchema = Schema.Array(SourceComment)
 
 // CheckContext is the shared check-file contract because owners need one vocabulary.
 export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
@@ -10,7 +13,8 @@ export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
   checker: TsTypeChecker,
   projectRoot: Schema.String,
   workspaceRoot: Schema.String,
-  sourceFile: TsSourceFile
+  sourceFile: TsSourceFile,
+  comments: sourceCommentsSchema
 }) {}
 
 const optionalUnknown = Schema.optional(Schema.Unknown)
@@ -23,20 +27,18 @@ export class DetectionSource extends Schema.Class<DetectionSource>("DetectionSou
   data: optionalUnknown
 }) {}
 
-export type NodeHandler = (context: CheckContext) => (node: ts.Node) => ReadonlyArray<Detection>
+type NodeHandler = (context: CheckContext) => (node: ts.Node) => ReadonlyArray<Detection>
 
-export type FileHandler = (context: CheckContext) => ReadonlyArray<Detection>
+type FileHandler = (context: CheckContext) => ReadonlyArray<Detection>
 
-// NodeSubscription is the shared OnNode contract because planners need one vocabulary.
+// NodeSubscription carries syntax kinds because planners group node handlers for fused dispatch.
 export class NodeSubscription extends Data.Class<{
-  readonly kind: "OnNode"
   readonly kinds: ReadonlyArray<ts.SyntaxKind>
   readonly handler: NodeHandler
 }> {}
 
-// FileSubscription is the shared OnFile contract because planners need one vocabulary.
+// FileSubscription carries a file handler because it runs once per included source file.
 export class FileSubscription extends Data.Class<{
-  readonly kind: "OnFile"
   readonly handler: FileHandler
 }> {}
 
@@ -46,23 +48,4 @@ export type Subscription = NodeSubscription | FileSubscription
 // Check is the shared plan contract because runChecks owners need one vocabulary.
 export class Check extends Data.Class<{
   readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
-}> {}
-
-// CachedPlan is the program+subscriptions boundary because callers need one contract.
-export class CachedPlan extends Data.Class<{
-  readonly program: ts.Program
-  readonly subscriptions: ReadonlyArray<Subscription>
-}> {}
-
-// PlannedNodeSubscription is a planned OnNode boundary because runChecks needs one shape.
-export class PlannedNodeSubscription extends Data.Class<{
-  readonly checkIndex: number
-  readonly subscription: NodeSubscription
-}> {}
-
-// ActiveNodeSubscription is a live OnNode boundary because runChecks needs one shape.
-export class ActiveNodeSubscription extends Data.Class<{
-  readonly checkIndex: number
-  readonly handle: (node: ts.Node) => ReadonlyArray<Detection>
-  readonly detections: MutableList.MutableList<Detection>
 }> {}

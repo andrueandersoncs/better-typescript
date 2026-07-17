@@ -48,7 +48,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const callersItem = evidenceItem("production-callers", callerCount)
     const evidence = Array.make(forwardersItem, callersItem)
     const location = adviceLocation(filePath)
-    const examples = deletionTestShallownessExamples()
+    const examples = deletionTestShallownessExamples
 
     return new Advice({
       location,

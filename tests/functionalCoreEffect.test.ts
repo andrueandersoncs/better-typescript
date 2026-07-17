@@ -6,6 +6,7 @@ import { Effect, Option, Schema, Stream, pipe, Array } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/signal/data"
+import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
 import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring
@@ -40,7 +41,7 @@ const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
         name: named.name,
         reported: named.reported,
         detections: detections.flat(),
-        examples: named.examples()
+        examples: named.examples
       })
     })
   )
@@ -279,8 +280,12 @@ test("shape evidence and advice require the documented thresholds", async () => 
   ])
 })
 
-test("wiring exposes one reported policy check and silent shape evidence", () => {
+test("wiring exposes one reported policy check and silent shape evidence", async () => {
   const checks = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).checks
+  const boundaryCheck = checks[0]
+  assert.ok(boundaryCheck)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const boundaryExamples = await Effect.runPromise(resolve(boundaryCheck.examples))
 
   assert.deepEqual(
     checks.map((check) => [check.name, check.reported]),
@@ -289,5 +294,5 @@ test("wiring exposes one reported policy check and silent shape evidence", () =>
       ["functional-core-effect-shape-evidence", false]
     ]
   )
-  assert.equal(checks[0]?.examples().length, 1)
+  assert.equal(boundaryExamples.length, 1)
 })

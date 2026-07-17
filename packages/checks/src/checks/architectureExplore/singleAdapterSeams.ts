@@ -1,17 +1,6 @@
-import {
-  Array,
-  Equal,
-  Function,
-  HashMap,
-  HashSet,
-  Option,
-  Struct,
-  Tuple,
-  pipe,
-  Result
-} from "effect"
+import { Array, Function, HashMap, HashSet, Option, Struct, Tuple, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { withProgramIndex } from "@better-typescript/core/engine/check"
+import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -23,6 +12,7 @@ import { hasExportModifier } from "../support/tsNode.js"
 import { resolvedSymbolAt } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
 import { isTestSourceFile } from "./programSymbols.js"
+import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
 
 const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
@@ -193,9 +183,9 @@ const incrementAdapter =
   (fromTest: boolean) =>
   (symbol: ts.Symbol) =>
   (
-    counts: HashMap.HashMap<ts.Symbol, readonly [number, number]>
-  ): HashMap.HashMap<ts.Symbol, readonly [number, number]> => {
-    const symbolKey = Equal.byReferenceUnsafe(symbol)
+    counts: HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
+  ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]> => {
+    const symbolKey = referenceKey(symbol)
     const current = pipe(HashMap.get(counts, symbolKey), Option.getOrElse(emptyAdapterCount))
     const production = fromTest ? current[0] : current[0] + 1
     const test = fromTest ? current[1] + 1 : current[1]
@@ -207,15 +197,15 @@ const buildIndex = (
   context: ProgramContext
 ): readonly [
   ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]>,
-  HashSet.HashSet<ts.Symbol>,
-  HashMap.HashMap<ts.Symbol, readonly [number, number]>
+  HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+  HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
 ] => {
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const candidates = seamCandidates(context)(sourceFiles)
 
   const candidateSymbols = pipe(
     candidates,
-    Array.map((candidate) => Equal.byReferenceUnsafe(candidate[1])),
+    Array.map((candidate) => referenceKey(candidate[1])),
     HashSet.fromIterable
   )
 
@@ -225,25 +215,25 @@ const buildIndex = (
     (sourceFile: ts.SourceFile) =>
     (
       state: readonly [
-        HashSet.HashSet<ts.Symbol>,
-        HashMap.HashMap<ts.Symbol, readonly [number, number]>
+        HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+        HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
       ]
     ): readonly [
-      HashSet.HashSet<ts.Symbol>,
-      HashMap.HashMap<ts.Symbol, readonly [number, number]>
+      HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+      HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
     ] => {
       const fromTest = classifyTestSource(sourceFile)
 
       return foldAst(
         (
           current: readonly [
-            HashSet.HashSet<ts.Symbol>,
-            HashMap.HashMap<ts.Symbol, readonly [number, number]>
+            HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+            HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
           ],
           node: ts.Node
         ): readonly [
-          HashSet.HashSet<ts.Symbol>,
-          HashMap.HashMap<ts.Symbol, readonly [number, number]>
+          HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+          HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
         ] => {
           const parameterState = pipe(
             Option.liftPredicate(ts.isParameter)(node),
@@ -251,12 +241,12 @@ const buildIndex = (
             Option.map((parameter) => context.checker.getTypeAtLocation(parameter)),
             Option.flatMap(typeSymbol(context.checker)),
             Option.filter((candidate) => {
-              const candidateKey = Equal.byReferenceUnsafe(candidate)
+              const candidateKey = referenceKey(candidate)
 
               return HashSet.has(candidateSymbols, candidateKey)
             }),
             Option.map((candidate) => {
-              const candidateKey = Equal.byReferenceUnsafe(candidate)
+              const candidateKey = referenceKey(candidate)
               const injected = HashSet.add(current[0], candidateKey)
 
               return Tuple.make(injected, current[1])
@@ -270,7 +260,7 @@ const buildIndex = (
               const symbols = pipe(
                 implementedSymbols(context.checker)(declaration),
                 Array.filter((symbol) => {
-                  const symbolKey = Equal.byReferenceUnsafe(symbol)
+                  const symbolKey = referenceKey(symbol)
 
                   return HashSet.has(candidateSymbols, symbolKey)
                 })
@@ -289,7 +279,7 @@ const buildIndex = (
             Option.liftPredicate(ts.isObjectLiteralExpression)(node),
             Option.flatMap(contextualInterfaceSymbol(context.checker)),
             Option.filter((candidate) => {
-              const candidateKey = Equal.byReferenceUnsafe(candidate)
+              const candidateKey = referenceKey(candidate)
 
               return HashSet.has(candidateSymbols, candidateKey)
             }),
@@ -306,12 +296,12 @@ const buildIndex = (
       )(sourceFile)(state)
     }
 
-  const injected = HashSet.empty<ts.Symbol>()
-  const adapterCounts = HashMap.empty<ts.Symbol, readonly [number, number]>()
+  const injected = HashSet.empty<ReferenceKey<ts.Symbol>>()
+  const adapterCounts = HashMap.empty<ReferenceKey<ts.Symbol>, readonly [number, number]>()
 
   const initial: readonly [
-    HashSet.HashSet<ts.Symbol>,
-    HashMap.HashMap<ts.Symbol, readonly [number, number]>
+    HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+    HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
   ] = Tuple.make(injected, adapterCounts)
 
   const finalState = pipe(
@@ -326,8 +316,8 @@ const singleAdapterElements =
   (
     index: readonly [
       ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]>,
-      HashSet.HashSet<ts.Symbol>,
-      HashMap.HashMap<ts.Symbol, readonly [number, number]>
+      HashSet.HashSet<ReferenceKey<ts.Symbol>>,
+      HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]>
     ]
   ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
@@ -337,12 +327,12 @@ const singleAdapterElements =
       index[0],
       Array.filter((candidate) => candidate[0].getSourceFile() === context.sourceFile),
       Array.filter((candidate) => {
-        const candidateKey = Equal.byReferenceUnsafe(candidate[1])
+        const candidateKey = referenceKey(candidate[1])
 
         return HashSet.has(index[1], candidateKey)
       }),
       Array.filterMap((candidate) => {
-        const candidateKey = Equal.byReferenceUnsafe(candidate[1])
+        const candidateKey = referenceKey(candidate[1])
 
         const counts = pipe(
           HashMap.get(index[2], candidateKey),

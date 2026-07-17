@@ -22,7 +22,7 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   const location = adviceLocation("project")
   const signalsItem = evidenceItem("signals", summary.total)
   const evidence = Array.prepend(dominantEvidence, signalsItem)
-  const examples = ruleDominanceExamples()
+  const examples = ruleDominanceExamples
 
   const advice = new Advice({
     location,

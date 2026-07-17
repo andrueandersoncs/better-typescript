@@ -66,7 +66,7 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
 
       const nonZero = Array.filter(observations, (item) => item.count > 0)
       const evidence = Array.prepend(nonZero, sharedItem)
-      const examples = imperativeStateManagerExamples()
+      const examples = imperativeStateManagerExamples
 
       return new Advice({
         location,

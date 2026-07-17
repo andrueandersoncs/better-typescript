@@ -13,6 +13,8 @@ import { contextFromLoadedProject, loadProject } from "@better-typescript/core/p
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
+import { inlineRefactorExamples } from "@better-typescript/core/engine/example"
+import { InlineRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
@@ -271,7 +273,7 @@ test("decodeWiringConfig rejects legacy per-check paths", async () => {
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: \(\) => RefactorExample\[\] \}/
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExampleSource \}/
   )
 })
 
@@ -288,25 +290,47 @@ test("decodeWiringConfig rejects array-valued check examples", async () => {
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: \(\) => RefactorExample\[\] \}/
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExampleSource \}/
   )
 })
 
-test("decodeWiringConfig accepts thunk-valued check examples", async () => {
+test("decodeWiringConfig rejects legacy thunk-valued check examples", async () => {
+  const error = await decodeFailure([
+    {
+      files: ["src/**/*.ts"],
+      wiring: {
+        checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
+        derive: () => Stream.empty
+      }
+    }
+  ])
+
+  assert.match(
+    error.message,
+    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExampleSource \}/
+  )
+})
+
+test("decodeWiringConfig accepts inline RefactorExampleSource check examples", async () => {
+  const examples = inlineRefactorExamples([])
   const config = await Effect.runPromise(
     decodeWiringConfig(virtualConfigPath, [
       {
         files: ["src/**/*.ts"],
         wiring: {
-          checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
+          checks: [{ name: "inline-examples", check: emptyCheck, examples }],
           derive: () => Stream.empty
         }
       }
     ])
   )
 
-  assert.equal(config[0]?.wiring.checks[0]?.name, "thunk-examples")
-  assert.deepEqual(config[0]?.wiring.checks[0]?.examples(), [])
+  const decodedExamples = config[0]?.wiring.checks[0]?.examples
+
+  assert.equal(config[0]?.wiring.checks[0]?.name, "inline-examples")
+  assert.ok(decodedExamples instanceof InlineRefactorExamples)
+  assert.equal(decodedExamples._tag, "inline")
+  assert.deepEqual(decodedExamples.examples, [])
 })
 
 test("decodeWiringConfig rejects duplicate check names across wiring entries", async () => {

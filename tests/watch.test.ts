@@ -9,12 +9,17 @@ import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { detection, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
+import {
+  exampleSnippet,
+  inlineRefactorExamples,
+  refactorExample
+} from "@better-typescript/core/engine/example"
+import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
 import { contextFor } from "@better-typescript/core/engine/sources"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { reportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { makeReportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/wiring"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
@@ -27,12 +32,12 @@ const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
-const probeExamples = Function.constant([
+const probeExamples = inlineRefactorExamples([
   refactorExample(
     exampleSnippet("src/cases.ts", `throw new Error("boom")`),
     exampleSnippet("src/cases.ts", "yield* new BoomError()")
   )
-] as const)
+])
 
 const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   (context) => (node) => [
@@ -54,7 +59,7 @@ const probeWiring = makeWiring({
       title: "probe advice",
       remediation: `handle ${detectionCount} throws`,
       evidence: [{ measure: "throw statements", count: detectionCount }],
-      examples: probeExamples()
+      examples: probeExamples
     }
 
     return Stream.succeed(advice)
@@ -62,6 +67,18 @@ const probeWiring = makeWiring({
 })
 
 const probeConfig = defineConfig([{ files: ["src/cases.ts"], wiring: probeWiring }])
+
+const reportEvents =
+  (config: typeof probeConfig) =>
+  <UpdateError, R>(
+    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
+  ): Stream.Stream<ReportEvent, UpdateError | ExampleLoadError, R> =>
+    Stream.unwrap(
+      pipe(
+        makeReportEvents(config),
+        Effect.map((report) => report(updates))
+      )
+    )
 
 const contextFromSource = (sourceText: string): ProgramContext => {
   const compilerOptions: ts.CompilerOptions = {
@@ -181,9 +198,9 @@ test("reportEvents emits one root-scoped empty event for an empty initial report
 
 test("reportEvents preserves the workspace-update error channel", async () => {
   const failure = "workspace update failure" as const
-  const output: Stream.Stream<ReportEvent, typeof failure> = reportEvents(probeConfig)(
-    Stream.fail(failure)
-  )
+  const output: Stream.Stream<ReportEvent, typeof failure | ExampleLoadError> = reportEvents(
+    probeConfig
+  )(Stream.fail(failure))
   const actual = await Effect.runPromise(pipe(output, Stream.runCollect, Effect.flip))
 
   assert.equal(actual, failure)

@@ -1,4 +1,15 @@
-import { Array, Effect, HashSet, Match, Record, Stream, Struct, Tuple, pipe } from "effect"
+import {
+  Array,
+  Effect,
+  Function,
+  HashSet,
+  Match,
+  Record,
+  Stream,
+  Struct,
+  Tuple,
+  pipe
+} from "effect"
 import {
   adviceHeader,
   adviceOrder,
@@ -9,8 +20,8 @@ import {
   isFileLevelAdvice
 } from "../derive/derive.js"
 import type { Advice } from "../derive/data.js"
-import { formatRefactorExample } from "../example/example.js"
-import type { RefactorExample } from "../example/data.js"
+import type { ExampleLoadError, RefactorExample } from "../example/data.js"
+import { formatRefactorExample, type ResolveRefactorExamples } from "../example/example.js"
 import type { Detection } from "../location/data.js"
 import { detectionBlockKey, locationText } from "../location/location.js"
 import type { Signal, WiringSignals } from "../signal/data.js"
@@ -28,23 +39,25 @@ import type { ReportEvent } from "./data.js"
 const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>): string =>
   pipe(Array.prepend(parts, kind), JSON.stringify)
 
-const adviceReportBlock = (advice: Advice): ReportBlock => {
-  const pathLabel = advicePath(advice)
-  const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
-  const identity = reportKeyIdentity("advice", adviceIdentityParts)
+const adviceReportBlock =
+  (advice: Advice) =>
+  (examples: ReadonlyArray<RefactorExample>): ReportBlock => {
+    const pathLabel = advicePath(advice)
+    const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
+    const identity = reportKeyIdentity("advice", adviceIdentityParts)
 
-  const key = new AdviceReportKey({
-    level: advice.level,
-    path: pathLabel,
-    title: advice.title
-  })
+    const key = new AdviceReportKey({
+      level: advice.level,
+      path: pathLabel,
+      title: advice.title
+    })
 
-  const text = adviceText(advice)
-  const header = adviceHeader(advice)
-  const cleared = `${header} — cleared`
+    const text = adviceText(examples)(advice)
+    const header = adviceHeader(advice)
+    const cleared = `${header} — cleared`
 
-  return new ReportBlock({ identity, key, text, cleared })
-}
+    return new ReportBlock({ identity, key, text, cleared })
+  }
 
 // Derivation takes the full signal array because advice must see every signal from the same batch.
 const deriveAdvice =
@@ -53,17 +66,21 @@ const deriveAdvice =
     pipe(wiring.derive(signals), collectSignals)
 
 // Advice blocks keep a stable sort order because consumers rely on that presentation order.
-export const adviceReportBlocks = (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> => {
-  const ordered = Array.sort(advice, adviceOrder)
+export const adviceReportBlocks =
+  (resolve: ResolveRefactorExamples) =>
+  (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
+    const ordered = Array.sort(advice, adviceOrder)
 
-  return Array.map(ordered, adviceReportBlock)
-}
+    return Effect.forEach(ordered, (item) =>
+      pipe(resolve(item.examples), Effect.map(adviceReportBlock(item)))
+    )
+  }
 
 // Local blocks keep the rule key kind because existing NDJSON consumers already key that way.
 export const checkReportBlocks =
   (name: string) =>
-  (examples: ReadonlyArray<RefactorExample>) =>
-  (elements: ReadonlyArray<Detection>): ReadonlyArray<ReportBlock> =>
+  (elements: ReadonlyArray<Detection>) =>
+  (examples: ReadonlyArray<RefactorExample>): ReadonlyArray<ReportBlock> =>
     pipe(
       Array.groupBy(elements, detectionBlockKey),
       Record.values,
@@ -102,24 +119,40 @@ export const checkReportBlocks =
       })
     )
 
-// Silent signals stay in the batch because derivation still needs them when they do not render.
+const hasDetections = (signal: Signal): boolean => signal.detections.length > 0
+
+// Empty signals skip example loading because they render no report block.
 export const reportBlocks =
+  (resolve: ResolveRefactorExamples) =>
   (signals: ReadonlyArray<Signal>) =>
-  (advice: ReadonlyArray<Advice>): ReadonlyArray<ReportBlock> => {
-    const adviceBlocks = adviceReportBlocks(advice)
+  (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
+    const adviceBlocks = adviceReportBlocks(resolve)(advice)
 
     const signalBlocks = pipe(
       signals,
       Array.filter(Struct.get("reported")),
-      Array.flatMap((signal) => checkReportBlocks(signal.name)(signal.examples)(signal.detections))
+      Array.filter(hasDetections),
+      Effect.forEach((signal) =>
+        pipe(
+          resolve(signal.examples),
+          Effect.map(checkReportBlocks(signal.name)(signal.detections))
+        )
+      ),
+      Effect.map(Array.flatten)
     )
 
-    return Array.appendAll(adviceBlocks, signalBlocks)
+    return pipe(
+      Effect.all({ adviceBlocks, signalBlocks }),
+      Effect.map(({ adviceBlocks, signalBlocks }) => Array.appendAll(adviceBlocks, signalBlocks))
+    )
   }
 
 export const batchReportBlocks =
   <E>(config: WiringConfig<E>) =>
-  (wiringSignals: ReadonlyArray<WiringSignals>): Effect.Effect<ReadonlyArray<ReportBlock>, E> => {
+  (resolve: ResolveRefactorExamples) =>
+  (
+    wiringSignals: ReadonlyArray<WiringSignals>
+  ): Effect.Effect<ReadonlyArray<ReportBlock>, E | ExampleLoadError> => {
     const matchedEntries = pipe(
       Array.zip(config, wiringSignals),
       Array.filter(([, current]) => current.matched)
@@ -131,7 +164,7 @@ export const batchReportBlocks =
       deriveAdvice(entry.wiring)(current.signals)
     )
 
-    return pipe(advice, Effect.map(Array.flatten), Effect.map(reportBlocks(signals)))
+    return pipe(advice, Effect.map(Array.flatten), Effect.flatMap(reportBlocks(resolve)(signals)))
   }
 
 export const filterFallbackAdviceForUncoveredFiles =
@@ -141,12 +174,19 @@ export const filterFallbackAdviceForUncoveredFiles =
     const paths = Array.map(fileAdvice, fileAdvicePath)
     const coveredFiles = HashSet.fromIterable(paths)
 
-    return Stream.filter(fallbackAdvice, (advice) => {
-      const isNotFileLevel = advice.level !== "file"
-      const isUncoveredFile = !HashSet.has(coveredFiles, advice.location.path)
-
-      return isNotFileLevel || isUncoveredFile
-    })
+    return pipe(
+      fallbackAdvice,
+      Stream.filter((advice) =>
+        pipe(
+          Match.value(advice),
+          Match.when(isFileLevelAdvice, (fileAdvice) => {
+            const path = fileAdvicePath(fileAdvice)
+            return !HashSet.has(coveredFiles, path)
+          }),
+          Match.orElse(Function.constTrue)
+        )
+      )
+    )
   }
 
 // Fallback suppression is required because fallback must not duplicate covered file-level advice.
@@ -157,9 +197,10 @@ export const withFallbackAdvice = <E, R>(
   pipe(
     collectSignals(specificAdvice),
     Effect.map((specific) => {
-      const fallback = filterFallbackAdviceForUncoveredFiles(specific)(fallbackAdvice)
+      const filteredFallback = filterFallbackAdviceForUncoveredFiles(specific)(fallbackAdvice)
+      const specificStream = Stream.fromIterable(specific)
 
-      return pipe(Stream.fromIterable(specific), Stream.concat(fallback))
+      return Stream.concat(specificStream, filteredFallback)
     }),
     Stream.unwrap
   )
@@ -180,8 +221,13 @@ export const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =
 export const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
-    const emptyReportEvent = new EmptyReportEvent({ rootPath })
-    return blocks.length === 0 ? Array.of(emptyReportEvent) : Array.map(blocks, blockSignalEvent)
+    if (blocks.length === 0) {
+      const emptyReportEvent = new EmptyReportEvent({ rootPath })
+
+      return Array.of(emptyReportEvent)
+    }
+
+    return Array.map(blocks, blockSignalEvent)
   }
 
 const emptyReportText = (event: EmptyReportEvent): string => `No signals in ${event.rootPath}.`

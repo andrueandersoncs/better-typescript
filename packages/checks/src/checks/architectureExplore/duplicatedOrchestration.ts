@@ -51,7 +51,7 @@ const duplicatedOrchestrationAdvice = (
       const sitesItem = evidenceItem("duplicate-sites", paths.length)
       const stepsItem = evidenceItem("orchestration-steps", stepCount)
       const evidence = Array.make(sitesItem, stepsItem)
-      const examples = duplicatedOrchestrationExamples()
+      const examples = duplicatedOrchestrationExamples
 
       const advice = new Advice({
         location,

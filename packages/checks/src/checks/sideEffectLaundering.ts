@@ -20,7 +20,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
 
     if (hasEnoughCollisions) {
       const location = adviceLocation(file.path)
-      const examples = sideEffectLaunderingExamples()
+      const examples = sideEffectLaunderingExamples
 
       const advice = new Advice({
         location,

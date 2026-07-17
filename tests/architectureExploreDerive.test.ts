@@ -25,6 +25,7 @@ import {
 } from "@better-typescript/checks/architectureExplore/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/signal/data"
 import { makeWiring } from "@better-typescript/core/engine/wiring"
@@ -38,7 +39,7 @@ const detectionAt = (path: string, line: number, data?: unknown): Detection =>
   })
 
 const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
-  new Signal({ name, reported: false, detections, examples: [] })
+  new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
 
 const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
   Effect.runPromise(Stream.runCollect(advice))

@@ -1,11 +1,13 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Array, Effect, Order, pipe } from "effect"
+import { Array, Effect, HashMap, Match, Option, Order, SynchronizedRef, Tuple, pipe } from "effect"
 import {
+  DirectoryRefactorExamples,
   ExampleLoadError,
   ExampleSnippet,
+  InlineRefactorExamples,
   type NonEmptyExampleTree,
-  type NonEmptyRefactorExamples,
+  type RefactorExampleSource,
   RefactorExample
 } from "./data.js"
 
@@ -26,6 +28,18 @@ export const refactorExampleTrees = (
   bad: NonEmptyExampleTree,
   good: NonEmptyExampleTree
 ): RefactorExample => new RefactorExample({ bad, good })
+
+export const inlineRefactorExamples = (
+  examples: ReadonlyArray<RefactorExample>
+): InlineRefactorExamples => new InlineRefactorExamples({ examples })
+
+export const directoryRefactorExamples = (root: string): DirectoryRefactorExamples =>
+  new DirectoryRefactorExamples({ root })
+
+const emptyExamples = Array.empty<RefactorExample>()
+
+export const emptyRefactorExampleSource: RefactorExampleSource =
+  inlineRefactorExamples(emptyExamples)
 
 const formatExampleTree =
   (label: string) =>
@@ -138,9 +152,9 @@ const readExampleTree: (treeRoot: string) => Effect.Effect<NonEmptyExampleTree, 
     )
   })
 
-export const loadRefactorExamplesAt: (
+const loadRefactorExamplesAt: (
   exampleRoot: string
-) => Effect.Effect<NonEmptyRefactorExamples, ExampleLoadError> = Effect.fn(
+) => Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> = Effect.fn(
   "loadRefactorExamplesAt"
 )(function* (exampleRoot: string) {
   if (!directoryExists(exampleRoot)) {
@@ -194,3 +208,63 @@ export const loadRefactorExamplesAt: (
     })
   )
 })
+
+// ResolveRefactorExamples loads only when reporting because construction must stay inert.
+export type ResolveRefactorExamples = (
+  source: RefactorExampleSource
+) => Effect.Effect<ReadonlyArray<RefactorExample>, ExampleLoadError>
+
+// One resolver caches successful directory loads because a watch run shares one report program.
+export const makeRefactorExampleResolver: Effect.Effect<ResolveRefactorExamples> = Effect.gen(
+  function* () {
+    const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
+    const cache = yield* SynchronizedRef.make(emptyCache)
+
+    const loadDirectory = (
+      root: string
+    ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
+      SynchronizedRef.modifyEffect(cache, (current) => {
+        const cached = HashMap.get(current, root)
+
+        if (Option.isSome(cached)) {
+          const cachedEntry = Tuple.make(cached.value, current)
+          return Effect.succeed(cachedEntry)
+        }
+
+        return pipe(
+          loadRefactorExamplesAt(root),
+          Effect.map((loaded) => {
+            const next = HashMap.set(current, root, loaded)
+
+            return Tuple.make(loaded, next)
+          })
+        )
+      })
+
+    const directoryExamples = (
+      root: string
+    ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
+      pipe(
+        SynchronizedRef.get(cache),
+        Effect.flatMap((current) =>
+          pipe(
+            HashMap.get(current, root),
+            Option.match({
+              onNone: () => loadDirectory(root),
+              onSome: Effect.succeed
+            })
+          )
+        )
+      )
+
+    const resolve: ResolveRefactorExamples = (source) =>
+      pipe(
+        Match.value(source),
+        Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
+        Match.tag("directory", (directory) => directoryExamples(directory.root)),
+        Match.exhaustive
+      )
+
+    return resolve
+  }
+)

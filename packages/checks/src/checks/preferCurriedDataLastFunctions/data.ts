@@ -1,8 +1,9 @@
 import { Function, HashMap, Schema } from "effect"
 import type * as ts from "typescript"
+import type { ReferenceKey } from "../support/referenceKey.js"
 
 // SymbolUses is shared uses-map values because its owners need one vocabulary.
-export type SymbolUses = HashMap.HashMap<ts.Symbol, SymbolUse>
+export type SymbolUses = HashMap.HashMap<ReferenceKey<ts.Symbol>, SymbolUse>
 
 // SymbolUse is shared use-flag fields because its owners need one vocabulary.
 export class SymbolUse extends Schema.Class<SymbolUse>("SymbolUse")({

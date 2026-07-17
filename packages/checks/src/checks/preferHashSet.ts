@@ -17,21 +17,21 @@ const constructorMessage = "Avoid constructing a built-in Set."
 
 const constructorHint =
   "Use Effect's HashSet instead — for example HashSet.fromIterable([1, 2, 3]) or " +
-  "HashSet.empty(). HashSet uses Equal and Hash with structural equality by default; " +
-  "for reference-identity object members (for example TypeScript checker symbols), wrap " +
-  "values with Equal.byReferenceUnsafe at the creation boundary. Constructing a Set is " +
-  "permitted only when it is handed to a third-party API that requires one."
+  "HashSet.empty(). HashSet uses Equal and Hash with structural equality by default. For " +
+  "reference-identity object members, wrap each value in an Equal.Equal value that compares " +
+  "the underlying objects with === and returns Hash.random(object) from Hash.symbol. " +
+  "Constructing a Set is permitted only when it is handed to a third-party API that requires one."
 
 const setTypeNames: ReadonlyArray<string> = Array.make("Set", "ReadonlySet")
 
 const isSetTypeName = (id: ts.Identifier): boolean => Array.contains(setTypeNames, id.text)
 
 const typeRefHint =
-  "Use HashSet.HashSet<T> from Effect instead. HashSet uses Equal and Hash with " +
-  "structural equality by default; wrap reference-identity object members with " +
-  "Equal.byReferenceUnsafe at the creation boundary. Writing the built-in Set type is " +
-  "permitted only where it mirrors a third-party contract: ambient declarations and " +
-  "values that cross into a third-party call."
+  "Use HashSet.HashSet<T> from Effect instead. HashSet uses Equal and Hash with structural " +
+  "equality by default. For reference-identity object members, use an Equal.Equal wrapper whose " +
+  "equality compares the underlying objects with === and whose Hash.symbol method returns " +
+  "Hash.random(object). Writing the built-in Set type is permitted only where it mirrors a " +
+  "third-party contract: ambient declarations and values that cross into a third-party call."
 
 const effectModuleName = "effect"
 

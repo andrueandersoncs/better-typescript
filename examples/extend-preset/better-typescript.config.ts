@@ -1,10 +1,14 @@
-import { Function, Stream } from "effect"
+import { Stream } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
-import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
+import {
+  exampleSnippet,
+  inlineRefactorExamples,
+  refactorExample
+} from "@better-typescript/core/engine/example"
 import {
   defineConfig,
   makeWiring,
@@ -80,7 +84,7 @@ const consoleLogExamples = [
 const consoleLogCheck = namedCheck(
   "acme/no-console-log",
   noConsoleLog,
-  Function.constant(consoleLogExamples)
+  inlineRefactorExamples(consoleLogExamples)
 )
 
 const localWiring = makeWiring({

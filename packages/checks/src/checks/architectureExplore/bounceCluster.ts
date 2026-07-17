@@ -141,19 +141,19 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
   )
 
   return Array.map(components, (component) => {
-    const edgeCount = Array.filter(edges, (edge) => {
+    const edgeCount = Array.countBy(edges, (edge) => {
       const containsFrom = Array.contains(component, edge[0])
       const containsTo = Array.contains(component, edge[1])
 
       return containsFrom && containsTo
-    }).length
+    })
 
     const directory = commonDirectory(component)
     const location = adviceLocation(directory)
     const thinModulesItem = evidenceItem("thin-modules", component.length)
     const moduleEdgesItem = evidenceItem("module-edges", edgeCount)
     const evidence = Array.make(thinModulesItem, moduleEdgesItem)
-    const examples = bounceClusterExamples()
+    const examples = bounceClusterExamples
 
     return new Advice({
       location,

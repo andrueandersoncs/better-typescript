@@ -4,12 +4,11 @@ import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
-import type { NonEmptyRefactorExamples } from "@better-typescript/core/engine/example/data"
+import type { RefactorExampleSource } from "@better-typescript/core/engine/example/data"
 import { packageExamples } from "../../defineCheck.js"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData,
-  type FunctionalCoreBoundaryKind,
   type FunctionalCoreShapeKind
 } from "./data.js"
 import { functionalCoreBoundaryCheckName, functionalCoreShapeCheckName } from "./names.js"
@@ -21,9 +20,7 @@ const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "pure-service": "pure service candidate"
 }
 
-const shapeAdviceExamples: Readonly<
-  Record<FunctionalCoreShapeKind, () => NonEmptyRefactorExamples>
-> = {
+const shapeAdviceExamples: Readonly<Record<FunctionalCoreShapeKind, RefactorExampleSource>> = {
   "effect-orchestrator": packageExamples("effect-orchestrator"),
   "adapter-business-logic": packageExamples("adapter-business-logic"),
   "thick-composition-root": packageExamples("thick-composition-root"),
@@ -74,7 +71,7 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
     }
 
     const evidence = shapeEvidence(data)
-    const examples = shapeAdviceExamples[data.kind]()
+    const examples = shapeAdviceExamples[data.kind]
 
     const advice = new Advice({
       location: element.location,
@@ -103,11 +100,6 @@ const boundaryPairs = (
     return Result.succeed(pair)
   })
 
-const countKind = (
-  elements: ReadonlyArray<readonly [Detection, FunctionalCoreBoundaryData]>,
-  kind: FunctionalCoreBoundaryKind
-): number => Array.filter(elements, ([, data]) => data.kind === kind).length
-
 const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
   const relevant = pipe(
     boundaryPairs(detections),
@@ -135,13 +127,13 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       }
 
       const evidence = Array.map(kinds, (kind) => {
-        const count = countKind(elements, kind)
+        const count = Array.countBy(elements, ([, data]) => data.kind === kind)
 
         return evidenceItem(kind, count)
       })
 
       const location = adviceLocation(path)
-      const examples = imperativeCoreExamples()
+      const examples = imperativeCoreExamples
 
       const advice = new Advice({
         location,
