@@ -1,3 +1,8 @@
+Always start a task by creating a precise definition for the top 5 most relevant, most important concepts, entities, or aspects.
+For example, if your task includes creating a new check in better-typescript (this project), two of the most relevant concepts would be:
+1. What, precisely, is `better-typescript`?
+2. What, precisely, is the new check?
+
 Always do your work on the main branch unless explicitly instructed to create a branch. If you're
 already on another branch when work begins, do your work on that branch.
 
