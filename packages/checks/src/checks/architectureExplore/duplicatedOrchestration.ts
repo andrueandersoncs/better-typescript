@@ -1,6 +1,10 @@
 import { Array, Function, Option, Record, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { commonDirectory, compositionFingerprintDataOf } from "./evidence.js"
@@ -47,9 +51,9 @@ const duplicatedOrchestrationAdvice = (
       )
 
       const directory = commonDirectory(paths)
-      const location = adviceLocation(directory)
-      const sitesItem = evidenceItem("duplicate-sites", paths.length)
-      const stepsItem = evidenceItem("orchestration-steps", stepCount)
+      const location = makeAdviceLocation(directory)
+      const sitesItem = makeEvidenceItem("duplicate-sites", paths.length)
+      const stepsItem = makeEvidenceItem("orchestration-steps", stepCount)
       const evidence = Array.make(sitesItem, stepsItem)
       const examples = duplicatedOrchestrationExamples
 

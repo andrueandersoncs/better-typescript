@@ -6,11 +6,11 @@ import {
   singleStatementReturnExpression,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -55,7 +55,7 @@ const isRecordType =
 const propertyAccessorMatches = (context: CheckContext) => {
   const checker = context.checker
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
   const isRecord = isRecordType(checker)
   const propertyNameText = (name: ts.PropertyName) => name.getText(sourceFile)
 
@@ -141,7 +141,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
   return matches
 }
 
-export const preferEffectPropertyAccessors = defineCheck(
+export const preferEffectPropertyAccessors = makeCheck(
   "prefer-effect-property-accessors",
   functionDefinitionKinds,
   isFunctionDefinition,

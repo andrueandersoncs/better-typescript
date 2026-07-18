@@ -5,16 +5,19 @@ import { Function, flow } from "effect"
 import type { Check, CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { RefactorExampleSource } from "@better-typescript/core/engine/example/data"
-import { directoryRefactorExamples } from "@better-typescript/core/engine/example"
+import { makeDirectoryRefactorExamples } from "@better-typescript/core/engine/example"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import {
-  checkFromSubscriptions,
+  makeCheckFromSubscriptions,
   fileCheck,
   nodeCheck,
   withCompilerOptions
 } from "@better-typescript/core/engine/check"
-import { namedCheck, silentCheck } from "@better-typescript/core/engine/wiring"
+import {
+  makeNamedCheck,
+  makeSilentCheck as makeSilentNamedCheck
+} from "@better-typescript/core/engine/wiring"
 
 const moduleUrlPath = fileURLToPath(import.meta.url)
 const moduleDirectory = path.dirname(moduleUrlPath)
@@ -25,17 +28,17 @@ const exampleRootFor = (name: string) => path.join(packageExamplesRoot, name)
 // packageExamples stays an inert directory descriptor because loading belongs to report rendering.
 export const packageExamples: (name: string) => RefactorExampleSource = Function.compose(
   exampleRootFor,
-  directoryRefactorExamples
+  makeDirectoryRefactorExamples
 )
 
 export const withProgramIndex =
   <Index>(build: (context: ProgramContext) => Index) =>
   (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Check =>
-    checkFromSubscriptions(flow(build, subscriptions))
+    makeCheckFromSubscriptions(flow(build, subscriptions))
 
-export const defineSilentCheck = (name: string, check: Check) => silentCheck(name, check)
+export const makeSilentCheck = (name: string, check: Check) => makeSilentNamedCheck(name, check)
 
-export const defineCheck = <N extends ts.Node>(
+export const makeCheck = <N extends ts.Node>(
   name: string,
   kinds: ReadonlyArray<ts.SyntaxKind>,
   refine: (node: ts.Node) => node is N,
@@ -46,10 +49,10 @@ export const defineCheck = <N extends ts.Node>(
   const check = withRefine(detect)
   const examples = packageExamples(name)
 
-  return namedCheck(name, check, examples)
+  return makeNamedCheck(name, check, examples)
 }
 
-export const defineFileCheck = (
+export const makeFileCheck = (
   name: string,
   detect: (context: CheckContext) => ReadonlyArray<Detection>,
   compilerOptions: ts.CompilerOptions = {}
@@ -58,25 +61,25 @@ export const defineFileCheck = (
   const check = withCompilerOptions(compilerOptions)(detected)
   const examples = packageExamples(name)
 
-  return namedCheck(name, check, examples)
+  return makeNamedCheck(name, check, examples)
 }
 
-export const definePlannedCheck = (
+export const makePlannedCheck = (
   name: string,
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
 ) => {
-  const check = checkFromSubscriptions(plan)
+  const check = makeCheckFromSubscriptions(plan)
   const examples = packageExamples(name)
 
-  return namedCheck(name, check, examples)
+  return makeNamedCheck(name, check, examples)
 }
 
-export const defineSilentPlannedCheck = (
+export const makeSilentPlannedCheck = (
   name: string,
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
 ) => {
-  const check = checkFromSubscriptions(plan)
+  const check = makeCheckFromSubscriptions(plan)
   const examples = packageExamples(name)
 
-  return silentCheck(name, check, examples)
+  return makeSilentNamedCheck(name, check, examples)
 }

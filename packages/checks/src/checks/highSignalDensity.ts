@@ -1,24 +1,24 @@
 import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
-  adviceLocation,
+  makeAdviceLocation,
   byFile,
-  countSummary,
+  makeCountSummary,
   deriveSignals,
   evidenceFromCounts,
-  evidenceItem
+  makeEvidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../defineCheck.js"
 
 export const highSignalDensityExamples = packageExamples("high-signal-density")
 
-const densityAdvice = (file: FileDetections) => {
-  const summary = countSummary(file.elements)
+const makeDensityAdvice = (file: FileDetections) => {
+  const summary = makeCountSummary(file.elements)
   const checkEvidence = evidenceFromCounts(summary.countsByCheck)
-  const signalsItem = evidenceItem("signals", summary.total)
+  const signalsItem = makeEvidenceItem("signals", summary.total)
   const evidence = Array.prepend(checkEvidence, signalsItem)
-  const location = adviceLocation(file.path)
+  const location = makeAdviceLocation(file.path)
   const examples = highSignalDensityExamples
 
   return new Advice({
@@ -39,7 +39,7 @@ const denseFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<
   pipe(
     byFile(signals),
     Array.filter((file) => file.elements.length >= 10),
-    Array.map(densityAdvice)
+    Array.map(makeDensityAdvice)
   )
 
 export const highSignalDensity = deriveSignals(denseFileAdvice)

@@ -6,31 +6,31 @@ import type { CheckContext, Subscription } from "@better-typescript/core/engine/
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
-import { definePlannedCheck } from "../defineCheck.js"
+import { makePlannedCheck } from "../defineCheck.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
-const declaredFunction = (declaration: ts.VariableDeclaration) =>
+const functionNameFromVariableDeclaration = (declaration: ts.VariableDeclaration) =>
   Option.gen(function* () {
     yield* functionInitializer(declaration)
 
     return yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
   })
 
-const namedFunctionDeclaration = (declaration: ts.FunctionDeclaration) =>
+const functionDeclarationName = (declaration: ts.FunctionDeclaration) =>
   Option.fromNullishOr(declaration.name)
 
 const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => {
   const variableDeclarationFunctions = ts.isVariableStatement(statement)
     ? Array.filterMap(
         statement.declarationList.declarations,
-        Function.flow(declaredFunction, Result.fromOption(Function.constVoid))
+        Function.flow(functionNameFromVariableDeclaration, Result.fromOption(Function.constVoid))
       )
     : Array.empty()
 
   const functionDeclarationNames = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(statement),
-    Option.flatMap(namedFunctionDeclaration),
+    Option.flatMap(functionDeclarationName),
     Option.toArray
   )
 
@@ -81,7 +81,7 @@ const duplicateNameListeners = (
   fileSubscriptions((context: CheckContext): ReadonlyArray<Detection> => {
     const fileFunctions = topLevelFunctions(context.sourceFile)
     const toRelative = toRelativeFileName(context.projectRoot)
-    const match = detection(context)
+    const match = makeDetection(context)
     const candidateFileName = context.sourceFile.fileName
 
     return Array.filterMap(fileFunctions, (candidate) => {
@@ -139,7 +139,7 @@ const duplicateNameListeners = (
 
 const duplicateFunctionNamePlan = Function.compose(buildFunctionNameIndex, duplicateNameListeners)
 
-export const noDuplicateFunctionNames = definePlannedCheck(
+export const noDuplicateFunctionNames = makePlannedCheck(
   "no-duplicate-function-names",
   duplicateFunctionNamePlan
 )

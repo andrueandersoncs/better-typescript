@@ -12,7 +12,7 @@ export const isProjectSourceFile = (sourceFile: ts.SourceFile) => {
   return !isSkippable
 }
 
-export const contextFor = (projectRoot: string) => (program: ts.Program) => {
+export const makeContext = (projectRoot: string) => (program: ts.Program) => {
   const checker = program.getTypeChecker()
 
   // Standalone loads treat the project as its own workspace because no wider root is known here.

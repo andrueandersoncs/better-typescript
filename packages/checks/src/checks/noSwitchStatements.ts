@@ -3,12 +3,12 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const switchStatementKind = ts.SyntaxKind.SwitchStatement
 
 const switchStatementElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.SwitchStatement): ReadonlyArray<Detection> =>
     pipe(
@@ -28,7 +28,7 @@ const switchStatementElements = (context: CheckContext) => {
 
 const switchStatementKinds = Array.of(switchStatementKind)
 
-export const noSwitchStatements = defineCheck(
+export const noSwitchStatements = makeCheck(
   "no-switch-statements",
   switchStatementKinds,
   ts.isSwitchStatement,

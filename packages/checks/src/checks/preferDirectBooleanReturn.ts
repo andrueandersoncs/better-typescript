@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { detection } from "@better-typescript/core/engine/check"
-import { defineCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
 
 const booleanLiteralValue = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
@@ -59,7 +59,7 @@ const andFalseHint =
 
 const booleanReturnMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const literalBranchMatch = (node: ts.Node, condition: ts.Expression, literalValue: boolean) => {
     const conditionText = condition.getText(sourceFile)
@@ -180,7 +180,7 @@ const booleanReturnMatches = (context: CheckContext) => {
   return matches
 }
 
-export const preferDirectBooleanReturn = defineCheck(
+export const preferDirectBooleanReturn = makeCheck(
   "prefer-direct-boolean-return",
   booleanReturnTargetKinds,
   isBooleanReturnTarget,

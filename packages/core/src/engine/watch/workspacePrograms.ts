@@ -1,6 +1,6 @@
 import { Array, Effect, Function, HashMap, MutableRef, Option, Stream, pipe } from "effect"
 import * as ts from "typescript"
-import { contextFor } from "../sources/sources.js"
+import { makeContext } from "../sources/sources.js"
 import type { ProgramContext } from "../sources/data.js"
 import { WorkspaceUpdate } from "./data.js"
 import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
@@ -81,7 +81,7 @@ const contextFromLanguageService = (config: ProjectConfig, languageService: ts.L
     languageService.getProgram(),
     Option.fromNullishOr,
     Option.getOrThrow,
-    contextFor(config.rootPath)
+    makeContext(config.rootPath)
   )
 
 const createWorkspaceServices = (
@@ -114,7 +114,7 @@ const disposeLanguageService = (languageService: ts.LanguageService): Effect.Eff
 const releaseWorkspaceServices = (services: WorkspaceServices): Effect.Effect<void> =>
   Effect.forEach(services.languageServices, disposeLanguageService, { discard: true })
 
-const workspaceUpdateFrom =
+const makeWorkspaceUpdateFrom =
   (rootPath: string) =>
   (services: WorkspaceServices): WorkspaceUpdate =>
     new WorkspaceUpdate({
@@ -132,7 +132,7 @@ export const workspacePrograms = (
 
   return pipe(
     services,
-    Effect.map(workspaceUpdateFrom(workspace.rootPath)),
+    Effect.map(makeWorkspaceUpdateFrom(workspace.rootPath)),
     Stream.fromEffect,
     Stream.scoped
   )

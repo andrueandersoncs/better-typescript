@@ -5,9 +5,9 @@ import { test } from "node:test"
 import { Array, Effect, Function, Option, Order, Result, Schema, pipe } from "effect"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { namedDetection } from "@better-typescript/core/engine/derive"
+import { makeNamedDetection } from "@better-typescript/core/engine/derive"
 import { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { contextFor } from "@better-typescript/core/engine/sources"
+import { makeContext } from "@better-typescript/core/engine/sources"
 import { runChecks } from "@better-typescript/core/engine/check"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { importUsage } from "@better-typescript/checks/architectureExplore/importUsage"
@@ -50,13 +50,13 @@ const runWorkspaceChecks = async (
   readonly detectionsByCheck: ReadonlyArray<ReadonlyArray<Detection>>
 }> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const executableChecks = Array.map(checks, (namedCheck) => namedCheck.check)
+  const executableChecks = Array.map(checks, (named) => named.check)
 
   const detectionsByCheck = Array.reduce(
     workspace.projects,
     Array.map(executableChecks, () => Array.empty<Detection>()),
     (current, project) => {
-      const loaded = contextFor(project.rootPath)(project.program)
+      const loaded = makeContext(project.rootPath)(project.program)
 
       const context = new ProgramContext({
         program: loaded.program,
@@ -211,11 +211,11 @@ test("exportSurface excludes home-file refs and splits test references", async (
 test("workspaceImportEdges joins checks test import to lib util via aliases", async () => {
   const checks = Array.make(importUsage, moduleIdentity, exportSurface, moduleGraph)
   const { detectionsByCheck } = await runWorkspaceChecks(checks)
-  const names = Array.map(checks, (namedCheck) => namedCheck.name)
+  const names = Array.map(checks, (named) => named.name)
 
   const named = Array.flatten(
     Array.map(detectionsByCheck, (detections, checkIndex) =>
-      Array.map(detections, namedDetection(names[checkIndex] ?? ""))
+      Array.map(detections, makeNamedDetection(names[checkIndex] ?? ""))
     )
   )
 

@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const errorTypeName = (typeName: ts.EntityName) =>
   ts.isIdentifier(typeName) ? typeName : typeName.right
@@ -23,7 +23,7 @@ const hint =
 
 const errorTypeMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const globalErrorSymbol = pipe(
     checker.resolveName("Error", undefined, ts.SymbolFlags.Type, false),
@@ -53,7 +53,7 @@ const errorTypeMatches = (context: CheckContext) => {
 
 const typeReferenceKinds = Array.of(ts.SyntaxKind.TypeReference)
 
-export const noErrorType = defineCheck(
+export const noErrorType = makeCheck(
   "no-error-type",
   typeReferenceKinds,
   isErrorTypeReference,

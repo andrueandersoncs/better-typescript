@@ -1,6 +1,10 @@
 import { Array, Effect, Function, Option, Schema, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, collectSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  collectSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { packageExamples } from "../../defineCheck.js"
@@ -36,20 +40,20 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
     paths,
     Array.filter((path) => sharedMutationCountAt(path)(signals.noMutation) >= 8),
     Array.map((path) => {
-      const location = adviceLocation(path)
+      const location = makeAdviceLocation(path)
       const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
       const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
       const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
       const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
       const arrayCount = countDetectionsAtPath(path)(signals.noMutableArrayMethods)
       const declarationCount = countDetectionsAtPath(path)(signals.noMutableVariableDeclarations)
-      const sharedItem = evidenceItem("no-mutation/shared-state", sharedCount)
-      const mutationEvidence = evidenceItem("no-mutation", mutationCount)
-      const hashMapEvidence = evidenceItem("prefer-hash-map", hashMapCount)
-      const hashSetEvidence = evidenceItem("prefer-hash-set", hashSetCount)
-      const mutableArrayEvidence = evidenceItem("no-mutable-array-methods", arrayCount)
+      const sharedItem = makeEvidenceItem("no-mutation/shared-state", sharedCount)
+      const mutationEvidence = makeEvidenceItem("no-mutation", mutationCount)
+      const hashMapEvidence = makeEvidenceItem("prefer-hash-map", hashMapCount)
+      const hashSetEvidence = makeEvidenceItem("prefer-hash-set", hashSetCount)
+      const mutableArrayEvidence = makeEvidenceItem("no-mutable-array-methods", arrayCount)
 
-      const mutableDeclarationEvidence = evidenceItem(
+      const mutableDeclarationEvidence = makeEvidenceItem(
         "no-mutable-variable-declarations",
         declarationCount
       )

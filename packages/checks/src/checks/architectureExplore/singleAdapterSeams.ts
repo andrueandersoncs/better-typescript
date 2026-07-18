@@ -13,8 +13,8 @@ import { resolvedSymbolAt } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
 import { isTestSourceFile } from "./programSymbols.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { singleAdapterSeamsName } from "./names.js"
 
 const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
@@ -316,7 +316,7 @@ const singleAdapterElements =
     ]
   ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    const element = detection(context)
+    const element = makeDetection(context)
 
     return pipe(
       index[0],
@@ -367,4 +367,4 @@ const singleAdapterSubscriptions = Function.compose(singleAdapterElements, fileS
 
 const singleAdapterSeamCheck = withProgramIndex(buildIndex)(singleAdapterSubscriptions)
 
-export const singleAdapterSeams = defineSilentCheck(singleAdapterSeamsName, singleAdapterSeamCheck)
+export const singleAdapterSeams = makeSilentCheck(singleAdapterSeamsName, singleAdapterSeamCheck)

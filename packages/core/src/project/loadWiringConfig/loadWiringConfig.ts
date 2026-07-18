@@ -5,7 +5,7 @@ import { createJiti } from "jiti"
 import type { WiringConfig } from "../../engine/wiring/data.js"
 import { configFileName } from "./data.js"
 import type { ProjectWiringConfigError } from "./data.js"
-import { decodeWiringConfig, formatCause, projectWiringConfigError } from "./decode.js"
+import { decodeWiringConfig, formatCause, makeProjectWiringConfigError } from "./decode.js"
 
 const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function* (
   configPath: string
@@ -20,7 +20,7 @@ const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function*
       const causeMessage = formatCause(cause)
       const reason = `failed to load config module: ${causeMessage}`
 
-      return projectWiringConfigError(configPath, reason)
+      return makeProjectWiringConfigError(configPath, reason)
     }
   })
 

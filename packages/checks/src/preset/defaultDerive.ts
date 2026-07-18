@@ -10,11 +10,12 @@ import { systemicHotspots } from "../checks/systemicHotspots/systemicHotspots.js
 import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { collectSignals } from "@better-typescript/core/engine/derive"
-import { namedDetection } from "@better-typescript/core/engine/derive"
+import { makeNamedDetection } from "@better-typescript/core/engine/derive"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 
 // Advice stream types stay inferred because a fifteenth import would re-fire the ceremony adviser.
-const nameDetections = (signal: Signal) => Array.map(signal.detections, namedDetection(signal.name))
+const nameDetections = (signal: Signal) =>
+  Array.map(signal.detections, makeNamedDetection(signal.name))
 
 const replayAdvice = Stream.fromIterable
 

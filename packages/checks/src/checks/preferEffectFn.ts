@@ -3,11 +3,11 @@ import { Array, Function, HashSet, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { functionInitializer, hasParameters, unwrapExpression } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const effectModuleFileNames = HashSet.make("Effect.ts", "Effect.d.ts")
 
@@ -145,7 +145,7 @@ const rewriteHint =
 const effectFnMatches = (context: CheckContext) => {
   const checker = context.checker
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
   const genCall = effectGenCall(checker)
   const hintFor = rewriteHint(sourceFile)
 
@@ -185,7 +185,7 @@ const effectFnMatches = (context: CheckContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-export const preferEffectFn = defineCheck(
+export const preferEffectFn = makeCheck(
   "prefer-effect-fn",
   variableDeclarationKinds,
   ts.isVariableDeclaration,

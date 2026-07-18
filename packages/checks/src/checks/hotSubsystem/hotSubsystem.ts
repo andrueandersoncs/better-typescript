@@ -1,12 +1,12 @@
 import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
 import { Advice, FileDetections } from "@better-typescript/core/engine/derive/data"
 import {
-  adviceLocation,
+  makeAdviceLocation,
   byFile,
-  countSummary,
+  makeCountSummary,
   deriveSignals,
   evidenceFromCounts,
-  evidenceItem,
+  makeEvidenceItem,
   parentDirectories
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -26,20 +26,20 @@ const isHotSubsystem = (directory: DirectorySignals) => {
   return Array.every(signalsEvidence, Boolean)
 }
 
-const subsystemAdvice = (directory: DirectorySignals) => {
+const makeSubsystemAdvice = (directory: DirectorySignals) => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
-  const summary = countSummary(elements)
+  const summary = makeCountSummary(elements)
   const checkEvidence = evidenceFromCounts(summary.countsByCheck)
 
   const sharePercent =
     directory.projectTotal > 0 ? Math.floor((summary.total * 100) / directory.projectTotal) : 0
 
-  const signalsItem = evidenceItem("signals", summary.total)
-  const filesItem = evidenceItem("files-with-signals", directory.files.length)
-  const shareItem = evidenceItem("share(signals)", sharePercent)
+  const signalsItem = makeEvidenceItem("signals", summary.total)
+  const filesItem = makeEvidenceItem("files-with-signals", directory.files.length)
+  const shareItem = makeEvidenceItem("share(signals)", sharePercent)
   const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
   const evidence = Array.appendAll(leadingEvidence, checkEvidence)
-  const location = adviceLocation(directory.path)
+  const location = makeAdviceLocation(directory.path)
   const examples = hotSubsystemExamples
 
   return new Advice({
@@ -118,7 +118,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
     return !hasHotDescendant
   })
 
-  return Array.map(deepest, subsystemAdvice)
+  return Array.map(deepest, makeSubsystemAdvice)
 }
 
 export const hotSubsystem = deriveSignals(hotSubsystemAdvice)

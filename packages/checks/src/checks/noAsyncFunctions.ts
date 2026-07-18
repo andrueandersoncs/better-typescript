@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const asyncKeywordKind = ts.SyntaxKind.AsyncKeyword
 
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
@@ -25,7 +25,7 @@ const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
 }
 
 const asyncFunctionElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> =>
     pipe(
@@ -47,7 +47,7 @@ const asyncFunctionElements = (context: CheckContext) => {
 
 const asyncKeywordKinds = Array.of(asyncKeywordKind)
 
-export const noAsyncFunctions = defineCheck(
+export const noAsyncFunctions = makeCheck(
   "no-async-functions",
   asyncKeywordKinds,
   isAsyncFunctionModifier,

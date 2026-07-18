@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { detection } from "@better-typescript/core/engine/check"
-import { defineCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
 const maximumReturnExpressionLength = 100
 
 const containsYieldExpression = (node: ts.Node): boolean => {
@@ -37,7 +37,7 @@ const ternaryText =
 
 const conditionalReturnDetections = (context: CheckContext) => {
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
 
   // Leave ternary return branches alone because collapsing them nests ternaries another rule forbids.
   const returnExpression = (statement: ts.Statement) =>
@@ -107,7 +107,7 @@ const conditionalReturnDetections = (context: CheckContext) => {
 
 const blockKinds = Array.of(ts.SyntaxKind.Block)
 
-export const preferConditionalReturn = defineCheck(
+export const preferConditionalReturn = makeCheck(
   "prefer-conditional-return",
   blockKinds,
   ts.isBlock,

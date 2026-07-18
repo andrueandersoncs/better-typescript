@@ -1,7 +1,7 @@
 import { Array } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
-  adviceLocation,
+  makeAdviceLocation,
   byFile,
   collidingLines,
   deriveSignals
@@ -19,7 +19,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
     const hasEnoughCollisions = evidence.length >= 2
 
     if (hasEnoughCollisions) {
-      const location = adviceLocation(file.path)
+      const location = makeAdviceLocation(file.path)
       const examples = sideEffectLaunderingExamples
 
       const advice = new Advice({

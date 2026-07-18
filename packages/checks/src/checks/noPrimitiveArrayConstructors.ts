@@ -4,8 +4,8 @@ import { isCallLikeExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { definePlannedCheck } from "../defineCheck.js"
-import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { makePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 const isArrayIdentifier = (identifier: ts.Identifier) => identifier.text === "Array"
 
@@ -17,7 +17,7 @@ const hint =
   "fixed length, and Array.fromIterable for an iterable."
 
 const arrayLiteralMatches = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.ArrayLiteralExpression): ReadonlyArray<Detection> =>
     pipe(
@@ -34,7 +34,7 @@ const arrayLiteralMatches = (context: CheckContext) => {
 }
 
 const arrayConstructorMatches = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> => {
     if (!isCallLikeExpression(node)) {
@@ -81,7 +81,7 @@ const arrayConstructorSubscriptionList = Array.flatten(arrayConstructorSubscript
 
 const arrayConstructorPlan = Function.constant(arrayConstructorSubscriptionList)
 
-export const noPrimitiveArrayConstructors = definePlannedCheck(
+export const noPrimitiveArrayConstructors = makePlannedCheck(
   "no-primitive-array-constructors",
   arrayConstructorPlan
 )

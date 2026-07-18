@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -10,7 +10,7 @@ import { CompositionFingerprintData } from "./data.js"
 import { ExportReferenceIndex, isTestSourceFile } from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { compositionFingerprintsName } from "./names.js"
 
 const minimumSteps = 3
@@ -249,7 +249,7 @@ const walkBlock = (block: ts.Block): ReadonlyArray<string> =>
 const walkConciseBody = (body: ts.ConciseBody): ReadonlyArray<string> =>
   pipe(Match.value(body), Match.when(ts.isBlock, walkBlock), Match.orElse(walkExpression))
 
-const unwrapCurriedFunction = (
+const unwrappedCurriedDefinition = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ): ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration =>
   pipe(
@@ -264,7 +264,7 @@ const unwrapCurriedFunction = (
         arrow.body,
         unwrapTransparentExpression,
         Match.value,
-        Match.when(ts.isArrowFunction, unwrapCurriedFunction),
+        Match.when(ts.isArrowFunction, unwrappedCurriedDefinition),
         Match.orElse(() => node)
       )
     ),
@@ -283,13 +283,13 @@ const compositionFingerprintElements =
       return Array.empty()
     }
 
-    const element = detection(context)
+    const element = makeDetection(context)
 
     return pipe(
       index.entries,
       Array.filter((entry) => entry.nameNode.getSourceFile() === context.sourceFile),
       Array.filterMap((entry) => {
-        const root = unwrapCurriedFunction(entry.functionNode)
+        const root = unwrappedCurriedDefinition(entry.functionNode)
         const names = fingerprintNames(root)
 
         if (names.length < minimumSteps) {
@@ -325,7 +325,7 @@ const compositionFingerprintCheck = evidenceCheck(exportReferenceIndex)(
   compositionFingerprintSubscriptions
 )
 
-export const compositionFingerprints = defineSilentCheck(
+export const compositionFingerprints = makeSilentCheck(
   compositionFingerprintsName,
   compositionFingerprintCheck
 )

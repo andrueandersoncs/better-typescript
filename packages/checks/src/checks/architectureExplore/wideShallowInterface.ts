@@ -1,6 +1,10 @@
 import { Array, Option, pipe, Result, Function } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { interfaceBurdenDataOf, isDeletableShallowness, isShallownessName } from "./evidence.js"
@@ -35,10 +39,10 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
       interfaceBurdenDataOf(burdenElement),
       Option.filter((data) => forwarders.length * 2 > data.operationCount),
       Option.map((data) => {
-        const location = adviceLocation(filePath)
-        const operationsItem = evidenceItem("interface-operations", data.operationCount)
-        const parametersItem = evidenceItem("required-parameters", data.requiredParameterCount)
-        const forwardersItem = evidenceItem("deletable-forwarders", forwarders.length)
+        const location = makeAdviceLocation(filePath)
+        const operationsItem = makeEvidenceItem("interface-operations", data.operationCount)
+        const parametersItem = makeEvidenceItem("required-parameters", data.requiredParameterCount)
+        const forwardersItem = makeEvidenceItem("deletable-forwarders", forwarders.length)
         const evidence = Array.make(operationsItem, parametersItem, forwardersItem)
         const examples = wideShallowInterfaceExamples
 

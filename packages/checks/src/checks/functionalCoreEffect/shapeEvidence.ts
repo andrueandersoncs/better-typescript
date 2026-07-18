@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { withProgramIndex } from "../../defineCheck.js"
 import {
-  detection,
+  makeDetection,
   fileSubscriptions,
   nodeSubscriptions
 } from "@better-typescript/core/engine/check"
@@ -89,7 +89,7 @@ const isBranchNode = (node: ts.Node) => {
   return Array.some(checks, Boolean)
 }
 
-const belongsToFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration) =>
+const isOwnedByFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration) =>
   pipe(
     enclosingFunctionLike(node),
     Option.exists((declaration) => declaration === owner)
@@ -177,7 +177,7 @@ const isQualifyingTransformationCall = (
   owner: ts.FunctionLikeDeclaration,
   node: ts.CallExpression
 ) => {
-  const owned = belongsToFunction(node, owner)
+  const owned = isOwnedByFunction(node, owner)
   const nested = nestedBeneathYield(node, owner)
   const notNested = nested === false
   const continueFlags = Array.make(owned, notNested)
@@ -316,7 +316,7 @@ const collectOrchestratorMetrics = (context: CheckContext, owner: ts.FunctionLik
 
   return foldAst((metrics: typeof emptyOrchestratorMetrics, node: ts.Node) =>
     pipe(
-      Option.liftPredicate((candidate: ts.Node) => belongsToFunction(candidate, owner))(node),
+      Option.liftPredicate((candidate: ts.Node) => isOwnedByFunction(candidate, owner))(node),
       Option.map((ownedNode) =>
         pipe(
           Match.value(ownedNode),
@@ -369,7 +369,7 @@ const isOrchestratorFunctionArgument = (
   return Array.some(functionFlags, Boolean)
 }
 
-const orchestratorFunction = (node: ts.CallExpression) =>
+const orchestratorDefinition = (node: ts.CallExpression) =>
   Array.findFirst(node.arguments, isOrchestratorFunctionArgument)
 
 const callIsEffectOrchestrator = (context: CheckContext, node: ts.CallExpression) => {
@@ -380,7 +380,7 @@ const callIsEffectOrchestrator = (context: CheckContext, node: ts.CallExpression
 }
 
 const shapeDetection = (context: CheckContext, node: ts.Node, data: FunctionalCoreShapeData) =>
-  detection(context)({ node, message: shapeMessage, hint: shapeHint, data })
+  makeDetection(context)({ node, message: shapeMessage, hint: shapeHint, data })
 
 const orchestratorElements =
   (index: FunctionalCoreEffectIndex) =>
@@ -394,7 +394,7 @@ const orchestratorElements =
 
     return relevant
       ? pipe(
-          orchestratorFunction(node),
+          orchestratorDefinition(node),
           Option.map((owner) => {
             const metrics = collectOrchestratorMetrics(context, owner)
             const hasSeveralServices = metrics.serviceNames.length >= 2

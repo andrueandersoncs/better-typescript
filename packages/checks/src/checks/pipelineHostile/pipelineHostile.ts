@@ -1,7 +1,7 @@
 import { Array, pipe } from "effect"
 import type { Stream } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/derive"
+import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { adviceFromSignalPair } from "../support/advice.js"
@@ -29,11 +29,11 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
     uniquePaths,
     Array.filter(isPipelineHostile),
     Array.map((path) => {
-      const location = adviceLocation(path)
+      const location = makeAdviceLocation(path)
       const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
       const uncurriedCount = countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions)
-      const nestedItem = evidenceItem("no-nested-calls", nestedCount)
-      const uncurriedItem = evidenceItem("prefer-curried-data-last-functions", uncurriedCount)
+      const nestedItem = makeEvidenceItem("no-nested-calls", nestedCount)
+      const uncurriedItem = makeEvidenceItem("prefer-curried-data-last-functions", uncurriedCount)
       const evidence = Array.make(nestedItem, uncurriedItem)
       const examples = pipelineHostileExamples
 
@@ -52,7 +52,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
   )
 }
 
-const pipelineSignals = (
+const makePipelineSignals = (
   noNestedCalls: ReadonlyArray<Detection>,
   preferCurriedDataLastFunctions: ReadonlyArray<Detection>
 ) => new PipelineSignals({ noNestedCalls, preferCurriedDataLastFunctions })
@@ -61,7 +61,7 @@ export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advi
   const advice = adviceFromSignalPair(
     input.noNestedCalls,
     input.preferCurriedDataLastFunctions,
-    pipelineSignals,
+    makePipelineSignals,
     pipelineHostileAdviceFor
   )
 

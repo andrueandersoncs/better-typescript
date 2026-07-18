@@ -2,12 +2,12 @@ import { pipe, Array } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const forInStatementKind = ts.SyntaxKind.ForInStatement
 
 const forInLoopElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.ForInStatement): ReadonlyArray<Detection> =>
     pipe(
@@ -27,7 +27,7 @@ const forInLoopElements = (context: CheckContext) => {
 
 const forInStatementKinds = Array.of(forInStatementKind)
 
-export const noForInLoops = defineCheck(
+export const noForInLoops = makeCheck(
   "no-for-in-loops",
   forInStatementKinds,
   ts.isForInStatement,

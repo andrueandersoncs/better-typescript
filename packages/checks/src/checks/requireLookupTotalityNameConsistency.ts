@@ -1,0 +1,141 @@
+import { Array, Function, HashSet, Option, Result, Tuple, pipe } from "effect"
+import { makeDetection } from "@better-typescript/core/engine/check"
+import type { CheckContext } from "@better-typescript/core/engine/check/data"
+import type { Detection } from "@better-typescript/core/engine/location/data"
+
+import { makeCheck } from "../defineCheck.js"
+import {
+  callableSemantics,
+  functionDefinitionKinds,
+  isFunctionDefinition,
+  type CallableSemantics
+} from "./support/callableSemantics.js"
+import type { FunctionDefinition } from "./support/tsNode.js"
+
+const optionalTotalityClaims = HashSet.make("find", "lookup", "maybe", "optional")
+const totalTotalityClaims = HashSet.make("require", "unsafe")
+
+const getOrThrowWords = Array.make("get", "or", "throw")
+const getOrElseWords = Array.make("get", "or", "else")
+const getOrThrowSequence = Tuple.make(getOrThrowWords, "getOrThrow")
+const getOrElseSequence = Tuple.make(getOrElseWords, "getOrElse")
+const totalTotalitySequences = Array.make(getOrThrowSequence, getOrElseSequence)
+
+const emptyDetections: ReadonlyArray<Detection> = Array.empty()
+const constantEmptyDetections = Function.constant(emptyDetections)
+
+const startsWithWords =
+  (words: ReadonlyArray<string>) =>
+  (sequence: ReadonlyArray<string>): boolean =>
+    Array.every(sequence, (word, offset) => words[offset] === word)
+
+const claimedOptionalWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
+  pipe(
+    words,
+    Array.head,
+    Option.filter((word) => HashSet.has(optionalTotalityClaims, word)),
+    Option.toArray
+  )
+
+const claimedTotalWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
+  pipe(
+    words,
+    Array.head,
+    Option.filter((word) => HashSet.has(totalTotalityClaims, word)),
+    Option.toArray
+  )
+
+const claimedTotalSequenceLabels = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
+  pipe(
+    totalTotalitySequences,
+    Array.filterMap(([sequence, label]) =>
+      pipe(
+        startsWithWords(words)(sequence),
+        Option.liftPredicate((value: boolean) => value),
+        Option.as(label),
+        Result.fromOption(Function.constVoid)
+      )
+    )
+  )
+
+const formatClaims = (claims: ReadonlyArray<string>) => Array.join(claims, "/")
+
+const optionalClaimContradiction =
+  (match: ReturnType<typeof makeDetection>) => (semantics: CallableSemantics) => {
+    const claims = claimedOptionalWords(semantics.name.words)
+    const hasClaim = Array.isReadonlyArrayNonEmpty(claims)
+    const returnsTotal = semantics.result.totality === "total"
+    const conditions = Array.make(hasClaim, returnsTotal)
+    const contradicts = Array.every(conditions, Boolean)
+    const claimLabel = formatClaims(claims)
+    const message = `${semantics.name.text} claims optional lookup via ${claimLabel}, but returns total data.`
+
+    const hint =
+      "Return optional or fallible data (Option, nullish, Result), or remove find/lookup/maybe/optional from the name."
+
+    return pipe(
+      Option.liftPredicate((value: boolean) => value)(contradicts),
+      Option.map(() =>
+        match({
+          node: semantics.node,
+          message,
+          hint
+        })
+      )
+    )
+  }
+
+const totalClaimContradiction =
+  (match: ReturnType<typeof makeDetection>) => (semantics: CallableSemantics) => {
+    const wordClaims = claimedTotalWords(semantics.name.words)
+    const sequenceClaims = claimedTotalSequenceLabels(semantics.name.words)
+    const claims = pipe(wordClaims, Array.appendAll(sequenceClaims), Array.dedupe)
+    const hasClaim = Array.isReadonlyArrayNonEmpty(claims)
+    const returnsOptional = semantics.result.totality === "optional"
+    const conditions = Array.make(hasClaim, returnsOptional)
+    const contradicts = Array.every(conditions, Boolean)
+    const claimLabel = formatClaims(claims)
+    const message = `${semantics.name.text} claims required access via ${claimLabel}, but returns optional data.`
+    const hint = "Return total data, or remove require/unsafe/getOrThrow/getOrElse from the name."
+
+    return pipe(
+      Option.liftPredicate((value: boolean) => value)(contradicts),
+      Option.map(() =>
+        match({
+          node: semantics.node,
+          message,
+          hint
+        })
+      )
+    )
+  }
+
+const totalityNameMatches = (context: CheckContext) => {
+  const match = makeDetection(context)
+  const semanticsFor = callableSemantics(context)
+  const optionalContradiction = optionalClaimContradiction(match)
+  const totalContradiction = totalClaimContradiction(match)
+
+  const matches = (definition: FunctionDefinition): ReadonlyArray<Detection> =>
+    pipe(
+      semanticsFor(definition),
+      Option.filter((semantics) => semantics.result.totality !== "unknown"),
+      Option.map((semantics) => {
+        const optionalFinding = optionalContradiction(semantics)
+        const totalFinding = totalContradiction(semantics)
+        const findings = Array.make(optionalFinding, totalFinding)
+
+        return Array.flatMap(findings, Option.toArray)
+      }),
+      Option.getOrElse(constantEmptyDetections)
+    )
+
+  return matches
+}
+
+export const requireLookupTotalityNameConsistency = makeCheck(
+  "require-lookup-totality-name-consistency",
+  functionDefinitionKinds,
+  isFunctionDefinition,
+  totalityNameMatches
+)

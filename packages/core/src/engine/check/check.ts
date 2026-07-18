@@ -37,7 +37,7 @@ const isFileSubscription = (subscription: Subscription): subscription is FileSub
 
 const emptyCompilerOptions: ts.CompilerOptions = {}
 
-export const checkFromSubscriptions = (
+export const makeCheckFromSubscriptions = (
   plan: (context: ProgramContext) => ReadonlyArray<Subscription>
 ) => new Check({ plan, compilerOptions: emptyCompilerOptions })
 
@@ -68,7 +68,7 @@ const locateNode = (context: CheckContext) => (node: ts.Node) => {
   })
 }
 
-export const detection = (context: CheckContext) => (source: DetectionSource) => {
+export const makeDetection = (context: CheckContext) => (source: DetectionSource) => {
   const location = locateNode(context)(source.node)
 
   return new Detection({
@@ -99,22 +99,22 @@ export const nodeSubscriptions =
     return Array.of(subscription)
   }
 
-const fileSubscription = (handler: (context: CheckContext) => ReadonlyArray<Detection>) =>
+const makeFileSubscription = (handler: (context: CheckContext) => ReadonlyArray<Detection>) =>
   new FileSubscription({ handler })
 
 export const fileSubscriptions: (
   handler: (context: CheckContext) => ReadonlyArray<Detection>
-) => ReadonlyArray<Subscription> = flow(fileSubscription, Array.of)
+) => ReadonlyArray<Subscription> = flow(makeFileSubscription, Array.of)
 
 export const nodeCheck =
   (kinds: ReadonlyArray<ts.SyntaxKind>) =>
   <N extends ts.Node>(refine: (node: ts.Node) => node is N) => {
     const subscribe = nodeSubscriptions(kinds)(refine)
 
-    return flow(subscribe, Function.constant, checkFromSubscriptions)
+    return flow(subscribe, Function.constant, makeCheckFromSubscriptions)
   }
 
-export const fileCheck = flow(fileSubscriptions, Function.constant, checkFromSubscriptions)
+export const fileCheck = flow(fileSubscriptions, Function.constant, makeCheckFromSubscriptions)
 
 // Fused dispatch is required because separate AST streams multiply traversal cost by check count.
 export const runChecks =

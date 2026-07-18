@@ -12,7 +12,7 @@ import {
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import {
-  directoryRefactorExamples,
+  makeDirectoryRefactorExamples,
   makeRefactorExampleResolver
 } from "@better-typescript/core/engine/example"
 import { runCheckOnProject, loadProject } from "@better-typescript/core/project/loadProject"
@@ -89,7 +89,7 @@ test("fixture refactor examples: bad trees detect and good trees stay clean", as
 
 test("example resolver retries failures and caches successful directory loads", async (context) => {
   const exampleRoot = fs.mkdtempSync(path.join(os.tmpdir(), "better-typescript-examples-"))
-  const source = directoryRefactorExamples(exampleRoot)
+  const source = makeDirectoryRefactorExamples(exampleRoot)
   const resolve = await Effect.runPromise(makeRefactorExampleResolver)
 
   context.after(() => fs.rmSync(exampleRoot, { recursive: true, force: true }))

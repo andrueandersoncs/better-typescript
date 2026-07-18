@@ -14,14 +14,14 @@ import {
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { definePlannedCheck } from "../../defineCheck.js"
+import { makePlannedCheck } from "../../defineCheck.js"
 import { buildConceptIndex, functionDerivedStem } from "./conceptIndex.js"
 import {
   type ReferenceKey,
   referenceKey,
   referenceKeySourceFileName
 } from "../support/referenceKey.js"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import {
   ConceptSignalData,
   type ConceptIndex,
@@ -55,7 +55,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
   const matches = (context: CheckContext): ReadonlyArray<Detection> => {
     const checker = context.checker
-    const match = detection(context)
+    const match = makeDetection(context)
     const found = MutableList.make<Detection>()
 
     const entries = Array.filter(
@@ -92,7 +92,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       return pipe(HashMap.get(index.ownersByFunction, symbolKey), Option.getOrElse(HashSet.empty))
     }
 
-    const signalData = (
+    const makeSignalData = (
       kind: ConceptSignalKind,
       entry: DataStructureEntry,
       owner: string,
@@ -326,7 +326,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const relatedConcepts = Array.of(owner.name)
       const externalCallers = HashSet.size(callers)
 
-      const data = signalData(
+      const data = makeSignalData(
         "closed-abstraction",
         entry,
         owner.name,
@@ -344,7 +344,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     Array.forEach(redundantPairs, ([entry, target]) => {
       const relatedConcepts = Array.of(target.name)
-      const data = signalData("redundant-alias", entry, target.name, relatedConcepts, 0)
+      const data = makeSignalData("redundant-alias", entry, target.name, relatedConcepts, 0)
 
       append(
         entry.nameNode,
@@ -356,7 +356,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     Array.forEach(duplicatePairs, ([entry, target]) => {
       const relatedConcepts = Array.of(target.name)
-      const data = signalData("duplicate-shape", entry, target.name, relatedConcepts, 0)
+      const data = makeSignalData("duplicate-shape", entry, target.name, relatedConcepts, 0)
 
       append(
         entry.nameNode,
@@ -432,7 +432,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const relatedConcepts = Array.of(owner.name)
         const externalCallers = HashSet.size(callers)
 
-        const data = signalData(
+        const data = makeSignalData(
           "function-derived-model",
           entry,
           owner.name,
@@ -462,7 +462,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
       if (speculative) {
         const relatedConcepts = Array.empty<string>()
-        const data = signalData("speculative-export", entry, "", relatedConcepts, 0)
+        const data = makeSignalData("speculative-export", entry, "", relatedConcepts, 0)
 
         append(
           entry.nameNode,
@@ -503,7 +503,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
           const fieldName = field.getName()
           const relatedConcepts = Array.of(fieldName)
-          const data = signalData("unused-field", entry, "", relatedConcepts, 0)
+          const data = makeSignalData("unused-field", entry, "", relatedConcepts, 0)
 
           append(
             declaration,
@@ -517,7 +517,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
       if (!rationaleIsComplete(entry)) {
         const relatedConcepts = Array.empty<string>()
-        const data = signalData("missing-rationale", entry, "", relatedConcepts, 0)
+        const data = makeSignalData("missing-rationale", entry, "", relatedConcepts, 0)
 
         append(
           entry.nameNode,
@@ -565,7 +565,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const callers = callersFor(bag.functionEntry)
         const externalCallers = HashSet.size(callers)
 
-        const data = signalData(
+        const data = makeSignalData(
           "parameter-bag",
           bag.model,
           bag.functionEntry.name,
@@ -599,7 +599,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const callers = callersFor(conversion.functionEntry)
         const externalCallers = HashSet.size(callers)
 
-        const data = signalData(
+        const data = makeSignalData(
           "pass-through-conversion",
           conversion.target,
           conversion.functionEntry.name,
@@ -624,4 +624,4 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
 const conceptControlPlan = Function.compose(buildConceptIndex, conceptControlSubscriptions)
 
-export const conceptControl = definePlannedCheck("concept-control", conceptControlPlan)
+export const conceptControl = makePlannedCheck("concept-control", conceptControlPlan)

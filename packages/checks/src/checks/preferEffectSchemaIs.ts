@@ -4,8 +4,8 @@ import { isFirstPartySymbol, unwrapExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const tagPropertyName = "_tag"
 
 const strictTagComparisonOperators = HashSet.make(
@@ -59,7 +59,7 @@ const constituentIsFirstParty = (type: ts.Type) => {
 // Limit rewrites to declared classes because Schema.is uses instanceof that inverts plain unions.
 const schemaIsMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (expression: ts.BinaryExpression): ReadonlyArray<Detection> => {
     const leftAccess = tagPropertyAccess(expression.left)
@@ -115,7 +115,7 @@ const schemaIsMatches = (context: CheckContext) => {
 
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
-export const preferEffectSchemaIs = defineCheck(
+export const preferEffectSchemaIs = makeCheck(
   "prefer-effect-schema-is",
   binaryExpressionKinds,
   isSchemaTagComparison,

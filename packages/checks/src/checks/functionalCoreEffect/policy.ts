@@ -116,7 +116,7 @@ const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
   (entry) => normalizePath(entry.path).length
 )
 
-const normalizedRolePath = (entry: ArchitectureRolePath) => {
+const makeNormalizedRolePath = (entry: ArchitectureRolePath) => {
   const path = normalizePath(entry.path)
 
   return new ArchitectureRolePath({
@@ -135,7 +135,7 @@ const pathContains = (prefix: string, candidate: string) => {
 export const roleByPrefixes = (
   rolePaths: ReadonlyArray<ArchitectureRolePath>
 ): ArchitectureRoleClassifier => {
-  const ordered = pipe(rolePaths, Array.map(normalizedRolePath), Array.sort(pathLengthOrder))
+  const ordered = pipe(rolePaths, Array.map(makeNormalizedRolePath), Array.sort(pathLengthOrder))
 
   const roleForPath = (projectRelativePath: string) => {
     const normalized = normalizePath(projectRelativePath)

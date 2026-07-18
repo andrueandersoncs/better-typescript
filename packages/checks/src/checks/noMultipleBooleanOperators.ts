@@ -4,8 +4,8 @@ import { unwrapExpression } from "./support/tsNode.js"
 import { astChildren } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 // BooleanOperatorExpression is shared boolean syntax because owners need one vocabulary.
 export type BooleanOperatorExpression =
@@ -81,7 +81,7 @@ const nestedExpressionBoundaryKinds = HashSet.make(
 )
 
 const multipleBooleanOperatorMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (expression: BooleanOperatorExpression): ReadonlyArray<Detection> => {
     const expressionUsesBooleanOperator = isBooleanOperatorExpression(expression)
@@ -116,7 +116,7 @@ const kinds = Array.make(
   ts.SyntaxKind.ConditionalExpression
 )
 
-export const noMultipleBooleanOperators = defineCheck(
+export const noMultipleBooleanOperators = makeCheck(
   "no-multiple-boolean-operators",
   kinds,
   isBooleanOperatorExpression,

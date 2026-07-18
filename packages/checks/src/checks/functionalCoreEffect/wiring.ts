@@ -1,5 +1,5 @@
 import { Array } from "effect"
-import { makeWiring, namedCheck, silentCheck } from "@better-typescript/core/engine/wiring"
+import { makeWiring, makeNamedCheck, makeSilentCheck } from "@better-typescript/core/engine/wiring"
 import { Wiring } from "@better-typescript/core/engine/wiring/data"
 import { packageExamples } from "../../defineCheck.js"
 import { functionalCoreEffectDerive } from "./advice.js"
@@ -12,9 +12,15 @@ const boundaryExamples = packageExamples("functional-core-effect-boundaries")
 
 export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy): Wiring => {
   const boundaryPlan = makeFunctionalCoreEffect(policy)
-  const boundaryCheck = namedCheck(functionalCoreBoundaryCheckName, boundaryPlan, boundaryExamples)
+
+  const boundaryCheck = makeNamedCheck(
+    functionalCoreBoundaryCheckName,
+    boundaryPlan,
+    boundaryExamples
+  )
+
   const shapeEvidence = makeFunctionalCoreShapeEvidence(policy)
-  const shapeCheck = silentCheck(functionalCoreShapeCheckName, shapeEvidence)
+  const shapeCheck = makeSilentCheck(functionalCoreShapeCheckName, shapeEvidence)
   const checks = Array.make(boundaryCheck, shapeCheck)
 
   const wiring = new Wiring({

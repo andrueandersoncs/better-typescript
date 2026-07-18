@@ -7,14 +7,18 @@ import { Effect, Stream } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
-import { workspaceSignals } from "@better-typescript/core/engine/wiring"
-import { contextFor } from "@better-typescript/core/engine/sources"
-import { checkFromSubscriptions, detection, fileCheck } from "@better-typescript/core/engine/check"
+import { collectWorkspaceSignals } from "@better-typescript/core/engine/wiring"
+import { makeContext } from "@better-typescript/core/engine/sources"
+import {
+  makeCheckFromSubscriptions,
+  makeDetection,
+  fileCheck
+} from "@better-typescript/core/engine/check"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
-import { inlineRefactorExamples } from "@better-typescript/core/engine/example"
+import { makeInlineRefactorExamples } from "@better-typescript/core/engine/example"
 import { InlineRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -25,13 +29,13 @@ const fallbackWiring: Wiring = makeWiring({ checks: [], derive: () => Stream.emp
 
 const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
 
-const emptyCheck = checkFromSubscriptions(() => [])
+const emptyCheck = makeCheckFromSubscriptions(() => [])
 
 const emptyCheckConfigPreamble = [
   'import { Stream } from "effect"',
-  'import { checkFromSubscriptions } from "@better-typescript/core/engine/check"',
+  'import { makeCheckFromSubscriptions } from "@better-typescript/core/engine/check"',
   "",
-  "const emptyCheck = checkFromSubscriptions(() => [])",
+  "const emptyCheck = makeCheckFromSubscriptions(() => [])",
   ""
 ]
 
@@ -176,7 +180,7 @@ test("decoded glob config drives workspace signals end to end", async () => {
                 {
                   name: "config-extra-check",
                   check: fileCheck((context) => [
-                    detection(context)({
+                    makeDetection(context)({
                       node: context.sourceFile,
                       message: "configured detection",
                       hint: "loaded from project config"
@@ -193,8 +197,8 @@ test("decoded glob config drives workspace signals end to end", async () => {
 
     const workspace = await Effect.runPromise(loadProject(projectDirectory))
     const wiringSignals = await Effect.runPromise(
-      workspaceSignals(config)(workspace.rootPath)(
-        workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
+      collectWorkspaceSignals(config)(workspace.rootPath)(
+        workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
       )
     )
 
@@ -315,7 +319,7 @@ test("decodeWiringConfig rejects legacy thunk-valued check examples", async () =
 })
 
 test("decodeWiringConfig accepts inline RefactorExampleSource check examples", async () => {
-  const examples = inlineRefactorExamples([])
+  const examples = makeInlineRefactorExamples([])
   const config = await Effect.runPromise(
     decodeWiringConfig(virtualConfigPath, [
       {

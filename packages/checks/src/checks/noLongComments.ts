@@ -4,7 +4,7 @@ import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { commentText } from "@better-typescript/core/engine/sources/comments"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import { defineFileCheck } from "../defineCheck.js"
+import { makeFileCheck } from "../defineCheck.js"
 
 const maximumCommentLength = 100
 
@@ -40,4 +40,4 @@ const overlongComments = (context: CheckContext): ReadonlyArray<Detection> => {
   })
 }
 
-export const noLongComments = defineFileCheck("no-long-comments", overlongComments)
+export const noLongComments = makeFileCheck("no-long-comments", overlongComments)

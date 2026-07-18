@@ -3,7 +3,7 @@ import type * as ts from "typescript"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
-import { defineFileCheck } from "../defineCheck.js"
+import { makeFileCheck } from "../defineCheck.js"
 
 const message = "Avoid unused imports, declarations, and parameters."
 
@@ -57,4 +57,4 @@ const unusedMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   })
 }
 
-export const noUnused = defineFileCheck("no-unused", unusedMatches, compilerOptions)
+export const noUnused = makeFileCheck("no-unused", unusedMatches, compilerOptions)

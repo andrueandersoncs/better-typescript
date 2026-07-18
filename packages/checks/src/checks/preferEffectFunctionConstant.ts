@@ -1,11 +1,11 @@
 import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
 import { conciseArrowBody, isFunctionInitializer, unwrapExpression } from "./support/tsNode.js"
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -126,7 +126,7 @@ const declarationListHasSingleDeclaration = (declarationList: ts.VariableDeclara
   hasSingleElement(declarationList.declarations)
 
 const functionConstantMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> =>
     pipe(
@@ -206,7 +206,7 @@ const functionConstantMatches = (context: CheckContext) => {
   return matches
 }
 
-export const preferEffectFunctionConstant = defineCheck(
+export const preferEffectFunctionConstant = makeCheck(
   "prefer-effect-function-constant",
   constantThunkKinds,
   isFunctionInitializer,

@@ -542,7 +542,7 @@ const isDataTypeAlias = (statement: ts.Statement): statement is ts.TypeAliasDecl
   return isAlias && aliasCarriesData(statement)
 }
 
-const declarationEntry = (
+const declarationEntriesForStatement = (
   checker: ts.TypeChecker,
   statement: ts.Statement
 ): ReadonlyArray<DataStructureEntry> => {
@@ -587,7 +587,9 @@ const declarationEntry = (
 const entriesFromSourceFile =
   (checker: ts.TypeChecker) =>
   (sourceFile: ts.SourceFile): ReadonlyArray<DataStructureEntry> =>
-    Array.flatMap(sourceFile.statements, (statement) => declarationEntry(checker, statement))
+    Array.flatMap(sourceFile.statements, (statement) =>
+      declarationEntriesForStatement(checker, statement)
+    )
 
 const dataStructureEntries = (context: ProgramContext): ReadonlyArray<DataStructureEntry> => {
   const programSourceFiles = context.program.getSourceFiles()
@@ -1037,7 +1039,7 @@ const modelFromObjectLiteral =
       Option.flatMap(modelFromResolvedType(checker)(dataBySymbol))
     )
 
-const modelFromConstructorSymbol =
+const modelFromExpression =
   (checker: ts.TypeChecker) =>
   (dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>) =>
   (expression: ts.Expression): Option.Option<DataStructureEntry> =>
@@ -1068,7 +1070,7 @@ const modelFromMakeCall =
       })
     )
 
-const modelFromConstruction = (
+const dataStructureEntryFromExpression = (
   checker: ts.TypeChecker,
   dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   expression: ts.Expression
@@ -1078,7 +1080,7 @@ const modelFromConstruction = (
     Match.value,
     Match.when(ts.isObjectLiteralExpression, modelFromObjectLiteral(checker)(dataBySymbol)),
     Match.when(ts.isNewExpression, (constructed) =>
-      modelFromConstructorSymbol(checker)(dataBySymbol)(constructed.expression)
+      modelFromExpression(checker)(dataBySymbol)(constructed.expression)
     ),
     Match.when(ts.isCallExpression, modelFromMakeCall(checker)(dataBySymbol)),
     Match.orElse(Function.constant(noneDataStructureEntry))
@@ -1169,7 +1171,7 @@ const returnModel = (
   dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   expression: ts.Expression
 ) => {
-  const constructed = modelFromConstruction(checker, dataBySymbol, expression)
+  const constructed = dataStructureEntryFromExpression(checker, dataBySymbol, expression)
 
   if (Option.isSome(constructed)) {
     return constructed
@@ -1560,7 +1562,7 @@ export const buildConceptIndex = (context: ProgramContext) => {
             called,
             Option.map((functionEntry) => {
               Array.forEach(call.arguments, (argument) => {
-                const model = modelFromConstruction(checker, dataBySymbol, argument)
+                const model = dataStructureEntryFromExpression(checker, dataBySymbol, argument)
 
                 pipe(
                   model,

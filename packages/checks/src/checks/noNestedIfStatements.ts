@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
@@ -43,7 +43,7 @@ const containingIfStatementFrom =
   }
 
 const nestedIfMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
     const parentOption = Option.fromNullishOr(ifStatement.parent)
@@ -65,7 +65,7 @@ const nestedIfMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-export const noNestedIfStatements = defineCheck(
+export const noNestedIfStatements = makeCheck(
   "no-nested-if-statements",
   ifStatementKinds,
   ts.isIfStatement,

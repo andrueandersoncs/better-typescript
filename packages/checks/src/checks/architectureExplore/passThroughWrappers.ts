@@ -1,7 +1,7 @@
 import { Array, Function, Option, Struct, Tuple, pipe, Result } from "effect"
 import * as ts from "typescript"
 
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
@@ -12,7 +12,7 @@ import { PassThroughWrapperData } from "./data.js"
 import { ExportReferenceIndex, ModuleEdge, usageFor } from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex, moduleEdges } from "./architectureEvidence.js"
 import { unwrapExpression } from "../support/tsNode.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { passThroughWrappersName } from "./names.js"
 
 const reexportMessage =
@@ -186,7 +186,7 @@ const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Exp
 const passThroughElements =
   (index: readonly [ExportReferenceIndex, ReadonlyArray<ModuleEdge>, string]) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    const element = detection(context)
+    const element = makeDetection(context)
     const sourceFile = context.sourceFile
     const [references, edges, projectRoot] = index
     const relative = toRelativeFileName(projectRoot)
@@ -263,7 +263,4 @@ const passThroughSubscriptions = Function.compose(passThroughElements, fileSubsc
 
 const passThroughWrapperCheck = evidenceCheck(buildIndex)(passThroughSubscriptions)
 
-export const passThroughWrappers = defineSilentCheck(
-  passThroughWrappersName,
-  passThroughWrapperCheck
-)
+export const passThroughWrappers = makeSilentCheck(passThroughWrappersName, passThroughWrapperCheck)

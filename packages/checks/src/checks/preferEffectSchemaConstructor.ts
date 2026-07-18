@@ -2,11 +2,11 @@ import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import { isReturnedExpressionNode } from "./support/tsNode.js"
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const tagPropertyName = "_tag"
 
 const shortCircuitOperatorKinds = HashSet.make(
@@ -82,7 +82,7 @@ const untaggedHint =
   "when the returned data has meaning independent of this object literal."
 
 const objectLiteralReturnMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> => {
     if (!isReturnedExpressionNode(node)) {
@@ -127,7 +127,7 @@ const objectLiteralReturnMatches = (context: CheckContext) => {
 
 const returnCandidateKinds = Array.make(ts.SyntaxKind.ReturnStatement, ts.SyntaxKind.ArrowFunction)
 
-export const preferEffectSchemaConstructor = defineCheck(
+export const preferEffectSchemaConstructor = makeCheck(
   "prefer-effect-schema-constructor",
   returnCandidateKinds,
   isReturnedExpressionNode,

@@ -122,13 +122,13 @@ const bindingFromNamedSpecifier = (
   })
 }
 
-const bindingFromNamespace = (moduleSpecifier: string) =>
+const makeNamespaceImportedMemberFromModuleSpecifier = (moduleSpecifier: string) =>
   new ImportedMember({
     moduleSpecifier,
     path: emptyMemberPath
   })
 
-const bindingFromDefaultImport = (moduleSpecifier: string) => {
+const makeDefaultImportedMemberFromModuleSpecifier = (moduleSpecifier: string) => {
   const path = Array.of("default")
 
   return new ImportedMember({
@@ -164,16 +164,24 @@ const bindingFromDeclaration = (declaration: ts.Declaration) => {
         ),
         Match.when(
           ts.isNamespaceImport,
-          flow(Function.constant(specifier), bindingFromNamespace, Option.some)
+          flow(
+            Function.constant(specifier),
+            makeNamespaceImportedMemberFromModuleSpecifier,
+            Option.some
+          )
         ),
         Match.when(
           ts.isNamespaceExport,
-          flow(Function.constant(specifier), bindingFromNamespace, Option.some)
+          flow(
+            Function.constant(specifier),
+            makeNamespaceImportedMemberFromModuleSpecifier,
+            Option.some
+          )
         ),
         Match.when(ts.isImportClause, (importClause) =>
           pipe(
             Option.fromNullishOr(importClause.name),
-            Option.map(() => bindingFromDefaultImport(specifier))
+            Option.map(() => makeDefaultImportedMemberFromModuleSpecifier(specifier))
           )
         ),
         Match.orElse(() => Option.none())
@@ -970,7 +978,7 @@ const runtimeFunctionLikeKinds = HashSet.make(
 export const isRuntimeFunctionLike = (node: ts.Node): node is ts.FunctionLikeDeclaration =>
   HashSet.has(runtimeFunctionLikeKinds, node.kind)
 
-const functionIsSuspensionCallback = (
+const isSuspensionCallbackDeclaration = (
   checker: ts.TypeChecker,
   declaration: ts.FunctionLikeDeclaration
 ) => {
@@ -1009,7 +1017,7 @@ const functionIsSuspensionCallback = (
 export const hasSuspensionBoundary = (checker: ts.TypeChecker, node: ts.Node) => {
   const visit = (current: ts.Node): boolean => {
     const isSuspensionCallback =
-      isRuntimeFunctionLike(current) && functionIsSuspensionCallback(checker, current)
+      isRuntimeFunctionLike(current) && isSuspensionCallbackDeclaration(checker, current)
 
     return isSuspensionCallback
       ? true
@@ -1121,7 +1129,7 @@ const declarationNameNode = (declaration: ts.FunctionLikeDeclaration) => {
   return keepDirect ? directName : enclosingVariableNameNode(declaration)
 }
 
-export const sourceFileScopesFunction = (context: CheckContext, node: ts.Node) =>
+export const hasSourceFileScope = (context: CheckContext, node: ts.Node) =>
   pipe(
     enclosingFunctionLike(node),
     Option.flatMap(declarationNameNode),

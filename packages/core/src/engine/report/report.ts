@@ -39,7 +39,7 @@ import type { ReportEvent } from "./data.js"
 const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>) =>
   pipe(Array.prepend(parts, kind), JSON.stringify)
 
-const adviceReportBlock =
+const makeAdviceReportBlock =
   (advice: Advice) =>
   (examples: ReadonlyArray<RefactorExample>): ReportBlock => {
     const pathLabel = advicePath(advice)
@@ -72,7 +72,7 @@ export const adviceReportBlocks =
     const ordered = Array.sort(advice, adviceOrder)
 
     return Effect.forEach(ordered, (item) =>
-      pipe(resolve(item.examples), Effect.map(adviceReportBlock(item)))
+      pipe(resolve(item.examples), Effect.map(makeAdviceReportBlock(item)))
     )
   }
 
@@ -206,11 +206,11 @@ export const withFallbackAdvice = <E, R>(
   )
 
 // Signal lifting stays beside block construction because event shape must match rendered text.
-export const blockSignalEvent = (block: ReportBlock) =>
+export const makeBlockSignalEvent = (block: ReportBlock) =>
   new SignalEvent({ key: block.key, text: block.text })
 
 // Cleared text is precomputed on the block because delta emission must not re-render gone blocks.
-export const blockClearedEvent = (block: ReportBlock) =>
+export const makeBlockClearedEvent = (block: ReportBlock) =>
   new ClearedEvent({ key: block.key, text: block.cleared })
 
 // Identity keys the entry and the block stays the value because diffs need both without lookups.
@@ -227,7 +227,7 @@ export const initialReportEvents =
       return Array.of(emptyReportEvent)
     }
 
-    return Array.map(blocks, blockSignalEvent)
+    return Array.map(blocks, makeBlockSignalEvent)
   }
 
 const emptyReportText = (event: EmptyReportEvent) => `No signals in ${event.rootPath}.`

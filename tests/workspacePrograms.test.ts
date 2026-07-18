@@ -11,7 +11,7 @@ import { compilerOptionsForChecks, runChecks } from "@better-typescript/core/eng
 import { workspacePrograms } from "@better-typescript/core/engine/watch"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
-import { contextFor, isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { makeContext, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noUnusedFixturePath = path.join(testDirectory, "fixtures", "no-unused")
@@ -165,7 +165,7 @@ test("loadProject and workspacePrograms agree on no-unused detections", async ()
     )
   ])
 
-  const loadedContext = contextFor(loaded.projects[0]!.rootPath)(loaded.projects[0]!.program)
+  const loadedContext = makeContext(loaded.projects[0]!.rootPath)(loaded.projects[0]!.program)
   const oneShotContext = oneShot.contexts[0]!
 
   const loadedDetections =

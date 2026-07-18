@@ -1,11 +1,11 @@
 import { Array } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const message = "Avoid conditional array spreads."
 
 const hint =
@@ -25,7 +25,7 @@ const isNonEmptyArrayBranch = (expression: ts.Expression) =>
   arrayLiteralElementCount(expression) !== 0
 
 const conditionalArraySpreadMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (spread: ts.SpreadElement): ReadonlyArray<Detection> => {
     if (!ts.isArrayLiteralExpression(spread.parent)) return Array.empty()
@@ -51,7 +51,7 @@ const conditionalArraySpreadMatches = (context: CheckContext) => {
 
 const kinds = Array.of(ts.SyntaxKind.SpreadElement)
 
-export const preferEffectArrayAppendAll = defineCheck(
+export const preferEffectArrayAppendAll = makeCheck(
   "prefer-effect-array-append-all",
   kinds,
   ts.isSpreadElement,

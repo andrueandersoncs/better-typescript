@@ -9,8 +9,8 @@ import {
 } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
-import { definePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
+import { makePlannedCheck } from "../defineCheck.js"
 // UndefinedTypeDeclaration is undefined-type syntax protocol because owners share one matcher.
 export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
@@ -124,7 +124,7 @@ const undefinedMessages: Record<UndefinedUsageKind, string> = {
 }
 
 const undefinedUsageMatches = (kind: UndefinedUsageKind) => (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const message = undefinedMessages[kind]
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> =>
@@ -173,4 +173,4 @@ const flattenedListeners = Array.flatten(listeners)
 
 const plan = Function.constant(flattenedListeners)
 
-export const noUndefined = definePlannedCheck("no-undefined", plan)
+export const noUndefined = makePlannedCheck("no-undefined", plan)

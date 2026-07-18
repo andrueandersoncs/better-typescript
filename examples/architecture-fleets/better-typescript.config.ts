@@ -1,5 +1,5 @@
 import { Option, pipe } from "effect"
-import { defineConfig, makeWiring, mergeWirings } from "@better-typescript/core/engine/wiring"
+import { defineConfig, makeWiring, makeMergedWiring } from "@better-typescript/core/engine/wiring"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import {
   architectureExploreChecks,
@@ -34,7 +34,10 @@ const layeredPolicy = new FunctionalCoreEffectPolicy({
   roleOf
 })
 
-const boundaryWiring = mergeWirings([defaultWiring, makeFunctionalCoreEffectWiring(layeredPolicy)])
+const boundaryWiring = makeMergedWiring([
+  defaultWiring,
+  makeFunctionalCoreEffectWiring(layeredPolicy)
+])
 
 // The union evidence list pairs with the shared derive because advisers tolerate absent signals.
 const exploreWiring = makeWiring({

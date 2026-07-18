@@ -18,7 +18,7 @@ import { registrationCeremony } from "@better-typescript/checks/architectureExpl
 import { hubModule } from "@better-typescript/checks/architectureExplore/hubModule"
 import { invisibleTests } from "@better-typescript/checks/architectureExplore/invisibleTests"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { namedDetection } from "@better-typescript/core/engine/derive"
+import { makeNamedDetection } from "@better-typescript/core/engine/derive"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 
@@ -88,7 +88,7 @@ const callerGraph = (callerPath: string, hubPath: string): Detection =>
 test("registration ceremony fires at 15 imports and 0.8 low-ref ratio", async () => {
   const importer = "src/registry.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>
-    namedDetection(importUsageName)(
+    makeNamedDetection(importUsageName)(
       detectionAt(importer, index + 1, importUsage(`./mod-${index}.js`, importer, 1))
     )
   )
@@ -107,14 +107,14 @@ test("registration ceremony stays silent at 14 imports or 0.7 ratio", async () =
   const importer = "src/registry.ts"
 
   const fourteen = Array.from({ length: 14 }, (_, index) =>
-    namedDetection(importUsageName)(
+    makeNamedDetection(importUsageName)(
       detectionAt(importer, index + 1, importUsage(`./mod-${index}.js`, importer, 1))
     )
   )
 
   // 15 imports, 10 low-ref names / 15 total => ratio ~0.67 (below 0.8; covers the 0.7 case)
   const lowRatio = Array.from({ length: 15 }, (_, index) =>
-    namedDetection(importUsageName)(
+    makeNamedDetection(importUsageName)(
       detectionAt(
         importer,
         index + 1,
@@ -133,7 +133,7 @@ test("registration ceremony stays silent at 14 imports or 0.7 ratio", async () =
 test("registration ceremony ignores fromTest importers", async () => {
   const importer = "tests/registry.test.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>
-    namedDetection(importUsageName)(
+    makeNamedDetection(importUsageName)(
       detectionAt(importer, index + 1, importUsage(`./mod-${index}.js`, importer, 1, true))
     )
   )
@@ -149,9 +149,9 @@ test("hub module fires at 12 operations, fan-in 3, fan-out 6", async () => {
   const callers = ["src/caller-a.ts", "src/caller-b.ts", "src/caller-c.ts"]
 
   const elements = [
-    namedDetection(interfaceBurdenName)(hubBurden(hubPath, 12)),
-    namedDetection(moduleGraphName)(hubGraph(hubPath, imported)),
-    ...callers.map((caller) => namedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
+    makeNamedDetection(interfaceBurdenName)(hubBurden(hubPath, 12)),
+    makeNamedDetection(moduleGraphName)(hubGraph(hubPath, imported)),
+    ...callers.map((caller) => makeNamedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
   ]
 
   const advice = await collectAdvice(hubModule(Stream.fromIterable(elements)))
@@ -171,11 +171,11 @@ test("hub module stays silent when any threshold leg is below limit", async () =
   const callers = ["src/caller-a.ts", "src/caller-b.ts", "src/caller-c.ts"]
 
   const elementsFor = (operationCount: number, fanInCount: number, fanOutCount: number) => [
-    namedDetection(interfaceBurdenName)(hubBurden(hubPath, operationCount)),
-    namedDetection(moduleGraphName)(hubGraph(hubPath, imported.slice(0, fanOutCount))),
+    makeNamedDetection(interfaceBurdenName)(hubBurden(hubPath, operationCount)),
+    makeNamedDetection(moduleGraphName)(hubGraph(hubPath, imported.slice(0, fanOutCount))),
     ...callers
       .slice(0, fanInCount)
-      .map((caller) => namedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
+      .map((caller) => makeNamedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
   ]
 
   const lowOps = await collectAdvice(hubModule(Stream.fromIterable(elementsFor(11, 3, 6))))
@@ -192,11 +192,11 @@ test("hub module ignores fromTest fan-in edges", async () => {
   const imported = Array.from({ length: 6 }, (_, index) => `src/dep-${index}.ts`)
 
   const elements = [
-    namedDetection(interfaceBurdenName)(hubBurden(hubPath, 12)),
-    namedDetection(moduleGraphName)(hubGraph(hubPath, imported)),
-    namedDetection(moduleGraphName)(callerGraph("tests/caller.test.ts", hubPath)),
-    namedDetection(moduleGraphName)(callerGraph("src/caller-a.ts", hubPath)),
-    namedDetection(moduleGraphName)(callerGraph("src/caller-b.ts", hubPath))
+    makeNamedDetection(interfaceBurdenName)(hubBurden(hubPath, 12)),
+    makeNamedDetection(moduleGraphName)(hubGraph(hubPath, imported)),
+    makeNamedDetection(moduleGraphName)(callerGraph("tests/caller.test.ts", hubPath)),
+    makeNamedDetection(moduleGraphName)(callerGraph("src/caller-a.ts", hubPath)),
+    makeNamedDetection(moduleGraphName)(callerGraph("src/caller-b.ts", hubPath))
   ]
 
   const advice = await collectAdvice(hubModule(Stream.fromIterable(elements)))
@@ -206,7 +206,7 @@ test("hub module ignores fromTest fan-in edges", async () => {
 
 test("invisible tests fires when evidence has no test paths", async () => {
   const elements = [
-    namedDetection(moduleGraphName)(
+    makeNamedDetection(moduleGraphName)(
       detectionAt(
         "src/a.ts",
         1,
@@ -217,10 +217,10 @@ test("invisible tests fires when evidence has no test paths", async () => {
         })
       )
     ),
-    namedDetection(importUsageName)(
+    makeNamedDetection(importUsageName)(
       detectionAt("src/a.ts", 2, importUsage("./b.js", "src/a.ts", 1))
     ),
-    namedDetection(exportSurfaceName)(
+    makeNamedDetection(exportSurfaceName)(
       detectionAt("src/b.ts", 3, new ExportSurfaceData({ workspacePath: "src/b.ts", symbols: [] }))
     )
   ]
@@ -237,7 +237,7 @@ test("invisible tests fires when evidence has no test paths", async () => {
 
 test("invisible tests stays silent when any path is a test path", async () => {
   const elements = [
-    namedDetection(moduleGraphName)(
+    makeNamedDetection(moduleGraphName)(
       detectionAt(
         "src/a.ts",
         1,
@@ -248,7 +248,7 @@ test("invisible tests stays silent when any path is a test path", async () => {
         })
       )
     ),
-    namedDetection(importUsageName)(
+    makeNamedDetection(importUsageName)(
       detectionAt("tests/a.test.ts", 2, importUsage("./b.js", "tests/a.test.ts", 1, true))
     )
   ]

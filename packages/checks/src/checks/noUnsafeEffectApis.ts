@@ -4,8 +4,8 @@ import { resolvedSymbolAt } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 import { astNodesIn } from "@better-typescript/core/engine/sources"
 
 const message = "Avoid unsafe Effect APIs."
@@ -105,7 +105,7 @@ const unsafeImportedNames = (context: CheckContext) => {
 }
 
 const unsafeEffectApiMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const resolveSymbol = resolvedSymbolAt(context.checker)
   const importedNames = unsafeImportedNames(context)
 
@@ -139,7 +139,7 @@ const effectApiReferenceKinds = Array.make(
   ts.SyntaxKind.ElementAccessExpression
 )
 
-export const noUnsafeEffectApis = defineCheck(
+export const noUnsafeEffectApis = makeCheck(
   "no-unsafe-effect-apis",
   effectApiReferenceKinds,
   isEffectApiReference,

@@ -66,7 +66,7 @@ export class ModuleEdge extends Data.Class<{
   readonly fromTest: boolean
 }> {}
 
-const emptyUsage = () => {
+const makeEmptyUsage = () => {
   const productionPaths = Array.empty<string>()
   const testPaths = Array.empty<string>()
 
@@ -349,30 +349,31 @@ const appendUnique =
   (values: ReadonlyArray<string>): ReadonlyArray<string> =>
     Array.contains(values, value) ? values : Array.append(values, value)
 
-const updateUsage = (isTest: boolean, isCall: boolean, path: string) => (usage: ExportUsage) => {
-  const callIncrement = isCall ? 1 : 0
+const makeUpdatedUsage =
+  (isTest: boolean, isCall: boolean, path: string) => (usage: ExportUsage) => {
+    const callIncrement = isCall ? 1 : 0
 
-  if (isTest) {
-    const testPaths = appendUnique(path)(usage.testPaths)
+    if (isTest) {
+      const testPaths = appendUnique(path)(usage.testPaths)
+
+      return new ExportUsage({
+        ...usage,
+        testCallCount: usage.testCallCount + callIncrement,
+        testPaths
+      })
+    }
+
+    const productionPaths = appendUnique(path)(usage.productionPaths)
+    const nonCallReference = !isCall
+    const hasProductionNonCallReference = usage.hasProductionNonCallReference || nonCallReference
 
     return new ExportUsage({
       ...usage,
-      testCallCount: usage.testCallCount + callIncrement,
-      testPaths
+      productionCallCount: usage.productionCallCount + callIncrement,
+      productionPaths,
+      hasProductionNonCallReference
     })
   }
-
-  const productionPaths = appendUnique(path)(usage.productionPaths)
-  const nonCallReference = !isCall
-  const hasProductionNonCallReference = usage.hasProductionNonCallReference || nonCallReference
-
-  return new ExportUsage({
-    ...usage,
-    productionCallCount: usage.productionCallCount + callIncrement,
-    productionPaths,
-    hasProductionNonCallReference
-  })
-}
 
 // UsageScanEntry is shared because both export index entry types need one scan contract.
 type UsageScanEntry = {
@@ -431,11 +432,11 @@ const buildUsageMap =
 
                     const usage = pipe(
                       HashMap.get(current, candidateKey),
-                      Option.getOrElse(emptyUsage)
+                      Option.getOrElse(makeEmptyUsage)
                     )
 
                     const isCall = isDirectCallReference(currentIdentifier)
-                    const updated = updateUsage(fromTest, isCall, sourcePath)(usage)
+                    const updated = makeUpdatedUsage(fromTest, isCall, sourcePath)(usage)
 
                     return HashMap.set(current, candidateKey, updated)
                   })
@@ -476,7 +477,7 @@ export const usageFor =
   (entry: ExportedFunctionEntry): ExportUsage => {
     const symbolKey = referenceKey(entry.symbol)
 
-    return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(emptyUsage))
+    return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(makeEmptyUsage))
   }
 
 export const symbolUsageFor =
@@ -484,7 +485,7 @@ export const symbolUsageFor =
   (entry: ExportedSymbolEntry): ExportUsage => {
     const symbolKey = referenceKey(entry.symbol)
 
-    return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(emptyUsage))
+    return pipe(HashMap.get(index.usages, symbolKey), Option.getOrElse(makeEmptyUsage))
   }
 
 const moduleSourceFile =

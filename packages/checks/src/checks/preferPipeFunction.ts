@@ -4,14 +4,14 @@ import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const isPipeName = (access: ts.PropertyAccessExpression) => access.name.text === "pipe"
 
 const pipeMethodCallMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> =>
     pipe(
@@ -42,7 +42,7 @@ const pipeMethodCallMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-export const preferPipeFunction = defineCheck(
+export const preferPipeFunction = makeCheck(
   "prefer-pipe-function",
   callExpressionKinds,
   ts.isCallExpression,

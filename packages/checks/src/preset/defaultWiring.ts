@@ -7,6 +7,7 @@ import { expressionAndMutationChecks } from "./expressionAndMutationChecks.js"
 import { controlFlowChecks } from "./controlFlowChecks.js"
 import { dispatchAndCollectionChecks } from "./dispatchAndCollectionChecks.js"
 import { defaultDerive } from "./defaultDerive.js"
+import { semanticNamingChecks } from "./semanticNamingChecks.js"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { NamedCheck, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 
@@ -16,6 +17,7 @@ export { defaultDerive }
 export const defaultChecks: ReadonlyArray<NamedCheck> = pipe(
   effectIdiomChecks,
   Array.appendAll(conceptAndCompositionChecks),
+  Array.appendAll(semanticNamingChecks),
   Array.appendAll(errorHygieneChecks),
   Array.appendAll(commentAndDeclarationChecks),
   Array.appendAll(expressionAndMutationChecks),

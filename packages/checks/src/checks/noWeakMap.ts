@@ -4,8 +4,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 
-import { detection } from "@better-typescript/core/engine/check"
-import { defineCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
 
 const weakMapIdentifier = (node: ts.Node): node is ts.Identifier =>
   pipe(
@@ -22,7 +22,7 @@ const hint =
 
 const weakMapMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (identifier: ts.Identifier): ReadonlyArray<Detection> =>
     pipe(
@@ -44,7 +44,7 @@ const weakMapMatches = (context: CheckContext) => {
 
 const identifierKinds = Array.of(ts.SyntaxKind.Identifier)
 
-export const noWeakMap = defineCheck(
+export const noWeakMap = makeCheck(
   "no-weak-map",
   identifierKinds,
   weakMapIdentifier,

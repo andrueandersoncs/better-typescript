@@ -48,7 +48,7 @@ const hasNonWhitespace = (pattern: string) => pattern.trim().length > 0
 export const isFileGlob = Predicate.and(Predicate.isString, hasNonWhitespace)
 
 // Examples stay a source descriptor because construction must not load fixtures for reports.
-export const namedCheck = (name: string, check: Check, examples: RefactorExampleSource) =>
+export const makeNamedCheck = (name: string, check: Check, examples: RefactorExampleSource) =>
   new NamedCheck({
     name,
     check,
@@ -57,7 +57,7 @@ export const namedCheck = (name: string, check: Check, examples: RefactorExample
   })
 
 // Silent checks default to one empty source because callers should not allocate fresh empty arrays.
-export const silentCheck = (
+export const makeSilentCheck = (
   name: string,
   check: Check,
   examples: RefactorExampleSource = emptyRefactorExampleSource
@@ -130,7 +130,7 @@ export const makeWiring = <E = never>(
 }
 
 // Merged derive preserves member order because later advice must not reorder earlier emissions.
-export const mergeWirings = <E = never>(wirings: ReadonlyArray<Wiring<E>>): Wiring<E> => {
+export const makeMergedWiring = <E = never>(wirings: ReadonlyArray<Wiring<E>>): Wiring<E> => {
   const checks = Array.flatMap(wirings, Struct.get("checks"))
 
   const derive: Wiring<E>["derive"] = (signals) => {
@@ -384,7 +384,7 @@ export const workspaceSignalsForProjects =
   }
 
 // Workspace root stays explicit because glob candidates normalize against one shared boundary.
-export const workspaceSignals =
+export const collectWorkspaceSignals =
   <E>(config: WiringConfig<E>) =>
   (workspaceRoot: string) =>
   (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> => {

@@ -3,12 +3,12 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const nonNullExpressionKind = ts.SyntaxKind.NonNullExpression
 
 const nonNullAssertionElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.NonNullExpression): ReadonlyArray<Detection> =>
     pipe(
@@ -30,7 +30,7 @@ const nonNullAssertionElements = (context: CheckContext) => {
 
 const nonNullExpressionKinds = Array.of(nonNullExpressionKind)
 
-export const noNonNullAssertion = defineCheck(
+export const noNonNullAssertion = makeCheck(
   "no-non-null-assertion",
   nonNullExpressionKinds,
   ts.isNonNullExpression,

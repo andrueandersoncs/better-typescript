@@ -2,8 +2,8 @@ import { Array, Function, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 // FunctionKeywordNode is shared keyword syntax because owners need one node vocabulary.
 export type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
@@ -15,7 +15,7 @@ const isFunctionKeywordToken = (child: ts.Node) => child.kind === ts.SyntaxKind.
 const functionKeywordMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (node: FunctionKeywordNode): ReadonlyArray<Detection> => {
     const asteriskToken = Option.fromNullishOr(node.asteriskToken)
@@ -82,7 +82,7 @@ const functionKeywordNodeKinds = Array.make(
   ts.SyntaxKind.FunctionExpression
 )
 
-export const noFunctionKeyword = defineCheck(
+export const noFunctionKeyword = makeCheck(
   "no-function-keyword",
   functionKeywordNodeKinds,
   isFunctionKeywordNode,

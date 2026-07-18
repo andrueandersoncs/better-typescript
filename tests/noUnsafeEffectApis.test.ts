@@ -13,7 +13,7 @@ const hint =
   "explicitly. If no safe counterpart preserves the required behavior, redesign the boundary " +
   "instead of using an API whose name contains unsafe."
 
-const detection = (name: string, line: number, column: number): ExpectedDetection => ({
+const makeDetection = (name: string, line: number, column: number): ExpectedDetection => ({
   name,
   fileName: "src/cases.ts",
   line,
@@ -23,16 +23,16 @@ const detection = (name: string, line: number, column: number): ExpectedDetectio
 })
 
 const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
-  detection("Ref.makeUnsafe property access", 9, 26),
-  detection("effect/Ref namespace makeUnsafe", 10, 29),
-  detection("renamed named import makeUnsafe", 11, 27),
-  detection("first-party re-export makeUnsafe", 12, 28),
-  detection("value alias reference to makeUnsafe", 13, 25),
-  detection("HashMap.getUnsafe property access", 14, 29),
-  detection("HashMap element access getUnsafe", 15, 27),
-  detection("non-makeUnsafe suffix Ref.getUnsafe", 16, 29),
-  detection("lowercase-prefix unsafeSecureJsonParse", 17, 32),
-  detection("renamed import without unsafe in local name", 18, 31)
+  makeDetection("Ref.makeUnsafe property access", 9, 26),
+  makeDetection("effect/Ref namespace makeUnsafe", 10, 29),
+  makeDetection("renamed named import makeUnsafe", 11, 27),
+  makeDetection("first-party re-export makeUnsafe", 12, 28),
+  makeDetection("value alias reference to makeUnsafe", 13, 25),
+  makeDetection("HashMap.getUnsafe property access", 14, 29),
+  makeDetection("HashMap element access getUnsafe", 15, 27),
+  makeDetection("non-makeUnsafe suffix Ref.getUnsafe", 16, 29),
+  makeDetection("lowercase-prefix unsafeSecureJsonParse", 17, 32),
+  makeDetection("renamed import without unsafe in local name", 18, 31)
 ]
 
 const allowedFixtureItems: ReadonlyArray<FixtureItem> = [

@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { alwaysExitsScope } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 // Require this many branches because shorter chains look like early-return guards, not a match.
 const minimumChainLength = 3
 
@@ -83,7 +83,7 @@ const returnsOne: () => number = Function.constant(1)
 const isLongEnough = (head: ts.IfStatement) => chainLengthFrom(head) >= minimumChainLength
 
 const manualTypeDispatchMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
     pipe(
@@ -108,7 +108,7 @@ const manualTypeDispatchMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-export const noManualTypeDispatch = defineCheck(
+export const noManualTypeDispatch = makeCheck(
   "no-manual-type-dispatch",
   ifStatementKinds,
   ts.isIfStatement,

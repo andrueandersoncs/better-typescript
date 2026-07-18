@@ -2,13 +2,13 @@ import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe, Result } 
 import * as ts from "typescript"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
-import { definePlannedCheck } from "../defineCheck.js"
+import { makePlannedCheck } from "../defineCheck.js"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 import { type ReferenceKey, referenceKey } from "./support/referenceKey.js"
 
@@ -266,7 +266,7 @@ const objectTypeDeclarationMatches =
   (index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>) => (context: CheckContext) => {
     const checker = context.checker
     const toRelative = toRelativeFileName(context.projectRoot)
-    const match = detection(context)
+    const match = makeDetection(context)
 
     const matches = (
       declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration
@@ -343,7 +343,7 @@ const tupleTypeHint =
   "Stream.Stream<string> }> {}."
 
 const tupleTypeDeclarationMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declaration: ts.TypeAliasDeclaration): ReadonlyArray<Detection> => {
     const typeName = declaration.name.text
@@ -391,7 +391,7 @@ const schemaClassListeners = (
 
 const schemaClassPlan = Function.compose(buildConstructionIndex, schemaClassListeners)
 
-export const preferEffectSchemaClass = definePlannedCheck(
+export const preferEffectSchemaClass = makePlannedCheck(
   "prefer-effect-schema-class",
   schemaClassPlan
 )

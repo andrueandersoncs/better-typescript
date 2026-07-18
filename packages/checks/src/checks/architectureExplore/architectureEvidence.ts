@@ -1,6 +1,6 @@
 import { Data, Function, MutableRef, Option, Struct, pipe } from "effect"
 import type * as ts from "typescript"
-import { checkFromSubscriptions } from "@better-typescript/core/engine/check"
+import { makeCheckFromSubscriptions } from "@better-typescript/core/engine/check"
 import type { Check, Subscription } from "@better-typescript/core/engine/check/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import {
@@ -63,4 +63,4 @@ export const moduleEdges = pipe(architectureEvidence, Function.compose(Struct.ge
 export const evidenceCheck =
   <Evidence>(evidenceFor: (context: ProgramContext) => Evidence) =>
   (subscriptions: (evidence: Evidence) => ReadonlyArray<Subscription>): Check =>
-    pipe(evidenceFor, Function.compose(subscriptions), checkFromSubscriptions)
+    pipe(evidenceFor, Function.compose(subscriptions), makeCheckFromSubscriptions)

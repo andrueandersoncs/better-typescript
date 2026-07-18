@@ -4,8 +4,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { namedDetectionTarget } from "./support/tsNode.js"
 import { dataTaggedClassHeritage, typeIsWireSafe } from "./support/taggedClassPortability.js"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const message = "Prefer Schema.TaggedClass when every field has a portable wire representation."
 
@@ -37,7 +37,7 @@ const fieldsAreWireSafe = (checker: ts.TypeChecker) => (heritage: ts.ExpressionW
 
 const portableDataTaggedClassMatches = (context: CheckContext) => {
   const { checker } = context
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declaration: ts.ClassDeclaration): ReadonlyArray<Detection> =>
     pipe(
@@ -60,7 +60,7 @@ const portableDataTaggedClassMatches = (context: CheckContext) => {
 
 const classDeclarationKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-export const preferSchemaTaggedClass = defineCheck(
+export const preferSchemaTaggedClass = makeCheck(
   "prefer-schema-tagged-class",
   classDeclarationKinds,
   ts.isClassDeclaration,

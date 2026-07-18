@@ -1,6 +1,10 @@
 import { Array, Function, Option, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import {
@@ -44,10 +48,10 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
       Array.reduce(0, (total, count) => total + count)
     )
 
-    const forwardersItem = evidenceItem("deletable-forwarders", atPath.length)
-    const callersItem = evidenceItem("production-callers", callerCount)
+    const forwardersItem = makeEvidenceItem("deletable-forwarders", atPath.length)
+    const callersItem = makeEvidenceItem("production-callers", callerCount)
     const evidence = Array.make(forwardersItem, callersItem)
-    const location = adviceLocation(filePath)
+    const location = makeAdviceLocation(filePath)
     const examples = deletionTestShallownessExamples
 
     return new Advice({

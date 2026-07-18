@@ -1,7 +1,11 @@
 import * as path from "node:path"
 import { Array, Function, Option, Result, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { moduleGraphDataOf, seamLeakageDataOf } from "./evidence.js"
@@ -37,9 +41,9 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     )
 
     const sourceCount = atPath.length - internalCount
-    const location = adviceLocation(filePath)
-    const internalItem = evidenceItem("internal-path-imports", internalCount)
-    const sourceItem = evidenceItem("source-path-imports", sourceCount)
+    const location = makeAdviceLocation(filePath)
+    const internalItem = makeEvidenceItem("internal-path-imports", internalCount)
+    const sourceItem = makeEvidenceItem("source-path-imports", sourceCount)
     const evidence = Array.make(internalItem, sourceItem)
     const examples = leakedSeamExamples
 
@@ -129,8 +133,8 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
 
   return Array.map(pairs, ([left, right, crossImports]) => {
     const smaller = left < right ? left : right
-    const location = adviceLocation(smaller)
-    const crossImportsItem = evidenceItem("cross-imports", crossImports)
+    const location = makeAdviceLocation(smaller)
+    const crossImportsItem = makeEvidenceItem("cross-imports", crossImports)
     const evidence = Array.of(crossImportsItem)
     const examples = leakedSeamExamples
 

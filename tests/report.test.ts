@@ -11,32 +11,32 @@ import type { NamedCheck, Wiring, WiringConfig } from "@better-typescript/core/e
 import {
   defineConfig,
   makeWiring,
-  namedCheck,
-  silentCheck
+  makeNamedCheck,
+  makeSilentCheck
 } from "@better-typescript/core/engine/wiring"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { withFallbackAdvice } from "@better-typescript/core/engine/report"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
 import {
-  directoryRefactorExamples,
-  exampleSnippet,
-  inlineRefactorExamples,
-  refactorExample
+  makeDirectoryRefactorExamples,
+  makeExampleSnippet,
+  makeInlineRefactorExamples,
+  makeRefactorExample
 } from "@better-typescript/core/engine/example"
 import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import {
   astNodesIn,
-  contextFor,
+  makeContext,
   foldAst,
   isProjectSourceFile
 } from "@better-typescript/core/engine/sources"
-import { makeReportEvents } from "@better-typescript/core/engine/watch"
+import { makeReportEvent } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
-  checkFromSubscriptions,
-  detection,
+  makeCheckFromSubscriptions,
+  makeDetection,
   fileCheck,
   nodeCheck
 } from "@better-typescript/core/engine/check"
@@ -45,10 +45,10 @@ import type {
   LoadedWorkspace
 } from "@better-typescript/core/project/loadProject/data"
 
-const probeExamples = inlineRefactorExamples([
-  refactorExample(
-    exampleSnippet("src/cases.ts", `throw new Error("boom")`),
-    exampleSnippet("src/cases.ts", `yield* new BoomError()`)
+const probeExamples = makeInlineRefactorExamples([
+  makeRefactorExample(
+    makeExampleSnippet("src/cases.ts", `throw new Error("boom")`),
+    makeExampleSnippet("src/cases.ts", `yield* new BoomError()`)
   )
 ])
 
@@ -80,7 +80,7 @@ const reportEvents =
   ): Stream.Stream<ReportEvent, DeriveError | UpdateError | ExampleLoadError, R> =>
     Stream.unwrap(
       pipe(
-        makeReportEvents(config),
+        makeReportEvent(config),
         Effect.map((report) => report(updates))
       )
     )
@@ -90,7 +90,7 @@ const reportTexts =
   (workspace: LoadedWorkspace): Stream.Stream<string, E | ExampleLoadError> => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
-      contexts: workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
+      contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
     })
 
     return pipe(
@@ -138,7 +138,7 @@ const collectAstSignatures = (project: LoadedProject): ReadonlyArray<string> => 
 
 const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   (context) => (node) => [
-    detection(context)({
+    makeDetection(context)({
       node,
       message: probeMessage,
       hint: probeHint
@@ -146,13 +146,13 @@ const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isTh
   ]
 )
 
-const throwProbeNamedCheck: NamedCheck = namedCheck(
+const throwProbeNamedCheck: NamedCheck = makeNamedCheck(
   "probe throw statements",
   throwProbeCheck,
   probeExamples
 )
 
-const silentProbeNamedCheck: NamedCheck = silentCheck(
+const silentProbeNamedCheck: NamedCheck = makeSilentCheck(
   "silent-only probe",
   fileCheck(() => [
     new Detection({
@@ -242,11 +242,11 @@ const configFor = (wiring: Wiring, files: WiringConfig[number]["files"] = ["**/*
 
 const reportFromTestWiring = (wiring: Wiring) => reportTexts(configFor(wiring))
 
-const noOpCheck: Check = checkFromSubscriptions(() => [])
+const noOpCheck: Check = makeCheckFromSubscriptions(() => [])
 
-const namedNoOpCheck = (name: string): NamedCheck => namedCheck(name, noOpCheck, probeExamples)
+const namedNoOpCheck = (name: string): NamedCheck => makeNamedCheck(name, noOpCheck, probeExamples)
 
-const silentNoOpCheck = (name: string): NamedCheck => silentCheck(name, noOpCheck)
+const silentNoOpCheck = (name: string): NamedCheck => makeSilentCheck(name, noOpCheck)
 
 const thrownMessage = (run: () => unknown): string => {
   try {
@@ -293,15 +293,17 @@ test("runCheckOnProject applies probe subscriptions to matching fixture nodes", 
 
 test("glob config runs every wiring whose file patterns match", async () => {
   const fileProbe: Check = fileCheck((context) => [
-    detection(context)({
+    makeDetection(context)({
       node: context.sourceFile,
       message: "visited glob-matched file",
       hint: "run each wiring only on matching files"
     })
   ])
-  const alphaWiring = testWiring([namedCheck("alpha files", fileProbe, probeExamples)])
-  const betaWiring = testWiring([namedCheck("beta file", fileProbe, probeExamples)])
-  const allPackagesWiring = testWiring([namedCheck("all package files", fileProbe, probeExamples)])
+  const alphaWiring = testWiring([makeNamedCheck("alpha files", fileProbe, probeExamples)])
+  const betaWiring = testWiring([makeNamedCheck("beta file", fileProbe, probeExamples)])
+  const allPackagesWiring = testWiring([
+    makeNamedCheck("all package files", fileProbe, probeExamples)
+  ])
   const config = defineConfig([
     {
       files: ["packages/*/src/alpha.?s"],
@@ -328,14 +330,14 @@ test("glob config runs every wiring whose file patterns match", async () => {
 
 test("each glob wiring derives from only its matching files", async () => {
   const fileProbe: Check = fileCheck((context) => [
-    detection(context)({
+    makeDetection(context)({
       node: context.sourceFile,
       message: "derived glob input",
       hint: "derive independently per wiring"
     })
   ])
   const alphaWiring = testWiring(
-    [namedCheck("alpha derived input", fileProbe, probeExamples)],
+    [makeNamedCheck("alpha derived input", fileProbe, probeExamples)],
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
@@ -345,7 +347,7 @@ test("each glob wiring derives from only its matching files", async () => {
     }
   )
   const betaWiring = testWiring(
-    [namedCheck("beta derived input", fileProbe, probeExamples)],
+    [makeNamedCheck("beta derived input", fileProbe, probeExamples)],
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
@@ -368,10 +370,10 @@ test("each glob wiring derives from only its matching files", async () => {
 })
 
 test("reportEvents analyzes referenced projects sequentially", async () => {
-  const check = namedCheck(
+  const check = makeNamedCheck(
     "visited source files",
     fileCheck((context) => [
-      detection(context)({
+      makeDetection(context)({
         node: context.sourceFile,
         message: "visited source file",
         hint: "analyze every referenced project"
@@ -382,7 +384,7 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
   const workspace = await Effect.runPromise(loadProject(fixturePath("glob-wirings")))
   const update = new WorkspaceUpdate({
     rootPath: workspace.rootPath,
-    contexts: workspace.projects.map((project) => contextFor(project.rootPath)(project.program))
+    contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
   })
   const blocks = await collectStream(
     pipe(
@@ -402,10 +404,10 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
 })
 
 test("an unmatched glob wiring invokes neither checks nor derive", async () => {
-  const mustNotRun: Check = checkFromSubscriptions(() => {
+  const mustNotRun: Check = makeCheckFromSubscriptions(() => {
     throw new Error("check ran")
   })
-  const wiring = testWiring([namedCheck("absent files", mustNotRun, probeExamples)], () => {
+  const wiring = testWiring([makeNamedCheck("absent files", mustNotRun, probeExamples)], () => {
     throw new Error("derive ran")
   })
   const config = configFor(wiring, ["missing/**/*.ts"])
@@ -416,8 +418,8 @@ test("an unmatched glob wiring invokes neither checks nor derive", async () => {
 })
 
 test("reportEvents does not load examples for a check without detections", async () => {
-  const missingExamples = directoryRefactorExamples(fixturePath("missing-report-examples"))
-  const noOutputCheck = namedCheck("no output", noOpCheck, missingExamples)
+  const missingExamples = makeDirectoryRefactorExamples(fixturePath("missing-report-examples"))
+  const noOutputCheck = makeNamedCheck("no output", noOpCheck, missingExamples)
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(reportFromTestWiring(testWiring([noOutputCheck]))(workspace))
 
@@ -430,7 +432,7 @@ test("glob wiring drops detections outside its matched files", async () => {
     message: "outside configured glob",
     hint: "drop this detection"
   })
-  const check = namedCheck("outside detection", fixedCheck([outsideDetection]), probeExamples)
+  const check = makeNamedCheck("outside detection", fixedCheck([outsideDetection]), probeExamples)
   const config = configFor(testWiring([check]), ["src/cases.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(reportTexts(config)(workspace))
@@ -466,7 +468,7 @@ test("reportEvents preserves two distinct detections emitted at the same AST loc
   const doubleDetectionCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(
     ts.isThrowStatement
   )((context) => (node) => {
-    const element = detection(context)
+    const element = makeDetection(context)
 
     return [
       element({
@@ -484,7 +486,7 @@ test("reportEvents preserves two distinct detections emitted at the same AST loc
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectStream(
     reportFromTestWiring(
-      testWiring([namedCheck("two messages on one node", doubleDetectionCheck, probeExamples)])
+      testWiring([makeNamedCheck("two messages on one node", doubleDetectionCheck, probeExamples)])
     )(workspace)
   )
 
@@ -535,7 +537,7 @@ test("reportEvents renders advice remediation examples before evidence", async (
 })
 
 test("reportEvents groups locations under the check prose name, message, and hint", async () => {
-  const groupedCheck = namedCheck(
+  const groupedCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
       new Detection({
@@ -570,7 +572,7 @@ test("reportEvents groups locations under the check prose name, message, and hin
 })
 
 test("reportEvents splits one check into distinct message and hint groups", async () => {
-  const splitCheck = namedCheck(
+  const splitCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
       new Detection({
@@ -641,7 +643,7 @@ test("reportEvents orders advice before check blocks and sorts advice by level t
     advice("directory", "src", "directory advice"),
     advice("file", "src/a.ts", "file a advice")
   ])
-  const groupedCheck = namedCheck(
+  const groupedCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
       new Detection({
@@ -681,7 +683,7 @@ test("reportEvents orders advice before check blocks and sorts advice by level t
 })
 
 test("reportEvents preserves asynchronously emitted advice", async () => {
-  const delayedCheck = namedCheck(
+  const delayedCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
       new Detection({

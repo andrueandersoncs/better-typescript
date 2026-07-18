@@ -13,10 +13,10 @@ import {
 } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
-  adviceLocation,
+  makeAdviceLocation,
   deriveSignals,
   evidenceFromCounts,
-  evidenceItem
+  makeEvidenceItem
 } from "@better-typescript/core/engine/derive"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { packageExamples } from "../../defineCheck.js"
@@ -53,9 +53,9 @@ const signalKindCount = (counts: HashMap.HashMap<string, number>, data: ConceptS
   return HashMap.set(counts, data.kind, current + 1)
 }
 
-const closedAbstractionAdvice = (element: Detection, data: ConceptSignalData) => {
-  const externalCallers = evidenceItem("external callers", data.externalCallers)
-  const independentOwners = evidenceItem("independent model owners", data.independentOwners)
+const makeClosedAbstractionAdvice = (element: Detection, data: ConceptSignalData) => {
+  const externalCallers = makeEvidenceItem("external callers", data.externalCallers)
+  const independentOwners = makeEvidenceItem("independent model owners", data.independentOwners)
   const evidence = Array.make(externalCallers, independentOwners)
   const examples = closedAbstractionClusterExamples
 
@@ -100,11 +100,11 @@ const proliferationAdvice = (
   const kindCounts = Array.reduce(data, emptyKindCounts, signalKindCount)
   const counts = evidenceFromCounts(kindCounts)
   const distinctConceptCount = HashSet.size(concepts)
-  const conceptCount = evidenceItem("distinct concepts", distinctConceptCount)
-  const signalCount = evidenceItem("concept-control signals", data.length)
+  const conceptCount = makeEvidenceItem("distinct concepts", distinctConceptCount)
+  const signalCount = makeEvidenceItem("concept-control signals", data.length)
   const withSignals = Array.prepend(counts, signalCount)
   const evidence = Array.prepend(withSignals, conceptCount)
-  const location = adviceLocation(directory)
+  const location = makeAdviceLocation(directory)
   const examples = conceptProliferationExamples
 
   const advice = new Advice({
@@ -135,7 +135,7 @@ const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Adv
   const closed = pipe(
     typed,
     Array.filter((entry) => entry[1].kind === "closed-abstraction"),
-    Array.map((entry) => closedAbstractionAdvice(entry[0], entry[1]))
+    Array.map((entry) => makeClosedAbstractionAdvice(entry[0], entry[1]))
   )
 
   const proliferationElements = pipe(

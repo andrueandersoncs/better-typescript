@@ -3,24 +3,28 @@ import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
 import {
-  exampleSnippet,
-  inlineRefactorExamples,
-  refactorExample
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
+import {
+  makeExampleSnippet,
+  makeInlineRefactorExamples,
+  makeRefactorExample
 } from "@better-typescript/core/engine/example"
 import {
   defineConfig,
   makeWiring,
-  mergeWirings,
-  namedCheck
+  makeMergedWiring,
+  makeNamedCheck
 } from "@better-typescript/core/engine/wiring"
 import { withFallbackAdvice } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 import { nodeCheck } from "@better-typescript/core/engine/check"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 // This example is documentation. Copy it to a consumer project's
 // better-typescript.config.ts to load it. It stays under examples/ so this
@@ -38,7 +42,7 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
 
 const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
   (context) => {
-    const element = detection(context)
+    const element = makeDetection(context)
 
     return (node): ReadonlyArray<Detection> =>
       isConsoleLogCall(node)
@@ -64,27 +68,27 @@ const consoleLogBoundaryAdvice = (detections: Stream.Stream<Detection>): Stream.
     detectionPaths(elements).map(
       (path) =>
         new Advice({
-          location: adviceLocation(path),
+          location: makeAdviceLocation(path),
           level: "file",
           title: "console logging in runtime code",
           remediation:
             "Replace console.log with the project's structured logger or return data to the caller.",
-          evidence: [evidenceItem("console.log calls", countAtPath(path, elements))]
+          evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
         })
     )
   )(detections)
 
 const consoleLogExamples = [
-  refactorExample(
-    exampleSnippet("src/main.ts", `console.log("starting")`),
-    exampleSnippet("src/main.ts", `return { status: "starting" as const }`)
+  makeRefactorExample(
+    makeExampleSnippet("src/main.ts", `console.log("starting")`),
+    makeExampleSnippet("src/main.ts", `return { status: "starting" as const }`)
   )
 ] as const
 
-const consoleLogCheck = namedCheck(
+const consoleLogCheck = makeNamedCheck(
   "acme/no-console-log",
   noConsoleLog,
-  inlineRefactorExamples(consoleLogExamples)
+  makeInlineRefactorExamples(consoleLogExamples)
 )
 
 const localWiring = makeWiring({
@@ -97,11 +101,11 @@ const localWiring = makeWiring({
       detectionPaths(elements).map(
         (path) =>
           new Advice({
-            location: adviceLocation(path),
+            location: makeAdviceLocation(path),
             level: "file",
             title: "logging policy review",
             remediation: "Adopt the structured logger before this file grows more console output.",
-            evidence: [evidenceItem("console.log calls", countAtPath(path, elements))]
+            evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
           })
       )
     )(elementsOf("acme/no-console-log"))
@@ -111,8 +115,8 @@ const localWiring = makeWiring({
   }
 })
 
-// mergeWirings concatenates checks and derive stages, so extending the preset
+// makeMergedWiring concatenates checks and derive stages, so extending the preset
 // stays a single composition because the merge preserves both halves together.
-const extendedWiring = mergeWirings([defaultWiring, functionalCoreEffectWiring, localWiring])
+const extendedWiring = makeMergedWiring([defaultWiring, functionalCoreEffectWiring, localWiring])
 
 export default defineConfig([{ files: ["**/*"], wiring: extendedWiring }])

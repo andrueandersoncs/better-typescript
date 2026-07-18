@@ -16,7 +16,7 @@ import {
   pipe
 } from "effect"
 import * as ts from "typescript"
-import { detection, fileSubscriptions } from "@better-typescript/core/engine/check"
+import { makeDetection, fileSubscriptions } from "@better-typescript/core/engine/check"
 import { withProgramIndex } from "../../defineCheck.js"
 import { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -500,7 +500,7 @@ const sourceAnalyses = (context: ProgramContext) =>
     HashMap.fromIterable
   )
 
-const shadowProgram = (
+const makeShadowProgram = (
   context: ProgramContext,
   analyses: HashMap.HashMap<string, readonly [ts.SourceFile, ReadonlyArray<InferenceProbe>]>
 ) => {
@@ -817,7 +817,7 @@ const findingsInSource = (
   const sourceFile = Option.fromNullishOr(shadowSource)
   const comments = sourceComments(original)
   const checkContext = new CheckContext({ ...context, sourceFile: original, comments })
-  const match = detection(checkContext)
+  const match = makeDetection(checkContext)
 
   return pipe(
     sourceFile,
@@ -859,7 +859,7 @@ const buildFindingIndex = (context: ProgramContext) => {
     return HashMap.empty<string, ReadonlyArray<Detection>>()
   }
 
-  const program = shadowProgram(context, analyses)
+  const program = makeShadowProgram(context, analyses)
 
   const entries = pipe(
     analyses,

@@ -8,11 +8,11 @@ import {
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const explicitAnyReturnElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> => {
     const reported = element({
@@ -31,7 +31,7 @@ const explicitAnyReturnElements = (context: CheckContext) => {
   return matches
 }
 
-export const noExplicitAnyReturn = defineCheck(
+export const noExplicitAnyReturn = makeCheck(
   "no-explicit-any-return",
   returnTypeDeclarationKinds,
   isReturnTypeDeclaration,

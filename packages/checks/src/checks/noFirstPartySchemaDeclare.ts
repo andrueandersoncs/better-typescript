@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const accessExpression = Struct.get<ts.PropertyAccessExpression, "expression">("expression")
 
 const declarePropertyAccess = (call: ts.CallExpression) =>
@@ -94,7 +94,7 @@ const schemaDeclareHint =
 
 const schemaDeclareMatches = (context: CheckContext) => {
   const { checker } = context
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const assertedType = (predicate: ts.Expression) => {
     const type = checker.getTypeAtLocation(predicate)
@@ -147,7 +147,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-export const noFirstPartySchemaDeclare = defineCheck(
+export const noFirstPartySchemaDeclare = makeCheck(
   "no-first-party-schema-declare",
   callExpressionKinds,
   isDeclareCall,

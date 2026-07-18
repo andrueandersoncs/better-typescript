@@ -4,8 +4,8 @@ import { foldAst } from "@better-typescript/core/engine/sources"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { detection } from "@better-typescript/core/engine/check"
-import { defineCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
 
 const message = "Avoid binding an Effect only to yield* it."
 
@@ -26,7 +26,7 @@ const isYieldStarOfIdentifier = (identifier: ts.Identifier) =>
 
 const preferDirectYieldMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) =>
     pipe(
@@ -169,7 +169,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-export const preferDirectYield = defineCheck(
+export const preferDirectYield = makeCheck(
   "prefer-direct-yield",
   variableDeclarationKinds,
   ts.isVariableDeclaration,

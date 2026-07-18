@@ -1,10 +1,10 @@
 import { Array, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import { isCompositionRoot } from "./support/compositionRoot.js"
 import {
   functionInitializer,
@@ -64,7 +64,7 @@ const isEffectRunSyncCall =
     )
 
 const effectfulFunctionMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const runSyncResult = isEffectRunSyncCall(context.checker)
   const fromCompositionRoot = isCompositionRoot(context.sourceFile)
 
@@ -128,7 +128,7 @@ const isEffectfulFunctionDeclaration = (node: ts.Node): node is EffectfulFunctio
   return Array.some(declarationKinds, Boolean)
 }
 
-export const preferEffectfulFunction = defineCheck(
+export const preferEffectfulFunction = makeCheck(
   "prefer-effectful-function",
   functionDeclarationKinds,
   isEffectfulFunctionDeclaration,

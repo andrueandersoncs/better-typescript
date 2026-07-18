@@ -8,8 +8,8 @@ import {
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { definePlannedCheck } from "../defineCheck.js"
-import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { makePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 const isSetIdentifier = (identifier: ts.Identifier) => identifier.text === "Set"
 
@@ -59,7 +59,7 @@ const isSetRuleNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
   )
 
 const setMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const constructionEscapes = constructionEscapesExternally(context.checker)
   const typeRefEscapes = typeReferenceEscapesExternally(context.checker)
 
@@ -113,7 +113,7 @@ const setMatches = (context: CheckContext) => {
 }
 
 const mutableHashSetImportMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declaration: ts.ImportDeclaration): ReadonlyArray<Detection> => {
     const importNodes = pipe(
@@ -166,7 +166,7 @@ const isMutableHashSetNamespaceAccess = (node: ts.Node): node is ts.PropertyAcce
   )
 
 const mutableHashSetNamespaceMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (access: ts.PropertyAccessExpression): ReadonlyArray<Detection> => {
     const isEffectNamespace = pipe(
@@ -228,7 +228,7 @@ const preferHashSetSubscriptions = Array.make(
 
 const preferHashSetListeners = Array.flatten(preferHashSetSubscriptions)
 
-export const preferHashSet = definePlannedCheck(
+export const preferHashSet = makePlannedCheck(
   "prefer-hash-set",
   Function.constant(preferHashSetListeners)
 )

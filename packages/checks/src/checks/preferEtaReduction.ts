@@ -5,8 +5,8 @@ import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid wrapping a function call that only forwards its argument."
 
@@ -25,7 +25,7 @@ const identifierText = Struct.get<ts.Identifier, "text">("text")
 
 const etaReductionMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const symbolOption = (node: ts.Node) =>
     pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
@@ -197,7 +197,7 @@ const etaReductionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-export const preferEtaReduction = defineCheck(
+export const preferEtaReduction = makeCheck(
   "prefer-eta-reduction",
   arrowFunctionKinds,
   ts.isArrowFunction,

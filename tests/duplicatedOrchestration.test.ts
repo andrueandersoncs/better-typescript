@@ -17,11 +17,11 @@ import { CompositionFingerprintData } from "@better-typescript/checks/architectu
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-orchestration")
 
-const runFixture = async (namedCheck: NamedCheck): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(namedCheck.check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
     )
   )
 

@@ -6,10 +6,10 @@ import type { Statistics, Task } from "tinybench"
 import {
   compilerOptionsForConfig,
   defineConfig,
-  mergeWirings
+  makeMergedWiring
 } from "@better-typescript/core/engine/wiring"
-import { makeReportEvents, workspacePrograms } from "@better-typescript/core/engine/watch"
-import { contextFor } from "@better-typescript/core/engine/sources"
+import { makeReportEvent, workspacePrograms } from "@better-typescript/core/engine/watch"
+import { makeContext } from "@better-typescript/core/engine/sources"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
@@ -25,7 +25,7 @@ const targetPath =
   cliArguments.find((argument) => !argument.startsWith("--")) ?? path.join(benchDir, "fixtures")
 const maximumMeanLatencyMs = 100
 
-const benchmarkWiring = mergeWirings([defaultWiring, architectureExploreWiring])
+const benchmarkWiring = makeMergedWiring([defaultWiring, architectureExploreWiring])
 
 const benchmarkConfig = defineConfig([{ files: ["**/*"], wiring: benchmarkWiring }])
 const benchmarkCompilerOptions = compilerOptionsForConfig(benchmarkConfig)
@@ -38,16 +38,16 @@ interface TaskStatistics {
 const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
   task?.result !== undefined && "latency" in task.result ? task.result : null
 
-const contextFromLoadedProject = (project: LoadedProject) =>
-  contextFor(project.rootPath)(project.program)
+const makeContextFromLoadedProject = (project: LoadedProject) =>
+  makeContext(project.rootPath)(project.program)
 
 const runLoadedBenchmark = async (): Promise<void> => {
   const workspace = await Effect.runPromise(loadProject(targetPath, benchmarkCompilerOptions))
-  const report = await Effect.runPromise(makeReportEvents(benchmarkConfig))
+  const report = await Effect.runPromise(makeReportEvent(benchmarkConfig))
   const collectReport = () => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
-      contexts: workspace.projects.map(contextFromLoadedProject)
+      contexts: workspace.projects.map(makeContextFromLoadedProject)
     })
     const blocks = pipe(
       Stream.succeed(update),
@@ -92,7 +92,7 @@ const runLoadedBenchmark = async (): Promise<void> => {
 }
 
 const runOneShotWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
-  const report = await Effect.runPromise(makeReportEvents(benchmarkConfig))
+  const report = await Effect.runPromise(makeReportEvent(benchmarkConfig))
   const started = performance.now()
   const blocks = await Effect.runPromise(
     pipe(

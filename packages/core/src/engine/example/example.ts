@@ -22,10 +22,10 @@ import {
   RefactorExample
 } from "./data.js"
 
-export const exampleSnippet = (filePath: string, code: string) =>
+export const makeExampleSnippet = (filePath: string, code: string) =>
   new ExampleSnippet({ filePath, code })
 
-export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet) => {
+export const makeRefactorExample = (bad: ExampleSnippet, good: ExampleSnippet) => {
   const badExamples = Array.of(bad)
   const goodExamples = Array.of(good)
 
@@ -38,17 +38,18 @@ export const refactorExample = (bad: ExampleSnippet, good: ExampleSnippet) => {
 export const refactorExampleTrees = (bad: NonEmptyExampleTree, good: NonEmptyExampleTree) =>
   new RefactorExample({ bad, good })
 
-export const inlineRefactorExamples = (examples: ReadonlyArray<RefactorExample>) =>
+export const makeInlineRefactorExamples = (examples: ReadonlyArray<RefactorExample>) =>
   new InlineRefactorExamples({ examples })
 
-export const directoryRefactorExamples = (root: string) => new DirectoryRefactorExamples({ root })
+export const makeDirectoryRefactorExamples = (root: string) =>
+  new DirectoryRefactorExamples({ root })
 
 const emptyExamples = Array.empty<RefactorExample>()
 
 export const emptyRefactorExampleSource: RefactorExampleSource =
-  inlineRefactorExamples(emptyExamples)
+  makeInlineRefactorExamples(emptyExamples)
 
-const formatExampleTree =
+const formatExampleFiles =
   (label: string) =>
   (files: ReadonlyArray<ExampleSnippet>): string => {
     const sections = Array.map(files, (snippet) => {
@@ -63,8 +64,8 @@ const formatExampleTree =
   }
 
 const formatRefactorExampleUncached = (example: RefactorExample) => {
-  const badText = formatExampleTree("Bad")(example.bad)
-  const goodText = formatExampleTree("Good")(example.good)
+  const badText = formatExampleFiles("Bad")(example.bad)
+  const goodText = formatExampleFiles("Good")(example.good)
   const joinedParts = Array.make(badText, goodText)
   return Array.join(joinedParts, "\n")
 }
@@ -74,7 +75,7 @@ export const formatRefactorExample = Function.memoize(formatRefactorExampleUncac
 const byPath = Order.String
 const byPairName = Order.String
 
-const readDirectoryEntries = (
+const collectDirectoryEntries = (
   directory: string
 ): Effect.Effect<ReadonlyArray<fs.Dirent>, ExampleLoadError> =>
   Effect.try({
@@ -95,7 +96,7 @@ const collectTypeScriptFiles: (
   directory: string
 ) => Effect.Effect<ReadonlyArray<string>, ExampleLoadError> = Effect.fn("collectTypeScriptFiles")(
   function* (directory: string) {
-    const entries = yield* readDirectoryEntries(directory)
+    const entries = yield* collectDirectoryEntries(directory)
 
     const nested = yield* Effect.forEach(entries, (entry) => {
       const absolute = path.join(directory, entry.name)
@@ -142,7 +143,7 @@ const readExampleTree: (treeRoot: string) => Effect.Effect<NonEmptyExampleTree, 
         const segments = relative.split(path.sep)
         const filePath = Array.join(segments, "/")
 
-        return exampleSnippet(filePath, code)
+        return makeExampleSnippet(filePath, code)
       })
     )
 
@@ -172,7 +173,7 @@ const loadRefactorExamplesAt: (
     })
   }
 
-  const entries = yield* readDirectoryEntries(exampleRoot)
+  const entries = yield* collectDirectoryEntries(exampleRoot)
 
   const names = Array.flatMap(entries, (entry) => {
     if (!entry.isDirectory()) {
@@ -228,7 +229,7 @@ export const makeRefactorExampleResolver = Effect.gen(function* () {
   const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
   const cache = yield* SynchronizedRef.make(emptyCache)
 
-  const loadDirectory = (
+  const collectDirectory = (
     root: string
   ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
     SynchronizedRef.modifyEffect(cache, (current) => {
@@ -249,7 +250,7 @@ export const makeRefactorExampleResolver = Effect.gen(function* () {
       )
     })
 
-  const directoryExamples = (
+  const collectDirectoryExamples = (
     root: string
   ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
     pipe(
@@ -258,7 +259,7 @@ export const makeRefactorExampleResolver = Effect.gen(function* () {
         pipe(
           HashMap.get(current, root),
           Option.match({
-            onNone: () => loadDirectory(root),
+            onNone: () => collectDirectory(root),
             onSome: Effect.succeed
           })
         )
@@ -269,7 +270,7 @@ export const makeRefactorExampleResolver = Effect.gen(function* () {
     pipe(
       Match.value(source),
       Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
-      Match.tag("directory", (directory) => directoryExamples(directory.root)),
+      Match.tag("directory", (directory) => collectDirectoryExamples(directory.root)),
       Match.exhaustive
     )
 

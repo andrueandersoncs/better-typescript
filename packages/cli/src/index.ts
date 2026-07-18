@@ -7,7 +7,7 @@ import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText } from "@better-typescript/core/engine/report"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
 import {
-  makeReportEvents,
+  makeReportEvent,
   workspacePrograms,
   workspaceUpdates
 } from "@better-typescript/core/engine/watch"
@@ -93,7 +93,7 @@ const runCommand = Effect.fn("runCommand")(function* (
     ? workspaceUpdates(workspace, watchOptions, compilerOptions)
     : workspacePrograms(workspace, compilerOptions)
 
-  const report = yield* makeReportEvents(config)
+  const report = yield* makeReportEvent(config)
   const events = report(updates)
 
   const status = watchForChanges

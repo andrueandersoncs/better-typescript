@@ -1,6 +1,10 @@
 import { Array, Function, Option, Predicate, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { interfaceBurdenDataOf, moduleGraphDataOf, workspaceImportEdges } from "./evidence.js"
@@ -80,10 +84,10 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
       return Result.failVoid
     }
 
-    const location = adviceLocation(workspacePath)
-    const operationsItem = evidenceItem("interface-operations", operationCount)
-    const fanInItem = evidenceItem("fan-in-modules", fanIn)
-    const fanOutItem = evidenceItem("fan-out-modules", fanOut)
+    const location = makeAdviceLocation(workspacePath)
+    const operationsItem = makeEvidenceItem("interface-operations", operationCount)
+    const fanInItem = makeEvidenceItem("fan-in-modules", fanIn)
+    const fanOutItem = makeEvidenceItem("fan-out-modules", fanOut)
     const evidence = Array.make(operationsItem, fanInItem, fanOutItem)
     const examples = hubModuleExamples
 

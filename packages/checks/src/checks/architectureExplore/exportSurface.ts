@@ -4,7 +4,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 import { ExportSurfaceData, ExportedSymbolUsage } from "./data.js"
 import {
@@ -14,7 +14,7 @@ import {
   symbolUsageFor,
   toWorkspacePath
 } from "./programSymbols.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { exportSurfaceName } from "./names.js"
 
 const message =
@@ -59,7 +59,7 @@ const exportSurfaceElements =
     const workspaceRelative = toWorkspacePath(context.projectRoot, context.workspaceRoot)
     const projectPath = relative(context.sourceFile.fileName)
     const workspacePath = workspaceRelative(projectPath)
-    const element = detection(context)
+    const element = makeDetection(context)
 
     const node = pipe(
       Option.fromNullishOr(context.sourceFile.statements[0]),
@@ -79,4 +79,4 @@ const exportSurfaceSubscriptions = Function.compose(exportSurfaceElements, fileS
 
 const exportSurfaceCheck = withProgramIndex(buildExportSymbolIndex)(exportSurfaceSubscriptions)
 
-export const exportSurface = defineSilentCheck(exportSurfaceName, exportSurfaceCheck)
+export const exportSurface = makeSilentCheck(exportSurfaceName, exportSurfaceCheck)

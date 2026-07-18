@@ -25,7 +25,7 @@ import {
   roleForSourceFile
 } from "./index.js"
 import type { FunctionalCoreEffectPolicy } from "./policy.js"
-import { detection, nodeSubscriptions } from "@better-typescript/core/engine/check"
+import { makeDetection, nodeSubscriptions } from "@better-typescript/core/engine/check"
 import {
   ambientCapabilityPropertySubject,
   callIsPipeRuntimeHandoff,
@@ -50,7 +50,7 @@ import {
   moduleSpecifierText,
   resolvedModuleSourceFile,
   resourceSubjectAt,
-  sourceFileScopesFunction,
+  hasSourceFileScope,
   typeReferenceIsGlobalPromise,
   type ImportedMember
 } from "./support.js"
@@ -131,7 +131,7 @@ const boundaryDetection = (
     targetRole: resolvedTargetRole
   })
 
-  return detection(context)({
+  return makeDetection(context)({
     node,
     message: messageByKind[kind],
     hint: hintByKind[kind],
@@ -944,7 +944,7 @@ const callExpressionElements =
     )
 
     const hasScopedLifecycle = hasScopedLifecycleAncestor(context.checker, node)
-    const fileScopesFunction = sourceFileScopesFunction(context, node)
+    const fileScopesFunction = hasSourceFileScope(context, node)
     const lacksScopedLifecycle = hasScopedLifecycle === false
     const lacksFileScope = fileScopesFunction === false
     const unscopedChecks = Array.make(lacksScopedLifecycle, lacksFileScope)
@@ -1042,7 +1042,7 @@ const newExpressionElements =
     )
 
     const hasScopedLifecycle = hasScopedLifecycleAncestor(context.checker, node)
-    const fileScopesFunction = sourceFileScopesFunction(context, node)
+    const fileScopesFunction = hasSourceFileScope(context, node)
     const lacksScopedLifecycle = hasScopedLifecycle === false
     const lacksFileScope = fileScopesFunction === false
     const unscopedChecks = Array.make(lacksScopedLifecycle, lacksFileScope)

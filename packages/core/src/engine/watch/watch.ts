@@ -20,17 +20,17 @@ import { analysisJsDocParsingMode } from "../../project/loadProject/analysisComp
 import type { ReportBlock, ReportEvent } from "../report/data.js"
 import {
   batchReportBlocks,
-  blockClearedEvent,
+  makeBlockClearedEvent,
   blockEntry,
-  blockSignalEvent,
+  makeBlockSignalEvent,
   initialReportEvents
 } from "../report/report.js"
 import type { WiringSignals } from "../signal/data.js"
 import { wiringSignalsArrayEquivalence } from "../signal/signal.js"
 import type { ProgramContext } from "../sources/data.js"
-import { contextFor, isProjectSourceFile } from "../sources/sources.js"
+import { makeContext, isProjectSourceFile } from "../sources/sources.js"
 import type { WiringConfig } from "../wiring/data.js"
-import { workspaceSignals } from "../wiring/wiring.js"
+import { collectWorkspaceSignals } from "../wiring/wiring.js"
 import { SourceUpdate, WorkspaceUpdate } from "./data.js"
 
 export { workspacePrograms } from "./workspacePrograms.js"
@@ -59,7 +59,7 @@ const programUpdates = (
         ts.WatchCompilerHost<ts.BuilderProgram>["afterProgramCreate"]
       > = (builder) => {
         const program = builder.getProgram()
-        const context = contextFor(config.rootPath)(program)
+        const context = makeContext(config.rootPath)(program)
         const offer = Queue.offer(queue, context)
 
         run(offer)
@@ -220,7 +220,7 @@ const signalUpdates =
       updates,
       Stream.mapEffect((update) =>
         pipe(
-          workspaceSignals(config)(update.rootPath)(update.contexts),
+          collectWorkspaceSignals(config)(update.rootPath)(update.contexts),
           Effect.map((signals) => Tuple.make(update.rootPath, signals))
         )
       )
@@ -273,7 +273,7 @@ const blockDelta =
     const clearances = pipe(
       previous,
       Array.filter((block) => !HashSet.has(currentIdentities, block.identity)),
-      Array.map(blockClearedEvent)
+      Array.map(makeBlockClearedEvent)
     )
 
     const updates = pipe(
@@ -287,7 +287,7 @@ const blockDelta =
           })
         )
       ),
-      Array.map(blockSignalEvent)
+      Array.map(makeBlockSignalEvent)
     )
 
     return Array.appendAll<ReportEvent, ReportEvent>(clearances, updates)
@@ -327,7 +327,7 @@ export interface ReportEvents<DeriveError> {
 }
 
 // Resolve report dependencies once because repeated report streams must share their cache.
-export const makeReportEvents = <DeriveError>(
+export const makeReportEvent = <DeriveError>(
   config: WiringConfig<DeriveError>
 ): Effect.Effect<ReportEvents<DeriveError>> =>
   pipe(

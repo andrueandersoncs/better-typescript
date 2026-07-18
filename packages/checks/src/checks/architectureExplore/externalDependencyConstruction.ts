@@ -7,8 +7,8 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { ExternalDependencyConstructionData } from "./data.js"
 import { unwrapExpression } from "../support/tsNode.js"
 import { isCompositionRoot } from "../support/compositionRoot.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { nodeCheck, makeDetection } from "@better-typescript/core/engine/check"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { externalDependencyConstructionName } from "./names.js"
 
 const message =
@@ -108,7 +108,7 @@ const isDirectFactoryResult = (node: ts.NewExpression) => {
 }
 
 const constructionElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const handler = (node: ts.NewExpression): ReadonlyArray<Detection> => {
     const atCompositionRoot = isCompositionRoot(context.sourceFile)
@@ -157,7 +157,7 @@ const externalDependencyConstructionCheck = nodeCheck(newExpressionKinds)(ts.isN
   constructionElements
 )
 
-export const externalDependencyConstruction = defineSilentCheck(
+export const externalDependencyConstruction = makeSilentCheck(
   externalDependencyConstructionName,
   externalDependencyConstructionCheck
 )

@@ -19,9 +19,9 @@ import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { defineSilentPlannedCheck } from "../../defineCheck.js"
+import { makeSilentPlannedCheck } from "../../defineCheck.js"
 import { SymbolUse, type SymbolUses, emptySymbolUses, fallbackEmptySymbolUse } from "./data.js"
-import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid rest parameters and multiple runtime parameters in one function."
 
@@ -336,7 +336,7 @@ const buildSymbolUses = (context: ProgramContext) => {
 
 const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscription> => {
   const elements = (context: CheckContext) => {
-    const makeElement = detection(context)
+    const makeElement = makeDetection(context)
 
     const matches = (declaration: ts.Node): ReadonlyArray<Detection> => {
       if (!isFunctionDefinition(declaration)) {
@@ -406,7 +406,7 @@ const preferCurriedDataLastFunctionsPlan = Function.compose(
   curriedDataLastListeners
 )
 
-export const preferCurriedDataLastFunctions = defineSilentPlannedCheck(
+export const preferCurriedDataLastFunctions = makeSilentPlannedCheck(
   "prefer-curried-data-last-functions",
   preferCurriedDataLastFunctionsPlan
 )

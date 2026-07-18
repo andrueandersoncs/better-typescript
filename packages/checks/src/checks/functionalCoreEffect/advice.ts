@@ -1,5 +1,5 @@
 import { Array, Option, Record, Schema, Stream, Struct, Tuple, pipe, Result } from "effect"
-import { adviceLocation, evidenceItem } from "@better-typescript/core/engine/derive"
+import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -58,7 +58,7 @@ const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceIte
   return pipe(
     measurements,
     Array.filter((entry) => entry[1] > 0),
-    Array.map(([measure, count]) => evidenceItem(measure, count))
+    Array.map(([measure, count]) => makeEvidenceItem(measure, count))
   )
 }
 
@@ -129,10 +129,10 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       const evidence = Array.map(kinds, (kind) => {
         const count = Array.countBy(elements, ([, data]) => data.kind === kind)
 
-        return evidenceItem(kind, count)
+        return makeEvidenceItem(kind, count)
       })
 
-      const location = adviceLocation(path)
+      const location = makeAdviceLocation(path)
       const examples = imperativeCoreExamples
 
       const advice = new Advice({

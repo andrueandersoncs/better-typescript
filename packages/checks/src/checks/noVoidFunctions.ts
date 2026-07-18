@@ -5,8 +5,8 @@ import { isFunctionDefinition, isFunctionInitializer } from "./support/tsNode.js
 import { isVoidType, permitsVoid } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { detection } from "@better-typescript/core/engine/check"
-import { defineCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
 
 const voidableFunctionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.FunctionDeclaration,
@@ -20,7 +20,7 @@ const objectLiteralParent = (declaration: ts.MethodDeclaration) =>
 
 const voidFunctionMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declaration: ts.Node): ReadonlyArray<Detection> => {
     if (!isFunctionDefinition(declaration)) {
@@ -91,7 +91,7 @@ const voidFunctionMatches = (context: CheckContext) => {
   return matches
 }
 
-export const noVoidFunctions = defineCheck(
+export const noVoidFunctions = makeCheck(
   "no-void-functions",
   voidableFunctionKinds,
   isFunctionDefinition,

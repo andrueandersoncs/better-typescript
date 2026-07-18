@@ -11,7 +11,7 @@ const defaultExportName = "default"
 const configExportName = "config"
 
 // The loader shell reuses this constructor because both paths must fail with one error shape.
-export const projectWiringConfigError = (configPath: string, reason: string) => {
+export const makeProjectWiringConfigError = (configPath: string, reason: string) => {
   const fields = { configPath, reason }
 
   return new ProjectWiringConfigError(fields)
@@ -21,7 +21,7 @@ const failConfig = (
   configPath: string,
   reason: string
 ): Effect.Effect<never, ProjectWiringConfigError> =>
-  pipe(projectWiringConfigError(configPath, reason), Effect.fail)
+  pipe(makeProjectWiringConfigError(configPath, reason), Effect.fail)
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
   const isObject = typeof value === "object"
@@ -48,10 +48,10 @@ export const formatCause = (cause: unknown) => {
   )
 }
 
-const configExport = (name: ConfigExportName) => (value: unknown) =>
+const makeConfigExport = (name: ConfigExportName) => (value: unknown) =>
   new ConfigExport({ name, value })
 
-const defaultConfigExport = configExport(defaultExportName)
+const defaultConfigExport = makeConfigExport(defaultExportName)
 
 const ownConfigExport =
   (name: ConfigExportName) =>
@@ -61,7 +61,7 @@ const ownConfigExport =
         Object.hasOwn(candidate, name)
       ),
       Option.map(valueFromRecord),
-      Option.map(configExport(name))
+      Option.map(makeConfigExport(name))
     )
 
 const defaultOwnConfigExport = ownConfigExport(defaultExportName)(Struct.get(defaultExportName))
@@ -124,7 +124,7 @@ const callFactory = Effect.fn("callFactory")(function* (
       const causeMessage = formatCause(cause)
       const reason = `${exportName} export factory failed: ${causeMessage}`
 
-      return projectWiringConfigError(configPath, reason)
+      return makeProjectWiringConfigError(configPath, reason)
     }
   })
 })
@@ -220,7 +220,7 @@ const invalidNamedCheck = (value: unknown) => {
   return !hasValidShape
 }
 
-const namedCheckFrom = (value: unknown) => {
+const makeNamedCheckFrom = (value: unknown) => {
   const record = value as Readonly<Record<string, unknown>>
   const name = record.name as string
   const check = record.check as Check
@@ -262,7 +262,7 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
     return yield* failConfig(configPath, reason)
   }
 
-  return Array.map(checks, namedCheckFrom)
+  return Array.map(checks, makeNamedCheckFrom)
 })
 
 const validateWiringShape = Effect.fn("validateWiringShape")(function* (
@@ -356,7 +356,7 @@ const validateWiringConfig = Effect.fn("validateWiringConfig")(function* (
     catch: (cause) => {
       const reason = formatCause(cause)
 
-      return projectWiringConfigError(configPath, reason)
+      return makeProjectWiringConfigError(configPath, reason)
     }
   })
 })

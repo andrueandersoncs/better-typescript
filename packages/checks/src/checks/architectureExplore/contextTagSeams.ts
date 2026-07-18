@@ -1,7 +1,7 @@
 import { Array, Function, HashMap, Option, Struct, Tuple, flow, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { defineSilentCheck, withProgramIndex } from "../../defineCheck.js"
+import { makeSilentCheck, withProgramIndex } from "../../defineCheck.js"
 import { contextTagSeamsName } from "./names.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
@@ -13,7 +13,7 @@ import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "../support/tsNo
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { isTestSourceFile } from "./programSymbols.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 const emptySeamCounts = (): readonly [number, number, number] => Tuple.make(0, 0, 0)
 
@@ -349,7 +349,7 @@ const contextTagSeamElements =
     ]
   ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    const element = detection(context)
+    const element = makeDetection(context)
 
     return pipe(
       index[0],
@@ -388,4 +388,4 @@ const contextTagSeamSubscriptions = Function.compose(contextTagSeamElements, fil
 
 const contextTagSeamCheck = withProgramIndex(buildIndex)(contextTagSeamSubscriptions)
 
-export const contextTagSeams = defineSilentCheck(contextTagSeamsName, contextTagSeamCheck)
+export const contextTagSeams = makeSilentCheck(contextTagSeamsName, contextTagSeamCheck)

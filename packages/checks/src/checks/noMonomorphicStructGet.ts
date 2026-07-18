@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { hasExportModifier, unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const message = "Avoid monomorphizing Struct.get at its declaration."
 
 const hint =
@@ -40,7 +40,7 @@ const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol) => {
 
 const monomorphicStructGetMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const declarationIsExported = (declaration: ts.VariableDeclaration) =>
     pipe(
@@ -113,7 +113,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-export const noMonomorphicStructGet = defineCheck(
+export const noMonomorphicStructGet = makeCheck(
   "no-monomorphic-struct-get",
   variableDeclarationKinds,
   ts.isVariableDeclaration,

@@ -4,8 +4,8 @@ import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.j
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const singleLineDeclarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -67,7 +67,7 @@ const isInsideFunction = (node: ts.Node): boolean =>
   )
 
 const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
 
@@ -147,7 +147,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
   return matches
 }
 
-export const noBlankLinesBetweenSingleLineDeclarations = defineCheck(
+export const noBlankLinesBetweenSingleLineDeclarations = makeCheck(
   "no-blank-lines-between-single-line-declarations",
   singleLineDeclarationKindList,
   isDeclarationStatement,

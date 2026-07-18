@@ -9,8 +9,8 @@ import {
 import { hasCallSignature } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const ruleHint =
   "A call whose result feeds another call hides a sequence of steps in one expression " +
@@ -28,7 +28,7 @@ const nestedCallMatches = (context: CheckContext) => {
   )
 
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
   const callLabel = calleeText(sourceFile)
 
   const matches = (call: ts.CallExpression | ts.NewExpression): ReadonlyArray<Detection> =>
@@ -70,7 +70,7 @@ const nestedCallMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.make(ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression)
 
-export const noNestedCalls = defineCheck(
+export const noNestedCalls = makeCheck(
   "no-nested-calls",
   callExpressionKinds,
   isCallLikeExpression,

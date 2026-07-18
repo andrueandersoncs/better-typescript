@@ -1,5 +1,5 @@
 import { Array, Result, Struct } from "effect"
-import { defineFileCheck } from "../defineCheck.js"
+import { makeFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
@@ -59,4 +59,4 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   })
 }
 
-export const noMultiLineComments = defineFileCheck("no-multi-line-comments", fileMatches)
+export const noMultiLineComments = makeFileCheck("no-multi-line-comments", fileMatches)

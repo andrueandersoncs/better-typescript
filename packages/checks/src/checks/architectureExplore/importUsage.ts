@@ -5,11 +5,11 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { fileCheck, detection } from "@better-typescript/core/engine/check"
+import { fileCheck, makeDetection } from "@better-typescript/core/engine/check"
 
 import { ImportUsageData, ImportedNameUsage } from "./data.js"
 import { isTestSourceFile, toWorkspacePath } from "./programSymbols.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { importUsageName } from "./names.js"
 
 const message = "Import usage evidence — this import declaration binds names used in the file."
@@ -187,7 +187,7 @@ const countNode =
     return state
   }
 
-const countImportUsages = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> => {
+const importUsageCounts = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> => {
   const records = collectImportRecords(sourceFile)
 
   if (records.length === 0) {
@@ -202,7 +202,7 @@ const countImportUsages = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecor
   return records
 }
 
-const importedNameUsage = (counter: BindingCounter) => {
+const makeImportedNameUsage = (counter: BindingCounter) => {
   const referenceCount = MutableRef.get(counter.referenceCount)
   const callCount = MutableRef.get(counter.callCount)
 
@@ -214,16 +214,16 @@ const importedNameUsage = (counter: BindingCounter) => {
 }
 
 const importUsageElements = (context: CheckContext): ReadonlyArray<Detection> => {
-  const element = detection(context)
+  const element = makeDetection(context)
   const relative = toRelativeFileName(context.projectRoot)
   const workspaceRelative = toWorkspacePath(context.projectRoot, context.workspaceRoot)
   const fromTest = isTestSourceFile(context.workspaceRoot)(context.sourceFile)
   const relativePath = relative(context.sourceFile.fileName)
   const importerWorkspacePath = workspaceRelative(relativePath)
-  const records = countImportUsages(context.sourceFile)
+  const records = importUsageCounts(context.sourceFile)
 
   return Array.map(records, (record) => {
-    const names = Array.map(record.counters, importedNameUsage)
+    const names = Array.map(record.counters, makeImportedNameUsage)
 
     const data = new ImportUsageData({
       specifier: record.specifier,
@@ -243,4 +243,4 @@ const importUsageElements = (context: CheckContext): ReadonlyArray<Detection> =>
 
 const importUsageCheck = fileCheck(importUsageElements)
 
-export const importUsage = defineSilentCheck(importUsageName, importUsageCheck)
+export const importUsage = makeSilentCheck(importUsageName, importUsageCheck)

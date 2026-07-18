@@ -5,8 +5,8 @@ import { astChildren } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
@@ -33,7 +33,7 @@ const isStringKeyInExpression = (expression: ts.Expression): expression is ts.Bi
   )
 
 const inOperatorGuardMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const sourceFile = context.sourceFile
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
@@ -57,7 +57,7 @@ const inOperatorGuardMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-export const preferEffectSchemaGuard = defineCheck(
+export const preferEffectSchemaGuard = makeCheck(
   "prefer-effect-schema-guard",
   ifStatementKinds,
   ts.isIfStatement,

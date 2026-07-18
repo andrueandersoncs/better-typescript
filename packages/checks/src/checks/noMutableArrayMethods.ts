@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { isArrayLikeType } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 // MutableArrayMethod is shared method-name vocabulary because owners classify the same methods.
 export type MutableArrayMethod =
@@ -25,7 +25,7 @@ const mutableArrayMethods = HashSet.make(
 const mutableArrayMatches = (context: CheckContext) => {
   const checker = context.checker
   const isReceiverArrayType = isArrayLikeType(checker)
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
@@ -70,7 +70,7 @@ const mutableArrayMatches = (context: CheckContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-export const noMutableArrayMethods = defineCheck(
+export const noMutableArrayMethods = makeCheck(
   "no-mutable-array-methods",
   callExpressionKinds,
   ts.isCallExpression,

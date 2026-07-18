@@ -1,5 +1,5 @@
 import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -9,7 +9,7 @@ import { ModuleGraphData } from "./data.js"
 import { ModuleEdge, toWorkspacePath } from "./programSymbols.js"
 import { evidenceCheck, moduleEdges } from "./architectureEvidence.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { moduleGraphName } from "./names.js"
 
 const message = "Module graph evidence — this Module imports other project Modules."
@@ -42,7 +42,7 @@ const moduleGraphElements =
       return Array.empty()
     }
 
-    const element = detection(context)
+    const element = makeDetection(context)
 
     const node = pipe(
       Option.fromNullishOr(context.sourceFile.statements[0]),
@@ -67,4 +67,4 @@ const moduleGraphSubscriptions = Function.compose(moduleGraphElements, fileSubsc
 
 const moduleGraphCheck = evidenceCheck(buildIndex)(moduleGraphSubscriptions)
 
-export const moduleGraph = defineSilentCheck(moduleGraphName, moduleGraphCheck)
+export const moduleGraph = makeSilentCheck(moduleGraphName, moduleGraphCheck)

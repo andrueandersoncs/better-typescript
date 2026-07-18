@@ -13,7 +13,7 @@ const isCommentToken = (scanner: ts.Scanner) => {
   return HashSet.has(commentSyntaxKinds, kind)
 }
 
-const sourceCommentFrom = (scanner: ts.Scanner) => {
+const makeSourceCommentFrom = (scanner: ts.Scanner) => {
   const kind = scanner.getToken()
   const pos = scanner.getTokenStart()
   const end = scanner.getTokenEnd()
@@ -147,7 +147,7 @@ const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComm
   return pipe(
     tokens,
     Iterable.filter(isCommentToken),
-    Iterable.map(sourceCommentFrom),
+    Iterable.map(makeSourceCommentFrom),
     Array.fromIterable
   )
 }

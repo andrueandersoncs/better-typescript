@@ -6,7 +6,7 @@ import { Array, Effect, Option, Schema, pipe } from "effect"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { runChecks } from "@better-typescript/core/engine/check"
-import { contextFor } from "@better-typescript/core/engine/sources"
+import { makeContext } from "@better-typescript/core/engine/sources"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import {
   exportReferenceIndex,
@@ -34,11 +34,11 @@ const importUsageFixturePath = path.join(
 
 const includeEverySourceFile = (): boolean => true
 
-const runFixture = async (namedCheck: NamedCheck): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(evidenceFixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(namedCheck.check))(project))
+      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
     )
   )
 
@@ -54,10 +54,8 @@ const runChecksOnFixture = async (
 
   assert.ok(project !== undefined)
 
-  const context = contextFor(project.rootPath)(project.program)
-  return runChecks(Array.map(checks, (namedCheck) => namedCheck.check))(includeEverySourceFile)(
-    context
-  )
+  const context = makeContext(project.rootPath)(project.program)
+  return runChecks(Array.map(checks, (named) => named.check))(includeEverySourceFile)(context)
 }
 
 const dataAs = <A>(
@@ -83,7 +81,7 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
   const firstProject = workspace.projects[0]
   assert.ok(firstProject !== undefined)
 
-  const firstContext = contextFor(firstProject.rootPath)(firstProject.program)
+  const firstContext = makeContext(firstProject.rootPath)(firstProject.program)
 
   const firstExportIndex = exportReferenceIndex(firstContext)
   const secondExportIndex = exportReferenceIndex(firstContext)
@@ -96,7 +94,7 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
   const secondWorkspace = await Effect.runPromise(loadProject(evidenceFixturePath))
   const secondProject = secondWorkspace.projects[0]
   assert.ok(secondProject !== undefined)
-  const secondContext = contextFor(secondProject.rootPath)(secondProject.program)
+  const secondContext = makeContext(secondProject.rootPath)(secondProject.program)
 
   const rebuiltExportIndex = exportReferenceIndex(secondContext)
   const rebuiltEdges = moduleEdges(secondContext)

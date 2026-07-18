@@ -1,6 +1,10 @@
 import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import type { ExportSurfaceData, ExportedSymbolUsage } from "./data.js"
@@ -142,15 +146,15 @@ const testPastInterfaceAdvice = (
     const workspaceSymbolCount = workspaceEvidence[0]
     const workspaceTestCallCount = workspaceEvidence[1]
     const testCallCount = exportTestCallCount + workspaceTestCallCount
-    const location = adviceLocation(filePath)
+    const location = makeAdviceLocation(filePath)
 
-    const exportsItem = evidenceItem(
+    const exportsItem = makeEvidenceItem(
       "test-only-exports",
       exportsAtPath.length + workspaceSymbolCount
     )
 
-    const callsItem = evidenceItem("test-helper-calls", testCallCount)
-    const importsItem = evidenceItem("test-deep-imports", importsAtPath.length)
+    const callsItem = makeEvidenceItem("test-helper-calls", testCallCount)
+    const importsItem = makeEvidenceItem("test-deep-imports", importsAtPath.length)
     const evidence = Array.make(exportsItem, callsItem, importsItem)
     const examples = testPastInterfaceExamples
 

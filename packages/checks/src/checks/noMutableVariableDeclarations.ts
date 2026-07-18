@@ -2,8 +2,8 @@ import { Tuple, Array, HashMap, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 // MutableVariableDeclarationKind is shared binding vocabulary because owners exchange one contract.
 export type MutableVariableDeclarationKind = "let" | "var"
 
@@ -17,7 +17,7 @@ const tokenMutableKind = (firstToken: ts.Node) => HashMap.get(mutableKeywordKind
 
 const mutableDeclarationMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declarationList: ts.VariableDeclarationList): ReadonlyArray<Detection> =>
     pipe(
@@ -43,7 +43,7 @@ const mutableDeclarationMatches = (context: CheckContext) => {
 
 const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationList)
 
-export const noMutableVariableDeclarations = defineCheck(
+export const noMutableVariableDeclarations = makeCheck(
   "no-mutable-variable-declarations",
   variableDeclarationListKinds,
   ts.isVariableDeclarationList,

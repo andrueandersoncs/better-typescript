@@ -4,8 +4,8 @@ import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.j
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const declarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -34,7 +34,7 @@ const fallbackTrue = Function.constant(true)
 const fallbackMissingIndex = Function.constant(-1)
 
 const blankLineMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const sourceFile = context.sourceFile
   const text = sourceFile.getFullText()
 
@@ -113,7 +113,7 @@ const blankLineMatches = (context: CheckContext) => {
   return matches
 }
 
-export const requireBlankLinesAroundMultilineDeclarations = defineCheck(
+export const requireBlankLinesAroundMultilineDeclarations = makeCheck(
   "require-blank-lines-around-multiline-declarations",
   declarationKindList,
   isDeclarationStatement,

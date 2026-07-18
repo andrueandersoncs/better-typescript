@@ -3,12 +3,12 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const tryStatementKind = ts.SyntaxKind.TryStatement
 
 const tryCatchElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
 
   const matches = (node: ts.TryStatement): ReadonlyArray<Detection> =>
     pipe(
@@ -29,7 +29,7 @@ const tryCatchElements = (context: CheckContext) => {
 
 const tryStatementKinds = Array.of(tryStatementKind)
 
-export const noTryCatch = defineCheck(
+export const noTryCatch = makeCheck(
   "no-try-catch",
   tryStatementKinds,
   ts.isTryStatement,

@@ -4,8 +4,8 @@ import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
 import { isUnseenType, type SeenTypes } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 const message = "Avoid mutating first-party data."
 
 const hint =
@@ -182,7 +182,7 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode => {
 
 const mutationMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   // Treat module and captured bindings as shared because they outlive the function that writes them.
   const scopeOf = (target: ts.Expression) => {
@@ -267,7 +267,7 @@ const mutationMatches = (context: CheckContext) => {
   return matches
 }
 
-export const noMutation = defineCheck(
+export const noMutation = makeCheck(
   "no-mutation",
   mutationNodeKinds,
   isMutationCandidate,

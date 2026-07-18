@@ -1,6 +1,10 @@
 import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { externalDependencyConstructionName, moduleScopeEffectsName } from "./names.js"
@@ -44,9 +48,14 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
         (element) => element.name === moduleScopeEffectsName
       )
 
-      const location = adviceLocation(filePath)
-      const constructionItem = evidenceItem("external-dependency-construction", constructorCount)
-      const moduleScopeItem = evidenceItem("module-scope-effects", moduleScopeCount)
+      const location = makeAdviceLocation(filePath)
+
+      const constructionItem = makeEvidenceItem(
+        "external-dependency-construction",
+        constructorCount
+      )
+
+      const moduleScopeItem = makeEvidenceItem("module-scope-effects", moduleScopeCount)
       const evidence = Array.make(constructionItem, moduleScopeItem)
       const examples = hardToTestHotspotExamples
 

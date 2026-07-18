@@ -148,7 +148,7 @@ const nameNodeEscapes =
     pipe(
       symbolAtNode(checker)(nameNode),
       Option.exists((symbol) => {
-        const findMatch = (candidate: ts.Node): boolean => {
+        const candidateMatches = (candidate: ts.Node): boolean => {
           const isEscapingReference = pipe(
             Option.liftPredicate(ts.isIdentifier)(candidate),
             Option.exists((identifier) => {
@@ -172,12 +172,14 @@ const nameNodeEscapes =
             })
           )
 
-          const childMatch = isEscapingReference ? true : ts.forEachChild(candidate, findMatch)
+          const childMatch = isEscapingReference
+            ? true
+            : ts.forEachChild(candidate, candidateMatches)
 
           return childMatch === true
         }
 
-        return findMatch(sourceFile)
+        return candidateMatches(sourceFile)
       })
     )
 

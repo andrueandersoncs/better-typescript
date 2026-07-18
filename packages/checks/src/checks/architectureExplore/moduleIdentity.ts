@@ -20,11 +20,11 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 import { ModuleIdentityData } from "./data.js"
 import { toWorkspacePath } from "./programSymbols.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { moduleIdentityName } from "./names.js"
 
 const message =
@@ -184,17 +184,16 @@ const buildAliasIndex = (context: ProgramContext) => {
   const outDirOption = Option.fromNullishOr(options.outDir)
   const packageInfo = readPackageExports(context.projectRoot)
   const emptyAliasesByFile = HashMap.empty<string, ReadonlyArray<string>>()
-  const emptyIndex = new AliasIndex({ aliasesByFile: emptyAliasesByFile })
 
   const prerequisites = Option.all({
     outDir: outDirOption,
     packageInfo
   })
 
-  return pipe(
+  const aliasesByFile = pipe(
     prerequisites,
     Option.match({
-      onNone: Function.constant(emptyIndex),
+      onNone: Function.constant(emptyAliasesByFile),
       onSome: ({ outDir, packageInfo }) => {
         const entries = exportEntries(packageInfo.exports)
         const emittedPathFor = toEmittedPath(rootDir, outDir)
@@ -221,12 +220,12 @@ const buildAliasIndex = (context: ProgramContext) => {
           )
         }
 
-        const aliasesByFile = Array.reduce(projectFiles, emptyAliasesByFile, addFileAliases)
-
-        return new AliasIndex({ aliasesByFile })
+        return Array.reduce(projectFiles, emptyAliasesByFile, addFileAliases)
       }
     })
   )
+
+  return new AliasIndex({ aliasesByFile })
 }
 
 const moduleIdentityElements =
@@ -242,7 +241,7 @@ const moduleIdentityElements =
           const workspaceRelative = toWorkspacePath(context.projectRoot, context.workspaceRoot)
           const relativePath = relative(context.sourceFile.fileName)
           const workspacePath = workspaceRelative(relativePath)
-          const element = detection(context)
+          const element = makeDetection(context)
           const firstStatement = Option.fromNullishOr(context.sourceFile.statements[0])
           const fallbackNode = Function.constant(context.sourceFile)
           const node = pipe(firstStatement, Option.getOrElse(fallbackNode))
@@ -263,4 +262,4 @@ const moduleIdentitySubscriptions = Function.compose(moduleIdentityElements, fil
 
 const moduleIdentityCheck = withProgramIndex(buildAliasIndex)(moduleIdentitySubscriptions)
 
-export const moduleIdentity = defineSilentCheck(moduleIdentityName, moduleIdentityCheck)
+export const moduleIdentity = makeSilentCheck(moduleIdentityName, moduleIdentityCheck)

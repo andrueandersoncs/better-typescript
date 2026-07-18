@@ -1,6 +1,10 @@
 import { Array, Function, Option, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { contextTagSeamDataOf } from "./evidence.js"
@@ -57,12 +61,12 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
       Array.countBy((data) => data.consumerCount === 0)
     )
 
-    const location = adviceLocation(filePath)
-    const seamItem = evidenceItem("single-adapter-seams", atPath.length)
+    const location = makeAdviceLocation(filePath)
+    const seamItem = makeEvidenceItem("single-adapter-seams", atPath.length)
 
     const evidence =
       deadCount > 0
-        ? pipe(evidenceItem("dead-seams", deadCount), Array.of, Array.prepend(seamItem))
+        ? pipe(makeEvidenceItem("dead-seams", deadCount), Array.of, Array.prepend(seamItem))
         : Array.of(seamItem)
 
     const remediation = deadCount > 0 ? baseRemediation + deadRemediation : baseRemediation

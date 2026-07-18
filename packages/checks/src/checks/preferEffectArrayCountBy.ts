@@ -8,10 +8,10 @@ import {
   unwrapTransparentExpression
 } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
-import { defineCheck } from "../defineCheck.js"
+import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid filtering an array only to count matching elements."
 
@@ -96,7 +96,7 @@ const isFilteredArrayCall =
   }
 
 const effectArrayFilterLengthMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const isFilteredArray = isFilteredArrayCall(context.checker)
 
   const matches = (access: ts.PropertyAccessExpression): ReadonlyArray<Detection> =>
@@ -115,7 +115,7 @@ const effectArrayFilterLengthMatches = (context: CheckContext) => {
 
 const propertyAccessKinds = Array.of(ts.SyntaxKind.PropertyAccessExpression)
 
-export const preferEffectArrayCountBy = defineCheck(
+export const preferEffectArrayCountBy = makeCheck(
   "prefer-effect-array-count-by",
   propertyAccessKinds,
   ts.isPropertyAccessExpression,

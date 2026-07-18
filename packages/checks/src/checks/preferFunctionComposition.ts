@@ -5,8 +5,8 @@ import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const message = "Avoid block bodies that only bind a value and thread it into a call."
 
@@ -68,7 +68,7 @@ const isUnaryCallTowerOver =
   }
 
 const functionCompositionMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
     pipe(
@@ -140,7 +140,7 @@ const functionCompositionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-export const preferFunctionComposition = defineCheck(
+export const preferFunctionComposition = makeCheck(
   "prefer-function-composition",
   arrowFunctionKinds,
   ts.isArrowFunction,

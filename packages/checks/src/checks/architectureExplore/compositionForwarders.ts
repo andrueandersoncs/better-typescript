@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 
-import { fileSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -10,7 +10,7 @@ import { CompositionForwarderData } from "./data.js"
 import { ExportReferenceIndex, isTestSourceFile, usageFor } from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { compositionForwardersName } from "./names.js"
 
 const message =
@@ -156,7 +156,7 @@ const compositionForwarderElements =
       return Array.empty()
     }
 
-    const element = detection(context)
+    const element = makeDetection(context)
 
     return pipe(
       index.entries,
@@ -204,7 +204,7 @@ const compositionForwarderCheck = evidenceCheck(exportReferenceIndex)(
   compositionForwarderSubscriptions
 )
 
-export const compositionForwarders = defineSilentCheck(
+export const compositionForwarders = makeSilentCheck(
   compositionForwardersName,
   compositionForwarderCheck
 )

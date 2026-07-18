@@ -5,8 +5,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import { SeamLeakageData } from "./data.js"
 import { importElements, isTestSourceFile } from "./programSymbols.js"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { nodeCheck, makeDetection } from "@better-typescript/core/engine/check"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { seamLeakageEvidenceName } from "./names.js"
 
 const message =
@@ -51,7 +51,7 @@ const leakageKind =
   }
 
 const seamLeakageElement = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
   const testClassifier = isTestSourceFile(context.workspaceRoot)
   const fromTest = testClassifier(context.sourceFile)
 
@@ -86,4 +86,4 @@ const seamLeakageCheck = nodeCheck(importDeclarationKinds)(ts.isImportDeclaratio
   seamLeakageElements
 )
 
-export const seamLeakageEvidence = defineSilentCheck(seamLeakageEvidenceName, seamLeakageCheck)
+export const seamLeakageEvidence = makeSilentCheck(seamLeakageEvidenceName, seamLeakageCheck)

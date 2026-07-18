@@ -8,8 +8,8 @@ import {
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { definePlannedCheck } from "../defineCheck.js"
-import { nodeSubscriptions, detection } from "@better-typescript/core/engine/check"
+import { makePlannedCheck } from "../defineCheck.js"
+import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 const isMapIdentifier = (identifier: ts.Identifier) => identifier.text === "Map"
 
@@ -59,7 +59,7 @@ const isMapRuleNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
   )
 
 const mapMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
   const constructionEscapes = constructionEscapesExternally(context.checker)
   const typeRefEscapes = typeReferenceEscapesExternally(context.checker)
 
@@ -113,7 +113,7 @@ const mapMatches = (context: CheckContext) => {
 }
 
 const mutableHashMapImportMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declaration: ts.ImportDeclaration): ReadonlyArray<Detection> => {
     const importNodes = pipe(
@@ -166,7 +166,7 @@ const isMutableHashMapNamespaceAccess = (node: ts.Node): node is ts.PropertyAcce
   )
 
 const mutableHashMapNamespaceMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (access: ts.PropertyAccessExpression): ReadonlyArray<Detection> => {
     const isEffectNamespace = pipe(
@@ -228,7 +228,7 @@ const preferHashMapSubscriptions = Array.make(
 
 const preferHashMapListeners = Array.flatten(preferHashMapSubscriptions)
 
-export const preferHashMap = definePlannedCheck(
+export const preferHashMap = makePlannedCheck(
   "prefer-hash-map",
   Function.constant(preferHashMapListeners)
 )

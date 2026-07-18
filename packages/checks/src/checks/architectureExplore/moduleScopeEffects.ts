@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Match, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeCheck, detection } from "@better-typescript/core/engine/check"
+import { nodeCheck, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -11,7 +11,7 @@ import { isCompositionRoot } from "../support/compositionRoot.js"
 import { isTestSourceFile } from "./programSymbols.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { moduleScopeEffectsName } from "./names.js"
 
 const message =
@@ -231,7 +231,7 @@ const classifiedModuleScopeEffectKind =
   }
 
 const moduleScopeEffectElements = (context: CheckContext) => {
-  const element = detection(context)
+  const element = makeDetection(context)
   const testSource = isTestSourceFile(context.workspaceRoot)
   const classifyEffectKind = classifiedModuleScopeEffectKind(context.checker)
 
@@ -267,4 +267,4 @@ const moduleScopeEffectCheck = nodeCheck(callExpressionKinds)(ts.isCallExpressio
   moduleScopeEffectElements
 )
 
-export const moduleScopeEffects = defineSilentCheck(moduleScopeEffectsName, moduleScopeEffectCheck)
+export const moduleScopeEffects = makeSilentCheck(moduleScopeEffectsName, moduleScopeEffectCheck)

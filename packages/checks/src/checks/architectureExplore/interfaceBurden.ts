@@ -8,8 +8,8 @@ import { InterfaceBurdenData } from "./data.js"
 import { toWorkspacePath } from "./programSymbols.js"
 import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { fileCheck, detection } from "@better-typescript/core/engine/check"
-import { defineSilentCheck } from "../../defineCheck.js"
+import { fileCheck, makeDetection } from "@better-typescript/core/engine/check"
+import { makeSilentCheck } from "../../defineCheck.js"
 import { interfaceBurdenName } from "./names.js"
 
 const minimumOperations = 4
@@ -198,7 +198,7 @@ const statementSurface = (statement: ts.Statement) => {
 }
 
 const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection> => {
-  const element = detection(context)
+  const element = makeDetection(context)
   const statements = context.sourceFile.statements
 
   const surface = pipe(
@@ -239,4 +239,4 @@ const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection
 
 const interfaceBurdenCheck = fileCheck(interfaceBurdenElements)
 
-export const interfaceBurden = defineSilentCheck(interfaceBurdenName, interfaceBurdenCheck)
+export const interfaceBurden = makeSilentCheck(interfaceBurdenName, interfaceBurdenCheck)

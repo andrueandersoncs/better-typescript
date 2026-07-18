@@ -4,8 +4,8 @@ import { transparentWrapperKinds } from "./support/tsNode.js"
 import { isExternalPackageArgument } from "./support/tsSignature.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const sanctionedParentKinds = HashSet.make(
   ts.SyntaxKind.VariableDeclaration,
@@ -19,7 +19,7 @@ const effectiveParent = (node: ts.Node): ts.Node =>
 
 const arrowFunctionMatches = (context: CheckContext) => {
   const isExternalArgument = isExternalPackageArgument(context.checker)(context.program)
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
     const parent = effectiveParent(arrowFunction)
@@ -47,7 +47,7 @@ const arrowFunctionMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-export const noInlineClosures = defineCheck(
+export const noInlineClosures = makeCheck(
   "no-inline-closures",
   arrowFunctionKinds,
   ts.isArrowFunction,

@@ -7,21 +7,21 @@ import { fileURLToPath } from "node:url"
 import { Effect, Function, Option, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
-import { detection, nodeCheck } from "@better-typescript/core/engine/check"
+import { makeDetection, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import {
-  exampleSnippet,
-  inlineRefactorExamples,
-  refactorExample
+  makeExampleSnippet,
+  makeInlineRefactorExamples,
+  makeRefactorExample
 } from "@better-typescript/core/engine/example"
 import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
-import { contextFor } from "@better-typescript/core/engine/sources"
+import { makeContext } from "@better-typescript/core/engine/sources"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { makeReportEvents, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { makeReportEvent, workspaceUpdates } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
-import { defineConfig, makeWiring, namedCheck } from "@better-typescript/core/engine/wiring"
+import { defineConfig, makeWiring, makeNamedCheck } from "@better-typescript/core/engine/wiring"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -32,16 +32,16 @@ const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
-const probeExamples = inlineRefactorExamples([
-  refactorExample(
-    exampleSnippet("src/cases.ts", `throw new Error("boom")`),
-    exampleSnippet("src/cases.ts", "yield* new BoomError()")
+const probeExamples = makeInlineRefactorExamples([
+  makeRefactorExample(
+    makeExampleSnippet("src/cases.ts", `throw new Error("boom")`),
+    makeExampleSnippet("src/cases.ts", "yield* new BoomError()")
   )
 ])
 
 const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
   (context) => (node) => [
-    detection(context)({
+    makeDetection(context)({
       node,
       message: probeMessage,
       hint: probeHint
@@ -50,7 +50,7 @@ const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isTh
 )
 
 const probeWiring = makeWiring({
-  checks: [namedCheck(probeName, throwProbeCheck, probeExamples)],
+  checks: [makeNamedCheck(probeName, throwProbeCheck, probeExamples)],
   derive: (signals) => {
     const detectionCount = signals[0]?.detections.length ?? 0
     const advice: Advice = {
@@ -75,7 +75,7 @@ const reportEvents =
   ): Stream.Stream<ReportEvent, UpdateError | ExampleLoadError, R> =>
     Stream.unwrap(
       pipe(
-        makeReportEvents(config),
+        makeReportEvent(config),
         Effect.map((report) => report(updates))
       )
     )
@@ -107,7 +107,7 @@ const contextFromSource = (sourceText: string): ProgramContext => {
     host
   })
 
-  return contextFor(syntheticRoot)(program)
+  return makeContext(syntheticRoot)(program)
 }
 
 const syntheticUpdate = (sourceText: string): WorkspaceUpdate =>

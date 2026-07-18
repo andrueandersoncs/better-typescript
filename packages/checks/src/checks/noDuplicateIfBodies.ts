@@ -4,8 +4,8 @@ import { alwaysExitsScope, unwrapSingleStatementBlock } from "./support/tsNode.j
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatement =>
   pipe(
@@ -72,7 +72,7 @@ const duplicateIfMatches = (context: CheckContext) => {
       return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
     }
 
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const ruleMatch = (ifStatement: ts.IfStatement) => (combinedCondition: string) =>
     match({
@@ -117,7 +117,7 @@ const duplicateIfMatches = (context: CheckContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-export const noDuplicateIfBodies = defineCheck(
+export const noDuplicateIfBodies = makeCheck(
   "no-duplicate-if-bodies",
   ifStatementKinds,
   ts.isIfStatement,

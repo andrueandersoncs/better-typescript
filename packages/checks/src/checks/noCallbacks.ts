@@ -5,8 +5,8 @@ import { hasCallSignature, isVoidType } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 // CallbackStyleDeclaration is shared callback syntax because owners need one vocabulary.
 export type CallbackStyleDeclaration =
@@ -74,7 +74,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
 
 const callbackStyleMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (declaration: CallbackStyleDeclaration): ReadonlyArray<Detection> => {
     // Exempt declarations because they mirror a third-party API with no Effect-returning alternative.
@@ -138,7 +138,7 @@ const callbackStyleCandidateKinds = Array.make(
   ts.SyntaxKind.FunctionType
 )
 
-export const noCallbacks = defineCheck(
+export const noCallbacks = makeCheck(
   "no-callbacks",
   callbackStyleCandidateKinds,
   isCallbackStyleCandidate,

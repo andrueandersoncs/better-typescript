@@ -5,8 +5,8 @@ import type { ReturnTypeDeclaration } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
@@ -62,7 +62,7 @@ const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const rawObjectTypeMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (node: RawObjectTarget): ReadonlyArray<Detection> => {
     if (ts.isParameter(node)) {
@@ -98,7 +98,7 @@ const rawObjectTypeMatches = (context: CheckContext) => {
   return matches
 }
 
-export const noRawObjectTypes = defineCheck(
+export const noRawObjectTypes = makeCheck(
   "no-raw-object-types",
   rawObjectTargetKinds,
   isRawObjectTarget,

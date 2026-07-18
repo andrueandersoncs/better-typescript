@@ -1,6 +1,10 @@
 import { Array, Function, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import { adviceLocation, deriveSignals, evidenceItem } from "@better-typescript/core/engine/derive"
+import {
+  makeAdviceLocation,
+  deriveSignals,
+  makeEvidenceItem
+} from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { importUsageDataOf } from "./evidence.js"
@@ -42,9 +46,9 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
       return Result.failVoid
     }
 
-    const location = adviceLocation(importerPath)
-    const importedModulesItem = evidenceItem("imported-modules", importCount)
-    const singleUseItem = evidenceItem("single-use-imports", lowRefNames)
+    const location = makeAdviceLocation(importerPath)
+    const importedModulesItem = makeEvidenceItem("imported-modules", importCount)
+    const singleUseItem = makeEvidenceItem("single-use-imports", lowRefNames)
     const evidence = Array.make(importedModulesItem, singleUseItem)
     const examples = registrationCeremonyExamples
 

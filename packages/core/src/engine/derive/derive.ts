@@ -31,7 +31,7 @@ export const deriveSignals =
   }
 
 // The name pairs with its detection here because derive joins detections by check name.
-export const namedDetection = (name: string) => (detectionValue: Detection) =>
+export const makeNamedDetection = (name: string) => (detectionValue: Detection) =>
   new NamedDetection({ name, detection: detectionValue })
 
 const namedDetectionName = Struct.get<NamedDetection, "name">("name")
@@ -47,14 +47,14 @@ const addCount = (key: string) => (counts: HashMap.HashMap<string, number>) => {
 
 const detectionPath = (named: NamedDetection) => named.detection.location.path
 
-const fileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]) =>
+const makeFileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]) =>
   new FileDetections({ path: entry[0], elements: entry[1] })
 
 export const byFile = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<FileDetections> => {
   const grouped = Array.groupBy(elements, detectionPath)
   const entries = Record.toEntries(grouped)
 
-  return Array.map(entries, fileDetections)
+  return Array.map(entries, makeFileDetections)
 }
 
 export const parentDirectories = (filePath: string): ReadonlyArray<string> => {
@@ -85,7 +85,7 @@ const addFileCheckCounts = (counts: HashMap.HashMap<string, number>, file: FileD
   return Array.reduce(distinctNames, counts, addNameCount)
 }
 
-export const countSummary = (elements: ReadonlyArray<NamedDetection>) => {
+export const makeCountSummary = (elements: ReadonlyArray<NamedDetection>) => {
   const files = byFile(elements)
   const emptyCounts = HashMap.empty<string, number>()
   const countsByCheck = Array.reduce(elements, emptyCounts, addDetectionCount)
@@ -110,16 +110,18 @@ const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.String, Struct
 
 export const evidenceOrder = Order.combine(byCountDescending, byMeasure)
 
-export const evidenceItem = (measure: string, count: number) => new EvidenceItem({ measure, count })
+export const makeEvidenceItem = (measure: string, count: number) =>
+  new EvidenceItem({ measure, count })
 
-export const adviceLocation = (path: string) => new Location({ path })
+export const makeAdviceLocation = (path: string) => new Location({ path })
 
-const countEntryEvidence = (entry: readonly [string, number]) => evidenceItem(entry[0], entry[1])
+const makeCountEntryEvidence = (entry: readonly [string, number]) =>
+  makeEvidenceItem(entry[0], entry[1])
 
 export const evidenceFromCounts = (
   counts: HashMap.HashMap<string, number>
 ): ReadonlyArray<EvidenceItem> => {
-  const items = pipe(HashMap.toEntries(counts), Array.map(countEntryEvidence))
+  const items = pipe(HashMap.toEntries(counts), Array.map(makeCountEntryEvidence))
 
   return Array.sort(items, evidenceOrder)
 }
@@ -133,14 +135,14 @@ const hasDistinctChecks = (entry: readonly [string, ReadonlyArray<NamedDetection
   return HashSet.size(distinct) > 1
 }
 
-const collisionEvidence = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
+const makeCollisionEvidence = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
   const names = Array.map(entry[1], namedDetectionName)
   const distinct = HashSet.fromIterable(names)
   const nameList = Array.fromIterable(distinct)
   const sortedNames = Array.sort(nameList, Order.String)
   const measure = `line ${entry[0]}: ${Array.join(sortedNames, " + ")}`
 
-  return evidenceItem(measure, entry[1].length)
+  return makeEvidenceItem(measure, entry[1].length)
 }
 
 export const collidingLines = (
@@ -149,7 +151,7 @@ export const collidingLines = (
   const grouped = Array.groupBy(elements, lineKey)
   const entries = Record.toEntries(grouped)
   const collisions = Array.filter(entries, hasDistinctChecks)
-  const evidence = Array.map(collisions, collisionEvidence)
+  const evidence = Array.map(collisions, makeCollisionEvidence)
 
   return Array.sort(evidence, byMeasure)
 }
@@ -168,7 +170,7 @@ export const dominantCheckEvidence =
       return holdsShare && spread >= minSpread
     })
 
-    const evidence = Array.map(dominant, countEntryEvidence)
+    const evidence = Array.map(dominant, makeCountEntryEvidence)
 
     return Array.sort(evidence, evidenceOrder)
   }

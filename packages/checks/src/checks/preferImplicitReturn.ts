@@ -3,11 +3,11 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const implicitReturnMatches = (context: CheckContext) => {
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
     if (!ts.isBlock(arrowFunction.body)) return Array.empty()
@@ -38,7 +38,7 @@ const implicitReturnMatches = (context: CheckContext) => {
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
-export const preferImplicitReturn = defineCheck(
+export const preferImplicitReturn = makeCheck(
   "prefer-implicit-return",
   arrowFunctionKinds,
   ts.isArrowFunction,

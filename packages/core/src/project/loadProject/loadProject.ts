@@ -9,7 +9,7 @@ import {
   compilerOptionsForConfig,
   workspaceSignalsForProjects
 } from "../../engine/wiring/wiring.js"
-import { contextFor } from "../../engine/sources/sources.js"
+import { makeContext } from "../../engine/sources/sources.js"
 import { compilerOptionsForChecks, runChecks } from "../../engine/check/check.js"
 import {
   CircularProjectReferenceError,
@@ -66,8 +66,8 @@ const loadProjectConfig = (config: ProjectConfig, compilerOptions: ts.CompilerOp
   })
 }
 
-const contextFromLoadedProject = (project: LoadedProject) => {
-  const createContext = contextFor(project.rootPath)
+const makeContextFromLoadedProject = (project: LoadedProject) => {
+  const createContext = makeContext(project.rootPath)
 
   return createContext(project.program)
 }
@@ -79,7 +79,7 @@ const includeEverySourceFile = Function.constant(true)
 const contextFromProjectConfig = (compilerOptions: ts.CompilerOptions) =>
   flow(
     (config: ProjectConfig) => loadProjectConfig(config, compilerOptions),
-    contextFromLoadedProject
+    makeContextFromLoadedProject
   )
 
 // The one-Check runner owns compiler requirements because callers should not know Check internals.
@@ -116,7 +116,7 @@ const programForChecks =
   }
 
 // One projection stays public because config callers load and analyze in one step.
-export const workspaceSignalsFromConfigs =
+export const collectWorkspaceSignalsFromConfigs =
   <E>(config: WiringConfig<E>) =>
   (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>> => {
     const compilerOptions = compilerOptionsForConfig(config)
@@ -133,7 +133,7 @@ export const runCheckOnProject =
   (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
     Effect.sync(() => {
       const program = programForChecks(checks)(project.program)
-      const createContext = contextFor(project.rootPath)
+      const createContext = makeContext(project.rootPath)
       const context = createContext(program)
       const checksInEveryFile = runChecks(checks)(includeEverySourceFile)
       const detections = checksInEveryFile(context)

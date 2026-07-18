@@ -3,8 +3,8 @@ import * as ts from "typescript"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { defineCheck } from "../defineCheck.js"
-import { detection } from "@better-typescript/core/engine/check"
+import { makeCheck } from "../defineCheck.js"
+import { makeDetection } from "@better-typescript/core/engine/check"
 
 const isInstanceofOperator = (expr: ts.BinaryExpression) =>
   expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
@@ -16,7 +16,7 @@ const className = Struct.get<ts.Symbol, "name">("name")
 
 const instanceofMatches = (context: CheckContext) => {
   const checker = context.checker
-  const match = detection(context)
+  const match = makeDetection(context)
 
   const matches = (expression: ts.BinaryExpression): ReadonlyArray<Detection> => {
     const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
@@ -46,7 +46,7 @@ const instanceofMatches = (context: CheckContext) => {
 
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
-export const noInstanceof = defineCheck(
+export const noInstanceof = makeCheck(
   "no-instanceof",
   binaryExpressionKinds,
   isInstanceofExpression,
