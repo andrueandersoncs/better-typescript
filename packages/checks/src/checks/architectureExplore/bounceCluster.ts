@@ -159,7 +159,7 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     const evidence = Array.make(thinModulesItem, moduleEdgesItem)
     const examples = bounceClusterExamples
 
-    return new Advice({
+    return Advice.make({
       location,
       level: "directory",
       title: "bounce cluster",

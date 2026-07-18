@@ -1,4 +1,4 @@
-import { Array, Effect, HashMap, Schema, pipe } from "effect"
+import { Array, Effect, Schema, pipe } from "effect"
 import {
   InlineRefactorExamples,
   type RefactorExampleSource,
@@ -10,10 +10,12 @@ import { Detection, Location } from "../location/data.js"
 export type AdviceLevel = "file" | "directory" | "project"
 
 // EvidenceItem is the shared measure/count contract because owners need one vocabulary.
-export class EvidenceItem extends Schema.Class<EvidenceItem>("EvidenceItem")({
+export const EvidenceItem = Schema.Struct({
   measure: Schema.String,
   count: Schema.Number
-}) {}
+})
+
+export interface EvidenceItem extends Schema.Schema.Type<typeof EvidenceItem> {}
 
 const adviceLevelValues = Array.make<["file", "directory", "project"]>(
   "file",
@@ -25,7 +27,7 @@ const adviceLevelSchema = Schema.Literals(adviceLevelValues)
 const evidenceArraySchema = Schema.Array(EvidenceItem)
 const emptyExamples = Array.empty()
 
-const emptyRefactorExampleSource: RefactorExampleSource = new InlineRefactorExamples({
+const emptyRefactorExampleSource: RefactorExampleSource = InlineRefactorExamples.make({
   examples: emptyExamples
 })
 
@@ -37,36 +39,43 @@ const refactorExamplesSchema = pipe(
 )
 
 // Advice is the shared advice payload because report owners need one vocabulary.
-export class Advice extends Schema.Class<Advice>("Advice")({
+export const Advice = Schema.Struct({
   location: Location,
   level: adviceLevelSchema,
   title: Schema.String,
   remediation: Schema.String,
   evidence: evidenceArraySchema,
   examples: refactorExamplesSchema
-}) {}
+})
+
+export interface Advice extends Schema.Schema.Type<typeof Advice> {}
 
 // NamedDetection is the shared name+detection pair because owners need one vocabulary.
-export class NamedDetection extends Schema.Class<NamedDetection>("NamedDetection")({
+export const NamedDetection = Schema.Struct({
   name: Schema.String,
   detection: Detection
-}) {}
+})
+
+export interface NamedDetection extends Schema.Schema.Type<typeof NamedDetection> {}
 
 const namedDetectionArray = Schema.Array(NamedDetection)
 
 // FileDetections is the shared path+elements pair because owners need one vocabulary.
-export class FileDetections extends Schema.Class<FileDetections>("FileDetections")({
+export const FileDetections = Schema.Struct({
   path: Schema.String,
   elements: namedDetectionArray
-}) {}
+})
 
-// CountSummary is the shared counts/totals contract because owners need one vocabulary.
-export class CountSummary extends Schema.Class<CountSummary>("CountSummary")({
+export interface FileDetections extends Schema.Schema.Type<typeof FileDetections> {}
+
+const stringCountHashMap = Schema.HashMap(Schema.String, Schema.Number)
+
+// CountSummary holds check totals and per-check file breadth because density advice needs them.
+export const CountSummary = Schema.Struct({
   total: Schema.Number,
   fileCount: Schema.Number,
-  countsByCheck: Schema.Any,
-  filesByCheck: Schema.Any
-}) {
-  declare readonly countsByCheck: HashMap.HashMap<string, number>
-  declare readonly filesByCheck: HashMap.HashMap<string, number>
-}
+  countsByCheck: stringCountHashMap,
+  filesByCheck: stringCountHashMap
+})
+
+export interface CountSummary extends Schema.Schema.Type<typeof CountSummary> {}

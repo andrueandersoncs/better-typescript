@@ -21,7 +21,7 @@ const makeDensityAdvice = (file: FileDetections) => {
   const location = makeAdviceLocation(file.path)
   const examples = highSignalDensityExamples
 
-  return new Advice({
+  return Advice.make({
     location,
     level: "file",
     title: "high signal density",

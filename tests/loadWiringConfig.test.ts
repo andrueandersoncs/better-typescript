@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Stream } from "effect"
+import { Effect, Schema, Stream } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
@@ -18,7 +18,7 @@ import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
-import { makeInlineRefactorExamples } from "@better-typescript/core/engine/example"
+import { makeInlineRefactorExamples } from "./exampleHelpers.js"
 import { InlineRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -335,7 +335,7 @@ test("decodeWiringConfig accepts inline RefactorExampleSource check examples", a
   const decodedExamples = config[0]?.wiring.checks[0]?.examples
 
   assert.equal(config[0]?.wiring.checks[0]?.name, "inline-examples")
-  assert.ok(decodedExamples instanceof InlineRefactorExamples)
+  assert.ok(Schema.is(InlineRefactorExamples)(decodedExamples))
   assert.equal(decodedExamples._tag, "inline")
   assert.deepEqual(decodedExamples.examples, [])
 })

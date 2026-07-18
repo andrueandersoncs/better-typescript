@@ -1,16 +1,7 @@
 import { Array, Schema } from "effect"
+import { architectureRoles, type ArchitectureRole } from "../support/architectureRole.js"
 
-// ArchitectureRole is role vocabulary because boundary and shape checks need same literals.
-export type ArchitectureRole = "domain" | "port" | "application" | "adapter" | "root" | "test"
-
-const architectureRoles = Array.make<["domain", "port", "application", "adapter", "root", "test"]>(
-  "domain",
-  "port",
-  "application",
-  "adapter",
-  "root",
-  "test"
-)
+export type { ArchitectureRole }
 
 const architectureRoleSchema = Schema.Literals(architectureRoles)
 
@@ -61,14 +52,16 @@ const boundaryKinds = Array.make<
 const boundaryKindSchema = Schema.Literals(boundaryKinds)
 
 // FunctionalCoreBoundaryData is detection payload because emission and advice share one record.
-export class FunctionalCoreBoundaryData extends Schema.Class<FunctionalCoreBoundaryData>(
-  "FunctionalCoreBoundaryData"
-)({
+export const FunctionalCoreBoundaryData = Schema.Struct({
   kind: boundaryKindSchema,
   role: architectureRoleSchema,
   subject: Schema.String,
   targetRole: optionalArchitectureRoleSchema
-}) {}
+})
+
+export interface FunctionalCoreBoundaryData extends Schema.Schema.Type<
+  typeof FunctionalCoreBoundaryData
+> {}
 
 // FunctionalCoreShapeKind is kind vocabulary because evidence and advice must share kind keys.
 export type FunctionalCoreShapeKind =
@@ -81,9 +74,7 @@ const shapeKinds = Array.make<
 const shapeKindSchema = Schema.Literals(shapeKinds)
 
 // FunctionalCoreShapeData is shape payload because silent checks and derive share one record.
-export class FunctionalCoreShapeData extends Schema.Class<FunctionalCoreShapeData>(
-  "FunctionalCoreShapeData"
-)({
+export const FunctionalCoreShapeData = Schema.Struct({
   kind: shapeKindSchema,
   role: architectureRoleSchema,
   branchCount: Schema.Number,
@@ -91,4 +82,8 @@ export class FunctionalCoreShapeData extends Schema.Class<FunctionalCoreShapeDat
   serviceCount: Schema.Number,
   effectfulMemberCount: Schema.Number,
   transformationCount: Schema.Number
-}) {}
+})
+
+export interface FunctionalCoreShapeData extends Schema.Schema.Type<
+  typeof FunctionalCoreShapeData
+> {}

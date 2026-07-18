@@ -20,7 +20,7 @@ const message =
 const hint =
   "Interface size is evidence, not a depth verdict. Architecture Explore combines it with low-leverage forwarding before recommending a smaller, deeper interface."
 
-const emptySurface = new InterfaceBurdenData({
+const emptySurface = InterfaceBurdenData.make({
   operationCount: 0,
   requiredParameterCount: 0
 })
@@ -50,14 +50,14 @@ const callableSurface = (
 ) => {
   const requiredParameterCount = requiredParameters(node.parameters)
 
-  return new InterfaceBurdenData({
+  return InterfaceBurdenData.make({
     operationCount: 1,
     requiredParameterCount
   })
 }
 
 const combineSurface = (left: InterfaceBurdenData, right: InterfaceBurdenData) =>
-  new InterfaceBurdenData({
+  InterfaceBurdenData.make({
     operationCount: left.operationCount + right.operationCount,
     requiredParameterCount: left.requiredParameterCount + right.requiredParameterCount
   })
@@ -105,7 +105,7 @@ const classSurface = (declaration: ts.ClassDeclaration) => {
 
   const constructorSurface = hasConstructor
     ? emptySurface
-    : new InterfaceBurdenData({
+    : InterfaceBurdenData.make({
         operationCount: 1,
         requiredParameterCount: 0
       })
@@ -221,7 +221,7 @@ const interfaceBurdenElements = (context: CheckContext): ReadonlyArray<Detection
   const filePath = relative(context.sourceFile.fileName)
   const workspacePath = workspaceRelative(filePath)
 
-  const data = new InterfaceBurdenData({
+  const data = InterfaceBurdenData.make({
     operationCount: surface.operationCount,
     requiredParameterCount: surface.requiredParameterCount,
     workspacePath

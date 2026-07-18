@@ -7,7 +7,7 @@ import { configFileName } from "./data.js"
 import type { ProjectWiringConfigError } from "./data.js"
 import { decodeWiringConfig, formatCause, makeProjectWiringConfigError } from "./decode.js"
 
-const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function* (
+const loadExistingWiringConfig = Effect.fn("WiringConfig.loadExisting")(function* (
   configPath: string
 ) {
   const moduleValue = yield* Effect.tryPromise({
@@ -30,16 +30,16 @@ const loadExistingWiringConfig = Effect.fn("loadExistingWiringConfig")(function*
 export const loadWiringConfig: (
   projectDirectory: string,
   fallback: WiringConfig<unknown>
-) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn("loadWiringConfig")(
-  function* (projectDirectory: string, fallback: WiringConfig<unknown>) {
-    const configPath = path.resolve(projectDirectory, configFileName)
-    const exists = yield* Effect.sync(() => fs.existsSync(configPath))
-    const missingConfig = !exists
+) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn(
+  "WiringConfig.load"
+)(function* (projectDirectory: string, fallback: WiringConfig<unknown>) {
+  const configPath = path.resolve(projectDirectory, configFileName)
+  const exists = yield* Effect.sync(() => fs.existsSync(configPath))
+  const missingConfig = !exists
 
-    if (missingConfig) {
-      return fallback
-    }
-
-    return yield* loadExistingWiringConfig(configPath)
+  if (missingConfig) {
+    return fallback
   }
-)
+
+  return yield* loadExistingWiringConfig(configPath)
+})

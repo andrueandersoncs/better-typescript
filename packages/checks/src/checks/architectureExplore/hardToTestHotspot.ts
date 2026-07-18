@@ -59,7 +59,7 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
       const evidence = Array.make(constructionItem, moduleScopeItem)
       const examples = hardToTestHotspotExamples
 
-      return new Advice({
+      return Advice.make({
         location,
         level: "file",
         title: "hard-to-test hotspot",

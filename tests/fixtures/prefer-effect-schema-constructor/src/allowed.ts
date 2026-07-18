@@ -5,11 +5,12 @@ export const empty = () => {
   return {}
 }
 
-// 2. Already-correct Schema construction (NewExpression, not a literal)
-class Circle extends Schema.TaggedClass<Circle>()("Circle", {
+// 2. Already-correct tagged schema construction (not a literal)
+const Circle = Schema.TaggedStruct("Circle", {
   radius: Schema.Number
-}) {}
-export const makeCircle = (radius: number): Circle => new Circle({ radius })
+})
+interface Circle extends Schema.Schema.Type<typeof Circle> {}
+export const makeCircle = (radius: number): Circle => Circle.make({ radius })
 
 // 3. Literal assigned to a variable, then the variable returned
 export const buildConfig = () => {

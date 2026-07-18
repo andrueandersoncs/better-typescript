@@ -1,13 +1,16 @@
 import { Match, Schema, pipe } from "effect"
 
-class Circle extends Schema.Class<Circle>("Circle")({
+const Circle = Schema.Struct({
   radius: Schema.Number
-}) {}
-class Square extends Schema.Class<Square>("Square")({ side: Schema.Number }) {}
-class Triangle extends Schema.Class<Triangle>("Triangle")({
+})
+interface Circle extends Schema.Schema.Type<typeof Circle> {}
+const Square = Schema.Struct({ side: Schema.Number })
+interface Square extends Schema.Schema.Type<typeof Square> {}
+const Triangle = Schema.Struct({
   base: Schema.Number,
   height: Schema.Number
-}) {}
+})
+interface Triangle extends Schema.Schema.Type<typeof Triangle> {}
 
 declare const circleArea: (circle: Circle) => number
 declare const squareArea: (square: Square) => number

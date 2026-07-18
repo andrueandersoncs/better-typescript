@@ -8,20 +8,18 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/signal/data"
 import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
 import {
+  ArchitectureRolePath,
+  conventionalArchitectureRoleOf,
+  defaultFunctionalCoreEffectPolicy,
   functionalCoreEffectWiring,
-  makeFunctionalCoreEffectWiring
-} from "@better-typescript/checks/functionalCoreEffect/wiring"
+  makeFunctionalCoreEffectWiring,
+  roleByPrefixes
+} from "@better-typescript/checks/preset/functionalCoreEffectWiring"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData
 } from "@better-typescript/checks/functionalCoreEffect/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
-import {
-  ArchitectureRolePath,
-  conventionalArchitectureRoleOf,
-  defaultFunctionalCoreEffectPolicy,
-  roleByPrefixes
-} from "@better-typescript/checks/functionalCoreEffect/policy"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "functional-core-effect")

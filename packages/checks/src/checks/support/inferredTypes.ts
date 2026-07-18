@@ -816,7 +816,7 @@ const findingsInSource = (
   const shadowSource = program.getSourceFile(original.fileName)
   const sourceFile = Option.fromNullishOr(shadowSource)
   const comments = sourceComments(original)
-  const checkContext = new CheckContext({ ...context, sourceFile: original, comments })
+  const checkContext = CheckContext.make({ ...context, sourceFile: original, comments })
   const match = makeDetection(checkContext)
 
   return pipe(

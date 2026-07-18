@@ -274,3 +274,11 @@ export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol) => {
 
   return Array.some(declarations, declarationInEffectPackage)
 }
+
+export const isEffectInterfaceSymbol = (symbol: ts.Symbol) => {
+  const isNamedEffect = symbol.name === "Effect"
+  const fromEffect = symbolDeclaredInEffectPackage(symbol)
+  const checks = Array.make(isNamedEffect, fromEffect)
+
+  return Array.every(checks, Boolean)
+}

@@ -1,43 +1,31 @@
-import { Schema, Stream } from "effect"
+import { Data, Schema, Stream } from "effect"
 import { Detection } from "@better-typescript/core/engine/location/data"
 
 const detectionArray = Schema.Array(Detection)
 
 // ImperativeStateSignals is one batch of five evidence streams because replay needs one schema.
-export class ImperativeStateSignals extends Schema.Class<ImperativeStateSignals>(
-  "ImperativeStateSignals"
-)({
+export const ImperativeStateSignals = Schema.Struct({
   noMutation: detectionArray,
   preferHashMap: detectionArray,
   preferHashSet: detectionArray,
   noMutableArrayMethods: detectionArray,
   noMutableVariableDeclarations: detectionArray
-}) {}
+})
 
-const detectionSignal = Schema.Any
+export interface ImperativeStateSignals extends Schema.Schema.Type<typeof ImperativeStateSignals> {}
 
-// ImperativeStateManagerInput is stable boundary input because callers need one contract.
-export class ImperativeStateManagerInput extends Schema.Class<ImperativeStateManagerInput>(
-  "ImperativeStateManagerInput"
-)({
-  noMutation: detectionSignal,
-  preferHashMap: detectionSignal,
-  preferHashSet: detectionSignal,
-  noMutableArrayMethods: detectionSignal,
-  noMutableVariableDeclarations: detectionSignal
-}) {
-  declare readonly noMutation: Stream.Stream<Detection>
-  declare readonly preferHashMap: Stream.Stream<Detection>
-  declare readonly preferHashSet: Stream.Stream<Detection>
-  declare readonly noMutableArrayMethods: Stream.Stream<Detection>
-  declare readonly noMutableVariableDeclarations: Stream.Stream<Detection>
-}
+// Live five-stream input because Schema batches cannot hold Streams.
+export class ImperativeStateManagerInput extends Data.Class<{
+  readonly noMutation: Stream.Stream<Detection>
+  readonly preferHashMap: Stream.Stream<Detection>
+  readonly preferHashSet: Stream.Stream<Detection>
+  readonly noMutableArrayMethods: Stream.Stream<Detection>
+  readonly noMutableVariableDeclarations: Stream.Stream<Detection>
+}> {}
 
-// MutationElementData is the mutation boundary payload because callers need one contract.
-export interface MutationElementData {
-  readonly target: string
-}
-
+// Shared mutation-target evidence because detectors and advice decode one record.
 export const MutationElementData = Schema.Struct({
   target: Schema.String
-}) satisfies Schema.Schema<MutationElementData>
+})
+
+export interface MutationElementData extends Schema.Schema.Type<typeof MutationElementData> {}

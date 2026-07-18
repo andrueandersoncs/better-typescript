@@ -123,17 +123,18 @@ const makeWorkspaceUpdateFrom =
     })
 
 // One-shot Programs share SourceFiles because one scoped DocumentRegistry owns compatible trees.
+const materializeWorkspacePrograms = Effect.fn("Watch.workspacePrograms")(function* (
+  workspace: WorkspaceConfigs,
+  compilerOptions: ts.CompilerOptions
+) {
+  const acquireServices = Effect.sync(() => createWorkspaceServices(workspace, compilerOptions))
+  const services = yield* Effect.acquireRelease(acquireServices, releaseWorkspaceServices)
+
+  return makeWorkspaceUpdateFrom(workspace.rootPath)(services)
+})
+
 export const workspacePrograms = (
   workspace: WorkspaceConfigs,
   compilerOptions: ts.CompilerOptions = {}
-): Stream.Stream<WorkspaceUpdate> => {
-  const acquire = Effect.sync(() => createWorkspaceServices(workspace, compilerOptions))
-  const services = Effect.acquireRelease(acquire, releaseWorkspaceServices)
-
-  return pipe(
-    services,
-    Effect.map(makeWorkspaceUpdateFrom(workspace.rootPath)),
-    Stream.fromEffect,
-    Stream.scoped
-  )
-}
+): Stream.Stream<WorkspaceUpdate> =>
+  pipe(materializeWorkspacePrograms(workspace, compilerOptions), Stream.fromEffect, Stream.scoped)

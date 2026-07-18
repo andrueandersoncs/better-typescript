@@ -1,3 +1,4 @@
+import * as path from "node:path"
 import { Array, Function, pipe, Result } from "effect"
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -5,7 +6,12 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { TestOnlyExportData } from "./data.js"
-import { ExportReferenceIndex, isTestSourceFile, usageFor } from "./programSymbols.js"
+import {
+  ExportReferenceIndex,
+  isPackageProject,
+  isTestSourceFile,
+  usageFor
+} from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
 import { makeSilentCheck } from "../../defineCheck.js"
 import { testOnlyExportsName } from "./names.js"
@@ -16,10 +22,28 @@ const message =
 const hint =
   "Test through the same public interface as production callers, then make this internal helper private."
 
+const sourceBelongsToProject = (context: CheckContext) => {
+  const sourcePath = path.resolve(context.projectRoot, context.sourceFile.fileName)
+  const relativePath = path.relative(context.projectRoot, sourcePath)
+  const isNotParent = relativePath !== ".."
+  const isNotOutside = !relativePath.startsWith(`..${path.sep}`)
+  const isNotAbsolute = !path.isAbsolute(relativePath)
+  const isInsideProject = isNotParent && isNotOutside
+
+  return isInsideProject && isNotAbsolute
+}
+
 const testOnlyExportElements =
   (index: ExportReferenceIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    if (isTestSourceFile(context.workspaceRoot)(context.sourceFile)) {
+    const isTestFile = isTestSourceFile(context.workspaceRoot)(context.sourceFile)
+    const belongsToProject = sourceBelongsToProject(context)
+    const isPackage = isPackageProject(context.workspaceRoot)(context.projectRoot)
+    const doesNotBelongToProject = !belongsToProject
+    const isOutOfScope = isTestFile || doesNotBelongToProject
+    const shouldSkip = isOutOfScope || isPackage
+
+    if (shouldSkip) {
       return Array.empty()
     }
 
@@ -39,7 +63,7 @@ const testOnlyExportElements =
           return Result.failVoid
         }
 
-        const data = new TestOnlyExportData({
+        const data = TestOnlyExportData.make({
           testPaths: usage.testPaths,
           testCallCount: usage.testCallCount
         })

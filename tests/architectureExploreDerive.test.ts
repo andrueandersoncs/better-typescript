@@ -31,8 +31,8 @@ import { Signal } from "@better-typescript/core/engine/signal/data"
 import { makeWiring } from "@better-typescript/core/engine/wiring"
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>
-  new Detection({
-    location: new Location({ path, line, column: 1 }),
+  Detection.make({
+    location: Location.make({ path, line, column: 1 }),
     message: "message",
     hint: "hint",
     ...(data === undefined ? {} : { data })
@@ -48,7 +48,7 @@ const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): Readonly
   advice.filter((item) => item.title === title)
 
 const wrapperData = (callerCount: number, hasNonCallReference = false): PassThroughWrapperData =>
-  new PassThroughWrapperData({
+  PassThroughWrapperData.make({
     kind: "forwarding-call",
     exportCount: 1,
     callerCount,
@@ -60,7 +60,7 @@ const compositionData = (
   callerCount: number,
   hasNonCallReference = false
 ): CompositionForwarderData =>
-  new CompositionForwarderData({
+  CompositionForwarderData.make({
     exportName: "forward",
     stepCount: 2,
     callerCount,
@@ -69,7 +69,7 @@ const compositionData = (
   })
 
 const graphData = (workspacePath: string, importedPaths: ReadonlyArray<string>): ModuleGraphData =>
-  new ModuleGraphData({
+  ModuleGraphData.make({
     importedPaths: [...importedPaths],
     workspacePath,
     importedWorkspacePaths: [...importedPaths]
@@ -142,7 +142,7 @@ test("composition forwarders feed deletion-test wide-shallow and bounce advice",
   const wideBurden = detectionAt(
     widePath,
     1,
-    new InterfaceBurdenData({
+    InterfaceBurdenData.make({
       operationCount: 4,
       requiredParameterCount: 6
     })
@@ -172,7 +172,7 @@ test("wide shallow interface requires a forwarding-dominated burden", async () =
   const wideBurden = detectionAt(
     widePath,
     1,
-    new InterfaceBurdenData({
+    InterfaceBurdenData.make({
       operationCount: 4,
       requiredParameterCount: 6
     })
@@ -180,7 +180,7 @@ test("wide shallow interface requires a forwarding-dominated burden", async () =
   const deepBurden = detectionAt(
     deepPath,
     1,
-    new InterfaceBurdenData({
+    InterfaceBurdenData.make({
       operationCount: 10,
       requiredParameterCount: 12
     })
@@ -223,7 +223,7 @@ test("seam and test evidence derive public-interface advice", async () => {
   const testOnly = detectionAt(
     "src/order.ts",
     3,
-    new TestOnlyExportData({
+    TestOnlyExportData.make({
       testPaths: ["tests/order.test.ts"],
       testCallCount: 2
     })
@@ -231,7 +231,7 @@ test("seam and test evidence derive public-interface advice", async () => {
   const testLeak = detectionAt(
     "tests/order.test.ts",
     1,
-    new SeamLeakageData({
+    SeamLeakageData.make({
       importedPath: "../src/internal/order.js",
       depth: 4,
       kind: "internal-path",
@@ -242,7 +242,7 @@ test("seam and test evidence derive public-interface advice", async () => {
     detectionAt(
       "src/consumer.ts",
       line,
-      new SeamLeakageData({
+      SeamLeakageData.make({
         importedPath: "./internal/order.js",
         depth: 2,
         kind: "internal-path",
@@ -262,7 +262,7 @@ test("seam and test evidence derive public-interface advice", async () => {
 })
 
 test("module-scope effects feed hard-to-test hotspot advice", async () => {
-  const effectData = new ModuleScopeEffectData({
+  const effectData = ModuleScopeEffectData.make({
     calleeText: "Effect.runSync",
     kind: "effect-run"
   })
@@ -285,7 +285,7 @@ test("module-scope effects feed hard-to-test hotspot advice", async () => {
         detectionAt(
           "src/mixed.ts",
           1,
-          new ExternalDependencyConstructionData({
+          ExternalDependencyConstructionData.make({
             collaboratorName: "PaymentClient",
             importedPath: "@acme/payments"
           })
@@ -309,11 +309,11 @@ test("module-scope effects feed hard-to-test hotspot advice", async () => {
 })
 
 test("collaborator concentration and one adapter derive separate seam advice", async () => {
-  const collaboratorData = new ExternalDependencyConstructionData({
+  const collaboratorData = ExternalDependencyConstructionData.make({
     collaboratorName: "PaymentClient",
     importedPath: "@acme/payments"
   })
-  const seamData = new SingleAdapterSeamData({
+  const seamData = SingleAdapterSeamData.make({
     interfaceName: "PaymentPort",
     productionAdapterCount: 1,
     testAdapterCount: 0
@@ -379,7 +379,7 @@ test("bidirectional directory pairs derive directory-level leaked seam advice", 
 
 test("export-surface workspace join derives test-past-interface advice", async () => {
   const exportPath = "packages/lib/src/api.ts"
-  const symbol = new ExportedSymbolUsage({
+  const symbol = ExportedSymbolUsage.make({
     name: "helper",
     kind: "function",
     referencingFileCount: 0,
@@ -389,7 +389,7 @@ test("export-surface workspace join derives test-past-interface advice", async (
   const surface = detectionAt(
     exportPath,
     1,
-    new ExportSurfaceData({
+    ExportSurfaceData.make({
       workspacePath: exportPath,
       symbols: [symbol]
     })
@@ -397,7 +397,7 @@ test("export-surface workspace join derives test-past-interface advice", async (
   const identity = detectionAt(
     exportPath,
     1,
-    new ModuleIdentityData({
+    ModuleIdentityData.make({
       workspacePath: exportPath,
       aliases: ["@acme/lib"]
     })
@@ -405,12 +405,12 @@ test("export-surface workspace join derives test-past-interface advice", async (
   const testImport = detectionAt(
     "packages/app/tests/api.test.ts",
     1,
-    new ImportUsageData({
+    ImportUsageData.make({
       specifier: "@acme/lib",
       importerWorkspacePath: "packages/app/tests/api.test.ts",
       fromTest: true,
       names: [
-        new ImportedNameUsage({
+        ImportedNameUsage.make({
           name: "helper",
           referenceCount: 1,
           callCount: 2
@@ -421,12 +421,12 @@ test("export-surface workspace join derives test-past-interface advice", async (
   const prodImport = detectionAt(
     "packages/app/src/use.ts",
     1,
-    new ImportUsageData({
+    ImportUsageData.make({
       specifier: "@acme/lib",
       importerWorkspacePath: "packages/app/src/use.ts",
       fromTest: false,
       names: [
-        new ImportedNameUsage({
+        ImportedNameUsage.make({
           name: "helper",
           referenceCount: 1,
           callCount: 1
@@ -469,10 +469,10 @@ test("export-surface workspace join ignores same-project test-only usage", async
   const surface = detectionAt(
     exportPath,
     1,
-    new ExportSurfaceData({
+    ExportSurfaceData.make({
       workspacePath: exportPath,
       symbols: [
-        new ExportedSymbolUsage({
+        ExportedSymbolUsage.make({
           name: "value",
           kind: "value",
           referencingFileCount: 1,
@@ -491,13 +491,13 @@ test("export-surface workspace join ignores same-project test-only usage", async
 })
 
 test("context-tag dead seams derive hypothetical seam advice", async () => {
-  const dead = new ContextTagSeamData({
+  const dead = ContextTagSeamData.make({
     serviceName: "DeadService",
     productionAdapterCount: 0,
     testAdapterCount: 0,
     consumerCount: 0
   })
-  const alive = new ContextTagSeamData({
+  const alive = ContextTagSeamData.make({
     serviceName: "AliveService",
     productionAdapterCount: 2,
     testAdapterCount: 0,

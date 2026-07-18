@@ -18,7 +18,7 @@ const makeSourceCommentFrom = (scanner: ts.Scanner) => {
   const pos = scanner.getTokenStart()
   const end = scanner.getTokenEnd()
 
-  return new SourceComment({ kind, pos, end })
+  return SourceComment.make({ kind, pos, end })
 }
 
 // ScanContext names the two close-brace owners because rescanning must know which one it closes.

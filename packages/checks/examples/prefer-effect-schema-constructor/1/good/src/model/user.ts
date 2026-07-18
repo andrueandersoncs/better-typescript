@@ -1,12 +1,13 @@
 import { Schema } from "effect"
 
-class User extends Schema.TaggedClass<User>()("User", {
+const User = Schema.TaggedStruct("User", {
   name: Schema.String,
   createdAt: Schema.Number
-}) {}
+})
+interface User extends Schema.Schema.Type<typeof User> {}
 
 export const createUser = (name: string) => {
   const createdAt = Date.now()
 
-  return new User({ name, createdAt })
+  return User.make({ name, createdAt })
 }

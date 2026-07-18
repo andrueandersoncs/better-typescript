@@ -49,13 +49,13 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   return Array.map(positions, (pos) => {
     const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(pos)
 
-    const location = new Location({
+    const location = Location.make({
       path: fileName,
       line: lineAndCharacter.line + 1,
       column: lineAndCharacter.character + 1
     })
 
-    return new Detection({ location, message, hint })
+    return Detection.make({ location, message, hint })
   })
 }
 

@@ -327,10 +327,10 @@ export interface ReportEvents<DeriveError> {
 }
 
 // Resolve report dependencies once because repeated report streams must share their cache.
-export const makeReportEvent = <DeriveError>(
+export const makeReportEvent = Effect.fn("Watch.makeReportEvent")(function* <DeriveError>(
   config: WiringConfig<DeriveError>
-): Effect.Effect<ReportEvents<DeriveError>> =>
-  pipe(
+) {
+  return yield* pipe(
     makeRefactorExampleResolver,
     Effect.map(
       (resolve): ReportEvents<DeriveError> =>
@@ -344,3 +344,4 @@ export const makeReportEvent = <DeriveError>(
           )
     )
   )
+})

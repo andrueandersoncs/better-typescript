@@ -52,7 +52,7 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
     const evidence = Array.make(importedModulesItem, singleUseItem)
     const examples = registrationCeremonyExamples
 
-    const advice = new Advice({
+    const advice = Advice.make({
       location,
       level: "file",
       title: "registration ceremony",

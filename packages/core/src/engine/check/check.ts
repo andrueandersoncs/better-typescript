@@ -61,7 +61,7 @@ const locateNode = (context: CheckContext) => (node: ts.Node) => {
   const relative = path.relative(context.projectRoot, sourceFile.fileName)
   const fileName = relative || sourceFile.fileName
 
-  return new Location({
+  return Location.make({
     path: fileName,
     line: position.line + 1,
     column: position.character + 1
@@ -71,7 +71,7 @@ const locateNode = (context: CheckContext) => (node: ts.Node) => {
 export const makeDetection = (context: CheckContext) => (source: DetectionSource) => {
   const location = locateNode(context)(source.node)
 
-  return new Detection({
+  return Detection.make({
     location,
     message: source.message,
     hint: source.hint,
@@ -165,7 +165,7 @@ export const runChecks =
     Array.forEach(sourceFiles, (sourceFile) => {
       const comments = sourceComments(sourceFile)
 
-      const checkContext = new CheckContext({
+      const checkContext = CheckContext.make({
         program: context.program,
         checker: context.checker,
         projectRoot: context.projectRoot,

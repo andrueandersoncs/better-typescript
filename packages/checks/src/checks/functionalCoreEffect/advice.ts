@@ -73,7 +73,7 @@ const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice
     const evidence = shapeEvidence(data)
     const examples = shapeAdviceExamples[data.kind]
 
-    const advice = new Advice({
+    const advice = Advice.make({
       location: element.location,
       level: "file",
       title: shapeAdviceTitles[data.kind],
@@ -135,7 +135,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       const location = makeAdviceLocation(path)
       const examples = imperativeCoreExamples
 
-      const advice = new Advice({
+      const advice = Advice.make({
         location,
         level: "file",
         title: "imperative core",

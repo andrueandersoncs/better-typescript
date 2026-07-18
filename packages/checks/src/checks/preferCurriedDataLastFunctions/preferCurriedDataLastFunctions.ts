@@ -40,19 +40,19 @@ const updateSymbolUse =
   }
 
 const markContextualReference = (use: SymbolUse) =>
-  new SymbolUse({
+  SymbolUse.make({
     ...use,
     hasContextualReference: true
   })
 
 const markDirectCall = (use: SymbolUse) =>
-  new SymbolUse({
+  SymbolUse.make({
     ...use,
     hasDirectCall: true
   })
 
 const markOtherReference = (use: SymbolUse) =>
-  new SymbolUse({
+  SymbolUse.make({
     ...use,
     hasOtherReference: true
   })

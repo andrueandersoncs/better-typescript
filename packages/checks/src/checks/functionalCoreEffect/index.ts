@@ -1,10 +1,9 @@
-import { Array, Data, HashMap, Option, Tuple, pipe, Result, Function } from "effect"
+import { Data, HashMap } from "effect"
 import type * as ts from "typescript"
-import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import type { ArchitectureRole } from "./data.js"
+import type { ArchitectureRole } from "../support/architectureRole.js"
 import type { FunctionalCoreEffectPolicy } from "./policy.js"
+import { roleForFile, roleMapFromProgram } from "../support/roleMap.js"
 
 // FunctionalCoreEffectIndex is shared program snapshot because checks must query one role map.
 export class FunctionalCoreEffectIndex extends Data.Class<{
@@ -15,23 +14,7 @@ export class FunctionalCoreEffectIndex extends Data.Class<{
 
 export const buildFunctionalCoreEffectIndex =
   (policy: FunctionalCoreEffectPolicy) => (context: ProgramContext) => {
-    const relative = toRelativeFileName(context.projectRoot)
-    const sourceFiles = context.program.getSourceFiles()
-
-    const entries = pipe(
-      Array.filter(sourceFiles, isProjectSourceFile),
-      Array.filterMap((sourceFile) =>
-        pipe(
-          sourceFile.fileName,
-          relative,
-          policy.roleOf,
-          Option.map((role) => Tuple.make(sourceFile.fileName, role)),
-          Result.fromOption(Function.constVoid)
-        )
-      )
-    )
-
-    const roles = HashMap.fromIterable(entries)
+    const roles = roleMapFromProgram(policy.roleOf)(context)
 
     return new FunctionalCoreEffectIndex({
       policy,
@@ -41,4 +24,4 @@ export const buildFunctionalCoreEffectIndex =
   }
 
 export const roleForSourceFile = (index: FunctionalCoreEffectIndex, sourceFile: ts.SourceFile) =>
-  HashMap.get(index.roles, sourceFile.fileName)
+  roleForFile(index.roles)(sourceFile)

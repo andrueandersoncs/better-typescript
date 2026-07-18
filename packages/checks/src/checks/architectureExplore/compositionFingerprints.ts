@@ -298,7 +298,7 @@ const compositionFingerprintElements =
 
         const fingerprint = Array.join(names, ">")
 
-        const data = new CompositionFingerprintData({
+        const data = CompositionFingerprintData.make({
           fingerprint,
           stepCount: names.length,
           exportName: entry.nameNode.text

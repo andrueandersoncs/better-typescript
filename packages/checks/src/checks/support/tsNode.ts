@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
+import { Array, Function, HashSet, Match, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 // FunctionInitializer is the shared function shape because owners must agree.
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
@@ -345,3 +345,27 @@ export const hasAnyReturnType = (decl: ReturnTypeDeclaration) => {
 
   return Option.exists(returnType, containsAnyKeyword)
 }
+
+export const propertyNameText = (name: ts.PropertyName) =>
+  pipe(
+    Match.value(name),
+    Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
+    Match.when(ts.isStringLiteralLike, (literal) => Option.some(literal.text)),
+    Match.when(ts.isNumericLiteral, (literal) => Option.some(literal.text)),
+    Match.when(ts.isComputedPropertyName, (computed) =>
+      pipe(
+        Option.liftPredicate(ts.isStringLiteralLike)(computed.expression),
+        Option.map(Struct.get("text"))
+      )
+    ),
+    Match.orElse(() => Option.none())
+  )
+
+export const bindingNameText = (name: ts.BindingName) =>
+  pipe(
+    Match.value(name),
+    Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
+    Match.orElse(() => Option.none())
+  )
+
+export const callExpressionOf = Option.liftPredicate(ts.isCallExpression)

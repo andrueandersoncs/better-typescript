@@ -1,14 +1,8 @@
 import * as path from "node:path"
-import { Array, Effect, Equal, Function, HashSet, Option, flow, pipe } from "effect"
+import { Array, Effect, Equal, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "../../engine/check/data.js"
 import type { Detection } from "../../engine/location/data.js"
-import type { WiringSignals } from "../../engine/signal/data.js"
-import type { WiringConfig } from "../../engine/wiring/data.js"
-import {
-  compilerOptionsForConfig,
-  workspaceSignalsForProjects
-} from "../../engine/wiring/wiring.js"
 import { makeContext } from "../../engine/sources/sources.js"
 import { compilerOptionsForChecks, runChecks } from "../../engine/check/check.js"
 import {
@@ -27,7 +21,7 @@ export const discoverWorkspace: (
 ) => Effect.Effect<
   WorkspaceConfigs,
   MissingTsconfigError | CircularProjectReferenceError | InvalidTsconfigError
-> = Effect.fn("discoverWorkspace")(function* (projectPath: string) {
+> = Effect.fn("LoadProject.discoverWorkspace")(function* (projectPath: string) {
   const rootPath = path.resolve(projectPath)
   const foundConfigPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json")
   const configPath = Option.fromNullishOr(foundConfigPath)
@@ -59,28 +53,16 @@ const loadProjectConfig = (config: ProjectConfig, compilerOptions: ts.CompilerOp
     compilerOptions
   )
 
-  return new LoadedProject({
+  return LoadedProject.make({
     configPath: config.configPath,
     rootPath: config.rootPath,
     program
   })
 }
 
-const makeContextFromLoadedProject = (project: LoadedProject) => {
-  const createContext = makeContext(project.rootPath)
-
-  return createContext(project.program)
-}
-
 const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
 const includeEverySourceFile = Function.constant(true)
-
-const contextFromProjectConfig = (compilerOptions: ts.CompilerOptions) =>
-  flow(
-    (config: ProjectConfig) => loadProjectConfig(config, compilerOptions),
-    makeContextFromLoadedProject
-  )
 
 // The one-Check runner owns compiler requirements because callers should not know Check internals.
 const programForChecks =
@@ -115,19 +97,6 @@ const programForChecks =
     )
   }
 
-// One projection stays public because config callers load and analyze in one step.
-export const collectWorkspaceSignalsFromConfigs =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: WorkspaceConfigs): Effect.Effect<ReadonlyArray<WiringSignals>> => {
-    const compilerOptions = compilerOptionsForConfig(config)
-
-    const collectProjects = workspaceSignalsForProjects(config)(workspace.rootPath)(
-      workspace.projects
-    )
-
-    return collectProjects(contextFromProjectConfig(compilerOptions))
-  }
-
 export const runCheckOnProject =
   (checks: ReadonlyArray<Check>) =>
   (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
@@ -141,7 +110,7 @@ export const runCheckOnProject =
       return pipe(detections, Array.head, Option.getOrElse(noDetections))
     })
 
-export const loadProject = Effect.fn("loadProject")(function* (
+export const loadProject = Effect.fn("LoadProject.load")(function* (
   projectPath: string,
   compilerOptions: ts.CompilerOptions = {}
 ) {
@@ -151,7 +120,7 @@ export const loadProject = Effect.fn("loadProject")(function* (
     loadProjectConfig(config, compilerOptions)
   )
 
-  return new LoadedWorkspace({ rootPath: workspace.rootPath, projects })
+  return LoadedWorkspace.make({ rootPath: workspace.rootPath, projects })
 })
 
 const discoverConfig: (
@@ -160,7 +129,7 @@ const discoverConfig: (
 ) => Effect.Effect<
   ReadonlyArray<ProjectConfig>,
   CircularProjectReferenceError | InvalidTsconfigError
-> = Effect.fn("discoverConfig")(function* (
+> = Effect.fn("LoadProject.discoverConfig")(function* (
   configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
 ) {
@@ -209,7 +178,7 @@ const discoverConfig: (
   return Array.of(projectConfig)
 })
 
-const loadReferencedProjects = Effect.fn("loadReferencedProjects")(function* (
+const loadReferencedProjects = Effect.fn("LoadProject.loadReferencedProjects")(function* (
   references: ReadonlyArray<ts.ProjectReference>,
   ancestorConfigPaths: HashSet.HashSet<string>
 ) {

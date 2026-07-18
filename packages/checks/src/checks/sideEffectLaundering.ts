@@ -22,7 +22,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
       const location = makeAdviceLocation(file.path)
       const examples = sideEffectLaunderingExamples
 
-      const advice = new Advice({
+      const advice = Advice.make({
         location,
         level: "file",
         title: "colliding fixes on shared expressions",

@@ -59,7 +59,7 @@ const makeClosedAbstractionAdvice = (element: Detection, data: ConceptSignalData
   const evidence = Array.make(externalCallers, independentOwners)
   const examples = closedAbstractionClusterExamples
 
-  return new Advice({
+  return Advice.make({
     location: element.location,
     level: "file",
     title: "closed abstraction cluster",
@@ -107,7 +107,7 @@ const proliferationAdvice = (
   const location = makeAdviceLocation(directory)
   const examples = conceptProliferationExamples
 
-  const advice = new Advice({
+  const advice = Advice.make({
     location,
     level: "directory",
     title: "concept proliferation",

@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
 import { Effect, Stream } from "effect"
-import { defaultDerive } from "@better-typescript/checks/preset/defaultWiring"
+import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
@@ -12,8 +12,8 @@ const range = (count: number): ReadonlyArray<number> =>
   Array.from({ length: count }, (_, index) => index + 1)
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>
-  new Detection({
-    location: new Location({ path, line, column: 1 }),
+  Detection.make({
+    location: Location.make({ path, line, column: 1 }),
     message: "message",
     hint: "hint",
     ...(data === undefined ? {} : { data })
@@ -39,7 +39,7 @@ const adviceCount = (advice: ReadonlyArray<Advice>, title: string): number =>
 
 test("defaultDerive excludes silent signals from reported aggregate advice", async () => {
   const advice = await collectAdvice(
-    defaultDerive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])
+    defaultWiring.derive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])
   )
 
   assert.equal(adviceCount(advice, "high signal density"), 0)
@@ -53,7 +53,10 @@ test("defaultDerive feeds systemic hotspots density after fallback suppression",
   const noMutation = suppressedDensityFiles.flatMap((path) => detectionsAt(path, 10, sharedState))
   const noThrow = detectionsAt("src/dense.ts", 10)
   const advice = await collectAdvice(
-    defaultDerive([reportedSignal("no-mutation", noMutation), reportedSignal("no-throw", noThrow)])
+    defaultWiring.derive([
+      reportedSignal("no-mutation", noMutation),
+      reportedSignal("no-throw", noThrow)
+    ])
   )
   const densityAdvice = adviceWithTitle(advice, "high signal density")
 

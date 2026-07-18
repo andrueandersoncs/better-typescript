@@ -17,12 +17,12 @@ import {
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { withFallbackAdvice } from "@better-typescript/core/engine/report"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
+import { makeDirectoryRefactorExamples } from "@better-typescript/core/engine/example"
 import {
-  makeDirectoryRefactorExamples,
   makeExampleSnippet,
   makeInlineRefactorExamples,
   makeRefactorExample
-} from "@better-typescript/core/engine/example"
+} from "./exampleHelpers.js"
 import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import {
@@ -155,7 +155,7 @@ const throwProbeNamedCheck: NamedCheck = makeNamedCheck(
 const silentProbeNamedCheck: NamedCheck = makeSilentCheck(
   "silent-only probe",
   fileCheck(() => [
-    new Detection({
+    Detection.make({
       location: location("src/silent-observation.ts", 1, 1),
       message: "silent observation",
       hint: "silent observations only feed advice"
@@ -203,7 +203,7 @@ const expectedThrowProbeElements = [
 ]
 
 const location = (filePath: string, line: number, column: number): Location =>
-  new Location({ path: filePath, line, column })
+  Location.make({ path: filePath, line, column })
 
 const advice = (
   level: Advice["level"],
@@ -328,6 +328,30 @@ test("glob config runs every wiring whose file patterns match", async () => {
   )
 })
 
+test("glob config excludes negated patterns from a positive scope", async () => {
+  const fileProbe: Check = fileCheck((context) => [
+    makeDetection(context)({
+      node: context.sourceFile,
+      message: "visited included glob file",
+      hint: "exclude configured paths from a positive scope"
+    })
+  ])
+  const wiring = testWiring([makeNamedCheck("included package files", fileProbe, probeExamples)])
+  const config = defineConfig([
+    {
+      files: ["packages/**/src/*.ts", "!packages/beta/**"],
+      wiring
+    }
+  ])
+  const workspace = await loadFixtureWorkspace("glob-wirings")
+  const blocks = await collectStream(reportTexts(config)(workspace))
+
+  assert.deepEqual(
+    blocks.map((block) => block.split("\n").filter((line) => line.endsWith(":1:1"))),
+    [["  src/alpha.ts:1:1"]]
+  )
+})
+
 test("each glob wiring derives from only its matching files", async () => {
   const fileProbe: Check = fileCheck((context) => [
     makeDetection(context)({
@@ -427,7 +451,7 @@ test("reportEvents does not load examples for a check without detections", async
 })
 
 test("glob wiring drops detections outside its matched files", async () => {
-  const outsideDetection = new Detection({
+  const outsideDetection = Detection.make({
     location: location("src/allowed.ts", 1, 1),
     message: "outside configured glob",
     hint: "drop this detection"
@@ -540,12 +564,12 @@ test("reportEvents groups locations under the check prose name, message, and hin
   const groupedCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 4, 3),
         message: probeMessage,
         hint: probeHint
       }),
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 9, 5),
         message: probeMessage,
         hint: probeHint
@@ -575,22 +599,22 @@ test("reportEvents splits one check into distinct message and hint groups", asyn
   const splitCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 4, 3),
         message: "throw statement",
         hint: "yield typed errors instead of throwing"
       }),
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 9, 5),
         message: "throw statement",
         hint: "yield typed errors instead of throwing"
       }),
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 19, 5),
         message: "throw expression",
         hint: "yield typed errors instead of throwing"
       }),
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 26, 3),
         message: "throw statement",
         hint: "return error values instead"
@@ -646,7 +670,7 @@ test("reportEvents orders advice before check blocks and sorts advice by level t
   const groupedCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 4, 3),
         message: probeMessage,
         hint: probeHint
@@ -686,7 +710,7 @@ test("reportEvents preserves asynchronously emitted advice", async () => {
   const delayedCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
-      new Detection({
+      Detection.make({
         location: location("src/cases.ts", 4, 3),
         message: probeMessage,
         hint: probeHint

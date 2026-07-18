@@ -1,8 +1,9 @@
 import { Schema } from "effect"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   name: Schema.String
-}) {}
+})
+interface User extends Schema.Schema.Type<typeof User> {}
 
 export const readName = (value: unknown) => {
   if (Schema.is(User)(value)) {

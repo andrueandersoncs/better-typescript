@@ -72,7 +72,7 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
     const remediation = deadCount > 0 ? baseRemediation + deadRemediation : baseRemediation
     const examples = hypotheticalSeamExamples
 
-    return new Advice({
+    return Advice.make({
       location,
       level: "file",
       title: "hypothetical seam",

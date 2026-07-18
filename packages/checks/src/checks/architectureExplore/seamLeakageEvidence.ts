@@ -63,7 +63,7 @@ const seamLeakageElement = (context: CheckContext) => {
     return pipe(
       leakageKind(context)(importedPath),
       Option.map((kind) => {
-        const data = new SeamLeakageData({
+        const data = SeamLeakageData.make({
           importedPath,
           depth: pathParts.length,
           kind,

@@ -102,7 +102,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const owners = ownersFor(entry)
       const independentOwners = HashSet.size(owners)
 
-      return new ConceptSignalData({
+      return ConceptSignalData.make({
         kind,
         concept: entry.name,
         owner,

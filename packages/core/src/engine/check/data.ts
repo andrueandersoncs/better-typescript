@@ -8,24 +8,28 @@ import { TsNode, TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
 const sourceCommentsSchema = Schema.Array(SourceComment)
 
 // CheckContext is the shared check-file contract because owners need one vocabulary.
-export class CheckContext extends Schema.Class<CheckContext>("CheckContext")({
+export const CheckContext = Schema.Struct({
   program: TsProgram,
   checker: TsTypeChecker,
   projectRoot: Schema.String,
   workspaceRoot: Schema.String,
   sourceFile: TsSourceFile,
   comments: sourceCommentsSchema
-}) {}
+})
+
+export interface CheckContext extends Schema.Schema.Type<typeof CheckContext> {}
 
 const optionalUnknown = Schema.optional(Schema.Unknown)
 
 // DetectionSource is boundary detection input because it differs from emitted Detection.
-export class DetectionSource extends Schema.Class<DetectionSource>("DetectionSource")({
+export const DetectionSource = Schema.Struct({
   node: TsNode,
   message: Schema.String,
   hint: Schema.String,
   data: optionalUnknown
-}) {}
+})
+
+export interface DetectionSource extends Schema.Schema.Type<typeof DetectionSource> {}
 
 type NodeHandler = (context: CheckContext) => (node: ts.Node) => ReadonlyArray<Detection>
 

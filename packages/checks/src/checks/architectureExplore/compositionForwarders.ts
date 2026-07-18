@@ -174,7 +174,7 @@ const compositionForwarderElements =
               Option.getOrElse(Function.constant(0))
             )
 
-            const data = new CompositionForwarderData({
+            const data = CompositionForwarderData.make({
               exportName: entry.nameNode.text,
               stepCount,
               callerCount: usage.productionCallCount,

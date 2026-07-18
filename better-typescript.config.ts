@@ -3,9 +3,10 @@ import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
 import {
   ArchitectureRolePath,
+  makeFunctionalCoreEffectWiring,
   policyWithRolePrefixes
-} from "@better-typescript/checks/functionalCoreEffect/policy"
-import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+} from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+import { effectQualityWiring } from "@better-typescript/checks/effectQuality/wiring"
 
 // Engine counts as domain and cli as root because wiring.ts must not look like a composition root.
 const functionalCoreEffectPolicy = policyWithRolePrefixes([
@@ -15,11 +16,19 @@ const functionalCoreEffectPolicy = policyWithRolePrefixes([
 
 const functionalCoreEffectWiring = makeFunctionalCoreEffectWiring(functionalCoreEffectPolicy)
 
-// Reported style checks stay scoped to package sources because tests and fixtures are exempt surfaces.
-const reportedWiring = makeMergedWiring([defaultWiring, functionalCoreEffectWiring])
+// Every package dogfoods every shipped wiring. Check implementations are production code, not an
+// exemption: their fixtures prove recognizers while self-hosting proves they follow the policy.
+const selfHostProductFiles = ["packages/*/src/**"]
+const selfHostArchitectureFiles = [
+  "better-typescript.config.ts",
+  ...selfHostProductFiles,
+  "tests/**"
+]
 
-// The architecture fleet spans the whole workspace because caller evidence lives in tests too.
+const standardSelfHostWiring = makeMergedWiring([defaultWiring, functionalCoreEffectWiring])
+
 export default defineConfig([
-  { files: ["packages/**"], wiring: reportedWiring },
-  { files: ["**/*"], wiring: architectureExploreWiring }
+  { files: selfHostProductFiles, wiring: standardSelfHostWiring },
+  { files: selfHostProductFiles, wiring: effectQualityWiring },
+  { files: selfHostArchitectureFiles, wiring: architectureExploreWiring }
 ])

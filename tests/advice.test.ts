@@ -15,8 +15,8 @@ import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 
 function signalAt(path: string, line: number, data?: unknown): Detection {
-  return new Detection({
-    location: new Location({ path, line, column: 1 }),
+  return Detection.make({
+    location: Location.make({ path, line, column: 1 }),
     message: "message",
     hint: "hint",
     ...(arguments.length >= 3 ? { data } : {})
@@ -30,7 +30,7 @@ const namedElements = (
   name: string,
   elements: ReadonlyArray<Detection>
 ): ReadonlyArray<NamedDetection> =>
-  elements.map((detection) => new NamedDetection({ name, detection }))
+  elements.map((detection) => NamedDetection.make({ name, detection }))
 
 const signalStream = <A>(elements: ReadonlyArray<A>): Stream.Stream<A> =>
   Stream.fromIterable(elements)
@@ -205,7 +205,7 @@ test("hotSubsystem reports the deepest qualifying directory", async () => {
 
 test("systemicHotspots fires only when subsystem and dense-file advice are both present", async () => {
   const hot: Advice = {
-    location: new Location({ path: "src/mcp" }),
+    location: Location.make({ path: "src/mcp" }),
     level: "directory",
     title: "hot subsystem",
     remediation: "fix subsystem",
@@ -213,7 +213,7 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
     examples: emptyRefactorExampleSource
   }
   const firstDense: Advice = {
-    location: new Location({ path: "src/one.ts" }),
+    location: Location.make({ path: "src/one.ts" }),
     level: "file",
     title: "high signal density",
     remediation: "fix one",
@@ -221,7 +221,7 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
     examples: emptyRefactorExampleSource
   }
   const secondDense: Advice = {
-    location: new Location({ path: "src/two.ts" }),
+    location: Location.make({ path: "src/two.ts" }),
     level: "file",
     title: "high signal density",
     remediation: "fix two",

@@ -16,19 +16,23 @@ export class WorkspaceConfigs extends Data.Class<{
 }> {}
 
 // LoadedProject is shared program/paths contract because owners need one term.
-export class LoadedProject extends Schema.Class<LoadedProject>("LoadedProject")({
+export const LoadedProject = Schema.Struct({
   program: TsProgram,
   configPath: Schema.String,
   rootPath: Schema.String
-}) {}
+})
+
+export interface LoadedProject extends Schema.Schema.Type<typeof LoadedProject> {}
 
 const loadedProjectsSchema = Schema.Array(LoadedProject)
 
 // LoadedWorkspace is shared root/projects contract because owners need one term.
-export class LoadedWorkspace extends Schema.Class<LoadedWorkspace>("LoadedWorkspace")({
+export const LoadedWorkspace = Schema.Struct({
   rootPath: Schema.String,
   projects: loadedProjectsSchema
-}) {}
+})
+
+export interface LoadedWorkspace extends Schema.Schema.Type<typeof LoadedWorkspace> {}
 
 // MissingTsconfigError names syntax protocol because discoverWorkspace agrees.
 export class MissingTsconfigError extends Schema.TaggedErrorClass<MissingTsconfigError>()(

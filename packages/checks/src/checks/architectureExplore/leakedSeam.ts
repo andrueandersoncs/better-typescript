@@ -47,7 +47,7 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const evidence = Array.make(internalItem, sourceItem)
     const examples = leakedSeamExamples
 
-    const advice = new Advice({
+    const advice = Advice.make({
       location,
       level: "file",
       title: "leaked seam",
@@ -138,7 +138,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
     const evidence = Array.of(crossImportsItem)
     const examples = leakedSeamExamples
 
-    return new Advice({
+    return Advice.make({
       location,
       level: "directory",
       title: "leaked seam",

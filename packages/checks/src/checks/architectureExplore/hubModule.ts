@@ -91,7 +91,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
     const evidence = Array.make(operationsItem, fanInItem, fanOutItem)
     const examples = hubModuleExamples
 
-    const advice = new Advice({
+    const advice = Advice.make({
       location,
       level: "file",
       title: "hub module",

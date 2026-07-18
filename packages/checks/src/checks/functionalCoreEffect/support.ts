@@ -15,12 +15,15 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import type { FunctionalCoreEffectPolicy } from "./policy.js"
+import type { ArchitectureRole } from "../support/architectureRole.js"
 import {
   hasExportModifier,
   isProjectFile,
+  propertyNameText,
   unwrapCallee,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
+import { optionalStringLiteralLikeText } from "../support/stringLiteralText.js"
 
 // ImportedMember is shared specifier and member-path pair because helpers exchange one binding.
 export class ImportedMember extends Data.Class<{
@@ -46,12 +49,11 @@ const moduleDeclarationAncestor = (
     : pipe(Option.fromNullishOr(node.parent), Option.flatMap(moduleDeclarationAncestor))
 }
 
-export const moduleSpecifierText = (declaration: ts.ImportDeclaration | ts.ExportDeclaration) =>
-  pipe(
-    Option.fromNullishOr(declaration.moduleSpecifier),
-    Option.filter(ts.isStringLiteralLike),
-    Option.map(Struct.get("text"))
-  )
+export const moduleSpecifierText = flow(
+  Struct.get<ts.ImportDeclaration | ts.ExportDeclaration, "moduleSpecifier">("moduleSpecifier"),
+  Option.fromNullishOr,
+  optionalStringLiteralLikeText
+)
 
 const expressionPath = (
   expression: ts.Expression
@@ -505,20 +507,9 @@ export const effectServiceConfigObject = (
     Option.flatMap((heritage) => effectServiceMakerObject(heritage.expression))
   )
 
-const propertyNameText = (name: ts.PropertyName) =>
-  pipe(
-    Match.value(name),
-    Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
-    Match.when(ts.isStringLiteralLike, (literal) => Option.some(literal.text)),
-    Match.when(ts.isNumericLiteral, (literal) => Option.some(literal.text)),
-    Match.when(ts.isComputedPropertyName, (computed) =>
-      pipe(
-        Option.liftPredicate(ts.isStringLiteralLike)(computed.expression),
-        Option.map(Struct.get("text"))
-      )
-    ),
-    Match.orElse(() => Option.none())
-  )
+const adapterOrRootRoles = HashSet.make("adapter" as ArchitectureRole, "root" as ArchitectureRole)
+
+export const isAdapterOrRootRole = (role: ArchitectureRole) => HashSet.has(adapterOrRootRoles, role)
 
 export const propertyAssignmentNamed = (
   object: ts.ObjectLiteralExpression,

@@ -596,7 +596,7 @@ const parameterSymbols =
       )
     )
 
-const typeReferenceArguments =
+const objectTypeReferenceArguments =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): ReadonlyArray<ts.Type> =>
     pipe(
@@ -614,7 +614,7 @@ const nestedTypes =
   (type: ts.Type): ReadonlyArray<ts.Type> => {
     const unionMembers = type.isUnion() ? type.types : emptyTypes
     const aliasArguments = type.aliasTypeArguments ?? emptyTypes
-    const referenceArguments = typeReferenceArguments(checker)(type)
+    const referenceArguments = objectTypeReferenceArguments(checker)(type)
 
     return pipe(
       unionMembers,
@@ -647,7 +647,7 @@ const carrierPayload = (checker: ts.TypeChecker) => {
     const words = typeResultWords(type)
     const isCarrier = isNamedCarrierType(type)
     const aliasArguments = type.aliasTypeArguments ?? emptyTypes
-    const referenceArguments = typeReferenceArguments(checker)(type)
+    const referenceArguments = objectTypeReferenceArguments(checker)(type)
     const explicitArguments = Array.appendAll(aliasArguments, referenceArguments)
     const nested = children(type)
 

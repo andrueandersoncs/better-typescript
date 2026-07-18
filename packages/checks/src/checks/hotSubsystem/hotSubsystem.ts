@@ -42,7 +42,7 @@ const makeSubsystemAdvice = (directory: DirectorySignals) => {
   const location = makeAdviceLocation(directory.path)
   const examples = hotSubsystemExamples
 
-  return new Advice({
+  return Advice.make({
     location,
     level: "directory",
     title: "hot subsystem",
@@ -62,7 +62,8 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
   const projectTotal = projectElements.length
 
   const directoryEntries = Array.flatMap(files, (file) => {
-    const directories = parentDirectories(file.path)
+    const parents = parentDirectories(file.path)
+    const directories = Array.filter(parents, (directory) => directory.includes("/"))
     const entries = Array.map(directories, (directory) => Tuple.make(directory, file))
 
     return entries
@@ -98,7 +99,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
       Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
     )
 
-    return new DirectorySignals({
+    return DirectorySignals.make({
       path,
       files: belongingFiles,
       projectTotal

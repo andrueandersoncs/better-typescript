@@ -4,6 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import selfHostConfig from "../better-typescript.config.js"
 import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../bench/selfHostBenchmark.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -13,7 +14,7 @@ test("self-host benchmark runs the built CLI with every enrolled Check", async (
   const target = await selfHostBenchmarkTarget(repoRoot)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
-  assert.equal(target.checkNames.length, 94)
+  assert.equal(target.checkNames.length, 95)
   assert.ok(target.checkNames.includes("no-unused"))
   assert.ok(target.checkNames.includes("prefer-effectful-function"))
   assert.ok(target.checkNames.includes("prefer-inferred-types"))
@@ -29,6 +30,14 @@ test("self-host benchmark runs the built CLI with every enrolled Check", async (
   assert.ok(target.checkNames.includes("prefer-specific-operation-names"))
   assert.ok(target.checkNames.includes("functional-core-effect-boundaries"))
   assert.ok(target.checkNames.includes("composition-fingerprints"))
+})
+
+test("every self-host wiring covers every package source tree", () => {
+  assert.equal(selfHostConfig.length, 3)
+  assert.ok(
+    selfHostConfig.every((entry) => entry.files.includes("packages/*/src/**")),
+    "every self-host wiring must cover packages/checks, packages/core, and packages/cli"
+  )
 })
 
 test("self-host benchmark summarizes public runner durations", async () => {

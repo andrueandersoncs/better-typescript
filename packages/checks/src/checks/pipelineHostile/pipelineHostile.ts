@@ -37,7 +37,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
       const evidence = Array.make(nestedItem, uncurriedItem)
       const examples = pipelineHostileExamples
 
-      return new Advice({
+      return Advice.make({
         location,
         level: "file",
         title: "pipeline-hostile module",
@@ -55,7 +55,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
 const makePipelineSignals = (
   noNestedCalls: ReadonlyArray<Detection>,
   preferCurriedDataLastFunctions: ReadonlyArray<Detection>
-) => new PipelineSignals({ noNestedCalls, preferCurriedDataLastFunctions })
+) => PipelineSignals.make({ noNestedCalls, preferCurriedDataLastFunctions })
 
 export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice> => {
   const advice = adviceFromSignalPair(

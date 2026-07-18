@@ -15,7 +15,6 @@ import {
   adviceOrder,
   advicePath,
   adviceText,
-  collectSignals,
   fileAdvicePath,
   isFileLevelAdvice
 } from "../derive/derive.js"
@@ -46,7 +45,7 @@ const makeAdviceReportBlock =
     const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
     const identity = reportKeyIdentity("advice", adviceIdentityParts)
 
-    const key = new AdviceReportKey({
+    const key = AdviceReportKey.make({
       level: advice.level,
       path: pathLabel,
       title: advice.title
@@ -56,17 +55,17 @@ const makeAdviceReportBlock =
     const header = adviceHeader(advice)
     const cleared = `${header} — cleared`
 
-    return new ReportBlock({ identity, key, text, cleared })
+    return ReportBlock.make({ identity, key, text, cleared })
   }
 
 // Derivation takes the full signal array because advice must see every signal from the same batch.
 const deriveAdvice =
   <E>(wiring: Wiring<E>) =>
   (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, E> =>
-    pipe(wiring.derive(signals), collectSignals)
+    pipe(wiring.derive(signals), Stream.runCollect)
 
 // Advice blocks keep a stable sort order because consumers rely on that presentation order.
-export const adviceReportBlocks =
+const adviceReportBlocks =
   (resolve: ResolveRefactorExamples) =>
   (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
     const ordered = Array.sort(advice, adviceOrder)
@@ -77,7 +76,7 @@ export const adviceReportBlocks =
   }
 
 // Local blocks keep the rule key kind because existing NDJSON consumers already key that way.
-export const checkReportBlocks =
+const checkReportBlocks =
   (name: string) =>
   (elements: ReadonlyArray<Detection>) =>
   (examples: ReadonlyArray<RefactorExample>): ReadonlyArray<ReportBlock> =>
@@ -89,7 +88,7 @@ export const checkReportBlocks =
         const ruleIdentityParts = Array.make(name, first.message, first.hint)
         const identity = reportKeyIdentity("rule", ruleIdentityParts)
 
-        const key = new RuleReportKey({
+        const key = RuleReportKey.make({
           name,
           message: first.message,
           hint: first.hint
@@ -115,14 +114,14 @@ export const checkReportBlocks =
 
         const cleared = `${name} — cleared: ${first.message}`
 
-        return new ReportBlock({ identity, key, text, cleared })
+        return ReportBlock.make({ identity, key, text, cleared })
       })
     )
 
 const hasDetections = (signal: Signal) => signal.detections.length > 0
 
 // Empty signals skip example loading because they render no report block.
-export const reportBlocks =
+const reportBlocks =
   (resolve: ResolveRefactorExamples) =>
   (signals: ReadonlyArray<Signal>) =>
   (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
@@ -150,22 +149,22 @@ export const reportBlocks =
 export const batchReportBlocks =
   <E>(config: WiringConfig<E>) =>
   (resolve: ResolveRefactorExamples) =>
-  (
-    wiringSignals: ReadonlyArray<WiringSignals>
-  ): Effect.Effect<ReadonlyArray<ReportBlock>, E | ExampleLoadError> => {
-    const matchedEntries = pipe(
-      Array.zip(config, wiringSignals),
-      Array.filter(([, current]) => current.matched)
-    )
+    Effect.fn("Report.batchBlocks")(function* (wiringSignals: ReadonlyArray<WiringSignals>) {
+      const matchedEntries = pipe(
+        Array.zip(config, wiringSignals),
+        Array.filter(([, current]) => current.matched)
+      )
 
-    const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
+      const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
 
-    const advice = Effect.forEach(matchedEntries, ([entry, current]) =>
-      deriveAdvice(entry.wiring)(current.signals)
-    )
+      const adviceGroups = yield* Effect.forEach(matchedEntries, ([entry, current]) =>
+        deriveAdvice(entry.wiring)(current.signals)
+      )
 
-    return pipe(advice, Effect.map(Array.flatten), Effect.flatMap(reportBlocks(resolve)(signals)))
-  }
+      const advice = Array.flatten(adviceGroups)
+
+      return yield* reportBlocks(resolve)(signals)(advice)
+    })
 
 export const filterFallbackAdviceForUncoveredFiles =
   (specific: ReadonlyArray<Advice>) =>
@@ -195,7 +194,7 @@ export const withFallbackAdvice = <E, R>(
   fallbackAdvice: Stream.Stream<Advice, E, R>
 ): Stream.Stream<Advice, E, R> =>
   pipe(
-    collectSignals(specificAdvice),
+    Stream.runCollect(specificAdvice),
     Effect.map((specific) => {
       const filteredFallback = filterFallbackAdviceForUncoveredFiles(specific)(fallbackAdvice)
       const specificStream = Stream.fromIterable(specific)
@@ -207,11 +206,11 @@ export const withFallbackAdvice = <E, R>(
 
 // Signal lifting stays beside block construction because event shape must match rendered text.
 export const makeBlockSignalEvent = (block: ReportBlock) =>
-  new SignalEvent({ key: block.key, text: block.text })
+  SignalEvent.make({ key: block.key, text: block.text })
 
 // Cleared text is precomputed on the block because delta emission must not re-render gone blocks.
 export const makeBlockClearedEvent = (block: ReportBlock) =>
-  new ClearedEvent({ key: block.key, text: block.cleared })
+  ClearedEvent.make({ key: block.key, text: block.cleared })
 
 // Identity keys the entry and the block stays the value because diffs need both without lookups.
 export const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =>
@@ -222,7 +221,7 @@ export const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     if (blocks.length === 0) {
-      const emptyReportEvent = new EmptyReportEvent({ rootPath })
+      const emptyReportEvent = EmptyReportEvent.make({ rootPath })
 
       return Array.of(emptyReportEvent)
     }

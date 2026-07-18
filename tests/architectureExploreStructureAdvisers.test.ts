@@ -23,8 +23,8 @@ import { emptyRefactorExampleSource } from "@better-typescript/core/engine/examp
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 
 const detectionAt = (path: string, line: number, data?: unknown): Detection =>
-  new Detection({
-    location: new Location({ path, line, column: 1 }),
+  Detection.make({
+    location: Location.make({ path, line, column: 1 }),
     message: "message",
     hint: "hint",
     ...(data === undefined ? {} : { data })
@@ -34,7 +34,7 @@ const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Adv
   Effect.runPromise(Stream.runCollect(advice))
 
 const nameUsage = (name: string, referenceCount: number): ImportedNameUsage =>
-  new ImportedNameUsage({ name, referenceCount, callCount: referenceCount })
+  ImportedNameUsage.make({ name, referenceCount, callCount: referenceCount })
 
 const importUsage = (
   specifier: string,
@@ -42,7 +42,7 @@ const importUsage = (
   referenceCount: number,
   fromTest = false
 ): ImportUsageData =>
-  new ImportUsageData({
+  ImportUsageData.make({
     specifier,
     importerWorkspacePath,
     fromTest,
@@ -56,7 +56,7 @@ const hubBurden = (hubPath: string, operationCount: number): Detection =>
   detectionAt(
     hubPath,
     1,
-    new InterfaceBurdenData({
+    InterfaceBurdenData.make({
       operationCount,
       requiredParameterCount: 0,
       workspacePath: hubPath
@@ -67,7 +67,7 @@ const hubGraph = (hubPath: string, importedWorkspacePaths: ReadonlyArray<string>
   detectionAt(
     hubPath,
     2,
-    new ModuleGraphData({
+    ModuleGraphData.make({
       importedPaths: importedWorkspacePaths,
       workspacePath: hubPath,
       importedWorkspacePaths
@@ -78,7 +78,7 @@ const callerGraph = (callerPath: string, hubPath: string): Detection =>
   detectionAt(
     callerPath,
     1,
-    new ModuleGraphData({
+    ModuleGraphData.make({
       importedPaths: [hubPath],
       workspacePath: callerPath,
       importedWorkspacePaths: [hubPath]
@@ -210,7 +210,7 @@ test("invisible tests fires when evidence has no test paths", async () => {
       detectionAt(
         "src/a.ts",
         1,
-        new ModuleGraphData({
+        ModuleGraphData.make({
           importedPaths: ["./b.ts"],
           workspacePath: "src/a.ts",
           importedWorkspacePaths: ["src/b.ts"]
@@ -221,7 +221,7 @@ test("invisible tests fires when evidence has no test paths", async () => {
       detectionAt("src/a.ts", 2, importUsage("./b.js", "src/a.ts", 1))
     ),
     makeNamedDetection(exportSurfaceName)(
-      detectionAt("src/b.ts", 3, new ExportSurfaceData({ workspacePath: "src/b.ts", symbols: [] }))
+      detectionAt("src/b.ts", 3, ExportSurfaceData.make({ workspacePath: "src/b.ts", symbols: [] }))
     )
   ]
 
@@ -241,7 +241,7 @@ test("invisible tests stays silent when any path is a test path", async () => {
       detectionAt(
         "src/a.ts",
         1,
-        new ModuleGraphData({
+        ModuleGraphData.make({
           importedPaths: ["./b.ts"],
           workspacePath: "src/a.ts",
           importedWorkspacePaths: ["src/b.ts"]

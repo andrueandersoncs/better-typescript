@@ -127,11 +127,13 @@ export class ConceptIndex extends Data.Class<{
 const stringArraySchema = Schema.Array(Schema.String)
 
 // ConceptSignalData is machine-readable concept evidence because reports avoid prose.
-export class ConceptSignalData extends Schema.Class<ConceptSignalData>("ConceptSignalData")({
+export const ConceptSignalData = Schema.Struct({
   kind: conceptSignalKindSchema,
   concept: Schema.String,
   owner: Schema.String,
   independentOwners: Schema.Number,
   externalCallers: Schema.Number,
   relatedConcepts: stringArraySchema
-}) {}
+})
+
+export interface ConceptSignalData extends Schema.Schema.Type<typeof ConceptSignalData> {}

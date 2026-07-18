@@ -10,6 +10,7 @@ import { ExportSurfaceData, ExportedSymbolUsage } from "./data.js"
 import {
   ExportSymbolIndex,
   buildExportSymbolIndex,
+  isPackageProject,
   isTestSourceFile,
   symbolUsageFor,
   toWorkspacePath
@@ -26,7 +27,11 @@ const hint =
 const exportSurfaceElements =
   (index: ExportSymbolIndex) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
-    if (isTestSourceFile(context.workspaceRoot)(context.sourceFile)) {
+    const isTestFile = isTestSourceFile(context.workspaceRoot)(context.sourceFile)
+    const isPackage = isPackageProject(context.workspaceRoot)(context.projectRoot)
+    const shouldSkip = isTestFile || isPackage
+
+    if (shouldSkip) {
       return Array.empty()
     }
 
@@ -41,7 +46,7 @@ const exportSurfaceElements =
         const referencingTestFileCount = usage.testPaths.length
         const callCount = usage.productionCallCount + usage.testCallCount
 
-        return new ExportedSymbolUsage({
+        return ExportedSymbolUsage.make({
           name: entry.nameNode.text,
           kind: entry.kind,
           referencingFileCount,
@@ -66,7 +71,7 @@ const exportSurfaceElements =
       Option.getOrElse(Function.constant(context.sourceFile))
     )
 
-    const data = new ExportSurfaceData({
+    const data = ExportSurfaceData.make({
       workspacePath,
       symbols
     })

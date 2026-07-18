@@ -4,7 +4,7 @@ import { test } from "node:test"
 import { Effect, Stream } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
-import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
 import { packageExampleRoot } from "./packageExamples.js"
 import {
   makeDirectoryRefactorExamples,

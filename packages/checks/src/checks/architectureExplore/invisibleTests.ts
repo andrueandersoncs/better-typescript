@@ -57,7 +57,7 @@ const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   const analyzedItem = makeEvidenceItem("analyzed-modules", paths.length)
   const evidence = Array.of(analyzedItem)
 
-  const advice = new Advice({
+  const advice = Advice.make({
     location,
     level: "project",
     title: "invisible tests",

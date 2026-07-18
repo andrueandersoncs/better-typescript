@@ -6,13 +6,16 @@ import type { ReferenceKey } from "../support/referenceKey.js"
 export type SymbolUses = HashMap.HashMap<ReferenceKey<ts.Symbol>, SymbolUse>
 
 // SymbolUse is shared use-flag fields because its owners need one vocabulary.
-export class SymbolUse extends Schema.Class<SymbolUse>("SymbolUse")({
+export const SymbolUse = Schema.Struct({
   hasContextualReference: Schema.Boolean,
   hasDirectCall: Schema.Boolean,
   hasOtherReference: Schema.Boolean
-}) {}
+})
 
-export const emptySymbolUse = new SymbolUse({
+export interface SymbolUse extends Schema.Schema.Type<typeof SymbolUse> {}
+
+// emptySymbolUse is the zero-use seed because callers need one shared default record.
+export const emptySymbolUse = SymbolUse.make({
   hasContextualReference: false,
   hasDirectCall: false,
   hasOtherReference: false

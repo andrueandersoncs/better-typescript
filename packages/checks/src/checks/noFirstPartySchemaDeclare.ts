@@ -88,9 +88,10 @@ const fallbackTypeName: () => string = Function.constant("unknown")
 
 const schemaDeclareHint =
   "Schema.declare is for third-party integrations and non-parametric opaque or branded types " +
-  "validated by a type guard. For structural models you own, define a proper Schema — for example " +
-  'class MyType extends Schema.Class<MyType>("MyType")({ ... }) {} — which gives you validation, ' +
-  "encoding, and decoding for free."
+  "validated by a type guard. For structural models you own, define a Schema.Struct plus a " +
+  "same-named decoded interface — for example export const MyType = Schema.Struct({ ... }); " +
+  "export interface MyType extends Schema.Schema.Type<typeof MyType> {} — which gives you " +
+  "validation, encoding, and decoding for free."
 
 const schemaDeclareMatches = (context: CheckContext) => {
   const { checker } = context

@@ -42,11 +42,11 @@ const fingerprintData = (
   stepCount: number,
   exportName: string
 ): CompositionFingerprintData =>
-  new CompositionFingerprintData({ fingerprint, stepCount, exportName })
+  CompositionFingerprintData.make({ fingerprint, stepCount, exportName })
 
 const detectionAt = (filePath: string, line: number, data: CompositionFingerprintData): Detection =>
-  new DetectionData({
-    location: new Location({ path: filePath, line, column: 1 }),
+  DetectionData.make({
+    location: Location.make({ path: filePath, line, column: 1 }),
     message: "message",
     hint: "hint",
     data
@@ -57,7 +57,7 @@ const namedFingerprint = (
   line: number,
   data: CompositionFingerprintData
 ): NamedDetection =>
-  new NamedDetection({
+  NamedDetection.make({
     name: compositionFingerprints.name,
     detection: detectionAt(filePath, line, data)
   })

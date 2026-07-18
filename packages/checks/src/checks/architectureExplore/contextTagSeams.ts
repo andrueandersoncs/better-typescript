@@ -367,7 +367,7 @@ const contextTagSeamElements =
 
         const detectionNode = pipe(className, Option.getOrElse(Function.constant(candidate[0])))
 
-        const data = new ContextTagSeamData({
+        const data = ContextTagSeamData.make({
           serviceName,
           productionAdapterCount: counts[0],
           testAdapterCount: counts[1],

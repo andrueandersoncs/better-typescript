@@ -11,10 +11,8 @@ import { semanticNamingChecks } from "./semanticNamingChecks.js"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { NamedCheck, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 
-export { defaultDerive }
-
 // Category concatenation order is pinned because report block order is a public contract.
-export const defaultChecks: ReadonlyArray<NamedCheck> = pipe(
+const defaultChecks: ReadonlyArray<NamedCheck> = pipe(
   effectIdiomChecks,
   Array.appendAll(conceptAndCompositionChecks),
   Array.appendAll(semanticNamingChecks),

@@ -54,7 +54,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const location = makeAdviceLocation(filePath)
     const examples = deletionTestShallownessExamples
 
-    return new Advice({
+    return Advice.make({
       location,
       level: "file",
       title: "deletion-test shallowness",

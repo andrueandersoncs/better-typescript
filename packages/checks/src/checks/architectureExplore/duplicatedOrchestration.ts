@@ -57,7 +57,7 @@ const duplicatedOrchestrationAdvice = (
       const evidence = Array.make(sitesItem, stepsItem)
       const examples = duplicatedOrchestrationExamples
 
-      const advice = new Advice({
+      const advice = Advice.make({
         location,
         level: "directory",
         title: "duplicated orchestration",

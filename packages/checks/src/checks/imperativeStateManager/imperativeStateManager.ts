@@ -1,10 +1,6 @@
 import { Array, Effect, Function, Option, Schema, Stream, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  collectSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { packageExamples } from "../../defineCheck.js"
@@ -70,7 +66,7 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
       const evidence = Array.prepend(nonZero, sharedItem)
       const examples = imperativeStateManagerExamples
 
-      return new Advice({
+      return Advice.make({
         location,
         level: "file",
         title: "imperative state manager",
@@ -86,25 +82,30 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
   )
 }
 
-export const imperativeStateManager = (
+const materializeImperativeStateAdvice = Effect.fn("ImperativeStateManager.materialize")(function* (
   input: ImperativeStateManagerInput
-): Stream.Stream<Advice> => {
-  const noMutation = collectSignals(input.noMutation)
-  const preferHashMap = collectSignals(input.preferHashMap)
-  const preferHashSet = collectSignals(input.preferHashSet)
-  const noMutableArrayMethods = collectSignals(input.noMutableArrayMethods)
-  const noMutableVariableDeclarations = collectSignals(input.noMutableVariableDeclarations)
+) {
+  const noMutation = yield* Stream.runCollect(input.noMutation)
+  const preferHashMap = yield* Stream.runCollect(input.preferHashMap)
+  const preferHashSet = yield* Stream.runCollect(input.preferHashSet)
+  const noMutableArrayMethods = yield* Stream.runCollect(input.noMutableArrayMethods)
 
-  return pipe(
-    Effect.all({
-      noMutation,
-      preferHashMap,
-      preferHashSet,
-      noMutableArrayMethods,
-      noMutableVariableDeclarations
-    }),
-    Effect.map(imperativeStateAdviceFor),
-    Effect.map(Stream.fromIterable),
-    Stream.unwrap
+  const noMutableVariableDeclarations = yield* Stream.runCollect(
+    input.noMutableVariableDeclarations
   )
-}
+
+  const signals = ImperativeStateSignals.make({
+    noMutation,
+    preferHashMap,
+    preferHashSet,
+    noMutableArrayMethods,
+    noMutableVariableDeclarations
+  })
+
+  return imperativeStateAdviceFor(signals)
+})
+
+const imperativeStateManagerFrom = (input: ImperativeStateManagerInput): Stream.Stream<Advice> =>
+  pipe(input, materializeImperativeStateAdvice, Stream.fromArrayEffect)
+
+export const imperativeStateManager = imperativeStateManagerFrom

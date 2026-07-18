@@ -81,7 +81,7 @@ const configExportFromRecord = (record: Readonly<Record<string, unknown>>) => {
 
 const configExportFromFunction = defaultConfigExport
 
-const selectedExport = Effect.fn("selectedExport")(function* (
+const selectedExport = Effect.fn("WiringConfig.selectedExport")(function* (
   configPath: string,
   moduleValue: unknown
 ) {
@@ -105,7 +105,7 @@ const selectedExport = Effect.fn("selectedExport")(function* (
   )
 })
 
-const callFactory = Effect.fn("callFactory")(function* (
+const callFactory = Effect.fn("WiringConfig.callFactory")(function* (
   configPath: string,
   exportName: ConfigExportName,
   factory: () => unknown
@@ -129,7 +129,7 @@ const callFactory = Effect.fn("callFactory")(function* (
   })
 })
 
-const resolvedExport = Effect.fn("resolvedExport")(function* (
+const resolvedExport = Effect.fn("WiringConfig.resolvedExport")(function* (
   configPath: string,
   moduleValue: unknown
 ) {
@@ -233,7 +233,7 @@ const makeNamedCheckFrom = (value: unknown) => {
   return new NamedCheck({ name, check, reported, examples })
 }
 
-const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
+const validateNamedChecks = Effect.fn("WiringConfig.validateNamedChecks")(function* (
   configPath: string,
   fieldPath: string,
   value: unknown
@@ -265,7 +265,7 @@ const validateNamedChecks = Effect.fn("validateNamedChecks")(function* (
   return Array.map(checks, makeNamedCheckFrom)
 })
 
-const validateWiringShape = Effect.fn("validateWiringShape")(function* (
+const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(function* (
   configPath: string,
   fieldPath: string,
   value: unknown
@@ -296,7 +296,7 @@ const validateWiringShape = Effect.fn("validateWiringShape")(function* (
 
 const isUnknownArray: (value: unknown) => value is ReadonlyArray<unknown> = Array.isArray
 
-const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
+const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(function* (
   configPath: string,
   value: unknown,
   index: number
@@ -337,7 +337,7 @@ const validateWiringEntry = Effect.fn("validateWiringEntry")(function* (
   return new WiringEntry<unknown>({ files, wiring })
 })
 
-const validateWiringConfig = Effect.fn("validateWiringConfig")(function* (
+const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(function* (
   configPath: string,
   value: unknown
 ) {
@@ -366,7 +366,7 @@ export const decodeWiringConfig: (
   configPath: string,
   moduleValue: unknown
 ) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn(
-  "decodeWiringConfig"
+  "WiringConfig.decode"
 )(function* (configPath: string, moduleValue: unknown) {
   const exportValue = yield* resolvedExport(configPath, moduleValue)
 

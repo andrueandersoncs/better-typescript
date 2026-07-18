@@ -71,15 +71,17 @@ const untaggedMessage = "Avoid returning a raw object literal."
 
 const taggedHint = (tag: string) =>
   `Reuse the existing Effect Schema for the "${tag}" protocol variant and construct it ` +
-  `through that schema. If no such model exists, first decide whether "${tag}" is an ` +
-  "independent protocol concept or this function is only a procedural seam. Introduce a " +
-  `Schema.TaggedClass only when the tagged data has semantics beyond this return expression.`
+  "through schema.make. If no such model exists, first decide whether this tagged value is an " +
+  "independent protocol concept or this function is only a procedural seam. Model a reusable " +
+  "boundary-crossing variant with Schema.TaggedStruct and a same-named decoded interface; use " +
+  "Schema.TaggedUnion for boundary-crossing unions. Use Data.TaggedEnum for internal workflow " +
+  "decisions or state, and Schema.TaggedErrorClass only for typed errors."
 
 const untaggedHint =
   "Reuse an existing Effect Schema whose semantics match this result and construct it through " +
-  "that schema. If none exists, reconsider whether this function is a real abstraction or a " +
-  "procedural seam that should be collapsed into its owner. Introduce a Schema.Class only " +
-  "when the returned data has meaning independent of this object literal."
+  "schema.make. If none exists, reconsider whether this function is a real abstraction or a " +
+  "procedural seam that should be collapsed into its owner. For data with independent meaning, " +
+  "define a Schema.Struct with a same-named decoded interface."
 
 const objectLiteralReturnMatches = (context: CheckContext) => {
   const match = makeDetection(context)

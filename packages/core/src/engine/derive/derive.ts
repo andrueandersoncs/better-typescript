@@ -17,26 +17,29 @@ import { Location } from "../location/data.js"
 import type { Detection } from "../location/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
-export const collectSignals: <A, E, R>(
-  signals: Stream.Stream<A, E, R>
-) => Effect.Effect<ReadonlyArray<A>, E, R> = Stream.runCollect
+const materializeDerivedSignals = Effect.fn("Derive.materialize")(function* <A, B, E, R>(
+  signals: Stream.Stream<A, E, R>,
+  derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>
+) {
+  const elements = yield* Stream.runCollect(signals)
 
-export const deriveSignals =
+  return derive(elements)
+})
+
+const deriveSignalsFrom =
   <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
-  <E, R>(signals: Stream.Stream<A, E, R>): Stream.Stream<B, E, R> => {
-    const collected = collectSignals(signals)
-    const derived = Effect.map(collected, derive)
+  <E, R>(signals: Stream.Stream<A, E, R>): Stream.Stream<B, E, R> =>
+    pipe(materializeDerivedSignals(signals, derive), Stream.fromArrayEffect)
 
-    return Stream.fromArrayEffect(derived)
-  }
+export const deriveSignals = deriveSignalsFrom
 
 // The name pairs with its detection here because derive joins detections by check name.
 export const makeNamedDetection = (name: string) => (detectionValue: Detection) =>
-  new NamedDetection({ name, detection: detectionValue })
+  NamedDetection.make({ name, detection: detectionValue })
 
 const namedDetectionName = Struct.get<NamedDetection, "name">("name")
 
-export const countAt = (counts: HashMap.HashMap<string, number>) => (key: string) =>
+const countAt = (counts: HashMap.HashMap<string, number>) => (key: string) =>
   pipe(HashMap.get(counts, key), Option.getOrElse(Function.constant(0)))
 
 const addCount = (key: string) => (counts: HashMap.HashMap<string, number>) => {
@@ -48,7 +51,7 @@ const addCount = (key: string) => (counts: HashMap.HashMap<string, number>) => {
 const detectionPath = (named: NamedDetection) => named.detection.location.path
 
 const makeFileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]) =>
-  new FileDetections({ path: entry[0], elements: entry[1] })
+  FileDetections.make({ path: entry[0], elements: entry[1] })
 
 export const byFile = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<FileDetections> => {
   const grouped = Array.groupBy(elements, detectionPath)
@@ -91,7 +94,7 @@ export const makeCountSummary = (elements: ReadonlyArray<NamedDetection>) => {
   const countsByCheck = Array.reduce(elements, emptyCounts, addDetectionCount)
   const filesByCheck = Array.reduce(files, emptyCounts, addFileCheckCounts)
 
-  return new CountSummary({
+  return CountSummary.make({
     total: elements.length,
     fileCount: files.length,
     countsByCheck,
@@ -111,9 +114,9 @@ const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.String, Struct
 export const evidenceOrder = Order.combine(byCountDescending, byMeasure)
 
 export const makeEvidenceItem = (measure: string, count: number) =>
-  new EvidenceItem({ measure, count })
+  EvidenceItem.make({ measure, count })
 
-export const makeAdviceLocation = (path: string) => new Location({ path })
+export const makeAdviceLocation = (path: string) => Location.make({ path })
 
 const makeCountEntryEvidence = (entry: readonly [string, number]) =>
   makeEvidenceItem(entry[0], entry[1])

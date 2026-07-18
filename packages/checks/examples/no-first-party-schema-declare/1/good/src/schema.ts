@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 
-export class MyData extends Schema.Class<MyData>("MyData")({
+export const MyData = Schema.Struct({
   name: Schema.String
-}) {}
+})
+export interface MyData extends Schema.Schema.Type<typeof MyData> {}

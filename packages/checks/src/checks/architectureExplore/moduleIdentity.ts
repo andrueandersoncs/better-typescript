@@ -37,16 +37,20 @@ const aliasListSchema = Schema.Array(Schema.String)
 const aliasesByFileSchema = Schema.HashMap(Schema.String, aliasListSchema)
 const unknownRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 
-// PackageExports validates identity because malformed manifests must never enter alias matching.
-class PackageExports extends Schema.Class<PackageExports>("PackageExports")({
+const PackageExports = Schema.Struct({
   name: Schema.NonEmptyString,
   exports: Schema.Unknown
-}) {}
+})
 
-// AliasIndex owns immutable aliases because subscriptions need one program-wide lookup contract.
-class AliasIndex extends Schema.Class<AliasIndex>("AliasIndex")({
+// Decoded package identity because alias matching must reject malformed manifests.
+interface PackageExports extends Schema.Schema.Type<typeof PackageExports> {}
+
+const AliasIndex = Schema.Struct({
   aliasesByFile: aliasesByFileSchema
-}) {}
+})
+
+// AliasIndex is the program-wide alias lookup because subscriptions share one immutable contract.
+interface AliasIndex extends Schema.Schema.Type<typeof AliasIndex> {}
 
 const packageExportsJson = Schema.fromJsonString(PackageExports)
 const decodePackageExports = Schema.decodeUnknownOption(packageExportsJson)
@@ -225,7 +229,7 @@ const buildAliasIndex = (context: ProgramContext) => {
     })
   )
 
-  return new AliasIndex({ aliasesByFile })
+  return AliasIndex.make({ aliasesByFile })
 }
 
 const moduleIdentityElements =
@@ -246,7 +250,7 @@ const moduleIdentityElements =
           const fallbackNode = Function.constant(context.sourceFile)
           const node = pipe(firstStatement, Option.getOrElse(fallbackNode))
 
-          const data = new ModuleIdentityData({
+          const data = ModuleIdentityData.make({
             workspacePath,
             aliases
           })

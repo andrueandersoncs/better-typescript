@@ -34,11 +34,12 @@ const isUserId = (input: unknown): input is UserId =>
 
 const UserIdSchema = Schema.declare(isUserId)
 
-// Allowed: normal Schema class definition (not Schema.declare)
-class MyData extends Schema.Class<MyData>("MyData")({
+// Allowed: normal Schema.Struct definition (not Schema.declare)
+const MyData = Schema.Struct({
   name: Schema.String,
   value: Schema.Number
-}) {}
+})
+interface MyData extends Schema.Schema.Type<typeof MyData> {}
 
 void TsNodeSchema
 void TsProgramSchema

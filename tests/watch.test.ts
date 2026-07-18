@@ -13,7 +13,7 @@ import {
   makeExampleSnippet,
   makeInlineRefactorExamples,
   makeRefactorExample
-} from "@better-typescript/core/engine/example"
+} from "./exampleHelpers.js"
 import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
@@ -54,7 +54,7 @@ const probeWiring = makeWiring({
   derive: (signals) => {
     const detectionCount = signals[0]?.detections.length ?? 0
     const advice: Advice = {
-      location: new Location({ path: "src/cases.ts", line: 1, column: 1 }),
+      location: Location.make({ path: "src/cases.ts", line: 1, column: 1 }),
       level: "file",
       title: "probe advice",
       remediation: `handle ${detectionCount} throws`,

@@ -8,9 +8,8 @@ export const isError = value instanceof Error
 // Allowed: instanceof with built-in Date class (third-party)
 export const isDate = value instanceof Date
 
-// Allowed: Schema.is with a structurally defined Schema (no instanceof)
-const NotFoundError = Schema.Struct({
-  _tag: Schema.Literal("NotFoundError"),
+// Allowed: Schema.is with a structurally defined tagged schema (no instanceof)
+const NotFoundError = Schema.TaggedStruct("NotFoundError", {
   message: Schema.String
 })
 

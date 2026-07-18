@@ -130,7 +130,7 @@ const constructionElements = (context: CheckContext) => {
     return pipe(
       evidence,
       Option.map(({ name, importedPath }) => {
-        const data = new ExternalDependencyConstructionData({
+        const data = ExternalDependencyConstructionData.make({
           collaboratorName: name,
           importedPath
         })

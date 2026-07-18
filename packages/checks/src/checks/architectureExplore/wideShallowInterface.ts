@@ -46,7 +46,7 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
         const evidence = Array.make(operationsItem, parametersItem, forwardersItem)
         const examples = wideShallowInterfaceExamples
 
-        return new Advice({
+        return Advice.make({
           location,
           level: "file",
           title: "wide shallow interface",

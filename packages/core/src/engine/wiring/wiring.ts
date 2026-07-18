@@ -42,6 +42,42 @@ const globOptions: MinimatchOptions = {
   platform: "linux"
 }
 
+const compileGlobMatcher = (pattern: string) => {
+  const excluded = pattern.startsWith("!")
+  const glob = excluded ? pattern.slice(1) : pattern
+
+  return Tuple.make(excluded, compileFileGlob(glob, globOptions))
+}
+
+const matcherIncludesPath =
+  (candidatePath: string) =>
+  (matcher: ReturnType<typeof compileGlobMatcher>): boolean => {
+    const isExclusion = matcher[0]
+    const isInclusion = !isExclusion
+    const matchesPath = matcher[1](candidatePath)
+
+    return isInclusion && matchesPath
+  }
+
+const matcherExcludesPath =
+  (candidatePath: string) =>
+  (matcher: ReturnType<typeof compileGlobMatcher>): boolean => {
+    const isExclusion = matcher[0]
+    const matchesPath = matcher[1](candidatePath)
+
+    return isExclusion && matchesPath
+  }
+
+const matchesFile =
+  (matchers: ReadonlyArray<ReturnType<typeof compileGlobMatcher>>) =>
+  (candidatePath: string): boolean => {
+    const included = Array.some(matchers, matcherIncludesPath(candidatePath))
+    const excluded = Array.some(matchers, matcherExcludesPath(candidatePath))
+    const notExcluded = !excluded
+
+    return included && notExcluded
+  }
+
 const hasNonWhitespace = (pattern: string) => pattern.trim().length > 0
 
 // One glob predicate is canonical here because config loading and defineConfig must not drift.
@@ -79,6 +115,20 @@ const emptyDuplicateNameState = new DuplicateNameState({
   names: emptyDuplicateNames
 })
 
+const failDuplicateCheckNames = (names: ReadonlyArray<string>) => {
+  const error = new DuplicateCheckNamesError({ names })
+  const failure = Effect.fail(error)
+
+  return Effect.runSync(failure)
+}
+
+const failInvalidWiringFiles = (indexes: ReadonlyArray<number>) => {
+  const error = new InvalidWiringFilesError({ indexes })
+  const failure = Effect.fail(error)
+
+  return Effect.runSync(failure)
+}
+
 const addDuplicateName = (state: DuplicateNameState, check: NamedCheck) => {
   const name = check.name
   const alreadySeen = HashSet.has(state.seen, name)
@@ -111,14 +161,7 @@ const addDuplicateName = (state: DuplicateNameState, check: NamedCheck) => {
 const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A => {
   const names = Array.reduce(checks, emptyDuplicateNameState, addDuplicateName).names
 
-  if (names.length === 0) {
-    return value
-  }
-
-  const duplicateNamesError = new DuplicateCheckNamesError({ names })
-  const failed = Effect.fail(duplicateNamesError)
-
-  return Effect.runSync(failed)
+  return names.length === 0 ? value : failDuplicateCheckNames(names)
 }
 
 // Validation runs at construction because duplicate names must fail before analysis starts.
@@ -175,13 +218,7 @@ export const defineConfig = <E = never>(
   })
 
   if (invalidIndexes.length > 0) {
-    const invalidFilesError = new InvalidWiringFilesError({
-      indexes: invalidIndexes
-    })
-
-    const failed = Effect.fail(invalidFilesError)
-
-    return Effect.runSync(failed)
+    return failInvalidWiringFiles(invalidIndexes)
   }
 
   const entries = Array.map(config, (entry) => {
@@ -222,7 +259,7 @@ export const workspaceSignalsForProjects =
   <A>(projects: ReadonlyArray<A>) =>
   (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>> => {
     const matchersByWiring = Array.map(config, (entry) =>
-      Array.map(entry.files, (pattern) => compileFileGlob(pattern, globOptions))
+      Array.map(entry.files, compileGlobMatcher)
     )
 
     const seenByWiring = Array.map(config, (entry) =>
@@ -248,12 +285,12 @@ export const workspaceSignalsForProjects =
 
     const matchedWiringIndexes = pipe(HashMap.empty<number, true>(), HashMap.beginMutation)
 
-    const collectProject = (project: A): Effect.Effect<void> =>
-      Effect.sync(() => {
+    const collectProject = Effect.fn("Wiring.collectProject")(function* (project: A) {
+      yield* Effect.sync(() => {
         const loadedContext = toContext(project)
 
         // Contexts re-root here because evidence must compare paths across the whole workspace.
-        const context = new ProgramContext({
+        const context = ProgramContext.make({
           program: loadedContext.program,
           checker: loadedContext.checker,
           projectRoot: loadedContext.projectRoot,
@@ -270,9 +307,7 @@ export const workspaceSignalsForProjects =
             sourceFile.fileName
           )
 
-          const matches = Array.map(matchersByWiring, (matchers) =>
-            Array.some(matchers, (matcher) => matcher(candidatePath))
-          )
+          const matches = Array.map(matchersByWiring, Function.flip(matchesFile)(candidatePath))
 
           return Tuple.make(sourceFile, matches)
         })
@@ -315,7 +350,7 @@ export const workspaceSignalsForProjects =
               element.location.path
             )
 
-            const isIncluded = Array.some(matchers, (matcher) => matcher(detectionPath))
+            const isIncluded = matchesFile(matchers)(detectionPath)
 
             if (!isIncluded) {
               return
@@ -352,6 +387,7 @@ export const workspaceSignalsForProjects =
           })
         })
       })
+    })
 
     return pipe(
       Effect.forEach(projects, collectProject, { discard: true }),
@@ -387,8 +423,8 @@ export const workspaceSignalsForProjects =
 export const collectWorkspaceSignals =
   <E>(config: WiringConfig<E>) =>
   (workspaceRoot: string) =>
-  (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> => {
-    const collectContexts = workspaceSignalsForProjects(config)(workspaceRoot)(contexts)
-
-    return collectContexts(Function.identity)
-  }
+    Effect.fn("Wiring.collectWorkspaceSignals")(function* (
+      contexts: ReadonlyArray<ProgramContext>
+    ) {
+      return yield* workspaceSignalsForProjects(config)(workspaceRoot)(contexts)(Function.identity)
+    })

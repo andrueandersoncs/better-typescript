@@ -52,7 +52,7 @@ const moduleGraphElements =
     const workspacePath = workspaceRelative(filePath)
     const importedWorkspacePaths = Array.map(importedPaths, workspaceRelative)
 
-    const data = new ModuleGraphData({
+    const data = ModuleGraphData.make({
       importedPaths,
       workspacePath,
       importedWorkspacePaths

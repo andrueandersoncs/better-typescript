@@ -22,7 +22,7 @@ import {
 import { withFallbackAdvice } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+import { functionalCoreEffectWiring } from "@better-typescript/checks/preset/functionalCoreEffectWiring"
 import { nodeCheck } from "@better-typescript/core/engine/check"
 import { makeDetection } from "@better-typescript/core/engine/check"
 

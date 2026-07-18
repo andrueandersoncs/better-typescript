@@ -158,7 +158,7 @@ const testPastInterfaceAdvice = (
     const evidence = Array.make(exportsItem, callsItem, importsItem)
     const examples = testPastInterfaceExamples
 
-    return new Advice({
+    return Advice.make({
       location,
       level: "file",
       title: "test past interface",

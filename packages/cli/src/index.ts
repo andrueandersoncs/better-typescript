@@ -54,7 +54,7 @@ const errorText = (error: unknown) => {
   )
 }
 
-const reportError = Effect.fn("reportError")(function* (error: unknown) {
+const reportError = Effect.fn("Cli.reportError")(function* (error: unknown) {
   const text = errorText(error)
 
   yield* Console.error(`Error: ${text}`)
@@ -71,7 +71,7 @@ const printPrettyEvent = (event: ReportEvent): Effect.Effect<void> => {
 }
 
 // Send status lines to stderr because stdout remains a pure event stream for capture.
-const runCommand = Effect.fn("runCommand")(function* (
+const runCommand = Effect.fn("Cli.runCommand")(function* (
   projectPath: string,
   prettyOutput: boolean,
   watchForChanges: boolean

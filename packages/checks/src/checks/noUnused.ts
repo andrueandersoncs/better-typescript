@@ -40,13 +40,13 @@ const unusedMatches = (context: CheckContext): ReadonlyArray<Detection> => {
         const position = file.getLineAndCharacterOfPosition(start)
         const path = toRelative(file.fileName)
 
-        const location = new Location({
+        const location = Location.make({
           path,
           line: position.line + 1,
           column: position.character + 1
         })
 
-        return new Detection({
+        return Detection.make({
           location,
           message,
           hint

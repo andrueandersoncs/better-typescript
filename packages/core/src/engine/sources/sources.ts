@@ -16,7 +16,7 @@ export const makeContext = (projectRoot: string) => (program: ts.Program) => {
   const checker = program.getTypeChecker()
 
   // Standalone loads treat the project as its own workspace because no wider root is known here.
-  return new ProgramContext({ program, checker, projectRoot, workspaceRoot: projectRoot })
+  return ProgramContext.make({ program, checker, projectRoot, workspaceRoot: projectRoot })
 }
 
 export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {

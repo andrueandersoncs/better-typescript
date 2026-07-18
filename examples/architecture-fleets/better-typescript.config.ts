@@ -10,9 +10,9 @@ import {
   FunctionalCoreEffectPolicy,
   conventionalArchitectureRoleOf,
   defaultFunctionalCoreEffectPolicy,
+  makeFunctionalCoreEffectWiring,
   roleByPrefixes
-} from "@better-typescript/checks/functionalCoreEffect/policy"
-import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+} from "@better-typescript/checks/preset/functionalCoreEffectWiring"
 
 // This example is documentation for the opt-in architecture fleets. Copy it to
 // a consumer project's better-typescript.config.ts to load it. It stays under

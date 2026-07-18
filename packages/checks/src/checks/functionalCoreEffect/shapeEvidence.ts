@@ -10,7 +10,8 @@ import {
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { FunctionalCoreShapeData, type ArchitectureRole } from "./data.js"
+import { FunctionalCoreShapeData } from "./data.js"
+import type { ArchitectureRole } from "../support/architectureRole.js"
 import {
   buildFunctionalCoreEffectIndex,
   type FunctionalCoreEffectIndex,
@@ -35,41 +36,45 @@ const emptyServiceNames: ReadonlyArray<string> = Array.empty()
 const orchestratorServiceNamesSchema = Schema.Array(Schema.String)
 
 // OrchestratorMetrics is shared shape accumulator because folds share one record.
-export class OrchestratorMetrics extends Schema.Class<OrchestratorMetrics>("OrchestratorMetrics")({
+export const OrchestratorMetrics = Schema.Struct({
   branchCount: Schema.Number,
   yieldCount: Schema.Number,
   transformationCount: Schema.Number,
   serviceNames: orchestratorServiceNamesSchema
-}) {}
+})
+
+export interface OrchestratorMetrics extends Schema.Schema.Type<typeof OrchestratorMetrics> {}
 
 // FileShapeMetrics is shared file-shape accumulator because folds and thresholds share it.
-export class FileShapeMetrics extends Schema.Class<FileShapeMetrics>("FileShapeMetrics")({
+export const FileShapeMetrics = Schema.Struct({
   branchCount: Schema.Number,
   functionCount: Schema.Number
-}) {}
+})
+
+export interface FileShapeMetrics extends Schema.Schema.Type<typeof FileShapeMetrics> {}
 
 // ServiceSurfaceMetrics is shared service-surface tally because filters share one tally.
-export class ServiceSurfaceMetrics extends Schema.Class<ServiceSurfaceMetrics>(
-  "ServiceSurfaceMetrics"
-)({
+export const ServiceSurfaceMetrics = Schema.Struct({
   functionCount: Schema.Number,
   nonFunctionCount: Schema.Number,
   effectfulMemberCount: Schema.Number
-}) {}
+})
 
-const emptyOrchestratorMetrics = new OrchestratorMetrics({
+export interface ServiceSurfaceMetrics extends Schema.Schema.Type<typeof ServiceSurfaceMetrics> {}
+
+const emptyOrchestratorMetrics = OrchestratorMetrics.make({
   branchCount: 0,
   yieldCount: 0,
   transformationCount: 0,
   serviceNames: emptyServiceNames
 })
 
-const emptyFileShapeMetrics = new FileShapeMetrics({
+const emptyFileShapeMetrics = FileShapeMetrics.make({
   branchCount: 0,
   functionCount: 0
 })
 
-const emptyServiceSurfaceMetrics = new ServiceSurfaceMetrics({
+const emptyServiceSurfaceMetrics = ServiceSurfaceMetrics.make({
   functionCount: 0,
   nonFunctionCount: 0,
   effectfulMemberCount: 0
@@ -320,17 +325,15 @@ const collectOrchestratorMetrics = (context: CheckContext, owner: ts.FunctionLik
       Option.map((ownedNode) =>
         pipe(
           Match.value(ownedNode),
-          Match.when(
-            isBranchNode,
-            () =>
-              new OrchestratorMetrics({
-                ...metrics,
-                branchCount: metrics.branchCount + 1
-              })
+          Match.when(isBranchNode, () =>
+            OrchestratorMetrics.make({
+              ...metrics,
+              branchCount: metrics.branchCount + 1
+            })
           ),
           Match.when(ts.isCallExpression, (call) =>
             isQualifyingTransformationCall(context, owner, call)
-              ? new OrchestratorMetrics({
+              ? OrchestratorMetrics.make({
                   ...metrics,
                   transformationCount: metrics.transformationCount + 1
                 })
@@ -342,7 +345,7 @@ const collectOrchestratorMetrics = (context: CheckContext, owner: ts.FunctionLik
               Option.map((text) => {
                 const serviceNames = addServiceName(metrics.serviceNames, text)
 
-                return new OrchestratorMetrics({
+                return OrchestratorMetrics.make({
                   ...metrics,
                   yieldCount: metrics.yieldCount + 1,
                   serviceNames
@@ -410,7 +413,7 @@ const orchestratorElements =
             const qualifyFlags = Array.make(hasSeveralServices, branchOrTransformation)
             const qualifies = Array.every(qualifyFlags, Boolean)
 
-            const data = new FunctionalCoreShapeData({
+            const data = FunctionalCoreShapeData.make({
               kind: "effect-orchestrator",
               role: "application",
               branchCount: metrics.branchCount,
@@ -482,21 +485,17 @@ const collectFileShape = (context: CheckContext, role: ArchitectureRole) =>
       ? metrics
       : pipe(
           Match.value(node),
-          Match.when(
-            isBranchNode,
-            () =>
-              new FileShapeMetrics({
-                ...metrics,
-                branchCount: metrics.branchCount + 1
-              })
+          Match.when(isBranchNode, () =>
+            FileShapeMetrics.make({
+              ...metrics,
+              branchCount: metrics.branchCount + 1
+            })
           ),
-          Match.when(
-            isRuntimeFunctionLike,
-            () =>
-              new FileShapeMetrics({
-                ...metrics,
-                functionCount: metrics.functionCount + 1
-              })
+          Match.when(isRuntimeFunctionLike, () =>
+            FileShapeMetrics.make({
+              ...metrics,
+              functionCount: metrics.functionCount + 1
+            })
           ),
           Match.orElse(Function.constant(metrics))
         )
@@ -522,7 +521,7 @@ const fileShapeData = (
   const hasEvidence = Array.some(evidenceFlags, Boolean)
   const kind = adapterEvidence ? "adapter-business-logic" : "thick-composition-root"
 
-  const data = new FunctionalCoreShapeData({
+  const data = FunctionalCoreShapeData.make({
     kind,
     role,
     branchCount: metrics.branchCount,
@@ -658,12 +657,12 @@ const serviceSurfaceMetrics = (checker: ts.TypeChecker, type: ts.Type, location:
       return typeLooksEffectful(checker, returnType)
     })
 
-    const nonFunctionMetrics = new ServiceSurfaceMetrics({
+    const nonFunctionMetrics = ServiceSurfaceMetrics.make({
       ...metrics,
       nonFunctionCount: metrics.nonFunctionCount + 1
     })
 
-    const functionMetrics = new ServiceSurfaceMetrics({
+    const functionMetrics = ServiceSurfaceMetrics.make({
       functionCount: metrics.functionCount + 1,
       nonFunctionCount: metrics.nonFunctionCount,
       effectfulMemberCount: metrics.effectfulMemberCount + (effectful ? 1 : 0)
@@ -722,7 +721,7 @@ const pureServiceElements =
             return Array.every(purityFlags, Boolean)
           }),
           Option.map((metrics) => {
-            const data = new FunctionalCoreShapeData({
+            const data = FunctionalCoreShapeData.make({
               kind: "pure-service",
               role,
               branchCount: 0,

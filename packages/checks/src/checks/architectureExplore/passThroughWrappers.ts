@@ -199,7 +199,7 @@ const passThroughElements =
       Array.map((entry) => {
         const usage = usageFor(references)(entry)
 
-        const data = new PassThroughWrapperData({
+        const data = PassThroughWrapperData.make({
           kind: "forwarding-call",
           exportCount: 1,
           callerCount: usage.productionCallCount,
@@ -229,7 +229,7 @@ const passThroughElements =
     const reexportDetection = pipe(
       Option.fromNullishOr(reexports[0]),
       Option.map((node) => {
-        const data = new PassThroughWrapperData({
+        const data = PassThroughWrapperData.make({
           kind: "reexport",
           exportCount: reexports.length,
           callerCount: inboundPaths.length,

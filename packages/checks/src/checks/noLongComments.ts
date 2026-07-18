@@ -30,13 +30,13 @@ const overlongComments = (context: CheckContext): ReadonlyArray<Detection> => {
   return Array.map(overlong, (comment) => {
     const position = sourceFile.getLineAndCharacterOfPosition(comment.pos)
 
-    const location = new Location({
+    const location = Location.make({
       path: fileName,
       line: position.line + 1,
       column: position.character + 1
     })
 
-    return new Detection({ location, message, hint })
+    return Detection.make({ location, message, hint })
   })
 }
 

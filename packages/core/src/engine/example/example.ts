@@ -17,32 +17,18 @@ import {
   ExampleLoadError,
   ExampleSnippet,
   InlineRefactorExamples,
-  type NonEmptyExampleTree,
   type RefactorExampleSource,
   RefactorExample
 } from "./data.js"
 
-export const makeExampleSnippet = (filePath: string, code: string) =>
-  new ExampleSnippet({ filePath, code })
+const makeExampleSnippet = (filePath: string, code: string) =>
+  ExampleSnippet.make({ filePath, code })
 
-export const makeRefactorExample = (bad: ExampleSnippet, good: ExampleSnippet) => {
-  const badExamples = Array.of(bad)
-  const goodExamples = Array.of(good)
-
-  return new RefactorExample({
-    bad: badExamples,
-    good: goodExamples
-  })
-}
-
-export const refactorExampleTrees = (bad: NonEmptyExampleTree, good: NonEmptyExampleTree) =>
-  new RefactorExample({ bad, good })
-
-export const makeInlineRefactorExamples = (examples: ReadonlyArray<RefactorExample>) =>
-  new InlineRefactorExamples({ examples })
+const makeInlineRefactorExamples = (examples: ReadonlyArray<RefactorExample>) =>
+  InlineRefactorExamples.make({ examples })
 
 export const makeDirectoryRefactorExamples = (root: string) =>
-  new DirectoryRefactorExamples({ root })
+  DirectoryRefactorExamples.make({ root })
 
 const emptyExamples = Array.empty<RefactorExample>()
 
@@ -94,78 +80,81 @@ const directoryExists = (absolutePath: string) => {
 
 const collectTypeScriptFiles: (
   directory: string
-) => Effect.Effect<ReadonlyArray<string>, ExampleLoadError> = Effect.fn("collectTypeScriptFiles")(
-  function* (directory: string) {
-    const entries = yield* collectDirectoryEntries(directory)
+) => Effect.Effect<ReadonlyArray<string>, ExampleLoadError> = Effect.fn(
+  "Example.collectTypeScriptFiles"
+)(function* (directory: string) {
+  const entries = yield* collectDirectoryEntries(directory)
 
-    const nested = yield* Effect.forEach(entries, (entry) => {
-      const absolute = path.join(directory, entry.name)
+  const nested = yield* Effect.forEach(entries, (entry) => {
+    const absolute = path.join(directory, entry.name)
 
-      if (entry.isDirectory()) {
-        return collectTypeScriptFiles(absolute)
-      }
+    if (entry.isDirectory()) {
+      return collectTypeScriptFiles(absolute)
+    }
 
-      const typescript = entry.name.endsWith(".ts")
-      const declaration = entry.name.endsWith(".d.ts")
-      const notDeclaration = !declaration
-      const isSource = typescript && notDeclaration
-      const keep = entry.isFile() && isSource
-      const paths = keep ? Array.of(absolute) : Array.empty()
+    const typescript = entry.name.endsWith(".ts")
+    const declaration = entry.name.endsWith(".d.ts")
+    const notDeclaration = !declaration
+    const isSource = typescript && notDeclaration
+    const keep = entry.isFile() && isSource
+    const paths = keep ? Array.of(absolute) : Array.empty()
 
-      return Effect.succeed(paths)
-    })
-
-    const flattened = Array.flatten(nested)
-
-    return Array.sort(flattened, byPath)
-  }
-)
-
-const readExampleTree: (treeRoot: string) => Effect.Effect<NonEmptyExampleTree, ExampleLoadError> =
-  Effect.fn("readExampleTree")(function* (treeRoot: string) {
-    const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
-
-    const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
-      Effect.gen(function* () {
-        const code = yield* Effect.try({
-          try: () => {
-            const text = fs.readFileSync(absoluteFile, "utf8")
-
-            return text.endsWith("\n") ? text.slice(0, -1) : text
-          },
-          catch: () =>
-            new ExampleLoadError({
-              message: `Unable to read example file: ${absoluteFile}`
-            })
-        })
-
-        const relative = path.relative(treeRoot, absoluteFile)
-        const segments = relative.split(path.sep)
-        const filePath = Array.join(segments, "/")
-
-        return makeExampleSnippet(filePath, code)
-      })
-    )
-
-    return yield* pipe(
-      snippets,
-      Array.matchLeft({
-        onEmpty: () =>
-          pipe(
-            new ExampleLoadError({
-              message: `Example tree has no TypeScript files: ${treeRoot}`
-            }),
-            Effect.fail
-          ),
-        onNonEmpty: (first, rest) => pipe(Array.prepend(rest, first), Effect.succeed)
-      })
-    )
+    return Effect.succeed(paths)
   })
+
+  const flattened = Array.flatten(nested)
+
+  return Array.sort(flattened, byPath)
+})
+
+const readExampleTree: (
+  treeRoot: string
+) => Effect.Effect<Array.NonEmptyReadonlyArray<ExampleSnippet>, ExampleLoadError> = Effect.fn(
+  "Example.readExampleTree"
+)(function* (treeRoot: string) {
+  const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
+
+  const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
+    Effect.gen(function* () {
+      const code = yield* Effect.try({
+        try: () => {
+          const text = fs.readFileSync(absoluteFile, "utf8")
+
+          return text.endsWith("\n") ? text.slice(0, -1) : text
+        },
+        catch: () =>
+          new ExampleLoadError({
+            message: `Unable to read example file: ${absoluteFile}`
+          })
+      })
+
+      const relative = path.relative(treeRoot, absoluteFile)
+      const segments = relative.split(path.sep)
+      const filePath = Array.join(segments, "/")
+
+      return makeExampleSnippet(filePath, code)
+    })
+  )
+
+  return yield* pipe(
+    snippets,
+    Array.matchLeft({
+      onEmpty: () =>
+        pipe(
+          new ExampleLoadError({
+            message: `Example tree has no TypeScript files: ${treeRoot}`
+          }),
+          Effect.fail
+        ),
+      onNonEmpty: (first, rest) => pipe(Array.prepend(rest, first), Effect.succeed)
+    })
+  )
+})
 
 const loadRefactorExamplesAt: (
   exampleRoot: string
 ) => Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> = Effect.fn(
-  "loadRefactorExamplesAt"
+  "Example.loadRefactorExamplesAt"
 )(function* (exampleRoot: string) {
   if (!directoryExists(exampleRoot)) {
     return yield* new ExampleLoadError({
@@ -200,7 +189,7 @@ const loadRefactorExamplesAt: (
       const bad = yield* readExampleTree(badRoot)
       const good = yield* readExampleTree(goodRoot)
 
-      return new RefactorExample({ bad, good })
+      return RefactorExample.make({ bad, good })
     })
   )
 
@@ -225,54 +214,54 @@ export type ResolveRefactorExamples = (
 ) => Effect.Effect<ReadonlyArray<RefactorExample>, ExampleLoadError>
 
 // One resolver caches successful directory loads because a watch run shares one report program.
-export const makeRefactorExampleResolver = Effect.gen(function* () {
-  const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
-  const cache = yield* SynchronizedRef.make(emptyCache)
+export const makeRefactorExampleResolver = Effect.fn("Example.makeRefactorExampleResolver")(
+  function* () {
+    const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
+    const cache = yield* SynchronizedRef.make(emptyCache)
 
-  const collectDirectory = (
-    root: string
-  ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
-    SynchronizedRef.modifyEffect(cache, (current) => {
-      const cached = HashMap.get(current, root)
+    const collectDirectory = Effect.fn("Example.collectDirectory")(function* (root: string) {
+      return yield* SynchronizedRef.modifyEffect(cache, (current) => {
+        const cached = HashMap.get(current, root)
 
-      if (Option.isSome(cached)) {
-        const cachedEntry = Tuple.make(cached.value, current)
-        return Effect.succeed(cachedEntry)
-      }
+        if (Option.isSome(cached)) {
+          const cachedEntry = Tuple.make(cached.value, current)
+          return Effect.succeed(cachedEntry)
+        }
 
-      return pipe(
-        loadRefactorExamplesAt(root),
-        Effect.map((loaded) => {
-          const next = HashMap.set(current, root, loaded)
+        return pipe(
+          loadRefactorExamplesAt(root),
+          Effect.map((loaded) => {
+            const next = HashMap.set(current, root, loaded)
 
-          return Tuple.make(loaded, next)
+            return Tuple.make(loaded, next)
+          })
+        )
+      })
+    })
+
+    const collectDirectoryExamples = Effect.fn("Example.collectDirectoryExamples")(function* (
+      root: string
+    ) {
+      const current = yield* SynchronizedRef.get(cache)
+
+      return yield* pipe(
+        HashMap.get(current, root),
+        Option.match({
+          onNone: () => collectDirectory(root),
+          onSome: Effect.succeed
         })
       )
     })
 
-  const collectDirectoryExamples = (
-    root: string
-  ): Effect.Effect<Array.NonEmptyReadonlyArray<RefactorExample>, ExampleLoadError> =>
-    pipe(
-      SynchronizedRef.get(cache),
-      Effect.flatMap((current) =>
-        pipe(
-          HashMap.get(current, root),
-          Option.match({
-            onNone: () => collectDirectory(root),
-            onSome: Effect.succeed
-          })
-        )
+    const resolve = Effect.fn("Example.resolve")(function* (source: RefactorExampleSource) {
+      return yield* pipe(
+        Match.value(source),
+        Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
+        Match.tag("directory", (directory) => collectDirectoryExamples(directory.root)),
+        Match.exhaustive
       )
-    )
+    })
 
-  const resolve: ResolveRefactorExamples = (source) =>
-    pipe(
-      Match.value(source),
-      Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
-      Match.tag("directory", (directory) => collectDirectoryExamples(directory.root)),
-      Match.exhaustive
-    )
-
-  return resolve
-})
+    return resolve
+  }
+)()

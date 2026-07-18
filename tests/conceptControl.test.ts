@@ -43,7 +43,7 @@ const loadConceptIndex = async () => {
   assert.ok(project, "concept-control fixture project was not loaded")
 
   return buildConceptIndex(
-    new ProgramContext({
+    ProgramContext.make({
       program: project.program,
       checker: project.program.getTypeChecker(),
       projectRoot: project.rootPath,

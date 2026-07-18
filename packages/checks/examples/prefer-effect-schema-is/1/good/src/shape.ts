@@ -1,12 +1,14 @@
 import { Schema } from "effect"
 
-class Circle extends Schema.TaggedClass<Circle>()("Circle", {
+const Circle = Schema.TaggedStruct("Circle", {
   radius: Schema.Number
-}) {}
+})
+interface Circle extends Schema.Schema.Type<typeof Circle> {}
 
-class Square extends Schema.TaggedClass<Square>()("Square", {
+const Square = Schema.TaggedStruct("Square", {
   side: Schema.Number
-}) {}
+})
+interface Square extends Schema.Schema.Type<typeof Square> {}
 
 declare const circleArea: (circle: Circle) => number
 

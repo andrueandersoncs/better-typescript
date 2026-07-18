@@ -206,7 +206,7 @@ const makeImportedNameUsage = (counter: BindingCounter) => {
   const referenceCount = MutableRef.get(counter.referenceCount)
   const callCount = MutableRef.get(counter.callCount)
 
-  return new ImportedNameUsage({
+  return ImportedNameUsage.make({
     name: counter.binding.text,
     referenceCount,
     callCount
@@ -225,7 +225,7 @@ const importUsageElements = (context: CheckContext): ReadonlyArray<Detection> =>
   return Array.map(records, (record) => {
     const names = Array.map(record.counters, makeImportedNameUsage)
 
-    const data = new ImportUsageData({
+    const data = ImportUsageData.make({
       specifier: record.specifier,
       importerWorkspacePath,
       fromTest,

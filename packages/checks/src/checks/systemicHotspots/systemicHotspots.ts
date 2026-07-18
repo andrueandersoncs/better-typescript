@@ -19,7 +19,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const evidence = Array.make(subsystemItem, densityItem)
   const examples = systemicHotspotsExamples
 
-  const advice = new Advice({
+  const advice = Advice.make({
     location,
     level: "project",
     title: "systemic hotspots",
@@ -38,7 +38,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
 const makeSystemicSignals = (
   hotSubsystem: ReadonlyArray<Advice>,
   highSignalDensity: ReadonlyArray<Advice>
-) => new SystemicSignals({ hotSubsystem, highSignalDensity })
+) => SystemicSignals.make({ hotSubsystem, highSignalDensity })
 
 export const systemicHotspots = (input: SystemicHotspotsInput): Stream.Stream<Advice> => {
   const advice = adviceFromSignalPair(

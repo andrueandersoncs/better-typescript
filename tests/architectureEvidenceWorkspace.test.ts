@@ -58,7 +58,7 @@ const runWorkspaceChecks = async (
     (current, project) => {
       const loaded = makeContext(project.rootPath)(project.program)
 
-      const context = new ProgramContext({
+      const context = ProgramContext.make({
         program: loaded.program,
         checker: loaded.checker,
         projectRoot: loaded.projectRoot,

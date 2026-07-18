@@ -6,12 +6,7 @@ import { architectureExploreOopChecks } from "./architectureExploreOopChecks.js"
 import { architectureExploreFpChecks } from "./architectureExploreFpChecks.js"
 import { architectureExploreDerive } from "./architectureExploreDerive.js"
 
-export {
-  architectureExploreCoreChecks,
-  architectureExploreOopChecks,
-  architectureExploreFpChecks,
-  architectureExploreDerive
-}
+export { architectureExploreDerive }
 
 export const architectureExploreChecks: ReadonlyArray<NamedCheck> = pipe(
   architectureExploreCoreChecks,

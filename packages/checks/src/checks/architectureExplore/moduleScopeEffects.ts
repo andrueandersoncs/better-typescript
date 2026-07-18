@@ -249,7 +249,7 @@ const moduleScopeEffectElements = (context: CheckContext) => {
       classifyEffectKind(node),
       Option.map((kind) => {
         const calleeText = node.expression.getText(context.sourceFile)
-        const data = new ModuleScopeEffectData({ calleeText, kind })
+        const data = ModuleScopeEffectData.make({ calleeText, kind })
         const reported = element({ node, message, hint, data })
 
         return reported

@@ -24,7 +24,7 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   const evidence = Array.prepend(dominantEvidence, signalsItem)
   const examples = ruleDominanceExamples
 
-  const advice = new Advice({
+  const advice = Advice.make({
     location,
     level: "project",
     title: "one rule dominates the run",

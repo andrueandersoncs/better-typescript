@@ -342,7 +342,7 @@ const singleAdapterElements =
         return pipe(
           hypotheticalCandidate,
           Option.map((currentCandidate) => {
-            const data = new SingleAdapterSeamData({
+            const data = SingleAdapterSeamData.make({
               interfaceName: currentCandidate[0].name.text,
               productionAdapterCount: counts[0],
               testAdapterCount: counts[1]

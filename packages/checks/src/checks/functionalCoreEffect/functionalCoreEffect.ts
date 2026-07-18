@@ -1,24 +1,12 @@
-import {
-  Array,
-  Function,
-  HashSet,
-  Match,
-  Option,
-  Record as EffectRecord,
-  Struct,
-  pipe
-} from "effect"
+import { Array, Function, Match, Option, Record as EffectRecord, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import {
-  FunctionalCoreBoundaryData,
-  type ArchitectureRole,
-  type FunctionalCoreBoundaryKind
-} from "./data.js"
+import { FunctionalCoreBoundaryData, type FunctionalCoreBoundaryKind } from "./data.js"
+import type { ArchitectureRole } from "../support/architectureRole.js"
 import {
   buildFunctionalCoreEffectIndex,
   type FunctionalCoreEffectIndex,
@@ -43,6 +31,7 @@ import {
   importedMemberAt,
   importedMemberIsMovedPlatformCapability,
   importedTypeMemberAt,
+  isAdapterOrRootRole,
   localTypeReferenceTargets,
   isManagedRuntimeMethodAccess,
   isTopLevelExportedDeclaration,
@@ -110,10 +99,6 @@ const noneString: Option.Option<string> = Option.none()
 const constantNoneIdentifier = Function.constant(noneIdentifier)
 const constantNoneString = Function.constant(noneString)
 
-const adapterOrRootRoles = HashSet.make("adapter" as ArchitectureRole, "root" as ArchitectureRole)
-
-const isAdapterOrRootRole = (role: ArchitectureRole) => HashSet.has(adapterOrRootRoles, role)
-
 const boundaryDetection = (
   context: CheckContext,
   node: ts.Node,
@@ -124,7 +109,7 @@ const boundaryDetection = (
 ) => {
   const resolvedTargetRole = Option.getOrUndefined(targetRole)
 
-  const data = new FunctionalCoreBoundaryData({
+  const data = FunctionalCoreBoundaryData.make({
     kind,
     role,
     subject,

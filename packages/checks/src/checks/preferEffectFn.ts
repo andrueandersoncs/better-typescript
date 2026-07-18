@@ -1,30 +1,12 @@
-import * as path from "node:path"
-import { Array, Function, HashSet, Match, Option, pipe } from "effect"
+import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { functionInitializer, hasParameters, unwrapExpression } from "./support/tsNode.js"
-import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
+import { isEffectInterfaceSymbol, symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
-
-const effectModuleFileNames = HashSet.make("Effect.ts", "Effect.d.ts")
-
-const isEffectModuleDeclaration = (declaration: ts.Declaration) => {
-  const declarationFileName = declaration.getSourceFile().fileName
-  const baseFileName = path.basename(declarationFileName)
-
-  return HashSet.has(effectModuleFileNames, baseFileName)
-}
-
-const isEffectInterfaceSymbol = (symbol: ts.Symbol) => {
-  const isNamedEffect = symbol.name === "Effect"
-  const declarations = symbol.declarations ?? Array.empty()
-  const hasEffectModuleDeclaration = Array.some(declarations, isEffectModuleDeclaration)
-
-  return isNamedEffect && hasEffectModuleDeclaration
-}
 
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
   block.statements.length === 1 ? Option.fromNullishOr(block.statements[0]) : Option.none()
