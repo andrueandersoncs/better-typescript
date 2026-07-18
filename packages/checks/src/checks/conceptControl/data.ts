@@ -1,7 +1,7 @@
 import { Array, Data, HashMap, HashSet, Option, Schema } from "effect"
 import type * as ts from "typescript"
-import type { FunctionDefinition } from "../support/tsNode.js"
 import type { ReferenceKey } from "../support/referenceKey.js"
+import type { FunctionDefinition } from "../support/tsNode.js"
 
 // DataStructureDeclaration is the first-party model syntax union because ownership is shared.
 export type DataStructureDeclaration =
@@ -10,8 +10,6 @@ export type DataStructureDeclaration =
   | ts.InterfaceDeclaration
   | ts.TypeAliasDeclaration
   | ts.VariableDeclaration
-
-export type { FunctionDefinition }
 
 const modelRoles = Array.make<["shared", "boundary", "invariant", "protocol", "recursive"]>(
   "shared",

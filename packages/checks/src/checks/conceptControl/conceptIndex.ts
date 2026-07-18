@@ -36,9 +36,9 @@ import {
   ParameterBag,
   PassThroughConversion,
   type DataStructureDeclaration,
-  type FunctionDefinition,
   type ModelRole
 } from "./data.js"
+import type { FunctionDefinition } from "../support/tsNode.js"
 
 const effectDataMembers = HashSet.make(
   "Class",

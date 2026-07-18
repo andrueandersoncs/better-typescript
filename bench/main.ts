@@ -8,7 +8,8 @@ import {
   defineConfig,
   makeMergedWiring
 } from "@better-typescript/core/engine/wiring"
-import { makeReportEvent, workspacePrograms } from "@better-typescript/core/engine/watch"
+import { makeReportEvent } from "@better-typescript/core/engine/watch"
+import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { makeContext } from "@better-typescript/core/engine/sources"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
@@ -94,9 +95,11 @@ const runLoadedBenchmark = async (): Promise<void> => {
 const runOneShotWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
   const report = await Effect.runPromise(makeReportEvent(benchmarkConfig))
   const started = performance.now()
+  const initialUpdate = workspacePrograms.materialize(workspace, benchmarkCompilerOptions)
+  const updates = pipe(initialUpdate, Stream.fromEffect, Stream.scoped)
   const blocks = await Effect.runPromise(
     pipe(
-      workspacePrograms(workspace, benchmarkCompilerOptions),
+      updates,
       report,
       Stream.filterMap((event) =>
         event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid

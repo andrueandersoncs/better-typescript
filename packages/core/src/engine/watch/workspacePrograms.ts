@@ -1,4 +1,4 @@
-import { Array, Effect, Function, HashMap, MutableRef, Option, Stream, pipe } from "effect"
+import { Array, Effect, Function, HashMap, MutableRef, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { makeContext } from "../sources/sources.js"
 import type { ProgramContext } from "../sources/data.js"
@@ -123,7 +123,7 @@ const makeWorkspaceUpdateFrom =
     })
 
 // One-shot Programs share SourceFiles because one scoped DocumentRegistry owns compatible trees.
-const materializeWorkspacePrograms = Effect.fn("Watch.workspacePrograms")(function* (
+const materialize = Effect.fn("Watch.workspacePrograms.materialize")(function* (
   workspace: WorkspaceConfigs,
   compilerOptions: ts.CompilerOptions
 ) {
@@ -133,8 +133,4 @@ const materializeWorkspacePrograms = Effect.fn("Watch.workspacePrograms")(functi
   return makeWorkspaceUpdateFrom(workspace.rootPath)(services)
 })
 
-export const workspacePrograms = (
-  workspace: WorkspaceConfigs,
-  compilerOptions: ts.CompilerOptions = {}
-): Stream.Stream<WorkspaceUpdate> =>
-  pipe(materializeWorkspacePrograms(workspace, compilerOptions), Stream.fromEffect, Stream.scoped)
+export const workspacePrograms = { materialize }

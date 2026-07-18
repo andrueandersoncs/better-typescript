@@ -1,11 +1,11 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
-import { outermostTransparentWrapper } from "./tsNode.js"
-import { isCallLikeExpression, type CallLikeExpression } from "./tsNode.js"
-
-export type { CallLikeExpression }
-export { isCallLikeExpression }
+import {
+  isCallLikeExpression,
+  outermostTransparentWrapper,
+  type CallLikeExpression
+} from "./tsNode.js"
 
 export const isSameNode = (node: ts.Node) => (candidate: ts.Node) => candidate === node
 

@@ -4,8 +4,12 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import type { ArchitectureRole } from "../support/architectureRole.js"
-import { importedMemberAt, type ImportedMember } from "../functionalCoreEffect/support.js"
-import { isAdapterOrRootRole, isAdapterRole, isTestRole } from "./architectureRoles.js"
+import {
+  importedMemberAt,
+  isAdapterOrRootRole,
+  type ImportedMember
+} from "../functionalCoreEffect/support.js"
+import { isAdapterRole, isTestRole } from "./architectureRoles.js"
 import { emptyAdviceFindings, makeAdviceFinding } from "./makeFindings.js"
 import type { EffectQualityIndex } from "./index.js"
 import type { EffectQualityAdviceFinding } from "./findings.js"

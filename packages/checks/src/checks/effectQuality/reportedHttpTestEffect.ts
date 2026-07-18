@@ -1,7 +1,6 @@
 import { Array, Option, flow } from "effect"
 import * as ts from "typescript"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
-import { isEffectInterfaceSymbol } from "./effectIdentity.js"
+import { isEffectInterfaceSymbol, symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 
 const effectTypeSymbolOption = flow(
   (type: ts.Type) => type.getSymbol() ?? type.aliasSymbol,

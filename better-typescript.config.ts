@@ -1,11 +1,9 @@
 import { defineConfig, makeMergedWiring } from "@better-typescript/core/engine/wiring"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
-import {
-  ArchitectureRolePath,
-  makeFunctionalCoreEffectWiring,
-  policyWithRolePrefixes
-} from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+import { ArchitectureRolePath } from "@better-typescript/checks/architectureRole"
+import { policyWithRolePrefixes } from "@better-typescript/checks/functionalCoreEffect/policy"
+import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
 import { effectQualityWiring } from "@better-typescript/checks/effectQuality/wiring"
 
 // Engine counts as domain and cli as root because wiring.ts must not look like a composition root.

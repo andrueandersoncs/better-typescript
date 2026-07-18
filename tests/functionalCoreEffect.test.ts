@@ -10,11 +10,13 @@ import { makeRefactorExampleResolver } from "@better-typescript/core/engine/exam
 import {
   ArchitectureRolePath,
   conventionalArchitectureRoleOf,
-  defaultFunctionalCoreEffectPolicy,
-  functionalCoreEffectWiring,
-  makeFunctionalCoreEffectWiring,
   roleByPrefixes
-} from "@better-typescript/checks/preset/functionalCoreEffectWiring"
+} from "@better-typescript/checks/architectureRole"
+import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/checks/functionalCoreEffect/policy"
+import {
+  functionalCoreEffectWiring,
+  makeFunctionalCoreEffectWiring
+} from "@better-typescript/checks/functionalCoreEffect/wiring"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData

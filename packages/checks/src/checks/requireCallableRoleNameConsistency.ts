@@ -8,10 +8,9 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
-  isFunctionDefinition,
   type CallableSemantics
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 // RoleWord is closed naming grammar because Match.exhaustive must reject unknown callable roles.
 type RoleWord =

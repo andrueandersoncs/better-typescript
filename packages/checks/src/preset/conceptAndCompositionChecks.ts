@@ -7,6 +7,7 @@ import { preferFunctionComposition } from "../checks/preferFunctionComposition.j
 import { preferEtaReduction } from "../checks/preferEtaReduction.js"
 import { preferFunctionFlip } from "../checks/preferFunctionFlip.js"
 import { preferImplicitReturn } from "../checks/preferImplicitReturn.js"
+import { noReexports } from "../checks/noReexports.js"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 
 // Member order is pinned because concatenated categories define the public report block order.
@@ -18,5 +19,6 @@ export const conceptAndCompositionChecks: ReadonlyArray<NamedCheck> = Array.make
   preferFunctionComposition,
   preferEtaReduction,
   preferFunctionFlip,
-  preferImplicitReturn
+  preferImplicitReturn,
+  noReexports
 )

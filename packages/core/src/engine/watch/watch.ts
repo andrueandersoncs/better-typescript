@@ -33,8 +33,6 @@ import type { WiringConfig } from "../wiring/data.js"
 import { collectWorkspaceSignals } from "../wiring/wiring.js"
 import { SourceUpdate, WorkspaceUpdate } from "./data.js"
 
-export { workspacePrograms } from "./workspacePrograms.js"
-
 // Reporter diagnostics stay silent because the watcher must keep the last valid program on failure.
 const ignoreDiagnostic = (_diagnostic: ts.Diagnostic): false => false
 

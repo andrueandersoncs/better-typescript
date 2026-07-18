@@ -20,6 +20,7 @@
     "./engine/signal": "./dist/engine/signal/signal.js",
     "./engine/signal/data": "./dist/engine/signal/data.js",
     "./engine/watch": "./dist/engine/watch/watch.js",
+    "./engine/workspacePrograms": "./dist/engine/watch/workspacePrograms.js",
     "./engine/watch/data": "./dist/engine/watch/data.js",
     "./engine/sources": "./dist/engine/sources/sources.js",
     "./engine/sources/data": "./dist/engine/sources/data.js",

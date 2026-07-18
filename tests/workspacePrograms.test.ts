@@ -8,7 +8,7 @@ import { Effect, Option, Stream, pipe } from "effect"
 import * as ts from "typescript"
 import { noUnused } from "@better-typescript/checks/noUnused"
 import { compilerOptionsForChecks, runChecks } from "@better-typescript/core/engine/check"
-import { workspacePrograms } from "@better-typescript/core/engine/watch"
+import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
 import { makeContext, isProjectSourceFile } from "@better-typescript/core/engine/sources"
@@ -19,8 +19,18 @@ const noUnusedFixturePath = path.join(testDirectory, "fixtures", "no-unused")
 const includeEverySourceFile = () => true
 const noUnusedCompilerOptions = compilerOptionsForChecks([noUnused.check])
 
+const workspaceProgramUpdates = (
+  workspace: WorkspaceConfigs,
+  compilerOptions: ts.CompilerOptions = {}
+) =>
+  pipe(workspacePrograms.materialize(workspace, compilerOptions), Stream.fromEffect, Stream.scoped)
+
 const collectPrograms = (workspace: WorkspaceConfigs, compilerOptions: ts.CompilerOptions = {}) =>
-  pipe(workspacePrograms(workspace, compilerOptions), Stream.runHead, Effect.map(Option.getOrThrow))
+  pipe(
+    workspaceProgramUpdates(workspace, compilerOptions),
+    Stream.runHead,
+    Effect.map(Option.getOrThrow)
+  )
 
 const detectionIdentity = (detection: {
   readonly location: { readonly path: string; readonly line: number; readonly column: number }
@@ -71,7 +81,9 @@ const writeCompatibleProjects = async (root: string): Promise<void> => {
 
 test("workspacePrograms emits exactly one workspace update", async () => {
   const workspace = await Effect.runPromise(discoverWorkspace(noUnusedFixturePath))
-  const updates = await Effect.runPromise(pipe(workspacePrograms(workspace), Stream.runCollect))
+  const updates = await Effect.runPromise(
+    pipe(workspaceProgramUpdates(workspace), Stream.runCollect)
+  )
 
   assert.equal(updates.length, 1)
   assert.equal(updates[0]?.rootPath, workspace.rootPath)

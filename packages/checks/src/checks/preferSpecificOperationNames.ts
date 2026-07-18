@@ -7,12 +7,11 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
-  isFunctionDefinition,
   semanticRole,
   type CallableSemantics,
   type SemanticRole
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const aggregationRole = semanticRole("aggregation")
 const commandRole = semanticRole("command")

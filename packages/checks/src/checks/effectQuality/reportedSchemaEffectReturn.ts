@@ -1,6 +1,6 @@
 import { Array, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { isEffectInterfaceSymbol } from "./effectIdentity.js"
+import { isEffectInterfaceSymbol } from "../support/tsSignature.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
 import { inspectEffectFnCall } from "./reportedSchemaEffectFnShared.js"
 

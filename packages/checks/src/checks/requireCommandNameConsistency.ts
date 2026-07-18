@@ -8,11 +8,10 @@ import {
   callableSemantics,
   functionDefinitionKinds,
   hasWord,
-  isFunctionDefinition,
   semanticRole,
   type CallableSemantics
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const commandRole = semanticRole("command")
 const projectionRole = semanticRole("projection")

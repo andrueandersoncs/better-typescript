@@ -7,10 +7,9 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
-  isFunctionDefinition,
   type CallableSemantics
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const optionalTotalityClaims = HashSet.make("find", "lookup", "maybe", "optional")
 const totalTotalityClaims = HashSet.make("require", "unsafe")

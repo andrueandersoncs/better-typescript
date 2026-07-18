@@ -17,6 +17,7 @@
     "./effectQuality/data": "./dist/checks/effectQuality/data.js",
     "./effectQuality/policy": "./dist/checks/effectQuality/policy.js",
     "./defineCheck": "./dist/defineCheck.js",
+    "./architectureRole": "./dist/checks/support/architectureRole.js",
     "./pipelineHostile": "./dist/checks/pipelineHostile/pipelineHostile.js",
     "./conceptControl": "./dist/checks/conceptControl/conceptControl.js",
     "./pipelineHostile/data": "./dist/checks/pipelineHostile/data.js",

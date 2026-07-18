@@ -1,11 +1,7 @@
 import { Array, flow, Option, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  callArguments,
-  calleeText,
-  consumingCall,
-  isCallLikeExpression
-} from "./support/tsSignature.js"
+import { callArguments, calleeText, consumingCall } from "./support/tsSignature.js"
+import { isCallLikeExpression } from "./support/tsNode.js"
 import { hasCallSignature } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"

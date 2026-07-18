@@ -8,13 +8,12 @@ import {
   callableSemantics,
   callableExpectedResultWords,
   functionDefinitionKinds,
-  isFunctionDefinition,
   semanticRole,
   wordsMatch,
   type CallableSemantics,
   type SemanticRole
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const factoryOperations = HashSet.make("build", "construct", "create", "make")
 const variantConstructors = HashSet.make("fail", "left", "none", "of", "right", "some", "succeed")

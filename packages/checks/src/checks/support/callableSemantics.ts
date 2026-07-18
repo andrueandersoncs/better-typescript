@@ -17,7 +17,6 @@ import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import {
-  isFunctionDefinition,
   isFunctionInitializer,
   unwrapCallee,
   unwrapCarrier,
@@ -1470,5 +1469,3 @@ export const callableSemantics =
 
     return semantics
   }
-
-export { isFunctionDefinition }

@@ -6,11 +6,8 @@ import { Console, Effect, Function, Option, Predicate, Stream, Struct, pipe } fr
 import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText } from "@better-typescript/core/engine/report"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
-import {
-  makeReportEvent,
-  workspacePrograms,
-  workspaceUpdates
-} from "@better-typescript/core/engine/watch"
+import { makeReportEvent, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
@@ -88,10 +85,12 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
 
   const workspace = yield* discoverWorkspace(projectDirectory)
   const watchOptions = Option.none()
+  const initialUpdate = workspacePrograms.materialize(workspace, compilerOptions)
+  const initialUpdates = pipe(initialUpdate, Stream.fromEffect, Stream.scoped)
 
   const updates = watchForChanges
     ? workspaceUpdates(workspace, watchOptions, compilerOptions)
-    : workspacePrograms(workspace, compilerOptions)
+    : initialUpdates
 
   const report = yield* makeReportEvent(config)
   const events = report(updates)

@@ -1,7 +1,5 @@
 import { Array, Schema } from "effect"
-import { architectureRoles, type ArchitectureRole } from "../support/architectureRole.js"
-
-export type { ArchitectureRole }
+import { architectureRoles } from "../support/architectureRole.js"
 
 const architectureRoleSchema = Schema.Literals(architectureRoles)
 

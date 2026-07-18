@@ -7,11 +7,10 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
-  isFunctionDefinition,
   wordsMatch,
   type CallableSemantics
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const constantEmptyDetections = Function.constant(emptyDetections)

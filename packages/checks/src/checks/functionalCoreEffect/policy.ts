@@ -6,9 +6,6 @@ import {
   type ArchitectureRoleClassifier
 } from "../support/architectureRole.js"
 
-export type { ArchitectureRoleClassifier }
-export { ArchitectureRolePath, conventionalArchitectureRoleOf, roleByPrefixes }
-
 // FunctionalCoreEffectPolicy is shared check config because wiring and detectors need one record.
 export class FunctionalCoreEffectPolicy extends Data.Class<{
   readonly roleOf: ArchitectureRoleClassifier

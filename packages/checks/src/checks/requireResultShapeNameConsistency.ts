@@ -7,12 +7,11 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
-  isFunctionDefinition,
   type CallableSemantics,
   type ResultCardinality,
   type ResultShape
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 // ResultExpectation is one closed claim because shape and cardinality share one match surface.
 type ResultExpectation =

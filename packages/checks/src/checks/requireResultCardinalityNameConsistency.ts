@@ -8,12 +8,11 @@ import {
   callableSemantics,
   callableExpectedResultWords,
   functionDefinitionKinds,
-  isFunctionDefinition,
   wordsMatch,
   type CallableSemantics,
   type ResultCardinality
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const resultCardinality = (value: ResultCardinality) => value
 

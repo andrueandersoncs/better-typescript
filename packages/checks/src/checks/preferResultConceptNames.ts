@@ -8,10 +8,9 @@ import {
   callableSemantics,
   callableExpectedResultWords,
   functionDefinitionKinds,
-  isFunctionDefinition,
   wordsMatch
 } from "./support/callableSemantics.js"
-import type { FunctionDefinition } from "./support/tsNode.js"
+import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
 
 const resultConceptNameMatches = (context: CheckContext) => {
   const match = makeDetection(context)
