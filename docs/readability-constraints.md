@@ -21,10 +21,10 @@ preserves every required invariant and distinction.
 
    For an executable declaration—a function, method, or class—the relevant predictions are:
 
-*> what do you mean "or receiver state"? What's an example of a callable operation whose declaration lets the reader predict 'receiver state'?
-   - the purpose of each callable operation and its **preconditions**: the input values or receiver
-     state that must hold for calling it to be valid. For example, this signature says that
-     `capturePayment` captures a payment and may be called only with an authorized payment:
+   - the purpose of each callable operation and its **preconditions**: the conditions that must hold
+     for its input values or, for a method, its receiver state. The **receiver** is the object to the
+     left of `.` at a method call. For example, this signature says that `capturePayment` captures a
+     payment and may be called only with an authorized payment:
 
      ```ts
      type AuthorizedPayment = {
@@ -38,6 +38,23 @@ preserves every required invariant and distinction.
      }
 
      declare const capturePayment: (payment: AuthorizedPayment) => CapturedPayment
+     ```
+
+     Likewise, because `cancel` exists only on `ActiveReservation`, its declaration says that the
+     receiver in `reservation.cancel()` must be active; the operation is unavailable on a cancelled
+     reservation:
+
+     ```ts
+     type ActiveReservation = {
+       readonly _tag: "Active"
+       cancel(): CancelledReservation
+     }
+
+     type CancelledReservation = {
+       readonly _tag: "Cancelled"
+     }
+
+     type Reservation = ActiveReservation | CancelledReservation
      ```
    - its parameters or constructor inputs and, for a class, its reachable public instance states.
      For example, the constructor requires a seat and customer identifier, and `status` exposes the
@@ -700,11 +717,151 @@ preserves every required invariant and distinction.
    - the resulting compiler diagnostic remains understandable to a caller, and
    - no simpler union, interface, overload, or runtime boundary expresses the invariant as clearly.
 
-   Errors worth preventing include swapped identifiers or units, incompatible state combinations,
-   unhandled union cases, illegal state transitions, and lost relationships between generic inputs
-   and outputs. Malformed external data is not such an error because static types cannot validate
-   runtime input. If no concrete rejected program can be demonstrated, the additional type
-   complexity is not justified.
+   Errors worth preventing include:
+
+   - **Swapped identifiers or units.** Plain primitives accept values in the wrong position or
+     unit. Distinct domain types reject those calls:
+
+     ```ts
+     declare const loadInvoiceForUserLoosely: (
+       userId: string,
+       invoiceId: string,
+     ) => Invoice
+     declare const userIdText: string
+     declare const invoiceIdText: string
+
+     loadInvoiceForUserLoosely(invoiceIdText, userIdText) // Accepted despite the swap.
+
+     declare const UserIdBrand: unique symbol
+     declare const InvoiceIdBrand: unique symbol
+     type UserId = string & { readonly [UserIdBrand]: true }
+     type InvoiceId = string & { readonly [InvoiceIdBrand]: true }
+
+     declare const loadInvoiceForUser: (
+       userId: UserId,
+       invoiceId: InvoiceId,
+     ) => Invoice
+     declare const userId: UserId
+     declare const invoiceId: InvoiceId
+
+     loadInvoiceForUser(invoiceId, userId) // TypeScript rejects both swapped arguments.
+
+     declare const SecondsBrand: unique symbol
+     declare const MillisecondsBrand: unique symbol
+     type Seconds = number & { readonly [SecondsBrand]: true }
+     type Milliseconds = number & { readonly [MillisecondsBrand]: true }
+
+     declare const sleep: (delay: Milliseconds) => Promise<void>
+     declare const timeoutSeconds: Seconds
+
+     sleep(timeoutSeconds) // TypeScript rejects seconds where milliseconds are required.
+     ```
+
+   - **Incompatible state combinations.** Independent booleans and optional fields admit
+     contradictory states; a discriminated union does not:
+
+     ```ts
+     type LooseLoadState = {
+       readonly loading: boolean
+       readonly user?: User
+       readonly error?: LoadError
+     }
+
+     declare const user: User
+     declare const error: LoadError
+
+     const contradictory: LooseLoadState = {
+       loading: true,
+       user,
+       error,
+     } // Accepted despite representing loading, success, and failure at once.
+
+     type LoadState =
+       | { readonly _tag: "Loading" }
+       | { readonly _tag: "Ready"; readonly user: User }
+       | { readonly _tag: "Failed"; readonly error: LoadError }
+
+     const rejectedContradiction: LoadState = {
+       _tag: "Loading",
+       user,
+       error,
+     } // TypeScript rejects fields that do not belong to the Loading case.
+     ```
+
+   - **Unhandled union cases.** A string-indexed table may omit a case, while a table keyed by the
+     union must cover every member:
+
+     ```ts
+     type PaymentStatus = "Pending" | "Captured" | "Refunded"
+
+     const looseStatusLabels: { readonly [status: string]: string } = {
+       Pending: "Pending",
+       Captured: "Captured",
+     } // Accepted although Refunded has no entry.
+
+     const statusLabels: Record<PaymentStatus, string> = {
+       Pending: "Pending",
+       Captured: "Captured",
+     } // TypeScript rejects the missing Refunded property.
+     ```
+
+   - **Illegal state transitions.** A single broad state type permits every state at an operation
+     boundary. State-specific input types restrict an operation to its legal source state:
+
+     ```ts
+     type LoosePayment = {
+       readonly status: "Pending" | "Captured" | "Refunded"
+     }
+
+     declare const refundLoosely: (payment: LoosePayment) => LoosePayment
+
+     refundLoosely({ status: "Pending" }) // Accepted although pending payments cannot be refunded.
+
+     type PendingPayment = { readonly _tag: "Pending" }
+     type CapturedPayment = {
+       readonly _tag: "Captured"
+       readonly captureId: CaptureId
+     }
+     type RefundedPayment = {
+       readonly _tag: "Refunded"
+       readonly refundId: RefundId
+     }
+
+     declare const refund: (payment: CapturedPayment) => RefundedPayment
+     declare const pendingPayment: PendingPayment
+
+     refund(pendingPayment) // TypeScript rejects the illegal transition.
+     ```
+
+   - **Lost relationships between generic inputs and outputs.** An unconstrained result type lets
+     caller context choose an output unrelated to the selected input. An indexed-access result
+     preserves that relationship:
+
+     ```ts
+     declare const getPropertyLoosely: <Result>(
+       value: object,
+       key: PropertyKey,
+     ) => Result
+     declare const invoice: {
+       readonly total: Money
+       readonly customerId: CustomerId
+     }
+
+     const wrongCustomerId: CustomerId = getPropertyLoosely(invoice, "total")
+     // Accepted because Result is inferred as CustomerId independently of the key.
+
+     declare const getProperty: <Value, Key extends keyof Value>(
+       value: Value,
+       key: Key,
+     ) => Value[Key]
+
+     const rejectedCustomerId: CustomerId = getProperty(invoice, "total")
+     // TypeScript rejects Money where CustomerId is required.
+     ```
+
+   Malformed external data is not such an error because static types cannot validate runtime input.
+   If no concrete rejected program can be demonstrated, the additional type complexity is not
+   justified.
 
 7. **Abstractions MUST represent coherent concepts, preserve relevant distinctions, and hide only
    irrelevant details.**

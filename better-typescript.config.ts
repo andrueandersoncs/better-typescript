@@ -16,12 +16,12 @@ const functionalCoreEffectWiring = makeFunctionalCoreEffectWiring(functionalCore
 
 // Every package dogfoods every shipped wiring. Check implementations are production code, not an
 // exemption: their fixtures prove recognizers while self-hosting proves they follow the policy.
-const selfHostProductFiles = ["packages/*/src/**"]
+const selfHostProductFiles = ["packages/*/src/**"] as const
 const selfHostArchitectureFiles = [
   "better-typescript.config.ts",
   ...selfHostProductFiles,
   "tests/**"
-]
+] as const
 
 const standardSelfHostWiring = makeMergedWiring([defaultWiring, functionalCoreEffectWiring])
 
