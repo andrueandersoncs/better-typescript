@@ -863,14 +863,83 @@ preserves every required invariant and distinction.
    If no concrete rejected program can be demonstrated, the additional type complexity is not
    justified.
 
-7. **Abstractions MUST represent coherent concepts, preserve relevant distinctions, and hide only
-   irrelevant details.**
+7. **Abstractions MUST represent coherent concepts, preserve relevant distinctions, and hide only irrelevant details.**
 
    Evaluate coherence with three tests:
 
    - **Purpose:** its purpose can be stated without joining independent responsibilities with “and.”
+     `ReservationLifecycle` passes because its purpose is “manage the lifecycle of an active
+     reservation.” `ReservationToolbox` fails because its accurate purpose is “change reservation
+     state and render occupancy reports”:
+
+     ```ts
+     interface ReservationLifecycle {
+       cancel(reservation: ActiveReservation): CancelledReservation
+       transfer(
+         reservation: ActiveReservation,
+         customerId: CustomerId,
+       ): ActiveReservation
+     }
+
+     interface ReservationToolbox {
+       cancel(reservation: ActiveReservation): CancelledReservation
+       renderOccupancyReport(show: Show): string
+     }
+     ```
    - **Invariant:** its members share an invariant, lifecycle, or reason to change.
+     `ReservationWindow` passes because all construction and mutation preserve the invariant that
+     `startsAt` precedes `endsAt`. `ReservationData` fails because a reservation and an occupancy
+     report template have no shared invariant, lifecycle, or reason to change:
+
+     ```ts
+     declare class ReservationWindow {
+       private constructor()
+
+       readonly startsAt: Instant
+       readonly endsAt: Instant
+
+       static between(
+         startsAt: Instant,
+         endsAt: Instant,
+       ): ReservationWindow | InvalidReservationWindow
+
+       moveBy(duration: Duration): ReservationWindow
+     }
+
+     interface ReservationData {
+       readonly reservation: Reservation
+       readonly occupancyReportTemplate: ReportTemplate
+     }
+     ```
    - **Use:** callers consume it as one concept rather than repeatedly selecting unrelated subsets.
+     `Money` passes because callers supply its amount and currency together to monetary operations.
+     `ReservationDependencies` fails because each caller repeatedly selects a different, unrelated
+     service from the abstraction:
+
+     ```ts
+     type Money = {
+       readonly amount: number
+       readonly currency: Currency
+     }
+
+     declare const addMoney: (left: Money, right: Money) => Money
+     declare const formatMoney: (money: Money) => string
+
+     interface ReservationDependencies {
+       readonly repository: ReservationRepository
+       readonly reportRenderer: OccupancyReportRenderer
+     }
+
+     const readReservation = (
+       { repository }: ReservationDependencies,
+       id: ReservationId,
+     ): Promise<Reservation | undefined> => repository.read(id)
+
+     const renderOccupancyReport = (
+       { reportRenderer }: ReservationDependencies,
+       show: Show,
+     ): string => reportRenderer.render(show)
+     ```
 
    A distinction is relevant when it changes permitted operations, results, failures, ordering,
    identity, or an invariant. A detail is irrelevant only when its implementation can vary without
@@ -892,8 +961,7 @@ preserves every required invariant and distinction.
    annotations, domain names, and wrappers that validate, normalize, authorize, or otherwise enforce
    policy are not redundant.
 
-9. **Similar concepts MUST use consistent names, representations, error models, and structural
-   patterns.**
+9. **Similar concepts MUST use consistent names, representations, error models, and structural patterns.**
 
 10. **Related information SHOULD remain colocated** unless the separated pieces form independently
     understandable concepts.
@@ -901,16 +969,13 @@ preserves every required invariant and distinction.
 11. **Comments SHOULD explain rationale, constraints, and non-obvious decisions.** They SHOULD NOT
     merely narrate the code.
 
-12. **Side effects, asynchronous boundaries, state transitions, and failure behavior MUST be visible
-    and unsurprising.**
+12. **Side effects, asynchronous boundaries, state transitions, and failure behavior MUST be visible and unsurprising.**
 
 13. **Code SHOULD make the safe location and consequences of a future change apparent.**
 
-14. **Readability MUST NOT be inferred solely from brevity, explicitness, abstraction count, type
-    sophistication, DRYness, or formatting.**
+14. **Readability MUST NOT be inferred solely from brevity, explicitness, abstraction count, type sophistication, DRYness, or formatting.**
 
-15. **When principles conflict, prefer the design that minimizes the work required for the intended
-    reader to form an accurate mental model.**
+15. **When principles conflict, prefer the design that minimizes the work required for the intended reader to form an accurate mental model.**
 
 16. **Readability MUST be evaluated relative to an intended reader and task.** Code cannot be called
     readable without identifying who must understand or change it.
@@ -927,11 +992,9 @@ preserves every required invariant and distinction.
 20. **Compile-time types MUST NOT imply guarantees absent at runtime.** Untrusted data must be
     validated where it enters the trusted system.
 
-21. **Required sequencing and temporal dependencies MUST be explicit, colocated, or encoded into the
-    API.**
+21. **Required sequencing and temporal dependencies MUST be explicit, colocated, or encoded into the API.**
 
-22. **Dependency direction MUST be understandable and free from avoidable cycles or action at a
-    distance.**
+22. **Dependency direction MUST be understandable and free from avoidable cycles or action at a distance.**
 
 23. **Public contracts SHOULD present essential information before implementation detail.** Readers
     should be able to progressively disclose complexity.
