@@ -1000,6 +1000,153 @@ preserves every required invariant and distinction.
    state, downcast, or bypass the abstraction to recover a distinction, that distinction was
    relevant and should not have been hidden.
 
+   The following pairs isolate each kind of relevant distinction. In each pair, the first API loses
+   information that a caller needs, while the second exposes that information in its representation
+   or contract:
+
+   - **Permitted operations.** A broad payment type lets `refundLoosely` accept a pending payment.
+     State-specific types make refunding available only for captured payments:
+
+     ```ts
+     type LoosePayment = {
+       readonly status: "Pending" | "Captured"
+       readonly captureId?: CaptureId
+     }
+
+     declare const refundLoosely: (payment: LoosePayment) => RefundedPayment
+     declare const loosePendingPayment: LoosePayment
+
+     refundLoosely(loosePendingPayment) // Accepted even when the payment is pending.
+
+     type PendingPayment = {
+       readonly _tag: "Pending"
+     }
+
+     type CapturedPayment = {
+       readonly _tag: "Captured"
+       readonly captureId: CaptureId
+     }
+
+     declare const refund: (payment: CapturedPayment) => RefundedPayment
+     declare const pendingPayment: PendingPayment
+
+     refund(pendingPayment) // TypeScript rejects a pending payment.
+     ```
+
+   - **Results.** A result union that is independent of the selected format forces a caller to
+     rediscover which result belongs to which input. Overloads preserve that relationship:
+
+     ```ts
+     declare const exportReportLoosely: (
+       report: Report,
+       format: "Csv" | "Pdf",
+     ) => string | Uint8Array
+     declare const report: Report
+
+     const looseCsv = exportReportLoosely(report, "Csv")
+     // `looseCsv` remains `string | Uint8Array`.
+
+     declare function exportReport(report: Report, format: "Csv"): string
+     declare function exportReport(report: Report, format: "Pdf"): Uint8Array
+
+     const csv = exportReport(report, "Csv")
+     // `csv` is `string`.
+     ```
+
+   - **Failures.** A single unstructured failure makes callers inspect its message to determine
+     whether a card was declined or a bank transfer was rejected. Method-specific failure variants
+     preserve the distinction:
+
+     ```ts
+     type LoosePaymentMethod =
+       | { readonly _tag: "Card"; readonly token: CardToken }
+       | { readonly _tag: "Bank"; readonly accountId: BankAccountId }
+
+     type LooseCollectionResult =
+       | { readonly _tag: "Collected"; readonly receipt: Receipt }
+       | { readonly _tag: "Failed"; readonly message: string }
+
+     declare const collectPaymentLoosely: (
+       method: LoosePaymentMethod,
+     ) => Promise<LooseCollectionResult>
+
+     type CardCollectionResult =
+       | { readonly _tag: "Collected"; readonly receipt: Receipt }
+       | { readonly _tag: "CardDeclined"; readonly reason: DeclineReason }
+
+     type BankCollectionResult =
+       | { readonly _tag: "Collected"; readonly receipt: Receipt }
+       | {
+           readonly _tag: "BankTransferRejected"
+           readonly reason: TransferRejectionReason
+         }
+
+     declare const chargeCard: (
+       token: CardToken,
+     ) => Promise<CardCollectionResult>
+     declare const debitBankAccount: (
+       accountId: BankAccountId,
+     ) => Promise<BankCollectionResult>
+     ```
+
+   - **Ordering.** A lookup table retains the stops but does not represent their visit order. An
+     ordered, non-empty sequence makes both the order and the first stop part of the contract:
+
+     ```ts
+     type LooseRoute = {
+       readonly stopsById: Readonly<Record<StopId, Stop>>
+     }
+
+     declare const firstStopLoosely: (route: LooseRoute) => Stop | undefined
+
+     type Route = {
+       readonly stopsInVisitOrder: readonly [Stop, ...Stop[]]
+     }
+
+     const firstStop = (route: Route): Stop => route.stopsInVisitOrder[0]
+     ```
+
+   - **Identity.** A display name cannot distinguish different customers who share that name, or
+     recognize one customer after a name change. A stable identifier preserves customer identity:
+
+     ```ts
+     type LooseCustomer = {
+       readonly displayName: string
+     }
+
+     const sameCustomerLoosely = (
+       left: LooseCustomer,
+       right: LooseCustomer,
+     ): boolean => left.displayName === right.displayName
+
+     type Customer = {
+       readonly id: CustomerId
+       readonly displayName: string
+     }
+
+     const sameCustomer = (left: Customer, right: Customer): boolean =>
+       left.id === right.id
+     ```
+
+   - **An invariant.** An unrestricted array admits an empty selection even when every reservation
+     must contain at least one seat. A non-empty tuple preserves that invariant:
+
+     ```ts
+     type LooseSeatSelection = ReadonlyArray<SeatId>
+
+     declare const reserveSeatsLoosely: (
+       selection: LooseSeatSelection,
+     ) => Reservation
+
+     reserveSeatsLoosely([]) // Accepted despite violating the invariant.
+
+     type SeatSelection = readonly [SeatId, ...SeatId[]]
+
+     declare const reserveSeats: (selection: SeatSelection) => Reservation
+
+     reserveSeats([]) // TypeScript rejects an empty selection.
+     ```
+
 8. **Necessary information MUST be explicit, but redundant ceremony MUST be omitted.**
 
    Information means the facts needed to predict behavior and make a safe change: domain meaning,
