@@ -941,6 +941,59 @@ preserves every required invariant and distinction.
      ): string => reportRenderer.render(show)
      ```
 
+   The `Invoice` abstraction preserves the relevant distinction between draft and issued invoices
+   by representing them as separate cases. Only a draft accepts line-item changes or can transition
+   to issued:
+
+   ```ts
+   type DraftInvoice = {
+     readonly _tag: "Draft"
+     readonly lines: ReadonlyArray<InvoiceLine>
+   }
+
+   type IssuedInvoice = {
+     readonly _tag: "Issued"
+     readonly lines: ReadonlyArray<InvoiceLine>
+     readonly invoiceNumber: InvoiceNumber
+     readonly issuedAt: Instant
+   }
+
+   type Invoice = DraftInvoice | IssuedInvoice
+
+   declare const addLineItem: (
+     invoice: DraftInvoice,
+     line: InvoiceLine,
+   ) => DraftInvoice
+   declare const issueInvoice: (
+     invoice: DraftInvoice,
+     invoiceNumber: InvoiceNumber,
+     issuedAt: Instant,
+   ) => IssuedInvoice
+   ```
+
+   By contrast, `LooseInvoice` does not preserve that distinction. Its optional issuance fields
+   admit invalid combinations, and its operations accept both states, permitting line-item changes
+   after issuance and repeated issuance:
+
+   ```ts
+   type LooseInvoice = {
+     readonly status: "Draft" | "Issued"
+     readonly lines: ReadonlyArray<InvoiceLine>
+     readonly invoiceNumber?: InvoiceNumber
+     readonly issuedAt?: Instant
+   }
+
+   declare const addLineItemLoosely: (
+     invoice: LooseInvoice,
+     line: InvoiceLine,
+   ) => LooseInvoice
+   declare const issueInvoiceLoosely: (
+     invoice: LooseInvoice,
+     invoiceNumber: InvoiceNumber,
+     issuedAt: Instant,
+   ) => LooseInvoice
+   ```
+
    A distinction is relevant when it changes permitted operations, results, failures, ordering,
    identity, or an invariant. A detail is irrelevant only when its implementation can vary without
    changing the observable contract or forcing callers to change. If callers must inspect hidden
