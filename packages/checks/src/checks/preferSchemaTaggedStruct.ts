@@ -6,6 +6,7 @@ import { namedDetectionTarget } from "./support/tsNode.js"
 import { dataTaggedClassHeritage, typeIsWireSafe } from "./support/taggedClassPortability.js"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Prefer Schema.TaggedStruct when every field has a portable wire representation."
 
@@ -24,16 +25,20 @@ const fieldsAreWireSafe = (checker: ts.TypeChecker) => (heritage: ts.ExpressionW
     Array.head,
     Option.match({
       onNone: Function.constant(true),
-      onSome: (fieldsNode) =>
-        pipe(
+      onSome: (fieldsNode) => {
+        const isEmptyLiteral = (literal: ts.TypeLiteralNode) =>
+          strictEqual(literal.members.length, 0)
+
+        return pipe(
           Option.liftPredicate(ts.isTypeLiteralNode)(fieldsNode),
-          Option.filter((literal) => literal.members.length === 0),
+          Option.filter(isEmptyLiteral),
           Option.match({
             onSome: Function.constant(true),
             onNone: () =>
               pipe(checker.getTypeFromTypeNode(fieldsNode), typeIsWireSafe(checker)(fieldsNode))
           })
         )
+      }
     })
   )
 

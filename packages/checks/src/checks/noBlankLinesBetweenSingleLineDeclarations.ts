@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -6,6 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const singleLineDeclarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -45,8 +46,8 @@ const isFunctionLike = (node: ts.Node) => HashSet.has(functionLikeKinds, node.ki
 const parentContinuesFunctionSearch = (parent: ts.Node) => {
   const parentIsFunction = isFunctionLike(parent)
   const parentIsSourceFile = ts.isSourceFile(parent)
-  const parentIsNotFunction = parentIsFunction === false
-  const parentIsNotSourceFile = parentIsSourceFile === false
+  const parentIsNotFunction = strictEqual(parentIsFunction, false)
+  const parentIsNotSourceFile = strictEqual(parentIsSourceFile, false)
   const continueSearchConditions = Array.make(parentIsNotFunction, parentIsNotSourceFile)
 
   return Array.every(continueSearchConditions, Boolean)
@@ -80,7 +81,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
     const endPosition = node.getEnd()
     const start = sourceFile.getLineAndCharacterOfPosition(startPosition)
     const end = sourceFile.getLineAndCharacterOfPosition(endPosition)
-    const currentIsSingleLine = end.line === start.line
+    const currentIsSingleLine = strictEqual(end.line, start.line)
     const insideFunction = isInsideFunction(node)
     const parent = node.parent
 
@@ -92,8 +93,10 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
     const hasBlankLineAfterPreviousSingleLine = pipe(
       siblingsOption,
       Option.map((siblings) => {
+        const isCurrentNode = (sibling: ts.Node) => strictEqual(sibling, node)
+
         const index = pipe(
-          Array.findFirstIndex(siblings, (sibling) => sibling === node),
+          Array.findFirstIndex(siblings, isCurrentNode),
           Option.getOrElse(fallbackMissingIndex)
         )
 
@@ -107,7 +110,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
             const previousEndPosition = prev.getEnd()
             const previousStart = sourceFile.getLineAndCharacterOfPosition(previousStartPosition)
             const previousEnd = sourceFile.getLineAndCharacterOfPosition(previousEndPosition)
-            const previousIsSingleLine = previousEnd.line === previousStart.line
+            const previousIsSingleLine = strictEqual(previousEnd.line, previousStart.line)
             const beforeEnd = prev.getEnd()
             const afterStart = node.getStart(sourceFile)
             const between = text.slice(beforeEnd, afterStart)

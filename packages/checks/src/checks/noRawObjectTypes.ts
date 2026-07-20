@@ -1,4 +1,4 @@
-import { Array, Function, pipe, Option, Struct } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isReturnTypeDeclaration, namedDetectionTarget } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
@@ -7,10 +7,11 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
-  const isObjectKeyword = typeNode.kind === ts.SyntaxKind.ObjectKeyword
+  const isObjectKeyword = strictEqual(typeNode.kind, ts.SyntaxKind.ObjectKeyword)
   const isUnionType = ts.isUnionTypeNode(typeNode)
   const unionContainsRaw = isUnionType && Array.some(typeNode.types, containsRawObjectType)
   const isIntersectionType = ts.isIntersectionTypeNode(typeNode)

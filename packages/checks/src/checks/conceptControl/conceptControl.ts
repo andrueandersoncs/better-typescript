@@ -11,6 +11,7 @@ import {
   Tuple,
   Result
 } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -28,7 +29,9 @@ import {
   type ConceptSignalKind,
   type DataStructureEntry,
   type FunctionEntry,
-  type ModelRole
+  type ModelRole,
+  type ParameterBag,
+  type PassThroughConversion
 } from "./data.js"
 
 const derivedAliasUtilities = HashSet.make("Omit", "Partial", "Pick", "Readonly", "Required")
@@ -58,10 +61,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const match = makeDetection(context)
     const found = MutableList.make<Detection>()
 
-    const entries = Array.filter(
-      index.dataStructures,
-      (entry) => entry.sourceFile === context.sourceFile
-    )
+    const entryInSourceFile = (entry: DataStructureEntry) =>
+      strictEqual(entry.sourceFile, context.sourceFile)
+
+    const entries = Array.filter(index.dataStructures, entryInSourceFile)
 
     const rolesFor = (entry: DataStructureEntry): HashSet.HashSet<ModelRole> => {
       const symbolKey = referenceKey(entry.symbol)
@@ -121,7 +124,9 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     }
 
     const canonicalSymbol = (symbol: ts.Symbol) =>
-      (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : checker.getAliasedSymbol(symbol)
+      strictEqual(symbol.flags & ts.SymbolFlags.Alias, 0)
+        ? symbol
+        : checker.getAliasedSymbol(symbol)
 
     const modelAt = (node: ts.Node) =>
       pipe(
@@ -142,8 +147,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const emptyClauses = Array.empty<ts.HeritageClause>()
         const clauses = declaration.heritageClauses ?? emptyClauses
         const types = Array.flatMap(clauses, Struct.get("types"))
-        const isEmpty = declaration.members.length === 0
-        const hasSingleHeritage = types.length === 1
+        const isEmpty = strictEqual(declaration.members.length, 0)
+        const hasSingleHeritage = strictEqual(types.length, 1)
         const emptyInterfaceAlias = isEmpty && hasSingleHeritage
 
         return emptyInterfaceAlias
@@ -258,10 +263,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.getOrElse(Function.constant(emptyRanges))
       )
 
-      const lineRanges = Array.filter(
-        leadingRanges,
-        (range) => range.kind === ts.SyntaxKind.SingleLineCommentTrivia
-      )
+      const rangeIsSingleLineComment = (range: ts.CommentRange) =>
+        strictEqual(range.kind, ts.SyntaxKind.SingleLineCommentTrivia)
+
+      const lineRanges = Array.filter(leadingRanges, rangeIsSingleLineComment)
 
       const commentProse = (range: ts.CommentRange) =>
         sourceText.slice(range.pos + 2, range.end).trim()
@@ -405,8 +410,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const stem = functionDerivedStem(entry.name)
 
       const ownerMatchingStem = (value: string) => {
-        const nameMatchesStem = (owner: FunctionEntry) =>
-          owner.name.toLowerCase() === value.toLowerCase()
+        const loweredValue = value.toLowerCase()
+
+        const nameMatchesStem = (owner: FunctionEntry) => {
+          const loweredOwnerName = owner.name.toLowerCase()
+
+          return strictEqual(loweredOwnerName, loweredValue)
+        }
 
         return Array.findFirst(modelFunctions, nameMatchesStem)
       }
@@ -476,7 +486,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Array.filter((sourceFile) => sourceFile !== entry.sourceFile)
       )
 
-      const hasNoExternalOwners = externalOwners.length === 0
+      const hasNoExternalOwners = strictEqual(externalOwners.length, 0)
       const isExportedWithoutConsumers = entry.exported && hasNoExternalOwners
       const speculative = isExportedWithoutConsumers && roleNotExempt
 
@@ -563,9 +573,15 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       HashSet.fromIterable
     )
 
+    const bagInSourceFile = (bag: ParameterBag) => {
+      const bagSourceFile = bag.node.getSourceFile()
+
+      return strictEqual(bagSourceFile, context.sourceFile)
+    }
+
     pipe(
       index.parameterBags,
-      Array.filter((bag) => bag.node.getSourceFile() === context.sourceFile),
+      Array.filter(bagInSourceFile),
       Array.filter((bag) => {
         const modelKey = referenceKey(bag.model.symbol)
 
@@ -602,9 +618,15 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       })
     )
 
+    const conversionInSourceFile = (conversion: PassThroughConversion) => {
+      const conversionSourceFile = conversion.node.getSourceFile()
+
+      return strictEqual(conversionSourceFile, context.sourceFile)
+    }
+
     pipe(
       index.passThroughConversions,
-      Array.filter((conversion) => conversion.node.getSourceFile() === context.sourceFile),
+      Array.filter(conversionInSourceFile),
       Array.filter((conversion) => {
         const sourceKey = referenceKey(conversion.source.symbol)
         const targetKey = referenceKey(conversion.target.symbol)

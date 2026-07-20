@@ -6,8 +6,9 @@ import { isFirstPartySymbol } from "./support/tsNode.js"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeCheck } from "../defineCheck.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isWeakMapText = (identifier: ts.Identifier) => identifier.text === "WeakMap"
+const isWeakMapText = (identifier: ts.Identifier) => strictEqual(identifier.text, "WeakMap")
 
 const weakMapIdentifier = (node: ts.Node): node is ts.Identifier =>
   pipe(Option.liftPredicate(ts.isIdentifier)(node), Option.exists(isWeakMapText))

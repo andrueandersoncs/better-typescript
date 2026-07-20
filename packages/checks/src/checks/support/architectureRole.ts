@@ -1,4 +1,5 @@
-import { Array, Data, Function, HashSet, Option, Order, Struct, Tuple, pipe } from "effect"
+import { Array, Data, Function, HashSet, Option, Order, pipe, Struct, Tuple } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 // Shared role vocabulary because boundary and quality checks need the same literals.
 export type ArchitectureRole = "domain" | "port" | "application" | "adapter" | "root" | "test"
@@ -128,7 +129,7 @@ const makeNormalizedRolePath = (entry: ArchitectureRolePath) => {
 }
 
 const pathContains = (prefix: string, candidate: string) => {
-  const exact = candidate === prefix
+  const exact = strictEqual(candidate, prefix)
   const nested = candidate.startsWith(`${prefix}/`)
 
   return exact || nested

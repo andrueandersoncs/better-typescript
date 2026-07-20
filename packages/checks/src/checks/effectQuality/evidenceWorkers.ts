@@ -20,6 +20,7 @@ import {
   isProductionRole,
   newMapBindingName
 } from "./evidenceSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const ignoreEffectNames = Array.make("ignore", "ignoreCause")
 
@@ -50,7 +51,7 @@ const loggingCallNode = (current: ts.Node) => {
     const receiver = unwrapTransparentExpression(expression.expression)
     const receiverName = ts.isIdentifier(receiver) ? receiver.text : ""
     const method = expression.name.text
-    const consoleLog = receiverName === "console"
+    const consoleLog = strictEqual(receiverName, "console")
     const loggerMethod = Array.contains(loggerMethodNames, method)
     const consoleParts = Array.make(consoleLog, loggerMethod)
     const consoleLogger = Array.every(consoleParts, Boolean)
@@ -205,7 +206,7 @@ export const keyedStreamWork =
       return emptyAdviceFindings
     }
 
-    const isSetName = expression.name.text === "set"
+    const isSetName = strictEqual(expression.name.text, "set")
 
     if (!isSetName) {
       return emptyAdviceFindings

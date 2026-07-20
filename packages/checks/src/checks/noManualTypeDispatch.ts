@@ -5,6 +5,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 // Require this many branches because shorter chains look like early-return guards, not a match.
 const minimumChainLength = 3
 
@@ -40,7 +42,7 @@ const siblingDispatchGuard =
       return Option.none()
     }
 
-    const isCurrentIfStatement = (statement: ts.Statement) => statement === ifStatement
+    const isCurrentIfStatement = (statement: ts.Statement) => strictEqual(statement, ifStatement)
     const statementAtOffset = (index: number) => Option.fromNullishOr(block.statements[index])
 
     return pipe(

@@ -13,6 +13,7 @@ import type { Detection } from "../location/data.js"
 import { detectionBlockKey, locationText } from "../location/location.js"
 import type { Signal, WiringSignals } from "../signal/data.js"
 import type { WiringConfig } from "../wiring/data.js"
+import { strictEqual } from "../equivalence.js"
 import {
   AdviceReportKey,
   EmptyReportEvent,
@@ -174,7 +175,7 @@ export const makeBlockSignalEvent = (block: ReportBlock) =>
 export const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
-    if (blocks.length === 0) {
+    if (strictEqual(blocks.length, 0)) {
       const emptyReportEvent = EmptyReportEvent.make({ rootPath })
 
       return Array.of(emptyReportEvent)

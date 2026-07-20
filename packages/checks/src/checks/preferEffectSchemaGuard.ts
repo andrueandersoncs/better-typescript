@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
   const unwrapped = unwrapExpression(expression)
@@ -17,7 +18,7 @@ const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expre
 }
 
 const binaryExpressionIsStringKeyIn = (expression: ts.BinaryExpression) => {
-  const isInOperator = expression.operatorToken.kind === ts.SyntaxKind.InKeyword
+  const isInOperator = strictEqual(expression.operatorToken.kind, ts.SyntaxKind.InKeyword)
   const keyExpression = unwrapExpression(expression.left)
 
   const hasStringKey =

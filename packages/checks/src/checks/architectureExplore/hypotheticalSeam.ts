@@ -1,4 +1,5 @@
 import { Array, Function, Option, Result, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -8,6 +9,7 @@ import {
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { contextTagSeamDataOf } from "./evidence.js"
+import type { ContextTagSeamData } from "./data.js"
 import { contextTagSeamsName, singleAdapterSeamsName } from "./names.js"
 
 export const hypotheticalSeamExamples = packageExamples("hypothetical-seam")
@@ -24,7 +26,7 @@ const isHypotheticalContext = (element: NamedDetection) =>
     contextTagSeamDataOf(element),
     Option.exists((data) => {
       const hasAtMostOneProductionAdapter = data.productionAdapterCount <= 1
-      const hasNoTestAdapter = data.testAdapterCount === 0
+      const hasNoTestAdapter = strictEqual(data.testAdapterCount, 0)
       const conditions = Array.make(hasAtMostOneProductionAdapter, hasNoTestAdapter)
 
       return Array.every(conditions, Boolean)
@@ -32,14 +34,21 @@ const isHypotheticalContext = (element: NamedDetection) =>
   )
 
 const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const singleAdapterSeams = Array.filter(
-    elements,
-    (element) => element.name === singleAdapterSeamsName
-  )
+  const isSingleAdapterSeamsElement = (element: NamedDetection) =>
+    strictEqual(element.name, singleAdapterSeamsName)
+
+  const isContextTagSeamsElement = (element: NamedDetection) =>
+    strictEqual(element.name, contextTagSeamsName)
+
+  const hasPath = (filePath: string) => (element: NamedDetection) =>
+    strictEqual(element.detection.location.path, filePath)
+
+  const hasNoConsumers = (data: ContextTagSeamData) => strictEqual(data.consumerCount, 0)
+  const singleAdapterSeams = Array.filter(elements, isSingleAdapterSeamsElement)
 
   const contextSeams = pipe(
     elements,
-    Array.filter((element) => element.name === contextTagSeamsName),
+    Array.filter(isContextTagSeamsElement),
     Array.filter(isHypotheticalContext)
   )
 
@@ -52,13 +61,13 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
   )
 
   return Array.map(paths, (filePath) => {
-    const atPath = Array.filter(seams, (element) => element.detection.location.path === filePath)
+    const atPath = Array.filter(seams, hasPath(filePath))
 
     const deadCount = pipe(
       atPath,
-      Array.filter((element) => element.name === contextTagSeamsName),
+      Array.filter(isContextTagSeamsElement),
       Array.filterMap(Function.flow(contextTagSeamDataOf, Result.fromOption(Function.constVoid))),
-      Array.countBy((data) => data.consumerCount === 0)
+      Array.countBy(hasNoConsumers)
     )
 
     const location = makeAdviceLocation(filePath)

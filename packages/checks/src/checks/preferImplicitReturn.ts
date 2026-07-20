@@ -1,17 +1,18 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const implicitReturnMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
     if (!ts.isBlock(arrowFunction.body)) return Array.empty()
-    const hasOneStatement = arrowFunction.body.statements.length === 1
+    const hasOneStatement = strictEqual(arrowFunction.body.statements.length, 1)
     const firstStatement = arrowFunction.body.statements[0]
 
     const returnExpression = Function.flow(

@@ -9,6 +9,7 @@ import {
   memberIsHttpNamespaceApi
 } from "./reportedHttpResponseShared.js"
 import { expressionAccessesStatus, statusPropertyNames } from "./reportedHttpStatusAccess.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 export const responseBodyNames = Array.make(
   "json",
@@ -111,7 +112,7 @@ const walkBodyStatus =
       return state
     }
 
-    if (current === bodyRead) {
+    if (strictEqual(current, bodyRead)) {
       return BodyStatusWalk.make({
         sawBodyRead: true,
         sawStatusBefore: state.sawStatusBefore

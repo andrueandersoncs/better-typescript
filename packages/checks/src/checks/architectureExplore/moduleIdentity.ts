@@ -12,6 +12,7 @@ import {
   Tuple,
   pipe
 } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -135,7 +136,7 @@ const toEmittedPath = (rootDir: string, outDir: string) => (fileName: string) =>
 }
 
 const aliasFromSubpath = (packageName: string, subpath: string) =>
-  subpath === "." ? packageName : `${packageName}${subpath.slice(1)}`
+  strictEqual(subpath, ".") ? packageName : `${packageName}${subpath.slice(1)}`
 
 const matchWildcard = (pattern: string, value: string): Option.Option<string> => {
   const starIndex = pattern.indexOf("*")
@@ -165,8 +166,8 @@ const aliasesForEmittedPath =
       const resolvedTarget = path.resolve(projectRoot, target)
       const subpathStars = subpath.split("*").length - 1
       const targetStars = target.split("*").length - 1
-      const hasSingleSubpathStar = subpathStars === 1
-      const hasSingleTargetStar = targetStars === 1
+      const hasSingleSubpathStar = strictEqual(subpathStars, 1)
+      const hasSingleTargetStar = strictEqual(targetStars, 1)
       const wildcardConditions = Array.make(hasSingleSubpathStar, hasSingleTargetStar)
       const isWildcard = Array.every(wildcardConditions, Boolean)
 
@@ -185,7 +186,7 @@ const aliasesForEmittedPath =
         ),
         Match.orElse(() => {
           const alias = aliasFromSubpath(packageName, subpath)
-          const matchesTarget = resolvedTarget === emittedPath
+          const matchesTarget = strictEqual(resolvedTarget, emittedPath)
 
           return matchesTarget ? Result.succeed(alias) : Result.failVoid
         })

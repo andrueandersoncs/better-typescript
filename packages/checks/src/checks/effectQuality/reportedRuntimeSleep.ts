@@ -7,6 +7,7 @@ import { roleForSourceFile, type EffectQualityIndex } from "./index.js"
 import { isTestRole } from "./architectureRoles.js"
 import { emptyRuleFindings, makeRuleFinding } from "./makeFindings.js"
 import { callOrPipeStageSubject, effectApiCall, hasAncestor } from "./reportedRuntimeSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const sleepNames = Array.of("sleep")
 
@@ -17,7 +18,7 @@ const productionSleepLoopsFinding = makeRuleFinding("production-sleep-loops")
 const isTrueLiteral = (expression: ts.Expression) => {
   const unwrapped = unwrapTransparentExpression(expression)
 
-  return unwrapped.kind === ts.SyntaxKind.TrueKeyword
+  return strictEqual(unwrapped.kind, ts.SyntaxKind.TrueKeyword)
 }
 
 const isEmptyForCondition = (condition: ts.ForStatement["condition"]) =>

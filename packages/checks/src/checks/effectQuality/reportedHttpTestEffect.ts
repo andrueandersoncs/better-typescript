@@ -1,6 +1,7 @@
 import { Array, Option, flow } from "effect"
 import * as ts from "typescript"
 import { isEffectInterfaceSymbol, symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const effectTypeSymbolOption = flow(
   (type: ts.Type) => type.getSymbol() ?? type.aliasSymbol,
@@ -8,7 +9,7 @@ const effectTypeSymbolOption = flow(
 )
 
 const symbolIsNamedEffectFromPackage = (candidate: ts.Symbol) => {
-  const namedEffect = candidate.name === "Effect"
+  const namedEffect = strictEqual(candidate.name, "Effect")
   const fromPackage = symbolDeclaredInEffectPackage(candidate)
   const flags = Array.make(namedEffect, fromPackage)
 
@@ -16,8 +17,8 @@ const symbolIsNamedEffectFromPackage = (candidate: ts.Symbol) => {
 }
 
 const symbolLooksLikeEffectAlias = (candidate: ts.Symbol) => {
-  const namedEffect = candidate.name === "Effect"
-  const namedDefault = candidate.name === "default"
+  const namedEffect = strictEqual(candidate.name, "Effect")
+  const namedDefault = strictEqual(candidate.name, "default")
   const nameOkFlags = Array.make(namedEffect, namedDefault)
   const nameOk = Array.some(nameOkFlags, Boolean)
   const fromEffect = symbolDeclaredInEffectPackage(candidate)

@@ -5,10 +5,12 @@ import { importedEffectApiAt } from "../functionalCoreEffect/support.js"
 import type { EffectQualityIndex } from "./index.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
 import { makeRuleFinding } from "./makeFindings.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const configStringNames = Array.of("string")
 
-const anyKeywordType = (typeNode: ts.TypeNode) => typeNode.kind === ts.SyntaxKind.AnyKeyword
+const anyKeywordType = (typeNode: ts.TypeNode) =>
+  strictEqual(typeNode.kind, ts.SyntaxKind.AnyKeyword)
 
 const asExpressionHasAnyType = (expression: ts.AsExpression) => anyKeywordType(expression.type)
 

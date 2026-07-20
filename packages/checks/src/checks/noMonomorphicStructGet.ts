@@ -5,6 +5,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const message = "Avoid monomorphizing Struct.get at its declaration."
 
 const hint =
@@ -64,7 +66,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   }
 
   const initializerIsStructGet = (initializer: ts.Expression) => {
-    const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+    const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
 
     const symbolAtCalleeName = (callee: ts.PropertyAccessExpression) =>
       pipe(checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
@@ -75,7 +77,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return isAlias ? checker.getAliasedSymbol(symbol) : symbol
     }
 
-    const isGetName = (symbol: ts.Symbol) => symbol.name === "get"
+    const isGetName = (symbol: ts.Symbol) => strictEqual(symbol.name, "get")
 
     const structGetSymbol = (call: ts.CallExpression) =>
       pipe(

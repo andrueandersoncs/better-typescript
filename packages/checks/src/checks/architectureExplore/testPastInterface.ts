@@ -1,4 +1,5 @@
 import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -7,7 +8,7 @@ import {
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
-import type { ExportSurfaceData, ExportedSymbolUsage } from "./data.js"
+import type { ExportSurfaceData, ExportedSymbolUsage, ImportedNameUsage } from "./data.js"
 import {
   exportSurfaceDataOf,
   seamLeakageDataOf,
@@ -26,21 +27,28 @@ const edgesForSymbol = (
   fromTest: boolean
 ): ReadonlyArray<WorkspaceImportEdge> =>
   Array.filter(edges, (edge) => {
-    const importsWorkspacePath = edge.importedPath === workspacePath
-    const matchesTestOrigin = edge.fromTest === fromTest
-    const importsSymbol = Array.some(edge.names, (usage) => usage.name === symbolName)
+    const importsWorkspacePath = strictEqual(edge.importedPath, workspacePath)
+    const matchesTestOrigin = strictEqual(edge.fromTest, fromTest)
+
+    const usageHasSymbolName = (usage: (typeof edge.names)[number]) =>
+      strictEqual(usage.name, symbolName)
+
+    const importsSymbol = Array.some(edge.names, usageHasSymbolName)
     const conditions = Array.make(importsWorkspacePath, matchesTestOrigin, importsSymbol)
 
     return Array.every(conditions, Boolean)
   })
 
-const crossTestCallCount = (edges: ReadonlyArray<WorkspaceImportEdge>, symbolName: string) =>
-  pipe(
+const crossTestCallCount = (edges: ReadonlyArray<WorkspaceImportEdge>, symbolName: string) => {
+  const usageHasSymbolName = (usage: ImportedNameUsage) => strictEqual(usage.name, symbolName)
+
+  return pipe(
     edges,
     Array.flatMap(Struct.get("names")),
-    Array.filter((usage) => usage.name === symbolName),
+    Array.filter(usageHasSymbolName),
     Array.reduce(0, (total, usage) => total + usage.callCount)
   )
+}
 
 const workspaceTestOnlySymbols =
   (edges: ReadonlyArray<WorkspaceImportEdge>) =>
@@ -50,7 +58,7 @@ const workspaceTestOnlySymbols =
       const crossTestImports = edgesForSymbol(edges, data.workspacePath, symbol.name, true)
       const inProjectProd = symbol.referencingFileCount - symbol.referencingTestFileCount
       const productionCallers = inProjectProd + crossProdImports.length
-      const hasNoProductionCallers = productionCallers === 0
+      const hasNoProductionCallers = strictEqual(productionCallers, 0)
       const hasCrossTestImports = crossTestImports.length > 0
       const conditions = Array.make(hasNoProductionCallers, hasCrossTestImports)
 
@@ -65,9 +73,15 @@ const isSeamLeakageFromTest = Function.flow(
 const testPastInterfaceAdvice = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
-  const isTestOnlyExportElement = (element: NamedDetection) => element.name === testOnlyExportsName
-  const isSeamLeakageElement = (element: NamedDetection) => element.name === seamLeakageEvidenceName
-  const isExportSurfaceElement = (element: NamedDetection) => element.name === exportSurfaceName
+  const isTestOnlyExportElement = (element: NamedDetection) =>
+    strictEqual(element.name, testOnlyExportsName)
+
+  const isSeamLeakageElement = (element: NamedDetection) =>
+    strictEqual(element.name, seamLeakageEvidenceName)
+
+  const isExportSurfaceElement = (element: NamedDetection) =>
+    strictEqual(element.name, exportSurfaceName)
+
   const testOnlyExports = Array.filter(elements, isTestOnlyExportElement)
 
   const testImports = pipe(
@@ -104,20 +118,12 @@ const testPastInterfaceAdvice = (
   const paths = pipe(Array.appendAll(programPaths, workspacePaths), Array.dedupe)
 
   return Array.map(paths, (filePath) => {
-    const exportsAtPath = Array.filter(
-      testOnlyExports,
-      (element) => element.detection.location.path === filePath
-    )
+    const hasPath = (element: NamedDetection) =>
+      strictEqual(element.detection.location.path, filePath)
 
-    const importsAtPath = Array.filter(
-      testImports,
-      (element) => element.detection.location.path === filePath
-    )
-
-    const workspaceAtPath = Array.filter(
-      exportSurfaces,
-      (element) => element.detection.location.path === filePath
-    )
+    const exportsAtPath = Array.filter(testOnlyExports, hasPath)
+    const importsAtPath = Array.filter(testImports, hasPath)
+    const workspaceAtPath = Array.filter(exportSurfaces, hasPath)
 
     const workspaceDataAtPath = pipe(
       workspaceAtPath,

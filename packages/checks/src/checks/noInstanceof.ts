@@ -1,13 +1,14 @@
-import { Array, Option, Struct, pipe } from "effect"
+import { Array, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isFirstPartySymbol } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const isInstanceofOperator = (expr: ts.BinaryExpression) =>
-  expr.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
+  strictEqual(expr.operatorToken.kind, ts.SyntaxKind.InstanceOfKeyword)
 
 const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
   pipe(Option.liftPredicate(ts.isBinaryExpression)(node), Option.exists(isInstanceofOperator))

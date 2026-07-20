@@ -1,6 +1,7 @@
 import {
   Array,
   Equal,
+  flow,
   Function,
   Hash,
   HashMap,
@@ -8,12 +9,11 @@ import {
   MutableRef,
   Option,
   Order,
+  pipe,
   Predicate,
   Result,
   Struct,
-  Tuple,
-  flow,
-  pipe
+  Tuple
 } from "effect"
 import * as ts from "typescript"
 import { makeDetection, fileSubscriptions } from "@better-typescript/core/engine/check"
@@ -29,6 +29,7 @@ import {
   variableDeclarationInitializer
 } from "./tsNode.js"
 import type { FunctionInitializer } from "./tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const generatedNamePrefix = "__betterTypescriptInference"
 const emptyFunctionInitializers = Array.empty<FunctionInitializer>()
@@ -60,7 +61,7 @@ class InferenceProbe implements Equal.Equal {
   ) {}
 
   [Equal.symbol](that: Equal.Equal): boolean {
-    return this === that
+    return strictEqual(this, that)
   }
 
   [Hash.symbol]() {
@@ -194,8 +195,8 @@ const symbolOccursThroughFunctions = (
 ): boolean => {
   const nodeReachesTarget = (node: ts.Node) => {
     const symbolReachesTarget = (symbol: ts.Symbol) => {
-      const targetMatch = symbol === target
-      const isUnseenSymbol = (candidate: ts.Symbol) => candidate === symbol
+      const targetMatch = strictEqual(symbol, target)
+      const isUnseenSymbol = (candidate: ts.Symbol) => strictEqual(candidate, symbol)
       const unseen = !Array.some(seen, isUnseenSymbol)
       const body = functionBodyForSymbol(symbol)
       const unseenBody = pipe(body, Option.filter(Function.constant(unseen)))
@@ -395,7 +396,7 @@ const functionDeclarationProbe =
           Option.getOrElse(Function.constant(1))
         )
 
-        const unambiguous = symbolDeclarationCount === 1
+        const unambiguous = strictEqual(symbolDeclarationCount, 1)
         const eligibility = Array.make(!recursive, !ambient, unambiguous)
 
         return Array.every(eligibility, Boolean)
@@ -636,7 +637,7 @@ const nodeType = (
 const sensitiveTypeFlags = ts.TypeFlags.Any | ts.TypeFlags.Never | ts.TypeFlags.Unknown
 
 const sameSensitiveFlags = (left: ts.Type, right: ts.Type) =>
-  (left.flags & sensitiveTypeFlags) === (right.flags & sensitiveTypeFlags)
+  strictEqual(left.flags & sensitiveTypeFlags, right.flags & sensitiveTypeFlags)
 
 const mutuallyAssignable = (checker: ts.TypeChecker, left: ts.Type, right: ts.Type) =>
   checker.isTypeAssignableTo(left, right) && checker.isTypeAssignableTo(right, left)
@@ -668,12 +669,8 @@ const signaturesEquivalent = (
   const assignableReturns = mutuallyAssignable(checker, leftReturn, rightReturn)
   const returnFlags = Array.make(sameReturnFlags, assignableReturns)
   const returnsMatch = Array.every(returnFlags, Boolean)
-
-  const signatureFlags = Array.make(
-    leftParameters.length === rightParameters.length,
-    parametersMatch,
-    returnsMatch
-  )
+  const sameParameterCount = strictEqual(leftParameters.length, rightParameters.length)
+  const signatureFlags = Array.make(sameParameterCount, parametersMatch, returnsMatch)
 
   return Array.every(signatureFlags, Boolean)
 }
@@ -706,8 +703,8 @@ const typesEquivalent = (
   const rightText = typeText(checker, right, rightNode)
   const sameFlags = sameSensitiveFlags(left, right)
   const assignable = mutuallyAssignable(checker, left, right)
-  const sameSignatureCount = leftSignatures.length === rightSignatures.length
-  const sameText = leftText === rightText
+  const sameSignatureCount = strictEqual(leftSignatures.length, rightSignatures.length)
+  const sameText = strictEqual(leftText, rightText)
 
   const equivalenceFlags = Array.make(
     sameFlags,
@@ -751,10 +748,8 @@ const functionInitializersEquivalent = (
     return typesEquivalent(checker, expectedFunction, probeFunction, expectedType, probeType)
   })
 
-  const equivalenceFlags = Array.make(
-    expectedFunctions.length === probeFunctions.length,
-    functionsMatch
-  )
+  const sameFunctionCount = strictEqual(expectedFunctions.length, probeFunctions.length)
+  const equivalenceFlags = Array.make(sameFunctionCount, functionsMatch)
 
   return Array.every(equivalenceFlags, Boolean)
 }
@@ -921,7 +916,7 @@ const findingIndex = (context: ProgramContext) => {
     Option.filter((entry) => {
       const program = Tuple.get(entry, 0)
 
-      return program === context.program
+      return strictEqual(program, context.program)
     })
   )
 

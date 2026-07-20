@@ -1,4 +1,4 @@
-import { Array, HashSet, Match, Option, flow, pipe } from "effect"
+import { Array, flow, HashSet, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -11,6 +11,7 @@ import {
   type CallableSemantics
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 // RoleWord is closed naming grammar because Match.exhaustive must reject unknown callable roles.
 type RoleWord =
@@ -117,13 +118,13 @@ const roleExpectation =
     const hasInput = parameters >= 1
     const hasProjection = Option.isSome(semantics.projection)
     const isConstruction = HashSet.has(semantics.roles, "construction")
-    const isVoid = shape === "void"
-    const isEffect = execution === "effect"
+    const isVoid = strictEqual(shape, "void")
+    const isEffect = strictEqual(execution, "effect")
     const voidOrEffectFlags = Array.make(isVoid, isEffect)
     const isVoidOrEffect = Array.some(voidOrEffectFlags, Boolean)
     const isCallable = returnsCallable(checker)(semantics.definition)
-    const isBoolean = shape === "boolean"
-    const isNumber = shape === "number"
+    const isBoolean = strictEqual(shape, "boolean")
+    const isNumber = strictEqual(shape, "number")
     const isNonVoid = shape !== "void"
 
     return pipe(

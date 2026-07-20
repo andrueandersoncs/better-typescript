@@ -14,6 +14,7 @@ import {
   isFetchHttpClientMember,
   isHttpClientMember
 } from "./evidenceHttpBoundaryShared.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const handlerNamePattern = /(?:handler|route|controller|endpoint|resolve|loader|action)$/i
 
@@ -118,8 +119,8 @@ export const thinHttpHandlers =
   (role: ArchitectureRole) =>
   (node: ts.CallExpression): ReadonlyArray<EffectQualityAdviceFinding> => {
     // Prefer adapter/application HTTP edges because composition roots own wiring.
-    const isAdapter = role === "adapter"
-    const isApplication = role === "application"
+    const isAdapter = strictEqual(role, "adapter")
+    const isApplication = strictEqual(role, "application")
     const allowedRoles = Array.make(isAdapter, isApplication)
     const allowedRole = Array.some(allowedRoles, Boolean)
     const outsideHandler = !isInsideNamedCallback(handlerNamePattern)(node)

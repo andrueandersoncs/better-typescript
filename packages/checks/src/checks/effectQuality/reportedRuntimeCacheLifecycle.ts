@@ -14,6 +14,7 @@ import {
   layerAcquisitionNames,
   objectLiteralArgument
 } from "./reportedRuntimeSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const cacheMakeNames = Array.make("make", "makeWith")
 
@@ -93,7 +94,7 @@ const cacheMakeLookupFunction =
   }
 
 const ancestorIsLookupExpression = (lookup: ts.Expression) => (ancestor: ts.Node) =>
-  ancestor === lookup
+  strictEqual(ancestor, lookup)
 
 const nestedInsideCacheLookup = (checker: ts.TypeChecker) => (node: ts.Node) => {
   const visit = (current: ts.Node): boolean => {
@@ -121,8 +122,10 @@ const cacheMakeIsPerRequest = (checker: ts.TypeChecker) => (call: ts.CallExpress
     enclosingFunctionLike(call),
     Option.exists((fn) => {
       const hasParameters = fn.parameters.length > 0
-      const nested = isModuleScopeFunction(fn) === false
-      const notLookup = nestedInsideCacheLookup(checker)(call) === false
+      const moduleScope = isModuleScopeFunction(fn)
+      const nested = strictEqual(moduleScope, false)
+      const insideLookup = nestedInsideCacheLookup(checker)(call)
+      const notLookup = strictEqual(insideLookup, false)
       const hasParametersOrNested = hasParameters || nested
 
       return hasParametersOrNested && notLookup
@@ -160,7 +163,7 @@ export const scopedClientCacheFindings = (
   const nestedInLookup = nestedInsideCacheLookup(context.checker)(node)
   const matchedNestedFlags = Array.make(matches, nestedInLookup)
   const matchedNested = Array.every(matchedNestedFlags, Boolean)
-  const shouldSkip = matchedNested === false
+  const shouldSkip = strictEqual(matchedNested, false)
 
   if (shouldSkip) {
     return emptyRuleFindings

@@ -12,6 +12,7 @@ import {
   functionBodyContains,
   sourceHasAdapterRole
 } from "./reportedHttpResponseShared.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const responseValidationFinding = makeRuleFinding("http-response-validation")
 
@@ -27,7 +28,8 @@ const callIsArgumentOfValidation =
   (validates: (call: ts.CallExpression) => boolean) =>
   (call: ts.CallExpression) =>
   (candidate: ts.CallExpression) => {
-    const isArgument = Array.some(candidate.arguments, (argument) => argument === call)
+    const argumentEqualsCall = (argument: ts.Expression) => strictEqual(argument, call)
+    const isArgument = Array.some(candidate.arguments, argumentEqualsCall)
     const isValidation = validates(candidate)
     const flags = Array.make(isArgument, isValidation)
 

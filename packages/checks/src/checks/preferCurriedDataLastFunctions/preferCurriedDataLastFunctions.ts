@@ -26,6 +26,7 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import { makeSilentPlannedCheck } from "../../defineCheck.js"
 import { SymbolUse, type SymbolUses, emptySymbolUses, fallbackEmptySymbolUse } from "./data.js"
 import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid rest parameters and multiple runtime parameters in one function."
 
@@ -123,7 +124,7 @@ const hasDisallowedParameterList = (declaration: ts.Node) => {
 
 const hasCurriedArrowBody = (declaration: ts.Node) => {
   const parameters = runtimeParameters(declaration)
-  const hasSingleRuntimeParameter = parameters.length === 1
+  const hasSingleRuntimeParameter = strictEqual(parameters.length, 1)
   const hasNoRestParameter = !hasRestParameter(declaration)
   const parameterChecks = Array.make(hasSingleRuntimeParameter, hasNoRestParameter)
   const hasCurriedParameterList = Array.every(parameterChecks, Boolean)
@@ -202,7 +203,7 @@ const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulato
 export type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
 const declarationHasName = (identifier: ts.Identifier) => (declaration: NameDeclaration) =>
-  declaration.name === identifier
+  strictEqual(declaration.name, identifier)
 
 const buildSymbolUses = (context: ProgramContext) => {
   const checker = context.checker
@@ -283,7 +284,9 @@ const buildSymbolUses = (context: ProgramContext) => {
 
         const expression = outermostTransparentWrapper(node)
         const expressionParent = expression.parent
-        const callUsesExpression = (call: ts.CallExpression) => call.expression === expression
+
+        const callUsesExpression = (call: ts.CallExpression) =>
+          strictEqual(call.expression, expression)
 
         const isDirectCall = pipe(
           Option.liftPredicate(ts.isCallExpression)(expressionParent),

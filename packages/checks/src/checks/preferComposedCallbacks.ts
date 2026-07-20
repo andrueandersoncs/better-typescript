@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid inline callbacks that compose the callback parameter through calls."
 
@@ -37,7 +38,7 @@ const referencesSymbol = (checker: ts.TypeChecker) => (symbol: ts.Symbol) =>
       const notIdentifier = !isIdentifier
       const skipNode = referenced || notIdentifier
       const symbolAtNode = checker.getSymbolAtLocation(node)
-      const matchesSymbol = symbolAtNode === symbol
+      const matchesSymbol = strictEqual(symbolAtNode, symbol)
 
       return skipNode ? referenced : matchesSymbol
     })
@@ -49,7 +50,7 @@ const isDirectForward =
   (body: ts.Expression): boolean => {
     const expression = unwrapCarrier(body)
     const callExpression = Option.liftPredicate(ts.isCallExpression)(expression)
-    const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+    const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
     const singleArgumentCall = pipe(callExpression, Option.filter(hasOneArgument))
     const firstArgument = (call: ts.CallExpression) => Option.fromNullishOr(call.arguments[0])
 
@@ -63,7 +64,7 @@ const isDirectForward =
     const symbolAt = (identifier: ts.Identifier) =>
       pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
 
-    const matchesTarget = (current: ts.Symbol) => current === symbol
+    const matchesTarget = (current: ts.Symbol) => strictEqual(current, symbol)
 
     return pipe(onlyArgument, Option.flatMap(symbolAt), Option.exists(matchesTarget))
   }
@@ -90,7 +91,7 @@ const composedCallbackMatches = (context: CheckContext) => {
       Option.gen(function* () {
         yield* Option.liftPredicate(arrowIsCallArgument)(arrowFunction)
 
-        const hasOneParameter = arrowFunction.parameters.length === 1
+        const hasOneParameter = strictEqual(arrowFunction.parameters.length, 1)
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])

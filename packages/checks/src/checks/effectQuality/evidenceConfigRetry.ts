@@ -17,6 +17,7 @@ import {
   isProductionRole,
   retryEffectNames
 } from "./evidenceSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const findingWhen =
   (shouldEmit: boolean) =>
@@ -72,7 +73,7 @@ const scheduleHasJitter = (checker: ts.TypeChecker) =>
 const retryScheduleArgument = (node: ts.CallExpression) => {
   const arity = node.arguments.length
   const hasScheduleSlot = arity >= 2
-  const hasSingleArgument = arity === 1
+  const hasSingleArgument = strictEqual(arity, 1)
 
   if (hasScheduleSlot) {
     return Option.fromNullishOr(node.arguments[1])
@@ -163,7 +164,7 @@ export const idempotentRetry =
     }
 
     const operation = operationNameNear(node)
-    const missingOperation = operation.length === 0
+    const missingOperation = strictEqual(operation.length, 0)
     const alreadyIdempotent = index.policy.idempotentOperation(operation)
     const notMutation = !mutationOperationPattern.test(operation)
     const quiet = Array.make(missingOperation, alreadyIdempotent, notMutation)

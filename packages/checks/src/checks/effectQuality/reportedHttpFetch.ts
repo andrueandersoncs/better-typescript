@@ -10,6 +10,7 @@ import {
   unwrapTransparentExpression
 } from "../support/tsNode.js"
 import { emptyRuleFindings, makeRuleFinding } from "./makeFindings.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const tryPromiseNames = Array.of("tryPromise")
 
@@ -25,11 +26,13 @@ const expressionIsFetchCallee = (expression: ts.Expression) => {
   const current = unwrapTransparentExpression(expression)
 
   if (ts.isIdentifier(current)) {
-    return current.text === "fetch"
+    return strictEqual(current.text, "fetch")
   }
 
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(current)
-  const accessIsNamedFetch = (access: ts.PropertyAccessExpression) => access.name.text === "fetch"
+
+  const accessIsNamedFetch = (access: ts.PropertyAccessExpression) =>
+    strictEqual(access.name.text, "fetch")
 
   const unwrapAccessExpression = (access: ts.PropertyAccessExpression) =>
     unwrapTransparentExpression(access.expression)
@@ -92,7 +95,7 @@ const expressionReferencesName =
   (expression: ts.Expression): boolean => {
     const current = unwrapTransparentExpression(expression)
     const recur = expressionReferencesName(name)
-    const identifierIsName = (identifier: ts.Identifier) => identifier.text === name
+    const identifierIsName = (identifier: ts.Identifier) => strictEqual(identifier.text, name)
 
     const propertyAccessReferencesName = (access: ts.PropertyAccessExpression) =>
       recur(access.expression)
@@ -147,8 +150,8 @@ const shorthandPropertyPassesSignal =
     pipe(
       Option.liftPredicate(ts.isShorthandPropertyAssignment)(property),
       Option.exists((shorthand) => {
-        const namedSignal = shorthand.name.text === "signal"
-        const signalParamIsSignal = signalName === "signal"
+        const namedSignal = strictEqual(shorthand.name.text, "signal")
+        const signalParamIsSignal = strictEqual(signalName, "signal")
         const flags = Array.make(namedSignal, signalParamIsSignal)
 
         return Array.every(flags, Boolean)

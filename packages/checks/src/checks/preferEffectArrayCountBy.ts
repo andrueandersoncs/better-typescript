@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import {
   resolvedSymbolAt,
@@ -7,11 +7,13 @@ import {
   unwrapCarrier,
   unwrapTransparentExpression
 } from "./support/tsNode.js"
+import { identifierTextIsPipe } from "./effectQuality/reportedRuntimeSupport.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid filtering an array only to count matching elements."
 
@@ -34,7 +36,8 @@ const symbolIsFromEffectArrayModule = (symbol: ts.Symbol) => {
   return symbolDeclaredInEffectPackage(symbol) && declaredInArrayModule
 }
 
-const propertyNameIsFilter = (access: ts.PropertyAccessExpression) => access.name.text === "filter"
+const propertyNameIsFilter = (access: ts.PropertyAccessExpression) =>
+  strictEqual(access.name.text, "filter")
 
 const effectArrayFilterAccess =
   (checker: ts.TypeChecker) =>
@@ -66,9 +69,7 @@ const calleeNameNode = (call: ts.CallExpression) => {
   )
 }
 
-const identifierTextIsPipe = (name: ts.Identifier) => name.text === "pipe"
-
-const callHasSingleArgument = (stage: ts.CallExpression) => stage.arguments.length === 1
+const callHasSingleArgument = (stage: ts.CallExpression) => strictEqual(stage.arguments.length, 1)
 
 const isEffectPipeEndingInArrayFilter =
   (checker: ts.TypeChecker) =>
@@ -109,7 +110,7 @@ const accessExpressionCarrier = Function.flow(
 )
 
 const propertyNameIsLength = (candidate: ts.PropertyAccessExpression) =>
-  candidate.name.text === "length"
+  strictEqual(candidate.name.text, "length")
 
 const effectArrayFilterLengthMatches = (context: CheckContext) => {
   const match = makeDetection(context)

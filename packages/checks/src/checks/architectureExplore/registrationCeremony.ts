@@ -1,4 +1,5 @@
 import { Array, Function, Result, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -16,9 +17,12 @@ const minimumImportCount = 15
 const minimumLowRefRatio = 0.8
 
 const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const isImportUsageElement = (element: NamedDetection) =>
+    strictEqual(element.name, importUsageName)
+
   const usages = pipe(
     elements,
-    Array.filter((element) => element.name === importUsageName),
+    Array.filter(isImportUsageElement),
     Array.filterMap(Function.flow(importUsageDataOf, Result.fromOption(Function.constVoid))),
     Array.filter((data) => !data.fromTest)
   )
@@ -26,12 +30,15 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
   const importers = pipe(usages, Array.map(Struct.get("importerWorkspacePath")), Array.dedupe)
 
   return Array.filterMap(importers, (importerPath) => {
-    const atImporter = Array.filter(usages, (data) => data.importerWorkspacePath === importerPath)
+    const isAtImporter = (data: (typeof usages)[number]) =>
+      strictEqual(data.importerWorkspacePath, importerPath)
+
+    const atImporter = Array.filter(usages, isAtImporter)
     const importCount = pipe(atImporter, Array.map(Struct.get("specifier")), Array.dedupe).length
     const names = Array.flatMap(atImporter, Struct.get("names"))
     const totalNames = names.length
 
-    if (totalNames === 0) {
+    if (strictEqual(totalNames, 0)) {
       return Result.failVoid
     }
 

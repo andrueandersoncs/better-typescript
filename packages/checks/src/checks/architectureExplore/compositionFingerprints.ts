@@ -1,4 +1,5 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
@@ -195,9 +196,9 @@ const pointFreeStageName = (argument: ts.Expression) =>
     Option.flatMap(calleeName)
   )
 
-const isPipeIdentifier = (identifier: ts.Identifier) => identifier.text === "pipe"
+const isPipeIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "pipe")
 
-const isFlowIdentifier = (identifier: ts.Identifier) => identifier.text === "flow"
+const isFlowIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "flow")
 
 // Preorder DFS collects callee and point-free stage names because fingerprints mirror source order.
 const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
@@ -218,7 +219,8 @@ const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
   const keepPointFreeComposition = Function.constant(isPointFreeComposition)
 
   const argumentNames = Array.flatMap(call.arguments, (argument, index) => {
-    const skipDataSubjectChecks = Array.make(barePipe, index === 0)
+    const isFirstArgument = strictEqual(index, 0)
+    const skipDataSubjectChecks = Array.make(barePipe, isFirstArgument)
     const skipDataSubject = Array.every(skipDataSubjectChecks, Boolean)
     const keepNonDataSubject = () => !skipDataSubject
     const walkArgument = () => walkExpression(argument)
@@ -318,8 +320,11 @@ const compositionFingerprintElements =
 
     const element = makeDetection(context)
 
-    const isEntryInSourceFile = (entry: (typeof index.entries)[number]) =>
-      entry.nameNode.getSourceFile() === context.sourceFile
+    const isEntryInSourceFile = (entry: (typeof index.entries)[number]) => {
+      const entrySourceFile = entry.nameNode.getSourceFile()
+
+      return strictEqual(entrySourceFile, context.sourceFile)
+    }
 
     return pipe(
       index.entries,

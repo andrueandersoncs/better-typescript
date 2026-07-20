@@ -1,4 +1,5 @@
-import { Array, Option, Record, Schema, Struct, Tuple, pipe, Result } from "effect"
+import { Array, Option, Record, Result, Schema, Struct, Tuple, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
@@ -40,12 +41,15 @@ const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>>
     "This service surface contains only plain deterministic functions. Prefer an ordinary pure function or explicit function parameter unless multiple real adapters prove that this seam varies."
 }
 
-const detectionsOf = (signals: ReadonlyArray<Signal>, name: string): ReadonlyArray<Detection> =>
-  pipe(
-    Array.findFirst(signals, (signal) => signal.name === name),
+const detectionsOf = (signals: ReadonlyArray<Signal>, name: string): ReadonlyArray<Detection> => {
+  const signalNamed = (signal: Signal) => strictEqual(signal.name, name)
+
+  return pipe(
+    Array.findFirst(signals, signalNamed),
     Option.map(Struct.get("detections")),
     Option.getOrElse(Array.empty<Detection>)
   )
+}
 
 const measurementHasCount = (entry: readonly [string, number]) => {
   const count = Tuple.get(entry, 1)
@@ -110,8 +114,8 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
   const relevant = pipe(
     boundaryPairs(detections),
     Array.filter(([, data]) => {
-      const isDomain = data.role === "domain"
-      const isApplication = data.role === "application"
+      const isDomain = strictEqual(data.role, "domain")
+      const isApplication = strictEqual(data.role, "application")
 
       return isDomain || isApplication
     })
@@ -133,7 +137,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       }
 
       const evidence = Array.map(kinds, (kind) => {
-        const count = Array.countBy(elements, ([, data]) => data.kind === kind)
+        const count = Array.countBy(elements, ([, data]) => strictEqual(data.kind, kind))
 
         return makeEvidenceItem(kind, count)
       })

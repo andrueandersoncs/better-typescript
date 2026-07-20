@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Iterable, Match, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Iterable, Match, Option, pipe, Predicate, Struct } from "effect"
 import * as ts from "typescript"
 import { resolvedSymbolAt } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { astNodesIn } from "@better-typescript/core/engine/sources"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid unsafe Effect APIs."
 
@@ -27,7 +28,8 @@ const importOrExportNameKinds = HashSet.make(
 )
 
 const identifierIsAccessName = (identifier: ts.Identifier) => {
-  const accessNameIsIdentifier = (access: ts.PropertyAccessExpression) => access.name === identifier
+  const accessNameIsIdentifier = (access: ts.PropertyAccessExpression) =>
+    strictEqual(access.name, identifier)
 
   return pipe(
     identifier.parent,

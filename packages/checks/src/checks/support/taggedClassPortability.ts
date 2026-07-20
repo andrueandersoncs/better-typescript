@@ -1,7 +1,8 @@
-import { Array, Function, Match, Option, Struct, pipe, Result } from "effect"
+import { Array, Function, Match, Option, pipe, Result, Struct } from "effect"
 import * as ts from "typescript"
 import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "./tsNode.js"
 import { differentBaseConstraint, type SeenTypes } from "./tsType.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const effectDataModuleSuffixes = Array.make("/effect/dist/Data.d.ts", "/effect/src/Data.ts")
 
@@ -24,7 +25,8 @@ const declarationComesFromEffectModule =
 
 const symbolIsEffectTaggedClass =
   (moduleSuffixes: ReadonlyArray<string>) => (symbol: ts.Symbol) => {
-    const nameIsTaggedClass = symbol.getName() === "TaggedClass"
+    const taggedClassName = symbol.getName()
+    const nameIsTaggedClass = strictEqual(taggedClassName, "TaggedClass")
 
     const declarations = pipe(
       symbol.getDeclarations(),
@@ -98,11 +100,16 @@ const typeIsRejectedWireValue = typeHasAnyFlags(rejectedWireTypeFlags)
 
 const typeWasSeen =
   (seen: SeenTypes) =>
-  (type: ts.Type): boolean =>
-    Array.some(seen, (candidate) => candidate === type)
+  (type: ts.Type): boolean => {
+    const isSameType = (candidate: ts.Type) => strictEqual(candidate, type)
+
+    return Array.some(seen, isSameType)
+  }
+
+const memberIsDefined = (member: ts.Type) => strictEqual(member.flags & ts.TypeFlags.Undefined, 0)
 
 const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
-  Array.filter(type.types, (member) => (member.flags & ts.TypeFlags.Undefined) === 0)
+  Array.filter(type.types, memberIsDefined)
 
 const propertyHasCompilerName = (property: ts.Symbol) => property.getName().startsWith("__@")
 

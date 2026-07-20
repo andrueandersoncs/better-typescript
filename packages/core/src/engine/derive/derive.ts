@@ -14,6 +14,7 @@ import { formatRefactorExample } from "../example/example.js"
 import type { RefactorExample } from "../example/data.js"
 import { Location } from "../location/data.js"
 import type { Detection } from "../location/data.js"
+import { strictEqual } from "../equivalence.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
 export const deriveSignals = <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
@@ -187,7 +188,7 @@ export const adviceLevelRank = (advice: Advice) =>
   pipe(Record.get(adviceLevelRanks, advice.level), Option.getOrElse(zeroAdviceLevelRank))
 
 export const advicePath = (advice: Advice) =>
-  advice.level === "project" ? "project" : advice.location.path
+  strictEqual(advice.level, "project") ? "project" : advice.location.path
 
 const byAdviceLevel = Order.mapInput(Order.Number, adviceLevelRank)
 const byAdvicePath = Order.mapInput(Order.String, advicePath)
@@ -213,6 +214,6 @@ export const adviceText =
     return Array.join(lines, "\n")
   }
 
-export const isFileLevelAdvice = (advice: Advice) => advice.level === "file"
+export const isFileLevelAdvice = (advice: Advice) => strictEqual(advice.level, "file")
 
 export const fileAdvicePath = (advice: Advice) => advice.location.path

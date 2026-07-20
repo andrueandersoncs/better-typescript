@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isDeclarationStatement, isStatementContainer } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -6,6 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const declarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.VariableStatement,
@@ -58,8 +59,10 @@ const blankLineMatches = (context: CheckContext) => {
     const missingPadding = pipe(
       siblingsOption,
       Option.map((siblings) => {
+        const isCurrentNode = (sibling: ts.Node) => strictEqual(sibling, node)
+
         const index = pipe(
-          Array.findFirstIndex(siblings, (sibling) => sibling === node),
+          Array.findFirstIndex(siblings, isCurrentNode),
           Option.getOrElse(fallbackMissingIndex)
         )
 
@@ -93,7 +96,7 @@ const blankLineMatches = (context: CheckContext) => {
         const paddingConditions = Array.make(aboveOk, belowOk)
         const paddingOk = Array.every(paddingConditions, Boolean)
 
-        return paddingOk === false
+        return strictEqual(paddingOk, false)
       }),
       Option.getOrElse(fallbackFalse)
     )

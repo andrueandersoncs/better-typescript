@@ -1,4 +1,4 @@
-import { Tuple, Array, Function, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Predicate, Struct, Tuple } from "effect"
 import * as ts from "typescript"
 import { conciseArrowBody, unwrapCarrier } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid wrapping a function call that only forwards its argument."
 
@@ -78,9 +79,9 @@ const etaReductionMatches = (context: CheckContext) => {
       Option.exists(isNamespaceSymbol)
     )
 
-    const receiverLacksConstructor = receiverIsConstructor === false
+    const receiverLacksConstructor = strictEqual(receiverIsConstructor, false)
     const methodNeedsReceiver = isMethod && receiverLacksConstructor
-    const receiverIsInstance = receiverIsNamespace === false
+    const receiverIsInstance = strictEqual(receiverIsNamespace, false)
     const instanceMethod = methodNeedsReceiver && receiverIsInstance
 
     return instanceMethod
@@ -93,14 +94,14 @@ const etaReductionMatches = (context: CheckContext) => {
     const isFree = isCall || isIdentifier
     const isPropertyAccess = ts.isPropertyAccessExpression(unwrapped)
     const propertyNeedsThis = isPropertyAccess ? propertyAccessRequiresThis(unwrapped) : true
-    const isBound = isFree === false
+    const isBound = strictEqual(isFree, false)
     const boundCalleeNeedsThis = isBound && propertyNeedsThis
 
     return boundCalleeNeedsThis
   }
 
   const referenceCount = (name: string): ((node: ts.Node) => number) => {
-    const isNameText = (text: string) => text === name
+    const isNameText = (text: string) => strictEqual(text, name)
 
     return Function.flip(
       foldAst((count: number, current: ts.Node): number =>
@@ -119,14 +120,14 @@ const etaReductionMatches = (context: CheckContext) => {
     (parameterName: string) =>
     (expression: ts.Expression): Option.Option<ReadonlyArray<ts.Expression>> => {
       const unwrapped = unwrapCarrier(expression)
-      const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+      const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
 
       const callOption = pipe(
         Option.liftPredicate(ts.isCallExpression)(unwrapped),
         Option.filter(hasOneArgument)
       )
 
-      const isParameterName = (text: string) => text === parameterName
+      const isParameterName = (text: string) => strictEqual(text, parameterName)
 
       const calleesFromCall = (call: ts.CallExpression) =>
         Option.gen(function* () {
@@ -161,7 +162,7 @@ const etaReductionMatches = (context: CheckContext) => {
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
-        const hasOneParameter = arrowFunction.parameters.length === 1
+        const hasOneParameter = strictEqual(arrowFunction.parameters.length, 1)
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])
@@ -171,7 +172,7 @@ const etaReductionMatches = (context: CheckContext) => {
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
         const isComplex = hasRestOrDefault || isOptional
-        const isNotComplex = isComplex === false
+        const isNotComplex = strictEqual(isComplex, false)
         const isSimple = isIdentifierName && isNotComplex
 
         yield* Option.liftPredicate((value: boolean) => value)(isSimple)
@@ -185,7 +186,8 @@ const etaReductionMatches = (context: CheckContext) => {
         yield* Option.liftPredicate((value: boolean) => value)(hasSteps)
         yield* Option.liftPredicate((value: boolean) => value)(freeCallees)
 
-        const isSingleStep = Array.length(callees) === 1
+        const calleeCount = Array.length(callees)
+        const isSingleStep = strictEqual(calleeCount, 1)
 
         return match({
           node: arrowFunction,

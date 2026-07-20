@@ -1,4 +1,4 @@
-import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe, Result } from "effect"
+import { Array, Function, HashMap, Match, Option, pipe, Result, Struct, Tuple } from "effect"
 import * as ts from "typescript"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
 import { isObjectType } from "./support/tsType.js"
@@ -12,6 +12,7 @@ import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 
 import { type ReferenceKey, referenceKey } from "./support/referenceKey.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const schemaPropertyNameText = (name: ts.PropertyName) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
@@ -107,7 +108,7 @@ const buildConstructionIndex = (
         : Array.of(contextualType)
 
   const hasTypeReferenceTarget = (target: ts.GenericType) => (reference: ts.TypeReference) =>
-    reference.target === target
+    strictEqual(reference.target, target)
 
   const sameTypeReferenceTarget =
     (declaredMember: ts.TypeReference) =>
@@ -128,9 +129,10 @@ const buildConstructionIndex = (
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.TypeReference): ReadonlyArray<ts.Type> => {
       const typeArguments = checker.getTypeArguments(declaredMember)
+      const isTypeParameter = (candidate: ts.Type) => strictEqual(candidate, typeParameter)
 
       const parameterPosition = pipe(
-        Array.findFirstIndex(typeArguments, (candidate) => candidate === typeParameter),
+        Array.findFirstIndex(typeArguments, isTypeParameter),
         Option.getOrElse(() => -1)
       )
 
@@ -153,7 +155,7 @@ const buildConstructionIndex = (
     (typeParameter: ts.Type) =>
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.Type): ReadonlyArray<ts.Type> => {
-      if (declaredMember === typeParameter) {
+      if (strictEqual(declaredMember, typeParameter)) {
         return contextualMembers
       }
 
@@ -218,12 +220,8 @@ const buildConstructionIndex = (
         Option.gen(function* () {
           const argument = outermostTransparentWrapper(literal)
           const call = yield* Option.liftPredicate(ts.isCallExpression)(argument.parent)
-
-          const argumentPosition = yield* Array.findFirstIndex(
-            call.arguments,
-            (candidate) => candidate === argument
-          )
-
+          const isArgument = (candidate: ts.Expression) => strictEqual(candidate, argument)
+          const argumentPosition = yield* Array.findFirstIndex(call.arguments, isArgument)
           const callContextualType = checker.getContextualType(call)
           const contextual = yield* Option.fromNullishOr(callContextualType)
           const signatures = checker.getTypeAtLocation(call.expression).getCallSignatures()
@@ -308,11 +306,12 @@ const objectTypeDeclarationMatches =
     return matches
   }
 
-const isReadonlyTypeOperator = (node: ts.TypeNode): node is ts.TypeOperatorNode =>
-  pipe(
-    Option.liftPredicate(ts.isTypeOperatorNode)(node),
-    Option.exists((operator) => operator.operator === ts.SyntaxKind.ReadonlyKeyword)
-  )
+const isReadonlyTypeOperator = (node: ts.TypeNode): node is ts.TypeOperatorNode => {
+  const isReadonlyOperator = (operator: ts.TypeOperatorNode) =>
+    strictEqual(operator.operator, ts.SyntaxKind.ReadonlyKeyword)
+
+  return pipe(Option.liftPredicate(ts.isTypeOperatorNode)(node), Option.exists(isReadonlyOperator))
+}
 
 const typeAliasTypeNode = Struct.get<ts.TypeAliasDeclaration, "type">("type")
 

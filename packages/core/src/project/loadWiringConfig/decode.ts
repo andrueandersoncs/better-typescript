@@ -5,6 +5,7 @@ import { defineConfig, isFileGlob } from "../../engine/wiring/wiring.js"
 import type { Check } from "../../engine/check/data.js"
 import type { RefactorExampleSource } from "../../engine/example/data.js"
 import { emptyRefactorExampleSource } from "../../engine/example/example.js"
+import { strictEqual } from "../../engine/equivalence.js"
 import { ConfigExport, type ConfigExportName, ProjectWiringConfigError } from "./data.js"
 
 const defaultExportName = "default"
@@ -24,13 +25,14 @@ const failConfig = (
   pipe(makeProjectWiringConfigError(configPath, reason), Effect.fail)
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
-  const isObject = typeof value === "object"
+  const isObject = strictEqual(typeof value, "object")
   const isPresent = value !== null
   const conditions = Array.make(isObject, isPresent)
   return Array.every(conditions, Boolean)
 }
 
-const isFunctionValue = (value: unknown): value is () => unknown => typeof value === "function"
+const isFunctionValue = (value: unknown): value is () => unknown =>
+  strictEqual(typeof value, "function")
 
 const isError = (cause: unknown): cause is { readonly message: string } => cause instanceof Error
 
@@ -156,15 +158,15 @@ const checkShapeReason =
   "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExampleSource }"
 
 const isInlineExampleSource = (examples: Readonly<Record<string, unknown>>) => {
-  const hasInlineTag = examples._tag === "inline"
+  const hasInlineTag = strictEqual(examples._tag, "inline")
   const hasExamplesArray = Array.isArray(examples.examples)
   const conditions = Array.make(hasInlineTag, hasExamplesArray)
   return Array.every(conditions, Boolean)
 }
 
 const isDirectoryExampleSource = (examples: Readonly<Record<string, unknown>>) => {
-  const hasDirectoryTag = examples._tag === "directory"
-  const hasRootString = typeof examples.root === "string"
+  const hasDirectoryTag = strictEqual(examples._tag, "directory")
+  const hasRootString = strictEqual(typeof examples.root, "string")
   const conditions = Array.make(hasDirectoryTag, hasRootString)
   return Array.every(conditions, Boolean)
 }
@@ -176,11 +178,14 @@ const isRefactorExampleSource = (value: unknown) =>
   pipe(Option.liftPredicate(isRecord)(value), Option.exists(isExampleSourceRecord))
 
 const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>) => {
-  const hasStringName = typeof record.name === "string"
+  const hasStringName = strictEqual(typeof record.name, "string")
+
+  const checkHasPlan = (check: Readonly<Record<string, unknown>>) =>
+    strictEqual(typeof check.plan, "function")
 
   const hasCheckPlan = pipe(
     Option.liftPredicate(isRecord)(record.check),
-    Option.exists((check) => typeof check.plan === "function")
+    Option.exists(checkHasPlan)
   )
 
   const reported = Object.hasOwn(record, "reported") ? Option.some(record.reported) : Option.none()
@@ -189,7 +194,7 @@ const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>) => {
     reported,
     Option.match({
       onNone: Function.constant(true),
-      onSome: (reported) => typeof reported === "boolean"
+      onSome: (reported) => strictEqual(typeof reported, "boolean")
     })
   )
 
@@ -284,7 +289,7 @@ const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(functi
 
   const record = value as Readonly<Record<string, unknown>>
   const checks = yield* validateNamedChecks(configPath, `${fieldPath}.checks`, record.checks)
-  const deriveIsFunction = typeof record.derive === "function"
+  const deriveIsFunction = strictEqual(typeof record.derive, "function")
 
   if (!deriveIsFunction) {
     const reason = `${fieldPath}.derive must be a function`

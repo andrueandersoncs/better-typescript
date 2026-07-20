@@ -14,6 +14,7 @@ import {
   isPipeCall,
   typeSymbolName
 } from "./reportedRuntimeSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const catchCauseNames = Array.of("catchCause")
 
@@ -26,8 +27,8 @@ const effectErrorChannel =
 
     const fromReference = (candidate: ts.Type): Option.Option<ts.Type> => {
       const symbolName = typeSymbolName(candidate)
-      const isEffectName = symbolName === "Effect"
-      const isStreamName = symbolName === "Stream"
+      const isEffectName = strictEqual(symbolName, "Effect")
+      const isStreamName = strictEqual(symbolName, "Stream")
       const isEffectFamily = isEffectName || isStreamName
       const reference = candidate as ts.TypeReference
       const isObject = (candidate.flags & ts.TypeFlags.Object) !== 0
@@ -71,11 +72,15 @@ const effectErrorChannel =
 
 const typeIsNever = (type: ts.Type) => (type.flags & ts.TypeFlags.Never) !== 0
 
-const typeIsNonNever = (type: ts.Type) => typeIsNever(type) === false
+const typeIsNonNever = (type: ts.Type) => {
+  const isNever = typeIsNever(type)
+
+  return strictEqual(isNever, false)
+}
 
 const typeIsNonNeverError = (checker: ts.TypeChecker) => (type: ts.Type) => {
   const isNever = typeIsNever(type)
-  const isNonNever = isNever === false
+  const isNonNever = strictEqual(isNever, false)
 
   if (type.isUnion()) {
     const nonNever = Array.filter(type.types, typeIsNonNever)
@@ -90,6 +95,9 @@ const typeIsNonNeverError = (checker: ts.TypeChecker) => (type: ts.Type) => {
   return Array.every(flags, Boolean)
 }
 
+const accessNameIsPipe = (access: ts.PropertyAccessExpression) =>
+  strictEqual(access.name.text, "pipe")
+
 const catchCauseSelfExpression =
   (checker: ts.TypeChecker) =>
   (call: ts.CallExpression): Option.Option<ts.Expression> => {
@@ -97,7 +105,7 @@ const catchCauseSelfExpression =
 
     const methodPipeSelf = pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
-      Option.filter((access) => access.name.text === "pipe"),
+      Option.filter(accessNameIsPipe),
       Option.map(Struct.get("expression"))
     )
 
@@ -165,7 +173,7 @@ const parentIsMethodOrFunctionPipe =
 
     const isMethodPipe = pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(parentCallee),
-      Option.exists((access) => access.name.text === "pipe")
+      Option.exists(accessNameIsPipe)
     )
 
     const functionPipe = isPipeCall(checker)(parent)
@@ -233,8 +241,8 @@ export const typedErrorRecoveryFindings = (
     findings,
     Array.flatMap(Option.toArray),
     Array.dedupeWith((left, right) => {
-      const sameNode = left.node === right.node
-      const sameKind = left.kind === right.kind
+      const sameNode = strictEqual(left.node, right.node)
+      const sameKind = strictEqual(left.kind, right.kind)
       const flags = Array.make(sameNode, sameKind)
 
       return Array.every(flags, Boolean)

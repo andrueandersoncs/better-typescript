@@ -11,6 +11,7 @@ import {
   flow,
   pipe
 } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -212,8 +213,8 @@ const resolvedBarrelBinding = (
   binding: ImportedMember,
   depth: number
 ): ImportedMember => {
-  const depthExhausted = depth === 0
-  const pathExhausted = binding.path.length === 0
+  const depthExhausted = strictEqual(depth, 0)
+  const pathExhausted = strictEqual(binding.path.length, 0)
   const exhausted = depthExhausted || pathExhausted
 
   if (exhausted) {
@@ -243,10 +244,11 @@ const resolvedBarrelBinding = (
 
   const pathHead = Array.head(binding.path)
   const importedName = pipe(pathHead, Option.getOrElse(Function.constant("")))
+  const symbolNamed = (symbol: ts.Symbol) => strictEqual(symbol.name, importedName)
 
   const next = pipe(
     checker.getExportsOfModule(moduleSymbol.value),
-    Array.findFirst((symbol) => symbol.name === importedName),
+    Array.findFirst(symbolNamed),
     Option.flatMap(pipeOf2),
     Option.flatMap((candidate) => {
       const makeOf = (candidateBinding: ImportedMember) => Tuple.make(candidate, candidateBinding)
@@ -376,9 +378,11 @@ export const typeReferenceIsGlobalPromise = (context: CheckContext, node: ts.Typ
       )
     )
 
+  const typeNameIsPromise = (typeName: ts.Identifier) => strictEqual(typeName.text, "Promise")
+
   return pipe(
     Option.liftPredicate(ts.isIdentifier)(node.typeName),
-    Option.filter((typeName) => typeName.text === "Promise"),
+    Option.filter(typeNameIsPromise),
     Option.flatMap(
       flow((typeName) => context.checker.getSymbolAtLocation(typeName), Option.fromNullishOr)
     ),
@@ -386,6 +390,8 @@ export const typeReferenceIsGlobalPromise = (context: CheckContext, node: ts.Typ
     Option.exists(someOf2)
   )
 }
+
+export const specifierIsEffect = (specifier: string) => strictEqual(specifier, "effect")
 
 export const effectApiMember = (
   member: ImportedMember,
@@ -396,9 +402,9 @@ export const effectApiMember = (
   const last = pipe(lastOption, Option.getOrElse(Function.constant("")))
   const pathHead = Array.get(member.path, 0)
   const fromBarrelPath = pipe(pathHead, Option.contains(namespace))
-  const fromEffectBarrel = member.moduleSpecifier === "effect"
+  const fromEffectBarrel = strictEqual(member.moduleSpecifier, "effect")
   const fromBarrel = fromEffectBarrel && fromBarrelPath
-  const fromSubpath = member.moduleSpecifier === `effect/${namespace}`
+  const fromSubpath = strictEqual(member.moduleSpecifier, `effect/${namespace}`)
   const fromEffectModule = fromBarrel || fromSubpath
   const nameMatches = Array.contains(names, last)
   const matchFlags = Array.make(fromEffectModule, nameMatches)
@@ -528,11 +534,10 @@ export const propertyAssignmentNamed = (
 
 const contextServiceLayerPropertyNames = Array.of("layer")
 
-const someOf5 = (modifiers: readonly ts.ModifierLike[]) =>
-  Array.some(
-    modifiers,
-    (modifier: ts.ModifierLike) => modifier.kind === ts.SyntaxKind.StaticKeyword
-  )
+const modifierIsStatic = (modifier: ts.ModifierLike) =>
+  strictEqual(modifier.kind, ts.SyntaxKind.StaticKeyword)
+
+const someOf5 = (modifiers: readonly ts.ModifierLike[]) => Array.some(modifiers, modifierIsStatic)
 
 const hasStaticModifier = (declaration: ts.PropertyDeclaration) =>
   pipe(Option.fromNullishOr(declaration.modifiers), Option.exists(someOf5))
@@ -693,9 +698,12 @@ export const callIsPipeRuntimeHandoff = (
 ) => {
   const callee = unwrapTransparentExpression(node.expression)
 
+  const accessIsNamedPipe = (access: ts.PropertyAccessExpression) =>
+    strictEqual(access.name.text, "pipe")
+
   const isPipe = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
-    Option.exists((access) => access.name.text === "pipe")
+    Option.exists(accessIsNamedPipe)
   )
 
   const expressionIsEffectRuntimeRunnerOf = (argument: ts.Expression) =>
@@ -718,10 +726,10 @@ const unstableHttpNamespaces = Array.make("http", "httpapi")
 const nameIsListed3 = (name: string) => Array.contains(unstableHttpNamespaces, name)
 
 const isMovedPlatformCapabilityName = (name: string) =>
-  effectBarrelPlatformCapabilityNames[name] === true
+  strictEqual(effectBarrelPlatformCapabilityNames[name], true)
 
 export const importedMemberIsMovedPlatformCapability = (member: ImportedMember) => {
-  const fromEffectBarrel = member.moduleSpecifier === "effect"
+  const fromEffectBarrel = strictEqual(member.moduleSpecifier, "effect")
   const pathHead = Array.get(member.path, 0)
   const pathSecond = Array.get(member.path, 1)
   const isMovedBarrelMember = pipe(pathHead, Option.exists(isMovedPlatformCapabilityName))
@@ -809,7 +817,7 @@ export const moduleMatchesPolicyPrefix = (
     const namespacePrefix = prefix.endsWith(":")
     const namespaceMatch = namespacePrefix && moduleSpecifier.startsWith(prefix)
     const packagePrefix = `${prefix}/`
-    const exactPackage = moduleSpecifier === prefix
+    const exactPackage = strictEqual(moduleSpecifier, prefix)
     const nestedPackage = moduleSpecifier.startsWith(packagePrefix)
     const packageMatch = exactPackage || nestedPackage
     const matchFlags = Array.make(namespaceMatch, packageMatch)
@@ -911,7 +919,7 @@ const ambientCallSubject = (checker: ts.TypeChecker, expression: ts.Expression) 
     ambientPathAt(checker, expression),
     Option.filter((path) => {
       const joined = Array.join(path, ".")
-      const isSingleSegment = path.length === 1
+      const isSingleSegment = strictEqual(path.length, 1)
       const directMatch = isSingleSegment && Array.contains(ambientDirectNames, joined)
       const exactMatch = Array.contains(ambientExactMembers, joined)
       const receiver = Array.get(path, 0)
@@ -931,7 +939,10 @@ export const capabilitySubjectAt = (
   policy: FunctionalCoreEffectPolicy,
   node: ts.CallExpression | ts.NewExpression
 ) => {
-  const pathTextEquals = (path: ReadonlyArray<string>) => Array.join(path, ".") === "Date"
+  const pathTextEquals = (path: ReadonlyArray<string>) => {
+    const pathText = Array.join(path, ".")
+    return strictEqual(pathText, "Date")
+  }
 
   const pipeOf6 = (expression: ts.CallExpression | ts.NewExpression) =>
     pipe(
@@ -940,9 +951,12 @@ export const capabilitySubjectAt = (
       Option.as("new Date")
     )
 
+  const expressionHasNoArguments = (expression: ts.NewExpression) =>
+    strictEqual(expression.arguments?.length ?? 0, 0)
+
   const newDate = pipe(
     Option.liftPredicate(ts.isNewExpression)(node),
-    Option.filter((expression) => (expression.arguments?.length ?? 0) === 0),
+    Option.filter(expressionHasNoArguments),
     Option.flatMap(pipeOf6)
   )
 
@@ -966,7 +980,10 @@ export const capabilitySubjectAt = (
   return Option.firstSomeOf(candidates)
 }
 
-const pathTextEquals2 = (path: ReadonlyArray<string>) => Array.join(path, ".") === "process.env"
+const pathTextEquals2 = (path: ReadonlyArray<string>) => {
+  const pathText = Array.join(path, ".")
+  return strictEqual(pathText, "process.env")
+}
 
 export const ambientCapabilityPropertySubject = (
   context: CheckContext,
@@ -1009,7 +1026,8 @@ const isSuspensionCallbackDeclaration = (
   const parent = declaration.parent
 
   if (ts.isCallExpression(parent)) {
-    const isArgument = Array.some(parent.arguments, (argument) => argument === declaration)
+    const argumentIsDeclaration = (argument: ts.Expression) => strictEqual(argument, declaration)
+    const isArgument = Array.some(parent.arguments, argumentIsDeclaration)
     const isSuspension = importedEffectApiAt(checker, parent.expression, "Effect", suspensionNames)
 
     return isArgument && isSuspension
@@ -1018,13 +1036,15 @@ const isSuspensionCallbackDeclaration = (
   const importedEffectApiAtOf3 = (call: ts.CallExpression) =>
     importedEffectApiAt(checker, call.expression, "Effect", tryEffectNames)
 
+  const textIsTry = (text: string) => strictEqual(text, "try")
+
   const pipeOf7 = (assignment: ts.PropertyAssignment) =>
     pipe(
       Match.value(assignment.name),
       Match.when(ts.isIdentifier, Struct.get<ts.Identifier, "text">("text")),
       Match.when(ts.isStringLiteralLike, Struct.get<ts.StringLiteralLike, "text">("text")),
       Match.orElse(Function.constant("")),
-      Option.liftPredicate((text) => text === "try"),
+      Option.liftPredicate(textIsTry),
       Option.map(() => assignment.parent),
       Option.filter(ts.isObjectLiteralExpression),
       Option.map(Struct.get("parent")),
@@ -1032,9 +1052,12 @@ const isSuspensionCallbackDeclaration = (
       Option.map(importedEffectApiAtOf3)
     )
 
+  const assignmentInitializesDeclaration = (assignment: ts.PropertyAssignment) =>
+    strictEqual(assignment.initializer, declaration)
+
   return pipe(
     Option.liftPredicate(ts.isPropertyAssignment)(parent),
-    Option.filter((assignment) => assignment.initializer === declaration),
+    Option.filter(assignmentInitializesDeclaration),
     Option.flatMap(pipeOf7),
     Option.getOrElse(Function.constFalse)
   )
@@ -1184,7 +1207,7 @@ export const hasSourceFileScope = (context: CheckContext, node: ts.Node) => {
 
         const symbol = context.checker.getSymbolAtLocation(child)
 
-        return symbol === scopedSymbol
+        return strictEqual(symbol, scopedSymbol)
       })(current)(false)
     })(context.sourceFile)(false)
 
@@ -1206,10 +1229,13 @@ export const isTopLevelExportedDeclaration = (node: ts.Node) => {
       Option.exists(visit)
     )
 
+  const statementIsTopLevel = (statement: ts.Statement) =>
+    strictEqual(statement.parent.kind, ts.SyntaxKind.SourceFile)
+
   const visit = (current: ts.Node): boolean =>
     pipe(
       Option.liftPredicate(ts.isStatement)(current),
-      Option.filter((statement) => statement.parent.kind === ts.SyntaxKind.SourceFile),
+      Option.filter(statementIsTopLevel),
       Option.match({
         onNone: () => visitParent(current),
         onSome: hasExportModifier

@@ -1,4 +1,5 @@
 import { Array, Data, Match, HashMap, MutableRef, Option, Result, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -17,11 +18,14 @@ const message = "Import usage evidence — this import declaration binds names u
 const hint =
   "Counts are purely syntactic within the importing file; local shadowing of an import binding can inflate or hide references."
 
-const isNamedCallReference = (node: ts.Identifier) =>
-  pipe(
+const isNamedCallReference = (node: ts.Identifier) => {
+  const callExpressionIsNode = (call: ts.CallExpression) => strictEqual(call.expression, node)
+
+  return pipe(
     Option.liftPredicate(ts.isCallExpression)(node.parent),
-    Option.exists((call) => call.expression === node)
+    Option.exists(callExpressionIsNode)
   )
+}
 
 const isNamespaceCallReference = (node: ts.Identifier) => {
   const namedCall = isNamedCallReference(node)
@@ -29,11 +33,14 @@ const isNamespaceCallReference = (node: ts.Identifier) => {
   const namespaceCall = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(node.parent),
     Option.exists((access) => {
-      const isObject = access.expression === node
+      const isObject = strictEqual(access.expression, node)
+
+      const callExpressionIsAccess = (call: ts.CallExpression) =>
+        strictEqual(call.expression, access)
 
       const invokesAccess = pipe(
         Option.liftPredicate(ts.isCallExpression)(access.parent),
-        Option.exists((call) => call.expression === access)
+        Option.exists(callExpressionIsAccess)
       )
 
       const conditions = Array.make(isObject, invokesAccess)
@@ -194,7 +201,7 @@ const countNode =
 const importUsageCounts = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> => {
   const records = collectImportRecords(sourceFile)
 
-  if (records.length === 0) {
+  if (strictEqual(records.length, 0)) {
     return records
   }
 

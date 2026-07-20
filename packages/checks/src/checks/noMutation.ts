@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Match, Option, pipe, Predicate, Struct } from "effect"
 import * as ts from "typescript"
 import { binaryAssignmentTarget, isProjectFile, unwrapExpression } from "./support/tsNode.js"
 import { isUnseenType, type SeenTypes } from "./support/tsType.js"
@@ -6,6 +6,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const message = "Avoid mutating first-party data."
 
 const hint =
@@ -181,7 +183,7 @@ const mutationMatches = (context: CheckContext) => {
   const scopeOf = (target: ts.Expression) => {
     const root = rootReceiver(target)
 
-    if (root.kind === ts.SyntaxKind.ThisKeyword) {
+    if (strictEqual(root.kind, ts.SyntaxKind.ThisKeyword)) {
       return "shared-state"
     }
 

@@ -14,6 +14,7 @@ import {
   pipe,
   Result
 } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { astNodesIn, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
@@ -22,6 +23,7 @@ import {
   functionDeclarationName,
   functionInitializer,
   hasExportModifier,
+  isExtendsClause,
   returnedExpression,
   symbolDeclarations,
   unwrapCallee,
@@ -151,7 +153,7 @@ const noneObjectLiteral: Option.Option<ts.ObjectLiteralExpression> = Option.none
 const noneFunctionEntry: Option.Option<FunctionEntry> = Option.none()
 
 const canonicalSymbol = (checker: ts.TypeChecker) => (symbol: ts.Symbol) =>
-  (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : checker.getAliasedSymbol(symbol)
+  strictEqual(symbol.flags & ts.SymbolFlags.Alias, 0) ? symbol : checker.getAliasedSymbol(symbol)
 
 const symbolAt = (checker: ts.TypeChecker) => (node: ts.Node) =>
   pipe(
@@ -167,7 +169,7 @@ const heritageClauseTypesHead = (clause: ts.HeritageClause) => Array.head(clause
 const classHeritageExpression = (declaration: ts.ClassDeclaration): Option.Option<ts.Expression> =>
   pipe(
     declaration.heritageClauses ?? emptyHeritageClauses,
-    Array.findFirst((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword),
+    Array.findFirst(isExtendsClause),
     Option.flatMap(heritageClauseTypesHead),
     Option.map(Struct.get("expression"))
   )
@@ -190,7 +192,8 @@ const classDataForSymbol = (
 ): Option.Option<typeof schemaDataClass> => {
   const resolved = canonicalSymbol(checker)(symbol)
   const direct = effectDataClassForSymbol(resolved)
-  const alreadyVisited = Array.some(visited, (candidate) => candidate === resolved)
+  const candidateEqualsResolved = (candidate: ts.Symbol) => strictEqual(candidate, resolved)
+  const alreadyVisited = Array.some(visited, candidateEqualsResolved)
   const directFound = Option.isSome(direct)
   const stopSearch = directFound || alreadyVisited
 
@@ -239,9 +242,12 @@ const classDataForExpression = (
   const unwrapped = unwrapTransparentExpression(expression)
   const callee = unwrapCallee(unwrapped)
 
+  const accessNameIsExtend = (access: ts.PropertyAccessExpression) =>
+    strictEqual(access.name.text, "extend")
+
   const extension = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
-    Option.filter((access) => access.name.text === "extend")
+    Option.filter(accessNameIsExtend)
   )
 
   if (Option.isSome(extension)) {
@@ -367,9 +373,12 @@ const fieldsFor = (
     Array.filter((field) => {
       const fieldName = field.getName()
       const knownErrorField = HashSet.has(inheritedErrorFieldNames, fieldName)
-      const externalField = fieldDeclaredInProject(field) === false
+      const declaredInProject = fieldDeclaredInProject(field)
+      const externalField = strictEqual(declaredInProject, false)
       const inheritedErrorField = knownErrorField && externalField
-      const keepChecks = Array.make(errorLike === false, inheritedErrorField === false)
+      const keepErrorLike = strictEqual(errorLike, false)
+      const keepInheritedErrorField = strictEqual(inheritedErrorField, false)
+      const keepChecks = Array.make(keepErrorLike, keepInheritedErrorField)
 
       return Array.some(keepChecks, Boolean)
     })
@@ -413,7 +422,7 @@ const shapeFor = (
   checker: ts.TypeChecker,
   fields: ReadonlyArray<ts.Symbol>
 ): Option.Option<string> => {
-  if (fields.length === 0) {
+  if (strictEqual(fields.length, 0)) {
     return Option.none()
   }
 
@@ -640,7 +649,7 @@ const dataStructureEntries = (context: ProgramContext): ReadonlyArray<DataStruct
   const sourceFiles = pipe(programSourceFiles, Array.filter(isProjectSourceFile))
   const declarations = Array.flatMap(sourceFiles, entriesFromSourceFile(context.checker))
 
-  return Array.dedupeWith(declarations, (first, second) => first.symbol === second.symbol)
+  return Array.dedupeWith(declarations, (first, second) => strictEqual(first.symbol, second.symbol))
 }
 
 const functionEntryForDeclaration = (
@@ -934,7 +943,7 @@ const ownerSymbol = (
 }
 
 const declarationNameIs = (node: ts.Identifier, entry: DataStructureEntry | FunctionEntry) =>
-  node === entry.nameNode
+  strictEqual(node, entry.nameNode)
 
 const fieldEntries = (
   entry: DataStructureEntry
@@ -998,9 +1007,12 @@ const propertyAccessParent = (identifier: ts.Identifier) =>
 const mechanicalForwardingPair = (access: ts.PropertyAccessExpression) => {
   const pairWithAccess = (assignment: ts.PropertyAssignment) => Tuple.make(access, assignment)
 
+  const assignmentInitializesAccess = (assignment: ts.PropertyAssignment) =>
+    strictEqual(assignment.initializer, access)
+
   return pipe(
     Option.liftPredicate(ts.isPropertyAssignment)(access.parent),
-    Option.filter((assignment) => assignment.initializer === access),
+    Option.filter(assignmentInitializesAccess),
     Option.map(pairWithAccess)
   )
 }
@@ -1013,8 +1025,9 @@ const mechanicalForwardingRead = (node: ts.Node) =>
     Option.exists((pair) => {
       const access = Tuple.get(pair, 0)
       const assignment = Tuple.get(pair, 1)
+      const assignmentName = assignment.name.getText()
 
-      return assignment.name.getText() === access.name.text
+      return strictEqual(assignmentName, access.name.text)
     })
   )
 
@@ -1081,9 +1094,11 @@ const fieldReferences = (
     return Array.make(reference)
   }
 
+  const accessNameIsNode = (access: ts.PropertyAccessExpression) => strictEqual(access.name, node)
+
   const propertyAccess = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(node.parent),
-    Option.filter((access) => access.name === node)
+    Option.filter(accessNameIsNode)
   )
 
   if (Option.isNone(propertyAccess)) {
@@ -1095,7 +1110,12 @@ const fieldReferences = (
 
   const fieldReferenceForModel = (model: DataStructureEntry) => {
     const pairWithModel = (field: ts.Symbol) => Tuple.make(model, field)
-    const fieldNamedLikeNode = (field: ts.Symbol) => field.getName() === node.text
+
+    const fieldNamedLikeNode = (field: ts.Symbol) => {
+      const fieldName = field.getName()
+
+      return strictEqual(fieldName, node.text)
+    }
 
     return pipe(
       model.fieldSymbols,
@@ -1139,10 +1159,13 @@ const modelFromMakeCall =
     const makeTargetExpression = (access: ts.PropertyAccessExpression) =>
       unwrapCallee(access.expression)
 
+    const accessNameIsMake = (access: ts.PropertyAccessExpression) =>
+      strictEqual(access.name.text, "make")
+
     return pipe(
       unwrapCallee(expression.expression),
       Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.filter((access) => access.name.text === "make"),
+      Option.filter(accessNameIsMake),
       Option.map(makeTargetExpression),
       Option.flatMap(symbolAt(checker)),
       Option.flatMap((symbol) => {
@@ -1190,15 +1213,22 @@ const constructionObject = (expression: ts.Expression) =>
     Match.orElse(Function.constant(noneObjectLiteral))
   )
 
-const spreadCopiesParameter = (parameter: ts.Identifier, property: ts.SpreadAssignment) =>
-  pipe(
+const spreadCopiesParameter = (parameter: ts.Identifier, property: ts.SpreadAssignment) => {
+  const identifierMatchesParameter = (identifier: ts.Identifier) =>
+    strictEqual(identifier.text, parameter.text)
+
+  return pipe(
     unwrapTransparentExpression(property.expression),
     Option.liftPredicate(ts.isIdentifier),
-    Option.exists((identifier) => identifier.text === parameter.text)
+    Option.exists(identifierMatchesParameter)
   )
+}
 
-const assignmentCopiesParameter = (parameter: ts.Identifier, property: ts.PropertyAssignment) =>
-  pipe(
+const assignmentCopiesParameter = (parameter: ts.Identifier, property: ts.PropertyAssignment) => {
+  const identifierMatchesParameter = (identifier: ts.Identifier) =>
+    strictEqual(identifier.text, parameter.text)
+
+  return pipe(
     unwrapTransparentExpression(property.initializer),
     Option.some,
     Option.filter(ts.isPropertyAccessExpression),
@@ -1207,15 +1237,17 @@ const assignmentCopiesParameter = (parameter: ts.Identifier, property: ts.Proper
 
       const isParameter = pipe(
         Option.liftPredicate(ts.isIdentifier)(receiver),
-        Option.exists((identifier) => identifier.text === parameter.text)
+        Option.exists(identifierMatchesParameter)
       )
 
-      const sameField = property.name.getText() === initializer.name.text
+      const propertyName = property.name.getText()
+      const sameField = strictEqual(propertyName, initializer.name.text)
       const copyChecks = Array.make(isParameter, sameField)
 
       return Array.every(copyChecks, Boolean)
     })
   )
+}
 
 const propertyCopiesParameter = (
   parameter: ts.Identifier,
@@ -1258,7 +1290,7 @@ const parameterModel = (
   }
 
   const models = Array.filterMap(definition.parameters, modelForParameter)
-  const hasSingleModel = models.length === 1
+  const hasSingleModel = strictEqual(models.length, 1)
 
   return hasSingleModel ? Array.head(models) : Option.none()
 }
@@ -1301,7 +1333,7 @@ const returnModel = (
 
 const modelShapesMatch = (source: DataStructureEntry, target: DataStructureEntry) =>
   pipe(
-    Option.zipWith(source.shape, target.shape, (left, right) => left === right),
+    Option.zipWith(source.shape, target.shape, (left, right) => strictEqual(left, right)),
     Option.getOrElse(Function.constFalse)
   )
 
@@ -1420,13 +1452,15 @@ const declarationSelfReference = (checker: ts.TypeChecker, entry: DataStructureE
   const notHeritageIdentifier = (identifier: ts.Identifier) =>
     !identifierInHeritage(entry.declaration, identifier)
 
+  const symbolEqualsEntry = (symbol: ts.Symbol) => strictEqual(symbol, entry.symbol)
+
   const nodeIsSelfReference = (node: ts.Node) =>
     pipe(
       Option.liftPredicate(ts.isIdentifier)(node),
       Option.filter(notEntryName),
       Option.filter(notHeritageIdentifier),
       Option.flatMap(symbolAt(checker)),
-      Option.exists((symbol) => symbol === entry.symbol)
+      Option.exists(symbolEqualsEntry)
     )
 
   return Iterable.some(nodes, nodeIsSelfReference)
@@ -1629,8 +1663,11 @@ export const buildConceptIndex = (context: ProgramContext) => {
 
             const declarations = symbolDeclarations(symbol) ?? Array.empty()
 
-            const declarationNamesIdentifier = (declaration: ts.Declaration) =>
-              ts.getNameOfDeclaration(declaration) === identifier
+            const declarationNamesIdentifier = (declaration: ts.Declaration) => {
+              const declarationName = ts.getNameOfDeclaration(declaration)
+
+              return strictEqual(declarationName, identifier)
+            }
 
             const fieldIsDeclaration = pipe(declarations, Array.some(declarationNamesIdentifier))
             const isMechanicalForwarding = mechanicalForwardingRead(identifier)
@@ -1673,7 +1710,8 @@ export const buildConceptIndex = (context: ProgramContext) => {
           const firstArgument = pipe(call.arguments, Array.head)
 
           const expressionIsStruct = (access: ts.PropertyAccessExpression) => {
-            const identifierIsStruct = (identifier: ts.Identifier) => identifier.text === "Struct"
+            const identifierIsStruct = (identifier: ts.Identifier) =>
+              strictEqual(identifier.text, "Struct")
 
             return pipe(
               Option.liftPredicate(ts.isIdentifier)(access.expression),
@@ -1681,9 +1719,12 @@ export const buildConceptIndex = (context: ProgramContext) => {
             )
           }
 
+          const accessNameIsGet = (access: ts.PropertyAccessExpression) =>
+            strictEqual(access.name.text, "get")
+
           const structField = pipe(
             Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
-            Option.filter((access) => access.name.text === "get"),
+            Option.filter(accessNameIsGet),
             Option.filter(expressionIsStruct),
             Option.flatMap(Function.constant(firstArgument)),
             Option.filter(ts.isStringLiteralLike),

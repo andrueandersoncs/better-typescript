@@ -4,13 +4,16 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 // FunctionKeywordNode is shared keyword syntax because owners need one node vocabulary.
 export type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
   ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
 
-const isFunctionKeywordToken = (child: ts.Node) => child.kind === ts.SyntaxKind.FunctionKeyword
+const isFunctionKeywordToken = (child: ts.Node) =>
+  strictEqual(child.kind, ts.SyntaxKind.FunctionKeyword)
 
 const functionKeywordMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
@@ -38,7 +41,7 @@ const functionKeywordMatches = (context: CheckContext) => {
         })
 
         const isOverloadSibling = (candidate: ts.FunctionDeclaration) => {
-          const isImplementation = candidate === declaration
+          const isImplementation = strictEqual(candidate, declaration)
           const body = Option.fromNullishOr(candidate.body)
           const hasNoBody = Option.isNone(body)
           const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)

@@ -9,6 +9,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeCheck } from "../defineCheck.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const booleanLiteralValue = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)
@@ -24,8 +25,11 @@ const booleanLiteralValue = (expression: ts.Expression) => {
 const isNonBooleanLiteral = (expression: ts.Expression) =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
 
-const isFalseKeyword = (expression: ts.Expression) =>
-  unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
+const isFalseKeyword = (expression: ts.Expression) => {
+  const unwrappedKind = unwrapExpression(expression).kind
+
+  return strictEqual(unwrappedKind, ts.SyntaxKind.FalseKeyword)
+}
 
 const isFalseLiteralReturn = (statement: ts.Statement) =>
   pipe(
@@ -91,7 +95,7 @@ const booleanReturnMatches = (context: CheckContext) => {
       const bothLiteral = Option.gen(function* () {
         const whenTrueLiteral = yield* trueLiteral
         const whenFalseLiteral = yield* falseLiteral
-        const literalsMatch = whenTrueLiteral === whenFalseLiteral
+        const literalsMatch = strictEqual(whenTrueLiteral, whenFalseLiteral)
 
         yield* Option.liftPredicate((value: boolean) => !value)(literalsMatch)
 

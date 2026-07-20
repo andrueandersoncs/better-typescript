@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, Result, Tuple, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Result, Tuple } from "effect"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -10,6 +10,7 @@ import {
   type CallableSemantics
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const optionalTotalityClaims = HashSet.make("find", "lookup", "maybe", "optional")
 const totalTotalityClaims = HashSet.make("require", "unsafe")
@@ -64,7 +65,7 @@ const optionalClaimContradiction =
   (match: ReturnType<typeof makeDetection>) => (semantics: CallableSemantics) => {
     const claims = claimedOptionalWords(semantics.name.words)
     const hasClaim = Array.isReadonlyArrayNonEmpty(claims)
-    const returnsTotal = semantics.result.totality === "total"
+    const returnsTotal = strictEqual(semantics.result.totality, "total")
     const conditions = Array.make(hasClaim, returnsTotal)
     const contradicts = Array.every(conditions, Boolean)
     const claimLabel = formatClaims(claims)
@@ -91,7 +92,7 @@ const totalClaimContradiction =
     const sequenceClaims = claimedTotalSequenceLabels(semantics.name.words)
     const claims = pipe(wordClaims, Array.appendAll(sequenceClaims), Array.dedupe)
     const hasClaim = Array.isReadonlyArrayNonEmpty(claims)
-    const returnsOptional = semantics.result.totality === "optional"
+    const returnsOptional = strictEqual(semantics.result.totality, "optional")
     const conditions = Array.make(hasClaim, returnsOptional)
     const contradicts = Array.every(conditions, Boolean)
     const claimLabel = formatClaims(claims)

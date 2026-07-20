@@ -12,6 +12,7 @@ import {
   type CallableSemantics
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const constantEmptyDetections = Function.constant(emptyDetections)
@@ -167,8 +168,8 @@ const conversionDirectionMatches = (context: CheckContext) => {
           )
         }
 
-        const isFromRelation = (word: string) => word === "from"
-        const isToRelation = (word: string) => word === "to"
+        const isFromRelation = (word: string) => strictEqual(word, "from")
+        const isToRelation = (word: string) => strictEqual(word, "to")
 
         const fromDirectionDetections = () =>
           completeDirectionDisagreement(semantics.name.source, semantics.name.object)

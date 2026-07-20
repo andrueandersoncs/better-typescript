@@ -2,6 +2,7 @@ import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
 import { importedMemberAt, type ImportedMember } from "../functionalCoreEffect/support.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const effectVitestModules = Array.make("@effect/vitest", "@effect/vitest/index")
 
@@ -9,7 +10,7 @@ const plainItMethods = Array.make("only", "skip", "todo", "concurrent", "sequent
 
 const moduleIsEffectVitest = (moduleSpecifier: string) =>
   Array.some(effectVitestModules, (candidate) => {
-    const exact = moduleSpecifier === candidate
+    const exact = strictEqual(moduleSpecifier, candidate)
     const nested = moduleSpecifier.startsWith(`${candidate}/`)
     const flags = Array.make(exact, nested)
 
@@ -18,7 +19,7 @@ const moduleIsEffectVitest = (moduleSpecifier: string) =>
 
 const memberIsEffectVitestIt = (member: ImportedMember) => {
   const vitestModule = moduleIsEffectVitest(member.moduleSpecifier)
-  const singlePath = member.path.length === 1
+  const singlePath = strictEqual(member.path.length, 1)
   const pathHead = Array.get(member.path, 0)
   const namedIt = pipe(pathHead, Option.contains("it"))
   const flags = Array.make(vitestModule, singlePath, namedIt)
@@ -33,18 +34,17 @@ const expressionIsEffectVitestIt = (checker: ts.TypeChecker) => (expression: ts.
   return Option.exists(member, memberIsEffectVitestIt)
 }
 
+const identifierTextIsIt = (identifier: ts.Identifier) => strictEqual(identifier.text, "it")
+
 const identifierIsIt = (expression: ts.Expression) =>
-  pipe(
-    Option.liftPredicate(ts.isIdentifier)(expression),
-    Option.exists((identifier) => identifier.text === "it")
-  )
+  pipe(Option.liftPredicate(ts.isIdentifier)(expression), Option.exists(identifierTextIsIt))
 
 // Bare it("name", cb) is plain style because it.effect is the Effect-aware entry.
 const bareItCall =
   (isVitestIt: (expression: ts.Expression) => boolean) => (callee: ts.Expression) =>
     pipe(
       Option.liftPredicate(ts.isIdentifier)(callee),
-      Option.filter((identifier) => identifier.text === "it"),
+      Option.filter(identifierTextIsIt),
       Option.exists(isVitestIt)
     )
 
@@ -76,7 +76,7 @@ const eachItCall =
       Option.exists((access) => {
         const root = unwrapTransparentExpression(access.expression)
         const rootNamedIt = identifierIsIt(root)
-        const isEach = access.name.text === "each"
+        const isEach = strictEqual(access.name.text, "each")
         const vitestIt = isVitestIt(root)
         const flags = Array.make(rootNamedIt, isEach, vitestIt)
 

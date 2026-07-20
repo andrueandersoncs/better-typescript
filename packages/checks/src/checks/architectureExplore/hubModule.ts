@@ -1,4 +1,5 @@
 import { Array, Function, Option, Predicate, Result, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -20,8 +21,12 @@ const minimumFanOut = 6
 
 const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const edges = workspaceImportEdges(elements)
-  const isInterfaceBurdenElement = (element: NamedDetection) => element.name === interfaceBurdenName
-  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+
+  const isInterfaceBurdenElement = (element: NamedDetection) =>
+    strictEqual(element.name, interfaceBurdenName)
+
+  const isModuleGraphElement = (element: NamedDetection) =>
+    strictEqual(element.name, moduleGraphName)
 
   const isProductionWorkspaceBurden = (data: InterfaceBurdenData) =>
     pipe(
@@ -61,7 +66,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
     const fanIn = pipe(
       edges,
       Array.filter((edge) => {
-        const importsWorkspacePath = edge.importedPath === workspacePath
+        const importsWorkspacePath = strictEqual(edge.importedPath, workspacePath)
         const isProductionImport = !edge.fromTest
         const conditions = Array.make(importsWorkspacePath, isProductionImport)
 
@@ -71,9 +76,12 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
       Array.dedupe
     ).length
 
+    const matchesWorkspacePath = (data: (typeof moduleGraphs)[number]) =>
+      strictEqual(data.workspacePath, workspacePath)
+
     const fanOut = pipe(
       moduleGraphs,
-      Array.findFirst((data) => data.workspacePath === workspacePath),
+      Array.findFirst(matchesWorkspacePath),
       Option.map((data) => data.importedWorkspacePaths.length),
       Option.getOrElse(Function.constant(0))
     )

@@ -1,4 +1,5 @@
 import { Array, Function, Option, Predicate, Struct, Tuple, pipe, Result } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
@@ -92,7 +93,9 @@ const parameterIdentifiers = (
     )
   })
 
-  return identifiers.length === node.parameters.length ? Option.some(identifiers) : Option.none()
+  return strictEqual(identifiers.length, node.parameters.length)
+    ? Option.some(identifiers)
+    : Option.none()
 }
 
 const forwardingRootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> => {
@@ -152,7 +155,7 @@ const isExactForwarder = (
       const parameterNames = Array.map(parameters, Struct.get("text"))
 
       return Array.match(consumedNames, {
-        onEmpty: () => parameterNames.length === 0,
+        onEmpty: () => strictEqual(parameterNames.length, 0),
         onNonEmpty: () => {
           const sameOrder = Array.every(parameterNames, (name, index) => {
             const candidate = Array.get(consumedNames, index)
@@ -160,7 +163,7 @@ const isExactForwarder = (
             return Option.contains(candidate, name)
           })
 
-          const sameLength = consumedNames.length === parameterNames.length
+          const sameLength = strictEqual(consumedNames.length, parameterNames.length)
 
           return sameOrder && sameLength
         }
@@ -191,7 +194,7 @@ const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Exp
   const publicStatements = Array.filter(sourceFile.statements, isPublicStatement)
   const reexports = Array.filter(publicStatements, ts.isExportDeclaration)
   const allReexports = Array.every(reexports, hasModuleSpecifier)
-  const onlyReexports = reexports.length === publicStatements.length
+  const onlyReexports = strictEqual(reexports.length, publicStatements.length)
 
   return allReexports && onlyReexports ? reexports : Array.empty()
 }
@@ -227,18 +230,27 @@ const passThroughElements =
       })
     }
 
+    const isEntryInSourceFile = (entry: (typeof references.entries)[number]) => {
+      const entrySourceFile = entry.nameNode.getSourceFile()
+
+      return strictEqual(entrySourceFile, sourceFile)
+    }
+
     const forwarding = pipe(
       references.entries,
-      Array.filter((entry) => entry.nameNode.getSourceFile() === sourceFile),
+      Array.filter(isEntryInSourceFile),
       Array.filter(entryIsExactForwarder),
       Array.map(detectionForEntry)
     )
 
     const reexports = reexportOnlyStatements(sourceFile)
 
+    const importsFilePath = (edge: (typeof edges)[number]) =>
+      strictEqual(edge.importedPath, filePath)
+
     const inboundPaths = pipe(
       edges,
-      Array.filter((edge) => edge.importedPath === filePath),
+      Array.filter(importsFilePath),
       Array.filter((edge) => !edge.fromTest),
       Array.map(Struct.get("importerPath")),
       Array.dedupe

@@ -5,6 +5,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const nestedScopeBoundaryKinds = HashSet.make(
   ts.SyntaxKind.ArrowFunction,
@@ -35,7 +36,7 @@ const containingIfStatementFrom =
       return containingIfStatementFrom(parentNode)(grandparent)
     }
 
-    const isElseBranch = parentNode.elseStatement === child
+    const isElseBranch = strictEqual(parentNode.elseStatement, child)
 
     return isElseBranch
       ? containingIfStatementFrom(parentNode)(grandparent)

@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { alwaysExitsScope, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -6,6 +6,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const elseStatement = Function.flow(
   Struct.get<ts.IfStatement, "elseStatement">("elseStatement"),
@@ -21,12 +22,12 @@ const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatemen
 const tokenTexts =
   (sourceFile: ts.SourceFile) =>
   (node: ts.Node): ReadonlyArray<string> => {
-    if (node.kind === ts.SyntaxKind.SemicolonToken) {
+    if (strictEqual(node.kind, ts.SyntaxKind.SemicolonToken)) {
       return Array.empty()
     }
 
     const children = node.getChildren(sourceFile)
-    const isLeafToken = children.length === 0
+    const isLeafToken = strictEqual(children.length, 0)
     const nodeText = node.getText(sourceFile)
     return isLeafToken ? Array.of(nodeText) : Array.flatMap(children, tokenTexts(sourceFile))
   }
@@ -43,8 +44,12 @@ const duplicateIfMatches = (context: CheckContext) => {
   const conditionText = (ifStatement: ts.IfStatement) =>
     ifStatement.expression.getText(context.sourceFile)
 
-  const sameBody = (firstIfStatement: ts.IfStatement) => (secondIfStatement: ts.IfStatement) =>
-    fingerprint(firstIfStatement.thenStatement) === fingerprint(secondIfStatement.thenStatement)
+  const sameBody = (firstIfStatement: ts.IfStatement) => (secondIfStatement: ts.IfStatement) => {
+    const firstFingerprint = fingerprint(firstIfStatement.thenStatement)
+    const secondFingerprint = fingerprint(secondIfStatement.thenStatement)
+
+    return strictEqual(firstFingerprint, secondFingerprint)
+  }
 
   const combineConditions = (firstIfStatement: ts.IfStatement) => (ifStatement: ts.IfStatement) => {
     const firstCondition = conditionText(firstIfStatement)
@@ -88,7 +93,7 @@ const duplicateIfMatches = (context: CheckContext) => {
     })
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
-    const isCurrentIfStatement = (statement: ts.Statement) => statement === ifStatement
+    const isCurrentIfStatement = (statement: ts.Statement) => strictEqual(statement, ifStatement)
 
     const statementBefore = (block: ts.Block) => (statementIndex: number) =>
       Option.fromNullishOr(block.statements[statementIndex - 1])
@@ -108,7 +113,8 @@ const duplicateIfMatches = (context: CheckContext) => {
         )
       : Option.none()
 
-    const isElseOfParent = (parent: ts.IfStatement) => parent.elseStatement === ifStatement
+    const isElseOfParent = (parent: ts.IfStatement) =>
+      strictEqual(parent.elseStatement, ifStatement)
 
     const bodyMatch = Option.isSome(guardDuplicateMatch)
       ? guardDuplicateMatch

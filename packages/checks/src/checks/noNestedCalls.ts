@@ -7,6 +7,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const ruleHint =
   "A call whose result feeds another call hides a sequence of steps in one expression " +
@@ -37,11 +38,12 @@ const nestedCallMatches = (context: CheckContext) => {
 
         const callerExpression = consumer.expression
         const callerName = ts.isIdentifier(callerExpression) ? callerExpression.text : undefined
-        const isPipeName = callerName === "pipe"
+        const isPipeName = strictEqual(callerName, "pipe")
         const isCallConsumer = ts.isCallExpression(consumer)
         const consumerArguments = callArguments(consumer)
         const firstArgument = Array.head(consumerArguments)
-        const isFirstArg = Option.exists(firstArgument, (arg) => arg === call)
+        const isSameCall = (arg: ts.Expression) => strictEqual(arg, call)
+        const isFirstArg = Option.exists(firstArgument, isSameCall)
         const isPipeCall = isPipeName && isFirstArg
         const isPipeFirstArg = isCallConsumer && isPipeCall
 

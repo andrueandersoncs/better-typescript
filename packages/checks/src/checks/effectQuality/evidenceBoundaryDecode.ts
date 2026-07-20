@@ -10,6 +10,7 @@ import { callIsResponseJson } from "./effectIdentity.js"
 import { emptyAdviceFindings, makeAdviceFinding } from "./makeFindings.js"
 import type { EffectQualityAdviceFinding } from "./findings.js"
 import { callIsEffectApi, isProductionRole } from "./evidenceSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const schemaDecodeNames = Array.make(
   "decodeUnknownEffect",
@@ -31,11 +32,11 @@ const callIsJsonParse = (node: ts.CallExpression) => {
     return isPropertyAccess
   }
 
-  const isParse = expression.name.text === "parse"
+  const isParse = strictEqual(expression.name.text, "parse")
   const receiver = unwrapTransparentExpression(expression.expression)
   const isIdentifier = ts.isIdentifier(receiver)
   const receiverText = isIdentifier ? receiver.text : ""
-  const isJsonName = receiverText === "JSON"
+  const isJsonName = strictEqual(receiverText, "JSON")
   const jsonParts = Array.make(isIdentifier, isJsonName)
   const jsonReceiver = Array.every(jsonParts, Boolean)
   const checks = Array.make(isParse, jsonReceiver)
@@ -53,7 +54,7 @@ const requestJsonAccess = (expression: ts.Expression) => {
 
   const method = access.name.text
   const receiver = access.expression.getText()
-  const isJsonMethod = method === "json"
+  const isJsonMethod = strictEqual(method, "json")
   const looksLikeRequest = /request|req|body|payload|event/i.test(receiver)
   const checks = Array.make(isJsonMethod, looksLikeRequest)
 

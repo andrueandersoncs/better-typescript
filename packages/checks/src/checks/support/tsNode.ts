@@ -1,6 +1,8 @@
-import { Array, Function, HashSet, Match, pipe, Option, Struct } from "effect"
+import { Array, Function, HashSet, Match, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { stringLiteralLikeText } from "./stringLiteralText.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 // FunctionInitializer is the shared function shape because owners must agree.
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
@@ -126,19 +128,24 @@ const expressionBodiedArrow = (definition: FunctionDefinition) =>
 export const returnStatementExpression = (statement: ts.ReturnStatement) =>
   Option.fromNullishOr(statement.expression)
 
-export const singleStatementReturnExpression = (body: ts.Block) =>
-  pipe(
+export const singleStatementReturnExpression = (body: ts.Block) => {
+  const hasSingleStatement = (statements: ReadonlyArray<ts.Statement>) =>
+    strictEqual(statements.length, 1)
+
+  return pipe(
     body.statements,
-    Option.liftPredicate((statements) => statements.length === 1),
+    Option.liftPredicate(hasSingleStatement),
     Option.flatMap(Array.head),
     Option.filter(ts.isReturnStatement),
     Option.flatMap(returnStatementExpression)
   )
+}
 
 const blockReturnStatements = (body: ts.Block) =>
   Array.filter(body.statements, ts.isReturnStatement)
 
-const singleReturnHasOne = (returns: ReadonlyArray<ts.ReturnStatement>) => returns.length === 1
+const singleReturnHasOne = (returns: ReadonlyArray<ts.ReturnStatement>) =>
+  strictEqual(returns.length, 1)
 
 const firstReturnExpression = (returns: ReadonlyArray<ts.ReturnStatement>) =>
   pipe(Array.head(returns), Option.flatMap(returnStatementExpression))
@@ -243,7 +250,7 @@ export const unwrapSingleStatementBlock = (statement: ts.Statement) => {
     return statement
   }
 
-  const hasOneStatement = statement.statements.length === 1
+  const hasOneStatement = strictEqual(statement.statements.length, 1)
 
   return hasOneStatement ? statement.statements[0] : statement
 }
@@ -268,7 +275,7 @@ export const alwaysExitsScope = (statement: ts.Statement): boolean => {
 }
 
 export const isExtendsClause = (clause: ts.HeritageClause) =>
-  clause.token === ts.SyntaxKind.ExtendsKeyword
+  strictEqual(clause.token, ts.SyntaxKind.ExtendsKeyword)
 
 export const isProjectFile = (sourceFile: ts.SourceFile) =>
   !sourceFile.fileName.replaceAll("\\", "/").includes("/node_modules/")
@@ -280,8 +287,8 @@ export const isFirstPartySymbol = (symbol: ts.Symbol) => {
   return Array.some(sourceFiles, isProjectFile)
 }
 
-const isExportKeyword = (modifier: ts.Modifier): boolean =>
-  modifier.kind === ts.SyntaxKind.ExportKeyword
+const isExportKeyword = (modifier: ts.Modifier) =>
+  strictEqual(modifier.kind, ts.SyntaxKind.ExportKeyword)
 
 export const hasExportModifier = (statement: ts.Statement) => {
   const modifiers = ts.canHaveModifiers(statement)
@@ -291,8 +298,8 @@ export const hasExportModifier = (statement: ts.Statement) => {
   return Array.some(modifiers, isExportKeyword)
 }
 
-const isDeclareKeyword = (modifier: ts.ModifierLike): boolean =>
-  modifier.kind === ts.SyntaxKind.DeclareKeyword
+const isDeclareKeyword = (modifier: ts.ModifierLike) =>
+  strictEqual(modifier.kind, ts.SyntaxKind.DeclareKeyword)
 
 // Treat ambient decls as external because they mirror a dependency contract, not an author choice.
 export const isInAmbientContext = (node: ts.Node): boolean => {
@@ -327,8 +334,9 @@ export const returnTypeDeclarationKinds: ReadonlyArray<ts.SyntaxKind> = Array.ma
 )
 
 export const containsUndefinedKeyword = (node: ts.Node): boolean => {
-  const isUndefinedKeyword = node.kind === ts.SyntaxKind.UndefinedKeyword
-  const childContainsUndefinedKeyword = ts.forEachChild(node, containsUndefinedKeyword) === true
+  const isUndefinedKeyword = strictEqual(node.kind, ts.SyntaxKind.UndefinedKeyword)
+  const childResult = ts.forEachChild(node, containsUndefinedKeyword)
+  const childContainsUndefinedKeyword = strictEqual(childResult, true)
   const conditions = Array.make(isUndefinedKeyword, childContainsUndefinedKeyword)
 
   return Array.some(conditions, Boolean)
@@ -348,7 +356,7 @@ export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnT
 
 const containsAnyKeyword = (node: ts.Node): boolean => {
   const anyKeywordChild = (child: ts.Node) => (containsAnyKeyword(child) ? child : void 0)
-  const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
+  const isAnyKeyword = strictEqual(node.kind, ts.SyntaxKind.AnyKeyword)
   const anyChild = ts.forEachChild(node, anyKeywordChild)
   const hasAnyDescendant = pipe(Option.fromNullishOr(anyChild), Option.isSome)
   const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)

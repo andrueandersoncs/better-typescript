@@ -9,6 +9,7 @@ import type { ProgramContext } from "@better-typescript/core/engine/sources/data
 import { makePlannedCheck } from "../defineCheck.js"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const functionNameFromVariableDeclaration = (declaration: ts.VariableDeclaration) =>
   Option.gen(function* () {
@@ -102,7 +103,7 @@ const duplicateNameListeners = (
         (fileName) => fileName !== candidateFileName
       )
 
-      if (otherFileNames.length === 0) {
+      if (strictEqual(otherFileNames.length, 0)) {
         return Result.failVoid
       }
 
@@ -111,7 +112,7 @@ const duplicateNameListeners = (
       const taken = Array.take(relativeFileNames, maxListedFileNames)
       const listedFileNames = Array.join(taken, ", ")
       const remainingCount = relativeFileNames.length - maxListedFileNames
-      const isSingleFile = remainingCount === 1
+      const isSingleFile = strictEqual(remainingCount, 1)
 
       const otherFiles =
         remainingCount > 0

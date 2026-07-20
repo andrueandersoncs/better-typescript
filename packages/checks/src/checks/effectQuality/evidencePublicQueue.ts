@@ -9,6 +9,7 @@ import { isTestRole } from "./architectureRoles.js"
 import { emptyAdviceFindings, makeAdviceFinding } from "./makeFindings.js"
 import type { EffectQualityAdviceFinding } from "./findings.js"
 import { apiSubject, callIsEffectApi, isProductionRole } from "./evidenceSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const queueConstructorNames = Array.make("make", "bounded", "unbounded", "dropping", "sliding")
 
@@ -202,7 +203,7 @@ export const publicQueue =
   (role: ArchitectureRole) =>
   (node: ts.Node): ReadonlyArray<EffectQualityAdviceFinding> => {
     // Ports already forbid infrastructure contracts via FCE because other public surfaces need advice.
-    const isPort = role === "port"
+    const isPort = strictEqual(role, "port")
     const testRole = isTestRole(role)
     const nonProduction = !isProductionRole(role)
     const skipRoles = Array.make(isPort, testRole, nonProduction)

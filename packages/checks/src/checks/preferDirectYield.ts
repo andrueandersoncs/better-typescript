@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -6,6 +6,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeCheck } from "../defineCheck.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid binding an Effect only to yield* it."
 
@@ -23,7 +24,7 @@ const lacksAsteriskToken = (node: ts.FunctionExpression | ts.YieldExpression) =>
 
 const isYieldStarOfIdentifier = (identifier: ts.Identifier) => {
   const yieldsIdentifier = (yieldExpression: ts.YieldExpression) =>
-    yieldExpression.expression === identifier
+    strictEqual(yieldExpression.expression, identifier)
 
   return pipe(
     Option.liftPredicate(ts.isYieldExpression)(identifier.parent),
@@ -37,14 +38,18 @@ const preferDirectYieldMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) => {
-    const hasMethodName = (access: ts.PropertyAccessExpression) => access.name.text === methodName
+    const hasMethodName = (access: ts.PropertyAccessExpression) =>
+      strictEqual(access.name.text, methodName)
 
-    const isEffectRoot = (access: ts.PropertyAccessExpression) =>
-      pipe(
+    const isEffectRoot = (access: ts.PropertyAccessExpression) => {
+      const isEffectText = (text: string) => strictEqual(text, "Effect")
+
+      return pipe(
         Option.liftPredicate(ts.isIdentifier)(access.expression),
         Option.map(Struct.get("text")),
-        Option.exists((text) => text === "Effect")
+        Option.exists(isEffectText)
       )
+    }
 
     const symbolAtAccessName = (access: ts.PropertyAccessExpression) =>
       pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
@@ -142,7 +147,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
           node: ts.Node
         ): ReadonlyArray<ts.Identifier> => {
           const isNotBindingName = (candidate: ts.Node) => candidate !== name
-          const isSameSymbol = (candidate: ts.Symbol) => candidate === symbol
+          const isSameSymbol = (candidate: ts.Symbol) => strictEqual(candidate, symbol)
 
           const appendIdentifier = (identifier: ts.Identifier) =>
             Array.append(references, identifier)
@@ -167,7 +172,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
         const foldReferences = foldAst(appendMatchingReference)(generator)
         const references = foldReferences(emptyReferences)
-        const hasOneReference = references.length === 1
+        const hasOneReference = strictEqual(references.length, 1)
 
         yield* Option.liftPredicate((value: boolean) => value)(hasOneReference)
 

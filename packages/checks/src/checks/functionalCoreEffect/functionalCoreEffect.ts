@@ -1,4 +1,5 @@
 import { Array, Function, Match, Option, Record as EffectRecord, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { withProgramIndex } from "../../defineCheck.js"
@@ -43,6 +44,7 @@ import {
   resourceSubjectAt,
   hasSourceFileScope,
   typeReferenceIsGlobalPromise,
+  specifierIsEffect,
   type ImportedMember
 } from "./support.js"
 import { classDeclarationName, variableDeclarationInitializer } from "../support/tsNode.js"
@@ -213,7 +215,8 @@ const forbiddenDomainNamespaces: Readonly<Record<string, true>> = {
   Semaphore: true
 }
 
-const namespaceIsForbidden = (namespace: string) => forbiddenDomainNamespaces[namespace] === true
+const namespaceIsForbidden = (namespace: string) =>
+  strictEqual(forbiddenDomainNamespaces[namespace], true)
 
 const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<string>) => {
   if (moduleSpecifier.startsWith("effect/")) {
@@ -224,7 +227,7 @@ const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<st
     return pipe(namespace, Option.exists(namespaceIsForbidden))
   }
 
-  const isEffectModule = moduleSpecifier === "effect"
+  const isEffectModule = strictEqual(moduleSpecifier, "effect")
   const pathHead = Array.get(path, 0)
 
   const namespaceForbidden = pipe(
@@ -295,17 +298,21 @@ const memberIsForbiddenDomain3 = (member: ImportedMember) =>
 const bareBindingForbiddenSubject = (binding: Option.Option<ImportedMember>) =>
   pipe(binding, Option.filter(memberIsForbiddenDomain3), Option.map(Struct.get("moduleSpecifier")))
 
-const identifierIsPropertyAccessRoot = (parent: ts.Node, current: ts.Identifier) =>
-  pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
-    Option.exists((access) => access.expression === current)
-  )
+const identifierIsPropertyAccessRoot = (parent: ts.Node, current: ts.Identifier) => {
+  const expressionIsCurrent = (access: ts.PropertyAccessExpression) =>
+    strictEqual(access.expression, current)
 
-const identifierIsQualifiedNameRoot = (parent: ts.Node, current: ts.Identifier) =>
-  pipe(
-    Option.liftPredicate(ts.isQualifiedName)(parent),
-    Option.exists((qualified) => qualified.left === current)
+  return pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
+    Option.exists(expressionIsCurrent)
   )
+}
+
+const identifierIsQualifiedNameRoot = (parent: ts.Node, current: ts.Identifier) => {
+  const leftIsCurrent = (qualified: ts.QualifiedName) => strictEqual(qualified.left, current)
+
+  return pipe(Option.liftPredicate(ts.isQualifiedName)(parent), Option.exists(leftIsCurrent))
+}
 
 const namespaceBindingSubject = (context: CheckContext, identifier: ts.Identifier) => {
   const symbolAtIdentifier = context.checker.getSymbolAtLocation(identifier)
@@ -315,12 +322,15 @@ const namespaceBindingSubject = (context: CheckContext, identifier: ts.Identifie
   return pipe(
     Option.all({ bindingSymbol: bindingSymbolOption, binding }),
     Option.flatMap(({ bindingSymbol }) => {
-      const referencesBinding = (candidate: ts.Identifier) =>
-        context.checker.getSymbolAtLocation(candidate) === bindingSymbol
+      const referencesBinding = (candidate: ts.Identifier) => {
+        const candidateSymbol = context.checker.getSymbolAtLocation(candidate)
+        return strictEqual(candidateSymbol, bindingSymbol)
+      }
 
       const subjectFromIdentifier = (current: ts.Identifier): Option.Option<string> => {
-        const isSelf = current === identifier
-        const unbound = referencesBinding(current) === false
+        const isSelf = strictEqual(current, identifier)
+        const bound = referencesBinding(current)
+        const unbound = strictEqual(bound, false)
         const skipChecks = Array.make(isSelf, unbound)
 
         if (Array.some(skipChecks, Boolean)) {
@@ -374,7 +384,7 @@ const forbiddenDomainMemberAt = (
   pipe(
     importedMemberAt(context.checker, identifier),
     Option.flatMap((member) => {
-      const isNamespaceBinding = member.path.length === 0
+      const isNamespaceBinding = strictEqual(member.path.length, 0)
       const inspectFlags = Array.make(inspectNamespaceUsage, isNamespaceBinding)
       const shouldInspectNamespace = Array.every(inspectFlags, Boolean)
 
@@ -489,14 +499,13 @@ const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
           subject
         )
 
-      const domainDetection =
-        resolvedRole === "domain"
-          ? pipe(
-              forbiddenDomainImport(context, node),
-              Option.map(domainEffectProgramDetection),
-              Option.toArray
-            )
-          : emptyDetections
+      const domainDetection = strictEqual(resolvedRole, "domain")
+        ? pipe(
+            forbiddenDomainImport(context, node),
+            Option.map(domainEffectProgramDetection),
+            Option.toArray
+          )
+        : emptyDetections
 
       const importProvidesRuntime = importHasRuntimeValue(node)
       const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
@@ -576,7 +585,7 @@ const forbiddenDomainExport = (context: CheckContext, declaration: ts.ExportDecl
   return firstForbiddenDomainMember(context, identifiers, false)
 }
 
-const exportElementIsValue = (element: ts.ExportSpecifier) => element.isTypeOnly === false
+const exportElementIsValue = (element: ts.ExportSpecifier) => strictEqual(element.isTypeOnly, false)
 
 const namedExportsHaveValue = (named: ts.NamedExports) =>
   Array.some(named.elements, exportElementIsValue)
@@ -590,7 +599,7 @@ const exportClauseAllowsRuntime = (exportClause: ts.NamedExportBindings) =>
   )
 
 const exportHasRuntimeValue = (declaration: ts.ExportDeclaration) => {
-  const isValueExport = declaration.isTypeOnly === false
+  const isValueExport = strictEqual(declaration.isTypeOnly, false)
   const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
 
   const clauseAllowsRuntime = Option.match(exportClauseOption, {
@@ -657,14 +666,13 @@ const architectureExportElements = (index: FunctionalCoreEffectIndex) => {
           subject
         )
 
-      const domainDetection =
-        resolvedRole === "domain"
-          ? pipe(
-              forbiddenDomainExport(context, node),
-              Option.map(domainEffectProgramDetection2),
-              Option.toArray
-            )
-          : emptyDetections
+      const domainDetection = strictEqual(resolvedRole, "domain")
+        ? pipe(
+            forbiddenDomainExport(context, node),
+            Option.map(domainEffectProgramDetection2),
+            Option.toArray
+          )
+        : emptyDetections
 
       const exportProvidesRuntime = exportHasRuntimeValue(node)
       const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
@@ -800,7 +808,7 @@ const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression) 
         member.moduleSpecifier.startsWith(prefix)
       )
 
-      const isRunMain = name === "runMain"
+      const isRunMain = strictEqual(name, "runMain")
       return platformRuntime && isRunMain
     })
   )
@@ -819,7 +827,7 @@ const callIsProvisioning = (context: CheckContext, node: ts.CallExpression) => {
   )
 
   const referenceOverride = callIsReferenceProvideService(context.checker, node)
-  const needsProvisioning = referenceOverride === false
+  const needsProvisioning = strictEqual(referenceOverride, false)
   const effectProvisioningChecks = Array.make(effectProvide, needsProvisioning)
   const effectProvisioning = Array.every(effectProvisioningChecks, Boolean)
 
@@ -885,7 +893,7 @@ const callExpressionElements =
 
     const resolvedRole = role.value
 
-    if (resolvedRole === "test") {
+    if (strictEqual(resolvedRole, "test")) {
       return emptyDetections
     }
 
@@ -923,7 +931,7 @@ const callExpressionElements =
     )
 
     const provisioning = detectionWhen(shouldReportProvisioning, provisioningDetection)
-    const isPort = resolvedRole === "port"
+    const isPort = strictEqual(resolvedRole, "port")
     const isPortLayerCall = callIsPortLayer(context, node)
     const shouldReportPortLayer = isPort && isPortLayerCall
 
@@ -969,7 +977,7 @@ const callExpressionElements =
     )
 
     const hasSuspension = hasSuspensionBoundary(context.checker, node)
-    const lacksSuspension = hasSuspension === false
+    const lacksSuspension = strictEqual(hasSuspension, false)
 
     const unsuspendedAdapterEffectDetection = (capability: string) =>
       boundaryDetection(
@@ -990,8 +998,8 @@ const callExpressionElements =
 
     const hasScopedLifecycle = hasScopedLifecycleAncestor(context.checker, node)
     const fileScopesFunction = hasSourceFileScope(context, node)
-    const lacksScopedLifecycle = hasScopedLifecycle === false
-    const lacksFileScope = fileScopesFunction === false
+    const lacksScopedLifecycle = strictEqual(hasScopedLifecycle, false)
+    const lacksFileScope = strictEqual(fileScopesFunction, false)
     const unscopedChecks = Array.make(lacksScopedLifecycle, lacksFileScope)
     const unscoped = Array.every(unscopedChecks, Boolean)
 
@@ -1052,7 +1060,7 @@ const newExpressionElements =
 
     const resolvedRole = role.value
 
-    if (resolvedRole === "test") {
+    if (strictEqual(resolvedRole, "test")) {
       return emptyDetections
     }
 
@@ -1060,7 +1068,7 @@ const newExpressionElements =
     const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
     const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
     const hasSuspension = hasSuspensionBoundary(context.checker, node)
-    const lacksSuspension = hasSuspension === false
+    const lacksSuspension = strictEqual(hasSuspension, false)
 
     const directCapabilityDetection4 = (subject: string) =>
       boundaryDetection(context, node.expression, resolvedRole, "direct-capability", subject)
@@ -1091,8 +1099,8 @@ const newExpressionElements =
 
     const hasScopedLifecycle = hasScopedLifecycleAncestor(context.checker, node)
     const fileScopesFunction = hasSourceFileScope(context, node)
-    const lacksScopedLifecycle = hasScopedLifecycle === false
-    const lacksFileScope = fileScopesFunction === false
+    const lacksScopedLifecycle = strictEqual(hasScopedLifecycle, false)
+    const lacksFileScope = strictEqual(fileScopesFunction, false)
     const unscopedChecks = Array.make(lacksScopedLifecycle, lacksFileScope)
     const unscoped = Array.every(unscopedChecks, Boolean)
 
@@ -1125,7 +1133,7 @@ const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
 
       const resolvedRole = role.value
 
-      if (resolvedRole === "test") {
+      if (strictEqual(resolvedRole, "test")) {
         return emptyDetections
       }
 
@@ -1133,7 +1141,7 @@ const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
       const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
       const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
       const hasSuspension = hasSuspensionBoundary(context.checker, node)
-      const lacksSuspension = hasSuspension === false
+      const lacksSuspension = strictEqual(hasSuspension, false)
 
       const directCapabilityDetection5 = (subject: string) =>
         boundaryDetection(context, node, resolvedRole, "direct-capability", subject)
@@ -1156,10 +1164,11 @@ const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
         Option.toArray
       )
 
+      const accessIsNamedLayer = (access: ts.PropertyAccessExpression) =>
+        strictEqual(access.name.text, "layer")
+
       const layerSelection = pipe(
-        Option.liftPredicate((access: ts.PropertyAccessExpression) => access.name.text === "layer")(
-          node
-        ),
+        Option.liftPredicate(accessIsNamedLayer)(node),
         Option.flatMap((access) => {
           const expressionSymbol = context.checker.getSymbolAtLocation(access.expression)
           const symbolOption = Option.fromNullishOr(expressionSymbol)
@@ -1330,7 +1339,7 @@ const barrelPathNamespace = (path: ReadonlyArray<string>) =>
 
 const effectNamespaceFromMember = (member: ImportedMember) =>
   pipe(
-    Option.liftPredicate((specifier: string) => specifier === "effect")(member.moduleSpecifier),
+    Option.liftPredicate(specifierIsEffect)(member.moduleSpecifier),
     Option.map(() => barrelPathNamespace(member.path)),
     Option.orElse(() =>
       pipe(
@@ -1357,7 +1366,7 @@ const typeReferenceSubject = (
     importedTypeMemberAt(context.checker, node.typeName),
     Option.filter((member) => {
       const effectNamespace = effectNamespaceFromMember(member)
-      const stateOrRuntime = forbiddenContractEffectNamespaces[effectNamespace] === true
+      const stateOrRuntime = strictEqual(forbiddenContractEffectNamespaces[effectNamespace], true)
       const capability = moduleMatchesPolicyPrefix(policy, member.moduleSpecifier)
       const emptyName = Function.constant("")
       const lastOption = Array.last(member.path)
@@ -1380,8 +1389,11 @@ const typeReferenceSubject = (
   const typeNameSymbol = context.checker.getSymbolAtLocation(node.typeName)
   const symbolOption = Option.fromNullishOr(typeNameSymbol)
 
-  const someOf = (symbol: ts.Symbol) =>
-    Array.some(visited, (candidate) => candidate === symbol) === false
+  const someOf = (symbol: ts.Symbol) => {
+    const candidateEqualsSymbol = (candidate: ts.Symbol) => strictEqual(candidate, symbol)
+    const alreadyVisited = Array.some(visited, candidateEqualsSymbol)
+    return strictEqual(alreadyVisited, false)
+  }
 
   return pipe(
     symbolOption,
@@ -1430,9 +1442,13 @@ const typeIsServiceLocator = (
     })
   )
 
-  const someOf2 = (symbol: ts.Symbol) => Array.some(visited, (candidate) => candidate === symbol)
+  const someOf2 = (symbol: ts.Symbol) => {
+    const candidateEqualsSymbol = (candidate: ts.Symbol) => strictEqual(candidate, symbol)
+    return Array.some(visited, candidateEqualsSymbol)
+  }
+
   const alreadyVisited = pipe(symbolOption, Option.exists(someOf2))
-  const notVisited = alreadyVisited === false
+  const notVisited = strictEqual(alreadyVisited, false)
 
   const nested = pipe(
     symbolOption,
@@ -1464,8 +1480,8 @@ const typeReferenceElements =
     }
 
     const resolvedRole = role.value
-    const isTestRole = resolvedRole === "test"
-    const isRootRole = resolvedRole === "root"
+    const isTestRole = strictEqual(resolvedRole, "test")
+    const isRootRole = strictEqual(resolvedRole, "root")
     const skippedRoles = Array.make(isTestRole, isRootRole)
 
     if (Array.some(skippedRoles, Boolean)) {
@@ -1484,7 +1500,7 @@ const typeReferenceElements =
     )
 
     const serviceLocator = detectionWhen(isServiceLocatorType, serviceLocatorDetection)
-    const isPortRole = resolvedRole === "port"
+    const isPortRole = strictEqual(resolvedRole, "port")
     const isTopLevelExport = isTopLevelExportedDeclaration(node)
     const shouldCheckInfrastructure = isPortRole && isTopLevelExport
 
@@ -1499,7 +1515,7 @@ const typeReferenceElements =
         )
       : emptyDetections
 
-    const isDomainRole = resolvedRole === "domain"
+    const isDomainRole = strictEqual(resolvedRole, "domain")
     const isGlobalPromise = typeReferenceIsGlobalPromise(context, node)
     const shouldCheckDomainPromise = isDomainRole && isGlobalPromise
 
@@ -1543,7 +1559,8 @@ const asyncKeywordElements =
     return Array.of(domainPromise)
   }
 
-const isAsyncKeyword = (node: ts.Node): node is ts.Node => node.kind === ts.SyntaxKind.AsyncKeyword
+const isAsyncKeyword = (node: ts.Node): node is ts.Node =>
+  strictEqual(node.kind, ts.SyntaxKind.AsyncKeyword)
 
 const exportKinds = Array.of(ts.SyntaxKind.ExportDeclaration)
 const asyncKeywordKinds = Array.of(ts.SyntaxKind.AsyncKeyword)

@@ -13,6 +13,7 @@ import {
   type ResultCardinality
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const resultCardinality = (value: ResultCardinality) => value
 
@@ -105,11 +106,11 @@ const isConfidentlySingular = (word: string) => {
 }
 
 const singularize = (word: string) => {
-  if (word === "children") {
+  if (strictEqual(word, "children")) {
     return "child"
   }
 
-  if (word === "people") {
+  if (strictEqual(word, "people")) {
     return "person"
   }
 
@@ -151,11 +152,11 @@ const singularize = (word: string) => {
 const yVowels = Array.make("a", "e", "i", "o", "u")
 
 const pluralize = (word: string) => {
-  if (word === "child") {
+  if (strictEqual(word, "child")) {
     return "children"
   }
 
-  if (word === "person") {
+  if (strictEqual(word, "person")) {
     return "people"
   }
 
@@ -222,7 +223,7 @@ const cardinalityContradiction =
       const cardinality = semantics.result.cardinality
       const expectsSingular = Array.contains(singularCardinality, cardinality)
       const expectsPlural = Array.contains(pluralCardinality, cardinality)
-      const namedObject = semantics.result.shape === "object"
+      const namedObject = strictEqual(semantics.result.shape, "object")
       const pluralClaim = isConfidentlyPlural(claimed)
       const singularClaim = isConfidentlySingular(claimed)
       const singularPluralMismatch = Array.make(expectsSingular, pluralClaim, !namedObject)

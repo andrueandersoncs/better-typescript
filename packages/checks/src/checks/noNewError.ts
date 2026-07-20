@@ -5,15 +5,19 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const newExpressionKind = ts.SyntaxKind.NewExpression
 
 const newErrorElements = (context: CheckContext) => {
   const element = makeDetection(context)
 
   const matches = (node: ts.NewExpression): ReadonlyArray<Detection> => {
+    const isErrorIdentifier = (expression: ts.Identifier) => strictEqual(expression.text, "Error")
+
     const isBareError = pipe(
       Option.liftPredicate(ts.isIdentifier)(node.expression),
-      Option.exists((expression) => expression.text === "Error")
+      Option.exists(isErrorIdentifier)
     )
 
     const reported = element({

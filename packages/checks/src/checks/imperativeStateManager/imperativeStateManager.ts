@@ -1,7 +1,8 @@
 import { Array, Function, Option, Schema, pipe } from "effect"
 import { Advice, type EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
-import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
+import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { packageExamples } from "../../defineCheck.js"
 import { ImperativeStateSignals, MutationElementData } from "./data.js"
@@ -10,7 +11,9 @@ export const imperativeStateManagerExamples = packageExamples("imperative-state-
 
 const isSharedStateMutation = (element: Detection) => {
   const data = Option.fromNullishOr(element.data)
-  const isSharedStateTarget = (value: MutationElementData) => value.target === "shared-state"
+
+  const isSharedStateTarget = (value: MutationElementData) =>
+    strictEqual(value.target, "shared-state")
 
   const sharedState = pipe(
     data,
@@ -23,7 +26,8 @@ const isSharedStateMutation = (element: Detection) => {
 }
 
 const sharedMutationCountAt = (path: string) => (elements: ReadonlyArray<Detection>) => {
-  const atPath = Array.filter(elements, detectionAtPath(path))
+  const matchesPath = (element: Detection) => strictEqual(element.location.path, path)
+  const atPath = Array.filter(elements, matchesPath)
   const sharedStateMutations = Array.filter(atPath, isSharedStateMutation)
 
   return sharedStateMutations.length

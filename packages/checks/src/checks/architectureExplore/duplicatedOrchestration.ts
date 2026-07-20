@@ -1,4 +1,5 @@
 import { Array, Function, Option, Record, Result, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -17,9 +18,12 @@ const minimumDuplicateSites = 2
 const duplicatedOrchestrationAdvice = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
+  const isCompositionFingerprintElement = (element: NamedDetection) =>
+    strictEqual(element.name, compositionFingerprintsName)
+
   const fingerprintElements = pipe(
     elements,
-    Array.filter((element) => element.name === compositionFingerprintsName),
+    Array.filter(isCompositionFingerprintElement),
     Array.filter(Function.flow(compositionFingerprintDataOf, Option.isSome))
   )
 

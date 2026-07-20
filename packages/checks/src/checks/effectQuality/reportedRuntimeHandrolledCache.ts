@@ -5,6 +5,7 @@ import type { EffectQualityRuleFinding } from "./findings.js"
 import type { EffectQualityIndex } from "./index.js"
 import { makeRuleFinding } from "./makeFindings.js"
 import { typeSymbolName } from "./reportedRuntimeSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const handrolledTtlCacheFinding = makeRuleFinding("handrolled-ttl-cache")
 
@@ -12,7 +13,7 @@ const inflightDedupeMapFinding = makeRuleFinding("inflight-dedupe-map")
 
 const emptyTypes = Array.empty<ts.Type>()
 
-const identifierTextIsMap = (identifier: ts.Identifier) => identifier.text === "Map"
+const identifierTextIsMap = (identifier: ts.Identifier) => strictEqual(identifier.text, "Map")
 
 const isMapIdentifier = (expression: ts.Expression) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(expression), Option.exists(identifierTextIsMap))
@@ -56,11 +57,12 @@ const typeMentionsConstructor =
   (name: string) =>
   (type: ts.Type): boolean => {
     const visit = (current: ts.Type, seen: ReadonlyArray<ts.Type>): boolean => {
-      const alreadySeen = Array.some(seen, (previous) => previous === current)
-      const notSeen = alreadySeen === false
+      const previousEqualsCurrent = (previous: ts.Type) => strictEqual(previous, current)
+      const alreadySeen = Array.some(seen, previousEqualsCurrent)
+      const notSeen = strictEqual(alreadySeen, false)
       const nextSeen = Array.append(seen, current)
       const symbolName = typeSymbolName(current)
-      const matchesName = symbolName === name
+      const matchesName = strictEqual(symbolName, name)
       const unionParts = current.isUnionOrIntersection() ? current.types : emptyTypes
       const visitNext = (candidate: ts.Type) => visit(candidate, nextSeen)
       const unionMentions = Array.some(unionParts, visitNext)

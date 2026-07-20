@@ -6,6 +6,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const message = "Avoid conditional object spreads."
 
 const hint =
@@ -18,7 +20,11 @@ const objectLiteralPropertyCount = (expression: ts.Expression) => {
   return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
 }
 
-const hasNoProperties = (expression: ts.Expression) => objectLiteralPropertyCount(expression) === 0
+const hasNoProperties = (expression: ts.Expression) => {
+  const propertyCount = objectLiteralPropertyCount(expression)
+
+  return strictEqual(propertyCount, 0)
+}
 
 const hasSomeProperties = (expression: ts.Expression) => objectLiteralPropertyCount(expression) > 0
 

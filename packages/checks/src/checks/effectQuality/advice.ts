@@ -6,6 +6,7 @@ import type { Signal } from "@better-typescript/core/engine/signal/data"
 import { packageExamples } from "../../defineCheck.js"
 import { EffectQualityAdviceData, type EffectQualityAdviceKind } from "./data.js"
 import { effectQualityAdviceCheckName } from "./names.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const titles: Readonly<Record<EffectQualityAdviceKind, string>> = {
   "config-refined-values": "refine configuration values",
@@ -64,9 +65,12 @@ const remediations: Readonly<Record<EffectQualityAdviceKind, string>> = {
     "Prefer Effect's typed HTTP client unless a documented raw-fetch exception applies."
 }
 
+const isEffectQualityAdviceSignal = (signal: Signal) =>
+  strictEqual(signal.name, effectQualityAdviceCheckName)
+
 const evidenceDetections = (signals: ReadonlyArray<Signal>): ReadonlyArray<Detection> =>
   pipe(
-    Array.findFirst(signals, (signal) => signal.name === effectQualityAdviceCheckName),
+    Array.findFirst(signals, isEffectQualityAdviceSignal),
     Option.map(Struct.get("detections")),
     Option.getOrElse(Array.empty<Detection>)
   )

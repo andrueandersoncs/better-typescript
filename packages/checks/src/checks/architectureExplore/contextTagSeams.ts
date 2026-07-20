@@ -1,4 +1,16 @@
-import { Array, Function, HashMap, Option, Struct, Tuple, flow, pipe, Result } from "effect"
+import {
+  Array,
+  Equivalence,
+  Function,
+  HashMap,
+  Option,
+  Struct,
+  Tuple,
+  flow,
+  pipe,
+  Result
+} from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { makeSilentCheck, withProgramIndex } from "../../defineCheck.js"
@@ -40,14 +52,14 @@ const effectRootSymbol = (checker: ts.TypeChecker) => (access: ts.PropertyAccess
   )
 
 const rootIsContextSeam = (root: ts.Identifier, member: string) => {
-  const isContextRoot = root.text === "Context"
+  const isContextRoot = strictEqual(root.text, "Context")
   const isContextMember = Array.contains(contextSeamMembers, member)
 
   return isContextRoot && isContextMember
 }
 
 const rootIsEffectSeam = (root: ts.Identifier, member: string) => {
-  const isEffectRoot = root.text === "Effect"
+  const isEffectRoot = strictEqual(root.text, "Effect")
   const isEffectMember = Array.contains(effectSeamMembers, member)
 
   return isEffectRoot && isEffectMember
@@ -148,7 +160,9 @@ const ancestorMatching =
   }
 
 const referenceIsInsideDeclaration = (declaration: ts.Node) => (node: ts.Node) => {
-  const sameFile = node.getSourceFile() === declaration.getSourceFile()
+  const nodeSourceFile = node.getSourceFile()
+  const declarationSourceFile = declaration.getSourceFile()
+  const sameFile = strictEqual(nodeSourceFile, declarationSourceFile)
   const afterStart = node.pos >= declaration.pos
   const beforeEnd = node.end <= declaration.end
   const checks = Array.make(sameFile, afterStart, beforeEnd)
@@ -173,8 +187,10 @@ const isNotImportDeclarationAncestor = (identifier: ts.Identifier) =>
 const isNotTypePositionReference = (identifier: ts.Identifier) =>
   !isTypePositionReference(identifier)
 
+const nodeStrictEqual = Equivalence.strictEqual<ts.Node>()
+
 const argumentEqualsCurrent = (current: ts.Node) => (argument: ts.Expression) =>
-  argument === current
+  nodeStrictEqual(argument, current)
 
 const argumentCallExpression = (node: ts.Node) => {
   const visit = (current: ts.Node): Option.Option<ts.CallExpression> => {
@@ -182,7 +198,7 @@ const argumentCallExpression = (node: ts.Node) => {
     const parenthesizedParent = Option.liftPredicate(ts.isParenthesizedExpression)(parent)
 
     const expressionIsCurrent = (expression: ts.ParenthesizedExpression) =>
-      expression.expression === current
+      strictEqual(expression.expression, current)
 
     const unwrapParenthesis = Option.exists(parenthesizedParent, expressionIsCurrent)
 
@@ -202,11 +218,14 @@ const argumentCallExpression = (node: ts.Node) => {
   return visit(node)
 }
 
-const accessIsLayerRoot = (access: ts.PropertyAccessExpression) =>
-  pipe(
+const accessIsLayerRoot = (access: ts.PropertyAccessExpression) => {
+  const identifierTextIsLayer = (root: ts.Identifier) => strictEqual(root.text, "Layer")
+
+  return pipe(
     Option.liftPredicate(ts.isIdentifier)(access.expression),
-    Option.exists((root) => root.text === "Layer")
+    Option.exists(identifierTextIsLayer)
   )
+}
 
 const isLayerPropertyCall = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
   pipe(
@@ -222,17 +241,18 @@ const isTagOfCall = (node: ts.Identifier) => {
   const ofAccess = pipe(
     propertyAccess,
     Option.filter((access) => {
-      const isReceiver = access.expression === node
-      const isOf = access.name.text === "of"
+      const isReceiver = strictEqual(access.expression, node)
+      const isOf = strictEqual(access.name.text, "of")
 
       return isReceiver && isOf
     })
   )
 
   return Option.exists(ofAccess, (access) => {
+    const callExpressionIsAccess = (call: ts.CallExpression) => strictEqual(call.expression, access)
     const callParent = Option.liftPredicate(ts.isCallExpression)(access.parent)
 
-    return Option.exists(callParent, (call) => call.expression === access)
+    return Option.exists(callParent, callExpressionIsAccess)
   })
 }
 
@@ -255,9 +275,12 @@ const incrementCounts =
     const productionCount = Tuple.get(current, 0)
     const testCount = Tuple.get(current, 1)
     const consumerCount = Tuple.get(current, 2)
-    const production = kind === "productionAdapter" ? productionCount + 1 : productionCount
-    const test = kind === "testAdapter" ? testCount + 1 : testCount
-    const consumers = kind === "consumer" ? consumerCount + 1 : consumerCount
+    const isProductionAdapter = strictEqual(kind, "productionAdapter")
+    const isTestAdapter = strictEqual(kind, "testAdapter")
+    const isConsumer = strictEqual(kind, "consumer")
+    const production = isProductionAdapter ? productionCount + 1 : productionCount
+    const test = isTestAdapter ? testCount + 1 : testCount
+    const consumers = isConsumer ? consumerCount + 1 : consumerCount
     const updated = Tuple.make(production, test, consumers)
 
     return HashMap.set(counts, symbolKey, updated)
@@ -377,8 +400,9 @@ const contextTagSeamElements =
       candidates,
       Array.filter((candidate) => {
         const declaration = Tuple.get(candidate, 0)
+        const declarationSourceFile = declaration.getSourceFile()
 
-        return declaration.getSourceFile() === context.sourceFile
+        return strictEqual(declarationSourceFile, context.sourceFile)
       }),
       Array.map((candidate) => {
         const declaration = Tuple.get(candidate, 0)

@@ -1,4 +1,5 @@
 import { Array, Function, Match, Option, Schema, Tuple, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { withProgramIndex } from "../../defineCheck.js"
@@ -27,7 +28,8 @@ import {
   importedMemberAt,
   isManagedRuntimeMethodAccess,
   propertyAssignmentNamed,
-  isRuntimeFunctionLike
+  isRuntimeFunctionLike,
+  specifierIsEffect
 } from "./support.js"
 import {
   isExpressionBody,
@@ -96,11 +98,12 @@ const isBranchNode = (node: ts.Node) => {
   return Array.some(checks, Boolean)
 }
 
-const isOwnedByFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration) =>
-  pipe(
-    enclosingFunctionLike(node),
-    Option.exists((declaration) => declaration === owner)
-  )
+const isOwnedByFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration) => {
+  const declarationIsOwner = (declaration: ts.FunctionLikeDeclaration) =>
+    strictEqual(declaration, owner)
+
+  return pipe(enclosingFunctionLike(node), Option.exists(declarationIsOwner))
+}
 
 const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
   Effect: true,
@@ -129,13 +132,13 @@ const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
 
 const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration) => {
   const visit = (current: ts.Node): boolean => {
-    const atOwner = current === owner
-    const atBody = current === owner.body
+    const atOwner = strictEqual(current, owner)
+    const atBody = strictEqual(current, owner.body)
     const boundaryFlags = Array.make(atOwner, atBody)
     const atBoundary = Array.some(boundaryFlags, Boolean)
-
+    const isFalse = (value: boolean) => strictEqual(value, false)
     return pipe(
-      Option.liftPredicate((value: boolean) => value === false)(atBoundary),
+      Option.liftPredicate(isFalse)(atBoundary),
       Option.map(() => {
         const isYield = ts.isYieldExpression(current)
         const parentNested = pipe(Option.fromNullishOr(current.parent), Option.exists(visit))
@@ -151,7 +154,7 @@ const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration) =>
 }
 
 const namespaceIsEffectControlRuntime = (namespace: string) =>
-  effectControlRuntimeNamespaces[namespace] === true
+  strictEqual(effectControlRuntimeNamespaces[namespace], true)
 
 const effectSubpathNamespace = (specifier: string) => {
   const effectPath = specifier.slice("effect/".length)
@@ -176,7 +179,7 @@ const callOwnedByEffectControlRuntime = (checker: ts.TypeChecker, node: ts.CallE
       )
 
       const fromBarrel = pipe(
-        Option.liftPredicate((specifier: string) => specifier === "effect")(member.moduleSpecifier),
+        Option.liftPredicate(specifierIsEffect)(member.moduleSpecifier),
         Option.flatMap(keepPathHead),
         Option.exists(namespaceIsEffectControlRuntime)
       )
@@ -194,10 +197,11 @@ const isQualifyingTransformationCall = (
 ) => {
   const owned = isOwnedByFunction(node, owner)
   const nested = nestedBeneathYield(node, owner)
-  const notNested = nested === false
+  const notNested = strictEqual(nested, false)
   const continueFlags = Array.make(owned, notNested)
   const continues = Array.every(continueFlags, Boolean)
-  const external = callOwnedByEffectControlRuntime(context.checker, node) === false
+  const ownedByRuntime = callOwnedByEffectControlRuntime(context.checker, node)
+  const external = strictEqual(ownedByRuntime, false)
   const continueExternalFlags = Array.make(continues, external)
 
   return Array.every(continueExternalFlags, Boolean)
@@ -278,7 +282,7 @@ const callIsRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.CallEx
       const platformBrowser = member.moduleSpecifier.startsWith("@effect/platform-browser")
       const platformFlags = Array.make(platformNode, platformBun, platformDeno, platformBrowser)
       const platformRuntime = Array.some(platformFlags, Boolean)
-      const isRunMain = name === "runMain"
+      const isRunMain = strictEqual(name, "runMain")
       const runMainFlags = Array.make(platformRuntime, isRunMain)
 
       return Array.every(runMainFlags, Boolean)
@@ -409,7 +413,8 @@ const orchestratorElements =
   (context: CheckContext) =>
   (node: ts.CallExpression): ReadonlyArray<Detection> => {
     const role = roleForSourceFile(index, context.sourceFile)
-    const applicationRole = Option.exists(role, (value) => value === "application")
+    const roleIsApplication = (value: ArchitectureRole) => strictEqual(value, "application")
+    const applicationRole = Option.exists(role, roleIsApplication)
     const isOrchestrator = callIsEffectOrchestrator(context, node)
     const relevantFlags = Array.make(applicationRole, isOrchestrator)
     const relevant = Array.every(relevantFlags, Boolean)
@@ -480,7 +485,7 @@ const collectFileShape = (context: CheckContext, role: ArchitectureRole) => {
     functionReturnsComposition(context.checker, fn)
 
   return foldAst((metrics: typeof emptyFileShapeMetrics, node: ts.Node) => {
-    const isRoot = role === "root"
+    const isRoot = strictEqual(role, "root")
     const nestedInComposition = nestedInRecognizedCompositionApi(context.checker, node)
     const nestedCompositionFlags = Array.make(isRoot, nestedInComposition)
     const nestedComposition = Array.every(nestedCompositionFlags, Boolean)
@@ -521,12 +526,12 @@ const fileShapeData = (
   role: ArchitectureRole,
   metrics: typeof emptyFileShapeMetrics
 ): Option.Option<FunctionalCoreShapeData> => {
-  const isAdapter = role === "adapter"
+  const isAdapter = strictEqual(role, "adapter")
   const adapterBranches = metrics.branchCount >= 3
   const adapterFunctions = metrics.functionCount >= 2
   const adapterEvidenceFlags = Array.make(isAdapter, adapterBranches, adapterFunctions)
   const adapterEvidence = Array.every(adapterEvidenceFlags, Boolean)
-  const isRoot = role === "root"
+  const isRoot = strictEqual(role, "root")
   const rootBranches = metrics.branchCount >= 2
   const rootFunctions = metrics.functionCount >= 2
   const rootVolumeFlags = Array.make(rootBranches, rootFunctions)
@@ -559,8 +564,8 @@ const fileShapeElements =
     return pipe(
       roleForSourceFile(index, context.sourceFile),
       Option.filter((role) => {
-        const isAdapter = role === "adapter"
-        const isRoot = role === "root"
+        const isAdapter = strictEqual(role, "adapter")
+        const isRoot = strictEqual(role, "root")
         const roleFlags = Array.make(isAdapter, isRoot)
 
         return Array.some(roleFlags, Boolean)
@@ -681,7 +686,7 @@ const serviceSurfaceMetrics = (checker: ts.TypeChecker, type: ts.Type, location:
   return Array.reduce(properties, emptyServiceSurfaceMetrics, (metrics, property) => {
     const propertyType = checker.getTypeOfSymbolAtLocation(property, location)
     const signatures = propertyType.getCallSignatures()
-    const isNonFunction = signatures.length === 0
+    const isNonFunction = strictEqual(signatures.length, 0)
 
     const effectful = Array.some(signatures, (signature) => {
       const returnType = signature.getReturnType()
@@ -713,8 +718,8 @@ const pureServiceElements =
     const relevantRole = pipe(
       role,
       Option.filter((value) => {
-        const isPort = value === "port"
-        const isApplication = value === "application"
+        const isPort = strictEqual(value, "port")
+        const isApplication = strictEqual(value, "application")
         const roleFlags = Array.make(isPort, isApplication)
 
         return Array.some(roleFlags, Boolean)
@@ -746,8 +751,8 @@ const pureServiceElements =
           Option.map(([type, location]) => serviceSurfaceMetrics(context.checker, type, location)),
           Option.filter((metrics) => {
             const hasFunctions = metrics.functionCount > 0
-            const allFunctions = metrics.nonFunctionCount === 0
-            const allPure = metrics.effectfulMemberCount === 0
+            const allFunctions = strictEqual(metrics.nonFunctionCount, 0)
+            const allPure = strictEqual(metrics.effectfulMemberCount, 0)
             const purityFlags = Array.make(hasFunctions, allFunctions, allPure)
 
             return Array.every(purityFlags, Boolean)

@@ -10,6 +10,7 @@ import {
   type CallableSemantics
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const predicateOperations = HashSet.make(
   "can",
@@ -81,7 +82,7 @@ const claimsPredicate = (semantics: CallableSemantics) => {
   const words = semantics.name.words
   const first = pipe(words, Array.head, Option.getOrElse(Function.constant("")))
   const predicatePrefix = HashSet.has(predicateOperations, first)
-  const singleWord = words.length === 1
+  const singleWord = strictEqual(words.length, 1)
   const isAmbiguousStandalone = HashSet.has(ambiguousStandalonePredicates, first)
   const standaloneAmbiguousChecks = Array.make(singleWord, isAmbiguousStandalone)
   const standaloneAmbiguous = Array.every(standaloneAmbiguousChecks, Boolean)
@@ -96,7 +97,7 @@ const claimsPredicate = (semantics: CallableSemantics) => {
 
 const isBareVariantConstructor = (semantics: CallableSemantics) => {
   const words = semantics.name.words
-  const singleWord = words.length === 1
+  const singleWord = strictEqual(words.length, 1)
   const headWord = Array.head(words)
   const isBareVariantWord = (word: string) => HashSet.has(bareVariantConstructors, word)
   const isVariant = Option.exists(headWord, isBareVariantWord)
@@ -144,7 +145,7 @@ const predicateNameMatches = (context: CheckContext) => {
       semanticsFor(definition),
       Option.map((semantics) => {
         const predicateClaim = claimsPredicate(semantics)
-        const booleanResult = semantics.result.shape === "boolean"
+        const booleanResult = strictEqual(semantics.result.shape, "boolean")
         const bareVariant = isBareVariantConstructor(semantics)
         const nonBoolean = !booleanResult
         const nonBareVariant = !bareVariant

@@ -1,4 +1,4 @@
-import { Tuple, Array, HashSet, Option, pipe } from "effect"
+import { Array, HashSet, Option, pipe, Tuple } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -6,33 +6,36 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 // OptionGuardKind is Option guard syntax vocabulary because Some and None share one matcher.
 export type OptionGuardKind = "isSome" | "isNone"
 
 const guardMethodNames = HashSet.make("isSome", "isNone")
 
-const isOptionText = (text: string): boolean => text === "Option"
+const isOptionText = (text: string) => strictEqual(text, "Option")
 
 const isGuardMethodName = (name: string) => HashSet.has(guardMethodNames, name)
 
 const containsDotValue =
   (name: string) =>
   (node: ts.Node): boolean => {
-    const childHasDotValue = ts.forEachChild(node, containsDotValue(name)) === true
+    const childResult = ts.forEachChild(node, containsDotValue(name))
+    const childHasDotValue = strictEqual(childResult, true)
     const isPropertyAccess = ts.isPropertyAccessExpression(node)
 
     if (!isPropertyAccess) {
       return childHasDotValue
     }
 
-    const hasValueName = node.name.text === "value"
+    const hasValueName = strictEqual(node.name.text, "value")
     const expressionIsIdentifier = ts.isIdentifier(node.expression)
 
     if (!expressionIsIdentifier) {
       return childHasDotValue
     }
 
-    const expressionTextMatches = node.expression.text === name
+    const expressionTextMatches = strictEqual(node.expression.text, name)
     const isDotValue = hasValueName && expressionTextMatches
 
     return isDotValue || childHasDotValue
@@ -58,7 +61,7 @@ const optionMatchMatches = (context: CheckContext) => {
         return Tuple.make(methodName as OptionGuardKind, identifier.text)
       }),
       Option.filter(([kind, argumentName]: readonly [OptionGuardKind, string]): boolean => {
-        const isSomeGuard = kind === "isSome"
+        const isSomeGuard = strictEqual(kind, "isSome")
         const branch = isSomeGuard ? conditional.whenTrue : conditional.whenFalse
 
         return containsDotValue(argumentName)(branch)

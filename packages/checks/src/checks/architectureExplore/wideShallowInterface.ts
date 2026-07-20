@@ -1,4 +1,5 @@
 import { Array, Option, pipe, Result, Function } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -15,7 +16,9 @@ export const wideShallowInterfaceExamples = packageExamples("wide-shallow-interf
 const minimumForwarders = 3
 
 const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isInterfaceBurdenElement = (element: NamedDetection) => element.name === interfaceBurdenName
+  const isInterfaceBurdenElement = (element: NamedDetection) =>
+    strictEqual(element.name, interfaceBurdenName)
+
   const elementHasShallownessName = (element: NamedDetection) => isShallownessName(element.name)
   const burden = Array.filter(elements, isInterfaceBurdenElement)
 
@@ -28,10 +31,10 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
   return Array.filterMap(burden, (burdenElement) => {
     const filePath = burdenElement.detection.location.path
 
-    const forwarders = Array.filter(
-      wrappers,
-      (element) => element.detection.location.path === filePath
-    )
+    const hasPath = (element: NamedDetection) =>
+      strictEqual(element.detection.location.path, filePath)
+
+    const forwarders = Array.filter(wrappers, hasPath)
 
     if (forwarders.length < minimumForwarders) {
       return Result.failVoid

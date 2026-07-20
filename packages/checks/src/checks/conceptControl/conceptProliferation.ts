@@ -11,6 +11,7 @@ import {
   pipe,
   Result
 } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -65,7 +66,7 @@ const pairElementWithSignalData = (element: Detection) => {
 const isClosedAbstractionEntry = (entry: readonly [Detection, ConceptSignalData]) => {
   const data = Tuple.get(entry, 1)
 
-  return data.kind === "closed-abstraction"
+  return strictEqual(data.kind, "closed-abstraction")
 }
 
 const closedAbstractionAdviceFromEntry = (entry: readonly [Detection, ConceptSignalData]) => {

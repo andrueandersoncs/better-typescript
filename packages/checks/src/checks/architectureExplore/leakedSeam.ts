@@ -1,5 +1,6 @@
 import * as path from "node:path"
 import { Array, Function, Option, Predicate, Result, Tuple, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -9,7 +10,7 @@ import {
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { moduleGraphDataOf, seamLeakageDataOf } from "./evidence.js"
-import type { ModuleGraphData } from "./data.js"
+import type { ModuleGraphData, SeamLeakageData } from "./data.js"
 import { moduleGraphName, seamLeakageEvidenceName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
@@ -54,7 +55,14 @@ const directoryEdgesFromElement = (element: NamedDetection) =>
   )
 
 const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const leaks = Array.filter(elements, (element) => element.name === seamLeakageEvidenceName)
+  const isSeamLeakageElement = (element: NamedDetection) =>
+    strictEqual(element.name, seamLeakageEvidenceName)
+
+  const hasPath = (filePath: string) => (element: NamedDetection) =>
+    strictEqual(element.detection.location.path, filePath)
+
+  const isInternalPath = (data: SeamLeakageData) => strictEqual(data.kind, "internal-path")
+  const leaks = Array.filter(elements, isSeamLeakageElement)
 
   const paths = pipe(
     leaks,
@@ -63,7 +71,7 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
   )
 
   return Array.filterMap(paths, (filePath) => {
-    const atPath = Array.filter(leaks, (element) => element.detection.location.path === filePath)
+    const atPath = Array.filter(leaks, hasPath(filePath))
 
     if (atPath.length < minimumLeaks) {
       return Result.failVoid
@@ -72,7 +80,7 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const internalCount = pipe(
       atPath,
       Array.filterMap(Function.flow(seamLeakageDataOf, Result.fromOption(Function.constVoid))),
-      Array.countBy((data) => data.kind === "internal-path")
+      Array.countBy(isInternalPath)
     )
 
     const sourceCount = atPath.length - internalCount
@@ -98,7 +106,9 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 }
 
 const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+  const isModuleGraphElement = (element: NamedDetection) =>
+    strictEqual(element.name, moduleGraphName)
+
   const graphElements = Array.filter(elements, isModuleGraphElement)
   const directoryEdges = Array.flatMap(graphElements, directoryEdgesFromElement)
 
@@ -113,16 +123,16 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
 
     const pairWithLeft = (right: string) => {
       const forwardCount = Array.countBy(directoryEdges, ([from, to]) => {
-        const fromMatches = from === left
-        const toMatches = to === right
+        const fromMatches = strictEqual(from, left)
+        const toMatches = strictEqual(to, right)
         const conditions = Array.make(fromMatches, toMatches)
 
         return Array.every(conditions, Boolean)
       })
 
       const reverseCount = Array.countBy(directoryEdges, ([from, to]) => {
-        const fromMatches = from === right
-        const toMatches = to === left
+        const fromMatches = strictEqual(from, right)
+        const toMatches = strictEqual(to, left)
         const conditions = Array.make(fromMatches, toMatches)
 
         return Array.every(conditions, Boolean)
@@ -130,7 +140,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
 
       const smallestDirectionCount = Math.min(forwardCount, reverseCount)
 
-      if (smallestDirectionCount === 0) {
+      if (strictEqual(smallestDirectionCount, 0)) {
         return Result.failVoid
       }
 

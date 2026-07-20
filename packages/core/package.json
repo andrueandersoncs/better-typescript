@@ -8,6 +8,7 @@
   ],
   "exports": {
     "./engine/check": "./dist/engine/check/check.js",
+    "./engine/equivalence": "./dist/engine/equivalence.js",
     "./engine/check/data": "./dist/engine/check/data.js",
     "./engine/location": "./dist/engine/location/location.js",
     "./engine/location/data": "./dist/engine/location/data.js",

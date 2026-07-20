@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, Struct, pipe } from "effect"
+import { Array, Function, Match, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import {
   functionInitializer,
@@ -12,11 +12,15 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  block.statements.length === 1 ? Option.fromNullishOr(block.statements[0]) : Option.none()
+  strictEqual(block.statements.length, 1)
+    ? Option.fromNullishOr(block.statements[0])
+    : Option.none()
 
-const isGenPropertyName = (access: ts.PropertyAccessExpression) => access.name.text === "gen"
+const isGenPropertyName = (access: ts.PropertyAccessExpression) =>
+  strictEqual(access.name.text, "gen")
 
 const returnedExpression = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
   const body = initializer.body
@@ -58,11 +62,11 @@ const effectGenCall =
   }
 
 const shorthandNameIsSelf = (shorthand: ts.ShorthandPropertyAssignment) =>
-  shorthand.name.text === "self"
+  strictEqual(shorthand.name.text, "self")
 
-const identifierTextIsSelf = (name: ts.Identifier) => name.text === "self"
+const identifierTextIsSelf = (name: ts.Identifier) => strictEqual(name.text, "self")
 
-const stringLiteralTextIsSelf = (name: ts.StringLiteralLike) => name.text === "self"
+const stringLiteralTextIsSelf = (name: ts.StringLiteralLike) => strictEqual(name.text, "self")
 
 const assignmentNameIsSelf = (assignment: ts.PropertyAssignment) =>
   pipe(
@@ -90,7 +94,7 @@ const selfBindingLiteral = (call: ts.CallExpression) =>
     Option.filter(objectLiteralBindsSelf)
   )
 
-const identifierTextIsThis = (name: ts.Identifier) => name.text === "this"
+const identifierTextIsThis = (name: ts.Identifier) => strictEqual(name.text, "this")
 
 const parameterIsThis = (parameter: ts.ParameterDeclaration) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(parameter.name), Option.exists(identifierTextIsThis))

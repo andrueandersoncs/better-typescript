@@ -1,4 +1,5 @@
 import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
@@ -97,14 +98,19 @@ const isCollaboratorName = (name: string) => {
 const isDirectFactoryResult = (node: ts.NewExpression) => {
   const parent = node.parent
 
+  const statementExpressionIsNode = (statement: ts.ReturnStatement) =>
+    strictEqual(statement.expression, node)
+
+  const arrowBodyIsNode = (arrow: ts.ArrowFunction) => strictEqual(arrow.body, node)
+
   const returned = pipe(
     Option.liftPredicate(ts.isReturnStatement)(parent),
-    Option.exists((statement) => statement.expression === node)
+    Option.exists(statementExpressionIsNode)
   )
 
   const conciseArrow = pipe(
     Option.liftPredicate(ts.isArrowFunction)(parent),
-    Option.exists((arrow) => arrow.body === node)
+    Option.exists(arrowBodyIsNode)
   )
 
   return returned || conciseArrow

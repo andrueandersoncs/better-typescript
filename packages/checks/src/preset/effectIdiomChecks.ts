@@ -10,6 +10,7 @@ import { preferEffectPropertyAccessors } from "../checks/preferEffectPropertyAcc
 import { preferSchemaTaggedStruct } from "../checks/preferSchemaTaggedStruct.js"
 import { effectCollectionChecks } from "./effectCollectionChecks.js"
 import { noUnsafeEffectApis } from "../checks/noUnsafeEffectApis.js"
+import { preferEquivalenceStrictEqual } from "../checks/preferEquivalenceStrictEqual.js"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 
 const effectSchemaChecks: ReadonlyArray<NamedCheck> = Array.make(
@@ -34,5 +35,6 @@ export const effectIdiomChecks: ReadonlyArray<NamedCheck> = pipe(
   Array.appendAll(effectFunctionChecks),
   Array.appendAll(effectCollectionChecks),
   Array.appendAll(schemaModelingChecks),
-  Array.append(noUnsafeEffectApis)
+  Array.append(noUnsafeEffectApis),
+  Array.append(preferEquivalenceStrictEqual)
 )

@@ -1,4 +1,4 @@
-import { Array, Function, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Predicate, Struct } from "effect"
 import * as ts from "typescript"
 import { isFunctionInitializer, unwrapTransparentExpression } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid block bodies that only bind a value and thread it into a call."
 
@@ -25,17 +26,16 @@ const identifierText = Struct.get<ts.Identifier, "text">("text")
 const carrierIdentifier = (expression: ts.Expression) =>
   pipe(expression, unwrapTowerCarrier, Option.some, Option.filter(ts.isIdentifier))
 
-const isPipeText = (text: string) => text === "pipe"
+const isPipeText = (text: string) => strictEqual(text, "pipe")
 
 const isPipeCallee = (expression: ts.Expression) =>
   pipe(carrierIdentifier(expression), Option.map(identifierText), Option.exists(isPipeText))
 
-const isSeedIdentifier = (name: string) => (expression: ts.Expression) =>
-  pipe(
-    carrierIdentifier(expression),
-    Option.map(identifierText),
-    Option.exists((text) => text === name)
-  )
+const isSeedIdentifier = (name: string) => (expression: ts.Expression) => {
+  const isSeedText = (text: string) => strictEqual(text, name)
+
+  return pipe(carrierIdentifier(expression), Option.map(identifierText), Option.exists(isSeedText))
+}
 
 const callFirstArgument = (call: ts.CallExpression) => Option.fromNullishOr(call.arguments[0])
 
@@ -52,7 +52,7 @@ const isUnaryCallTowerOver =
     )
 
     const callIsNotPipe = Predicate.not(callIsPipe)
-    const callHasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+    const callHasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
 
     const pipeTower = pipe(
       callOption,
@@ -77,7 +77,7 @@ const functionCompositionMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
-    const hasTwoStatements = (body: ts.Block) => body.statements.length === 2
+    const hasTwoStatements = (body: ts.Block) => strictEqual(body.statements.length, 2)
 
     const returnExpression = Function.flow(
       Struct.get<ts.ReturnStatement, "expression">("expression"),
@@ -95,7 +95,7 @@ const functionCompositionMatches = (context: CheckContext) => {
         )
 
         const isConstList = (declarationList.flags & ts.NodeFlags.Const) !== 0
-        const hasOneDeclaration = declarationList.declarations.length === 1
+        const hasOneDeclaration = strictEqual(declarationList.declarations.length, 1)
 
         yield* Option.liftPredicate((value: boolean) => value)(isConstList)
         yield* Option.liftPredicate((value: boolean) => value)(hasOneDeclaration)
@@ -113,7 +113,7 @@ const functionCompositionMatches = (context: CheckContext) => {
         )
 
         const name = identifierText(binding.name as ts.Identifier)
-        const isBindingName = (text: string) => text === name
+        const isBindingName = (text: string) => strictEqual(text, name)
 
         const referenceCount = foldAst((count: number, node: ts.Node): number =>
           pipe(
@@ -126,7 +126,7 @@ const functionCompositionMatches = (context: CheckContext) => {
         )(returned)(0)
 
         const seedOnly = isSeedIdentifier(name)(returned)
-        const singleReference = referenceCount === 1
+        const singleReference = strictEqual(referenceCount, 1)
         const tower = isUnaryCallTowerOver(name)(returned)
         const threaded = singleReference && tower
         const keepThreaded = !seedOnly

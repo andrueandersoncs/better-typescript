@@ -14,6 +14,7 @@ import {
   type SemanticRole
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const factoryOperations = HashSet.make("build", "construct", "create", "make")
 const variantConstructors = HashSet.make("fail", "left", "none", "of", "right", "some", "succeed")
@@ -27,7 +28,7 @@ const hasRole =
     HashSet.has(semantics.roles, role)
 
 const isExactSingleWord = (word: string) => (semantics: CallableSemantics) => {
-  const singleWord = semantics.name.words.length === 1
+  const singleWord = strictEqual(semantics.name.words.length, 1)
   const firstWord = Array.head(semantics.name.words)
   const matchesWord = Option.contains(firstWord, word)
   const conditions = Array.make(singleWord, matchesWord)
@@ -39,7 +40,7 @@ const isBareMake = isExactSingleWord("make")
 
 const isExactVariantConstructor = (semantics: CallableSemantics) => {
   const words = semantics.name.words
-  const singleWord = words.length === 1
+  const singleWord = strictEqual(words.length, 1)
 
   const isKnownVariantWord = (word: string) => {
     const knownVariant = HashSet.has(variantConstructors, word)

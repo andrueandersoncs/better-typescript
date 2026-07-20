@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import { isReturnedExpressionNode } from "./support/tsNode.js"
@@ -7,6 +7,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const tagPropertyName = "_tag"
 
 const shortCircuitOperatorKinds = HashSet.make(
@@ -50,7 +52,7 @@ const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expressi
 
 const hasProperties = (literal: ts.ObjectLiteralExpression) => literal.properties.length > 0
 
-const hasTagText = (identifier: ts.Identifier) => identifier.text === tagPropertyName
+const hasTagText = (identifier: ts.Identifier) => strictEqual(identifier.text, tagPropertyName)
 
 const isTagAssignment = (
   property: ts.ObjectLiteralElementLike

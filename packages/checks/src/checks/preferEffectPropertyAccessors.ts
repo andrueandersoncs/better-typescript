@@ -1,4 +1,4 @@
-import { Array, Function, pipe, Option, Struct } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import {
   conciseArrowBody,
@@ -12,6 +12,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -102,7 +103,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
       return Array.empty()
     }
 
-    const hasSingleParam = node.parameters.length === 1
+    const hasSingleParam = strictEqual(node.parameters.length, 1)
 
     const singleParam = hasSingleParam
       ? Option.fromNullishOr(node.parameters[0])
@@ -114,7 +115,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
       paramName,
       Option.flatMap((parameterName) => {
         const identifierTextIsParameter = (identifier: ts.Identifier) =>
-          identifier.text === parameterName
+          strictEqual(identifier.text, parameterName)
 
         const accessReadsParameter = (access: ts.PropertyAccessExpression) =>
           pipe(

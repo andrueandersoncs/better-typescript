@@ -12,6 +12,7 @@ import {
   type CallableSemantics
 } from "./support/callableSemantics.js"
 import { isFunctionDefinition, type FunctionDefinition } from "./support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const commandRole = semanticRole("command")
 const projectionRole = semanticRole("projection")
@@ -105,7 +106,7 @@ const hasExplicitAccessorProjectionOrResultStyle = (semantics: CallableSemantics
 const isNotNeutralCallbackOrHandler = (semantics: CallableSemantics) =>
   !isNeutralCallbackOrHandler(semantics)
 
-const hasVoidResult = (candidate: CallableSemantics) => candidate.result.shape === "void"
+const hasVoidResult = (candidate: CallableSemantics) => strictEqual(candidate.result.shape, "void")
 
 const commandNameConsistencyMatches = (context: CheckContext) => {
   const match = makeDetection(context)

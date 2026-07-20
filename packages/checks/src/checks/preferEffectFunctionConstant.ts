@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, pipe, Option } from "effect"
+import { Array, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import {
   conciseArrowBody,
@@ -12,6 +12,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const constantThunkKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ArrowFunction,
@@ -34,12 +35,12 @@ const fallbackModifiers = Function.constant(emptyModifiers)
 
 const message = "Avoid a handwritten constant thunk."
 
-const modifierIsAsync = (modifier: ts.ModifierLike): boolean =>
-  modifier.kind === ts.SyntaxKind.AsyncKeyword
+const modifierIsAsync = (modifier: ts.ModifierLike) =>
+  strictEqual(modifier.kind, ts.SyntaxKind.AsyncKeyword)
 
 const hasElements = (items: ReadonlyArray<unknown>) => items.length > 0
 
-const hasSingleElement = (items: ReadonlyArray<unknown>) => items.length === 1
+const hasSingleElement = (items: ReadonlyArray<unknown>) => strictEqual(items.length, 1)
 
 const isEligibleFunction = (node: ts.Node) =>
   pipe(
@@ -73,12 +74,8 @@ const isEligibleFunction = (node: ts.Node) =>
         Option.exists(hasElements)
       )
 
-      const eligibility = Array.make(
-        initializer.parameters.length === 0,
-        !hasAsync,
-        !hasGenerator,
-        !hasTypeParameters
-      )
+      const hasNoParameters = strictEqual(initializer.parameters.length, 0)
+      const eligibility = Array.make(hasNoParameters, !hasAsync, !hasGenerator, !hasTypeParameters)
 
       return Array.every(eligibility, Boolean)
     }),
@@ -129,8 +126,11 @@ const functionConstantMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> => {
-    const declarationIsInSourceFile = (candidate: ts.Declaration) =>
-      candidate.getSourceFile() === context.sourceFile
+    const declarationIsInSourceFile = (candidate: ts.Declaration) => {
+      const candidateSourceFile = candidate.getSourceFile()
+
+      return strictEqual(candidateSourceFile, context.sourceFile)
+    }
 
     const declarationPrecedesNode = (candidate: ts.VariableDeclaration) =>
       candidate.end <= node.getStart(context.sourceFile)

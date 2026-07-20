@@ -26,6 +26,7 @@ import { Signal, WiringSignals } from "../signal/data.js"
 import { ProgramContext } from "../sources/data.js"
 import { isProjectSourceFile } from "../sources/sources.js"
 import { compilerOptionsForChecks, runChecks } from "../check/check.js"
+import { strictEqual } from "../equivalence.js"
 import {
   DuplicateCheckNamesError,
   DuplicateNameState,
@@ -163,7 +164,7 @@ const addDuplicateName = (state: DuplicateNameState, check: NamedCheck) => {
 const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A => {
   const names = Array.reduce(checks, emptyDuplicateNameState, addDuplicateName).names
 
-  return names.length === 0 ? value : failDuplicateCheckNames(names)
+  return strictEqual(names.length, 0) ? value : failDuplicateCheckNames(names)
 }
 
 // Validation runs at construction because duplicate names must fail before analysis starts.

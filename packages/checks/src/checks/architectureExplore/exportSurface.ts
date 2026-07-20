@@ -1,4 +1,5 @@
 import { Array, Function, Option, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
@@ -37,9 +38,15 @@ const exportSurfaceElements =
 
     const usageOf = symbolUsageFor(index)
 
+    const isEntryInSourceFile = (entry: (typeof index.entries)[number]) => {
+      const entrySourceFile = entry.nameNode.getSourceFile()
+
+      return strictEqual(entrySourceFile, context.sourceFile)
+    }
+
     const symbols = pipe(
       index.entries,
-      Array.filter((entry) => entry.nameNode.getSourceFile() === context.sourceFile),
+      Array.filter(isEntryInSourceFile),
       Array.map((entry) => {
         const usage = usageOf(entry)
         const referencingFileCount = usage.productionPaths.length + usage.testPaths.length
@@ -56,7 +63,7 @@ const exportSurfaceElements =
       })
     )
 
-    if (symbols.length === 0) {
+    if (strictEqual(symbols.length, 0)) {
       return Array.empty()
     }
 

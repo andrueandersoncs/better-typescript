@@ -1,16 +1,19 @@
-import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isFirstPartySymbol, symbolDeclarations } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const accessExpression = Struct.get<ts.PropertyAccessExpression, "expression">("expression")
 
 const declarePropertyAccess = (call: ts.CallExpression) =>
   Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
 
-const hasDeclareText = (access: ts.PropertyAccessExpression) => access.name.text === "declare"
+const hasDeclareText = (access: ts.PropertyAccessExpression) =>
+  strictEqual(access.name.text, "declare")
 
 const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
   pipe(
@@ -62,7 +65,7 @@ const isStructuralOwnedDeclaration = (declaration: ts.Declaration) => {
   const isNominalDeclaration = isInterface || isClass
   const isAlias = ts.isTypeAliasDeclaration(declaration)
   const isOpaqueAlias = isOpaqueAliasDeclaration(declaration)
-  const isStructural = isOpaqueAlias === false
+  const isStructural = strictEqual(isOpaqueAlias, false)
   const isStructuralAlias = isAlias && isStructural
 
   return isNominalDeclaration || isStructuralAlias
@@ -78,7 +81,8 @@ const isFirstPartyStructuralModel = (type: ts.Type) => {
   const symbol = typeSymbol(type)
   const isFirstParty = Option.exists(symbol, isFirstPartySymbol)
   const isStructural = Option.exists(symbol, isStructuralOwnedSymbol)
-  const isDataStructure = type.getCallSignatures().length === 0
+  const callSignatureCount = type.getCallSignatures().length
+  const isDataStructure = strictEqual(callSignatureCount, 0)
   // Exempt generic parameters because callers supply the type, not a first-party structural model.
   const isConcreteType = !type.isTypeParameter()
   const ambientConditions = Array.make(isFirstParty, isStructural, isDataStructure, isConcreteType)
@@ -121,7 +125,7 @@ const schemaDeclareMatches = (context: CheckContext) => {
     const access = call.expression as ts.PropertyAccessExpression
     const object = accessExpression(access)
     if (!ts.isIdentifier(object)) return Array.empty()
-    const isOnSchema = object.text === "Schema"
+    const isOnSchema = strictEqual(object.text, "Schema")
     const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
     const firstArgument = Array.head(call.arguments)
 

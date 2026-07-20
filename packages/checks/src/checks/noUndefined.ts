@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, pipe, Option } from "effect"
+import { Array, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
 import type { ReturnedExpressionNode } from "./support/tsNode.js"
 import {
@@ -11,6 +11,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import { makePlannedCheck } from "../defineCheck.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 // UndefinedTypeDeclaration is undefined-type syntax protocol because owners share one matcher.
 export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
@@ -25,7 +27,8 @@ const optionHint =
   "annotate it with the library's own callback type so the undefined stays in the " +
   "library's declaration, not yours."
 
-const isUndefinedIdentifier = (identifier: ts.Identifier) => identifier.text === "undefined"
+const isUndefinedIdentifier = (identifier: ts.Identifier) =>
+  strictEqual(identifier.text, "undefined")
 
 const isUndefinedExpression = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)

@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import {
@@ -7,8 +7,9 @@ import {
   outermostTransparentWrapper,
   type CallLikeExpression
 } from "./tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-export const isSameNode = (node: ts.Node) => (candidate: ts.Node) => candidate === node
+export const isSameNode = (node: ts.Node) => (candidate: ts.Node) => strictEqual(candidate, node)
 
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()
@@ -153,14 +154,13 @@ const nameNodeEscapes =
           const isEscapingReference = pipe(
             Option.liftPredicate(ts.isIdentifier)(candidate),
             Option.exists((identifier) => {
-              const isDeclarationName = identifier === nameNode
+              const isDeclarationName = strictEqual(identifier, nameNode)
               const nodeSymbol = symbolAtNode(checker)(identifier)
 
-              const refersToSymbol = Option.exists(
-                nodeSymbol,
-                (candidateSymbol) => candidateSymbol === symbol
-              )
+              const isSameSymbol = (candidateSymbol: ts.Symbol) =>
+                strictEqual(candidateSymbol, symbol)
 
+              const refersToSymbol = Option.exists(nodeSymbol, isSameSymbol)
               const isExternalArgument = isExternalArgumentPosition(checker)(identifier)
 
               const escapeConditions = Array.make(
@@ -177,7 +177,7 @@ const nameNodeEscapes =
             ? true
             : ts.forEachChild(candidate, candidateMatches)
 
-          return childMatch === true
+          return strictEqual(childMatch, true)
         }
 
         return candidateMatches(sourceFile)
@@ -193,7 +193,11 @@ export const constructionEscapesExternally =
 
     const escapesThroughVariable = pipe(
       Option.liftPredicate(ts.isVariableDeclaration)(outermost.parent),
-      Option.filter((declaration) => declaration.initializer === outermost),
+      Option.filter((declaration) => {
+        const initializerIsOutermost = strictEqual(declaration.initializer, outermost)
+
+        return initializerIsOutermost
+      }),
       Option.map(Struct.get("name")),
       Option.exists(nameNodeEscapes(checker)(sourceFile))
     )
@@ -274,7 +278,7 @@ export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol) => {
 }
 
 export const isEffectInterfaceSymbol = (symbol: ts.Symbol) => {
-  const isNamedEffect = symbol.name === "Effect"
+  const isNamedEffect = strictEqual(symbol.name, "Effect")
   const fromEffect = symbolDeclaredInEffectPackage(symbol)
   const checks = Array.make(isNamedEffect, fromEffect)
 

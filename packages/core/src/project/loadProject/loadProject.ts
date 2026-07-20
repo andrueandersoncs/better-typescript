@@ -5,6 +5,7 @@ import type { Check } from "../../engine/check/data.js"
 import type { Detection } from "../../engine/location/data.js"
 import { makeContext } from "../../engine/sources/sources.js"
 import { compilerOptionsForChecks, runChecks } from "../../engine/check/check.js"
+import { strictEqual } from "../../engine/equivalence.js"
 import {
   CircularProjectReferenceError,
   InvalidTsconfigError,
@@ -33,9 +34,8 @@ export const discoverWorkspace: (
   const rootAncestorPaths = HashSet.empty<string>()
   const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
 
-  const projects = Array.dedupeWith(
-    discoveredProjects,
-    (self, that) => self.configPath === that.configPath
+  const projects = Array.dedupeWith(discoveredProjects, (self, that) =>
+    strictEqual(self.configPath, that.configPath)
   )
 
   const workspaceRootPath = path.dirname(configPath.value)
@@ -155,7 +155,7 @@ const discoverConfig: (
   }
 
   const references = parsedConfig.projectReferences ?? Array.empty()
-  const hasNoOwnFiles = parsedConfig.fileNames.length === 0
+  const hasNoOwnFiles = strictEqual(parsedConfig.fileNames.length, 0)
   const hasReferences = references.length > 0
   const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
 

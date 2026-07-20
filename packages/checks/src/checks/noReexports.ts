@@ -1,10 +1,11 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeFileCheck } from "../defineCheck.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Do not re-export imported bindings."
 
@@ -12,7 +13,7 @@ const hint =
   "Import the dependency where it is used and expose a locally defined public interface instead."
 
 const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string) => {
-  const isNameText = (text: string) => text === name
+  const isNameText = (text: string) => strictEqual(text, name)
 
   const namespaceMatches = pipe(
     bindings,
@@ -21,7 +22,7 @@ const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string
     Option.exists(isNameText)
   )
 
-  const elementHasName = (element: ts.ImportSpecifier) => element.name.text === name
+  const elementHasName = (element: ts.ImportSpecifier) => strictEqual(element.name.text, name)
 
   const namedImportsDeclareName = (namedImports: ts.NamedImports) =>
     Array.some(namedImports.elements, elementHasName)
@@ -43,7 +44,7 @@ const importClause = Function.flow(
 )
 
 const importDeclaresName = (statement: ts.Statement, name: string) => {
-  const isNameText = (text: string) => text === name
+  const isNameText = (text: string) => strictEqual(text, name)
 
   const bindingsDeclareName = (bindings: ts.NamedImportBindings) =>
     namedBindingsDeclareName(bindings, name)

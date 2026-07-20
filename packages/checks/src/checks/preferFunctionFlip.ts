@@ -1,4 +1,4 @@
-import { Array, Function, Option, Predicate, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Predicate, Struct } from "effect"
 import * as ts from "typescript"
 import { conciseArrowBody, unwrapCarrier } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const message = "Avoid lambdas that only flip the order of a curried application."
 
@@ -74,9 +75,9 @@ const functionFlipMatches = (context: CheckContext) => {
       Option.exists(isNamespaceSymbol)
     )
 
-    const receiverLacksConstructor = receiverIsConstructor === false
+    const receiverLacksConstructor = strictEqual(receiverIsConstructor, false)
     const methodNeedsReceiver = isMethod && receiverLacksConstructor
-    const receiverIsInstance = receiverIsNamespace === false
+    const receiverIsInstance = strictEqual(receiverIsNamespace, false)
     const instanceMethod = methodNeedsReceiver && receiverIsInstance
 
     return instanceMethod
@@ -89,14 +90,14 @@ const functionFlipMatches = (context: CheckContext) => {
     const isFree = isCall || isIdentifier
     const isPropertyAccess = ts.isPropertyAccessExpression(unwrapped)
     const propertyNeedsThis = isPropertyAccess ? propertyAccessRequiresThis(unwrapped) : true
-    const isBound = isFree === false
+    const isBound = strictEqual(isFree, false)
     const boundCalleeNeedsThis = isBound && propertyNeedsThis
 
     return boundCalleeNeedsThis
   }
 
   const referenceCount = (name: string): ((node: ts.Node) => number) => {
-    const isNameText = (text: string) => text === name
+    const isNameText = (text: string) => strictEqual(text, name)
 
     return Function.flip(
       foldAst((count: number, current: ts.Node): number =>
@@ -111,7 +112,7 @@ const functionFlipMatches = (context: CheckContext) => {
     )(0)
   }
 
-  const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+  const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
   const isNonSpreadArgument = Predicate.not(ts.isSpreadElement)
 
   const firstArgumentIsNonSpread = (call: ts.CallExpression) =>
@@ -129,7 +130,7 @@ const functionFlipMatches = (context: CheckContext) => {
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
-        const hasOneParameter = arrowFunction.parameters.length === 1
+        const hasOneParameter = strictEqual(arrowFunction.parameters.length, 1)
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])
@@ -139,7 +140,7 @@ const functionFlipMatches = (context: CheckContext) => {
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
         const isComplex = hasRestOrDefault || isOptional
-        const isNotComplex = isComplex === false
+        const isNotComplex = strictEqual(isComplex, false)
         const isSimple = isIdentifierName && isNotComplex
 
         yield* Option.liftPredicate((value: boolean) => value)(isSimple)
@@ -157,7 +158,7 @@ const functionFlipMatches = (context: CheckContext) => {
         const innerArgument = yield* Option.fromNullishOr(innerCall.arguments[0])
         const innerArgumentCarrier = unwrapCarrier(innerArgument)
         const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(innerArgumentCarrier)
-        const isParameterName = (text: string) => text === parameterName
+        const isParameterName = (text: string) => strictEqual(text, parameterName)
 
         const argumentIsParameter = pipe(
           argumentIdentifier,
@@ -177,7 +178,7 @@ const functionFlipMatches = (context: CheckContext) => {
         yield* Option.liftPredicate((value: boolean) => !value)(needsThis)
 
         const bodyMentions = referenceCount(parameterName)(body)
-        const singleForward = bodyMentions === 1
+        const singleForward = strictEqual(bodyMentions, 1)
 
         yield* Option.liftPredicate((value: boolean) => value)(singleForward)
 

@@ -1,4 +1,5 @@
 import { Array, Function, Option, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -39,7 +40,10 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
   const paths = pipe(wrappers, Array.map(detectionPath), Array.dedupe)
 
   return Array.map(paths, (filePath) => {
-    const atPath = Array.filter(wrappers, (element) => element.detection.location.path === filePath)
+    const hasPath = (element: NamedDetection) =>
+      strictEqual(element.detection.location.path, filePath)
+
+    const atPath = Array.filter(wrappers, hasPath)
 
     const callerCount = pipe(
       atPath,

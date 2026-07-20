@@ -7,6 +7,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 // CallbackStyleDeclaration is shared callback syntax because owners need one vocabulary.
 export type CallbackStyleDeclaration =
@@ -48,7 +49,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
   const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
   if (isValueDeclaration) {
-    const isTypeAnnotation = parent.type === typeNode
+    const isTypeAnnotation = strictEqual(parent.type, typeNode)
     const initializer = Option.fromNullishOr(parent.initializer)
     const isNotRuntimeFunction = !Option.exists(initializer, isRuntimeFunctionLike)
 
@@ -57,17 +58,19 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
 
   const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(parent)
 
-  const hasTypeAliasFunctionType = Option.exists(
-    aliasDeclaration,
-    (alias) => alias.type === typeNode
-  )
+  const hasTypeAliasFunctionType = Option.exists(aliasDeclaration, (alias) => {
+    const aliasTypeIsNode = strictEqual(alias.type, typeNode)
+
+    return aliasTypeIsNode
+  })
 
   const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
 
-  const hasPropertySignatureFunctionType = Option.exists(
-    propertySignature,
-    (signature) => signature.type === typeNode
-  )
+  const hasPropertySignatureFunctionType = Option.exists(propertySignature, (signature) => {
+    const signatureTypeIsNode = strictEqual(signature.type, typeNode)
+
+    return signatureTypeIsNode
+  })
 
   return hasTypeAliasFunctionType || hasPropertySignatureFunctionType
 }

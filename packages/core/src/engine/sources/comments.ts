@@ -1,5 +1,6 @@
 import { Array, HashSet, Iterable, Match, Option, Tuple, pipe } from "effect"
 import * as ts from "typescript"
+import { strictEqual } from "../equivalence.js"
 import { SourceComment } from "./commentsData.js"
 
 const commentSyntaxKinds = HashSet.make(
@@ -75,7 +76,7 @@ const closeBraceKind = (
 
   if (closesTemplateSubstitution) {
     const templateKind = scanner.reScanTemplateToken(false)
-    const staysInTemplate = templateKind === ts.SyntaxKind.TemplateMiddle
+    const staysInTemplate = strictEqual(templateKind, ts.SyntaxKind.TemplateMiddle)
 
     return Tuple.make(templateKind, staysInTemplate ? contexts : rest)
   }
@@ -116,7 +117,7 @@ const initialScanState: readonly [ReadonlyArray<ScanContext>, ts.SyntaxKind] = T
   ts.SyntaxKind.Unknown
 )
 
-const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComment> => {
+export const sourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComment> => {
   const sourceText = sourceFile.getFullText()
 
   const scanner = ts.createScanner(
@@ -130,7 +131,7 @@ const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComm
     const [contexts, previous] = state
     const kind = scanner.scan()
 
-    if (kind === ts.SyntaxKind.EndOfFileToken) {
+    if (strictEqual(kind, ts.SyntaxKind.EndOfFileToken)) {
       return Option.none()
     }
 
@@ -152,13 +153,13 @@ const scanSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComm
   )
 }
 
-export const sourceComments = scanSourceComments
-
 export const commentText = (text: string) => (comment: SourceComment) =>
   text.slice(comment.pos, comment.end)
 
-export const isSingleLineComment = (comment: SourceComment) =>
-  comment.kind === ts.SyntaxKind.SingleLineCommentTrivia
+export const onlyBlankBetween = (text: string) => (a: SourceComment) => (b: SourceComment) => {
+  const between = text.slice(a.end, b.pos)
+  const trimmed = between.trim()
+  const gapLength = trimmed.length
 
-export const onlyBlankBetween = (text: string) => (a: SourceComment) => (b: SourceComment) =>
-  text.slice(a.end, b.pos).trim().length === 0
+  return strictEqual(gapLength, 0)
+}

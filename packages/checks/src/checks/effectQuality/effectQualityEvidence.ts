@@ -7,9 +7,10 @@ import { withEffectQualityIndex, type EffectQualityIndex } from "./index.js"
 import { EffectQualityAdviceData } from "./data.js"
 import { effectQualityAdviceFindings } from "./evidence.js"
 import type { EffectQualityAdviceFinding } from "./findings.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const isSyntaxKindNumber = (candidate: string | number): candidate is ts.SyntaxKind =>
-  typeof candidate === "number"
+  strictEqual(typeof candidate, "number")
 
 const isInSyntaxKindRange = (candidate: ts.SyntaxKind) => {
   const isNonNegative = candidate >= 0

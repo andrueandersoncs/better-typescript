@@ -2,6 +2,7 @@ import { Array, Function, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { importedEffectApiAt } from "../functionalCoreEffect/support.js"
 import { callExpressionOf, unwrapCallee, unwrapTransparentExpression } from "../support/tsNode.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 export const layerAcquisitionNames = Array.make("effect", "effectDiscard", "effectContext")
 
@@ -50,13 +51,16 @@ export const hasAncestor =
     return Option.exists(parent, visit)
   }
 
+export const identifierTextIsPipe = (identifier: ts.Identifier) =>
+  strictEqual(identifier.text, "pipe")
+
 export const isPipeCall = (checker: ts.TypeChecker) => (call: ts.CallExpression) => {
   const callee = unwrapCallee(call.expression)
   const fromEffect = importedEffectApiAt(checker, callee, "Function", pipeNames)
 
   const pipeIdentifier = pipe(
     Option.liftPredicate(ts.isIdentifier)(callee),
-    Option.exists((identifier) => identifier.text === "pipe")
+    Option.exists(identifierTextIsPipe)
   )
 
   const flags = Array.make(fromEffect, pipeIdentifier)
@@ -72,7 +76,7 @@ export const isExpressionReferenceNode = (candidate: ts.Node): candidate is ts.E
 }
 
 const stageEqualsExpression = (expression: ts.Expression) => (stage: ts.Expression) =>
-  stage === expression
+  strictEqual(stage, expression)
 
 const stagesContainExpression =
   (expression: ts.Expression) => (stages: ReadonlyArray<ts.Expression>) =>

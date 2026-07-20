@@ -13,6 +13,7 @@ import {
   pipe,
   Result
 } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import {
   hasExportModifier,
@@ -335,7 +336,7 @@ const isImportBinding = (node: ts.Identifier) => {
 
 const isDirectCallReference = (node: ts.Identifier) => {
   const parent = node.parent
-  const expressionIsNode = (call: ts.CallExpression) => call.expression === node
+  const expressionIsNode = (call: ts.CallExpression) => strictEqual(call.expression, node)
 
   const directCall = pipe(
     Option.liftPredicate(ts.isCallExpression)(parent),
@@ -343,9 +344,9 @@ const isDirectCallReference = (node: ts.Identifier) => {
   )
 
   const accessInvokesNode = (access: ts.PropertyAccessExpression) => {
-    const hasReferencedName = access.name === node
+    const hasReferencedName = strictEqual(access.name, node)
     const callParent = Option.liftPredicate(ts.isCallExpression)(access.parent)
-    const expressionIsAccess = (call: ts.CallExpression) => call.expression === access
+    const expressionIsAccess = (call: ts.CallExpression) => strictEqual(call.expression, access)
     const invokesAccess = pipe(callParent, Option.exists(expressionIsAccess))
 
     return hasReferencedName && invokesAccess
@@ -360,7 +361,9 @@ const isDirectCallReference = (node: ts.Identifier) => {
 }
 
 const isInsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifier) => {
-  const sameFile = node.getSourceFile() === declaration.getSourceFile()
+  const nodeSourceFile = node.getSourceFile()
+  const declarationSourceFile = declaration.getSourceFile()
+  const sameFile = strictEqual(nodeSourceFile, declarationSourceFile)
   const afterStart = node.pos >= declaration.pos
   const beforeEnd = node.end <= declaration.end
   const checks = Array.make(sameFile, afterStart, beforeEnd)

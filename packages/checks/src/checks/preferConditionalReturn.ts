@@ -1,15 +1,18 @@
-import { Array, Option, pipe, Result, Function } from "effect"
+import { Array, Function, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeCheck } from "../defineCheck.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const maximumReturnExpressionLength = 100
 
 const containsYieldExpression = (node: ts.Node): boolean => {
   const isYield = ts.isYieldExpression(node)
-  const childContainsYield = ts.forEachChild(node, containsYieldExpression) === true
+  const childResult = ts.forEachChild(node, containsYieldExpression)
+  const childContainsYield = strictEqual(childResult, true)
 
   return isYield || childContainsYield
 }
@@ -17,7 +20,7 @@ const containsYieldExpression = (node: ts.Node): boolean => {
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
 ): Option.Option<ts.Expression> => {
-  const isNegation = expression.operator === ts.SyntaxKind.ExclamationToken
+  const isNegation = strictEqual(expression.operator, ts.SyntaxKind.ExclamationToken)
 
   return isNegation ? Option.some(expression.operand) : Option.none()
 }

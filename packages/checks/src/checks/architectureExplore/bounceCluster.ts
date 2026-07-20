@@ -1,4 +1,5 @@
 import { Array, Option, Tuple, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -30,11 +31,11 @@ const neighborsOf = (
       const from = Tuple.get(edge, 0)
       const to = Tuple.get(edge, 1)
 
-      if (from === path) {
+      if (strictEqual(from, path)) {
         return Array.of(to)
       }
 
-      return to === path ? Array.of(from) : Array.empty()
+      return strictEqual(to, path) ? Array.of(from) : Array.empty()
     }),
     Array.dedupe
   )
@@ -113,7 +114,9 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     Array.dedupe
   )
 
-  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+  const isModuleGraphElement = (element: NamedDetection) =>
+    strictEqual(element.name, moduleGraphName)
+
   const graphElements = Array.filter(elements, isModuleGraphElement)
 
   const edges = Array.flatMap(graphElements, (element) => {

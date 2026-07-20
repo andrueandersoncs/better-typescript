@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { isFirstPartySymbol, unwrapExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -6,6 +6,8 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const tagPropertyName = "_tag"
 
 const strictTagComparisonOperators = HashSet.make(
@@ -14,7 +16,7 @@ const strictTagComparisonOperators = HashSet.make(
 )
 
 const hasTagPropertyName = (expression: ts.PropertyAccessExpression) =>
-  expression.name.text === tagPropertyName
+  strictEqual(expression.name.text, tagPropertyName)
 
 const tagPropertyAccess = (expression: ts.Expression) =>
   pipe(
@@ -96,7 +98,12 @@ const schemaIsMatches = (context: CheckContext) => {
     )
 
     const schemaIsCheck = `Schema.is($schema)(${valueText})`
-    const isNegated = expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+
+    const isNegated = strictEqual(
+      expression.operatorToken.kind,
+      ts.SyntaxKind.ExclamationEqualsEqualsToken
+    )
+
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck
 
     const reported = match({

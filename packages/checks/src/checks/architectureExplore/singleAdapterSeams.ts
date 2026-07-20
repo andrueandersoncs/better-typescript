@@ -1,4 +1,5 @@
 import { Array, Function, HashMap, HashSet, Option, Struct, Tuple, pipe, Result } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { withProgramIndex } from "../../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -170,10 +171,10 @@ const implementedSymbols =
     const clauses = declaration.heritageClauses ?? Array.empty()
     const resolveImplemented = implementedFromClause(checker)
 
-    const implementsClauses = Array.filter(
-      clauses,
-      (clause) => clause.token === ts.SyntaxKind.ImplementsKeyword
-    )
+    const isImplementsClause = (clause: ts.HeritageClause) =>
+      strictEqual(clause.token, ts.SyntaxKind.ImplementsKeyword)
+
+    const implementsClauses = Array.filter(clauses, isImplementsClause)
 
     return Array.flatMap(implementsClauses, resolveImplemented)
   }
@@ -348,8 +349,9 @@ const singleAdapterElements =
       candidates,
       Array.filter((candidate) => {
         const declaration = Tuple.get(candidate, 0)
+        const declarationSourceFile = declaration.getSourceFile()
 
-        return declaration.getSourceFile() === context.sourceFile
+        return strictEqual(declarationSourceFile, context.sourceFile)
       }),
       Array.filter((candidate) => {
         const candidateSymbol = Tuple.get(candidate, 1)
@@ -368,8 +370,8 @@ const singleAdapterElements =
 
         const productionAdapterCount = Tuple.get(counts, 0)
         const testAdapterCount = Tuple.get(counts, 1)
-        const hasOneProductionAdapter = productionAdapterCount === 1
-        const hasNoTestAdapter = testAdapterCount === 0
+        const hasOneProductionAdapter = strictEqual(productionAdapterCount, 1)
+        const hasNoTestAdapter = strictEqual(testAdapterCount, 0)
         const isHypothetical = hasOneProductionAdapter && hasNoTestAdapter
         const hypotheticalCandidate = isHypothetical ? Option.some(candidate) : Option.none()
 

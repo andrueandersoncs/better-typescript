@@ -6,8 +6,9 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makePlannedCheck } from "../defineCheck.js"
 import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isArrayIdentifier = (identifier: ts.Identifier) => identifier.text === "Array"
+const isArrayIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "Array")
 
 const message = "Avoid primitive Array constructors."
 

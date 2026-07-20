@@ -5,12 +5,16 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const errorTypeName = (typeName: ts.EntityName) =>
   ts.isIdentifier(typeName) ? typeName : typeName.right
 
-const isErrorNamedTypeReference = (typeReference: ts.TypeReferenceNode) =>
-  errorTypeName(typeReference.typeName).text === "Error"
+const isErrorNamedTypeReference = (typeReference: ts.TypeReferenceNode) => {
+  const typeNameText = errorTypeName(typeReference.typeName).text
+
+  return strictEqual(typeNameText, "Error")
+}
 
 const isErrorTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
   pipe(Option.liftPredicate(ts.isTypeReferenceNode)(node), Option.exists(isErrorNamedTypeReference))
@@ -30,7 +34,7 @@ const errorTypeMatches = (context: CheckContext) => {
     Option.fromNullishOr
   )
 
-  const isSameSymbol = (left: ts.Symbol) => (right: ts.Symbol) => left === right
+  const isSameSymbol = (left: ts.Symbol) => (right: ts.Symbol) => strictEqual(left, right)
 
   const isGlobalErrorSymbol = (symbol: ts.Symbol) =>
     pipe(globalErrorSymbol, Option.exists(isSameSymbol(symbol)))

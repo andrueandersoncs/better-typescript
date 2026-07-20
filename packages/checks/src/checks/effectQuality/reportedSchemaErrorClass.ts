@@ -12,6 +12,7 @@ import type { EffectQualityIndex } from "./index.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
 import { makeRuleFinding } from "./makeFindings.js"
 import { emptyHeritageClauses, heritageClauseIsExtends } from "./reportedSchemaModelsShared.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const schemaTaggedErrorNames = Array.make("TaggedErrorClass", "ErrorClass", "TaggedError")
 
@@ -19,7 +20,7 @@ const dataTaggedErrorNames = Array.make("TaggedError", "Error")
 
 const errorNamePattern = /Error$|Failure$|Exception$/u
 
-const propertyNameIsTag = (name: string) => name === "_tag"
+const propertyNameIsTag = (name: string) => strictEqual(name, "_tag")
 
 const propertyDeclarationIsTag = (property: ts.PropertyDeclaration) =>
   pipe(propertyNameText(property.name), Option.exists(propertyNameIsTag))
@@ -42,9 +43,10 @@ const classNameLooksLikeError = (declaration: ts.ClassDeclaration) =>
     Option.exists(nameMatchesErrorPattern)
   )
 
-const identifierIsError = (identifier: ts.Identifier) => identifier.text === "Error"
+const identifierIsError = (identifier: ts.Identifier) => strictEqual(identifier.text, "Error")
 
-const propertyAccessIsError = (access: ts.PropertyAccessExpression) => access.name.text === "Error"
+const propertyAccessIsError = (access: ts.PropertyAccessExpression) =>
+  strictEqual(access.name.text, "Error")
 
 const nodeIsErrorConstructor = (current: ts.Expression) =>
   pipe(

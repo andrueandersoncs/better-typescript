@@ -13,6 +13,7 @@ import {
   isProductionRole,
   newMapBindingName
 } from "./evidenceSupport.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const cacheNamePattern = /cache/i
 
@@ -83,7 +84,7 @@ export const cachePreference =
       return emptyAdviceFindings
     }
 
-    const isSetName = expression.name.text === "set"
+    const isSetName = strictEqual(expression.name.text, "set")
 
     if (!isSetName) {
       return emptyAdviceFindings

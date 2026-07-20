@@ -1,4 +1,5 @@
 import { Array, Function, Result, Struct, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -11,9 +12,18 @@ import { exportSurfaceName, importUsageName, moduleGraphName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
 const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const isModuleGraphElement = (element: NamedDetection) =>
+    strictEqual(element.name, moduleGraphName)
+
+  const isImportUsageElement = (element: NamedDetection) =>
+    strictEqual(element.name, importUsageName)
+
+  const isExportSurfaceElement = (element: NamedDetection) =>
+    strictEqual(element.name, exportSurfaceName)
+
   const moduleGraphPaths = pipe(
     elements,
-    Array.filter((element) => element.name === moduleGraphName),
+    Array.filter(isModuleGraphElement),
     Array.filterMap(Function.flow(moduleGraphDataOf, Result.fromOption(Function.constVoid))),
     Array.flatMap((data) => {
       const workspacePath = Array.of(data.workspacePath)
@@ -24,14 +34,14 @@ const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
 
   const importUsagePaths = pipe(
     elements,
-    Array.filter((element) => element.name === importUsageName),
+    Array.filter(isImportUsageElement),
     Array.filterMap(Function.flow(importUsageDataOf, Result.fromOption(Function.constVoid))),
     Array.map(Struct.get("importerWorkspacePath"))
   )
 
   const exportSurfacePaths = pipe(
     elements,
-    Array.filter((element) => element.name === exportSurfaceName),
+    Array.filter(isExportSurfaceElement),
     Array.filterMap(Function.flow(exportSurfaceDataOf, Result.fromOption(Function.constVoid))),
     Array.map(Struct.get("workspacePath"))
   )
@@ -44,7 +54,7 @@ const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
     Array.dedupe
   )
 
-  const hasNoPaths = paths.length === 0
+  const hasNoPaths = strictEqual(paths.length, 0)
   const hasTestPath = Array.some(paths, isTestPath)
   const skipConditions = Array.make(hasNoPaths, hasTestPath)
   const shouldSkip = Array.some(skipConditions, Boolean)

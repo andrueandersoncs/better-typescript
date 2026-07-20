@@ -1,13 +1,16 @@
 import { Array, Function, Option, Predicate, Result, Struct } from "effect"
+import * as ts from "typescript"
 import { makeFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
-import {
-  isSingleLineComment,
-  onlyBlankBetween
-} from "@better-typescript/core/engine/sources/comments"
+import { onlyBlankBetween } from "@better-typescript/core/engine/sources/comments"
+import type { SourceComment } from "@better-typescript/core/engine/sources/comments/data"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
+const isSingleLineComment = (comment: SourceComment) =>
+  strictEqual(comment.kind, ts.SyntaxKind.SingleLineCommentTrivia)
 
 const message = "Avoid multi-line comments."
 

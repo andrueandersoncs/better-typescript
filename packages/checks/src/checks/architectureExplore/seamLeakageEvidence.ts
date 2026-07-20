@@ -1,5 +1,6 @@
 import * as path from "node:path"
 import { Array, Option, pipe } from "effect"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
@@ -36,7 +37,7 @@ const leakageKind =
     const sourceDirectory = path.dirname(context.sourceFile.fileName)
     const resolved = path.resolve(sourceDirectory, normalized)
     const relativeToProject = path.relative(context.projectRoot, resolved)
-    const isParentDirectory = relativeToProject === ".."
+    const isParentDirectory = strictEqual(relativeToProject, "..")
     const isParentPath = relativeToProject.startsWith(`..${path.sep}`)
     const outsideConditions = Array.make(isParentDirectory, isParentPath)
     const outsideProject = Array.some(outsideConditions, Boolean)

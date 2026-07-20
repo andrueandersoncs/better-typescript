@@ -6,6 +6,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
+
 const message = "Avoid conditional array spreads."
 
 const hint =
@@ -18,8 +20,11 @@ const arrayLiteralElementCount = (expression: ts.Expression) => {
   return ts.isArrayLiteralExpression(unwrapped) ? unwrapped.elements.length : -1
 }
 
-const isEmptyArrayLiteral = (expression: ts.Expression) =>
-  arrayLiteralElementCount(expression) === 0
+const isEmptyArrayLiteral = (expression: ts.Expression) => {
+  const elementCount = arrayLiteralElementCount(expression)
+
+  return strictEqual(elementCount, 0)
+}
 
 const isNonEmptyArrayBranch = (expression: ts.Expression) =>
   arrayLiteralElementCount(expression) !== 0

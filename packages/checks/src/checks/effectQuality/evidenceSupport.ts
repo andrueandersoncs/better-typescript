@@ -10,6 +10,7 @@ import {
 } from "../functionalCoreEffect/support.js"
 import { propertyNameText, unwrapTransparentExpression } from "../support/tsNode.js"
 import { declarationNameText } from "./astQueries.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 export const apiSubject =
   (context: CheckContext) => (fallback: string) => (expression: ts.Expression) =>
@@ -79,7 +80,7 @@ export const callIsEffectApi =
     importedEffectApiAt(checker, node.expression, namespace, names)
 
 const assignmentBindingName = (parent: ts.BinaryExpression) => {
-  const isEquals = parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+  const isEquals = strictEqual(parent.operatorToken.kind, ts.SyntaxKind.EqualsToken)
 
   if (!isEquals) {
     return Option.none<string>()
@@ -95,10 +96,10 @@ export const newMapBindingName = (node: ts.NewExpression) => {
   const expression = unwrapTransparentExpression(node.expression)
   const identifierMap = ts.isIdentifier(expression)
   const identifierText = identifierMap ? expression.text : ""
-  const identifierIsMap = identifierText === "Map"
+  const identifierIsMap = strictEqual(identifierText, "Map")
   const propertyMap = ts.isPropertyAccessExpression(expression)
   const propertyText = propertyMap ? expression.name.text : ""
-  const propertyIsMap = propertyText === "Map"
+  const propertyIsMap = strictEqual(propertyText, "Map")
   const mapIdentifier = Array.make(identifierMap, identifierIsMap)
   const mapProperty = Array.make(propertyMap, propertyIsMap)
   const isIdentifierMap = Array.every(mapIdentifier, Boolean)

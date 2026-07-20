@@ -6,6 +6,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 // BooleanOperatorExpression is shared boolean syntax because owners need one vocabulary.
 export type BooleanOperatorExpression =
@@ -16,7 +17,7 @@ const isBooleanOperatorExpression = (node: ts.Node): node is BooleanOperatorExpr
     ts.isBinaryExpression(node) && HashSet.has(booleanBinaryOperatorKinds, node.operatorToken.kind)
 
   const unaryOperator = ts.isPrefixUnaryExpression(node) ? node.operator : undefined
-  const isUnaryBooleanOperator = unaryOperator === ts.SyntaxKind.ExclamationToken
+  const isUnaryBooleanOperator = strictEqual(unaryOperator, ts.SyntaxKind.ExclamationToken)
   const isTernaryOperator = ts.isConditionalExpression(node)
   const checks = Array.make(isBinaryBooleanOperator, isUnaryBooleanOperator, isTernaryOperator)
 
@@ -59,7 +60,11 @@ const hasBooleanOperatorAncestor = (node: ts.Node): boolean => {
   const isConditionEdge = pipe(
     parent,
     Option.filter(ts.isConditionalExpression),
-    Option.exists((conditional) => conditional.condition === node)
+    Option.exists((conditional) => {
+      const isConditionNode = strictEqual(conditional.condition, node)
+
+      return isConditionNode
+    })
   )
 
   const hasCountedAncestor = Option.exists(parent, isOrHasBooleanOperatorAncestor)

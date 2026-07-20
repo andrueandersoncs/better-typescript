@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct } from "effect"
 import * as ts from "typescript"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -14,6 +14,7 @@ import {
   type FunctionDefinition
 } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
+import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 // Methods stay excluded because typed adapters are valid runtime boundaries.
 type EffectfulFunctionDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration
@@ -55,7 +56,7 @@ const isEffectRunSyncCall =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): boolean => {
     const symbolIsEverySync = (symbol: ts.Symbol) => {
-      const nameMatches = symbol.name === "runSync"
+      const nameMatches = strictEqual(symbol.name, "runSync")
       const fromEffect = symbolDeclaredInEffectPackage(symbol)
       const conditions = Array.make(nameMatches, fromEffect)
 
