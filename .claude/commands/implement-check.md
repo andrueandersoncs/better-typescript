@@ -137,7 +137,7 @@ per-Check options, dynamic discovery, or Check-to-Check dependencies.
 7. **Use this external config shape:**
 
 ```ts
-import { Stream } from "effect"
+import { Effect } from "effect"
 import { exampleSnippet, refactorExample } from "@better-typescript/core/engine/example"
 import {
   defineConfig,
@@ -158,7 +158,7 @@ const localExamples = () =>
 
 const localWiring = makeWiring({
   checks: [namedCheck("acme/local-check", localCheck, localExamples)],
-  derive: () => Stream.empty
+  derive: () => Effect.succeed([])
 })
 
 const wiring = mergeWirings([defaultWiring, localWiring])

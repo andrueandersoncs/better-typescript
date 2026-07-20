@@ -1,4 +1,4 @@
-import { Array, Option, Tuple, pipe } from "effect"
+import { Array, Effect, Option, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -172,4 +172,4 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
   })
 }
 
-export const bounceCluster = deriveSignals(bounceAdvice)
+export const bounceCluster = Effect.fn("BounceCluster.derive")(deriveSignals(bounceAdvice))

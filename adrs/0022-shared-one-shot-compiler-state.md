@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. [ADR-0023](0023-one-shot-effects-and-rerun-watch.md) supersedes the stream-scoped
+workspace producer lifetime and mode-specific producer decision; shared one-shot compiler state and
+evidence decisions remain accepted.
 
 ## Date
 

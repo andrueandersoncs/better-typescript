@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Superseded in part by [ADR-0023](0023-one-shot-effects-and-rerun-watch.md), which replaces
+Stream-based derivation and reporting with bounded Effects. Its rejection of registries, schedulers,
+metadata-driven dependency graphs, suppressions, severities, and result-based exit gating remains
+accepted.
 
 ## Date
 

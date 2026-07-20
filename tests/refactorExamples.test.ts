@@ -30,7 +30,7 @@ const runSide = async (check: (typeof defaultWiring.checks)[number]["check"], si
 
 test("reported checks load fixture example trees with at least one pair", async () => {
   const reported = defaultWiring.checks.filter((check: NamedCheck) => check.reported)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
 
   for (const named of reported) {
     const examples = await Effect.runPromise(resolve(named.examples))
@@ -46,7 +46,7 @@ test("reported checks load fixture example trees with at least one pair", async 
 })
 
 test("fixture refactor examples: bad trees detect and good trees stay clean", async () => {
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
   const withExamples: Array<NamedCheck> = []
 
   for (const named of defaultWiring.checks) {
@@ -90,7 +90,7 @@ test("fixture refactor examples: bad trees detect and good trees stay clean", as
 test("example resolver retries failures and caches successful directory loads", async (context) => {
   const exampleRoot = fs.mkdtempSync(path.join(os.tmpdir(), "better-typescript-examples-"))
   const source = makeDirectoryRefactorExamples(exampleRoot)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
 
   context.after(() => fs.rmSync(exampleRoot, { recursive: true, force: true }))
 

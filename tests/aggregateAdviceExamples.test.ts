@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "node:test"
-import { Effect, Stream } from "effect"
+import { Effect } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
 import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
@@ -12,7 +12,7 @@ import {
   makeRefactorExampleResolver
 } from "@better-typescript/core/engine/example"
 import type { SignalEvent } from "@better-typescript/core/engine/report/data"
-import { makeReportEvent } from "@better-typescript/core/engine/watch"
+import { reportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { makeContext } from "@better-typescript/core/engine/sources"
 import { defineConfig } from "@better-typescript/core/engine/wiring"
@@ -183,8 +183,7 @@ const reportAt = async (
     rootPath: workspace.rootPath,
     contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
   })
-  const report = await Effect.runPromise(makeReportEvent(config))
-  const events = await Effect.runPromise(Stream.runCollect(report(Stream.succeed(update))))
+  const events = await Effect.runPromise(reportEvents(config)(update))
 
   return events.filter((event): event is SignalEvent => event._tag === "signal")
 }
@@ -204,7 +203,7 @@ for (const exampleCase of adviceExampleCases) {
     const goodBlocks = await reportAt(exampleCase.wiring, path.join(pairRoot, "good"))
     const badAdvice = blocksWithTitle(badBlocks, exampleCase.title)
     const goodAdvice = blocksWithTitle(goodBlocks, exampleCase.title)
-    const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+    const resolve = await Effect.runPromise(makeRefactorExampleResolver())
     const examples = await Effect.runPromise(resolve(makeDirectoryRefactorExamples(exampleRoot)))
     const expectedExample = formatRefactorExample(examples[0])
 

@@ -2,16 +2,16 @@
 import * as path from "node:path"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeServices from "@effect/platform-node/NodeServices"
-import { Console, Effect, Function, Option, Predicate, Stream, Struct, pipe } from "effect"
+import { Console, Effect, Function, Option, Predicate, Struct, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText } from "@better-typescript/core/engine/report"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
-import { makeReportEvent, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { reportEvents, watchWorkspace } from "@better-typescript/core/engine/watch"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
+import { compilerOptionsForConfig } from "@better-typescript/core/engine/wiring"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
-import { compilerOptionsForConfig } from "@better-typescript/core/engine/wiring"
 
 const workingDirectory = process.cwd()
 
@@ -24,7 +24,7 @@ const pretty = pipe(
 
 const watch = pipe(
   Flag.boolean("watch"),
-  Flag.withDescription("Continue watching for changes after the initial report.")
+  Flag.withDescription("Continue rerunning the complete report after project changes.")
 )
 
 const setErrorExitCode = () => {
@@ -67,15 +67,33 @@ const printPrettyEvent = (event: ReportEvent): Effect.Effect<void> => {
   return Console.log(`${text}\n`)
 }
 
-// Send status lines to stderr because stdout remains a pure event stream for capture.
+const runOneShot = Effect.fn("Cli.runOneShot")(function* (
+  projectDirectory: string,
+  printEvent: (event: ReportEvent) => Effect.Effect<void>
+) {
+  const config = yield* loadWiringConfig(projectDirectory, defaultConfig)
+  const compilerOptions = compilerOptionsForConfig(config)
+  const workspace = yield* discoverWorkspace(projectDirectory)
+
+  const reportRun = Effect.gen(function* () {
+    const update = yield* workspacePrograms.materialize(workspace, compilerOptions)
+    const events = yield* reportEvents(config)(update)
+
+    yield* Effect.forEach(events, printEvent, { discard: true })
+
+    return workspace.rootPath
+  })
+
+  return yield* Effect.scoped(reportRun)
+})
+
+// A changed snapshot reruns from scratch because each wait owns its watcher.
 const runCommand = Effect.fn("Cli.runCommand")(function* (
   projectPath: string,
   prettyOutput: boolean,
   watchForChanges: boolean
 ) {
   const projectDirectory = path.resolve(projectPath)
-  const config = yield* loadWiringConfig(projectDirectory, defaultConfig)
-  const compilerOptions = compilerOptionsForConfig(config)
   const prettyOption = Option.liftPredicate(Boolean)(prettyOutput)
 
   const printEvent = Option.match(prettyOption, {
@@ -84,23 +102,29 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
   })
 
   const workspace = yield* discoverWorkspace(projectDirectory)
-  const watchOptions = Option.none()
-  const initialUpdate = workspacePrograms.materialize(workspace, compilerOptions)
-  const initialUpdates = pipe(initialUpdate, Stream.fromEffect, Stream.scoped)
-
-  const updates = watchForChanges
-    ? workspaceUpdates(workspace, watchOptions, compilerOptions)
-    : initialUpdates
-
-  const report = yield* makeReportEvent(config)
-  const events = report(updates)
 
   const status = watchForChanges
     ? `Watching ${workspace.rootPath} for changes.`
     : `Analyzing ${workspace.rootPath}.`
 
   yield* Console.error(status)
-  yield* Stream.runForEach(events, printEvent)
+
+  if (!watchForChanges) {
+    yield* runOneShot(projectDirectory, printEvent)
+    return
+  }
+
+  yield* runOneShot(projectDirectory, printEvent)
+
+  const rerunReport = runOneShot(projectDirectory, printEvent)
+
+  const rerun = pipe(
+    watchWorkspace(projectDirectory),
+    Effect.andThen(rerunReport),
+    Effect.catch(reportError)
+  )
+
+  yield* Effect.forever(rerun)
 })
 
 const rootCommand = Command.make(

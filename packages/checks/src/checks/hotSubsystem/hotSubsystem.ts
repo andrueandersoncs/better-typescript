@@ -1,4 +1,4 @@
-import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
+import { Tuple, Array, Effect, HashMap, Option, Struct, pipe } from "effect"
 import { Advice, FileDetections } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -122,4 +122,4 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
   return Array.map(deepest, makeSubsystemAdvice)
 }
 
-export const hotSubsystem = deriveSignals(hotSubsystemAdvice)
+export const hotSubsystem = Effect.fn("HotSubsystem.derive")(deriveSignals(hotSubsystemAdvice))

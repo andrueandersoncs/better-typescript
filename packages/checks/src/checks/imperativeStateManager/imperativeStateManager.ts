@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Option, Schema, Stream, pipe } from "effect"
+import { Array, Effect, Function, Option, Schema, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
@@ -82,30 +82,16 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
   )
 }
 
-const materializeImperativeStateAdvice = Effect.fn("ImperativeStateManager.materialize")(function* (
+export const imperativeStateManager = Effect.fn("ImperativeStateManager.derive")(function* (
   input: ImperativeStateManagerInput
-) {
-  const noMutation = yield* Stream.runCollect(input.noMutation)
-  const preferHashMap = yield* Stream.runCollect(input.preferHashMap)
-  const preferHashSet = yield* Stream.runCollect(input.preferHashSet)
-  const noMutableArrayMethods = yield* Stream.runCollect(input.noMutableArrayMethods)
-
-  const noMutableVariableDeclarations = yield* Stream.runCollect(
-    input.noMutableVariableDeclarations
-  )
-
+): Effect.fn.Return<ReadonlyArray<Advice>> {
   const signals = ImperativeStateSignals.make({
-    noMutation,
-    preferHashMap,
-    preferHashSet,
-    noMutableArrayMethods,
-    noMutableVariableDeclarations
+    noMutation: input.noMutation,
+    preferHashMap: input.preferHashMap,
+    preferHashSet: input.preferHashSet,
+    noMutableArrayMethods: input.noMutableArrayMethods,
+    noMutableVariableDeclarations: input.noMutableVariableDeclarations
   })
 
   return imperativeStateAdviceFor(signals)
 })
-
-const imperativeStateManagerFrom = (input: ImperativeStateManagerInput): Stream.Stream<Advice> =>
-  pipe(input, materializeImperativeStateAdvice, Stream.fromArrayEffect)
-
-export const imperativeStateManager = imperativeStateManagerFrom

@@ -264,4 +264,4 @@ export const makeRefactorExampleResolver = Effect.fn("Example.makeRefactorExampl
 
     return resolve
   }
-)()
+)

@@ -11,7 +11,7 @@ const emptyPlan = (_context: ProgramContext): ReadonlyArray<Subscription> => Arr
 
 test("makeSilentPlannedCheck owns check identity, examples, and report policy", async () => {
   const check = makeSilentPlannedCheck("prefer-curried-data-last-functions", emptyPlan)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
   const examples = await Effect.runPromise(resolve(check.examples))
 
   assert.equal(check.name, "prefer-curried-data-last-functions")
@@ -22,7 +22,7 @@ test("makeSilentPlannedCheck owns check identity, examples, and report policy", 
 test("makeSilentCheck owns an existing check's identity and report policy", async () => {
   const check = makeCheckFromSubscriptions(emptyPlan)
   const named = makeSilentCheck("architecture-evidence", check)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
   const examples = await Effect.runPromise(resolve(named.examples))
 
   assert.equal(named.name, "architecture-evidence")

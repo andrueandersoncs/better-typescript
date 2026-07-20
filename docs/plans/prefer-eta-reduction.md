@@ -126,7 +126,7 @@ Not chosen:
 
 4. **Land with self-host cleanups** (required for `No signals`)
    - Rewrite matched sites to the callee value / partial
-   - Typical targets: `defaultConfigExport`, `Struct.get("text")`, `Stream.fromIterable`,
+   - Typical targets: `defaultConfigExport`, `Struct.get("text")`, `Effect.succeed`,
      `deriveSignals(...)`, `hasCallSignature(checker)`, `Array.isArray`, safe namespace functions
      like `ts.isMethodDeclaration`
    - Leave method-receiver forms untouched

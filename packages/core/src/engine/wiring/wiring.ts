@@ -12,7 +12,6 @@ import {
   Option,
   Predicate,
   Result,
-  Stream,
   Struct,
   Tuple,
   pipe
@@ -176,21 +175,13 @@ export const makeWiring = <E = never>(
 export const makeMergedWiring = <E = never>(wirings: ReadonlyArray<Wiring<E>>): Wiring<E> => {
   const checks = Array.flatMap(wirings, Struct.get("checks"))
 
-  const derive: Wiring<E>["derive"] = (signals) => {
-    const streams = Array.map(wirings, (wiring) => wiring.derive(signals))
-
-    return pipe(
-      Array.head(streams),
-      Option.match({
-        onNone: () => Stream.empty,
-        onSome: (head) => {
-          const rest = Array.drop(streams, 1)
-
-          return Array.reduce(rest, head, (advice, next) => Stream.concat(advice, next))
-        }
-      })
+  // FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
+  const derive: Wiring<E>["derive"] = Effect.fn("Wiring.mergedDerive")((signals) =>
+    pipe(
+      Effect.forEach(wirings, (wiring) => wiring.derive(signals)),
+      Effect.map(Array.flatten)
     )
-  }
+  )
 
   return makeWiring({ checks, derive })
 }

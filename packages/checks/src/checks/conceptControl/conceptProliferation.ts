@@ -1,5 +1,6 @@
 import {
   Array,
+  Effect,
   Function,
   HashMap,
   HashSet,
@@ -160,4 +161,6 @@ const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Adv
   return Array.appendAll(closed, proliferation)
 }
 
-export const conceptProliferation = deriveSignals(conceptAdviceFor)
+export const conceptProliferation = Effect.fn("ConceptProliferation.derive")(
+  deriveSignals(conceptAdviceFor)
+)

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted; config cardinality superseded by ADR-0015
+Accepted for explicit reviewed TypeScript configuration and no registry; config cardinality is
+superseded by ADR-0015 and Stream-based ReportWiring is superseded by
+[ADR-0023](0023-one-shot-effects-and-rerun-watch.md).
 
 ## Date
 

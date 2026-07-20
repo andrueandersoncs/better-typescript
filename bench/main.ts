@@ -1,6 +1,6 @@
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { Effect, Result, Stream, pipe } from "effect"
+import { Effect, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
 import {
@@ -8,7 +8,7 @@ import {
   defineConfig,
   makeMergedWiring
 } from "@better-typescript/core/engine/wiring"
-import { makeReportEvent } from "@better-typescript/core/engine/watch"
+import { reportEvents } from "@better-typescript/core/engine/watch"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { makeContext } from "@better-typescript/core/engine/sources"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
@@ -42,23 +42,20 @@ const taskStatistics = (task: Task | undefined): TaskStatistics | null =>
 const makeContextFromLoadedProject = (project: LoadedProject) =>
   makeContext(project.rootPath)(project.program)
 
+const signalTexts = (events: ReadonlyArray<{ readonly _tag: string; readonly text?: string }>) =>
+  events.flatMap((event) =>
+    event._tag === "signal" && event.text !== undefined ? [event.text] : []
+  )
+
 const runLoadedBenchmark = async (): Promise<void> => {
   const workspace = await Effect.runPromise(loadProject(targetPath, benchmarkCompilerOptions))
-  const report = await Effect.runPromise(makeReportEvent(benchmarkConfig))
   const collectReport = () => {
     const update = new WorkspaceUpdate({
       rootPath: workspace.rootPath,
       contexts: workspace.projects.map(makeContextFromLoadedProject)
     })
-    const blocks = pipe(
-      Stream.succeed(update),
-      report,
-      Stream.filterMap((event) =>
-        event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
-      )
-    )
 
-    return Effect.runPromise(Stream.runCollect(blocks))
+    return Effect.runPromise(pipe(reportEvents(benchmarkConfig)(update), Effect.map(signalTexts)))
   }
 
   const warmed = await collectReport()
@@ -93,18 +90,14 @@ const runLoadedBenchmark = async (): Promise<void> => {
 }
 
 const runOneShotWorkspacePass = async (workspace: WorkspaceConfigs): Promise<void> => {
-  const report = await Effect.runPromise(makeReportEvent(benchmarkConfig))
   const started = performance.now()
-  const initialUpdate = workspacePrograms.materialize(workspace, benchmarkCompilerOptions)
-  const updates = pipe(initialUpdate, Stream.fromEffect, Stream.scoped)
   const blocks = await Effect.runPromise(
-    pipe(
-      updates,
-      report,
-      Stream.filterMap((event) =>
-        event._tag === "signal" ? Result.succeed(event.text) : Result.failVoid
-      ),
-      Stream.runCollect
+    Effect.scoped(
+      Effect.gen(function* () {
+        const update = yield* workspacePrograms.materialize(workspace, benchmarkCompilerOptions)
+
+        return yield* pipe(reportEvents(benchmarkConfig)(update), Effect.map(signalTexts))
+      })
     )
   )
   const elapsedMs = performance.now() - started

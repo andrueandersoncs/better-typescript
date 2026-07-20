@@ -7,7 +7,6 @@ import {
   Option,
   Order,
   Record,
-  Stream,
   Struct,
   pipe
 } from "effect"
@@ -17,21 +16,11 @@ import { Location } from "../location/data.js"
 import type { Detection } from "../location/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
-const materializeDerivedSignals = Effect.fn("Derive.materialize")(function* <A, B, E, R>(
-  signals: Stream.Stream<A, E, R>,
-  derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>
-) {
-  const elements = yield* Stream.runCollect(signals)
-
-  return derive(elements)
-})
-
-const deriveSignalsFrom =
+// FIXME: this Effect.sync is redundant, we don't need to wrap this in an Effect
+export const deriveSignals =
   <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
-  <E, R>(signals: Stream.Stream<A, E, R>): Stream.Stream<B, E, R> =>
-    pipe(materializeDerivedSignals(signals, derive), Stream.fromArrayEffect)
-
-export const deriveSignals = deriveSignalsFrom
+  (elements: ReadonlyArray<A>): Effect.Effect<ReadonlyArray<B>> =>
+    Effect.sync(() => derive(elements))
 
 // The name pairs with its detection here because derive joins detections by check name.
 export const makeNamedDetection = (name: string) => (detectionValue: Detection) =>

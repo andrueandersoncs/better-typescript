@@ -1,4 +1,4 @@
-import { Array, Option, Result, Schema, Stream, Struct, pipe } from "effect"
+import { Array, Effect, Option, Result, Schema, Struct, pipe } from "effect"
 import { makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -71,8 +71,10 @@ const evidenceDetections = (signals: ReadonlyArray<Signal>): ReadonlyArray<Detec
     Option.getOrElse(Array.empty<Detection>)
   )
 
-export const effectQualityDerive = (signals: ReadonlyArray<Signal>) =>
-  pipe(
+export const effectQualityDerive = Effect.fn("EffectQuality.derive")(function* (
+  signals: ReadonlyArray<Signal>
+): Effect.fn.Return<ReadonlyArray<Advice>> {
+  return pipe(
     evidenceDetections(signals),
     Array.filterMap((detection) => {
       if (!Schema.is(EffectQualityAdviceData)(detection.data)) {
@@ -94,6 +96,6 @@ export const effectQualityDerive = (signals: ReadonlyArray<Signal>) =>
       })
 
       return Result.succeed(advice)
-    }),
-    Stream.fromIterable
+    })
   )
+})

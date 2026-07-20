@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
+import { Array, Effect, Function, Option, Result, Struct, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -171,4 +171,6 @@ const testPastInterfaceAdvice = (
   })
 }
 
-export const testPastInterface = deriveSignals(testPastInterfaceAdvice)
+export const testPastInterface = Effect.fn("TestPastInterface.derive")(
+  deriveSignals(testPastInterfaceAdvice)
+)

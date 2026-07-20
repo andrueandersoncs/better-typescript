@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Option, Stream, pipe } from "effect"
+import { Effect, pipe } from "effect"
 import * as ts from "typescript"
 import { noUnused } from "@better-typescript/checks/noUnused"
 import { compilerOptionsForChecks, runChecks } from "@better-typescript/core/engine/check"
@@ -19,18 +19,8 @@ const noUnusedFixturePath = path.join(testDirectory, "fixtures", "no-unused")
 const includeEverySourceFile = () => true
 const noUnusedCompilerOptions = compilerOptionsForChecks([noUnused.check])
 
-const workspaceProgramUpdates = (
-  workspace: WorkspaceConfigs,
-  compilerOptions: ts.CompilerOptions = {}
-) =>
-  pipe(workspacePrograms.materialize(workspace, compilerOptions), Stream.fromEffect, Stream.scoped)
-
 const collectPrograms = (workspace: WorkspaceConfigs, compilerOptions: ts.CompilerOptions = {}) =>
-  pipe(
-    workspaceProgramUpdates(workspace, compilerOptions),
-    Stream.runHead,
-    Effect.map(Option.getOrThrow)
-  )
+  Effect.scoped(workspacePrograms.materialize(workspace, compilerOptions))
 
 const detectionIdentity = (detection: {
   readonly location: { readonly path: string; readonly line: number; readonly column: number }
@@ -81,13 +71,10 @@ const writeCompatibleProjects = async (root: string): Promise<void> => {
 
 test("workspacePrograms emits exactly one workspace update", async () => {
   const workspace = await Effect.runPromise(discoverWorkspace(noUnusedFixturePath))
-  const updates = await Effect.runPromise(
-    pipe(workspaceProgramUpdates(workspace), Stream.runCollect)
-  )
+  const update = await Effect.runPromise(collectPrograms(workspace))
 
-  assert.equal(updates.length, 1)
-  assert.equal(updates[0]?.rootPath, workspace.rootPath)
-  assert.equal(updates[0]?.contexts.length, workspace.projects.length)
+  assert.equal(update.rootPath, workspace.rootPath)
+  assert.equal(update.contexts.length, workspace.projects.length)
 })
 
 test("loadProject preserves configured compiler options when no Check requires more", async () => {

@@ -1,4 +1,4 @@
-import { Stream } from "effect"
+import { Array, Effect } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -9,10 +9,10 @@ import {
   makeEvidenceItem
 } from "@better-typescript/core/engine/derive"
 import {
-  makeExampleSnippet,
-  makeInlineRefactorExamples,
-  makeRefactorExample
-} from "@better-typescript/core/engine/example"
+  ExampleSnippet,
+  InlineRefactorExamples,
+  RefactorExample
+} from "@better-typescript/core/engine/example/data"
 import {
   defineConfig,
   makeWiring,
@@ -61,34 +61,42 @@ const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number
   detections.filter((element) => element.location.path === path).length
 
 const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
-  Array.from(new Set(detections.map((element) => element.location.path))).sort()
+  globalThis.Array.from(new Set(detections.map((element) => element.location.path))).sort()
 
-const consoleLogBoundaryAdvice = (detections: Stream.Stream<Detection>): Stream.Stream<Advice> =>
+const consoleLogBoundaryAdvice = (
+  detections: ReadonlyArray<Detection>
+): Effect.Effect<ReadonlyArray<Advice>> =>
   deriveSignals((elements: ReadonlyArray<Detection>) =>
-    detectionPaths(elements).map(
-      (path) =>
-        new Advice({
-          location: makeAdviceLocation(path),
-          level: "file",
-          title: "console logging in runtime code",
-          remediation:
-            "Replace console.log with the project's structured logger or return data to the caller.",
-          evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
-        })
+    detectionPaths(elements).map((path) =>
+      Advice.make({
+        location: makeAdviceLocation(path),
+        level: "file",
+        title: "console logging in runtime code",
+        remediation:
+          "Replace console.log with the project's structured logger or return data to the caller.",
+        evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
+      })
     )
   )(detections)
 
 const consoleLogExamples = [
-  makeRefactorExample(
-    makeExampleSnippet("src/main.ts", `console.log("starting")`),
-    makeExampleSnippet("src/main.ts", `return { status: "starting" as const }`)
-  )
+  RefactorExample.make({
+    bad: Array.make(
+      ExampleSnippet.make({ filePath: "src/main.ts", code: `console.log("starting")` })
+    ),
+    good: Array.make(
+      ExampleSnippet.make({
+        filePath: "src/main.ts",
+        code: `return { status: "starting" as const }`
+      })
+    )
+  })
 ] as const
 
 const consoleLogCheck = makeNamedCheck(
   "acme/no-console-log",
   noConsoleLog,
-  makeInlineRefactorExamples(consoleLogExamples)
+  InlineRefactorExamples.make({ examples: consoleLogExamples })
 )
 
 const localWiring = makeWiring({
@@ -98,15 +106,14 @@ const localWiring = makeWiring({
     const specificAdvice = consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
 
     const fallbackAdvice = deriveSignals((elements: ReadonlyArray<Detection>) =>
-      detectionPaths(elements).map(
-        (path) =>
-          new Advice({
-            location: makeAdviceLocation(path),
-            level: "file",
-            title: "logging policy review",
-            remediation: "Adopt the structured logger before this file grows more console output.",
-            evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
-          })
+      detectionPaths(elements).map((path) =>
+        Advice.make({
+          location: makeAdviceLocation(path),
+          level: "file",
+          title: "logging policy review",
+          remediation: "Adopt the structured logger before this file grows more console output.",
+          evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
+        })
       )
     )(elementsOf("acme/no-console-log"))
 

@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result, pipe } from "effect"
+import { Array, Effect, Function, Option, Result, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -83,4 +83,6 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
   })
 }
 
-export const hypotheticalSeam = deriveSignals(hypotheticalSeamAdvice)
+export const hypotheticalSeam = Effect.fn("HypotheticalSeam.derive")(
+  deriveSignals(hypotheticalSeamAdvice)
+)

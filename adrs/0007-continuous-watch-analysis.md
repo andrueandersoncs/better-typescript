@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0023](0023-one-shot-effects-and-rerun-watch.md).
 
 ## Date
 

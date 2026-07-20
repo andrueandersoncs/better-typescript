@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted; public config shape superseded by ADR-0015
+Accepted; public config shape superseded by ADR-0015 and Stream-based derivation/reporting
+superseded by [ADR-0023](0023-one-shot-effects-and-rerun-watch.md).
 
 ## Date
 

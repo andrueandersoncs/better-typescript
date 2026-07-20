@@ -1,12 +1,9 @@
-import { Array, Data, Stream, Struct, pipe } from "effect"
-import { highSignalDensity } from "../checks/highSignalDensity.js"
-import { hotSubsystem } from "../checks/hotSubsystem/hotSubsystem.js"
+import { Array, Effect, Struct } from "effect"
 import { ImperativeStateManagerInput } from "../checks/imperativeStateManager/data.js"
 import { imperativeStateManager } from "../checks/imperativeStateManager/imperativeStateManager.js"
 import { PipelineHostileInput } from "../checks/pipelineHostile/data.js"
 import { pipelineHostile } from "../checks/pipelineHostile/pipelineHostile.js"
 import { conceptProliferation } from "../checks/conceptControl/conceptProliferation.js"
-import { ruleDominance } from "../checks/ruleDominance.js"
 import { sideEffectLaundering } from "../checks/sideEffectLaundering.js"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
@@ -18,14 +15,30 @@ const nameReportedDetections = (signal: Signal) =>
 
 export const defaultNamedElements = (
   signals: ReadonlyArray<Signal>
-): Stream.Stream<NamedDetection> => {
+): ReadonlyArray<NamedDetection> => {
   const reportedSignals = Array.filter(signals, Struct.get("reported"))
-  const namedElementsSource = Array.flatMap(reportedSignals, nameReportedDetections)
 
-  return Stream.fromIterable(namedElementsSource)
+  return Array.flatMap(reportedSignals, nameReportedDetections)
 }
 
-export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): Stream.Stream<Advice> => {
+const materializeSpecificAdvice = Effect.fn("DefaultSpecificAdvice.materialize")(function* (
+  imperativeInput: ImperativeStateManagerInput,
+  pipelineInput: PipelineHostileInput,
+  namedElements: ReadonlyArray<NamedDetection>,
+  conceptSignals: ReadonlyArray<Signal["detections"][number]>
+): Effect.fn.Return<ReadonlyArray<Advice>> {
+  const imperativeAdvice = yield* imperativeStateManager(imperativeInput)
+  const sideEffectAdvice = yield* sideEffectLaundering(namedElements)
+  const pipelineAdvice = yield* pipelineHostile(pipelineInput)
+  const conceptAdvice = yield* conceptProliferation(conceptSignals)
+  const adviceGroups = Array.make(imperativeAdvice, sideEffectAdvice, pipelineAdvice, conceptAdvice)
+
+  return Array.flatten(adviceGroups)
+})
+
+export const defaultSpecificAdvice = Effect.fn("DefaultSpecificAdvice.derive")(function* (
+  signals: ReadonlyArray<Signal>
+): Effect.fn.Return<ReadonlyArray<Advice>> {
   const elementsOf = signalOf(signals)
   const namedElements = defaultNamedElements(signals)
   const noMutation = elementsOf("no-mutation")
@@ -50,36 +63,10 @@ export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): Stream.St
     preferCurriedDataLastFunctions: preferCurried
   })
 
-  const imperativeAdvice = imperativeStateManager(imperativeInput)
-  const launderingAdvice = sideEffectLaundering(namedElements)
-  const conceptAdvice = conceptProliferation(conceptSignals)
-  const pipelineAdvice = pipelineHostile(pipelineInput)
-
-  const specificAdviceStreamsSource = Array.make(
-    imperativeAdvice,
-    launderingAdvice,
-    pipelineAdvice,
-    conceptAdvice
+  return yield* materializeSpecificAdvice(
+    imperativeInput,
+    pipelineInput,
+    namedElements,
+    conceptSignals
   )
-
-  return pipe(Stream.fromIterable(specificAdviceStreamsSource), Stream.flatten())
-}
-
-// Density/subsystem/dominance batch because derive materializes one triple.
-export class DefaultAggregateAdvice extends Data.Class<{
-  readonly densityAdvice: Stream.Stream<Advice>
-  readonly subsystemAdvice: Stream.Stream<Advice>
-  readonly dominanceAdvice: Stream.Stream<Advice>
-}> {}
-
-export const makeDefaultAggregateAdvice = (namedElements: Stream.Stream<NamedDetection>) => {
-  const densityAdvice = highSignalDensity(namedElements)
-  const subsystemAdvice = hotSubsystem(namedElements)
-  const dominanceAdvice = ruleDominance(namedElements)
-
-  return new DefaultAggregateAdvice({
-    densityAdvice,
-    subsystemAdvice,
-    dominanceAdvice
-  })
-}
+})

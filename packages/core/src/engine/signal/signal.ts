@@ -1,4 +1,4 @@
-import { Array, Option, Stream, Struct, pipe } from "effect"
+import { Array, Option, Struct, pipe } from "effect"
 import type { Detection } from "../location/data.js"
 import { detectionEquals } from "../location/location.js"
 import { Signal, WiringSignals } from "./data.js"
@@ -6,16 +6,12 @@ import { Signal, WiringSignals } from "./data.js"
 // Lookup stays on the materialized batch because derive helpers need random access to siblings.
 export const signalOf =
   (signals: ReadonlyArray<Signal>) =>
-  (name: string): Stream.Stream<Detection> => {
-    const namedSignal = Array.findFirst(signals, (signal) => signal.name === name)
-    const detections = pipe(namedSignal, Option.map(Struct.get("detections")))
-
-    return pipe(
-      detections,
-      Option.map(Stream.fromIterable),
-      Option.getOrElse(() => Stream.empty)
+  (name: string): ReadonlyArray<Detection> =>
+    pipe(
+      Array.findFirst(signals, (signal) => signal.name === name),
+      Option.map(Struct.get("detections")),
+      Option.getOrElse(Array.empty<Detection>)
     )
-  }
 
 const detectionsEquivalence = Array.makeEquivalence(detectionEquals)
 

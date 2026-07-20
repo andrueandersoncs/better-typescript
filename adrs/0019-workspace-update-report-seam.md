@@ -3,8 +3,10 @@
 ## Status
 
 Accepted. [ADR-0022](0022-shared-one-shot-compiler-state.md) supersedes only the single compiler
-producer and one-shot `Stream.take` implementation; the Workspace Update-to-Report Event seam,
-report composition, and module ownership remain accepted.
+producer and one-shot `Stream.take` implementation.
+[ADR-0023](0023-one-shot-effects-and-rerun-watch.md) supersedes this ADR's Workspace
+Update-to-Report Event stream seam; focused project loading, whole-Wiring composition, and module
+ownership remain accepted.
 
 ## Date
 

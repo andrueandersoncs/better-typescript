@@ -1,9 +1,9 @@
-import { Data, Schema, Stream } from "effect"
+import { Data, Schema } from "effect"
 import { Detection } from "@better-typescript/core/engine/location/data"
 
 const detectionArray = Schema.Array(Detection)
 
-// ImperativeStateSignals is one batch of five evidence streams because replay needs one schema.
+// ImperativeStateSignals is one batch of five evidence arrays because derive needs one schema.
 export const ImperativeStateSignals = Schema.Struct({
   noMutation: detectionArray,
   preferHashMap: detectionArray,
@@ -14,13 +14,13 @@ export const ImperativeStateSignals = Schema.Struct({
 
 export interface ImperativeStateSignals extends Schema.Schema.Type<typeof ImperativeStateSignals> {}
 
-// Live five-stream input because Schema batches cannot hold Streams.
+// Five complete detection arrays because advisers consume one finished batch.
 export class ImperativeStateManagerInput extends Data.Class<{
-  readonly noMutation: Stream.Stream<Detection>
-  readonly preferHashMap: Stream.Stream<Detection>
-  readonly preferHashSet: Stream.Stream<Detection>
-  readonly noMutableArrayMethods: Stream.Stream<Detection>
-  readonly noMutableVariableDeclarations: Stream.Stream<Detection>
+  readonly noMutation: ReadonlyArray<Detection>
+  readonly preferHashMap: ReadonlyArray<Detection>
+  readonly preferHashSet: ReadonlyArray<Detection>
+  readonly noMutableArrayMethods: ReadonlyArray<Detection>
+  readonly noMutableVariableDeclarations: ReadonlyArray<Detection>
 }> {}
 
 // Shared mutation-target evidence because detectors and advice decode one record.

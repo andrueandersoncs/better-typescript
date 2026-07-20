@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted for NDJSON, `signal`, `empty`, and `--pretty`;
+[ADR-0023](0023-one-shot-effects-and-rerun-watch.md) supersedes its stream pipeline, delta state,
+and `cleared` event.
 
 ## Date
 

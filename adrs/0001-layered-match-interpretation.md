@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Superseded in part by ADR-0006, ADR-0011, and [ADR-0023](0023-one-shot-effects-and-rerun-watch.md);
+its layered match and detector execution model is historical.
 
 ## Date
 

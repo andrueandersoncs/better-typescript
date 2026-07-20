@@ -1,4 +1,4 @@
-import { Array, Option, Record, Schema, Stream, Struct, Tuple, pipe, Result } from "effect"
+import { Array, Effect, Option, Record, Schema, Struct, Tuple, pipe, Result } from "effect"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
@@ -150,13 +150,13 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
   )
 }
 
-export const functionalCoreEffectDerive = (
+export const functionalCoreEffectDerive = Effect.fn("FunctionalCoreEffect.derive")(function* (
   signals: ReadonlyArray<Signal>
-): Stream.Stream<Advice> => {
+): Effect.fn.Return<ReadonlyArray<Advice>> {
   const boundaryDetections = detectionsOf(signals, functionalCoreBoundaryCheckName)
   const shapeDetections = detectionsOf(signals, functionalCoreShapeCheckName)
   const localShapeAdvice = shapeAdvice(shapeDetections)
   const aggregateAdvice = imperativeCoreAdvice(boundaryDetections)
 
-  return pipe(Array.appendAll(localShapeAdvice, aggregateAdvice), Stream.fromIterable)
-}
+  return Array.appendAll(localShapeAdvice, aggregateAdvice)
+})

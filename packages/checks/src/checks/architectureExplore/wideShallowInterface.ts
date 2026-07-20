@@ -1,4 +1,4 @@
-import { Array, Option, pipe, Result, Function } from "effect"
+import { Array, Effect, Option, pipe, Result, Function } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -62,4 +62,6 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
   })
 }
 
-export const wideShallowInterface = deriveSignals(wideShallowAdvice)
+export const wideShallowInterface = Effect.fn("WideShallowInterface.derive")(
+  deriveSignals(wideShallowAdvice)
+)

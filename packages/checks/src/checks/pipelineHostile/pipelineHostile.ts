@@ -1,10 +1,7 @@
-import { Array, pipe } from "effect"
-import type { Stream } from "effect"
+import { Array, Effect, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { adviceFromSignalPair } from "../support/advice.js"
 import { packageExamples } from "../../defineCheck.js"
 import { PipelineHostileInput, PipelineSignals } from "./data.js"
 
@@ -52,18 +49,13 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
   )
 }
 
-const makePipelineSignals = (
-  noNestedCalls: ReadonlyArray<Detection>,
-  preferCurriedDataLastFunctions: ReadonlyArray<Detection>
-) => PipelineSignals.make({ noNestedCalls, preferCurriedDataLastFunctions })
+export const pipelineHostile = Effect.fn("PipelineHostile.derive")(function* (
+  input: PipelineHostileInput
+): Effect.fn.Return<ReadonlyArray<Advice>> {
+  const signals = PipelineSignals.make({
+    noNestedCalls: input.noNestedCalls,
+    preferCurriedDataLastFunctions: input.preferCurriedDataLastFunctions
+  })
 
-export const pipelineHostile = (input: PipelineHostileInput): Stream.Stream<Advice> => {
-  const advice = adviceFromSignalPair(
-    input.noNestedCalls,
-    input.preferCurriedDataLastFunctions,
-    makePipelineSignals,
-    pipelineHostileAdviceFor
-  )
-
-  return advice
-}
+  return pipelineHostileAdviceFor(signals)
+})

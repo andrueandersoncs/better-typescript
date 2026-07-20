@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Effect, Stream } from "effect"
+import { Effect } from "effect"
 import {
   architectureExploreChecks,
   architectureExploreWiring
@@ -40,8 +40,9 @@ const detectionAt = (path: string, line: number, data?: unknown): Detection =>
 const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
   new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
 
-const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(Stream.runCollect(advice))
+const collectAdvice = <E>(
+  advice: Effect.Effect<ReadonlyArray<Advice>, E>
+): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
 
 const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
   advice.filter((item) => item.title === title)

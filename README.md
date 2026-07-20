@@ -19,7 +19,8 @@ The architecture is intentionally plain:
   values.
 - Reported Signals render local blocks; silent Signals remain available to derivation without a
   local block.
-- `reportEvents` turns complete Workspace Updates into the event stream consumed by the CLI.
+- `reportEvents` turns one complete `WorkspaceUpdate` into the ordered report events consumed by the
+  CLI.
 
 There are no suppressions, severities, or result-based exit gate. The `files` globs on each config
 entry limit which source files its complete `Wiring` analyzes. If a signal appears, fix the cause in
@@ -30,11 +31,10 @@ the code.
 1. Discovers the TypeScript project from its `tsconfig.json`.
 2. Loads the project's `WiringConfig` from `better-typescript.config.ts` or the built-in preset.
 3. By default, analyzes the current snapshot once, emits the initial report, and exits `0`.
-4. With `--watch`, starts a TypeScript watch program per leaf project, emits the same initial
-   report, then stays alive and pushes only what changed:
-   - a block re-emits as a `signal` event whenever its content changes;
-   - a block that disappears emits one `cleared` event;
-   - a rebuild with no visible change emits nothing.
+4. With `--watch`, watches for changes and reruns that same complete one-shot analysis:
+   - every run emits the complete current report;
+   - a snapshot with signals emits one `signal` event per visible block;
+   - a signal-free snapshot emits one `empty` event.
 
 Aggregate advice blocks lead when they explain a broader shape, such as an imperative state manager,
 a pipeline-hostile module, a hot subsystem, or systemic hotspots. Reported check blocks render their
@@ -42,21 +42,18 @@ local detection locations after the aggregate advice.
 
 ### Output format
 
-By default stdout is NDJSON: one JSON event per line. There are three event shapes, discriminated by
+By default stdout is NDJSON: one JSON event per line. There are two event shapes, discriminated by
 `_tag`:
 
 ```json
 {"_tag":"signal","key":{"_tag":"rule","name":"no-throw","message":"Avoid throwing errors with throw.","hint":"Create a custom error with Schema.TaggedErrorClass..."},"text":"no-throw\n  Avoid throwing errors with throw.\n  Hint: ...\n  src/cases.ts:4:3"}
-{"_tag":"cleared","key":{"_tag":"rule","name":"no-throw","message":"Avoid throwing errors with throw.","hint":"Create a custom error with Schema.TaggedErrorClass..."},"text":"no-throw — cleared: Avoid throwing errors with throw."}
 {"_tag":"empty","rootPath":"/path/to/project"}
 ```
 
-- `signal` — a report block appeared or its content changed; `text` is the full rendered block. The
-  default one-shot run emits one `signal` per initial report block.
-- `cleared` — a previously emitted block disappeared; `text` is its one cleared line. Only `--watch`
-  can emit `cleared` events because one-shot runs have no previous report state.
-- `empty` — the initial report found no signals. A one-shot run emits exactly one `empty` event when
-  the snapshot is signal-free.
+- `signal` — a report block in the current complete snapshot; a one-shot run emits one `signal` per
+  visible block.
+- `empty` — a complete snapshot found no signals. One-shot runs and watch reruns each emit exactly
+  one `empty` event when their snapshot is signal-free.
 
 `key` is the block's stable identity across events. Local detection keys still serialize as
 `{ _tag: "rule", name, message, hint }`; aggregate advice keys still serialize as
@@ -68,7 +65,7 @@ followed by a blank line; the empty report prints `No signals in /path/to/projec
 local/aggregate pretty-block vocabulary historically described as rule/advice output is presentation
 compatibility only, just like the NDJSON key tags.
 
-Status lines go to stderr; stdout carries only the event stream. The default one-shot status is
+Status lines go to stderr; stdout carries only report events. The default one-shot status is
 `Analyzing /path/to/project.`. The watch status is `Watching /path/to/project for changes.`. Capture
 or filter stdout by piping:
 
@@ -109,8 +106,7 @@ with `npm unlink better-typescript`.
 - `--project <directory>`: analyze a specific project directory instead of the current working
   directory. Config is resolved directly under this directory.
 - `--pretty`: render human-readable text blocks instead of NDJSON events.
-- `--watch`: keep running after the initial report, watch TypeScript project changes, and emit
-  changed/cleared deltas.
+- `--watch`: rerun the complete one-shot analysis after a project change.
 
 ## Packages
 
@@ -143,9 +139,9 @@ Re-exporting is valid when an entry module is that seam; callers must not bypass
 | `@better-typescript/core/engine/signal`                      | `signalOf` and Signal-level composition                                                                                                                                                                                                              |
 | `@better-typescript/core/engine/signal/data`                 | The `Signal` result vocabulary                                                                                                                                                                                                                       |
 | `@better-typescript/core/engine/report`                      | Report rendering, including `withFallbackAdvice` and `renderEventText`                                                                                                                                                                               |
-| `@better-typescript/core/engine/report/data`                 | `ReportEvent`, `SignalEvent`, `ClearedEvent`, and `EmptyReportEvent` wire vocabulary                                                                                                                                                                 |
-| `@better-typescript/core/engine/watch`                       | `reportEvents` composition plus the one-shot `workspacePrograms` and continuous `workspaceUpdates` production adapters                                                                                                                               |
-| `@better-typescript/core/engine/watch/data`                  | The `WorkspaceUpdate` input contract                                                                                                                                                                                                                 |
+| `@better-typescript/core/engine/report/data`                 | `ReportEvent`, `SignalEvent`, and `EmptyReportEvent` wire vocabulary                                                                                                                                                                                 |
+| `@better-typescript/core/engine/watch`                       | Scoped filesystem watch and the one-shot `reportEvents` composition                                                                                                                                                                                  |
+| `@better-typescript/core/engine/watch/data`                  | The `WorkspaceUpdate` input value                                                                                                                                                                                                                    |
 | `@better-typescript/core/engine/sources`                     | Program/source execution helpers                                                                                                                                                                                                                     |
 | `@better-typescript/core/engine/sources/data`                | Program and source context types                                                                                                                                                                                                                     |
 | `@better-typescript/core/project/loadProject`                | `discoverWorkspace`, `workspaceSignalsFromConfigs`, `runCheckOnProject`, `loadProject`                                                                                                                                                               |
@@ -190,13 +186,13 @@ Check that consumers must register. Its stable name, reporting policy, executabl
 examples travel together, so it can be placed directly in a `Wiring`:
 
 ```ts
-import { Stream } from "effect"
+import { Effect } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import { noThrow } from "@better-typescript/checks/noThrow"
 
 const runtimeWiring = makeWiring({
   checks: [noThrow],
-  derive: () => Stream.empty
+  derive: () => Effect.succeed([])
 })
 
 export default defineConfig([
@@ -235,7 +231,7 @@ Consumer Checks continue to use the core primitives. Put this at
 Check:
 
 ```ts
-import { Stream } from "effect"
+import { Effect } from "effect"
 import * as ts from "typescript"
 import { detection, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Check } from "@better-typescript/core/engine/check/data"
@@ -281,7 +277,7 @@ const noConsoleLogExamples = () =>
 
 const localWiring = makeWiring({
   checks: [namedCheck("acme/no-console-log", noConsoleLog, noConsoleLogExamples)],
-  derive: () => Stream.empty
+  derive: () => Effect.succeed([])
 })
 
 export default defineConfig([{ files: ["src/**/*.ts"], wiring: localWiring }])
@@ -313,14 +309,14 @@ To cherry-pick built-ins, import their ready-made `NamedCheck` values and place 
 new Wiring:
 
 ```ts
-import { Stream } from "effect"
+import { Effect } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import { noThrow } from "@better-typescript/checks/noThrow"
 import { noTryCatch } from "@better-typescript/checks/noTryCatch"
 
 const selectedWiring = makeWiring({
   checks: [noThrow, noTryCatch],
-  derive: () => Stream.empty
+  derive: () => Effect.succeed([])
 })
 
 export default defineConfig([{ files: ["**/*"], wiring: selectedWiring }])
@@ -329,11 +325,10 @@ export default defineConfig([{ files: ["**/*"], wiring: selectedWiring }])
 Do not rename or re-register built-ins. Check names form one global namespace across the complete
 config, so merging the same built-in twice is an error.
 
-`derive` consumes a completed Signal array, not live upstream streams. Import `signalOf` from
-`@better-typescript/core/engine/signal` to select a Check's detections and compose Advice with
-Effect `Stream` combinators. Import `withFallbackAdvice` from
-`@better-typescript/core/engine/report` when file-level fallback Advice should be suppressed for
-files already covered by specific Advice.
+`derive` consumes a completed Signal array and returns one Effect yielding completed Advice. Import
+`signalOf` from `@better-typescript/core/engine/signal` to select a Check's detections. Import
+`withFallbackAdvice` from `@better-typescript/core/engine/report` when file-level fallback Advice
+should be suppressed for files already covered by specific Advice.
 
 The functional-core preset is separate from `defaultWiring` because it encodes project architecture,
 not universal TypeScript style. It classifies conventional `domain`, `port`, `application`,
@@ -376,7 +371,7 @@ Replace `architectureExploreOopWiring` with `architectureExploreFpWiring` for th
 
 ### Exit codes
 
-- `0`: the one-shot report completed, or the watch stream ran until it was ended with Ctrl-C.
+- `0`: the one-shot report completed, or watch was ended with Ctrl-C.
 - `2`: the tool could not start, for example because the project path, TypeScript configuration, or
   `WiringConfig` is invalid.
 
@@ -392,28 +387,28 @@ Better TypeScript intentionally does not provide:
 
 ## Analysis modes
 
-`workspacePrograms(workspace)` is the one-shot adapter from a discovered workspace to one
-`WorkspaceUpdate`. It uses a workspace-scoped TypeScript `DocumentRegistry` so compatible project
-Programs share `SourceFile` objects, then disposes its LanguageServices when the report stream
-completes. `workspaceUpdates(workspace, watchOptions)` is the continuous watch adapter.
-`reportEvents(config)(updates)` is the public composition from either producer’s
-`Stream<WorkspaceUpdate>` to `Stream<ReportEvent>`. Programmatic callers and tests can still provide
-synthetic Workspace Updates directly.
+`workspacePrograms.materialize(workspace, compilerOptions)` is the scoped one-shot adapter from a
+discovered workspace to one `WorkspaceUpdate`. It uses a workspace-scoped TypeScript
+`DocumentRegistry` so compatible project Programs share `SourceFile` objects, then disposes its
+LanguageServices when the report Effect completes. `reportEvents(config)(update)` returns the Effect
+that computes one ordered `ReportEvent[]` snapshot. Programmatic callers and tests can provide
+synthetic `WorkspaceUpdate` values directly.
 
-The CLI selects the producer at the mode boundary:
+The CLI always runs the same one-shot operation:
 
 ```ts
-const updates = watchForChanges
-  ? workspaceUpdates(workspace, watchOptions)
-  : workspacePrograms(workspace)
-const events = reportEvents(config)(updates)
+const report = Effect.gen(function* () {
+  const update = yield* workspacePrograms.materialize(workspace, compilerOptions)
+
+  return yield* reportEvents(config)(update)
+})
 ```
 
-The default one-shot path emits one complete report and exits after stdout drains. `--watch`
-continues to observe project edits. Both modes share glob activation, fused Check execution, full
-batch recomputation, derivation, rendering, empty reports, and report-event ordering after the
-Workspace Update boundary. The initial batch emits one `signal` event per visible block or one
-`empty` event; later watch batches emit changed `signal` and disappeared `cleared` events only.
+The default path runs it once and exits after stdout drains. `--watch` waits for a workspace change
+then runs that same operation again with fresh compiler resources. Every run shares glob activation,
+fused Check execution, full-batch recomputation, derivation, rendering, empty reports, and
+report-event ordering. Watch has no retained report state: each rerun emits one `signal` event per
+visible block or one `empty` event.
 
 ### Whole-process performance benchmark
 
@@ -421,9 +416,9 @@ Workspace Update boundary. The initial batch emits one `signal` event per visibl
 enrolled, then times three fresh built-CLI processes. Its reported minimum, median, and maximum
 exclude build time. `BETTER_TYPESCRIPT_SELF_HOST_RUNS=<n>` changes the repetition count.
 
-Watch-mode caveat: membership changes in a solution-style root tsconfig's reference list need a
-restart. Each leaf project's own tsconfig hot-reloads. Mid-run tsconfig breakage is tolerated
-silently—the watcher keeps the last good program and recovers when the config is fixed.
+Watch-mode caveat: a rerun discovers the workspace and config again, so source additions, removals,
+and tsconfig reference changes participate on the next observed filesystem change. A failed rerun
+reports its error and keeps watching for a later fix.
 
 Workspace evidence for Architecture Explore walks the root `tsconfig.json` project references. Test
 projects must be referenced for test-aware Advice; otherwise the fleet emits project-level
@@ -436,24 +431,27 @@ specifiers to `module-identity` aliases — no extra Programs.
 The repository is split into the core analysis package, built-in Checks package, and CLI package.
 Within core, check owns authoring and fused execution, wiring owns identity, configuration,
 composition, and Wiring execution into Signals, signal owns the completed result vocabulary and
-lookup, report owns rendering and wire vocabulary, and watch owns Workspace Update production and
-Workspace Update-to-Report Event composition. Project loading remains a separate boundary. Public
+lookup, report owns rendering and wire vocabulary, and watch owns scoped filesystem waiting while
+the CLI owns repeated one-shot report execution. Project loading remains a separate boundary. Public
 package exports are the supported entrypoints; source paths are implementation details.
 
 ## Architecture notes
 
+- `adrs/0023-one-shot-effects-and-rerun-watch.md` records the Effect-based bounded execution
+  contracts, full-snapshot watch reruns, and removal of report deltas.
 - `adrs/0022-shared-one-shot-compiler-state.md` records the shared-registry one-shot producer,
   primary unused diagnostics, Program-scoped architecture evidence, file-linear import usage,
-  `ParseForTypeErrors`, and the fresh-process benchmark.
+  `ParseForTypeErrors`, and the fresh-process benchmark. ADR-0023 supersedes its stream-scoped
+  lifetime and mode-specific producer claims.
 - `adrs/0021-advice-clean-self-host.md` records that architecture Advice gates self-hosting: an
   empty report, one-directional engine seams, workspace-relative test classification, and an
   analysis horizon that includes the repository's own config, bench, and runnable examples.
 - `adrs/0020-files-are-module-boundaries.md` records the removal of the `prefer-data-last-module`
   placement check: files are the language's module boundary, so placement rules stop at file scope
   while data-last signature preference stays with the shape-based checks.
-- `adrs/0019-workspace-update-report-seam.md` records the Workspace Update stream seam, shared
-  one-shot/watch report composition, focused project-loading surface, whole-Wiring composition, and
-  module ownership.
+- `adrs/0019-workspace-update-report-seam.md` records historical Workspace Update report
+  composition, focused project-loading surface, whole-Wiring composition, and module ownership.
+  ADR-0023 supersedes its stream seam.
 - `adrs/0018-check-owned-authoring-and-package-examples.md` records complete built-in `NamedCheck`
   exports, package-owned lazy examples, direct preset enrollment, and marker-driven
   characterization.
@@ -475,19 +473,18 @@ package exports are the supported entrypoints; source paths are implementation d
   packages. ADR-0016 supersedes only its fixture location and loader consequence.
 - `adrs/0011-rules-and-advice-are-one-concept.md` records the unified Check, Signal, `reported`, and
   `derive` vocabulary. ADR-0013 supersedes its Check execution representation, not those concepts.
-- `adrs/0010-one-shot-default-watch-opt-in.md` records the CLI mode decision: one-shot by default,
-  `--watch` for continuous deltas.
+- `adrs/0010-one-shot-default-watch-opt-in.md` records the one-shot default. ADR-0023 supersedes its
+  incremental-delta watch design while retaining `--watch`.
 - `adrs/0008-ndjson-event-output.md` records the NDJSON-by-default output decision and event schema.
   Later ADRs preserve its event tags, report-key shapes, rendering order, and pretty projection.
 - `adrs/0009-user-fleets-are-report-wiring.md` remains historical context for one root TypeScript
   config, no discovery, no hot reload, and no plugin registry. ADR-0011 supersedes its public wiring
   shape.
-- `adrs/0007-continuous-watch-analysis.md` records consistent workspace batches, full recomputation,
-  and change gates. ADR-0010 supersedes its continuous-only default, ADR-0013 supersedes its
-  materialized AST cache, and ADR-0017 preserves the remaining decisions through Workspace Updates.
-- `adrs/0006-detection-is-streams-and-functions.md` remains historical context for stream-based
-  derivation and reporting. ADR-0013 supersedes its independent Check streams; its rejection of
-  registries, schedulers, ids, roles, severities, suppressions, and dependency metadata remains.
+- `adrs/0007-continuous-watch-analysis.md` is superseded by ADR-0023's complete rerun watch.
+- `adrs/0006-detection-is-streams-and-functions.md` remains historical context for direct function
+  composition; ADR-0023 supersedes its stream-based derivation and reporting while retaining its
+  rejection of registries, schedulers, ids, roles, severities, suppressions, and dependency
+  metadata.
 - `adrs/0003-detectors-over-a-stratified-containment-tree.md` and
   `adrs/0005-detector-fleets-are-user-code.md` are superseded where they depend on identity
   metadata, category labels, generated guides, or structured reports.

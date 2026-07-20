@@ -71,7 +71,7 @@ carries a registration ceremony.
 ## Consequences
 
 - The self-hosting report is empty; regressions in any adviser now fail the gate immediately.
-- The duplicated two-stream join lives once in `checks/support/advice.ts` with two callers.
+- The duplicated bounded advice-pair join lives once in `checks/support/advice.ts` with two callers.
 - The bench entrypoint is `bench/main.ts`, a composition-root basename, because it runs effects at
   module scope by design.
 - Cross-package callers still do not count toward forwarder deletability; exported engine

@@ -1,17 +1,5 @@
+import { Array, Effect, Function, HashSet, Match, Record, Struct, pipe } from "effect"
 import {
-  Array,
-  Effect,
-  Function,
-  HashSet,
-  Match,
-  Record,
-  Stream,
-  Struct,
-  Tuple,
-  pipe
-} from "effect"
-import {
-  adviceHeader,
   adviceOrder,
   advicePath,
   adviceText,
@@ -24,26 +12,20 @@ import { formatRefactorExample, type ResolveRefactorExamples } from "../example/
 import type { Detection } from "../location/data.js"
 import { detectionBlockKey, locationText } from "../location/location.js"
 import type { Signal, WiringSignals } from "../signal/data.js"
-import type { Wiring, WiringConfig } from "../wiring/data.js"
+import type { WiringConfig } from "../wiring/data.js"
 import {
   AdviceReportKey,
-  ClearedEvent,
   EmptyReportEvent,
   ReportBlock,
   RuleReportKey,
   SignalEvent
 } from "./data.js"
-import type { ReportEvent } from "./data.js"
-
-const reportKeyIdentity = (kind: string, parts: ReadonlyArray<string>) =>
-  pipe(Array.prepend(parts, kind), JSON.stringify)
+import type { EmptyReportEvent as EmptyReportEventData, ReportEvent } from "./data.js"
 
 const makeAdviceReportBlock =
   (advice: Advice) =>
   (examples: ReadonlyArray<RefactorExample>): ReportBlock => {
     const pathLabel = advicePath(advice)
-    const adviceIdentityParts = Array.make(advice.level, pathLabel, advice.title)
-    const identity = reportKeyIdentity("advice", adviceIdentityParts)
 
     const key = AdviceReportKey.make({
       level: advice.level,
@@ -52,17 +34,9 @@ const makeAdviceReportBlock =
     })
 
     const text = adviceText(examples)(advice)
-    const header = adviceHeader(advice)
-    const cleared = `${header} — cleared`
 
-    return ReportBlock.make({ identity, key, text, cleared })
+    return ReportBlock.make({ key, text })
   }
-
-// Derivation takes the full signal array because advice must see every signal from the same batch.
-const deriveAdvice =
-  <E>(wiring: Wiring<E>) =>
-  (signals: ReadonlyArray<Signal>): Effect.Effect<ReadonlyArray<Advice>, E> =>
-    pipe(wiring.derive(signals), Stream.runCollect)
 
 // Advice blocks keep a stable sort order because consumers rely on that presentation order.
 const adviceReportBlocks =
@@ -70,6 +44,7 @@ const adviceReportBlocks =
   (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
     const ordered = Array.sort(advice, adviceOrder)
 
+    // FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
     return Effect.forEach(ordered, (item) =>
       pipe(resolve(item.examples), Effect.map(makeAdviceReportBlock(item)))
     )
@@ -85,8 +60,6 @@ const checkReportBlocks =
       Record.values,
       Array.map((group) => {
         const first = Array.headNonEmpty(group)
-        const ruleIdentityParts = Array.make(name, first.message, first.hint)
-        const identity = reportKeyIdentity("rule", ruleIdentityParts)
 
         const key = RuleReportKey.make({
           name,
@@ -112,9 +85,7 @@ const checkReportBlocks =
           })
         )
 
-        const cleared = `${name} — cleared: ${first.message}`
-
-        return ReportBlock.make({ identity, key, text, cleared })
+        return ReportBlock.make({ key, text })
       })
     )
 
@@ -158,7 +129,7 @@ export const batchReportBlocks =
       const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
 
       const adviceGroups = yield* Effect.forEach(matchedEntries, ([entry, current]) =>
-        deriveAdvice(entry.wiring)(current.signals)
+        entry.wiring.derive(current.signals)
       )
 
       const advice = Array.flatten(adviceGroups)
@@ -166,57 +137,44 @@ export const batchReportBlocks =
       return yield* reportBlocks(resolve)(signals)(advice)
     })
 
+// Fallback suppression is required because fallback must not duplicate covered file-level advice.
 export const filterFallbackAdviceForUncoveredFiles =
   (specific: ReadonlyArray<Advice>) =>
-  <E, R>(fallbackAdvice: Stream.Stream<Advice, E, R>): Stream.Stream<Advice, E, R> => {
+  (fallbackAdvice: ReadonlyArray<Advice>): ReadonlyArray<Advice> => {
     const fileAdvice = Array.filter(specific, isFileLevelAdvice)
     const paths = Array.map(fileAdvice, fileAdvicePath)
     const coveredFiles = HashSet.fromIterable(paths)
 
-    return pipe(
-      fallbackAdvice,
-      Stream.filter((advice) =>
-        pipe(
-          Match.value(advice),
-          Match.when(isFileLevelAdvice, (fileAdvice) => {
-            const path = fileAdvicePath(fileAdvice)
-            return !HashSet.has(coveredFiles, path)
-          }),
-          Match.orElse(Function.constTrue)
-        )
+    // FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
+    return Array.filter(fallbackAdvice, (advice) =>
+      pipe(
+        Match.value(advice),
+        Match.when(isFileLevelAdvice, (fileAdvice) => {
+          const path = fileAdvicePath(fileAdvice)
+
+          return !HashSet.has(coveredFiles, path)
+        }),
+        Match.orElse(Function.constTrue)
       )
     )
   }
 
-// Fallback suppression is required because fallback must not duplicate covered file-level advice.
-export const withFallbackAdvice = <E, R>(
-  specificAdvice: Stream.Stream<Advice, E, R>,
-  fallbackAdvice: Stream.Stream<Advice, E, R>
-): Stream.Stream<Advice, E, R> =>
-  pipe(
-    Stream.runCollect(specificAdvice),
-    Effect.map((specific) => {
-      const filteredFallback = filterFallbackAdviceForUncoveredFiles(specific)(fallbackAdvice)
-      const specificStream = Stream.fromIterable(specific)
+export const withFallbackAdvice = Effect.fn("Report.withFallbackAdvice")(function* <E, E2, R, R2>(
+  specificAdvice: Effect.Effect<ReadonlyArray<Advice>, E, R>,
+  fallbackAdvice: Effect.Effect<ReadonlyArray<Advice>, E2, R2>
+): Effect.fn.Return<ReadonlyArray<Advice>, E | E2, R | R2> {
+  const specific = yield* specificAdvice
+  const fallback = yield* fallbackAdvice
+  const uncoveredFallback = filterFallbackAdviceForUncoveredFiles(specific)(fallback)
 
-      return Stream.concat(specificStream, filteredFallback)
-    }),
-    Stream.unwrap
-  )
+  return Array.appendAll(specific, uncoveredFallback)
+})
 
 // Signal lifting stays beside block construction because event shape must match rendered text.
 export const makeBlockSignalEvent = (block: ReportBlock) =>
   SignalEvent.make({ key: block.key, text: block.text })
 
-// Cleared text is precomputed on the block because delta emission must not re-render gone blocks.
-export const makeBlockClearedEvent = (block: ReportBlock) =>
-  ClearedEvent.make({ key: block.key, text: block.cleared })
-
-// Identity keys the entry and the block stays the value because diffs need both without lookups.
-export const blockEntry = (block: ReportBlock): readonly [string, ReportBlock] =>
-  Tuple.make(block.identity, block)
-
-// Empty stays an explicit event because consumers need a positive nothing-found first report.
+// Empty stays an explicit event because consumers need a positive nothing-found report.
 export const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
@@ -229,14 +187,14 @@ export const initialReportEvents =
     return Array.map(blocks, makeBlockSignalEvent)
   }
 
-const emptyReportText = (event: EmptyReportEvent) => `No signals in ${event.rootPath}.`
+const emptyReportText = (event: EmptyReportEventData) => `No signals in ${event.rootPath}.`
 
+// FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
 // Kept separate from NDJSON because --pretty needs a human-readable projection of the same events.
 export const renderEventText = (event: ReportEvent) =>
   pipe(
     Match.value(event),
     Match.tag("signal", Struct.get<SignalEvent, "text">("text")),
-    Match.tag("cleared", Struct.get<ClearedEvent, "text">("text")),
     Match.tag("empty", emptyReportText),
     Match.exhaustive
   )

@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Function, Option, Result, Tuple, pipe } from "effect"
+import { Array, Effect, Function, Option, Result, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -158,4 +158,4 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
   return Array.appendAll(fileAdvice, directoryAdvice)
 }
 
-export const leakedSeam = deriveSignals(leakedSeamAdvice)
+export const leakedSeam = Effect.fn("LeakedSeam.derive")(deriveSignals(leakedSeamAdvice))

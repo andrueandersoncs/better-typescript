@@ -1,4 +1,4 @@
-import { Array, Stream, pipe } from "effect"
+import { Array, Effect } from "effect"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
@@ -7,12 +7,14 @@ import { architectureExploreAdvisers } from "./architectureExploreAdvisers.js"
 const nameArchitectureExploreDetections = (signal: Signal) =>
   Array.map(signal.detections, makeNamedDetection(signal.name))
 
-export const architectureExploreDerive = (
+export const architectureExploreDerive = Effect.fn("ArchitectureExplore.derive")(function* (
   signals: ReadonlyArray<Signal>
-): Stream.Stream<Advice> => {
-  const namedElementsSource = Array.flatMap(signals, nameArchitectureExploreDetections)
-  const namedElements = Stream.fromIterable(namedElementsSource)
-  const adviceStreams = Array.map(architectureExploreAdvisers, (adviser) => adviser(namedElements))
+): Effect.fn.Return<ReadonlyArray<Advice>> {
+  const namedElements = Array.flatMap(signals, nameArchitectureExploreDetections)
 
-  return pipe(Stream.fromIterable(adviceStreams), Stream.flatten())
-}
+  const adviceGroups = yield* Effect.forEach(architectureExploreAdvisers, (adviser) =>
+    adviser(namedElements)
+  )
+
+  return Array.flatten(adviceGroups)
+})

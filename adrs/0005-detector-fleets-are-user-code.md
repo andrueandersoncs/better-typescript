@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted for reviewed explicit user configuration; superseded in part by ADR-0009, ADR-0011, and
+[ADR-0023](0023-one-shot-effects-and-rerun-watch.md), which replace its detector and Stream model.
 
 ## Date
 

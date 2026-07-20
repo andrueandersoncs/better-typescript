@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { Effect, Option, Schema, Stream, pipe, Array } from "effect"
+import { Effect, Option, Schema, Array } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Signal } from "@better-typescript/core/engine/signal/data"
@@ -54,7 +54,7 @@ const signalNamed = (signals: ReadonlyArray<Signal>, name: string): Signal => {
 }
 
 const collectAdvice = (signals: ReadonlyArray<Signal>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(pipe(functionalCoreEffectWiring.derive(signals), Stream.runCollect))
+  Effect.runPromise(functionalCoreEffectWiring.derive(signals))
 
 const boundaryDataOf = (detection: Detection): FunctionalCoreBoundaryData => {
   assert.ok(Schema.is(FunctionalCoreBoundaryData)(detection.data))
@@ -284,7 +284,7 @@ test("wiring exposes one reported policy check and silent shape evidence", async
   const checks = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).checks
   const boundaryCheck = checks[0]
   assert.ok(boundaryCheck)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver)
+  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
   const boundaryExamples = await Effect.runPromise(resolve(boundaryCheck.examples))
 
   assert.deepEqual(

@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Function, Option, Stream, pipe } from "effect"
+import { Effect, Fiber, Function, pipe } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import { makeDetection, nodeCheck } from "@better-typescript/core/engine/check"
@@ -15,14 +15,15 @@ import {
   makeRefactorExample
 } from "./exampleHelpers.js"
 import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
-import { Detection, Location } from "@better-typescript/core/engine/location/data"
+import { Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
 import { makeContext } from "@better-typescript/core/engine/sources"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { makeReportEvent, workspaceUpdates } from "@better-typescript/core/engine/watch"
+import { reportEvents, watchWorkspace } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defineConfig, makeWiring, makeNamedCheck } from "@better-typescript/core/engine/wiring"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
+import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")
@@ -53,6 +54,10 @@ const probeWiring = makeWiring({
   checks: [makeNamedCheck(probeName, throwProbeCheck, probeExamples)],
   derive: (signals) => {
     const detectionCount = signals[0]?.detections.length ?? 0
+
+    if (detectionCount === 0) {
+      return Effect.succeed([])
+    }
     const advice: Advice = {
       location: Location.make({ path: "src/cases.ts", line: 1, column: 1 }),
       level: "file",
@@ -62,23 +67,15 @@ const probeWiring = makeWiring({
       examples: probeExamples
     }
 
-    return Stream.succeed(advice)
+    return Effect.succeed([advice])
   }
 })
 
 const probeConfig = defineConfig([{ files: ["src/cases.ts"], wiring: probeWiring }])
 
-const reportEvents =
-  (config: typeof probeConfig) =>
-  <UpdateError, R>(
-    updates: Stream.Stream<WorkspaceUpdate, UpdateError, R>
-  ): Stream.Stream<ReportEvent, UpdateError | ExampleLoadError, R> =>
-    Stream.unwrap(
-      pipe(
-        makeReportEvent(config),
-        Effect.map((report) => report(updates))
-      )
-    )
+const collectEvents = <E>(
+  effect: Effect.Effect<ReadonlyArray<ReportEvent>, E>
+): Promise<ReadonlyArray<ReportEvent>> => Effect.runPromise(effect)
 
 const contextFromSource = (sourceText: string): ProgramContext => {
   const compilerOptions: ts.CompilerOptions = {
@@ -116,18 +113,9 @@ const syntheticUpdate = (sourceText: string): WorkspaceUpdate =>
     contexts: [contextFromSource(sourceText)]
   })
 
-const collectStream = <A, E>(stream: Stream.Stream<A, E>): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(Stream.runCollect(stream))
-
 const initialSource = `throw "first"\n`
 const movedSource = `\nthrow "first"\n`
 const clearedSource = `export const value = 1\n`
-
-const pollingWatchOptions: ts.WatchOptions = {
-  watchFile: ts.WatchFileKind.FixedPollingInterval,
-  watchDirectory: ts.WatchDirectoryKind.FixedPollingInterval,
-  fallbackPolling: ts.PollingWatchKind.FixedInterval
-}
 
 const unusedCompilerOptions: ts.CompilerOptions = {
   noEmit: true,
@@ -136,9 +124,7 @@ const unusedCompilerOptions: ts.CompilerOptions = {
 }
 
 test("reportEvents emits the initial advice and check blocks in report order", async () => {
-  const events = await collectStream(
-    reportEvents(probeConfig)(Stream.succeed(syntheticUpdate(initialSource)))
-  )
+  const events = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(initialSource)))
   const [adviceEvent, checkEvent] = events
 
   assert.ok(adviceEvent?._tag === "signal")
@@ -151,79 +137,69 @@ test("reportEvents emits the initial advice and check blocks in report order", a
   assert.match(checkEvent.text, /src\/cases\.ts:1:1/)
 })
 
-test("reportEvents suppresses identical batches and re-emits a changed block", async () => {
-  const events = await collectStream(
-    reportEvents(probeConfig)(
-      Stream.fromIterable([
-        syntheticUpdate(initialSource),
-        syntheticUpdate(initialSource),
-        syntheticUpdate(movedSource)
-      ])
-    )
-  )
+test("reportEvents returns a complete snapshot for every update without suppressing repeats", async () => {
+  const first = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(initialSource)))
+  const second = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(initialSource)))
+  const moved = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(movedSource)))
 
-  assert.equal(events.length, 3, "expected two initial blocks and one changed block")
+  assert.equal(first.length, 2, "expected advice and check blocks on the first snapshot")
+  assert.equal(second.length, 2, "expected a full snapshot again for an identical update")
+  assert.equal(moved.length, 2, "expected a full snapshot after the throw moves")
 
-  const changed = events[2]
+  const changed = moved[1]
 
   assert.ok(changed?._tag === "signal")
   assert.equal(changed.key._tag, "rule")
   assert.match(changed.text, /src\/cases\.ts:2:1/)
 })
 
-test("reportEvents clears removed blocks before emitting changed blocks", async () => {
-  const events = await collectStream(
-    reportEvents(probeConfig)(
-      Stream.fromIterable([syntheticUpdate(initialSource), syntheticUpdate(clearedSource)])
-    )
-  )
-  const delta = events.slice(2)
-  const [cleared, changedAdvice] = delta
+test("reportEvents emits a full empty snapshot when detections disappear", async () => {
+  const initial = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(initialSource)))
+  const cleared = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(clearedSource)))
 
-  assert.equal(delta.length, 2)
-  assert.ok(cleared?._tag === "cleared")
-  assert.equal(cleared.key._tag, "rule")
-  assert.equal(cleared.key.name, probeName)
-  assert.equal(cleared.text, `${probeName} — cleared: ${probeMessage}`)
-
-  assert.ok(changedAdvice?._tag === "signal")
-  assert.equal(changedAdvice.key._tag, "advice")
-  assert.match(changedAdvice.text, /handle 0 throws/)
+  assert.equal(initial.length, 2)
+  assert.equal(cleared.length, 1)
+  assert.ok(cleared[0]?._tag === "empty")
+  assert.equal(cleared[0].rootPath, syntheticRoot)
 })
 
 test("reportEvents emits one root-scoped empty event for an empty initial report", async () => {
   const unmatchedConfig = defineConfig([{ files: ["missing.ts"], wiring: probeWiring }])
-  const events = await collectStream(
-    reportEvents(unmatchedConfig)(Stream.succeed(syntheticUpdate(initialSource)))
-  )
+  const events = await collectEvents(reportEvents(unmatchedConfig)(syntheticUpdate(initialSource)))
 
   assert.equal(events.length, 1)
   assert.ok(events[0]?._tag === "empty")
   assert.equal(events[0].rootPath, syntheticRoot)
 })
 
-test("reportEvents preserves the workspace-update error channel", async () => {
-  const failure = "workspace update failure" as const
-  const output: Stream.Stream<ReportEvent, typeof failure | ExampleLoadError> = reportEvents(
-    probeConfig
-  )(Stream.fail(failure))
-  const actual = await Effect.runPromise(pipe(output, Stream.runCollect, Effect.flip))
+test("reportEvents preserves the derivation error channel", async () => {
+  const failure = "derive failure" as const
+  const fallibleWiring = makeWiring({
+    checks: [makeNamedCheck(probeName, throwProbeCheck, probeExamples)],
+    derive: () => Effect.fail(failure)
+  })
+  const fallibleConfig = defineConfig([{ files: ["src/cases.ts"], wiring: fallibleWiring }])
+  const output: Effect.Effect<
+    ReadonlyArray<ReportEvent>,
+    typeof failure | ExampleLoadError
+  > = reportEvents(fallibleConfig)(syntheticUpdate(initialSource))
+  const actual = await Effect.runPromise(pipe(output, Effect.flip))
 
   assert.equal(actual, failure)
 })
 
-test("workspaceUpdates emits an initial and edited batch, then closes its file watchers", async () => {
-  const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "workspace-updates-"))
+test("watchWorkspace waits for a change and closes its file watchers", async () => {
+  const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "workspace-watcher-"))
   const casesPath = path.join(tempDirectory, "src", "cases.ts")
-  const originalWatchFile = ts.sys.watchFile
+  const originalWatchDirectory = ts.sys.watchDirectory
   let closedWatchers = 0
 
-  if (originalWatchFile === undefined) {
-    assert.fail("TypeScript system must expose watchFile for the producer smoke test")
+  if (originalWatchDirectory === undefined) {
+    assert.fail("TypeScript system must expose watchDirectory for the watcher smoke test")
   }
 
-  ts.sys.watchFile = (fileName, callback, pollingInterval, options) => {
-    const watcher = originalWatchFile(fileName, callback, pollingInterval, options)
+  ts.sys.watchDirectory = (directoryName, callback, recursive, options) => {
+    const watcher = originalWatchDirectory(directoryName, callback, recursive, options)
 
     return {
       close: () => {
@@ -237,51 +213,39 @@ test("workspaceUpdates emits an initial and edited batch, then closes its file w
     await fs.cp(noThrowFixturePath, tempDirectory, { recursive: true })
 
     const workspace = await Effect.runPromise(discoverWorkspace(tempDirectory))
-    let observedBatches = 0
+    const firstUpdate = await Effect.runPromise(
+      Effect.scoped(workspacePrograms.materialize(workspace, unusedCompilerOptions))
+    )
+    const firstEvents = await collectEvents(reportEvents(probeConfig)(firstUpdate))
 
-    const batches = await Effect.runPromise(
-      pipe(
-        workspaceUpdates(workspace, Option.some(pollingWatchOptions), unusedCompilerOptions),
-        Stream.tap(() => {
-          observedBatches += 1
+    assert.ok(firstEvents.some((event) => event._tag === "signal"))
 
-          if (observedBatches === 1) {
-            return Effect.promise(() =>
-              fs.appendFile(casesPath, "\nexport const producerEdit = true\n")
-            )
-          }
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const fiber = yield* Effect.forkScoped(watchWorkspace(tempDirectory))
 
-          return Effect.void
-        }),
-        Stream.take(2),
-        Stream.runCollect,
-        Effect.timeout("30 seconds")
+          yield* Effect.yieldNow
+          yield* Effect.promise(() =>
+            fs.appendFile(casesPath, "\nexport const producerEdit = true\n")
+          )
+          yield* pipe(Fiber.join(fiber), Effect.timeout("30 seconds"))
+        })
       )
     )
 
-    assert.equal(batches.length, 2)
-    assert.equal(batches[0]?.rootPath, workspace.rootPath)
-    assert.equal(batches[1]?.rootPath, workspace.rootPath)
+    const secondUpdate = await Effect.runPromise(
+      Effect.scoped(workspacePrograms.materialize(workspace, unusedCompilerOptions))
+    )
+    const secondEvents = await collectEvents(reportEvents(probeConfig)(secondUpdate))
 
-    const firstContext = batches[0]?.contexts[0]
-    const editedContext = batches[1]?.contexts[0]
-
-    assert.ok(firstContext, "expected the initial workspace context")
-    assert.ok(editedContext, "expected the edited workspace context")
-
-    const firstSourceFile = firstContext.program.getSourceFile(casesPath)
-    const editedSourceFile = editedContext.program.getSourceFile(casesPath)
-
-    assert.ok(firstSourceFile, "expected the initial source file")
-    assert.ok(editedSourceFile, "expected the edited source file")
-    assert.doesNotMatch(firstSourceFile.text, /producerEdit/)
-    assert.match(editedSourceFile.text, /producerEdit/)
-    assert.equal(firstContext.program.getCompilerOptions().noUnusedLocals, true)
-    assert.equal(firstContext.program.getCompilerOptions().noUnusedParameters, true)
-    assert.equal(firstContext.program.getCompilerOptions().noEmit, true)
-    assert.ok(closedWatchers > 0, "expected Stream.take completion to close TypeScript watchers")
+    assert.ok(secondEvents.some((event) => event._tag === "signal"))
+    assert.ok(
+      closedWatchers > 0,
+      "expected watchWorkspace finalization to close TypeScript watchers"
+    )
   } finally {
-    ts.sys.watchFile = originalWatchFile
+    ts.sys.watchDirectory = originalWatchDirectory
     await fs.rm(tempDirectory, { recursive: true, force: true })
   }
 })

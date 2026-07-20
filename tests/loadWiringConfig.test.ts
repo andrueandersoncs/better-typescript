@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Schema, Stream } from "effect"
+import { Array, Effect, Schema } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
@@ -25,14 +25,17 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const configFileName = "better-typescript.config.ts"
 const virtualConfigPath = path.join(testDirectory, configFileName)
 
-const fallbackWiring: Wiring = makeWiring({ checks: [], derive: () => Stream.empty })
+const fallbackWiring: Wiring = makeWiring({
+  checks: [],
+  derive: () => Effect.succeed(Array.empty())
+})
 
 const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
 
 const emptyCheck = makeCheckFromSubscriptions(() => [])
 
 const emptyCheckConfigPreamble = [
-  'import { Stream } from "effect"',
+  'import { Array, Effect } from "effect"',
   'import { makeCheckFromSubscriptions } from "@better-typescript/core/engine/check"',
   "",
   "const emptyCheck = makeCheckFromSubscriptions(() => [])",
@@ -101,14 +104,14 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
         '    files: ["src/**/*.{ts,tsx}", "scripts/*.mts"],',
         "    wiring: {",
         '      checks: [{ name: "source-check", check: emptyCheck }],',
-        "      derive: () => Stream.empty",
+        "      derive: () => Effect.succeed(Array.empty())",
         "    }",
         "  },",
         "  {",
         '    files: ["tests/**/*.ts"],',
         "    wiring: {",
         '      checks: [{ name: "test-helper", reported: false, check: emptyCheck }],',
-        "      derive: () => Stream.empty",
+        "      derive: () => Effect.succeed(Array.empty())",
         "    }",
         "  }",
         "]",
@@ -140,7 +143,7 @@ test("decodeWiringConfig accepts a named zero-argument config factory", async ()
           files: ["src/**/*.ts"],
           wiring: {
             checks: [{ name: "named-factory-check", check: emptyCheck }],
-            derive: () => Stream.empty
+            derive: () => Effect.succeed(Array.empty())
           }
         }
       ]
@@ -158,7 +161,7 @@ test("decodeWiringConfig accepts a default zero-argument config factory", async 
           files: ["src/**/*.ts"],
           wiring: {
             checks: [{ name: "default-factory-check", check: emptyCheck }],
-            derive: () => Stream.empty
+            derive: () => Effect.succeed(Array.empty())
           }
         }
       ]
@@ -188,7 +191,7 @@ test("decoded glob config drives workspace signals end to end", async () => {
                   ])
                 }
               ],
-              derive: () => Stream.empty
+              derive: () => Effect.succeed(Array.empty())
             }
           }
         ]
@@ -228,7 +231,7 @@ test("decodeWiringConfig rejects empty and blank file glob arrays", async () => 
   const blankError = await decodeFailure([
     {
       files: ["src/**/*.ts", "  "],
-      wiring: { checks: [], derive: () => Stream.empty }
+      wiring: { checks: [], derive: () => Effect.succeed(Array.empty()) }
     }
   ])
 
@@ -238,7 +241,7 @@ test("decodeWiringConfig rejects empty and blank file glob arrays", async () => 
   const emptyError = await decodeFailure([
     {
       files: [],
-      wiring: { checks: [], derive: () => Stream.empty }
+      wiring: { checks: [], derive: () => Effect.succeed(Array.empty()) }
     }
   ])
 
@@ -248,7 +251,7 @@ test("decodeWiringConfig rejects empty and blank file glob arrays", async () => 
 test("decodeWiringConfig rejects the legacy bare wiring shape", async () => {
   const error = await decodeFailure({
     checks: [{ name: "legacy-check", check: emptyCheck }],
-    derive: () => Stream.empty
+    derive: () => Effect.succeed(Array.empty())
   })
 
   assert.match(error.message, /exported config must be an array/)
@@ -259,7 +262,7 @@ test("decodeWiringConfig rejects the legacy named wiring export", async () => {
     wiring: [
       {
         files: ["src/**/*.ts"],
-        wiring: { checks: [], derive: () => Stream.empty }
+        wiring: { checks: [], derive: () => Effect.succeed(Array.empty()) }
       }
     ]
   })
@@ -273,7 +276,7 @@ test("decodeWiringConfig rejects legacy per-check paths", async () => {
       files: ["src/**/*.ts"],
       wiring: {
         checks: [{ name: "legacy-scope", paths: ["src"], check: emptyCheck }],
-        derive: () => Stream.empty
+        derive: () => Effect.succeed(Array.empty())
       }
     }
   ])
@@ -290,7 +293,7 @@ test("decodeWiringConfig rejects array-valued check examples", async () => {
       files: ["src/**/*.ts"],
       wiring: {
         checks: [{ name: "array-examples", check: emptyCheck, examples: [] }],
-        derive: () => Stream.empty
+        derive: () => Effect.succeed(Array.empty())
       }
     }
   ])
@@ -307,7 +310,7 @@ test("decodeWiringConfig rejects legacy thunk-valued check examples", async () =
       files: ["src/**/*.ts"],
       wiring: {
         checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
-        derive: () => Stream.empty
+        derive: () => Effect.succeed(Array.empty())
       }
     }
   ])
@@ -326,7 +329,7 @@ test("decodeWiringConfig accepts inline RefactorExampleSource check examples", a
         files: ["src/**/*.ts"],
         wiring: {
           checks: [{ name: "inline-examples", check: emptyCheck, examples }],
-          derive: () => Stream.empty
+          derive: () => Effect.succeed(Array.empty())
         }
       }
     ])
@@ -346,14 +349,14 @@ test("decodeWiringConfig rejects duplicate check names across wiring entries", a
       files: ["src/**/*.ts"],
       wiring: {
         checks: [{ name: "duplicate-check", check: emptyCheck }],
-        derive: () => Stream.empty
+        derive: () => Effect.succeed(Array.empty())
       }
     },
     {
       files: ["tests/**/*.ts"],
       wiring: {
         checks: [{ name: "duplicate-check", reported: false, check: emptyCheck }],
-        derive: () => Stream.empty
+        derive: () => Effect.succeed(Array.empty())
       }
     }
   ])

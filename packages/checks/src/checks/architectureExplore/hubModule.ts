@@ -1,4 +1,4 @@
-import { Array, Function, Option, Predicate, Result, Struct, pipe } from "effect"
+import { Array, Effect, Function, Option, Predicate, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -106,4 +106,4 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
   })
 }
 
-export const hubModule = deriveSignals(hubAdvice)
+export const hubModule = Effect.fn("HubModule.derive")(deriveSignals(hubAdvice))

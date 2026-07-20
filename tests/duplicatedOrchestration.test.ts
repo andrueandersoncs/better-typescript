@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { Array, Effect, Option, Schema, Stream, pipe } from "effect"
+import { Array, Effect, Option, Schema, pipe } from "effect"
 import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Detection as DetectionData } from "@better-typescript/core/engine/location/data"
@@ -62,8 +62,9 @@ const namedFingerprint = (
     detection: detectionAt(filePath, line, data)
   })
 
-const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(Stream.runCollect(advice))
+const collectAdvice = <E>(
+  advice: Effect.Effect<ReadonlyArray<Advice>, E>
+): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
 
 test("composition fingerprints match across clones and skip sub-threshold exports", async () => {
   const detections = await runFixture(compositionFingerprints)
@@ -98,12 +99,10 @@ test("composition fingerprints match across clones and skip sub-threshold export
 test("duplicated orchestration fires for shared fingerprints across files", async () => {
   const shared = fingerprintData("pipe>stageOne>stageTwo>stageThree", 4, "runCloneA")
   const advice = await collectAdvice(
-    duplicatedOrchestration(
-      Stream.fromIterable([
-        namedFingerprint("src/cloneA.ts", 4, shared),
-        namedFingerprint("src/cloneB.ts", 4, fingerprintData(shared.fingerprint, 4, "runCloneB"))
-      ])
-    )
+    duplicatedOrchestration([
+      namedFingerprint("src/cloneA.ts", 4, shared),
+      namedFingerprint("src/cloneB.ts", 4, fingerprintData(shared.fingerprint, 4, "runCloneB"))
+    ])
   )
 
   assert.equal(advice.length, 1)
@@ -124,15 +123,13 @@ test("duplicated orchestration stays silent for one site or distinct fingerprint
   const other = fingerprintData("pipe>otherOne>otherTwo>otherThree", 4, "runDifferent")
 
   const singleSite = await collectAdvice(
-    duplicatedOrchestration(Stream.fromIterable([namedFingerprint("src/cloneA.ts", 4, shared)]))
+    duplicatedOrchestration([namedFingerprint("src/cloneA.ts", 4, shared)])
   )
   const distinct = await collectAdvice(
-    duplicatedOrchestration(
-      Stream.fromIterable([
-        namedFingerprint("src/cloneA.ts", 4, shared),
-        namedFingerprint("src/different.ts", 4, other)
-      ])
-    )
+    duplicatedOrchestration([
+      namedFingerprint("src/cloneA.ts", 4, shared),
+      namedFingerprint("src/different.ts", 4, other)
+    ])
   )
 
   assert.equal(singleSite.length, 0)

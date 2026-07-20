@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Effect, Stream } from "effect"
+import { Effect } from "effect"
 import { highSignalDensity } from "@better-typescript/checks/highSignalDensity"
 import { hotSubsystem } from "@better-typescript/checks/hotSubsystem"
 import { imperativeStateManager } from "@better-typescript/checks/imperativeStateManager"
@@ -8,6 +8,9 @@ import { pipelineHostile } from "@better-typescript/checks/pipelineHostile"
 import { ruleDominance } from "@better-typescript/checks/ruleDominance"
 import { sideEffectLaundering } from "@better-typescript/checks/sideEffectLaundering"
 import { systemicHotspots } from "@better-typescript/checks/systemicHotspots"
+import { ImperativeStateManagerInput } from "@better-typescript/checks/imperativeStateManager/data"
+import { PipelineHostileInput } from "@better-typescript/checks/pipelineHostile/data"
+import { SystemicHotspotsInput } from "@better-typescript/checks/systemicHotspots/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { NamedDetection } from "@better-typescript/core/engine/derive/data"
@@ -32,17 +35,17 @@ const namedElements = (
 ): ReadonlyArray<NamedDetection> =>
   elements.map((detection) => NamedDetection.make({ name, detection }))
 
-const signalStream = <A>(elements: ReadonlyArray<A>): Stream.Stream<A> =>
-  Stream.fromIterable(elements)
-
-const collectAdvice = <E>(advice: Stream.Stream<Advice, E>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(Stream.runCollect(advice))
+const collectAdvice = <E>(
+  advice: Effect.Effect<ReadonlyArray<Advice>, E>
+): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
 
 const adviceTitles = (advice: ReadonlyArray<Advice>): ReadonlyArray<string> =>
   advice.map((item) => item.title)
 
 const evidenceMeasures = (advice: Advice): ReadonlyArray<string> =>
   advice.evidence.map((item) => item.measure)
+
+const emptyDetections: ReadonlyArray<Detection> = []
 
 test("imperativeStateManager fires on shared-state mutation density", async () => {
   const mutations = range(10).map((line) =>
@@ -53,13 +56,15 @@ test("imperativeStateManager fires on shared-state mutation density", async () =
     signalAt("src/state/manager.ts", 21)
   ]
   const advice = await collectAdvice(
-    imperativeStateManager({
-      noMutation: signalStream(mutations),
-      preferHashMap: signalStream(hashMapSignals),
-      preferHashSet: Stream.empty,
-      noMutableArrayMethods: Stream.empty,
-      noMutableVariableDeclarations: Stream.empty
-    })
+    imperativeStateManager(
+      new ImperativeStateManagerInput({
+        noMutation: mutations,
+        preferHashMap: hashMapSignals,
+        preferHashSet: emptyDetections,
+        noMutableArrayMethods: emptyDetections,
+        noMutableVariableDeclarations: emptyDetections
+      })
+    )
   )
 
   assert.deepEqual(adviceTitles(advice), ["imperative state manager"])
@@ -80,25 +85,29 @@ test("imperativeStateManager ignores local mutations and below-threshold shared 
 
   assert.deepEqual(
     await collectAdvice(
-      imperativeStateManager({
-        noMutation: signalStream(localMutations),
-        preferHashMap: Stream.empty,
-        preferHashSet: Stream.empty,
-        noMutableArrayMethods: Stream.empty,
-        noMutableVariableDeclarations: Stream.empty
-      })
+      imperativeStateManager(
+        new ImperativeStateManagerInput({
+          noMutation: localMutations,
+          preferHashMap: emptyDetections,
+          preferHashSet: emptyDetections,
+          noMutableArrayMethods: emptyDetections,
+          noMutableVariableDeclarations: emptyDetections
+        })
+      )
     ),
     []
   )
   assert.deepEqual(
     await collectAdvice(
-      imperativeStateManager({
-        noMutation: signalStream(fewSharedMutations),
-        preferHashMap: Stream.empty,
-        preferHashSet: Stream.empty,
-        noMutableArrayMethods: Stream.empty,
-        noMutableVariableDeclarations: Stream.empty
-      })
+      imperativeStateManager(
+        new ImperativeStateManagerInput({
+          noMutation: fewSharedMutations,
+          preferHashMap: emptyDetections,
+          preferHashSet: emptyDetections,
+          noMutableArrayMethods: emptyDetections,
+          noMutableVariableDeclarations: emptyDetections
+        })
+      )
     ),
     []
   )
@@ -106,9 +115,7 @@ test("imperativeStateManager ignores local mutations and below-threshold shared 
 
 test("highSignalDensity reports dense files with total and per-rule evidence", async () => {
   const noThrowSignals = range(10).map((line) => signalAt("src/hot.ts", line))
-  const advice = await collectAdvice(
-    highSignalDensity(signalStream(namedElements("no-throw", noThrowSignals)))
-  )
+  const advice = await collectAdvice(highSignalDensity(namedElements("no-throw", noThrowSignals)))
 
   assert.deepEqual(adviceTitles(advice), ["high signal density"])
   assert.equal(advice[0]?.location.path, "src/hot.ts")
@@ -118,18 +125,16 @@ test("highSignalDensity reports dense files with total and per-rule evidence", a
 
 test("sideEffectLaundering fires on repeated same-line collisions between distinct rules", async () => {
   const advice = await collectAdvice(
-    sideEffectLaundering(
-      signalStream([
-        ...namedElements("no-mutation", [
-          signalAt("src/useRun.ts", 153),
-          signalAt("src/useRun.ts", 180)
-        ]),
-        ...namedElements("no-void-functions", [
-          signalAt("src/useRun.ts", 153),
-          signalAt("src/useRun.ts", 180)
-        ])
+    sideEffectLaundering([
+      ...namedElements("no-mutation", [
+        signalAt("src/useRun.ts", 153),
+        signalAt("src/useRun.ts", 180)
+      ]),
+      ...namedElements("no-void-functions", [
+        signalAt("src/useRun.ts", 153),
+        signalAt("src/useRun.ts", 180)
       ])
-    )
+    ])
   )
 
   assert.deepEqual(adviceTitles(advice), ["colliding fixes on shared expressions"])
@@ -141,12 +146,10 @@ test("sideEffectLaundering fires on repeated same-line collisions between distin
 
 test("sideEffectLaundering stays quiet for a single colliding line", async () => {
   const advice = await collectAdvice(
-    sideEffectLaundering(
-      signalStream([
-        ...namedElements("no-mutation", [signalAt("src/useRun.ts", 153)]),
-        ...namedElements("no-void-functions", [signalAt("src/useRun.ts", 153)])
-      ])
-    )
+    sideEffectLaundering([
+      ...namedElements("no-mutation", [signalAt("src/useRun.ts", 153)]),
+      ...namedElements("no-void-functions", [signalAt("src/useRun.ts", 153)])
+    ])
   )
 
   assert.deepEqual(advice, [])
@@ -156,10 +159,12 @@ test("pipelineHostile combines nested-call and uncurried-helper signals", async 
   const nested = range(5).map((line) => signalAt("src/fold.ts", line))
   const uncurried = range(5).map((line) => signalAt("src/fold.ts", line + 10))
   const advice = await collectAdvice(
-    pipelineHostile({
-      noNestedCalls: signalStream(nested),
-      preferCurriedDataLastFunctions: signalStream(uncurried)
-    })
+    pipelineHostile(
+      new PipelineHostileInput({
+        noNestedCalls: nested,
+        preferCurriedDataLastFunctions: uncurried
+      })
+    )
   )
 
   assert.deepEqual(adviceTitles(advice), ["pipeline-hostile module"])
@@ -173,9 +178,7 @@ test("ruleDominance fires at project level for a widespread dominant rule", asyn
   const dominant = range(25).map((line) => signalAt(`pkg${line % 5}/src/file.ts`, line))
   const rest = range(5).map((line) => signalAt("other/other.ts", line))
   const advice = await collectAdvice(
-    ruleDominance(
-      signalStream([...namedElements("no-throw", dominant), ...namedElements("no-mutation", rest)])
-    )
+    ruleDominance([...namedElements("no-throw", dominant), ...namedElements("no-mutation", rest)])
   )
 
   assert.deepEqual(adviceTitles(advice), ["one rule dominates the run"])
@@ -188,12 +191,10 @@ test("hotSubsystem reports the deepest qualifying directory", async () => {
   const subsystem = range(27).map((line) => signalAt(`src/mcp/file${line % 3}.ts`, line))
   const elsewhere = range(3).map((line) => signalAt("web/useRun.ts", line))
   const advice = await collectAdvice(
-    hotSubsystem(
-      signalStream([
-        ...namedElements("no-throw", subsystem),
-        ...namedElements("no-mutation", elsewhere)
-      ])
-    )
+    hotSubsystem([
+      ...namedElements("no-throw", subsystem),
+      ...namedElements("no-mutation", elsewhere)
+    ])
   )
 
   assert.deepEqual(
@@ -231,19 +232,23 @@ test("systemicHotspots fires only when subsystem and dense-file advice are both 
 
   assert.deepEqual(
     await collectAdvice(
-      systemicHotspots({
-        hotSubsystem: signalStream([hot]),
-        highSignalDensity: signalStream([firstDense])
-      })
+      systemicHotspots(
+        new SystemicHotspotsInput({
+          hotSubsystem: [hot],
+          highSignalDensity: [firstDense]
+        })
+      )
     ),
     []
   )
 
   const advice = await collectAdvice(
-    systemicHotspots({
-      hotSubsystem: signalStream([hot]),
-      highSignalDensity: signalStream([firstDense, secondDense])
-    })
+    systemicHotspots(
+      new SystemicHotspotsInput({
+        hotSubsystem: [hot],
+        highSignalDensity: [firstDense, secondDense]
+      })
+    )
   )
 
   assert.deepEqual(adviceTitles(advice), ["systemic hotspots"])

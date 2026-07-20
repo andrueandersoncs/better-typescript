@@ -114,7 +114,7 @@ Not chosen:
      `nodeCheck`, `combineAll`; consider inner `withProgramIndex` plan as
      `flow(build, subscriptions)`)
    - Refactor the other ~30 matched sites in `packages/**` the same way (typical
-     `Option.fromNullishOr` / `Option.isSome` / `Effect.fail` / `Stream.runCollect` threads → `pipe`
+     `Option.fromNullishOr` / `Option.isSome` / `Effect.fail` / `Effect.forEach` threads → `pipe`
      / `flow`)
 
 ## Regression coverage

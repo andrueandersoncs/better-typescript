@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Effect, Stream } from "effect"
+import { Effect } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
@@ -28,8 +28,9 @@ const reportedSignal = (name: string, detections: ReadonlyArray<Detection>): Sig
 const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
   new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
 
-const collectAdvice = (advice: Stream.Stream<Advice>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(Stream.runCollect(advice))
+const collectAdvice = <E>(
+  advice: Effect.Effect<ReadonlyArray<Advice>, E>
+): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
 
 const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
   advice.filter((item) => item.title === title)

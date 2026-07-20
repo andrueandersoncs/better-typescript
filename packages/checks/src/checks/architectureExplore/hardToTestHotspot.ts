@@ -1,4 +1,4 @@
-import { Array, pipe } from "effect"
+import { Array, Effect, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -73,4 +73,6 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
   )
 }
 
-export const hardToTestHotspot = deriveSignals(hardToTestAdvice)
+export const hardToTestHotspot = Effect.fn("HardToTestHotspot.derive")(
+  deriveSignals(hardToTestAdvice)
+)

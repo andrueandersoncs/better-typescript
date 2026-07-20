@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Effect, Function, Option, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -68,4 +68,6 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
   })
 }
 
-export const deletionTestShallowness = deriveSignals(deletionAdvice)
+export const deletionTestShallowness = Effect.fn("DeletionTestShallowness.derive")(
+  deriveSignals(deletionAdvice)
+)

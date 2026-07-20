@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Superseded in part by [ADR-0023](0023-one-shot-effects-and-rerun-watch.md), which retains the
+one-shot default and `--watch` but replaces incremental deltas with complete reruns.
 
 ## Date
 

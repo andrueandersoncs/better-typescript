@@ -48,10 +48,9 @@ An authoring constructor stores an inert `RefactorExampleSource` on the `NamedCh
 examples use a directory descriptor; custom fleets may provide already-built inline examples.
 Constructing Checks, Wiring, and configuration therefore performs no filesystem I/O.
 
-The report program owns the effectful resolution seam. It creates one resolver for a report or watch
-stream, loads a directory only when an emitted block needs its examples, and caches successful loads
-for the lifetime of that resolver. No global `Ref`, synchronous unwrap, or eager wiring load
-remains.
+The report program owns the effectful resolution seam. It creates one resolver for a complete report
+run, loads a directory only when a report block needs its examples, and caches successful loads for
+that run. No global `Ref`, synchronous unwrap, or eager wiring load remains.
 
 ### Characterization tests describe detections in the source corpus
 

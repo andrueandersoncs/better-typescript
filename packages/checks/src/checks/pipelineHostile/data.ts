@@ -1,9 +1,9 @@
-import { Data, Schema, Stream } from "effect"
+import { Data, Schema } from "effect"
 import { Detection } from "@better-typescript/core/engine/location/data"
 
 const detectionArray = Schema.Array(Detection)
 
-// PipelineSignals is one nested-call/data-last findings batch because replay needs one schema.
+// PipelineSignals is one nested-call/data-last findings batch because derive needs one schema.
 export const PipelineSignals = Schema.Struct({
   noNestedCalls: detectionArray,
   preferCurriedDataLastFunctions: detectionArray
@@ -11,8 +11,8 @@ export const PipelineSignals = Schema.Struct({
 
 export interface PipelineSignals extends Schema.Schema.Type<typeof PipelineSignals> {}
 
-// Live nested-call stream pair because Schema batches cannot hold Streams.
+// Complete nested-call detection pair because advisers consume one finished batch.
 export class PipelineHostileInput extends Data.Class<{
-  readonly noNestedCalls: Stream.Stream<Detection>
-  readonly preferCurriedDataLastFunctions: Stream.Stream<Detection>
+  readonly noNestedCalls: ReadonlyArray<Detection>
+  readonly preferCurriedDataLastFunctions: ReadonlyArray<Detection>
 }> {}

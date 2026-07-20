@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { Array, Effect, Schema, Stream, pipe } from "effect"
+import { Array, Effect, Schema } from "effect"
 import { Signal } from "@better-typescript/core/engine/signal/data"
 import {
   EffectQualityAdviceData,
@@ -59,7 +59,7 @@ const adviceKinds = (signals: ReadonlyArray<Signal>): ReadonlySet<EffectQualityA
 
 test("Effect-quality wiring reports every supported local rule", async () => {
   const actual = ruleKinds(await runSignals())
-  const expected = Array.make<EffectQualityRuleKind>(
+  const expected: ReadonlyArray<EffectQualityRuleKind> = [
     "unsafe-casts",
     "schema-class-models",
     "typescript-namespaces",
@@ -86,7 +86,7 @@ test("Effect-quality wiring reports every supported local rule", async () => {
     "http-response-validation",
     "http-status-decode-order",
     "effect-test-style"
-  )
+  ]
 
   for (const kind of expected) assert.equal(actual.has(kind), true, kind)
 })
@@ -94,10 +94,8 @@ test("Effect-quality wiring reports every supported local rule", async () => {
 test("Effect-quality wiring derives every documented architecture advice kind", async () => {
   const signals = await runSignals()
   const actual = adviceKinds(signals)
-  const advice = await Effect.runPromise(
-    pipe(effectQualityWiring.derive(signals), Stream.runCollect)
-  )
-  const expected = Array.make<EffectQualityAdviceKind>(
+  const advice = await Effect.runPromise(effectQualityWiring.derive(signals))
+  const expected: ReadonlyArray<EffectQualityAdviceKind> = [
     "config-refined-values",
     "retry-without-jitter",
     "raw-fetch-outside-adapter",
@@ -117,7 +115,7 @@ test("Effect-quality wiring derives every documented architecture advice kind", 
     "idempotent-retry",
     "observable-worker-failure",
     "http-client-preference"
-  )
+  ]
 
   for (const kind of expected) assert.equal(actual.has(kind), true, kind)
   assert.equal(advice.length >= expected.length, true)

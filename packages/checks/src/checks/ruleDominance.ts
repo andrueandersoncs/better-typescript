@@ -1,4 +1,4 @@
-import { Array } from "effect"
+import { Array, Effect } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -39,4 +39,4 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   return isDominated ? Array.of(advice) : Array.empty()
 }
 
-export const ruleDominance = deriveSignals(dominanceAdvice)
+export const ruleDominance = Effect.fn("RuleDominance.derive")(deriveSignals(dominanceAdvice))
