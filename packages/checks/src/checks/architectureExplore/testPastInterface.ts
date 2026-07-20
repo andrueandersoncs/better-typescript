@@ -136,6 +136,8 @@ const testPastInterfaceAdvice = (
       workspaceDataAtPath,
       Array.reduce(emptyWorkspaceEvidence, (totals, data) => {
         const symbols = testOnlySymbolsOf(data)
+        const symbolCount = Tuple.get(totals, 0)
+        const callCount = Tuple.get(totals, 1)
 
         const callsAtSurface = pipe(
           symbols,
@@ -146,12 +148,15 @@ const testPastInterfaceAdvice = (
           })
         )
 
-        return Tuple.make(totals[0] + symbols.length, totals[1] + callsAtSurface)
+        const nextSymbolCount = symbolCount + symbols.length
+        const nextCallCount = callCount + callsAtSurface
+
+        return Tuple.make(nextSymbolCount, nextCallCount)
       })
     )
 
-    const workspaceSymbolCount = workspaceEvidence[0]
-    const workspaceTestCallCount = workspaceEvidence[1]
+    const workspaceSymbolCount = Tuple.get(workspaceEvidence, 0)
+    const workspaceTestCallCount = Tuple.get(workspaceEvidence, 1)
     const testCallCount = exportTestCallCount + workspaceTestCallCount
     const location = makeAdviceLocation(filePath)
 

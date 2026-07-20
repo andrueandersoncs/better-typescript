@@ -76,19 +76,14 @@ const pathMatchesHttpNamespaceApi = (path: ReadonlyArray<string>) => {
 }
 
 const barrelPathMatchesHttpNamespace = (path: ReadonlyArray<string>) => {
-  const barrelNamespace = pipe(Option.fromNullishOr(path[0]), Option.exists(segmentIsHttpNamespace))
-
-  const unstableNamespace = pipe(
-    Option.fromNullishOr(path[2]),
-    Option.exists(segmentIsHttpNamespace)
-  )
-
-  const unstablePathFlags = Array.make(
-    path[0] === "unstable",
-    path[1] === "http",
-    unstableNamespace
-  )
-
+  const path0 = Array.get(path, 0)
+  const path1 = Array.get(path, 1)
+  const path2 = Array.get(path, 2)
+  const barrelNamespace = pipe(path0, Option.exists(segmentIsHttpNamespace))
+  const unstableNamespace = pipe(path2, Option.exists(segmentIsHttpNamespace))
+  const hasUnstable = pipe(path0, Option.contains("unstable"))
+  const hasHttp = pipe(path1, Option.contains("http"))
+  const unstablePathFlags = Array.make(hasUnstable, hasHttp, unstableNamespace)
   const unstablePath = Array.every(unstablePathFlags, Boolean)
   const barrelFlags = Array.make(barrelNamespace, unstablePath)
 
@@ -121,7 +116,8 @@ const memberIsSchemaDecodeApi = (member: ImportedMember) => {
   const last = memberLastName(member)
   const nameMatches = Array.contains(schemaDecodeNames, last)
   const fromEffectBarrel = member.moduleSpecifier === "effect"
-  const barrelSchemaPath = member.path[0] === "Schema"
+  const schemaPathHead = Array.get(member.path, 0)
+  const barrelSchemaPath = pipe(schemaPathHead, Option.contains("Schema"))
   const pathOk = fromEffectBarrel ? barrelSchemaPath : true
   const flags = Array.make(schemaModule, nameMatches, pathOk)
 

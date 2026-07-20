@@ -194,9 +194,10 @@ const mutationMatches = (context: CheckContext) => {
         const declarations = symbol.getDeclarations() ?? Array.empty()
         const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
         const isBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
+        const firstDeclaration = Array.head(declarations)
 
         const declaredScope = pipe(
-          Option.fromNullishOr(declarations[0]),
+          firstDeclaration,
           Option.map((declaration): MutationScope => {
             const declarationBoundary = enclosingExecutionBoundary(declaration.parent)
             const mutationBoundary = enclosingExecutionBoundary(root.parent)

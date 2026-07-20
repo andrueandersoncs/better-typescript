@@ -27,11 +27,13 @@ const timeEffectNames = Array.make(
 const isTestClockMember = (member: ImportedMember) => {
   const fromDirect = member.moduleSpecifier === "effect/testing/TestClock"
   const fromTestingModule = member.moduleSpecifier === "effect/testing"
-  const fromTestingPath = member.path[0] === "TestClock"
+  const path0 = Array.get(member.path, 0)
+  const path1 = Array.get(member.path, 1)
+  const fromTestingPath = pipe(path0, Option.contains("TestClock"))
   const fromTestingParts = Array.make(fromTestingModule, fromTestingPath)
   const fromTestingNamespace = Array.every(fromTestingParts, Boolean)
-  const fromBarrelPath0 = member.path[0] === "testing"
-  const fromBarrelPath1 = member.path[1] === "TestClock"
+  const fromBarrelPath0 = pipe(path0, Option.contains("testing"))
+  const fromBarrelPath1 = pipe(path1, Option.contains("TestClock"))
   const fromBarrelModule = member.moduleSpecifier === "effect"
   const fromBarrelParts = Array.make(fromBarrelModule, fromBarrelPath0, fromBarrelPath1)
   const fromBarrel = Array.every(fromBarrelParts, Boolean)

@@ -70,7 +70,7 @@ class InferenceProbe implements Equal.Equal {
 
 const optionResult = <A>(option: Option.Option<A>) => Result.fromOption(option, Function.constVoid)
 
-const editStart = (edit: readonly [number, number, string]) => edit[0]
+const editStart = (edit: readonly [number, number, string]) => Tuple.get(edit, 0)
 
 const editOrder = Order.mapInput(Order.flip(Order.Number), editStart)
 
@@ -82,11 +82,13 @@ const applyEdits = (
   pipe(
     edits,
     Array.sort(editOrder),
-    Array.reduce(
-      text,
-      (current, [start, end, replacement]) =>
-        current.slice(0, start - offset) + replacement + current.slice(end - offset)
-    )
+    Array.reduce(text, (current, edit) => {
+      const start = Tuple.get(edit, 0)
+      const end = Tuple.get(edit, 1)
+      const replacement = Tuple.get(edit, 2)
+
+      return current.slice(0, start - offset) + replacement + current.slice(end - offset)
+    })
   )
 
 const annotationEdit = (sourceFile: ts.SourceFile, typeNode: ts.TypeNode, anchorEnd: number) => {
@@ -435,14 +437,10 @@ const functionDeclarationProbe =
 
             const probeSource = applyEdits(declarationSource, offset, probeEdits)
             const snippet = `\n{\n${expectedSource}\n${probeSource}\n}\n`
+            const findingStart = Tuple.get(returnFinding, 0)
+            const findingEnd = Tuple.get(returnFinding, 1)
 
-            return new InferenceProbe(
-              typeNode,
-              declaration.end,
-              snippet,
-              returnFinding[0],
-              returnFinding[1]
-            )
+            return new InferenceProbe(typeNode, declaration.end, snippet, findingStart, findingEnd)
           })
         )
       })
@@ -608,7 +606,11 @@ const namedProbeDeclarations = (sourceFile: ts.SourceFile) => {
     const declaration = pipe(
       variable,
       Option.orElse(Function.constant(fn)),
-      Option.filter((entry) => entry[0].startsWith(generatedNamePrefix))
+      Option.filter((entry) => {
+        const generatedName = Tuple.get(entry, 0)
+
+        return generatedName.startsWith(generatedNamePrefix)
+      })
     )
 
     return optionResult(declaration)
@@ -916,11 +918,17 @@ const findingIndex = (context: ProgramContext) => {
 
   const current = pipe(
     cached,
-    Option.filter(([program]) => program === context.program)
+    Option.filter((entry) => {
+      const program = Tuple.get(entry, 0)
+
+      return program === context.program
+    })
   )
 
   if (Option.isSome(current)) {
-    return current.value[1]
+    const findings = Tuple.get(current.value, 1)
+
+    return findings
   }
 
   const findings = buildFindingIndex(context)

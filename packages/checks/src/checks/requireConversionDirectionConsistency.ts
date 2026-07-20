@@ -36,7 +36,12 @@ const claimedAgrees = (claimed: string) => (expectedWords: ReadonlyArray<string>
 
 const explicitDisagreement = (expectedWords: ReadonlyArray<string>) => (claimed: string) => {
   const disagreesWithClaimed = (words: ReadonlyArray<string>) => !claimedAgrees(claimed)(words)
-  const claimedWithExpected = (words: ReadonlyArray<string>) => Tuple.make(claimed, words[0])
+
+  const claimedWithExpected = (words: Array.NonEmptyReadonlyArray<string>) => {
+    const expected = Array.headNonEmpty(words)
+
+    return Tuple.make(claimed, expected)
+  }
 
   return pipe(
     Option.liftPredicate(Array.isReadonlyArrayNonEmpty)(expectedWords),

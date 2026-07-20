@@ -107,7 +107,11 @@ export const commonDirectory = (paths: ReadonlyArray<string>) => {
   const remaining = Array.drop(allSegments, 1)
 
   const takeCommonPrefix = (prefix: ReadonlyArray<string>, segments: ReadonlyArray<string>) =>
-    Array.takeWhile(prefix, (segment, index) => segments[index] === segment)
+    Array.takeWhile(prefix, (segment, index) => {
+      const candidate = Array.get(segments, index)
+
+      return Option.contains(candidate, segment)
+    })
 
   const common = Array.reduce(remaining, first, takeCommonPrefix)
 

@@ -65,6 +65,15 @@ export const moduleSpecifierText = flow(
 
 const identifierEmptyPath = (identifier: ts.Identifier) => Tuple.make(identifier, emptyMemberPath)
 
+const makePathWithMember =
+  (memberName: string) => (path: readonly [ts.Identifier, ReadonlyArray<string>]) => {
+    const root = Tuple.get(path, 0)
+    const existing = Tuple.get(path, 1)
+    const members = Array.append(existing, memberName)
+
+    return Tuple.make(root, members)
+  }
+
 const expressionPath = (
   expression: ts.Expression
 ): Option.Option<readonly [ts.Identifier, ReadonlyArray<string>]> =>
@@ -76,14 +85,7 @@ const expressionPath = (
     Match.when(ts.isPropertyAccessExpression, (access) => {
       const memberName = access.name.text
 
-      return pipe(
-        expressionPath(access.expression),
-        Option.map((path) => {
-          const members = Array.append(path[1], memberName)
-
-          return Tuple.make(path[0], members)
-        })
-      )
+      return pipe(expressionPath(access.expression), Option.map(makePathWithMember(memberName)))
     }),
     Match.when(ts.isElementAccessExpression, (access) => {
       const member = pipe(
@@ -96,11 +98,7 @@ const expressionPath = (
 
       return pipe(
         Option.all({ base, member }),
-        Option.map(({ base, member }) => {
-          const members = Array.append(base[1], member)
-
-          return Tuple.make(base[0], members)
-        })
+        Option.map(({ base, member }) => makePathWithMember(member)(base))
       )
     }),
     Match.orElse(() => Option.none())
@@ -108,16 +106,14 @@ const expressionPath = (
 
 const identifierEmptyPath2 = (identifier: ts.Identifier) => Tuple.make(identifier, emptyMemberPath)
 
+const qualifiedNamePath = (qualifiedName: ts.QualifiedName) =>
+  pipe(entityNamePath(qualifiedName.left), makePathWithMember(qualifiedName.right.text))
+
 const entityNamePath = (name: ts.EntityName): readonly [ts.Identifier, ReadonlyArray<string>] =>
   pipe(
     Match.value(name),
     Match.when(ts.isIdentifier, identifierEmptyPath2),
-    Match.orElse((qualifiedName) => {
-      const parent = entityNamePath(qualifiedName.left)
-      const members = Array.append(parent[1], qualifiedName.right.text)
-
-      return Tuple.make(parent[0], members)
-    })
+    Match.orElse(qualifiedNamePath)
   )
 
 const bindingFromNamedSpecifier = (
@@ -245,7 +241,8 @@ const resolvedBarrelBinding = (
     return binding
   }
 
-  const importedName = pipe(Array.head(binding.path), Option.getOrElse(Function.constant("")))
+  const pathHead = Array.head(binding.path)
+  const importedName = pipe(pathHead, Option.getOrElse(Function.constant("")))
 
   const next = pipe(
     checker.getExportsOfModule(moduleSymbol.value),
@@ -306,8 +303,8 @@ const importedMemberFromPath = (
   checker: ts.TypeChecker,
   path: readonly [ts.Identifier, ReadonlyArray<string>]
 ) => {
-  const root = path[0]
-  const members = path[1]
+  const root = Tuple.get(path, 0)
+  const members = Tuple.get(path, 1)
 
   return importBindingAt(checker, root, members)
 }
@@ -395,8 +392,10 @@ export const effectApiMember = (
   namespace: string,
   names: ReadonlyArray<string>
 ) => {
-  const last = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
-  const fromBarrelPath = member.path[0] === namespace
+  const lastOption = Array.last(member.path)
+  const last = pipe(lastOption, Option.getOrElse(Function.constant("")))
+  const pathHead = Array.get(member.path, 0)
+  const fromBarrelPath = pipe(pathHead, Option.contains(namespace))
   const fromEffectBarrel = member.moduleSpecifier === "effect"
   const fromBarrel = fromEffectBarrel && fromBarrelPath
   const fromSubpath = member.moduleSpecifier === `effect/${namespace}`
@@ -479,10 +478,8 @@ const effectServiceMakerObject = (
     return Option.none()
   }
 
-  const maker = pipe(
-    Option.fromNullishOr(expression.arguments[1]),
-    Option.filter(ts.isObjectLiteralExpression)
-  )
+  const makerArgument = Array.get(expression.arguments, 1)
+  const maker = pipe(makerArgument, Option.filter(ts.isObjectLiteralExpression))
 
   return Option.isSome(maker) ? maker : effectServiceMakerObject(expression.expression)
 }
@@ -638,7 +635,7 @@ const provideServiceTagArgument = (node: ts.CallExpression) => {
   const args = Array.fromIterable(node.arguments)
   const tagIndex = args.length >= 3 ? 1 : 0
 
-  return Option.fromNullishOr(args[tagIndex])
+  return Array.get(args, tagIndex)
 }
 
 export const callIsReferenceProvideService = (checker: ts.TypeChecker, node: ts.CallExpression) => {
@@ -720,23 +717,18 @@ const unstableHttpNamespaces = Array.make("http", "httpapi")
 
 const nameIsListed3 = (name: string) => Array.contains(unstableHttpNamespaces, name)
 
+const isMovedPlatformCapabilityName = (name: string) =>
+  effectBarrelPlatformCapabilityNames[name] === true
+
 export const importedMemberIsMovedPlatformCapability = (member: ImportedMember) => {
   const fromEffectBarrel = member.moduleSpecifier === "effect"
-
-  const isMovedBarrelMember = pipe(
-    Option.fromNullishOr(member.path[0]),
-    Option.exists((name) => effectBarrelPlatformCapabilityNames[name] === true)
-  )
-
+  const pathHead = Array.get(member.path, 0)
+  const pathSecond = Array.get(member.path, 1)
+  const isMovedBarrelMember = pipe(pathHead, Option.exists(isMovedPlatformCapabilityName))
   const barrelChecks = Array.make(fromEffectBarrel, isMovedBarrelMember)
   const fromBarrel = Array.every(barrelChecks, Boolean)
-
-  const isUnstableNamespace = pipe(
-    Option.fromNullishOr(member.path[0]),
-    Option.exists((name) => name === "unstable")
-  )
-
-  const isHttpNamespace = pipe(Option.fromNullishOr(member.path[1]), Option.exists(nameIsListed3))
+  const isUnstableNamespace = pipe(pathHead, Option.contains("unstable"))
+  const isHttpNamespace = pipe(pathSecond, Option.exists(nameIsListed3))
   const unstableChecks = Array.make(fromEffectBarrel, isUnstableNamespace, isHttpNamespace)
   const fromUnstableHttp = Array.every(unstableChecks, Boolean)
   const capabilitySources = Array.make(fromBarrel, fromUnstableHttp)
@@ -884,11 +876,18 @@ const ambientPathAt = (
   checker: ts.TypeChecker,
   expression: ts.Expression
 ): Option.Option<ReadonlyArray<string>> => {
-  const pathRootIsAmbient = (path: readonly [ts.Identifier, ReadonlyArray<string>]) =>
-    symbolIsAmbient(checker, path[0])
+  const pathRootIsAmbient = (path: readonly [ts.Identifier, ReadonlyArray<string>]) => {
+    const root = Tuple.get(path, 0)
 
-  const ambientPathSegments = (path: readonly [ts.Identifier, ReadonlyArray<string>]) =>
-    Array.prepend(path[1], path[0].text)
+    return symbolIsAmbient(checker, root)
+  }
+
+  const ambientPathSegments = (path: readonly [ts.Identifier, ReadonlyArray<string>]) => {
+    const root = Tuple.get(path, 0)
+    const members = Tuple.get(path, 1)
+
+    return Array.prepend(members, root.text)
+  }
 
   return pipe(
     expressionPath(expression),
@@ -915,11 +914,11 @@ const ambientCallSubject = (checker: ts.TypeChecker, expression: ts.Expression) 
       const isSingleSegment = path.length === 1
       const directMatch = isSingleSegment && Array.contains(ambientDirectNames, joined)
       const exactMatch = Array.contains(ambientExactMembers, joined)
-      const receiver = path[0]
-      const isLocalStorage = receiver === "localStorage"
-      const isSessionStorage = receiver === "sessionStorage"
+      const receiver = Array.get(path, 0)
+      const isLocalStorage = pipe(receiver, Option.contains("localStorage"))
+      const isSessionStorage = pipe(receiver, Option.contains("sessionStorage"))
       const storageMatch = isLocalStorage || isSessionStorage
-      const consoleMatch = receiver === "console"
+      const consoleMatch = pipe(receiver, Option.contains("console"))
       const ambientFlags = Array.make(directMatch, exactMatch, storageMatch, consoleMatch)
 
       return Array.some(ambientFlags, Boolean)
@@ -1093,7 +1092,8 @@ export const resourceSubjectAt = (
   pipe(
     externalImportedMemberAt(context.checker, node.expression),
     Option.filter((member) => {
-      const name = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
+      const lastOption = Array.last(member.path)
+      const name = pipe(lastOption, Option.getOrElse(Function.constant("")))
       const factoryMatch = Array.contains(policy.resourceFactoryNames, name)
       const suffixMatch = Array.some(policy.resourceTypeSuffixes, (suffix) => name.endsWith(suffix))
       const isNewExpression = ts.isNewExpression(node)

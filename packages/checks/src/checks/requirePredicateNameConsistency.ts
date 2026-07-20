@@ -69,9 +69,9 @@ const constantEmptyDetections = Function.constant(emptyDetections)
 
 const hasWithDirectionPredicate = (words: ReadonlyArray<string>) => {
   const first = pipe(words, Array.head, Option.getOrElse(Function.constant("")))
-  const second = words[1]
+  const second = Array.get(words, 1)
   const isDirection = HashSet.has(withDirectionOperations, first)
-  const isWith = second === "with"
+  const isWith = Option.contains(second, "with")
   const checks = Array.make(isDirection, isWith)
 
   return Array.every(checks, Boolean)

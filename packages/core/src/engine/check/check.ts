@@ -148,14 +148,19 @@ export const runChecks =
     )
 
     const emptyDispatch = Array.makeBy(ts.SyntaxKind.Count, () => Array.empty<number>())
+    const emptySubscriptionIndexes = Array.empty<number>()
+    const noSubscriptionIndexes = Function.constant(emptySubscriptionIndexes)
 
     const nodeDispatch = Array.reduce(
       plannedNodeSubscriptions,
       emptyDispatch,
       (dispatch, planned, subscriptionIndex) =>
-        Array.reduce(planned.subscription.kinds, dispatch, (current, kind) =>
-          pipe(current, Array.modify(kind, Array.append(subscriptionIndex)), Option.getOrThrow)
-        )
+        Array.reduce(planned.subscription.kinds, dispatch, (current, kind) => {
+          const modified = Array.modify(current, kind, Array.append(subscriptionIndex))
+          const keepCurrent = Function.constant(current)
+
+          return pipe(modified, Option.getOrElse(keepCurrent))
+        })
     )
 
     const detectionsByCheck =
@@ -182,8 +187,11 @@ export const runChecks =
             Array.filter(isFileSubscription),
             Array.forEach((subscription) => {
               const found = subscription.handler(checkContext)
+              const maybeDetections = Array.get(detectionsByCheck, checkIndex)
 
-              MutableList.appendAll(detectionsByCheck[checkIndex], found)
+              if (Option.isSome(maybeDetections)) {
+                MutableList.appendAll(maybeDetections.value, found)
+              }
             })
           )
         }
@@ -212,22 +220,32 @@ export const runChecks =
       const nodes = astNodesIn(sourceFile)
 
       Iterable.forEach(nodes, (node) => {
-        Array.forEach(nodeDispatch[node.kind], (subscriptionIndex) => {
-          const active = activeNodeSubscriptions[subscriptionIndex]
+        const maybeSubscriptions = Array.get(nodeDispatch, node.kind)
+        const subscriptions = pipe(maybeSubscriptions, Option.getOrElse(noSubscriptionIndexes))
 
-          if (Option.isSome(active)) {
-            const found = active.value.handle(node)
+        Array.forEach(subscriptions, (subscriptionIndex) => {
+          const maybeActiveSlot = Array.get(activeNodeSubscriptions, subscriptionIndex)
+          const maybeActive = Option.flatten(maybeActiveSlot)
 
-            MutableList.appendAll(active.value.detections, found)
+          if (Option.isSome(maybeActive)) {
+            const found = maybeActive.value.handle(node)
+
+            MutableList.appendAll(maybeActive.value.detections, found)
           }
         })
       })
 
       Array.forEach(activeNodeSubscriptions, (active) => {
-        if (Option.isSome(active)) {
-          const detections = MutableList.toArray(active.value.detections)
+        if (Option.isNone(active)) {
+          return
+        }
 
-          MutableList.appendAll(detectionsByCheck[active.value.checkIndex], detections)
+        const activeSubscription = active.value
+        const detections = MutableList.toArray(activeSubscription.detections)
+        const maybeDetections = Array.get(detectionsByCheck, activeSubscription.checkIndex)
+
+        if (Option.isSome(maybeDetections)) {
+          MutableList.appendAll(maybeDetections.value, detections)
         }
       })
     })

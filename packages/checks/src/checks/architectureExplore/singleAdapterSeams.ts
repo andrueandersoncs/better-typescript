@@ -194,9 +194,12 @@ const incrementAdapter =
   ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number]> => {
     const symbolKey = referenceKey(symbol)
     const current = pipe(HashMap.get(counts, symbolKey), Option.getOrElse(emptyAdapterCount))
-    const production = fromTest ? current[0] : current[0] + 1
-    const test = fromTest ? current[1] + 1 : current[1]
+    const productionCount = Tuple.get(current, 0)
+    const testCount = Tuple.get(current, 1)
+    const production = fromTest ? productionCount : productionCount + 1
+    const test = fromTest ? testCount + 1 : testCount
     const updated = Tuple.make(production, test)
+
     return HashMap.set(counts, symbolKey, updated)
   }
 
@@ -211,7 +214,7 @@ const buildIndex = (
   const candidates = seamCandidates(context)(sourceFiles)
 
   const candidateSymbolKey = (candidate: readonly [ts.InterfaceDeclaration, ts.Symbol]) =>
-    referenceKey(candidate[1])
+    pipe(candidate, Tuple.get(1), referenceKey)
 
   const candidateSymbols = pipe(candidates, Array.map(candidateSymbolKey), HashSet.fromIterable)
   const classifyTestSource = isTestSourceFile(context.workspaceRoot)
@@ -252,9 +255,11 @@ const buildIndex = (
             }),
             Option.map((candidate) => {
               const candidateKey = referenceKey(candidate)
-              const injected = HashSet.add(current[0], candidateKey)
+              const injectedSet = Tuple.get(current, 0)
+              const adapterCounts = Tuple.get(current, 1)
+              const injected = HashSet.add(injectedSet, candidateKey)
 
-              return Tuple.make(injected, current[1])
+              return Tuple.make(injected, adapterCounts)
             }),
             Option.getOrElse(() => current)
           )
@@ -271,11 +276,14 @@ const buildIndex = (
                 })
               )
 
-              const adapterCounts = Array.reduce(symbols, parameterState[1], (counts, symbol) =>
+              const injectedSet = Tuple.get(parameterState, 0)
+              const currentAdapterCounts = Tuple.get(parameterState, 1)
+
+              const adapterCounts = Array.reduce(symbols, currentAdapterCounts, (counts, symbol) =>
                 incrementAdapter(fromTest)(symbol)(counts)
               )
 
-              return Tuple.make(parameterState[0], adapterCounts)
+              return Tuple.make(injectedSet, adapterCounts)
             }),
             Option.getOrElse(Function.constant(parameterState))
           )
@@ -289,9 +297,11 @@ const buildIndex = (
               return HashSet.has(candidateSymbols, candidateKey)
             }),
             Option.map((candidate) => {
-              const adapterCounts = incrementAdapter(fromTest)(candidate)(classState[1])
+              const injectedSet = Tuple.get(classState, 0)
+              const currentAdapterCounts = Tuple.get(classState, 1)
+              const adapterCounts = incrementAdapter(fromTest)(candidate)(currentAdapterCounts)
 
-              return Tuple.make(classState[0], adapterCounts)
+              return Tuple.make(injectedSet, adapterCounts)
             }),
             Option.getOrElse(Function.constant(classState))
           )
@@ -314,7 +324,10 @@ const buildIndex = (
     Array.reduce(initial, (state, sourceFile) => scanFile(sourceFile)(state))
   )
 
-  return Tuple.make(candidates, finalState[0], finalState[1])
+  const finalInjected = Tuple.get(finalState, 0)
+  const finalAdapterCounts = Tuple.get(finalState, 1)
+
+  return Tuple.make(candidates, finalInjected, finalAdapterCounts)
 }
 
 const singleAdapterElements =
@@ -327,39 +340,52 @@ const singleAdapterElements =
   ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
     const element = makeDetection(context)
+    const candidates = Tuple.get(index, 0)
+    const injected = Tuple.get(index, 1)
+    const adapterCounts = Tuple.get(index, 2)
 
     return pipe(
-      index[0],
-      Array.filter((candidate) => candidate[0].getSourceFile() === context.sourceFile),
+      candidates,
       Array.filter((candidate) => {
-        const candidateKey = referenceKey(candidate[1])
+        const declaration = Tuple.get(candidate, 0)
 
-        return HashSet.has(index[1], candidateKey)
+        return declaration.getSourceFile() === context.sourceFile
+      }),
+      Array.filter((candidate) => {
+        const candidateSymbol = Tuple.get(candidate, 1)
+        const candidateKey = referenceKey(candidateSymbol)
+
+        return HashSet.has(injected, candidateKey)
       }),
       Array.filterMap((candidate) => {
-        const candidateKey = referenceKey(candidate[1])
+        const candidateSymbol = Tuple.get(candidate, 1)
+        const candidateKey = referenceKey(candidateSymbol)
 
         const counts = pipe(
-          HashMap.get(index[2], candidateKey),
+          HashMap.get(adapterCounts, candidateKey),
           Option.getOrElse(emptyAdapterCount)
         )
 
-        const hasOneProductionAdapter = counts[0] === 1
-        const hasNoTestAdapter = counts[1] === 0
+        const productionAdapterCount = Tuple.get(counts, 0)
+        const testAdapterCount = Tuple.get(counts, 1)
+        const hasOneProductionAdapter = productionAdapterCount === 1
+        const hasNoTestAdapter = testAdapterCount === 0
         const isHypothetical = hasOneProductionAdapter && hasNoTestAdapter
         const hypotheticalCandidate = isHypothetical ? Option.some(candidate) : Option.none()
 
         return pipe(
           hypotheticalCandidate,
           Option.map((currentCandidate) => {
+            const currentDeclaration = Tuple.get(currentCandidate, 0)
+
             const data = SingleAdapterSeamData.make({
-              interfaceName: currentCandidate[0].name.text,
-              productionAdapterCount: counts[0],
-              testAdapterCount: counts[1]
+              interfaceName: currentDeclaration.name.text,
+              productionAdapterCount,
+              testAdapterCount
             })
 
             const reported = element({
-              node: currentCandidate[0].name,
+              node: currentDeclaration.name,
               message,
               hint,
               data

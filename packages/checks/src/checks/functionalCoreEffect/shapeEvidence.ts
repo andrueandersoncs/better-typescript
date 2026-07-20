@@ -153,23 +153,31 @@ const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration) =>
 const namespaceIsEffectControlRuntime = (namespace: string) =>
   effectControlRuntimeNamespaces[namespace] === true
 
+const effectSubpathNamespace = (specifier: string) => {
+  const effectPath = specifier.slice("effect/".length)
+  const segments = effectPath.split("/")
+
+  return Array.get(segments, 0)
+}
+
 const callOwnedByEffectControlRuntime = (checker: ts.TypeChecker, node: ts.CallExpression) =>
   pipe(
     importedMemberAt(checker, node.expression),
     Option.exists((member) => {
+      const pathHead = Array.get(member.path, 0)
+      const keepPathHead = Function.constant(pathHead)
+
       const fromSubpath = pipe(
         Option.liftPredicate((specifier: string) => specifier.startsWith("effect/"))(
           member.moduleSpecifier
         ),
-        Option.map((specifier) => specifier.slice("effect/".length).split("/")[0]),
-        Option.flatMap(Option.fromNullishOr),
+        Option.flatMap(effectSubpathNamespace),
         Option.exists(namespaceIsEffectControlRuntime)
       )
 
       const fromBarrel = pipe(
         Option.liftPredicate((specifier: string) => specifier === "effect")(member.moduleSpecifier),
-        Option.map(() => member.path[0]),
-        Option.flatMap(Option.fromNullishOr),
+        Option.flatMap(keepPathHead),
         Option.exists(namespaceIsEffectControlRuntime)
       )
 
@@ -262,7 +270,8 @@ const callIsRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.CallEx
   const runMain = pipe(
     importedMemberAt(checker, node.expression),
     Option.exists((member) => {
-      const name = pipe(Array.last(member.path), Option.getOrElse(Function.constant("")))
+      const lastOption = Array.last(member.path)
+      const name = pipe(lastOption, Option.getOrElse(Function.constant("")))
       const platformNode = member.moduleSpecifier.startsWith("@effect/platform-node")
       const platformBun = member.moduleSpecifier.startsWith("@effect/platform-bun")
       const platformDeno = member.moduleSpecifier.startsWith("@effect/platform-deno")
@@ -575,7 +584,7 @@ const findContextTagTypeArgument = (expression: ts.Expression): Option.Option<ts
         Option.getOrElse(Array.empty)
       )
 
-      const second = Option.fromNullishOr(arguments_[1])
+      const second = Array.get(arguments_, 1)
 
       return Option.orElse(second, () => findContextTagTypeArgument(call.expression))
     })

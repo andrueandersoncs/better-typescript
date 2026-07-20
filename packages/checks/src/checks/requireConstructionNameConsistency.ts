@@ -28,7 +28,8 @@ const hasRole =
 
 const isExactSingleWord = (word: string) => (semantics: CallableSemantics) => {
   const singleWord = semantics.name.words.length === 1
-  const matchesWord = semantics.name.words[0] === word
+  const firstWord = Array.head(semantics.name.words)
+  const matchesWord = Option.contains(firstWord, word)
   const conditions = Array.make(singleWord, matchesWord)
 
   return Array.every(conditions, Boolean)

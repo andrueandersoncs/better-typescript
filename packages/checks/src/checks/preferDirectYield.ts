@@ -171,7 +171,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
         yield* Option.liftPredicate((value: boolean) => value)(hasOneReference)
 
-        const onlyReference = yield* Option.fromNullishOr(references[0])
+        const onlyReference = yield* Array.head(references)
         yield* Option.liftPredicate(isYieldStarOfIdentifier)(onlyReference)
 
         return match({

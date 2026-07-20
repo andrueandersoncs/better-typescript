@@ -54,17 +54,21 @@ export const isHttpClientMember = (member: ImportedMember) => {
   const path = member.path
   const direct = specifier === "effect/unstable/http/HttpClient"
   const isHttpBarrel = specifier === "effect/unstable/http"
-  const pathHeadIsHttpClient = pipe(Array.head(path), Option.contains("HttpClient"))
+  const pathHead = Array.head(path)
+  const pathHeadIsHttpClient = pipe(pathHead, Option.contains("HttpClient"))
   const httpBarrelParts = Array.make(isHttpBarrel, pathHeadIsHttpClient)
   const httpBarrel = Array.every(httpBarrelParts, Boolean)
-  const unstablePath0 = path[0] === "http"
-  const unstablePath1 = pipe(Option.fromNullishOr(path[1]), Option.contains("HttpClient"))
+  const path0 = Array.get(path, 0)
+  const path1 = Array.get(path, 1)
+  const path2 = Array.get(path, 2)
+  const unstablePath0 = pipe(path0, Option.contains("http"))
+  const unstablePath1 = pipe(path1, Option.contains("HttpClient"))
   const unstableModule = specifier === "effect/unstable"
   const unstableParts = Array.make(unstableModule, unstablePath0, unstablePath1)
   const unstableBarrel = Array.every(unstableParts, Boolean)
-  const effectPath0 = path[0] === "unstable"
-  const effectPath1 = path[1] === "http"
-  const effectPath2 = pipe(Option.fromNullishOr(path[2]), Option.contains("HttpClient"))
+  const effectPath0 = pipe(path0, Option.contains("unstable"))
+  const effectPath1 = pipe(path1, Option.contains("http"))
+  const effectPath2 = pipe(path2, Option.contains("HttpClient"))
   const effectModule = specifier === "effect"
   const effectParts = Array.make(effectModule, effectPath0, effectPath1, effectPath2)
   const effectBarrel = Array.every(effectParts, Boolean)
@@ -78,12 +82,16 @@ export const isFetchHttpClientMember = (member: ImportedMember) => {
   const path = member.path
   const direct = specifier === "effect/unstable/http/FetchHttpClient"
   const isHttpBarrel = specifier === "effect/unstable/http"
-  const pathHeadIsFetchHttpClient = pipe(Array.head(path), Option.contains("FetchHttpClient"))
+  const pathHead = Array.head(path)
+  const pathHeadIsFetchHttpClient = pipe(pathHead, Option.contains("FetchHttpClient"))
   const httpBarrelParts = Array.make(isHttpBarrel, pathHeadIsFetchHttpClient)
   const httpBarrel = Array.every(httpBarrelParts, Boolean)
-  const effectPath0 = path[0] === "unstable"
-  const effectPath1 = path[1] === "http"
-  const effectPath2 = pipe(Option.fromNullishOr(path[2]), Option.contains("FetchHttpClient"))
+  const path0 = Array.get(path, 0)
+  const path1 = Array.get(path, 1)
+  const path2 = Array.get(path, 2)
+  const effectPath0 = pipe(path0, Option.contains("unstable"))
+  const effectPath1 = pipe(path1, Option.contains("http"))
+  const effectPath2 = pipe(path2, Option.contains("FetchHttpClient"))
   const effectModule = specifier === "effect"
   const effectParts = Array.make(effectModule, effectPath0, effectPath1, effectPath2)
   const effectBarrel = Array.every(effectParts, Boolean)

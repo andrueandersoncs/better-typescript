@@ -146,7 +146,9 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const hasSingleHeritage = types.length === 1
         const emptyInterfaceAlias = isEmpty && hasSingleHeritage
 
-        return emptyInterfaceAlias ? modelAt(types[0].expression) : Option.none()
+        return emptyInterfaceAlias
+          ? pipe(Array.head(types), Option.map(Struct.get("expression")), Option.flatMap(modelAt))
+          : Option.none()
       }
 
       if (!ts.isTypeAliasDeclaration(declaration)) {
@@ -282,9 +284,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const redundantPairs = Array.filterMap(entries, pairWithRedundantTarget)
     const entrySymbolKey = (entry: DataStructureEntry) => referenceKey(entry.symbol)
 
+    const pairEntrySymbolKey = (
+      pair: readonly [DataStructureEntry, DataStructureEntry | FunctionEntry]
+    ) => pipe(pair, Tuple.get(0), entrySymbolKey)
+
     const redundantSymbols = pipe(
       redundantPairs,
-      Array.map(([entry]) => referenceKey(entry.symbol)),
+      Array.map(pairEntrySymbolKey),
       HashSet.fromIterable
     )
 
@@ -297,11 +303,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         : pipe(closedOwner(entry), Option.map(pairWithEntry), Result.fromOption(Function.constVoid))
     })
 
-    const closedSymbols = pipe(
-      closedPairs,
-      Array.map(([entry]) => referenceKey(entry.symbol)),
-      HashSet.fromIterable
-    )
+    const closedSymbols = pipe(closedPairs, Array.map(pairEntrySymbolKey), HashSet.fromIterable)
 
     const duplicatePairs = Array.filterMap(entries, (entry) => {
       const entryKey = referenceKey(entry.symbol)
@@ -322,11 +324,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const duplicateSymbols = pipe(
       duplicatePairs,
-      Array.map(([entry]) => referenceKey(entry.symbol)),
+      Array.map(pairEntrySymbolKey),
       HashSet.fromIterable
     )
 
-    Array.forEach(closedPairs, ([entry, owner]) => {
+    const emitClosedPair = (pair: readonly [DataStructureEntry, FunctionEntry]) => {
+      const entry = Tuple.get(pair, 0)
+      const owner = Tuple.get(pair, 1)
       const callers = callersFor(owner)
       const relatedConcepts = Array.of(owner.name)
       const externalCallers = HashSet.size(callers)
@@ -339,37 +343,47 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         externalCallers
       )
 
-      append(
+      return append(
         entry.nameNode,
         `${entry.name} and ${owner.name} form a closed abstraction with at most one external owner.`,
         closedHint,
         data
       )
-    })
+    }
 
-    Array.forEach(redundantPairs, ([entry, target]) => {
+    Array.forEach(closedPairs, emitClosedPair)
+
+    const emitRedundantPair = (pair: readonly [DataStructureEntry, DataStructureEntry]) => {
+      const entry = Tuple.get(pair, 0)
+      const target = Tuple.get(pair, 1)
       const relatedConcepts = Array.of(target.name)
       const data = makeSignalData("redundant-alias", entry, target.name, relatedConcepts, 0)
 
-      append(
+      return append(
         entry.nameNode,
         `${entry.name} renames ${target.name} without adding independent semantics.`,
         `Use ${target.name} directly, merge the concepts, or add a real invariant or independently evolving boundary. Do not keep a second name only to describe structural use.`,
         data
       )
-    })
+    }
 
-    Array.forEach(duplicatePairs, ([entry, target]) => {
+    Array.forEach(redundantPairs, emitRedundantPair)
+
+    const emitDuplicatePair = (pair: readonly [DataStructureEntry, DataStructureEntry]) => {
+      const entry = Tuple.get(pair, 0)
+      const target = Tuple.get(pair, 1)
       const relatedConcepts = Array.of(target.name)
       const data = makeSignalData("duplicate-shape", entry, target.name, relatedConcepts, 0)
 
-      append(
+      return append(
         entry.nameNode,
         `${entry.name} duplicates the concrete structure of ${target.name}.`,
         duplicateHint,
         data
       )
-    })
+    }
+
+    Array.forEach(duplicatePairs, emitDuplicatePair)
 
     const readFields = pipe(index.fieldReads, Array.map(Struct.get("field")), HashSet.fromIterable)
 
@@ -432,7 +446,9 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       )
 
       if (Option.isSome(functionDerivedEmission)) {
-        const [owner, callers] = functionDerivedEmission.value
+        const emission = functionDerivedEmission.value
+        const owner = Tuple.get(emission, 0)
+        const callers = Tuple.get(emission, 1)
         const relatedConcepts = Array.of(owner.name)
         const externalCallers = HashSet.size(callers)
 

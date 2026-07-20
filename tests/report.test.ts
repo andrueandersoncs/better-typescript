@@ -81,15 +81,11 @@ const workspaceUpdateOf = (workspace: LoadedWorkspace): WorkspaceUpdate =>
     contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
   })
 
-const reportTexts =
-  (config: WiringConfig) =>
-  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<string>> =>
-    pipe(
-      reportEvents(config)(workspaceUpdateOf(workspace)),
-      Effect.map((events) =>
-        events.flatMap((event) => (event._tag === "signal" ? [event.text] : []))
-      )
-    )
+const reportTexts = (config: WiringConfig) => (workspace: LoadedWorkspace) =>
+  pipe(
+    reportEvents(config)(workspaceUpdateOf(workspace)),
+    Effect.map((events) => events.flatMap((event) => (event._tag === "signal" ? [event.text] : [])))
+  )
 
 const relativeFileName = (project: LoadedProject, sourceFile: ts.SourceFile): string =>
   path.relative(project.rootPath, sourceFile.fileName).replaceAll(path.sep, "/")
@@ -254,7 +250,7 @@ test("astNodesIn emits fixture AST elements in stable traversal order", async ()
 
 test("foldAst traverses deeply nested trees without call stack recursion", () => {
   const depth = 20_000
-  const root = globalThis.Array.from({ length: depth }).reduce<ts.Expression>(
+  const root = Array.makeBy(depth, () => undefined).reduce<ts.Expression>(
     (expression) => ts.factory.createParenthesizedExpression(expression),
     ts.factory.createIdentifier("value")
   )

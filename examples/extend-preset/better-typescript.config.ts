@@ -61,7 +61,7 @@ const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number
   detections.filter((element) => element.location.path === path).length
 
 const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
-  globalThis.Array.from(new Set(detections.map((element) => element.location.path))).sort()
+  Array.fromIterable(new Set(detections.map((element) => element.location.path))).sort()
 
 const consoleLogBoundaryAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> =>
   deriveSignals((elements: ReadonlyArray<Detection>) =>

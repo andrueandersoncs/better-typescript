@@ -62,21 +62,30 @@ const pairElementWithSignalData = (element: Detection) => {
   return pipe(signalData(element), Option.map(withData), Result.fromOption(Function.constVoid))
 }
 
-const isClosedAbstractionEntry = (entry: readonly [Detection, ConceptSignalData]) =>
-  entry[1].kind === "closed-abstraction"
+const isClosedAbstractionEntry = (entry: readonly [Detection, ConceptSignalData]) => {
+  const data = Tuple.get(entry, 1)
 
-const closedAbstractionAdviceFromEntry = (entry: readonly [Detection, ConceptSignalData]) =>
-  makeClosedAbstractionAdvice(entry[0], entry[1])
+  return data.kind === "closed-abstraction"
+}
 
-const isProliferationEntry = (entry: readonly [Detection, ConceptSignalData]) =>
-  HashSet.has(proliferationKinds, entry[1].kind)
+const closedAbstractionAdviceFromEntry = (entry: readonly [Detection, ConceptSignalData]) => {
+  const element = Tuple.get(entry, 0)
+  const data = Tuple.get(entry, 1)
+
+  return makeClosedAbstractionAdvice(element, data)
+}
+
+const isProliferationEntry = (entry: readonly [Detection, ConceptSignalData]) => {
+  const data = Tuple.get(entry, 1)
+
+  return HashSet.has(proliferationKinds, data.kind)
+}
 
 const elementDirectory = (element: Detection) => immediateDirectory(element.location.path)
 
-const proliferationAdviceFromDirectory = ([directory, grouped]: readonly [
-  string,
-  ReadonlyArray<Detection>
-]) => {
+const proliferationAdviceFromDirectory = (entry: readonly [string, ReadonlyArray<Detection>]) => {
+  const directory = Tuple.get(entry, 0)
+  const grouped = Tuple.get(entry, 1)
   const advice = proliferationAdvice(directory, grouped)
 
   return Result.fromOption(advice, Function.constVoid)

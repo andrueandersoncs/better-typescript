@@ -1,4 +1,15 @@
-import { Array, Function, HashMap, HashSet, Option, Order, Record, Struct, pipe } from "effect"
+import {
+  Array,
+  Function,
+  HashMap,
+  HashSet,
+  Option,
+  Order,
+  Record,
+  Struct,
+  Tuple,
+  pipe
+} from "effect"
 import { formatRefactorExample } from "../example/example.js"
 import type { RefactorExample } from "../example/data.js"
 import { Location } from "../location/data.js"
@@ -25,8 +36,12 @@ const addCount = (key: string) => (counts: HashMap.HashMap<string, number>) => {
 
 const detectionPath = (named: NamedDetection) => named.detection.location.path
 
-const makeFileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]) =>
-  FileDetections.make({ path: entry[0], elements: entry[1] })
+const makeFileDetections = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
+  const path = Tuple.get(entry, 0)
+  const elements = Tuple.get(entry, 1)
+
+  return FileDetections.make({ path, elements })
+}
 
 export const byFile = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<FileDetections> => {
   const grouped = Array.groupBy(elements, detectionPath)
@@ -42,6 +57,7 @@ export const parentDirectories = (filePath: string): ReadonlyArray<string> => {
 
   return Array.map(parents, (_segment, index) => {
     const taken = Array.take(parents, index + 1)
+
     return Array.join(taken, "/")
   })
 }
@@ -93,8 +109,12 @@ export const makeEvidenceItem = (measure: string, count: number) =>
 
 export const makeAdviceLocation = (path: string) => Location.make({ path })
 
-const makeCountEntryEvidence = (entry: readonly [string, number]) =>
-  makeEvidenceItem(entry[0], entry[1])
+const makeCountEntryEvidence = (entry: readonly [string, number]) => {
+  const measure = Tuple.get(entry, 0)
+  const count = Tuple.get(entry, 1)
+
+  return makeEvidenceItem(measure, count)
+}
 
 export const evidenceFromCounts = (
   counts: HashMap.HashMap<string, number>
@@ -107,20 +127,23 @@ export const evidenceFromCounts = (
 const lineKey = (named: NamedDetection) => `${named.detection.location.line}`
 
 const hasDistinctChecks = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
-  const names = Array.map(entry[1], namedDetectionName)
+  const elements = Tuple.get(entry, 1)
+  const names = Array.map(elements, namedDetectionName)
   const distinct = HashSet.fromIterable(names)
 
   return HashSet.size(distinct) > 1
 }
 
 const makeCollisionEvidence = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
-  const names = Array.map(entry[1], namedDetectionName)
+  const line = Tuple.get(entry, 0)
+  const elements = Tuple.get(entry, 1)
+  const names = Array.map(elements, namedDetectionName)
   const distinct = HashSet.fromIterable(names)
   const nameList = Array.fromIterable(distinct)
   const sortedNames = Array.sort(nameList, Order.String)
-  const measure = `line ${entry[0]}: ${Array.join(sortedNames, " + ")}`
+  const measure = `line ${line}: ${Array.join(sortedNames, " + ")}`
 
-  return makeEvidenceItem(measure, entry[1].length)
+  return makeEvidenceItem(measure, elements.length)
 }
 
 export const collidingLines = (
@@ -142,8 +165,10 @@ export const dominantCheckEvidence =
     const entries = HashMap.toEntries(summary.countsByCheck)
 
     const dominant = Array.filter(entries, (entry) => {
-      const spread = countAt(summary.filesByCheck)(entry[0])
-      const holdsShare = entry[1] * denominator >= summary.total * numerator
+      const measure = Tuple.get(entry, 0)
+      const count = Tuple.get(entry, 1)
+      const spread = countAt(summary.filesByCheck)(measure)
+      const holdsShare = count * denominator >= summary.total * numerator
 
       return holdsShare && spread >= minSpread
     })
@@ -156,8 +181,10 @@ export const dominantCheckEvidence =
 export const evidenceText = (item: EvidenceItem) => `  evidence: ${item.measure}: ${item.count}`
 
 const adviceLevelRanks = { file: 0, directory: 1, project: 2 } as const
+const zeroAdviceLevelRank = Function.constant(0)
 
-export const adviceLevelRank = (advice: Advice): number => adviceLevelRanks[advice.level]
+export const adviceLevelRank = (advice: Advice) =>
+  pipe(Record.get(adviceLevelRanks, advice.level), Option.getOrElse(zeroAdviceLevelRank))
 
 export const advicePath = (advice: Advice) =>
   advice.level === "project" ? "project" : advice.location.path

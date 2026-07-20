@@ -27,11 +27,14 @@ const neighborsOf = (
   pipe(
     edges,
     Array.flatMap((edge) => {
-      if (edge[0] === path) {
-        return Array.of(edge[1])
+      const from = Tuple.get(edge, 0)
+      const to = Tuple.get(edge, 1)
+
+      if (from === path) {
+        return Array.of(to)
       }
 
-      return edge[1] === path ? Array.of(edge[0]) : Array.empty()
+      return to === path ? Array.of(from) : Array.empty()
     }),
     Array.dedupe
   )
@@ -139,8 +142,10 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
 
   const hasInternalEdge = (component: ReadonlyArray<string>) =>
     Array.some(edges, (edge) => {
-      const containsFrom = Array.contains(component, edge[0])
-      const containsTo = Array.contains(component, edge[1])
+      const from = Tuple.get(edge, 0)
+      const to = Tuple.get(edge, 1)
+      const containsFrom = Array.contains(component, from)
+      const containsTo = Array.contains(component, to)
 
       return containsFrom && containsTo
     })
@@ -153,8 +158,10 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
 
   return Array.map(components, (component) => {
     const edgeCount = Array.countBy(edges, (edge) => {
-      const containsFrom = Array.contains(component, edge[0])
-      const containsTo = Array.contains(component, edge[1])
+      const from = Tuple.get(edge, 0)
+      const to = Tuple.get(edge, 1)
+      const containsFrom = Array.contains(component, from)
+      const containsTo = Array.contains(component, to)
 
       return containsFrom && containsTo
     })

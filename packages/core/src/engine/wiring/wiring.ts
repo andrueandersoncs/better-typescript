@@ -52,9 +52,10 @@ const compileGlobMatcher = (pattern: string) => {
 const matcherIncludesPath =
   (candidatePath: string) =>
   (matcher: ReturnType<typeof compileGlobMatcher>): boolean => {
-    const isExclusion = matcher[0]
+    const isExclusion = Tuple.get(matcher, 0)
     const isInclusion = !isExclusion
-    const matchesPath = matcher[1](candidatePath)
+    const matchPath = Tuple.get(matcher, 1)
+    const matchesPath = matchPath(candidatePath)
 
     return isInclusion && matchesPath
   }
@@ -62,8 +63,9 @@ const matcherIncludesPath =
 const matcherExcludesPath =
   (candidatePath: string) =>
   (matcher: ReturnType<typeof compileGlobMatcher>): boolean => {
-    const isExclusion = matcher[0]
-    const matchesPath = matcher[1](candidatePath)
+    const isExclusion = Tuple.get(matcher, 0)
+    const matchPath = Tuple.get(matcher, 1)
+    const matchesPath = matchPath(candidatePath)
 
     return isExclusion && matchesPath
   }
@@ -293,36 +295,55 @@ export const workspaceSignalsForProjects =
           return Tuple.make(sourceFile, matches)
         })
 
-        Array.forEach(sourceMatches, ([, matches]) =>
+        Array.forEach(sourceMatches, (sourceMatch) => {
+          const matches = Tuple.get(sourceMatch, 1)
+
           Array.forEach(matches, (matched, wiringIndex) => {
             if (matched) {
               HashMap.set(matchedWiringIndexes, wiringIndex, true)
             }
           })
-        )
+        })
 
-        const fileMatches = Array.map(sourceMatches, ([sourceFile, matches]) =>
-          Tuple.make(sourceFile.fileName, matches)
-        )
+        const fileMatches = Array.map(sourceMatches, (sourceMatch) => {
+          const sourceFile = Tuple.get(sourceMatch, 0)
+          const matches = Tuple.get(sourceMatch, 1)
+
+          return Tuple.make(sourceFile.fileName, matches)
+        })
 
         const matchesByFileName = HashMap.fromIterable(fileMatches)
 
         const includesSourceFile = (checkIndex: number, sourceFile: ts.SourceFile) => {
-          const wiringIndex = wiringIndexesByCheck[checkIndex]
+          const maybeWiringIndex = Array.get(wiringIndexesByCheck, checkIndex)
+          const maybeMatches = HashMap.get(matchesByFileName, sourceFile.fileName)
 
-          return pipe(
-            HashMap.get(matchesByFileName, sourceFile.fileName),
-            Option.map((matches) => matches[wiringIndex] ?? false),
-            Option.getOrElse(Function.constFalse)
-          )
+          const includedByWiringIndex = (wiringIndex: number) =>
+            pipe(maybeMatches, Option.flatMap(Array.get(wiringIndex)))
+
+          const maybeIncluded = pipe(maybeWiringIndex, Option.flatMap(includedByWiringIndex))
+
+          return pipe(maybeIncluded, Option.getOrElse(Function.constFalse))
         }
 
         const configuredChecks = runChecks(checks)(includesSourceFile)
         const detectionsByCheck = configuredChecks(context)
 
         Array.forEach(detectionsByCheck, (detections, checkIndex) => {
-          const wiringIndex = wiringIndexesByCheck[checkIndex]
-          const matchers = matchersByWiring[wiringIndex]
+          const maybeWiringIndex = Array.get(wiringIndexesByCheck, checkIndex)
+
+          if (Option.isNone(maybeWiringIndex)) {
+            return
+          }
+
+          const wiringIndex = maybeWiringIndex.value
+          const maybeMatchers = Array.get(matchersByWiring, wiringIndex)
+
+          if (Option.isNone(maybeMatchers)) {
+            return
+          }
+
+          const matchers = maybeMatchers.value
 
           Array.forEach(detections, (element) => {
             const detectionPath = relativeWorkspacePath(
@@ -337,8 +358,16 @@ export const workspaceSignalsForProjects =
               return
             }
 
-            const seen = seenByCheck[checkIndex]
-            const elements = elementsByCheck[checkIndex]
+            const maybeSeen = Array.get(seenByCheck, checkIndex)
+            const maybeElements = Array.get(elementsByCheck, checkIndex)
+            const maybeStorage = Option.all({ seen: maybeSeen, elements: maybeElements })
+
+            if (Option.isNone(maybeStorage)) {
+              return
+            }
+
+            const seen = maybeStorage.value.seen
+            const elements = maybeStorage.value.elements
             const location = element.location
 
             const dedupeKeyParts = Array.make(
@@ -375,8 +404,20 @@ export const workspaceSignalsForProjects =
 
         return Array.map(config, (entry, wiringIndex) => {
           const signals = Array.map(entry.wiring.checks, (check, checkIndex) => {
-            const elements = elementsByWiring[wiringIndex][checkIndex]
-            const detections = MutableList.toArray(elements)
+            const maybeWiringElements = Array.get(elementsByWiring, wiringIndex)
+
+            const elementsAtCheck = (
+              wiringElements: ReadonlyArray<MutableList.MutableList<Detection>>
+            ) => Array.get(wiringElements, checkIndex)
+
+            const maybeElements = pipe(maybeWiringElements, Option.flatMap(elementsAtCheck))
+
+            const detections = pipe(
+              maybeElements,
+              Option.map(MutableList.toArray),
+              Option.getOrElse(noDetections)
+            )
+
             const examples = check.examples
 
             return new Signal({

@@ -217,14 +217,18 @@ const namespaceIsForbidden = (namespace: string) => forbiddenDomainNamespaces[na
 
 const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<string>) => {
   if (moduleSpecifier.startsWith("effect/")) {
-    const namespace = moduleSpecifier.slice("effect/".length).split("/")[0]
-    return namespaceIsForbidden(namespace)
+    const effectPath = moduleSpecifier.slice("effect/".length)
+    const segments = effectPath.split("/")
+    const namespace = Array.get(segments, 0)
+
+    return pipe(namespace, Option.exists(namespaceIsForbidden))
   }
 
   const isEffectModule = moduleSpecifier === "effect"
+  const pathHead = Array.get(path, 0)
 
   const namespaceForbidden = pipe(
-    Option.fromNullishOr(path[0]),
+    pathHead,
     Option.match({
       onNone: Function.constTrue,
       onSome: namespaceIsForbidden
@@ -789,7 +793,8 @@ const callIsRuntimeExecution = (context: CheckContext, node: ts.CallExpression) 
     importedMemberAt(context.checker, node.expression),
     Option.exists((member) => {
       const emptyName = Function.constant("")
-      const name = pipe(Array.last(member.path), Option.getOrElse(emptyName))
+      const lastOption = Array.last(member.path)
+      const name = pipe(lastOption, Option.getOrElse(emptyName))
 
       const platformRuntime = Array.some(platformRuntimePrefixes, (prefix) =>
         member.moduleSpecifier.startsWith(prefix)
@@ -1310,19 +1315,32 @@ const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
   Semaphore: true
 }
 
+const emptyNamespace = Function.constant("")
+
+const effectSubpathNamespace = (specifier: string) => {
+  const effectPath = specifier.slice("effect/".length)
+  const segments = effectPath.split("/")
+  const namespace = Array.get(segments, 0)
+
+  return pipe(namespace, Option.getOrElse(emptyNamespace))
+}
+
+const barrelPathNamespace = (path: ReadonlyArray<string>) =>
+  pipe(Array.get(path, 0), Option.getOrElse(emptyNamespace))
+
 const effectNamespaceFromMember = (member: ImportedMember) =>
   pipe(
     Option.liftPredicate((specifier: string) => specifier === "effect")(member.moduleSpecifier),
-    Option.map(() => member.path[0] ?? ""),
+    Option.map(() => barrelPathNamespace(member.path)),
     Option.orElse(() =>
       pipe(
         Option.liftPredicate((specifier: string) => specifier.startsWith("effect/"))(
           member.moduleSpecifier
         ),
-        Option.map((specifier) => specifier.slice("effect/".length).split("/")[0])
+        Option.map(effectSubpathNamespace)
       )
     ),
-    Option.getOrElse(Function.constant(""))
+    Option.getOrElse(emptyNamespace)
   )
 
 const typeReferenceSubject = (
@@ -1342,7 +1360,8 @@ const typeReferenceSubject = (
       const stateOrRuntime = forbiddenContractEffectNamespaces[effectNamespace] === true
       const capability = moduleMatchesPolicyPrefix(policy, member.moduleSpecifier)
       const emptyName = Function.constant("")
-      const typeName = pipe(Array.last(member.path), Option.getOrElse(emptyName))
+      const lastOption = Array.last(member.path)
+      const typeName = pipe(lastOption, Option.getOrElse(emptyName))
 
       const infrastructureSuffix = Array.some(policy.resourceTypeSuffixes, (suffix) =>
         typeName.endsWith(suffix)

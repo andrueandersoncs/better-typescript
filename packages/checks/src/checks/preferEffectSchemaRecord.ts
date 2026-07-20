@@ -71,9 +71,10 @@ const addConstructionEntry = (
   index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>,
   entry: readonly [ReferenceKey<ts.Symbol>, string]
 ): HashMap.HashMap<ReferenceKey<ts.Symbol>, string> => {
-  const symbolKey = entry[0]
+  const symbolKey = Tuple.get(entry, 0)
+  const constructionPath = Tuple.get(entry, 1)
 
-  return HashMap.has(index, symbolKey) ? index : HashMap.set(index, symbolKey, entry[1])
+  return HashMap.has(index, symbolKey) ? index : HashMap.set(index, symbolKey, constructionPath)
 }
 
 const buildConstructionIndex = (
@@ -119,7 +120,7 @@ const buildConstructionIndex = (
   const typeArgumentAt = (parameterPosition: number) => (reference: ts.TypeReference) => {
     const typeArguments = checker.getTypeArguments(reference)
 
-    return Option.fromNullishOr(typeArguments[parameterPosition])
+    return Array.get(typeArguments, parameterPosition)
   }
 
   const referenceTypeArgument =
@@ -157,6 +158,7 @@ const buildConstructionIndex = (
       }
 
       const emptyNodes = Array.empty()
+
       return pipe(
         Option.liftPredicate(isTypeReference)(declaredMember),
         Option.map(referenceTypeArgument(typeParameter)(contextualMembers)),
@@ -184,8 +186,10 @@ const buildConstructionIndex = (
     (contextual: ts.Type) =>
     (signature: ts.Signature): ReadonlyArray<ts.Type> => {
       const emptyTypes = Array.empty()
+      const parameter = Array.get(signature.parameters, argumentPosition)
+
       return pipe(
-        Option.fromNullishOr(signature.parameters[argumentPosition]),
+        parameter,
         Option.map(declaredParameterType),
         Option.filter(isSignatureTypeParameter),
         Option.map(boxedExtraction(signature)(contextual)),

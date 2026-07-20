@@ -954,8 +954,12 @@ const setReplacingValue = <Key, Value>(
 const addFieldModel = (
   index: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>,
   entry: readonly [ReferenceKey<ts.Symbol>, DataStructureEntry]
-): HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry> =>
-  setReplacingValue(index, entry[0], entry[1])
+): HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry> => {
+  const key = Tuple.get(entry, 0)
+  const value = Tuple.get(entry, 1)
+
+  return setReplacingValue(index, key, value)
+}
 
 const emptyDataBySymbol = HashMap.empty<ReferenceKey<ts.Symbol>, DataStructureEntry>()
 
@@ -1006,7 +1010,12 @@ const mechanicalForwardingRead = (node: ts.Node) =>
     Option.liftPredicate(ts.isIdentifier)(node),
     Option.flatMap(propertyAccessParent),
     Option.flatMap(mechanicalForwardingPair),
-    Option.exists(([access, assignment]) => assignment.name.getText() === access.name.text)
+    Option.exists((pair) => {
+      const access = Tuple.get(pair, 0)
+      const assignment = Tuple.get(pair, 1)
+
+      return assignment.name.getText() === access.name.text
+    })
   )
 
 const modelFromResolvedType =
@@ -1251,7 +1260,7 @@ const parameterModel = (
   const models = Array.filterMap(definition.parameters, modelForParameter)
   const hasSingleModel = models.length === 1
 
-  return hasSingleModel ? Option.some(models[0]) : Option.none()
+  return hasSingleModel ? Array.head(models) : Option.none()
 }
 
 const returnModel = (
@@ -1302,10 +1311,12 @@ const passThroughConversion = (
   entry: FunctionEntry
 ) => {
   const conversionFromDefinition = (definition: FunctionDefinition) => {
-    const conversionFromParameter = ([parameter, source]: readonly [
-      ts.Identifier,
-      DataStructureEntry
-    ]) => {
+    const conversionFromParameter = (
+      parameterModelPair: readonly [ts.Identifier, DataStructureEntry]
+    ) => {
+      const parameter = Tuple.get(parameterModelPair, 0)
+      const source = Tuple.get(parameterModelPair, 1)
+
       const conversionFromExpression = (expression: ts.Expression) => {
         const propertyCopies = (property: ts.ObjectLiteralElementLike) =>
           propertyCopiesParameter(parameter, property)
@@ -1499,11 +1510,18 @@ const structuralRoles = (
         recursiveObservation
       )
 
-      const established = Array.filter(observations, (observation) => observation[1])
+      const established = Array.filter(observations, Tuple.get(1))
 
-      const completed = Array.reduce(established, roles, (current, observation) =>
-        HashSet.add(current, observation[0])
-      )
+      const addObservationRole = (
+        current: HashSet.HashSet<ModelRole>,
+        observation: readonly [ModelRole, boolean]
+      ) => {
+        const role = Tuple.get(observation, 0)
+
+        return HashSet.add(current, role)
+      }
+
+      const completed = Array.reduce(established, roles, addObservationRole)
 
       return Tuple.make(entryKey, completed)
     }),
@@ -1624,7 +1642,9 @@ export const buildConceptIndex = (context: ProgramContext) => {
             pipe(
               Option.liftPredicate(everyCheckHolds)(isIndependentRead),
               Option.map(() => {
-                Array.forEach(references, ([model, field]) => {
+                Array.forEach(references, (reference) => {
+                  const model = Tuple.get(reference, 0)
+                  const field = Tuple.get(reference, 1)
                   const fieldKey = referenceKey(field)
 
                   const fieldRead = new FieldRead({

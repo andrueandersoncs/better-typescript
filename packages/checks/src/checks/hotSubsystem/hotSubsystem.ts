@@ -71,7 +71,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
     return entries
   })
 
-  const directoryNamesWithDuplicates = Array.map(directoryEntries, (entry) => entry[0])
+  const directoryNamesWithDuplicates = Array.map(directoryEntries, Tuple.get(0))
   const directoryNames = Array.dedupe(directoryNamesWithDuplicates)
 
   const emptyDirectoryFiles: HashMap.HashMap<
@@ -80,7 +80,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
   > = HashMap.empty()
 
   const directoryFiles = Array.reduce(directoryEntries, emptyDirectoryFiles, (groups, entry) => {
-    const path = entry[0]
+    const path = Tuple.get(entry, 0)
     const filesOption = HashMap.get(groups, path)
 
     const filesForDirectory = pipe(
@@ -88,7 +88,8 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
       Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
     )
 
-    const groupedFiles = Array.append(filesForDirectory, entry[1])
+    const file = Tuple.get(entry, 1)
+    const groupedFiles = Array.append(filesForDirectory, file)
 
     return HashMap.set(groups, path, groupedFiles)
   })

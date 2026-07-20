@@ -88,7 +88,7 @@ const isEligibleFunction = (node: ts.Node) =>
 const blockReturnedExpression = (body: ts.Block) =>
   Option.gen(function* () {
     yield* Option.liftPredicate(hasSingleElement)(body.statements)
-    const statement = yield* Option.fromNullishOr(body.statements[0])
+    const statement = yield* Array.head(body.statements)
     const returnStatement = yield* Option.liftPredicate(ts.isReturnStatement)(statement)
 
     return yield* Option.fromNullishOr(returnStatement.expression)
@@ -144,7 +144,7 @@ const functionConstantMatches = (context: CheckContext) => {
           const declarations = yield* Option.fromNullishOr(declarationCandidates)
 
           yield* Option.liftPredicate(hasSingleElement)(declarations)
-          const declaration = yield* Option.fromNullishOr(declarations[0])
+          const declaration = yield* Array.head(declarations)
 
           const variableDeclaration = yield* Option.liftPredicate(ts.isVariableDeclaration)(
             declaration

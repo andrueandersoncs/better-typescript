@@ -47,6 +47,12 @@ const detectionsOf = (signals: ReadonlyArray<Signal>, name: string): ReadonlyArr
     Option.getOrElse(Array.empty<Detection>)
   )
 
+const measurementHasCount = (entry: readonly [string, number]) => {
+  const count = Tuple.get(entry, 1)
+
+  return count > 0
+}
+
 const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceItem> => {
   const branches = Tuple.make("branches", data.branchCount)
   const functions = Tuple.make("functions", data.functionCount)
@@ -57,7 +63,7 @@ const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceIte
 
   return pipe(
     measurements,
-    Array.filter((entry) => entry[1] > 0),
+    Array.filter(measurementHasCount),
     Array.map(([measure, count]) => makeEvidenceItem(measure, count))
   )
 }

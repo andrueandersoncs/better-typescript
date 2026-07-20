@@ -154,10 +154,11 @@ const isExactForwarder = (
       return Array.match(consumedNames, {
         onEmpty: () => parameterNames.length === 0,
         onNonEmpty: () => {
-          const sameOrder = Array.every(
-            parameterNames,
-            (name, index) => consumedNames[index] === name
-          )
+          const sameOrder = Array.every(parameterNames, (name, index) => {
+            const candidate = Array.get(consumedNames, index)
+
+            return Option.contains(candidate, name)
+          })
 
           const sameLength = consumedNames.length === parameterNames.length
 
@@ -244,7 +245,7 @@ const passThroughElements =
     )
 
     const reexportDetection = pipe(
-      Option.fromNullishOr(reexports[0]),
+      Array.head(reexports),
       Option.map((node) => {
         const data = PassThroughWrapperData.make({
           kind: "reexport",

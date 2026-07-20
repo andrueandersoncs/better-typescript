@@ -314,9 +314,9 @@ const buildSymbolUses = (context: ProgramContext) => {
                 Option.getOrElse(Array.empty)
               )
 
-              const parameter = Option.fromNullishOr(parameters[position])
+              const parameter = Array.get(parameters, position)
 
-              return pipe(parameter, Option.map(typeOfCallParameter))
+              return Option.map(parameter, typeOfCallParameter)
             }
 
             return pipe(index, Option.flatMap(parameterTypeAt))

@@ -1,4 +1,4 @@
-import { Array, Predicate, Result, Struct } from "effect"
+import { Array, Function, Option, Predicate, Result, Struct } from "effect"
 import { makeFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
@@ -31,13 +31,12 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const singleLineComments = Array.filter(comments, isSingleLineComment)
 
   const stackedRunPositions = Array.filterMap(singleLineComments, (current, index) => {
-    const joinsNext =
-      index < singleLineComments.length - 1 &&
-      onlyBlankBetween(text)(current)(singleLineComments[index + 1])
-
-    const joinsPrevious =
-      index > 0 && onlyBlankBetween(text)(singleLineComments[index - 1])(current)
-
+    const nextComment = Array.get(singleLineComments, index + 1)
+    const previousComment = Array.get(singleLineComments, index - 1)
+    const nextJoinsCurrent = onlyBlankBetween(text)(current)
+    const previousJoinsCurrent = Function.flip(onlyBlankBetween(text))(current)
+    const joinsNext = Option.exists(nextComment, nextJoinsCurrent)
+    const joinsPrevious = Option.exists(previousComment, previousJoinsCurrent)
     const startsStack = !joinsPrevious
     const isStackHead = startsStack && joinsNext
 

@@ -39,7 +39,9 @@ const nestedCallMatches = (context: CheckContext) => {
         const callerName = ts.isIdentifier(callerExpression) ? callerExpression.text : undefined
         const isPipeName = callerName === "pipe"
         const isCallConsumer = ts.isCallExpression(consumer)
-        const isFirstArg = callArguments(consumer)[0] === call
+        const consumerArguments = callArguments(consumer)
+        const firstArgument = Array.head(consumerArguments)
+        const isFirstArg = Option.exists(firstArgument, (arg) => arg === call)
         const isPipeCall = isPipeName && isFirstArg
         const isPipeFirstArg = isCallConsumer && isPipeCall
 

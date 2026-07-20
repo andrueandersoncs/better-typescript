@@ -108,8 +108,10 @@ const schemaDeclareMatches = (context: CheckContext) => {
     const typePredicateOptionFromSignature = (signature: ts.Signature) =>
       pipe(checker.getTypePredicateOfSignature(signature), Option.fromNullishOr)
 
+    const firstSignature = Array.head(signatures)
+
     return pipe(
-      Option.fromNullishOr(signatures[0]),
+      firstSignature,
       Option.flatMap(typePredicateOptionFromSignature),
       Option.flatMap(typePredicateAssertedType)
     )
@@ -121,10 +123,11 @@ const schemaDeclareMatches = (context: CheckContext) => {
     if (!ts.isIdentifier(object)) return Array.empty()
     const isOnSchema = object.text === "Schema"
     const isDeclareOnSchema = isOnSchema && call.arguments.length > 0
+    const firstArgument = Array.head(call.arguments)
 
     const declareMatch = isDeclareOnSchema
       ? pipe(
-          Option.fromNullishOr(call.arguments[0]),
+          firstArgument,
           Option.flatMap(assertedType),
           Option.filter(isFirstPartyStructuralModel),
           Option.map((type) => {

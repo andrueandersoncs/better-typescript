@@ -26,7 +26,11 @@ const constantEmptyDetections = Function.constant(emptyDetections)
 const startsWithWords =
   (words: ReadonlyArray<string>) =>
   (sequence: ReadonlyArray<string>): boolean => {
-    const wordMatchesOffset = (word: string, offset: number) => words[offset] === word
+    const wordMatchesOffset = (word: string, offset: number) => {
+      const candidate = Array.get(words, offset)
+
+      return Option.contains(candidate, word)
+    }
 
     return Array.every(sequence, wordMatchesOffset)
   }

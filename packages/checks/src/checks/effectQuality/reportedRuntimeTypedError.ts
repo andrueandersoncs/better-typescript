@@ -43,7 +43,7 @@ const effectErrorChannel =
       if (Array.every(isEffectReference, Boolean)) {
         const typeArguments = checker.getTypeArguments(reference)
 
-        return Option.fromNullishOr(typeArguments[1])
+        return Array.get(typeArguments, 1)
       }
 
       if (candidate.isUnion()) {
@@ -59,7 +59,8 @@ const effectErrorChannel =
       const effectMatch = rendered.match(/(?:Effect|Stream)<\s*[^,>]+,\s*([^,>]+)/)
 
       return pipe(
-        Option.fromNullishOr(effectMatch?.[1]),
+        Option.fromNullishOr(effectMatch),
+        Option.flatMap(Array.get(1)),
         Option.filter((text) => text.trim() !== "never"),
         Option.map(Function.constant(candidate))
       )

@@ -1,4 +1,4 @@
-import { Array, Iterable, MutableList, Option, Tuple } from "effect"
+import { Array, Iterable, MutableList, Option, pipe, Tuple } from "effect"
 import * as ts from "typescript"
 import { ProgramContext } from "./data.js"
 
@@ -35,18 +35,19 @@ export const astChildren = (node: ts.Node): ReadonlyArray<ts.Node> => {
 export const astNodesIn = (root: ts.Node) => {
   const initial: ReadonlyArray<ts.Node> = Array.of(root)
 
-  return Iterable.unfold(initial, (pending) => {
-    if (Array.isReadonlyArrayEmpty(pending)) {
-      return Option.none()
+  const unfoldPending = (pending: ReadonlyArray<ts.Node>) => {
+    const advanceFromHead = (node: ts.Node) => {
+      const children = astChildren(node)
+      const rest = Array.drop(pending, 1)
+      const next: ReadonlyArray<ts.Node> = Array.appendAll(children, rest)
+
+      return Tuple.make(node, next)
     }
 
-    const node = pending[0]
-    const children = astChildren(node)
-    const rest = Array.drop(pending, 1)
-    const next: ReadonlyArray<ts.Node> = Array.appendAll(children, rest)
-    const entry = Tuple.make(node, next)
-    return Option.some(entry)
-  })
+    return pipe(Array.head(pending), Option.map(advanceFromHead))
+  }
+
+  return Iterable.unfold(initial, unfoldPending)
 }
 
 export const foldAst =

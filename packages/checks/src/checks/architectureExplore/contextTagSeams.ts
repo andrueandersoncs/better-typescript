@@ -252,9 +252,12 @@ const incrementCounts =
   ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]> => {
     const symbolKey = referenceKey(symbol)
     const current = pipe(HashMap.get(counts, symbolKey), Option.getOrElse(emptySeamCounts))
-    const production = kind === "productionAdapter" ? current[0] + 1 : current[0]
-    const test = kind === "testAdapter" ? current[1] + 1 : current[1]
-    const consumers = kind === "consumer" ? current[2] + 1 : current[2]
+    const productionCount = Tuple.get(current, 0)
+    const testCount = Tuple.get(current, 1)
+    const consumerCount = Tuple.get(current, 2)
+    const production = kind === "productionAdapter" ? productionCount + 1 : productionCount
+    const test = kind === "testAdapter" ? testCount + 1 : testCount
+    const consumers = kind === "consumer" ? consumerCount + 1 : consumerCount
     const updated = Tuple.make(production, test, consumers)
 
     return HashMap.set(counts, symbolKey, updated)
@@ -272,7 +275,8 @@ const buildIndex = (
   const candidateCounts = pipe(
     candidates,
     Array.map((candidate) => {
-      const symbolKey = referenceKey(candidate[1])
+      const candidateSymbol = Tuple.get(candidate, 1)
+      const symbolKey = referenceKey(candidateSymbol)
       const emptyCounts = emptySeamCounts()
 
       return Tuple.make(symbolKey, emptyCounts)
@@ -283,7 +287,8 @@ const buildIndex = (
   const candidateLookup = pipe(
     candidates,
     Array.map((candidate) => {
-      const symbolKey = referenceKey(candidate[1])
+      const candidateSymbol = Tuple.get(candidate, 1)
+      const symbolKey = referenceKey(candidateSymbol)
 
       return Tuple.make(symbolKey, candidate)
     }),
@@ -316,7 +321,8 @@ const buildIndex = (
               }
 
               const outsideDeclaration = (candidate: readonly [ts.ClassDeclaration, ts.Symbol]) => {
-                const insideDeclaration = referenceIsInsideDeclaration(candidate[0])(identifier)
+                const declaration = Tuple.get(candidate, 0)
+                const insideDeclaration = referenceIsInsideDeclaration(declaration)(identifier)
 
                 return !insideDeclaration
               }
@@ -324,15 +330,16 @@ const buildIndex = (
               const updatedCountsForReference = (
                 candidate: readonly [ts.ClassDeclaration, ts.Symbol]
               ) => {
+                const candidateSymbol = Tuple.get(candidate, 1)
                 const adapter = isAdapterReference(context.checker)(identifier)
 
                 if (adapter) {
                   const kind = fromTest ? "testAdapter" : "productionAdapter"
 
-                  return incrementCounts(kind)(candidate[1])(current)
+                  return incrementCounts(kind)(candidateSymbol)(current)
                 }
 
-                return incrementCounts("consumer")(candidate[1])(current)
+                return incrementCounts("consumer")(candidateSymbol)(current)
               }
 
               return pipe(
@@ -363,14 +370,27 @@ const contextTagSeamElements =
   ) =>
   (context: CheckContext): ReadonlyArray<Detection> => {
     const element = makeDetection(context)
+    const candidates = Tuple.get(index, 0)
+    const countIndex = Tuple.get(index, 1)
 
     return pipe(
-      index[0],
-      Array.filter((candidate) => candidate[0].getSourceFile() === context.sourceFile),
+      candidates,
+      Array.filter((candidate) => {
+        const declaration = Tuple.get(candidate, 0)
+
+        return declaration.getSourceFile() === context.sourceFile
+      }),
       Array.map((candidate) => {
-        const candidateKey = referenceKey(candidate[1])
-        const counts = pipe(HashMap.get(index[1], candidateKey), Option.getOrElse(emptySeamCounts))
-        const className = Option.fromNullishOr(candidate[0].name)
+        const declaration = Tuple.get(candidate, 0)
+        const candidateSymbol = Tuple.get(candidate, 1)
+        const candidateKey = referenceKey(candidateSymbol)
+
+        const counts = pipe(
+          HashMap.get(countIndex, candidateKey),
+          Option.getOrElse(emptySeamCounts)
+        )
+
+        const className = Option.fromNullishOr(declaration.name)
 
         const serviceName = pipe(
           className,
@@ -378,13 +398,16 @@ const contextTagSeamElements =
           Option.getOrElse(Function.constant(""))
         )
 
-        const detectionNode = pipe(className, Option.getOrElse(Function.constant(candidate[0])))
+        const detectionNode = pipe(className, Option.getOrElse(Function.constant(declaration)))
+        const productionAdapterCount = Tuple.get(counts, 0)
+        const testAdapterCount = Tuple.get(counts, 1)
+        const consumerCount = Tuple.get(counts, 2)
 
         const data = ContextTagSeamData.make({
           serviceName,
-          productionAdapterCount: counts[0],
-          testAdapterCount: counts[1],
-          consumerCount: counts[2]
+          productionAdapterCount,
+          testAdapterCount,
+          consumerCount
         })
 
         return element({

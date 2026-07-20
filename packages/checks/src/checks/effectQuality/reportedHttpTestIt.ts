@@ -19,7 +19,8 @@ const moduleIsEffectVitest = (moduleSpecifier: string) =>
 const memberIsEffectVitestIt = (member: ImportedMember) => {
   const vitestModule = moduleIsEffectVitest(member.moduleSpecifier)
   const singlePath = member.path.length === 1
-  const namedIt = member.path[0] === "it"
+  const pathHead = Array.get(member.path, 0)
+  const namedIt = pipe(pathHead, Option.contains("it"))
   const flags = Array.make(vitestModule, singlePath, namedIt)
 
   return Array.every(flags, Boolean)
