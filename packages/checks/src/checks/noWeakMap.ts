@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Predicate } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -7,11 +7,10 @@ import { isFirstPartySymbol } from "./support/tsNode.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeCheck } from "../defineCheck.js"
 
+const isWeakMapText = (identifier: ts.Identifier) => identifier.text === "WeakMap"
+
 const weakMapIdentifier = (node: ts.Node): node is ts.Identifier =>
-  pipe(
-    Option.liftPredicate(ts.isIdentifier)(node),
-    Option.exists((identifier) => identifier.text === "WeakMap")
-  )
+  pipe(Option.liftPredicate(ts.isIdentifier)(node), Option.exists(isWeakMapText))
 
 const message = "Avoid WeakMap because it keeps mutable state outside Effect."
 
@@ -24,20 +23,21 @@ const weakMapMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = makeDetection(context)
 
-  const matches = (identifier: ts.Identifier): ReadonlyArray<Detection> =>
-    pipe(
+  const matches = (identifier: ts.Identifier): ReadonlyArray<Detection> => {
+    const weakMapDetection = match({
+      node: identifier,
+      message,
+      hint
+    })
+
+    return pipe(
       checker.getSymbolAtLocation(identifier),
       Option.fromNullishOr,
-      Option.filter((symbol) => !isFirstPartySymbol(symbol)),
-      Option.map(() =>
-        match({
-          node: identifier,
-          message,
-          hint
-        })
-      ),
+      Option.filter(Predicate.not(isFirstPartySymbol)),
+      Option.as(weakMapDetection),
       Option.toArray
     )
+  }
 
   return matches
 }

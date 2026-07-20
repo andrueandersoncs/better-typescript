@@ -23,7 +23,11 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { astNodesIn } from "@better-typescript/core/engine/sources"
 import { sourceComments } from "@better-typescript/core/engine/sources/comments"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { isFunctionInitializer, isInAmbientContext } from "./tsNode.js"
+import {
+  isFunctionInitializer,
+  isInAmbientContext,
+  variableDeclarationInitializer
+} from "./tsNode.js"
 import type { FunctionInitializer } from "./tsNode.js"
 
 const generatedNamePrefix = "__betterTypescriptInference"
@@ -97,24 +101,26 @@ const annotationEdit = (sourceFile: ts.SourceFile, typeNode: ts.TypeNode, anchor
 const hasFunctionInitializerAncestor = (root: ts.Node, node: ts.Node): boolean => {
   const notRoot = node !== root
 
+  const parentIsFunctionInitializerAncestor = (parent: ts.Node) =>
+    isFunctionInitializer(parent) || hasFunctionInitializerAncestor(root, parent)
+
   return (
     notRoot &&
-    pipe(
-      Option.fromNullishOr(node.parent),
-      Option.exists(
-        (parent) => isFunctionInitializer(parent) || hasFunctionInitializerAncestor(root, parent)
-      )
-    )
+    pipe(Option.fromNullishOr(node.parent), Option.exists(parentIsFunctionInitializerAncestor))
   )
 }
 
-const functionInitializersIn = (root: ts.Node) =>
-  pipe(
+const functionInitializersIn = (root: ts.Node) => {
+  const isTopLevelFunctionInitializer = (fn: FunctionInitializer) =>
+    !hasFunctionInitializerAncestor(root, fn)
+
+  return pipe(
     astNodesIn(root),
     Iterable.filter(isFunctionInitializer),
-    Iterable.filter((fn) => !hasFunctionInitializerAncestor(root, fn)),
+    Iterable.filter(isTopLevelFunctionInitializer),
     Array.fromIterable
   )
+}
 
 const typePredicate = (fn: FunctionInitializer) =>
   pipe(Option.fromNullishOr(fn.type), Option.exists(ts.isTypePredicateNode))
@@ -150,17 +156,19 @@ const contextualParameterTypes = (checker: ts.TypeChecker) => (fn: FunctionIniti
 const removableReturnType = (fn: FunctionInitializer) =>
   pipe(Option.fromNullishOr(fn.type), Option.filter(Predicate.not(ts.isTypePredicateNode)))
 
+const functionDeclarationBody = (fn: ts.FunctionDeclaration) => Option.fromNullishOr(fn.body)
+
 const functionBodyInDeclaration = (declaration: ts.Declaration) => {
   const variableBody = pipe(
     Option.liftPredicate(ts.isVariableDeclaration)(declaration),
-    Option.flatMap((variable) => Option.fromNullishOr(variable.initializer)),
+    Option.flatMap(variableDeclarationInitializer),
     Option.filter(isFunctionInitializer),
     Option.map(Struct.get("body"))
   )
 
   const declaredBody = pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
-    Option.flatMap((fn) => Option.fromNullishOr(fn.body))
+    Option.flatMap(functionDeclarationBody)
   )
 
   return pipe(variableBody, Option.orElse(Function.constant(declaredBody)))
@@ -181,42 +189,46 @@ const symbolOccursThroughFunctions = (
   target: ts.Symbol,
   root: ts.Node,
   seen: ReadonlyArray<ts.Symbol>
-): boolean =>
-  pipe(
-    astNodesIn(root),
-    Iterable.some((node) =>
-      pipe(
-        Option.liftPredicate(ts.isIdentifier)(node),
-        Option.flatMap(symbolOptionAt(checker)),
-        Option.exists((symbol) => {
-          const targetMatch = symbol === target
-          const unseen = !Array.some(seen, (candidate) => candidate === symbol)
-          const body = functionBodyForSymbol(symbol)
-          const unseenBody = pipe(body, Option.filter(Function.constant(unseen)))
-          const nextSeen = Array.append(seen, symbol)
+): boolean => {
+  const nodeReachesTarget = (node: ts.Node) => {
+    const symbolReachesTarget = (symbol: ts.Symbol) => {
+      const targetMatch = symbol === target
+      const isUnseenSymbol = (candidate: ts.Symbol) => candidate === symbol
+      const unseen = !Array.some(seen, isUnseenSymbol)
+      const body = functionBodyForSymbol(symbol)
+      const unseenBody = pipe(body, Option.filter(Function.constant(unseen)))
+      const nextSeen = Array.append(seen, symbol)
 
-          const dependencyMatch = Option.exists(unseenBody, (dependencyBody) =>
-            symbolOccursThroughFunctions(checker, target, dependencyBody, nextSeen)
-          )
+      const dependencyBodyReachesTarget = (dependencyBody: ts.Node) =>
+        symbolOccursThroughFunctions(checker, target, dependencyBody, nextSeen)
 
-          const matches = Array.make(targetMatch, dependencyMatch)
+      const dependencyMatch = Option.exists(unseenBody, dependencyBodyReachesTarget)
+      const matches = Array.make(targetMatch, dependencyMatch)
 
-          return Array.some(matches, Boolean)
-        })
-      )
+      return Array.some(matches, Boolean)
+    }
+
+    return pipe(
+      Option.liftPredicate(ts.isIdentifier)(node),
+      Option.flatMap(symbolOptionAt(checker)),
+      Option.exists(symbolReachesTarget)
     )
-  )
+  }
+
+  return pipe(astNodesIn(root), Iterable.some(nodeReachesTarget))
+}
 
 const declarationRecurses =
   (checker: ts.TypeChecker) =>
-  (identifier: ts.Identifier, root: ts.Node): boolean =>
-    pipe(
-      identifier,
-      symbolOptionAt(checker),
-      Option.exists((target) =>
-        pipe(target, Array.of, (seen) => symbolOccursThroughFunctions(checker, target, root, seen))
-      )
-    )
+  (identifier: ts.Identifier, root: ts.Node): boolean => {
+    const targetOccursThroughRoot = (target: ts.Symbol) => {
+      const seen = Array.of(target)
+
+      return symbolOccursThroughFunctions(checker, target, root, seen)
+    }
+
+    return pipe(identifier, symbolOptionAt(checker), Option.exists(targetOccursThroughRoot))
+  }
 
 const expectedName = (probe: InferenceProbe) =>
   `${generatedNamePrefix}Expected${probe.detectionNode.getStart()}`
@@ -372,15 +384,16 @@ const functionDeclarationProbe =
         const recursive = declarationRecurses(checker)(identifier, functionBody)
         const ambient = isInAmbientContext(declaration)
         const symbol = checker.getSymbolAtLocation(identifier)
+        const declarationsOf = (current: ts.Symbol) => Option.fromNullishOr(current.declarations)
 
-        const symbolDeclarations = pipe(
+        const symbolDeclarationCount = pipe(
           Option.fromNullishOr(symbol),
-          Option.flatMap((current) => Option.fromNullishOr(current.declarations)),
+          Option.flatMap(declarationsOf),
           Option.map(Array.length),
           Option.getOrElse(Function.constant(1))
         )
 
-        const unambiguous = symbolDeclarations === 1
+        const unambiguous = symbolDeclarationCount === 1
         const eligibility = Array.make(!recursive, !ambient, unambiguous)
 
         return Array.every(eligibility, Boolean)
@@ -477,28 +490,41 @@ const augmentSource = (sourceFile: ts.SourceFile, probes: ReadonlyArray<Inferenc
   return pipe(chunks, Array.append(tail), Array.join(""))
 }
 
-const sourceAnalyses = (context: ProgramContext) =>
-  pipe(
+const sourceAnalyses = (context: ProgramContext) => {
+  const isInternalSourceFile = (sourceFile: ts.SourceFile) =>
+    !context.program.isSourceFileFromExternalLibrary(sourceFile)
+
+  const isImplementationSourceFile = (sourceFile: ts.SourceFile) => !sourceFile.isDeclarationFile
+
+  const sourceFileAnalysis = (sourceFile: ts.SourceFile) => {
+    const probes = probesIn(context.checker, sourceFile)
+    const analysisEntry = Tuple.make(sourceFile, probes)
+
+    const analysis = Array.isReadonlyArrayNonEmpty(probes)
+      ? Option.some(analysisEntry)
+      : Option.none()
+
+    return optionResult(analysis)
+  }
+
+  const analysisByFileName = ([sourceFile, probes]: readonly [
+    ts.SourceFile,
+    ReadonlyArray<InferenceProbe>
+  ]) => {
+    const analysis = Tuple.make(sourceFile, probes)
+
+    return Tuple.make(sourceFile.fileName, analysis)
+  }
+
+  return pipe(
     context.program.getSourceFiles(),
-    Array.filter((sourceFile) => !sourceFile.isDeclarationFile),
-    Array.filter((sourceFile) => !context.program.isSourceFileFromExternalLibrary(sourceFile)),
-    Array.filterMap((sourceFile) => {
-      const probes = probesIn(context.checker, sourceFile)
-      const analysisEntry = Tuple.make(sourceFile, probes)
-
-      const analysis = Array.isReadonlyArrayNonEmpty(probes)
-        ? Option.some(analysisEntry)
-        : Option.none()
-
-      return optionResult(analysis)
-    }),
-    Array.map(([sourceFile, probes]) => {
-      const analysis = Tuple.make(sourceFile, probes)
-
-      return Tuple.make(sourceFile.fileName, analysis)
-    }),
+    Array.filter(isImplementationSourceFile),
+    Array.filter(isInternalSourceFile),
+    Array.filterMap(sourceFileAnalysis),
+    Array.map(analysisByFileName),
     HashMap.fromIterable
   )
+}
 
 const makeShadowProgram = (
   context: ProgramContext,
@@ -520,9 +546,12 @@ const makeShadowProgram = (
   ) => {
     const existingSourceFile = context.program.getSourceFile(fileName)
 
+    const createSourceFileFromText = (text: string) =>
+      ts.createSourceFile(fileName, text, languageVersion, true)
+
     return pipe(
       HashMap.get(augmented, fileName),
-      Option.map((text) => ts.createSourceFile(fileName, text, languageVersion, true)),
+      Option.map(createSourceFileFromText),
       Option.getOrElse(() =>
         pipe(
           Option.fromNullishOr(existingSourceFile),
@@ -552,40 +581,41 @@ const namedDeclarationEntry = (
   declaration: ts.VariableDeclaration | ts.FunctionDeclaration
 ) => Tuple.make(name, declaration)
 
-const namedProbeDeclarations = (sourceFile: ts.SourceFile) =>
-  pipe(
-    astNodesIn(sourceFile),
-    Iterable.filterMap((node) => {
-      const variable = pipe(
-        Option.liftPredicate(ts.isVariableDeclaration)(node),
-        Option.flatMap((declaration) =>
-          pipe(
-            Option.liftPredicate(ts.isIdentifier)(declaration.name),
-            Option.map((name) => namedDeclarationEntry(name.text, declaration))
-          )
-        )
-      )
+const namedProbeDeclarations = (sourceFile: ts.SourceFile) => {
+  const variableNamedEntry = (declaration: ts.VariableDeclaration) => {
+    const entryFromName = (name: ts.Identifier) => namedDeclarationEntry(name.text, declaration)
 
-      const fn = pipe(
-        Option.liftPredicate(ts.isFunctionDeclaration)(node),
-        Option.flatMap((declaration) =>
-          pipe(
-            Option.fromNullishOr(declaration.name),
-            Option.map((name) => namedDeclarationEntry(name.text, declaration))
-          )
-        )
-      )
+    return pipe(Option.liftPredicate(ts.isIdentifier)(declaration.name), Option.map(entryFromName))
+  }
 
-      const declaration = pipe(
-        variable,
-        Option.orElse(Function.constant(fn)),
-        Option.filter((entry) => entry[0].startsWith(generatedNamePrefix))
-      )
+  const functionNamedEntry = (declaration: ts.FunctionDeclaration) => {
+    const entryFromName = (name: ts.Identifier) => namedDeclarationEntry(name.text, declaration)
 
-      return optionResult(declaration)
-    }),
-    HashMap.fromIterable
-  )
+    return pipe(Option.fromNullishOr(declaration.name), Option.map(entryFromName))
+  }
+
+  const nodeNamedEntry = (node: ts.Node) => {
+    const variable = pipe(
+      Option.liftPredicate(ts.isVariableDeclaration)(node),
+      Option.flatMap(variableNamedEntry)
+    )
+
+    const fn = pipe(
+      Option.liftPredicate(ts.isFunctionDeclaration)(node),
+      Option.flatMap(functionNamedEntry)
+    )
+
+    const declaration = pipe(
+      variable,
+      Option.orElse(Function.constant(fn)),
+      Option.filter((entry) => entry[0].startsWith(generatedNamePrefix))
+    )
+
+    return optionResult(declaration)
+  }
+
+  return pipe(astNodesIn(sourceFile), Iterable.filterMap(nodeNamedEntry), HashMap.fromIterable)
+}
 
 const declarationName = (declaration: ts.VariableDeclaration | ts.FunctionDeclaration) =>
   ts.isVariableDeclaration(declaration)
@@ -781,23 +811,23 @@ const candidateHasDiagnostic = (
   const declarationName = expectedName(candidate)
   const block = pipe(HashMap.get(declarations, declarationName), Option.flatMap(ancestorBlock))
 
-  return pipe(
-    block,
-    Option.exists((candidateBlock) => {
-      const blockStart = candidateBlock.getStart()
+  const blockHasDiagnostic = (candidateBlock: ts.Block) => {
+    const blockStart = candidateBlock.getStart()
 
-      return Array.some(diagnostics, (diagnostic) =>
-        pipe(
-          Option.fromNullishOr(diagnostic.start),
-          Option.exists((start) => {
-            const bounds = Array.make(start >= blockStart, start < candidateBlock.end)
+    const diagnosticInBlock = (diagnostic: ts.Diagnostic) => {
+      const startInBlock = (start: number) => {
+        const bounds = Array.make(start >= blockStart, start < candidateBlock.end)
 
-            return Array.every(bounds, Boolean)
-          })
-        )
-      )
-    })
-  )
+        return Array.every(bounds, Boolean)
+      }
+
+      return pipe(Option.fromNullishOr(diagnostic.start), Option.exists(startInBlock))
+    }
+
+    return Array.some(diagnostics, diagnosticInBlock)
+  }
+
+  return pipe(block, Option.exists(blockHasDiagnostic))
 }
 
 const diagnosticsFor = (program: ts.Program, sourceFile: ts.SourceFile) => {
@@ -818,16 +848,16 @@ const findingsInSource = (
   const comments = sourceComments(original)
   const checkContext = CheckContext.make({ ...context, sourceFile: original, comments })
   const match = makeDetection(checkContext)
-
   return pipe(
     sourceFile,
     Option.map((source) => {
       const declarations = namedProbeDeclarations(source)
       const checker = program.getTypeChecker()
 
-      const equivalent = Array.filter(probes, (candidate) =>
+      const candidateIsEquivalent = (candidate: InferenceProbe) =>
         candidateTypesEquivalent(checker, declarations, candidate)
-      )
+
+      const equivalent = Array.filter(probes, candidateIsEquivalent)
 
       if (Array.isReadonlyArrayEmpty(equivalent)) {
         return Array.empty<Detection>()
@@ -835,18 +865,19 @@ const findingsInSource = (
 
       const diagnostics = diagnosticsFor(program, source)
 
-      const findings = Array.filter(
-        equivalent,
-        Predicate.not((candidate) => candidateHasDiagnostic(diagnostics, declarations, candidate))
-      )
+      const candidateIsDiagnosticFree = (candidate: InferenceProbe) =>
+        !candidateHasDiagnostic(diagnostics, declarations, candidate)
 
-      return Array.map(findings, (finding) =>
+      const findings = Array.filter(equivalent, candidateIsDiagnosticFree)
+
+      const detectionFromFinding = (finding: InferenceProbe) =>
         match({
           node: finding.detectionNode,
           message: finding.message,
           hint: finding.hint
         })
-      )
+
+      return Array.map(findings, detectionFromFinding)
     }),
     Option.getOrElse(Array.empty)
   )

@@ -15,6 +15,8 @@ import {
   functionLikeReturnsEffect,
   initializerIsNamedEffectFn
 } from "./reportedSchemaEffectReturn.js"
+import { exportedEffectFunctionFindings } from "./reportedSchemaExportedEffectFn.js"
+import type { EffectQualityIndex } from "./index.js"
 
 const effectMakeNames = Array.of("make")
 
@@ -37,29 +39,36 @@ const objectFromSucceedOrSync = (checker: ts.TypeChecker) => (initializer: ts.Ca
     : Option.none()
 }
 
+const propertyInitializerExpression = (property: ts.PropertyAssignment) =>
+  unwrapTransparentExpression(property.initializer)
+
+const objectLiteralFromMakeInitializer =
+  (checker: ts.TypeChecker) => (initializer: ts.Expression) =>
+    pipe(
+      Match.value(initializer),
+      Match.when(
+        ts.isObjectLiteralExpression,
+        Option.some as (
+          object: ts.ObjectLiteralExpression
+        ) => Option.Option<ts.ObjectLiteralExpression>
+      ),
+      Match.when(ts.isCallExpression, objectFromSucceedOrSync(checker)),
+      Match.orElse(Option.none as () => Option.Option<ts.ObjectLiteralExpression>)
+    )
+
+const makeObjectFromConfig = (checker: ts.TypeChecker) => (config: ts.ObjectLiteralExpression) =>
+  pipe(
+    propertyAssignmentNamed(config, effectMakeNames),
+    Option.filter(ts.isPropertyAssignment),
+    Option.map(propertyInitializerExpression),
+    Option.flatMap(objectLiteralFromMakeInitializer(checker))
+  )
+
 const makeObjectFromServiceClass =
   (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
     pipe(
       effectServiceConfigObject(checker, declaration),
-      Option.flatMap((config) =>
-        pipe(
-          propertyAssignmentNamed(config, effectMakeNames),
-          Option.map((property) => unwrapTransparentExpression(property.initializer)),
-          Option.flatMap((initializer) =>
-            pipe(
-              Match.value(initializer),
-              Match.when(
-                ts.isObjectLiteralExpression,
-                Option.some as (
-                  object: ts.ObjectLiteralExpression
-                ) => Option.Option<ts.ObjectLiteralExpression>
-              ),
-              Match.when(ts.isCallExpression, objectFromSucceedOrSync(checker)),
-              Match.orElse(Option.none as () => Option.Option<ts.ObjectLiteralExpression>)
-            )
-          )
-        )
-      )
+      Option.flatMap(makeObjectFromConfig(checker))
     )
 
 const propertyEvidenceNode = (property: ts.ObjectLiteralElementLike) =>
@@ -68,6 +77,14 @@ const propertyEvidenceNode = (property: ts.ObjectLiteralElementLike) =>
 const serviceMethodSubject = (serviceName: string) => (name: string) => `${serviceName}.${name}`
 
 const serviceMethodFinding = makeRuleFinding("service-method-effect-fn")
+
+const serviceMethodFindingForName =
+  (serviceName: string) => (property: ts.ObjectLiteralElementLike) => (name: string) => {
+    const subject = serviceMethodSubject(serviceName)(name)
+    const evidence = propertyEvidenceNode(property)
+
+    return serviceMethodFinding(subject)(evidence)
+  }
 
 const propertyAssignmentMethodFinding =
   (context: CheckContext) => (serviceName: string) => (property: ts.PropertyAssignment) => {
@@ -79,19 +96,9 @@ const propertyAssignmentMethodFinding =
     const shouldReportChecks = Array.make(returnsEffect, notWrapped)
     const shouldReport = Array.every(shouldReportChecks, Boolean)
 
-    if (!shouldReport) {
-      return Option.none()
-    }
-
-    return pipe(
-      methodName,
-      Option.map((name) => {
-        const subject = serviceMethodSubject(serviceName)(name)
-        const evidence = propertyEvidenceNode(property)
-
-        return serviceMethodFinding(subject)(evidence)
-      })
-    )
+    return shouldReport
+      ? pipe(methodName, Option.map(serviceMethodFindingForName(serviceName)(property)))
+      : Option.none()
   }
 
 const methodDeclarationFinding =
@@ -99,19 +106,9 @@ const methodDeclarationFinding =
     const methodName = pipe(Option.fromNullishOr(property.name), Option.flatMap(propertyNameText))
     const returnsEffect = functionLikeReturnsEffect(context.checker)(property)
 
-    if (!returnsEffect) {
-      return Option.none()
-    }
-
-    return pipe(
-      methodName,
-      Option.map((name) => {
-        const subject = serviceMethodSubject(serviceName)(name)
-        const evidence = propertyEvidenceNode(property)
-
-        return serviceMethodFinding(subject)(evidence)
-      })
-    )
+    return returnsEffect
+      ? pipe(methodName, Option.map(serviceMethodFindingForName(serviceName)(property)))
+      : Option.none()
   }
 
 const shorthandPropertyMethodFinding =
@@ -135,23 +132,25 @@ const shorthandPropertyMethodFinding =
     return Option.some(finding)
   }
 
+const serviceMethodFindingFromProperty =
+  (context: CheckContext) => (serviceName: string) => (property: ts.ObjectLiteralElementLike) =>
+    pipe(
+      Match.value(property),
+      Match.when(ts.isPropertyAssignment, propertyAssignmentMethodFinding(context)(serviceName)),
+      Match.when(ts.isMethodDeclaration, methodDeclarationFinding(context)(serviceName)),
+      Match.when(
+        ts.isShorthandPropertyAssignment,
+        shorthandPropertyMethodFinding(context)(serviceName)
+      ),
+      Match.orElse(Option.none as () => Option.Option<EffectQualityRuleFinding>),
+      Result.fromOption(Function.constVoid)
+    )
+
 const serviceMethodAssignmentFindings =
   (context: CheckContext) =>
   (serviceName: string) =>
   (object: ts.ObjectLiteralExpression): ReadonlyArray<EffectQualityRuleFinding> =>
-    Array.filterMap(object.properties, (property) =>
-      pipe(
-        Match.value(property),
-        Match.when(ts.isPropertyAssignment, propertyAssignmentMethodFinding(context)(serviceName)),
-        Match.when(ts.isMethodDeclaration, methodDeclarationFinding(context)(serviceName)),
-        Match.when(
-          ts.isShorthandPropertyAssignment,
-          shorthandPropertyMethodFinding(context)(serviceName)
-        ),
-        Match.orElse(Option.none as () => Option.Option<EffectQualityRuleFinding>),
-        Result.fromOption(Function.constVoid)
-      )
-    )
+    Array.filterMap(object.properties, serviceMethodFindingFromProperty(context)(serviceName))
 
 const contextServiceClassName = (declaration: ts.ClassDeclaration) =>
   pipe(
@@ -163,21 +162,35 @@ const contextServiceClassName = (declaration: ts.ClassDeclaration) =>
 const extendsContextService = (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
   classExtendsEffectApi(checker, declaration, "Context", "Service")
 
-export const contextServiceFindings = (
+const contextServiceFindingsFromDeclaration =
+  (context: CheckContext) => (declaration: ts.ClassDeclaration) => {
+    const serviceName = contextServiceClassName(declaration)
+    const findingsForObject = serviceMethodAssignmentFindings(context)(serviceName)
+
+    return pipe(
+      makeObjectFromServiceClass(context.checker)(declaration),
+      Option.map(findingsForObject)
+    )
+  }
+
+const contextServiceFindings = (
   context: CheckContext,
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
     Option.liftPredicate(ts.isClassDeclaration)(node),
     Option.filter(extendsContextService(context.checker)),
-    Option.flatMap((declaration) => {
-      const serviceName = contextServiceClassName(declaration)
-      const findingsForObject = serviceMethodAssignmentFindings(context)(serviceName)
-
-      return pipe(
-        makeObjectFromServiceClass(context.checker)(declaration),
-        Option.map(findingsForObject)
-      )
-    }),
+    Option.flatMap(contextServiceFindingsFromDeclaration(context)),
     Option.getOrElse(Function.constant(emptyRuleFindings))
   )
+
+export const serviceMethodEffectFnFindings = (
+  context: CheckContext,
+  _index: EffectQualityIndex,
+  node: ts.Node
+): ReadonlyArray<EffectQualityRuleFinding> => {
+  const serviceClass = contextServiceFindings(context, node)
+  const exportedFunctions = exportedEffectFunctionFindings(context, node)
+
+  return Array.appendAll(serviceClass, exportedFunctions)
+}

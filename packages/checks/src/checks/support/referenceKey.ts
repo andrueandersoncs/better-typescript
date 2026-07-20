@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, pipe } from "effect"
 import type * as ts from "typescript"
+import { symbolDeclarations } from "./tsNode.js"
 
 const fieldSeparator = "\u0000"
 const recordSeparator = "\u0001"
@@ -14,7 +15,7 @@ const declarationKey = (declaration: ts.Declaration) => {
 }
 
 const declarationKeys = Function.flow(
-  (symbol: ts.Symbol) => symbol.getDeclarations(),
+  symbolDeclarations,
   Option.fromNullishOr,
   Option.getOrElse(Array.empty),
   Array.map(declarationKey),
@@ -28,9 +29,8 @@ export const referenceKey = (symbol: ts.Symbol): ReferenceKey =>
     Array.join(recordSeparator)
   )
 
+const declarationSourceFileName = (declaration: string) =>
+  pipe(declaration.split(fieldSeparator), Array.head)
+
 export const referenceKeySourceFileName = (key: ReferenceKey) =>
-  pipe(
-    key.split(recordSeparator),
-    Array.get(1),
-    Option.flatMap((declaration) => pipe(declaration.split(fieldSeparator), Array.head))
-  )
+  pipe(key.split(recordSeparator), Array.get(1), Option.flatMap(declarationSourceFileName))

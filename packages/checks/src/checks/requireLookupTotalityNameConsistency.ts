@@ -25,37 +25,34 @@ const constantEmptyDetections = Function.constant(emptyDetections)
 
 const startsWithWords =
   (words: ReadonlyArray<string>) =>
-  (sequence: ReadonlyArray<string>): boolean =>
-    Array.every(sequence, (word, offset) => words[offset] === word)
+  (sequence: ReadonlyArray<string>): boolean => {
+    const wordMatchesOffset = (word: string, offset: number) => words[offset] === word
+
+    return Array.every(sequence, wordMatchesOffset)
+  }
+
+const isOptionalTotalityClaim = (word: string) => HashSet.has(optionalTotalityClaims, word)
+const isTotalTotalityClaim = (word: string) => HashSet.has(totalTotalityClaims, word)
 
 const claimedOptionalWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
-  pipe(
-    words,
-    Array.head,
-    Option.filter((word) => HashSet.has(optionalTotalityClaims, word)),
-    Option.toArray
-  )
+  pipe(words, Array.head, Option.filter(isOptionalTotalityClaim), Option.toArray)
 
 const claimedTotalWords = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
-  pipe(
-    words,
-    Array.head,
-    Option.filter((word) => HashSet.has(totalTotalityClaims, word)),
-    Option.toArray
-  )
+  pipe(words, Array.head, Option.filter(isTotalTotalityClaim), Option.toArray)
 
-const claimedTotalSequenceLabels = (words: ReadonlyArray<string>): ReadonlyArray<string> =>
-  pipe(
-    totalTotalitySequences,
-    Array.filterMap(([sequence, label]) =>
-      pipe(
-        startsWithWords(words)(sequence),
-        Option.liftPredicate((value: boolean) => value),
-        Option.as(label),
-        Result.fromOption(Function.constVoid)
-      )
+const claimedTotalSequenceLabels = (words: ReadonlyArray<string>): ReadonlyArray<string> => {
+  const startsWithClaimedWords = startsWithWords(words)
+
+  const labelWhenPrefixMatches = ([sequence, label]: readonly [ReadonlyArray<string>, string]) =>
+    pipe(
+      startsWithClaimedWords(sequence),
+      Option.liftPredicate((value: boolean) => value),
+      Option.as(label),
+      Result.fromOption(Function.constVoid)
     )
-  )
+
+  return pipe(totalTotalitySequences, Array.filterMap(labelWhenPrefixMatches))
+}
 
 const formatClaims = (claims: ReadonlyArray<string>) => Array.join(claims, "/")
 

@@ -71,8 +71,9 @@ const isPublicClassMember = (member: ts.ClassElement) => {
   )
 
   const hiddenKinds = Array.make(ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.ProtectedKeyword)
+  const isHiddenModifier = (modifier: ts.Modifier) => Array.contains(hiddenKinds, modifier.kind)
 
-  return !Array.some(modifiers, (modifier) => Array.contains(hiddenKinds, modifier.kind))
+  return !Array.some(modifiers, isHiddenModifier)
 }
 
 // CallableClassMember is the callable class-node protocol because guard and calculator agree.
@@ -113,35 +114,40 @@ const classSurface = (declaration: ts.ClassDeclaration) => {
   return Array.reduce(memberSurfaces, constructorSurface, combineSurface)
 }
 
+const isFunctionInitializer = (
+  initializer: ts.Expression
+): initializer is ts.ArrowFunction | ts.FunctionExpression =>
+  ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)
+
+const surfaceFromProperty = (property: ts.PropertyAssignment) =>
+  pipe(
+    Option.some(property.initializer),
+    Option.filter(isFunctionInitializer),
+    Option.map(callableSurface)
+  )
+
+const surfaceFromMember = (member: ts.ObjectLiteralElementLike) => {
+  const methodSurface = pipe(
+    Option.liftPredicate(ts.isMethodDeclaration)(member),
+    Option.map(callableSurface)
+  )
+
+  const propertySurface = pipe(
+    Option.liftPredicate(ts.isPropertyAssignment)(member),
+    Option.flatMap(surfaceFromProperty)
+  )
+
+  return pipe(
+    methodSurface,
+    Option.orElse(Function.constant(propertySurface)),
+    Result.fromOption(Function.constVoid)
+  )
+}
+
 const objectLiteralSurface = (literal: ts.ObjectLiteralExpression) =>
   pipe(
     literal.properties,
-    Array.filterMap((member) => {
-      const methodSurface = pipe(
-        Option.liftPredicate(ts.isMethodDeclaration)(member),
-        Option.map(callableSurface)
-      )
-
-      const propertySurface = pipe(
-        Option.liftPredicate(ts.isPropertyAssignment)(member),
-        Option.flatMap((property) =>
-          pipe(
-            Option.some(property.initializer),
-            Option.filter(
-              (initializer): initializer is ts.ArrowFunction | ts.FunctionExpression =>
-                ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)
-            ),
-            Option.map(callableSurface)
-          )
-        )
-      )
-
-      return pipe(
-        methodSurface,
-        Option.orElse(Function.constant(propertySurface)),
-        Result.fromOption(Function.constVoid)
-      )
-    }),
+    Array.filterMap(surfaceFromMember),
     Array.reduce(emptySurface, combineSurface)
   )
 

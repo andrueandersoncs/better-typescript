@@ -1,4 +1,4 @@
-import { Array, Result, Struct } from "effect"
+import { Array, Predicate, Result, Struct } from "effect"
 import { makeFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
@@ -26,7 +26,7 @@ const fileMatches = (context: CheckContext): ReadonlyArray<Detection> => {
   const text = sourceFile.getFullText()
   const fileName = toRelativeFileName(context.projectRoot)(sourceFile.fileName)
   const comments = context.comments
-  const blockComments = Array.filter(comments, (comment) => !isSingleLineComment(comment))
+  const blockComments = Array.filter(comments, Predicate.not(isSingleLineComment))
   const blockPositions = Array.map(blockComments, commentPosition)
   const singleLineComments = Array.filter(comments, isSingleLineComment)
 

@@ -7,7 +7,6 @@ import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Detection as DetectionData } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
 import { compositionFingerprints } from "@better-typescript/checks/architectureExplore/compositionFingerprints"
@@ -62,10 +61,6 @@ const namedFingerprint = (
     detection: detectionAt(filePath, line, data)
   })
 
-const collectAdvice = <E>(
-  advice: Effect.Effect<ReadonlyArray<Advice>, E>
-): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
-
 test("composition fingerprints match across clones and skip sub-threshold exports", async () => {
   const detections = await runFixture(compositionFingerprints)
   const byPath = new Map(detections.map((item) => [item.location.path, item] as const))
@@ -96,14 +91,12 @@ test("composition fingerprints match across clones and skip sub-threshold export
   assert.equal(byPath.has("src/shallow.ts"), false)
 })
 
-test("duplicated orchestration fires for shared fingerprints across files", async () => {
+test("duplicated orchestration fires for shared fingerprints across files", () => {
   const shared = fingerprintData("pipe>stageOne>stageTwo>stageThree", 4, "runCloneA")
-  const advice = await collectAdvice(
-    duplicatedOrchestration([
-      namedFingerprint("src/cloneA.ts", 4, shared),
-      namedFingerprint("src/cloneB.ts", 4, fingerprintData(shared.fingerprint, 4, "runCloneB"))
-    ])
-  )
+  const advice = duplicatedOrchestration([
+    namedFingerprint("src/cloneA.ts", 4, shared),
+    namedFingerprint("src/cloneB.ts", 4, fingerprintData(shared.fingerprint, 4, "runCloneB"))
+  ])
 
   assert.equal(advice.length, 1)
   assert.equal(advice[0]?.title, "duplicated orchestration")
@@ -118,19 +111,15 @@ test("duplicated orchestration fires for shared fingerprints across files", asyn
   )
 })
 
-test("duplicated orchestration stays silent for one site or distinct fingerprints", async () => {
+test("duplicated orchestration stays silent for one site or distinct fingerprints", () => {
   const shared = fingerprintData("pipe>stageOne>stageTwo>stageThree", 4, "runCloneA")
   const other = fingerprintData("pipe>otherOne>otherTwo>otherThree", 4, "runDifferent")
 
-  const singleSite = await collectAdvice(
-    duplicatedOrchestration([namedFingerprint("src/cloneA.ts", 4, shared)])
-  )
-  const distinct = await collectAdvice(
-    duplicatedOrchestration([
-      namedFingerprint("src/cloneA.ts", 4, shared),
-      namedFingerprint("src/different.ts", 4, other)
-    ])
-  )
+  const singleSite = duplicatedOrchestration([namedFingerprint("src/cloneA.ts", 4, shared)])
+  const distinct = duplicatedOrchestration([
+    namedFingerprint("src/cloneA.ts", 4, shared),
+    namedFingerprint("src/different.ts", 4, other)
+  ])
 
   assert.equal(singleSite.length, 0)
   assert.equal(distinct.length, 0)

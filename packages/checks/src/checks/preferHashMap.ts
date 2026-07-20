@@ -50,11 +50,16 @@ const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 
 const emptyNodes: ReadonlyArray<ts.Node> = Array.empty()
 
+const typeNameIdentifier = Function.flow(
+  Struct.get<ts.TypeReferenceNode, "typeName">("typeName"),
+  Option.liftPredicate(ts.isIdentifier)
+)
+
 const isMapRuleNode = (node: ts.Node): node is NewOrTypeReferenceNode =>
   ts.isNewExpression(node) ||
   pipe(
     Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.flatMap((ref) => Option.liftPredicate(ts.isIdentifier)(ref.typeName)),
+    Option.flatMap(typeNameIdentifier),
     Option.exists(isMapTypeName)
   )
 
@@ -116,76 +121,86 @@ const mutableHashMapImportMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (declaration: ts.ImportDeclaration): ReadonlyArray<Detection> => {
+    const isMutableHashMapModule = (moduleName: string) => moduleName === mutableHashMapModuleName
+    const isEffectModule = (moduleName: string) => moduleName === effectModuleName
+
+    const mutableHashMapSpecifier = (specifier: ts.ImportSpecifier) =>
+      (specifier.propertyName?.text ?? specifier.name.text) === mutableHashMapName
+
+    const mutableHashMapBindings = (bindings: ts.NamedImports): ReadonlyArray<ts.Node> =>
+      Array.filter(bindings.elements, mutableHashMapSpecifier)
+
+    const effectNamedImportNodes = () =>
+      pipe(
+        Option.fromNullishOr(declaration.importClause?.namedBindings),
+        Option.filter(ts.isNamedImports),
+        Option.map(mutableHashMapBindings),
+        Option.getOrElse(Function.constant(emptyNodes))
+      )
+
+    const nodesForModuleSpecifier = (moduleSpecifier: ts.StringLiteralLike) =>
+      pipe(
+        Match.value(moduleSpecifier.text),
+        Match.when(isMutableHashMapModule, () => Array.of<ts.Node>(moduleSpecifier)),
+        Match.when(isEffectModule, effectNamedImportNodes),
+        Match.orElse(Function.constant(emptyNodes))
+      )
+
     const importNodes = pipe(
       Option.liftPredicate(ts.isStringLiteralLike)(declaration.moduleSpecifier),
-      Option.map((moduleSpecifier) =>
-        pipe(
-          Match.value(moduleSpecifier.text),
-          Match.when(
-            (moduleName) => moduleName === mutableHashMapModuleName,
-            () => Array.of<ts.Node>(moduleSpecifier)
-          ),
-          Match.when(
-            (moduleName) => moduleName === effectModuleName,
-            () =>
-              pipe(
-                Option.fromNullishOr(declaration.importClause?.namedBindings),
-                Option.filter(ts.isNamedImports),
-                Option.map((bindings): ReadonlyArray<ts.Node> =>
-                  Array.filter(
-                    bindings.elements,
-                    (specifier) =>
-                      (specifier.propertyName?.text ?? specifier.name.text) === mutableHashMapName
-                  )
-                ),
-                Option.getOrElse(Function.constant(emptyNodes))
-              )
-          ),
-          Match.orElse(Function.constant(emptyNodes))
-        )
-      ),
+      Option.map(nodesForModuleSpecifier),
       Option.getOrElse(Function.constant(emptyNodes))
     )
 
-    return Array.map(importNodes, (node) =>
+    const mutableHashMapDetection = (node: ts.Node) =>
       match({
         node,
         message: mutableHashMapMessage,
         hint: mutableHashMapHint
       })
-    )
+
+    return Array.map(importNodes, mutableHashMapDetection)
   }
 
   return matches
 }
 
+const isMutableHashMapAccess = (access: ts.PropertyAccessExpression) =>
+  access.name.text === mutableHashMapName
+
 const isMutableHashMapNamespaceAccess = (node: ts.Node): node is ts.PropertyAccessExpression =>
   pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(node),
-    Option.exists((access) => access.name.text === mutableHashMapName)
+    Option.exists(isMutableHashMapAccess)
   )
 
 const mutableHashMapNamespaceMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (access: ts.PropertyAccessExpression): ReadonlyArray<Detection> => {
+    const symbolAtIdentifier = (identifier: ts.Identifier) =>
+      pipe(context.checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
+
+    const isEffectModuleSpecifier = (moduleSpecifier: ts.StringLiteralLike) =>
+      moduleSpecifier.text === effectModuleName
+
+    const namespaceImportFromEffect = (declaration: ts.Declaration) =>
+      pipe(
+        Option.liftPredicate(ts.isNamespaceImport)(declaration),
+        Option.map((namespaceImport) => namespaceImport.parent.parent),
+        Option.filter(ts.isImportDeclaration),
+        Option.map(Struct.get("moduleSpecifier")),
+        Option.filter(ts.isStringLiteralLike),
+        Option.exists(isEffectModuleSpecifier)
+      )
+
+    const symbolIsEffectNamespace = (symbol: ts.Symbol) =>
+      Array.some(symbol.declarations ?? emptyDeclarations, namespaceImportFromEffect)
+
     const isEffectNamespace = pipe(
       Option.liftPredicate(ts.isIdentifier)(access.expression),
-      Option.flatMap((identifier) =>
-        pipe(context.checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-      ),
-      Option.exists((symbol) =>
-        Array.some(symbol.declarations ?? emptyDeclarations, (declaration) =>
-          pipe(
-            Option.liftPredicate(ts.isNamespaceImport)(declaration),
-            Option.map((namespaceImport) => namespaceImport.parent.parent),
-            Option.filter(ts.isImportDeclaration),
-            Option.map(Struct.get("moduleSpecifier")),
-            Option.filter(ts.isStringLiteralLike),
-            Option.exists((moduleSpecifier) => moduleSpecifier.text === effectModuleName)
-          )
-        )
-      )
+      Option.flatMap(symbolAtIdentifier),
+      Option.exists(symbolIsEffectNamespace)
     )
 
     if (!isEffectNamespace) {

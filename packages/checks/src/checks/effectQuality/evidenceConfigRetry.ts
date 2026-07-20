@@ -43,10 +43,12 @@ const expressionTreeHasEffectApi =
     const apiAt = (nodeExpression: ts.Expression) =>
       importedEffectApiAt(checker, nodeExpression, namespace, names)
 
+    const callExpressionApiAt = (call: ts.CallExpression) => apiAt(call.expression)
+
     const matchCurrent = (current: ts.Node) =>
       pipe(
         Match.value(current),
-        Match.when(ts.isCallExpression, (call) => apiAt(call.expression)),
+        Match.when(ts.isCallExpression, callExpressionApiAt),
         Match.when(ts.isPropertyAccessExpression, apiAt),
         Match.orElse(Function.constFalse)
       )

@@ -106,9 +106,10 @@ export const commonDirectory = (paths: ReadonlyArray<string>) => {
   const first = pipe(Array.head(allSegments), Option.getOrElse(Function.constant(fallback)))
   const remaining = Array.drop(allSegments, 1)
 
-  const common = Array.reduce(remaining, first, (prefix, segments) =>
+  const takeCommonPrefix = (prefix: ReadonlyArray<string>, segments: ReadonlyArray<string>) =>
     Array.takeWhile(prefix, (segment, index) => segments[index] === segment)
-  )
+
+  const common = Array.reduce(remaining, first, takeCommonPrefix)
 
   return common.length === 0 ? "." : Array.join(common, "/")
 }
@@ -128,11 +129,11 @@ const isModuleIdentityData = Schema.is(ModuleIdentityData)
 const aliasEntriesOf = (element: NamedDetection): ReadonlyArray<readonly [string, string]> =>
   pipe(
     checkedData(isModuleIdentityData, element),
-    Option.map((data) =>
-      Array.map(data.aliases, (alias): readonly [string, string] =>
-        Tuple.make(alias, data.workspacePath)
-      )
-    ),
+    Option.map((data) => {
+      const pairWithWorkspace = (alias: string) => Tuple.make(alias, data.workspacePath)
+
+      return Array.map(data.aliases, pairWithWorkspace)
+    }),
     Option.getOrElse(Array.empty)
   )
 
@@ -142,16 +143,15 @@ const graphEdgesOf = (element: NamedDetection): ReadonlyArray<WorkspaceImportEdg
     Option.map((data) => {
       const fromTest = isTestPath(data.workspacePath)
 
-      return Array.map(
-        data.importedWorkspacePaths,
-        (importedPath) =>
-          new WorkspaceImportEdge({
-            importerPath: data.workspacePath,
-            importedPath,
-            fromTest,
-            names: emptyImportedNames
-          })
-      )
+      const makeWorkspaceImportEdge = (importedPath: string) =>
+        new WorkspaceImportEdge({
+          importerPath: data.workspacePath,
+          importedPath,
+          fromTest,
+          names: emptyImportedNames
+        })
+
+      return Array.map(data.importedWorkspacePaths, makeWorkspaceImportEdge)
     }),
     Option.getOrElse(Array.empty)
   )
@@ -159,39 +159,34 @@ const graphEdgesOf = (element: NamedDetection): ReadonlyArray<WorkspaceImportEdg
 const usageEdgeOf = (aliasTable: HashMap.HashMap<string, string>) => (element: NamedDetection) =>
   pipe(
     importUsageDataOf(element),
-    Option.flatMap((data) =>
-      pipe(
-        HashMap.get(aliasTable, data.specifier),
-        Option.map(
-          (importedPath) =>
-            new WorkspaceImportEdge({
-              importerPath: data.importerWorkspacePath,
-              importedPath,
-              fromTest: data.fromTest,
-              names: data.names
-            })
-        )
-      )
-    )
+    Option.flatMap((data) => {
+      const makeWorkspaceImportEdge = (importedPath: string) =>
+        new WorkspaceImportEdge({
+          importerPath: data.importerWorkspacePath,
+          importedPath,
+          fromTest: data.fromTest,
+          names: data.names
+        })
+
+      return pipe(HashMap.get(aliasTable, data.specifier), Option.map(makeWorkspaceImportEdge))
+    })
   )
 
 // Graph and alias edges stay disjoint because project edges never carry bare package specifiers.
 export const workspaceImportEdges = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<WorkspaceImportEdge> => {
-  const identityElements = Array.filter(elements, (element) => element.name === moduleIdentityName)
+  const isModuleIdentityElement = (element: NamedDetection) => element.name === moduleIdentityName
+  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+  const isImportUsageElement = (element: NamedDetection) => element.name === importUsageName
+  const identityElements = Array.filter(elements, isModuleIdentityElement)
   const aliasEntries = Array.flatMap(identityElements, aliasEntriesOf)
   const aliasTable = HashMap.fromIterable(aliasEntries)
-
-  const graphEdges = pipe(
-    elements,
-    Array.filter((element) => element.name === moduleGraphName),
-    Array.flatMap(graphEdgesOf)
-  )
+  const graphEdges = pipe(elements, Array.filter(isModuleGraphElement), Array.flatMap(graphEdgesOf))
 
   const usageEdges = pipe(
     elements,
-    Array.filter((element) => element.name === importUsageName),
+    Array.filter(isImportUsageElement),
     Array.filterMap(Function.flow(usageEdgeOf(aliasTable), Result.fromOption(Function.constVoid)))
   )
 

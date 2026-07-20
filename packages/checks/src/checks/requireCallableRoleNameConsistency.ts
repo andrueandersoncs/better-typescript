@@ -57,15 +57,27 @@ const claimedRole = (semantics: CallableSemantics) =>
     Option.filter(isRoleWord)
   )
 
+const signatureParameters = (signature: ts.Signature) => signature.getParameters()
+const headSignatureParameter = flow(signatureParameters, Array.head)
+
 const firstParameterType =
   (checker: ts.TypeChecker) =>
-  (definition: FunctionDefinition): Option.Option<ts.Type> =>
-    pipe(
+  (definition: FunctionDefinition): Option.Option<ts.Type> => {
+    const typeOfParameter = (parameter: ts.Symbol) =>
+      checker.getTypeOfSymbolAtLocation(parameter, definition)
+
+    return pipe(
       checker.getSignatureFromDeclaration(definition),
       Option.fromNullishOr,
-      Option.flatMap(flow((signature) => signature.getParameters(), Array.head)),
-      Option.map((parameter) => checker.getTypeOfSymbolAtLocation(parameter, definition))
+      Option.flatMap(headSignatureParameter),
+      Option.map(typeOfParameter)
     )
+  }
+
+const returnTypeOfSignature = (checker: ts.TypeChecker) => (signature: ts.Signature) =>
+  checker.getReturnTypeOfSignature(signature)
+
+const hasCallSignatures = (returnType: ts.Type) => returnType.getCallSignatures().length > 0
 
 const returnsCallable =
   (checker: ts.TypeChecker) =>
@@ -73,24 +85,27 @@ const returnsCallable =
     pipe(
       checker.getSignatureFromDeclaration(definition),
       Option.fromNullishOr,
-      Option.map((signature) => checker.getReturnTypeOfSignature(signature)),
-      Option.exists((returnType) => returnType.getCallSignatures().length > 0)
+      Option.map(returnTypeOfSignature(checker)),
+      Option.exists(hasCallSignatures)
     )
 
 const reducerAccumulatorCompatible =
   (checker: ts.TypeChecker) =>
-  (semantics: CallableSemantics): boolean =>
-    pipe(
-      firstParameterType(checker)(semantics.definition),
-      Option.exists((accumulator) => {
-        const returnType = semantics.result.returnType
-        const forward = checker.isTypeAssignableTo(returnType, accumulator)
-        const backward = checker.isTypeAssignableTo(accumulator, returnType)
-        const checks = Array.make(forward, backward)
+  (semantics: CallableSemantics): boolean => {
+    const accumulatorCompatible = (accumulator: ts.Type) => {
+      const returnType = semantics.result.returnType
+      const forward = checker.isTypeAssignableTo(returnType, accumulator)
+      const backward = checker.isTypeAssignableTo(accumulator, returnType)
+      const checks = Array.make(forward, backward)
 
-        return Array.some(checks, Boolean)
-      })
+      return Array.some(checks, Boolean)
+    }
+
+    return pipe(
+      firstParameterType(checker)(semantics.definition),
+      Option.exists(accumulatorCompatible)
     )
+  }
 
 const roleExpectation =
   (checker: ts.TypeChecker) =>
@@ -149,25 +164,22 @@ const roleNameMatches = (context: CheckContext) => {
   const semanticsFor = callableSemantics(context)
   const expectationFor = roleExpectation(context.checker)
 
-  const matches = (definition: FunctionDefinition): ReadonlyArray<Detection> =>
-    pipe(
-      semanticsFor(definition),
-      Option.flatMap((semantics) =>
-        Option.gen(function* () {
-          const role = yield* claimedRole(semantics)
-          const expected = yield* expectationFor(role)(semantics)
+  const detectionFor = (semantics: CallableSemantics) =>
+    Option.gen(function* () {
+      const role = yield* claimedRole(semantics)
+      const expected = yield* expectationFor(role)(semantics)
 
-          return match({
-            node: semantics.node,
-            message: `${semantics.name.text} claims the ${role} role, but does not provide ${expected}.`,
-            hint:
-              `Rename away from the ${role} role noun, or change the signature and body so the ` +
-              `${role} contract holds.`
-          })
-        })
-      ),
-      Option.toArray
-    )
+      return match({
+        node: semantics.node,
+        message: `${semantics.name.text} claims the ${role} role, but does not provide ${expected}.`,
+        hint:
+          `Rename away from the ${role} role noun, or change the signature and body so the ` +
+          `${role} contract holds.`
+      })
+    })
+
+  const matches = (definition: FunctionDefinition): ReadonlyArray<Detection> =>
+    pipe(semanticsFor(definition), Option.flatMap(detectionFor), Option.toArray)
 
   return matches
 }

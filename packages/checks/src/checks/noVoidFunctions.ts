@@ -33,26 +33,30 @@ const voidFunctionMatches = (context: CheckContext) => {
 
     const contextualType = Option.fromNullishOr(contextualTypeNode)
 
-    const isContextualVoidCallback = Option.exists(contextualType, (type) => {
+    const signaturePermitsVoid = (signature: ts.Signature) =>
+      pipe(checker.getReturnTypeOfSignature(signature), permitsVoid)
+
+    const typeHasVoidCallbackSignature = (type: ts.Type) => {
       const callableType = checker.getNonNullableType(type)
       const signatures = callableType.getCallSignatures()
 
-      return Array.some(signatures, (signature) =>
-        pipe(checker.getReturnTypeOfSignature(signature), permitsVoid)
-      )
-    })
+      return Array.some(signatures, signaturePermitsVoid)
+    }
 
+    const isContextualVoidCallback = Option.exists(contextualType, typeHasVoidCallbackSignature)
     const isContextualVoid = isFunctionInitializer(declaration) && isContextualVoidCallback
+
+    const literalHasContextualType = (literal: ts.ObjectLiteralExpression) => {
+      const literalContextualTypeNode = checker.getContextualType(literal)
+      const literalContextualType = Option.fromNullishOr(literalContextualTypeNode)
+
+      return Option.isSome(literalContextualType)
+    }
 
     const isContextualMethod = pipe(
       Option.liftPredicate(ts.isMethodDeclaration)(declaration),
       Option.flatMap(objectLiteralParent),
-      Option.exists((literal) => {
-        const literalContextualTypeNode = checker.getContextualType(literal)
-        const literalContextualType = Option.fromNullishOr(literalContextualTypeNode)
-
-        return Option.isSome(literalContextualType)
-      })
+      Option.exists(literalHasContextualType)
     )
 
     const isConsumerContract = isContextualVoid || isContextualMethod
@@ -64,9 +68,10 @@ const voidFunctionMatches = (context: CheckContext) => {
     const declaredSignature = checker.getSignatureFromDeclaration(declaration)
     const signature = Option.fromNullishOr(declaredSignature)
 
-    const declarationReturnsVoid = Option.exists(signature, (resolved) =>
+    const signatureReturnsVoid = (resolved: ts.Signature) =>
       pipe(checker.getReturnTypeOfSignature(resolved), isVoidType)
-    )
+
+    const declarationReturnsVoid = Option.exists(signature, signatureReturnsVoid)
 
     if (!declarationReturnsVoid) {
       return Array.empty()

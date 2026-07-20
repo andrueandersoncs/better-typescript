@@ -26,9 +26,9 @@ export const schemaDecodeNames = Array.make(
   "decodePromise"
 )
 
-export const httpResponseSchemaNames = Array.make("schemaBodyJson", "schemaJson", "schemaNoBody")
+const httpResponseSchemaNames = Array.make("schemaBodyJson", "schemaJson", "schemaNoBody")
 
-export const httpNamespaceNames = Array.make(
+const httpNamespaceNames = Array.make(
   "HttpClient",
   "HttpClientResponse",
   "HttpClientRequest",
@@ -38,7 +38,7 @@ export const httpNamespaceNames = Array.make(
 export const sourceHasAdapterRole = (index: EffectQualityIndex) => (sourceFile: ts.SourceFile) =>
   pipe(roleForSourceFile(index, sourceFile), Option.exists(isAdapterRole))
 
-export const moduleIsEffectHttp = (moduleSpecifier: string) => {
+const moduleIsEffectHttp = (moduleSpecifier: string) => {
   const exactUnstable = moduleSpecifier === "effect/unstable/http"
   const nestedUnstable = moduleSpecifier.startsWith("effect/unstable/http/")
   const platformExact = moduleSpecifier === "@effect/platform"
@@ -56,7 +56,7 @@ export const moduleIsEffectHttp = (moduleSpecifier: string) => {
   return Array.some(flags, Boolean)
 }
 
-export const moduleIsEffectSchema = (moduleSpecifier: string) => {
+const moduleIsEffectSchema = (moduleSpecifier: string) => {
   const fromBarrel = moduleSpecifier === "effect"
   const fromSchema = moduleSpecifier === "effect/Schema"
   const fromSchemaNested = moduleSpecifier.startsWith("effect/Schema/")
@@ -65,11 +65,10 @@ export const moduleIsEffectSchema = (moduleSpecifier: string) => {
   return Array.some(flags, Boolean)
 }
 
-export const pathHasHttpNamespace = (path: ReadonlyArray<string>) =>
-  Array.some(path, (segment) => Array.contains(httpNamespaceNames, segment))
+const segmentIsHttpNamespace = (segment: string) => Array.contains(httpNamespaceNames, segment)
 
 const pathMatchesHttpNamespaceApi = (path: ReadonlyArray<string>) => {
-  const hasNamespace = pathHasHttpNamespace(path)
+  const hasNamespace = Array.some(path, segmentIsHttpNamespace)
   const singleMemberPath = path.length === 1
   const pathFlags = Array.make(hasNamespace, singleMemberPath)
 
@@ -77,14 +76,11 @@ const pathMatchesHttpNamespaceApi = (path: ReadonlyArray<string>) => {
 }
 
 const barrelPathMatchesHttpNamespace = (path: ReadonlyArray<string>) => {
-  const barrelNamespace = pipe(
-    Option.fromNullishOr(path[0]),
-    Option.exists((segment) => Array.contains(httpNamespaceNames, segment))
-  )
+  const barrelNamespace = pipe(Option.fromNullishOr(path[0]), Option.exists(segmentIsHttpNamespace))
 
   const unstableNamespace = pipe(
     Option.fromNullishOr(path[2]),
-    Option.exists((segment) => Array.contains(httpNamespaceNames, segment))
+    Option.exists(segmentIsHttpNamespace)
   )
 
   const unstablePathFlags = Array.make(
@@ -120,7 +116,7 @@ export const memberIsHttpNamespaceApi =
     return Array.every(flags, Boolean)
   }
 
-export const memberIsSchemaDecodeApi = (member: ImportedMember) => {
+const memberIsSchemaDecodeApi = (member: ImportedMember) => {
   const schemaModule = moduleIsEffectSchema(member.moduleSpecifier)
   const last = memberLastName(member)
   const nameMatches = Array.contains(schemaDecodeNames, last)

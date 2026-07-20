@@ -29,17 +29,17 @@ const loadExistingWiringConfig = Effect.fn("WiringConfig.loadExisting")(function
 
 export const loadWiringConfig: (
   projectDirectory: string,
-  fallback: WiringConfig<unknown>
-) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn(
-  "WiringConfig.load"
-)(function* (projectDirectory: string, fallback: WiringConfig<unknown>) {
-  const configPath = path.resolve(projectDirectory, configFileName)
-  const exists = yield* Effect.sync(() => fs.existsSync(configPath))
-  const missingConfig = !exists
+  fallback: WiringConfig
+) => Effect.Effect<WiringConfig, ProjectWiringConfigError> = Effect.fn("WiringConfig.load")(
+  function* (projectDirectory: string, fallback: WiringConfig) {
+    const configPath = path.resolve(projectDirectory, configFileName)
+    const exists = yield* Effect.sync(() => fs.existsSync(configPath))
+    const missingConfig = !exists
 
-  if (missingConfig) {
-    return fallback
+    if (missingConfig) {
+      return fallback
+    }
+
+    return yield* loadExistingWiringConfig(configPath)
   }
-
-  return yield* loadExistingWiringConfig(configPath)
-})
+)

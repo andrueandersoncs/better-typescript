@@ -80,19 +80,16 @@ const acquisitionIsUnforkedForever = (checker: ts.TypeChecker) => (expression: t
   return lacksFork && hasForeverLike
 }
 
+const layerForeverFinding = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  pipe(
+    layerAcquisitionEffectArgument(checker)(call),
+    Option.filter(acquisitionIsUnforkedForever(checker)),
+    Option.map(() => layerForeverAcquisitionFinding("Layer.effect")(call))
+  )
+
 export const layerForeverAcquisitionFindings = (
   context: CheckContext,
   _index: EffectQualityIndex,
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> =>
-  pipe(
-    callExpressionOf(node),
-    Option.flatMap((call) =>
-      pipe(
-        layerAcquisitionEffectArgument(context.checker)(call),
-        Option.filter(acquisitionIsUnforkedForever(context.checker)),
-        Option.map(() => layerForeverAcquisitionFinding("Layer.effect")(call))
-      )
-    ),
-    Option.toArray
-  )
+  pipe(callExpressionOf(node), Option.flatMap(layerForeverFinding(context.checker)), Option.toArray)

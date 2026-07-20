@@ -9,7 +9,7 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { CompositionFingerprintData } from "./data.js"
 import { ExportReferenceIndex, isTestSourceFile } from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
-import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { conciseArrowBody, unwrapTransparentExpression } from "../support/tsNode.js"
 import { makeSilentCheck } from "../../defineCheck.js"
 import { compositionFingerprintsName } from "./names.js"
 
@@ -25,29 +25,78 @@ const message =
 const hint =
   "Advice compares fingerprints across Modules because the same orchestration in two places is a missing operation."
 
+const isAbsentQuestionDotToken = (access: ts.PropertyAccessExpression) =>
+  pipe(access.questionDotToken, Option.fromNullishOr, Option.isNone)
+
 const isNonOptionalPropertyAccess = (
   expression: ts.Expression
 ): expression is ts.PropertyAccessExpression =>
   pipe(
     expression,
     Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.exists((access) => pipe(access.questionDotToken, Option.fromNullishOr, Option.isNone))
+    Option.exists(isAbsentQuestionDotToken)
   )
+
+const identifierText = (identifier: ts.Identifier) => Option.some(identifier.text)
+
+const joinCalleeWithAccessName = (access: ts.PropertyAccessExpression) => (left: string) =>
+  `${left}.${access.name.text}`
+
+const propertyAccessCalleeName = (access: ts.PropertyAccessExpression) =>
+  pipe(calleeName(access.expression), Option.map(joinCalleeWithAccessName(access)))
 
 const calleeName = (expression: ts.Expression): Option.Option<string> =>
   pipe(
     expression,
     unwrapTransparentExpression,
     Match.value,
-    Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
-    Match.when(isNonOptionalPropertyAccess, (access) =>
-      pipe(
-        calleeName(access.expression),
-        Option.map((left) => `${left}.${access.name.text}`)
-      )
-    ),
-    Match.orElse(() => Option.none())
+    Match.when(ts.isIdentifier, identifierText),
+    Match.when(isNonOptionalPropertyAccess, propertyAccessCalleeName),
+    Match.orElse((): Option.Option<string> => Option.none())
   )
+
+const walkArrowBody = (arrow: ts.ArrowFunction) => walkConciseBody(arrow.body)
+
+const walkFunctionExpressionBody = (functionExpression: ts.FunctionExpression) =>
+  walkBlock(functionExpression.body)
+
+const walkPropertyAccessExpression = (access: ts.PropertyAccessExpression) =>
+  walkExpression(access.expression)
+
+const walkSpreadExpression = (spread: ts.SpreadElement | ts.SpreadAssignment) =>
+  walkExpression(spread.expression)
+
+const walkArrayElement = (element: ts.Expression | ts.SpreadElement): ReadonlyArray<string> =>
+  pipe(
+    Match.value(element),
+    Match.when(ts.isSpreadElement, walkSpreadExpression),
+    Match.when(ts.isExpression, walkExpression),
+    Match.orElse(emptyFingerprintNamesFallback)
+  )
+
+const walkArrayLiteralElements = (arrayLiteral: ts.ArrayLiteralExpression) =>
+  Array.flatMap(arrayLiteral.elements, walkArrayElement)
+
+const walkObjectLiteralProperties = (objectLiteral: ts.ObjectLiteralExpression) =>
+  Array.flatMap(objectLiteral.properties, walkObjectProperty)
+
+const walkTemplateSpanExpression = (span: ts.TemplateSpan) => walkExpression(span.expression)
+
+const walkTemplateSpans = (template: ts.TemplateExpression) =>
+  Array.flatMap(template.templateSpans, walkTemplateSpanExpression)
+
+const walkPrefixOperand = (prefix: ts.PrefixUnaryExpression) => walkExpression(prefix.operand)
+
+const walkPostfixOperand = (postfix: ts.PostfixUnaryExpression) => walkExpression(postfix.operand)
+
+const walkAwaitOperand = (awaitExpression: ts.AwaitExpression) =>
+  walkExpression(awaitExpression.expression)
+
+const walkTypeOfOperand = (typeOfExpression: ts.TypeOfExpression) =>
+  walkExpression(typeOfExpression.expression)
+
+const flatMapWalkExpressions = (args: ReadonlyArray<ts.Expression>) =>
+  Array.flatMap(args, walkExpression)
 
 const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
   pipe(
@@ -55,8 +104,8 @@ const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
     unwrapTransparentExpression,
     Match.value,
     Match.when(ts.isCallExpression, walkCallExpression),
-    Match.when(ts.isArrowFunction, (arrow) => walkConciseBody(arrow.body)),
-    Match.when(ts.isFunctionExpression, (functionExpression) => walkBlock(functionExpression.body)),
+    Match.when(ts.isArrowFunction, walkArrowBody),
+    Match.when(ts.isFunctionExpression, walkFunctionExpressionBody),
     Match.when(ts.isBinaryExpression, (binary) => {
       const leftNames = walkExpression(binary.left)
       const rightNames = walkExpression(binary.right)
@@ -70,7 +119,7 @@ const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
 
       return pipe(conditionNames, Array.appendAll(whenTrueNames), Array.appendAll(whenFalseNames))
     }),
-    Match.when(ts.isPropertyAccessExpression, (access) => walkExpression(access.expression)),
+    Match.when(ts.isPropertyAccessExpression, walkPropertyAccessExpression),
     Match.when(ts.isElementAccessExpression, (access) => {
       const objectNames = walkExpression(access.expression)
 
@@ -91,89 +140,76 @@ const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
 
       const argumentNames = pipe(
         Option.fromNullishOr(newExpression.arguments),
-        Option.map((args) => Array.flatMap(args, walkExpression)),
+        Option.map(flatMapWalkExpressions),
         Option.getOrElse(emptyFingerprintNamesFallback)
       )
 
       return Array.appendAll(expressionNames, argumentNames)
     }),
-    Match.when(ts.isArrayLiteralExpression, (arrayLiteral) =>
-      Array.flatMap(arrayLiteral.elements, (element) =>
-        pipe(
-          Match.value(element),
-          Match.when(ts.isSpreadElement, (spread) => walkExpression(spread.expression)),
-          Match.when(ts.isExpression, walkExpression),
-          Match.orElse(emptyFingerprintNamesFallback)
-        )
-      )
-    ),
-    Match.when(ts.isObjectLiteralExpression, (objectLiteral) =>
-      Array.flatMap(objectLiteral.properties, walkObjectProperty)
-    ),
-    Match.when(ts.isTemplateExpression, (template) =>
-      Array.flatMap(template.templateSpans, (span) => walkExpression(span.expression))
-    ),
-    Match.when(ts.isPrefixUnaryExpression, (prefix) => walkExpression(prefix.operand)),
-    Match.when(ts.isPostfixUnaryExpression, (postfix) => walkExpression(postfix.operand)),
-    Match.when(ts.isAwaitExpression, (awaitExpression) =>
-      walkExpression(awaitExpression.expression)
-    ),
-    Match.when(ts.isTypeOfExpression, (typeOfExpression) =>
-      walkExpression(typeOfExpression.expression)
-    ),
+    Match.when(ts.isArrayLiteralExpression, walkArrayLiteralElements),
+    Match.when(ts.isObjectLiteralExpression, walkObjectLiteralProperties),
+    Match.when(ts.isTemplateExpression, walkTemplateSpans),
+    Match.when(ts.isPrefixUnaryExpression, walkPrefixOperand),
+    Match.when(ts.isPostfixUnaryExpression, walkPostfixOperand),
+    Match.when(ts.isAwaitExpression, walkAwaitOperand),
+    Match.when(ts.isTypeOfExpression, walkTypeOfOperand),
     Match.orElse(emptyFingerprintNamesFallback)
+  )
+
+const walkPropertyAssignment = (assignment: ts.PropertyAssignment) =>
+  walkExpression(assignment.initializer)
+
+const walkShorthandPropertyAssignment = (shorthand: ts.ShorthandPropertyAssignment) =>
+  pipe(
+    Option.fromNullishOr(shorthand.objectAssignmentInitializer),
+    Option.map(walkExpression),
+    Option.getOrElse(emptyFingerprintNamesFallback)
+  )
+
+const walkMethodDeclarationBody = (method: ts.MethodDeclaration) =>
+  pipe(
+    Option.fromNullishOr(method.body),
+    Option.map(walkBlock),
+    Option.getOrElse(emptyFingerprintNamesFallback)
   )
 
 const walkObjectProperty = (property: ts.ObjectLiteralElementLike): ReadonlyArray<string> =>
   pipe(
     Match.value(property),
-    Match.when(ts.isPropertyAssignment, (assignment) => walkExpression(assignment.initializer)),
-    Match.when(ts.isShorthandPropertyAssignment, (shorthand) =>
-      pipe(
-        Option.fromNullishOr(shorthand.objectAssignmentInitializer),
-        Option.map(walkExpression),
-        Option.getOrElse(emptyFingerprintNamesFallback)
-      )
-    ),
-    Match.when(ts.isSpreadAssignment, (spread) => walkExpression(spread.expression)),
-    Match.when(ts.isMethodDeclaration, (method) =>
-      pipe(
-        Option.fromNullishOr(method.body),
-        Option.map(walkBlock),
-        Option.getOrElse(emptyFingerprintNamesFallback)
-      )
-    ),
+    Match.when(ts.isPropertyAssignment, walkPropertyAssignment),
+    Match.when(ts.isShorthandPropertyAssignment, walkShorthandPropertyAssignment),
+    Match.when(ts.isSpreadAssignment, walkSpreadExpression),
+    Match.when(ts.isMethodDeclaration, walkMethodDeclarationBody),
     Match.orElse(emptyFingerprintNamesFallback)
   )
 
 // Point-free stages are bare identifier or property chains because calls fingerprint themselves.
+const isNotCallExpression = (candidate: ts.Expression) => !ts.isCallExpression(candidate)
+
 const pointFreeStageName = (argument: ts.Expression) =>
   pipe(
     argument,
     unwrapTransparentExpression,
     Option.some,
-    Option.filter((candidate) => !ts.isCallExpression(candidate)),
+    Option.filter(isNotCallExpression),
     Option.flatMap(calleeName)
   )
+
+const isPipeIdentifier = (identifier: ts.Identifier) => identifier.text === "pipe"
+
+const isFlowIdentifier = (identifier: ts.Identifier) => identifier.text === "flow"
 
 // Preorder DFS collects callee and point-free stage names because fingerprints mirror source order.
 const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
   const callee = unwrapTransparentExpression(call.expression)
   const name = calleeName(callee)
   const calleeIdentifier = Option.liftPredicate(ts.isIdentifier)(callee)
-
-  const barePipe = pipe(
-    calleeIdentifier,
-    Option.exists((identifier) => identifier.text === "pipe")
-  )
-
-  const bareFlow = pipe(
-    calleeIdentifier,
-    Option.exists((identifier) => identifier.text === "flow")
-  )
+  const barePipe = pipe(calleeIdentifier, Option.exists(isPipeIdentifier))
+  const bareFlow = pipe(calleeIdentifier, Option.exists(isFlowIdentifier))
+  const walkCallee = () => walkExpression(callee)
 
   const head = Option.match(name, {
-    onNone: () => walkExpression(callee),
+    onNone: walkCallee,
     onSome: Array.of
   })
 
@@ -184,42 +220,55 @@ const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
   const argumentNames = Array.flatMap(call.arguments, (argument, index) => {
     const skipDataSubjectChecks = Array.make(barePipe, index === 0)
     const skipDataSubject = Array.every(skipDataSubjectChecks, Boolean)
+    const keepNonDataSubject = () => !skipDataSubject
+    const walkArgument = () => walkExpression(argument)
 
     return pipe(
       Option.some(argument),
       Option.filter(keepPointFreeComposition),
-      Option.filter(() => !skipDataSubject),
+      Option.filter(keepNonDataSubject),
       Option.flatMap(pointFreeStageName),
       Option.map(Array.of),
-      Option.getOrElse(() => walkExpression(argument))
+      Option.getOrElse(walkArgument)
     )
   })
 
   return Array.appendAll(head, argumentNames)
 }
 
+const walkExpressionStatement = (expressionStatement: ts.ExpressionStatement) =>
+  walkExpression(expressionStatement.expression)
+
+const walkReturnStatementExpression = (returnStatement: ts.ReturnStatement) =>
+  pipe(
+    Option.fromNullishOr(returnStatement.expression),
+    Option.map(walkExpression),
+    Option.getOrElse(emptyFingerprintNamesFallback)
+  )
+
+const walkVariableDeclarationInitializer = (declaration: ts.VariableDeclaration) =>
+  pipe(
+    Option.fromNullishOr(declaration.initializer),
+    Option.map(walkExpression),
+    Option.getOrElse(emptyFingerprintNamesFallback)
+  )
+
+const walkVariableStatementDeclarations = (variableStatement: ts.VariableStatement) =>
+  Array.flatMap(variableStatement.declarationList.declarations, walkVariableDeclarationInitializer)
+
+const walkThrowStatementExpression = (throwStatement: ts.ThrowStatement) =>
+  pipe(
+    Option.fromNullishOr(throwStatement.expression),
+    Option.map(walkExpression),
+    Option.getOrElse(emptyFingerprintNamesFallback)
+  )
+
 const walkStatement = (statement: ts.Statement): ReadonlyArray<string> =>
   pipe(
     Match.value(statement),
-    Match.when(ts.isExpressionStatement, (expressionStatement) =>
-      walkExpression(expressionStatement.expression)
-    ),
-    Match.when(ts.isReturnStatement, (returnStatement) =>
-      pipe(
-        Option.fromNullishOr(returnStatement.expression),
-        Option.map(walkExpression),
-        Option.getOrElse(emptyFingerprintNamesFallback)
-      )
-    ),
-    Match.when(ts.isVariableStatement, (variableStatement) =>
-      Array.flatMap(variableStatement.declarationList.declarations, (declaration) =>
-        pipe(
-          Option.fromNullishOr(declaration.initializer),
-          Option.map(walkExpression),
-          Option.getOrElse(emptyFingerprintNamesFallback)
-        )
-      )
-    ),
+    Match.when(ts.isExpressionStatement, walkExpressionStatement),
+    Match.when(ts.isReturnStatement, walkReturnStatementExpression),
+    Match.when(ts.isVariableStatement, walkVariableStatementDeclarations),
     Match.when(ts.isIfStatement, (ifStatement) => {
       const conditionNames = walkExpression(ifStatement.expression)
       const thenNames = walkStatement(ifStatement.thenStatement)
@@ -233,13 +282,7 @@ const walkStatement = (statement: ts.Statement): ReadonlyArray<string> =>
       return pipe(conditionNames, Array.appendAll(thenNames), Array.appendAll(elseNames))
     }),
     Match.when(ts.isBlock, walkBlock),
-    Match.when(ts.isThrowStatement, (throwStatement) =>
-      pipe(
-        Option.fromNullishOr(throwStatement.expression),
-        Option.map(walkExpression),
-        Option.getOrElse(emptyFingerprintNamesFallback)
-      )
-    ),
+    Match.when(ts.isThrowStatement, walkThrowStatementExpression),
     Match.orElse(emptyFingerprintNamesFallback)
   )
 
@@ -253,22 +296,12 @@ const unwrappedCurriedDefinition = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ): ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration =>
   pipe(
-    node,
-    Option.liftPredicate(ts.isArrowFunction),
-    Option.filter(
-      (arrow): arrow is ts.ArrowFunction & { readonly body: ts.Expression } =>
-        !ts.isBlock(arrow.body)
-    ),
-    Option.map((arrow) =>
-      pipe(
-        arrow.body,
-        unwrapTransparentExpression,
-        Match.value,
-        Match.when(ts.isArrowFunction, unwrappedCurriedDefinition),
-        Match.orElse(() => node)
-      )
-    ),
-    Option.getOrElse(() => node)
+    Option.liftPredicate(ts.isArrowFunction)(node),
+    Option.flatMap(conciseArrowBody),
+    Option.map(unwrapTransparentExpression),
+    Option.filter(ts.isArrowFunction),
+    Option.map(unwrappedCurriedDefinition),
+    Option.getOrElse(Function.constant(node))
   )
 
 const fingerprintNames = (
@@ -285,9 +318,12 @@ const compositionFingerprintElements =
 
     const element = makeDetection(context)
 
+    const isEntryInSourceFile = (entry: (typeof index.entries)[number]) =>
+      entry.nameNode.getSourceFile() === context.sourceFile
+
     return pipe(
       index.entries,
-      Array.filter((entry) => entry.nameNode.getSourceFile() === context.sourceFile),
+      Array.filter(isEntryInSourceFile),
       Array.filterMap((entry) => {
         const root = unwrappedCurriedDefinition(entry.functionNode)
         const names = fingerprintNames(root)

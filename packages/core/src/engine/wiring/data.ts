@@ -1,4 +1,4 @@
-import { Array, Data, Effect, HashSet, Schema } from "effect"
+import { Array, Data, HashSet, Schema } from "effect"
 import type { Check } from "../check/data.js"
 import type { Advice } from "../derive/data.js"
 import type { RefactorExampleSource } from "../example/data.js"
@@ -13,19 +13,19 @@ export class NamedCheck extends Data.Class<{
 }> {}
 
 // Wiring is the check set plus advice derivation for one scope because both halves travel together.
-export class Wiring<E = never> extends Data.Class<{
+export class Wiring extends Data.Class<{
   readonly checks: ReadonlyArray<NamedCheck>
-  readonly derive: (signals: ReadonlyArray<Signal>) => Effect.Effect<ReadonlyArray<Advice>, E>
+  readonly derive: (signals: ReadonlyArray<Signal>) => ReadonlyArray<Advice>
 }> {}
 
 // WiringEntry pairs a file scope with its wiring because both sides share that.
-export class WiringEntry<E = never> extends Data.Class<{
+export class WiringEntry extends Data.Class<{
   readonly files: Array.NonEmptyReadonlyArray<string>
-  readonly wiring: Wiring<E>
+  readonly wiring: Wiring
 }> {}
 
 // WiringConfig is the ordered entry boundary because loading preserves order.
-export type WiringConfig<E = never> = ReadonlyArray<WiringEntry<E>>
+export type WiringConfig = ReadonlyArray<WiringEntry>
 
 const duplicateNameArray = Schema.Array(Schema.String)
 

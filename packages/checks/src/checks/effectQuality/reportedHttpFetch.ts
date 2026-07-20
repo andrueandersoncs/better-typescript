@@ -29,13 +29,20 @@ const expressionIsFetchCallee = (expression: ts.Expression) => {
   }
 
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(current)
+  const accessIsNamedFetch = (access: ts.PropertyAccessExpression) => access.name.text === "fetch"
+
+  const unwrapAccessExpression = (access: ts.PropertyAccessExpression) =>
+    unwrapTransparentExpression(access.expression)
+
+  const receiverIsGlobalFetch = (receiver: ts.Identifier) =>
+    Array.contains(globalFetchReceivers, receiver.text)
 
   return pipe(
     propertyAccess,
-    Option.filter((access) => access.name.text === "fetch"),
-    Option.map((access) => unwrapTransparentExpression(access.expression)),
+    Option.filter(accessIsNamedFetch),
+    Option.map(unwrapAccessExpression),
     Option.filter(ts.isIdentifier),
-    Option.exists((receiver) => Array.contains(globalFetchReceivers, receiver.text))
+    Option.exists(receiverIsGlobalFetch)
   )
 }
 
@@ -54,9 +61,15 @@ const tryPromiseBody = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
     Option.flatMap((current) => {
       const asFunction = Option.liftPredicate(isFunctionInitializer)(current)
 
+      const tryAssignmentFromObject = (object: ts.ObjectLiteralExpression) =>
+        pipe(
+          propertyAssignmentNamed(object, tryPropertyNames),
+          Option.filter(ts.isPropertyAssignment)
+        )
+
       const fromObject = pipe(
         Option.liftPredicate(ts.isObjectLiteralExpression)(current),
-        Option.flatMap((object) => propertyAssignmentNamed(object, tryPropertyNames)),
+        Option.flatMap(tryAssignmentFromObject),
         Option.map(Struct.get("initializer")),
         Option.map(unwrapTransparentExpression),
         Option.filter(isFunctionInitializer)
@@ -79,18 +92,37 @@ const expressionReferencesName =
   (expression: ts.Expression): boolean => {
     const current = unwrapTransparentExpression(expression)
     const recur = expressionReferencesName(name)
+    const identifierIsName = (identifier: ts.Identifier) => identifier.text === name
+
+    const propertyAccessReferencesName = (access: ts.PropertyAccessExpression) =>
+      recur(access.expression)
+
+    const elementAccessReferencesName = (access: ts.ElementAccessExpression) =>
+      recur(access.expression)
+
+    const asExpressionReferencesName = (asExpression: ts.AsExpression) =>
+      recur(asExpression.expression)
+
+    const satisfiesExpressionReferencesName = (satisfiesExpression: ts.SatisfiesExpression) =>
+      recur(satisfiesExpression.expression)
+
+    const parenthesizedReferencesName = (parenthesized: ts.ParenthesizedExpression) =>
+      recur(parenthesized.expression)
+
+    const nonNullReferencesName = (nonNull: ts.NonNullExpression) => recur(nonNull.expression)
+
+    const callArgumentsReferenceName = (call: ts.CallExpression) =>
+      Array.some(call.arguments, recur)
 
     return pipe(
       Match.value(current),
-      Match.when(ts.isIdentifier, (identifier) => identifier.text === name),
-      Match.when(ts.isPropertyAccessExpression, (access) => recur(access.expression)),
-      Match.when(ts.isElementAccessExpression, (access) => recur(access.expression)),
-      Match.when(ts.isAsExpression, (asExpression) => recur(asExpression.expression)),
-      Match.when(ts.isSatisfiesExpression, (satisfiesExpression) =>
-        recur(satisfiesExpression.expression)
-      ),
-      Match.when(ts.isParenthesizedExpression, (parenthesized) => recur(parenthesized.expression)),
-      Match.when(ts.isNonNullExpression, (nonNull) => recur(nonNull.expression)),
+      Match.when(ts.isIdentifier, identifierIsName),
+      Match.when(ts.isPropertyAccessExpression, propertyAccessReferencesName),
+      Match.when(ts.isElementAccessExpression, elementAccessReferencesName),
+      Match.when(ts.isAsExpression, asExpressionReferencesName),
+      Match.when(ts.isSatisfiesExpression, satisfiesExpressionReferencesName),
+      Match.when(ts.isParenthesizedExpression, parenthesizedReferencesName),
+      Match.when(ts.isNonNullExpression, nonNullReferencesName),
       Match.when(ts.isConditionalExpression, (conditional) => {
         const whenTrue = recur(conditional.whenTrue)
         const whenFalse = recur(conditional.whenFalse)
@@ -105,7 +137,7 @@ const expressionReferencesName =
 
         return Array.some(flags, Boolean)
       }),
-      Match.when(ts.isCallExpression, (call) => Array.some(call.arguments, recur)),
+      Match.when(ts.isCallExpression, callArgumentsReferenceName),
       Match.orElse(Function.constFalse)
     )
   }
@@ -143,9 +175,13 @@ const spreadPassesSignal =
 const objectPassesSignal =
   (signalName: string) =>
   (object: ts.ObjectLiteralExpression): boolean => {
+    const assignmentInitializerReferencesSignal = (assignment: ts.ObjectLiteralElementLike) =>
+      ts.isPropertyAssignment(assignment) &&
+      expressionReferencesName(signalName)(assignment.initializer)
+
     const direct = pipe(
       propertyAssignmentNamed(object, signalPropertyNames),
-      Option.exists((assignment) => expressionReferencesName(signalName)(assignment.initializer))
+      Option.exists(assignmentInitializerReferencesSignal)
     )
 
     const shorthand = Array.some(object.properties, shorthandPropertyPassesSignal(signalName))
@@ -215,24 +251,27 @@ const findingsForMissingSignal =
     return Array.of(finding)
   }
 
-export const rawFetchAbortFindings = (context: CheckContext) => (node: ts.Node) =>
-  pipe(
+export const rawFetchAbortFindings = (context: CheckContext) => (node: ts.Node) => {
+  const callbackMissingSignalOnFetch = (callback: ts.ArrowFunction | ts.FunctionExpression) =>
+    pipe(
+      signalParameterName(callback),
+      Option.match({
+        onNone: Function.constTrue,
+        onSome: signalMissingOnFetch(callback)
+      })
+    )
+
+  const findingsFromTryPromiseCall = (call: ts.CallExpression) =>
+    pipe(
+      tryPromiseBody(context.checker)(call),
+      Option.filter(callbackContainsFetch),
+      Option.filter(callbackMissingSignalOnFetch),
+      Option.map(findingsForMissingSignal(call))
+    )
+
+  return pipe(
     callExpressionOf(node),
-    Option.flatMap((call) =>
-      pipe(
-        tryPromiseBody(context.checker)(call),
-        Option.filter(callbackContainsFetch),
-        Option.filter((callback) =>
-          pipe(
-            signalParameterName(callback),
-            Option.match({
-              onNone: Function.constTrue,
-              onSome: signalMissingOnFetch(callback)
-            })
-          )
-        ),
-        Option.map(findingsForMissingSignal(call))
-      )
-    ),
+    Option.flatMap(findingsFromTryPromiseCall),
     Option.getOrElse(Function.constant(emptyRuleFindings))
   )
+}

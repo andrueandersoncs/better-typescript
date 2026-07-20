@@ -1,51 +1,49 @@
-import { Effect, pipe } from "effect"
+import { Effect, Function, pipe } from "effect"
 import * as ts from "typescript"
 import { makeRefactorExampleResolver, type ResolveRefactorExamples } from "../example/example.js"
 import { batchReportBlocks, initialReportEvents } from "../report/report.js"
 import type { WiringConfig } from "../wiring/data.js"
-import { collectWorkspaceSignals } from "../wiring/wiring.js"
+import { workspaceSignalsForProjects } from "../wiring/wiring.js"
 import { WorkspaceUpdate } from "./data.js"
 
 const resolveExamples = Effect.fn("Watch.resolveExamples")(makeRefactorExampleResolver)
 
-const reportEventsForResolver =
-  <DeriveError>(config: WiringConfig<DeriveError>) =>
-  (update: WorkspaceUpdate) =>
-  (resolve: ResolveRefactorExamples) =>
-    Effect.gen(function* () {
-      const signals = yield* collectWorkspaceSignals(config)(update.rootPath)(update.contexts)
-      const blocks = yield* batchReportBlocks(config)(resolve)(signals)
+const reportEventsForResolver = (config: WiringConfig) => (update: WorkspaceUpdate) =>
+  Effect.fn("Watch.reportEventsForResolver")(function* (resolve: ResolveRefactorExamples) {
+    const signals = yield* workspaceSignalsForProjects(config)(update.rootPath)(update.contexts)(
+      Function.identity
+    )
 
-      return initialReportEvents(update.rootPath)(blocks)
-    })
+    const blocks = yield* batchReportBlocks(config)(resolve)(signals)
 
-// FIXME: I have a feeling it's possible to eliminate all callbacks, period. We should investigate a rule/check that can detect this automatically.
+    return initialReportEvents(update.rootPath)(blocks)
+  })
+
 // One callback wait owns one native watcher because every change reruns a complete report.
-export const watchWorkspace = Effect.fn("Watch.watchWorkspace")(
-  (rootPath: string): Effect.Effect<void> =>
-    Effect.callback<void, never, never>((resume) => {
-      const watchDirectory = ts.sys.watchDirectory
+const publishRootPathWatch = (rootPath: string): Effect.Effect<void> =>
+  Effect.callback<void, never, never>((resume) => {
+    const watchDirectory = ts.sys.watchDirectory
 
-      if (!watchDirectory) {
-        return
-      }
+    if (!watchDirectory) {
+      return
+    }
 
-      const watcher = watchDirectory(
-        rootPath,
-        () => {
-          watcher.close()
-          resume(Effect.void)
-        },
-        true
-      )
+    const watcher = watchDirectory(
+      rootPath,
+      () => {
+        watcher.close()
+        resume(Effect.void)
+      },
+      true
+    )
 
-      return Effect.sync(() => watcher.close())
-    })
-)
+    return Effect.sync(() => watcher.close())
+  })
+
+export const watchWorkspace = Effect.fn("Watch.watchWorkspace")(publishRootPathWatch)
 
 // One update is complete because watch rebuilds a whole snapshot.
-export const reportEvents = <DeriveError>(config: WiringConfig<DeriveError>) =>
-  // FIXME: we should investigate converting this to a more pointfree style - there should also be a check/rule that can detect this automatically
-  Effect.fn("Watch.reportEvents")((update: WorkspaceUpdate) =>
-    pipe(resolveExamples(), Effect.flatMap(reportEventsForResolver(config)(update)))
-  )
+export const reportEvents = (config: WiringConfig) =>
+  Effect.fn("Watch.reportEvents")(function* (update: WorkspaceUpdate) {
+    return yield* pipe(resolveExamples(), Effect.flatMap(reportEventsForResolver(config)(update)))
+  })

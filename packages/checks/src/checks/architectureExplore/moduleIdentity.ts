@@ -66,14 +66,14 @@ const readPackageExports = (projectRoot: string) => {
 const preferredExportConditions = Array.make("import", "default")
 
 const firstStringFromRecord = (record: Record.ReadonlyRecord<string, unknown>) => {
-  const preferredValues = Array.filterMap(preferredExportConditions, (key) =>
+  const preferredValueFor = (key: string) =>
     pipe(
       Record.get(record, key),
       Option.filter(Predicate.isString),
       Result.fromOption(Function.constVoid)
     )
-  )
 
+  const preferredValues = Array.filterMap(preferredExportConditions, preferredValueFor)
   const preferred = Array.head(preferredValues)
   const values = Record.values(record)
   const fallback = Array.findFirst(values, Predicate.isString)
@@ -81,13 +81,16 @@ const firstStringFromRecord = (record: Record.ReadonlyRecord<string, unknown>) =
   return Option.orElse(preferred, Function.constant(fallback))
 }
 
+const firstStringFromUnknownRecord = Function.flow(
+  decodeUnknownRecord,
+  Option.flatMap(firstStringFromRecord)
+)
+
 const firstStringValue = (value: unknown) =>
   pipe(
     Match.value(value),
     Match.when(Predicate.isString, Option.some<string>),
-    Match.orElse((candidate) =>
-      pipe(decodeUnknownRecord(candidate), Option.flatMap(firstStringFromRecord))
-    )
+    Match.orElse(firstStringFromUnknownRecord)
   )
 
 const exportEntriesFromRecord = (
@@ -95,26 +98,33 @@ const exportEntriesFromRecord = (
 ): ReadonlyArray<readonly [string, string]> => {
   const entries = Record.toEntries(record)
 
-  return Array.filterMap(entries, ([subpath, value]) =>
-    pipe(
+  const entryFromPair = ([subpath, value]: readonly [string, unknown]) => {
+    const pairWithSubpath = (target: string) => Tuple.make(subpath, target)
+
+    return pipe(
       firstStringValue(value),
-      Option.map((target) => Tuple.make(subpath, target)),
+      Option.map(pairWithSubpath),
       Result.fromOption(Function.constVoid)
     )
-  )
+  }
+
+  return Array.filterMap(entries, entryFromPair)
 }
+
+const rootPairFor = (target: string) => Tuple.make(".", target)
+const rootExportEntry = Function.flow(rootPairFor, Array.of)
+
+const exportEntriesFromUnknown = Function.flow(
+  decodeUnknownRecord,
+  Option.map(exportEntriesFromRecord),
+  Option.getOrElse(Array.empty)
+)
 
 const exportEntries = (exportsField: unknown): ReadonlyArray<readonly [string, string]> =>
   pipe(
     Match.value(exportsField),
-    Match.when(Predicate.isString, (target) => pipe(Tuple.make(".", target), Array.of)),
-    Match.orElse((candidate) =>
-      pipe(
-        decodeUnknownRecord(candidate),
-        Option.map(exportEntriesFromRecord),
-        Option.getOrElse(Array.empty)
-      )
-    )
+    Match.when(Predicate.isString, rootExportEntry),
+    Match.orElse(exportEntriesFromUnknown)
   )
 
 const toEmittedPath = (rootDir: string, outDir: string) => (fileName: string) => {

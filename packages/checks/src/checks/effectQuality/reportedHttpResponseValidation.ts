@@ -56,10 +56,11 @@ const responseBodyHasNearbyValidation = (checker: ts.TypeChecker) => (call: ts.C
   // Function-scope decode is enough because yield* response.json() may decode later in the body.
   const validationInBody = nodeIsValidationCall(validates)
   const bodyContainsValidation = functionBodyContains(validationInBody)
+  const functionBodyOf = (fn: ts.FunctionLikeDeclaration) => Option.fromNullishOr(fn.body)
 
   const functionScopeValidation = pipe(
     enclosingFunctionLike(call),
-    Option.flatMap((fn) => Option.fromNullishOr(fn.body)),
+    Option.flatMap(functionBodyOf),
     Option.exists(bodyContainsValidation)
   )
 

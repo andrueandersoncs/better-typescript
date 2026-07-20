@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Iterable, Match, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Iterable, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { resolvedSymbolAt } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -26,22 +26,28 @@ const importOrExportNameKinds = HashSet.make(
   ts.SyntaxKind.NamespaceExport
 )
 
-const identifierIsAccessName = (identifier: ts.Identifier) =>
-  pipe(
+const identifierIsAccessName = (identifier: ts.Identifier) => {
+  const accessNameIsIdentifier = (access: ts.PropertyAccessExpression) => access.name === identifier
+
+  return pipe(
     identifier.parent,
     Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.exists((access) => access.name === identifier)
+    Option.exists(accessNameIsIdentifier)
   )
+}
 
 const identifierIsImportOrExportName = (identifier: ts.Identifier) =>
   HashSet.has(importOrExportNameKinds, identifier.parent.kind)
 
+const identifierIsTypeQueryName = (identifier: ts.Identifier) =>
+  ts.isTypeQueryNode(identifier.parent)
+
 const identifierMayReferenceRuntimeValue = (identifier: ts.Identifier) =>
   pipe(
     Option.some(identifier),
-    Option.filter((candidate) => !identifierIsAccessName(candidate)),
-    Option.filter((candidate) => !identifierIsImportOrExportName(candidate)),
-    Option.filter((candidate) => !ts.isTypeQueryNode(candidate.parent)),
+    Option.filter(Predicate.not(identifierIsAccessName)),
+    Option.filter(Predicate.not(identifierIsImportOrExportName)),
+    Option.filter(Predicate.not(identifierIsTypeQueryName)),
     Option.isSome
   )
 
@@ -89,16 +95,17 @@ const unsafeImportedNames = (context: CheckContext) => {
     Array.fromIterable
   )
 
+  const importIsUnsafeEffectApi = (identifier: ts.Identifier) =>
+    pipe(
+      resolveSymbol(identifier),
+      Option.filter(nameContainsUnsafe),
+      Option.filter(symbolDeclaredInEffectPackage),
+      Option.isSome
+    )
+
   return pipe(
     importedNames,
-    Array.filter((identifier) =>
-      pipe(
-        resolveSymbol(identifier),
-        Option.filter(nameContainsUnsafe),
-        Option.filter(symbolDeclaredInEffectPackage),
-        Option.isSome
-      )
-    ),
+    Array.filter(importIsUnsafeEffectApi),
     Array.map(Struct.get("text")),
     HashSet.fromIterable
   )

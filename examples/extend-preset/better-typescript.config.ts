@@ -1,4 +1,4 @@
-import { Array, Effect } from "effect"
+import { Array } from "effect"
 import * as ts from "typescript"
 import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -19,7 +19,7 @@ import {
   makeMergedWiring,
   makeNamedCheck
 } from "@better-typescript/core/engine/wiring"
-import { withFallbackAdvice } from "@better-typescript/core/engine/report"
+import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
@@ -63,9 +63,7 @@ const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number
 const detectionPaths = (detections: ReadonlyArray<Detection>): ReadonlyArray<string> =>
   globalThis.Array.from(new Set(detections.map((element) => element.location.path))).sort()
 
-const consoleLogBoundaryAdvice = (
-  detections: ReadonlyArray<Detection>
-): Effect.Effect<ReadonlyArray<Advice>> =>
+const consoleLogBoundaryAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> =>
   deriveSignals((elements: ReadonlyArray<Detection>) =>
     detectionPaths(elements).map((path) =>
       Advice.make({
@@ -117,8 +115,11 @@ const localWiring = makeWiring({
       )
     )(elementsOf("acme/no-console-log"))
 
-    // withFallbackAdvice suppresses the generic nudge because covered files already get specifics.
-    return withFallbackAdvice(specificAdvice, fallbackAdvice)
+    // filterFallbackAdviceForUncoveredFiles suppresses the generic nudge because covered files already get specifics.
+    return [
+      ...specificAdvice,
+      ...filterFallbackAdviceForUncoveredFiles(specificAdvice)(fallbackAdvice)
+    ]
   }
 })
 

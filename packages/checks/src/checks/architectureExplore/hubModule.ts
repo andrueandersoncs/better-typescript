@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Option, Predicate, Result, Struct, pipe } from "effect"
+import { Array, Function, Option, Predicate, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -8,6 +8,7 @@ import {
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { interfaceBurdenDataOf, moduleGraphDataOf, workspaceImportEdges } from "./evidence.js"
+import type { InterfaceBurdenData } from "./data.js"
 import { interfaceBurdenName, moduleGraphName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
@@ -19,29 +20,32 @@ const minimumFanOut = 6
 
 const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const edges = workspaceImportEdges(elements)
+  const isInterfaceBurdenElement = (element: NamedDetection) => element.name === interfaceBurdenName
+  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+
+  const isProductionWorkspaceBurden = (data: InterfaceBurdenData) =>
+    pipe(
+      data.workspacePath,
+      Option.liftPredicate(Predicate.isString),
+      Option.exists((workspacePath) => {
+        const hasWorkspacePath = workspacePath !== ""
+        const hasProductionPath = !isTestPath(workspacePath)
+        const conditions = Array.make(hasWorkspacePath, hasProductionPath)
+
+        return Array.every(conditions, Boolean)
+      })
+    )
 
   const burdens = pipe(
     elements,
-    Array.filter((element) => element.name === interfaceBurdenName),
+    Array.filter(isInterfaceBurdenElement),
     Array.filterMap(Function.flow(interfaceBurdenDataOf, Result.fromOption(Function.constVoid))),
-    Array.filter((data) =>
-      pipe(
-        data.workspacePath,
-        Option.liftPredicate(Predicate.isString),
-        Option.exists((workspacePath) => {
-          const hasWorkspacePath = workspacePath !== ""
-          const hasProductionPath = !isTestPath(workspacePath)
-          const conditions = Array.make(hasWorkspacePath, hasProductionPath)
-
-          return Array.every(conditions, Boolean)
-        })
-      )
-    )
+    Array.filter(isProductionWorkspaceBurden)
   )
 
   const moduleGraphs = pipe(
     elements,
-    Array.filter((element) => element.name === moduleGraphName),
+    Array.filter(isModuleGraphElement),
     Array.filterMap(Function.flow(moduleGraphDataOf, Result.fromOption(Function.constVoid)))
   )
 
@@ -106,4 +110,4 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
   })
 }
 
-export const hubModule = Effect.fn("HubModule.derive")(deriveSignals(hubAdvice))
+export const hubModule = deriveSignals(hubAdvice)

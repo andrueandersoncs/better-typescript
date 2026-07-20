@@ -1,4 +1,4 @@
-import { Array, Effect, Option, Tuple, pipe } from "effect"
+import { Array, Option, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -13,6 +13,7 @@ import {
   isShallownessName,
   moduleGraphDataOf
 } from "./evidence.js"
+import type { ModuleGraphData } from "./data.js"
 import { moduleGraphName } from "./names.js"
 
 export const bounceClusterExamples = packageExamples("bounce-cluster")
@@ -47,11 +48,8 @@ const reachable = (
       return reachable(edges, remaining, visited)
     }
 
-    const neighbors = pipe(
-      neighborsOf(edges, next),
-      Array.filter((candidate) => !Array.contains(visited, candidate))
-    )
-
+    const isUnvisited = (candidate: string) => !Array.contains(visited, candidate)
+    const neighbors = pipe(neighborsOf(edges, next), Array.filter(isUnvisited))
     const expanded = Array.appendAll(remaining, neighbors)
     const nextVisited = Array.append(visited, next)
 
@@ -79,7 +77,8 @@ const connectedComponents = (
       const frontier = Array.of(seed)
       const visited = Array.empty<string>()
       const component = reachable(edges, frontier, visited)
-      const rest = Array.filter(remaining, (path) => !Array.contains(component, path))
+      const isOutsideComponent = (path: string) => !Array.contains(component, path)
+      const rest = Array.filter(remaining, isOutsideComponent)
       const nextComponents = Array.append(components, component)
 
       return collect(rest, nextComponents)
@@ -100,48 +99,56 @@ const connectedComponents = (
 }
 
 const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const detectionPath = (element: NamedDetection) => element.detection.location.path
+  const elementHasShallownessName = (element: NamedDetection) => isShallownessName(element.name)
+
   const shallowPaths = pipe(
     elements,
-    Array.filter((element) => isShallownessName(element.name)),
+    Array.filter(elementHasShallownessName),
     Array.filter(isDeletableShallowness),
-    Array.map((element) => element.detection.location.path),
+    Array.map(detectionPath),
     Array.dedupe
   )
 
-  const graphElements = Array.filter(elements, (element) => element.name === moduleGraphName)
+  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+  const graphElements = Array.filter(elements, isModuleGraphElement)
 
   const edges = Array.flatMap(graphElements, (element) => {
     const from = element.detection.location.path
+    const pairWithFrom = (to: string) => Tuple.make(from, to)
+
+    const isShallowTarget = (to: string) => {
+      const fromIsShallow = Array.contains(shallowPaths, from)
+      const toIsShallow = Array.contains(shallowPaths, to)
+
+      return fromIsShallow && toIsShallow
+    }
+
+    const shallowEdgesFrom = (data: ModuleGraphData) =>
+      pipe(data.importedPaths, Array.filter(isShallowTarget), Array.map(pairWithFrom))
 
     return pipe(
       moduleGraphDataOf(element),
-      Option.map((data) =>
-        pipe(
-          data.importedPaths,
-          Array.filter((to) => {
-            const fromIsShallow = Array.contains(shallowPaths, from)
-            const toIsShallow = Array.contains(shallowPaths, to)
-
-            return fromIsShallow && toIsShallow
-          }),
-          Array.map((to) => Tuple.make(from, to))
-        )
-      ),
+      Option.map(shallowEdgesFrom),
       Option.getOrElse(Array.empty)
     )
   })
 
+  const hasMinimumThinFiles = (component: ReadonlyArray<string>) =>
+    component.length >= minimumThinFiles
+
+  const hasInternalEdge = (component: ReadonlyArray<string>) =>
+    Array.some(edges, (edge) => {
+      const containsFrom = Array.contains(component, edge[0])
+      const containsTo = Array.contains(component, edge[1])
+
+      return containsFrom && containsTo
+    })
+
   const components = pipe(
     connectedComponents(shallowPaths, edges),
-    Array.filter((component) => component.length >= minimumThinFiles),
-    Array.filter((component) =>
-      Array.some(edges, (edge) => {
-        const containsFrom = Array.contains(component, edge[0])
-        const containsTo = Array.contains(component, edge[1])
-
-        return containsFrom && containsTo
-      })
-    )
+    Array.filter(hasMinimumThinFiles),
+    Array.filter(hasInternalEdge)
   )
 
   return Array.map(components, (component) => {
@@ -172,4 +179,4 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
   })
 }
 
-export const bounceCluster = Effect.fn("BounceCluster.derive")(deriveSignals(bounceAdvice))
+export const bounceCluster = deriveSignals(bounceAdvice)

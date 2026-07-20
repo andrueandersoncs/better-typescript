@@ -1,20 +1,21 @@
-import { Array, Effect, Function, Option, Schema, pipe } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
+import { Array, Function, Option, Schema, pipe } from "effect"
+import { Advice, type EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath, detectionAtPath } from "@better-typescript/core/engine/location"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import { packageExamples } from "../../defineCheck.js"
-import { ImperativeStateManagerInput, ImperativeStateSignals, MutationElementData } from "./data.js"
+import { ImperativeStateSignals, MutationElementData } from "./data.js"
 
 export const imperativeStateManagerExamples = packageExamples("imperative-state-manager")
 
 const isSharedStateMutation = (element: Detection) => {
   const data = Option.fromNullishOr(element.data)
+  const isSharedStateTarget = (value: MutationElementData) => value.target === "shared-state"
 
   const sharedState = pipe(
     data,
     Option.filter(Schema.is(MutationElementData)),
-    Option.map((value) => value.target === "shared-state"),
+    Option.map(isSharedStateTarget),
     Option.getOrElse(Function.constant(false))
   )
 
@@ -32,66 +33,59 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
   const mutationPaths = Array.map(signals.noMutation, (element) => element.location.path)
   const paths = Array.dedupe(mutationPaths)
 
-  return pipe(
-    paths,
-    Array.filter((path) => sharedMutationCountAt(path)(signals.noMutation) >= 8),
-    Array.map((path) => {
-      const location = makeAdviceLocation(path)
-      const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
-      const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
-      const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
-      const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
-      const arrayCount = countDetectionsAtPath(path)(signals.noMutableArrayMethods)
-      const declarationCount = countDetectionsAtPath(path)(signals.noMutableVariableDeclarations)
-      const sharedItem = makeEvidenceItem("no-mutation/shared-state", sharedCount)
-      const mutationEvidence = makeEvidenceItem("no-mutation", mutationCount)
-      const hashMapEvidence = makeEvidenceItem("prefer-hash-map", hashMapCount)
-      const hashSetEvidence = makeEvidenceItem("prefer-hash-set", hashSetCount)
-      const mutableArrayEvidence = makeEvidenceItem("no-mutable-array-methods", arrayCount)
+  const hasEnoughSharedMutations = (path: string) =>
+    sharedMutationCountAt(path)(signals.noMutation) >= 8
 
-      const mutableDeclarationEvidence = makeEvidenceItem(
-        "no-mutable-variable-declarations",
-        declarationCount
-      )
+  const adviceForPath = (path: string) => {
+    const location = makeAdviceLocation(path)
+    const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
+    const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
+    const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
+    const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
+    const arrayCount = countDetectionsAtPath(path)(signals.noMutableArrayMethods)
+    const declarationCount = countDetectionsAtPath(path)(signals.noMutableVariableDeclarations)
+    const sharedItem = makeEvidenceItem("no-mutation/shared-state", sharedCount)
+    const mutationEvidence = makeEvidenceItem("no-mutation", mutationCount)
+    const hashMapEvidence = makeEvidenceItem("prefer-hash-map", hashMapCount)
+    const hashSetEvidence = makeEvidenceItem("prefer-hash-set", hashSetCount)
+    const mutableArrayEvidence = makeEvidenceItem("no-mutable-array-methods", arrayCount)
 
-      const observations = Array.make(
-        mutationEvidence,
-        hashMapEvidence,
-        hashSetEvidence,
-        mutableArrayEvidence,
-        mutableDeclarationEvidence
-      )
+    const mutableDeclarationEvidence = makeEvidenceItem(
+      "no-mutable-variable-declarations",
+      declarationCount
+    )
 
-      const nonZero = Array.filter(observations, (item) => item.count > 0)
-      const evidence = Array.prepend(nonZero, sharedItem)
-      const examples = imperativeStateManagerExamples
+    const observations = Array.make(
+      mutationEvidence,
+      hashMapEvidence,
+      hashSetEvidence,
+      mutableArrayEvidence,
+      mutableDeclarationEvidence
+    )
 
-      return Advice.make({
-        location,
-        level: "file",
-        title: "imperative state manager",
-        remediation:
-          "This file manages long-lived state outside the runtime; element-level rewrites patch " +
-          "symptoms. Hold each cell in a Ref (SynchronizedRef when updates contend), fan out to " +
-          "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
-          "runtime once at the boundary.",
-        evidence,
-        examples
-      })
+    const hasPositiveCount = (item: EvidenceItem) => item.count > 0
+    const nonZero = Array.filter(observations, hasPositiveCount)
+    const evidence = Array.prepend(nonZero, sharedItem)
+    const examples = imperativeStateManagerExamples
+
+    return Advice.make({
+      location,
+      level: "file",
+      title: "imperative state manager",
+      remediation:
+        "This file manages long-lived state outside the runtime; element-level rewrites patch " +
+        "symptoms. Hold each cell in a Ref (SynchronizedRef when updates contend), fan out to " +
+        "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
+        "runtime once at the boundary.",
+      evidence,
+      examples
     })
-  )
+  }
+
+  return pipe(paths, Array.filter(hasEnoughSharedMutations), Array.map(adviceForPath))
 }
 
-export const imperativeStateManager = Effect.fn("ImperativeStateManager.derive")(function* (
-  input: ImperativeStateManagerInput
-): Effect.fn.Return<ReadonlyArray<Advice>> {
-  const signals = ImperativeStateSignals.make({
-    noMutation: input.noMutation,
-    preferHashMap: input.preferHashMap,
-    preferHashSet: input.preferHashSet,
-    noMutableArrayMethods: input.noMutableArrayMethods,
-    noMutableVariableDeclarations: input.noMutableVariableDeclarations
-  })
-
-  return imperativeStateAdviceFor(signals)
-})
+export const imperativeStateManager = Function.compose(
+  ImperativeStateSignals.make,
+  imperativeStateAdviceFor
+)

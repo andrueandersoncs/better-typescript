@@ -94,7 +94,7 @@ test("Effect-quality wiring reports every supported local rule", async () => {
 test("Effect-quality wiring derives every documented architecture advice kind", async () => {
   const signals = await runSignals()
   const actual = adviceKinds(signals)
-  const advice = await Effect.runPromise(effectQualityWiring.derive(signals))
+  const advice = effectQualityWiring.derive(signals)
   const expected: ReadonlyArray<EffectQualityAdviceKind> = [
     "config-refined-values",
     "retry-without-jitter",

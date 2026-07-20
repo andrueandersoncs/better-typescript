@@ -1,4 +1,4 @@
-import { Array, Effect, pipe } from "effect"
+import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -42,6 +42,4 @@ const denseFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<
     Array.map(makeDensityAdvice)
   )
 
-export const highSignalDensity = Effect.fn("HighSignalDensity.derive")(
-  deriveSignals(denseFileAdvice)
-)
+export const highSignalDensity = deriveSignals(denseFileAdvice)

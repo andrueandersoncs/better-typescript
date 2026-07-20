@@ -4,7 +4,7 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { EffectQualityIndex } from "./index.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
 import { makeRuleFinding } from "./makeFindings.js"
-import { inspectEffectFnCall } from "./reportedSchemaEffectFnShared.js"
+import { inspectEffectFnCall, type EffectFnNameInspection } from "./reportedSchemaEffectFnShared.js"
 
 const domainQualifiedNamePattern = /^[^.\s]+\.[^.\s]+/
 
@@ -17,6 +17,9 @@ const effectFnNameIsUnqualified = (name: Option.Option<string>) =>
     })
   )
 
+const inspectionNameIsUnqualified = (inspection: EffectFnNameInspection) =>
+  effectFnNameIsUnqualified(inspection.name)
+
 export const effectFnNameFindings = (
   context: CheckContext,
   _index: EffectQualityIndex,
@@ -25,7 +28,7 @@ export const effectFnNameFindings = (
   pipe(
     Option.liftPredicate(ts.isCallExpression)(node),
     Option.flatMap(inspectEffectFnCall(context.checker)),
-    Option.filter((inspection) => effectFnNameIsUnqualified(inspection.name)),
+    Option.filter(inspectionNameIsUnqualified),
     Option.map((inspection) => {
       const subject = pipe(inspection.name, Option.getOrElse(Function.constant("(anonymous)")))
       const evidence = inspection.node as ts.Node

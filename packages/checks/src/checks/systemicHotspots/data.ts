@@ -1,4 +1,4 @@
-import { Data, Schema } from "effect"
+import { Schema } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 
 const adviceArray = Schema.Array(Advice)
@@ -10,9 +10,3 @@ export const SystemicSignals = Schema.Struct({
 })
 
 export interface SystemicSignals extends Schema.Schema.Type<typeof SystemicSignals> {}
-
-// Complete subsystem-density advice pair because advisers consume one finished batch.
-export class SystemicHotspotsInput extends Data.Class<{
-  readonly hotSubsystem: ReadonlyArray<Advice>
-  readonly highSignalDensity: ReadonlyArray<Advice>
-}> {}

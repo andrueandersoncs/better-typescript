@@ -19,24 +19,26 @@ const mutableDeclarationMatches = (context: CheckContext) => {
   const sourceFile = context.sourceFile
   const match = makeDetection(context)
 
-  const matches = (declarationList: ts.VariableDeclarationList): ReadonlyArray<Detection> =>
-    pipe(
+  const matches = (declarationList: ts.VariableDeclarationList): ReadonlyArray<Detection> => {
+    const mutableKindDetection = (kind: MutableVariableDeclarationKind) =>
+      match({
+        node: declarationList,
+        message: `Avoid declaring mutable variables with ${kind}.`,
+        hint:
+          "Declare multiple const values to represent each state instead of mutating a single " +
+          "variable, and use immutable values that are not reassigned. When the value must " +
+          "genuinely evolve over time (a module-level counter, a cell shared across " +
+          "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
+      })
+
+    return pipe(
       declarationList.getFirstToken(sourceFile),
       Option.fromNullishOr,
       Option.flatMap(tokenMutableKind),
-      Option.map((kind) =>
-        match({
-          node: declarationList,
-          message: `Avoid declaring mutable variables with ${kind}.`,
-          hint:
-            "Declare multiple const values to represent each state instead of mutating a single " +
-            "variable, and use immutable values that are not reassigned. When the value must " +
-            "genuinely evolve over time (a module-level counter, a cell shared across " +
-            "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
-        })
-      ),
+      Option.map(mutableKindDetection),
       Option.toArray
     )
+  }
 
   return matches
 }

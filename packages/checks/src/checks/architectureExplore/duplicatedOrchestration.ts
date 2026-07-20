@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Option, Record, Result, Struct, pipe } from "effect"
+import { Array, Function, Option, Record, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -73,6 +73,4 @@ const duplicatedOrchestrationAdvice = (
   )
 }
 
-export const duplicatedOrchestration = Effect.fn("DuplicatedOrchestration.derive")(
-  deriveSignals(duplicatedOrchestrationAdvice)
-)
+export const duplicatedOrchestration = deriveSignals(duplicatedOrchestrationAdvice)

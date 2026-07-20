@@ -44,10 +44,10 @@ const adviceReportBlocks =
   (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
     const ordered = Array.sort(advice, adviceOrder)
 
-    // FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
-    return Effect.forEach(ordered, (item) =>
+    const resolveAdviceReportBlock = (item: Advice) =>
       pipe(resolve(item.examples), Effect.map(makeAdviceReportBlock(item)))
-    )
+
+    return Effect.forEach(ordered, resolveAdviceReportBlock)
   }
 
 // Local blocks keep the rule key kind because existing NDJSON consumers already key that way.
@@ -98,16 +98,14 @@ const reportBlocks =
   (advice: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<ReportBlock>, ExampleLoadError> => {
     const adviceBlocks = adviceReportBlocks(resolve)(advice)
 
+    const resolveSignalBlocks = (signal: Signal) =>
+      pipe(resolve(signal.examples), Effect.map(checkReportBlocks(signal.name)(signal.detections)))
+
     const signalBlocks = pipe(
       signals,
       Array.filter(Struct.get("reported")),
       Array.filter(hasDetections),
-      Effect.forEach((signal) =>
-        pipe(
-          resolve(signal.examples),
-          Effect.map(checkReportBlocks(signal.name)(signal.detections))
-        )
-      ),
+      Effect.forEach(resolveSignalBlocks),
       Effect.map(Array.flatten)
     )
 
@@ -117,25 +115,23 @@ const reportBlocks =
     )
   }
 
-export const batchReportBlocks =
-  <E>(config: WiringConfig<E>) =>
-  (resolve: ResolveRefactorExamples) =>
-    Effect.fn("Report.batchBlocks")(function* (wiringSignals: ReadonlyArray<WiringSignals>) {
-      const matchedEntries = pipe(
-        Array.zip(config, wiringSignals),
-        Array.filter(([, current]) => current.matched)
-      )
+export const batchReportBlocks = (config: WiringConfig) => (resolve: ResolveRefactorExamples) =>
+  Effect.fn("Report.batchBlocks")(function* (wiringSignals: ReadonlyArray<WiringSignals>) {
+    const matchedEntries = pipe(
+      Array.zip(config, wiringSignals),
+      Array.filter(([, current]) => current.matched)
+    )
 
-      const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
+    const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
 
-      const adviceGroups = yield* Effect.forEach(matchedEntries, ([entry, current]) =>
-        entry.wiring.derive(current.signals)
-      )
+    const adviceGroups = Array.map(matchedEntries, ([entry, current]) =>
+      entry.wiring.derive(current.signals)
+    )
 
-      const advice = Array.flatten(adviceGroups)
+    const advice = Array.flatten(adviceGroups)
 
-      return yield* reportBlocks(resolve)(signals)(advice)
-    })
+    return yield* reportBlocks(resolve)(signals)(advice)
+  })
 
 // Fallback suppression is required because fallback must not duplicate covered file-level advice.
 export const filterFallbackAdviceForUncoveredFiles =
@@ -145,8 +141,7 @@ export const filterFallbackAdviceForUncoveredFiles =
     const paths = Array.map(fileAdvice, fileAdvicePath)
     const coveredFiles = HashSet.fromIterable(paths)
 
-    // FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
-    return Array.filter(fallbackAdvice, (advice) =>
+    const isUncovered = (advice: Advice) =>
       pipe(
         Match.value(advice),
         Match.when(isFileLevelAdvice, (fileAdvice) => {
@@ -156,7 +151,8 @@ export const filterFallbackAdviceForUncoveredFiles =
         }),
         Match.orElse(Function.constTrue)
       )
-    )
+
+    return Array.filter(fallbackAdvice, isUncovered)
   }
 
 export const withFallbackAdvice = Effect.fn("Report.withFallbackAdvice")(function* <E, E2, R, R2>(
@@ -189,8 +185,7 @@ export const initialReportEvents =
 
 const emptyReportText = (event: EmptyReportEventData) => `No signals in ${event.rootPath}.`
 
-// FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
-// Kept separate from NDJSON because --pretty needs a human-readable projection of the same events.
+// Kept separate from NDJSON because --pretty needs a human-readable event projection.
 export const renderEventText = (event: ReportEvent) =>
   pipe(
     Match.value(event),

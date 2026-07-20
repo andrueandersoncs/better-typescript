@@ -12,17 +12,15 @@ const inflightDedupeMapFinding = makeRuleFinding("inflight-dedupe-map")
 
 const emptyTypes = Array.empty<ts.Type>()
 
+const identifierTextIsMap = (identifier: ts.Identifier) => identifier.text === "Map"
+
 const isMapIdentifier = (expression: ts.Expression) =>
-  pipe(
-    Option.liftPredicate(ts.isIdentifier)(expression),
-    Option.exists((identifier) => identifier.text === "Map")
-  )
+  pipe(Option.liftPredicate(ts.isIdentifier)(expression), Option.exists(identifierTextIsMap))
+
+const newExpressionIsMap = (expression: ts.NewExpression) => isMapIdentifier(expression.expression)
 
 const newMapExpression = (node: ts.Node) =>
-  pipe(
-    Option.liftPredicate(ts.isNewExpression)(node),
-    Option.filter((expression) => isMapIdentifier(expression.expression))
-  )
+  pipe(Option.liftPredicate(ts.isNewExpression)(node), Option.filter(newExpressionIsMap))
 
 const sourceLooksLikeHandrolledTtlCache = (sourceText: string) => {
   const hasExpires = /\bexpires(?:At|On|In)?\b/u.test(sourceText)
@@ -64,9 +62,10 @@ const typeMentionsConstructor =
       const symbolName = typeSymbolName(current)
       const matchesName = symbolName === name
       const unionParts = current.isUnionOrIntersection() ? current.types : emptyTypes
-      const unionMentions = Array.some(unionParts, (part) => visit(part, nextSeen))
+      const visitNext = (candidate: ts.Type) => visit(candidate, nextSeen)
+      const unionMentions = Array.some(unionParts, visitNext)
       const typeArguments = typeArgsOfTypeReference(checker)(current)
-      const argumentMentions = Array.some(typeArguments, (argument) => visit(argument, nextSeen))
+      const argumentMentions = Array.some(typeArguments, visitNext)
       const rendered = checker.typeToString(current)
       const renderedMentions = rendered.includes(`${name}<`)
       const nestedFlags = Array.make(unionMentions, argumentMentions, renderedMentions)

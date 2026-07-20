@@ -48,21 +48,18 @@ const mutableArrayMatches = (context: CheckContext) => {
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
     const methodCall = isReceiverArrayType(receiverType) ? methodName : Option.none()
 
-    return pipe(
-      methodCall,
-      Option.map((methodName: MutableArrayMethod) =>
-        match({
-          node: callExpression,
-          message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
-          hint:
-            "This is a sign that you're doing something fundamentally procedural when you should " +
-            "be taking a more functional approach. Use Effect's Array module, such as " +
-            "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
-            "instead of manipulating an array in place."
-        })
-      ),
-      Option.toArray
-    )
+    const mutableArrayDetection = (methodName: MutableArrayMethod) =>
+      match({
+        node: callExpression,
+        message: `Avoid mutating arrays with Array.prototype.${methodName}().`,
+        hint:
+          "This is a sign that you're doing something fundamentally procedural when you should " +
+          "be taking a more functional approach. Use Effect's Array module, such as " +
+          "Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax " +
+          "instead of manipulating an array in place."
+      })
+
+    return pipe(methodCall, Option.map(mutableArrayDetection), Option.toArray)
   }
 
   return matches

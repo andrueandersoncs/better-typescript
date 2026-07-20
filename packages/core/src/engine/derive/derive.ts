@@ -1,26 +1,12 @@
-import {
-  Array,
-  Effect,
-  Function,
-  HashMap,
-  HashSet,
-  Option,
-  Order,
-  Record,
-  Struct,
-  pipe
-} from "effect"
+import { Array, Function, HashMap, HashSet, Option, Order, Record, Struct, pipe } from "effect"
 import { formatRefactorExample } from "../example/example.js"
 import type { RefactorExample } from "../example/data.js"
 import { Location } from "../location/data.js"
 import type { Detection } from "../location/data.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
 
-// FIXME: this Effect.sync is redundant, we don't need to wrap this in an Effect
-export const deriveSignals =
-  <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
-  (elements: ReadonlyArray<A>): Effect.Effect<ReadonlyArray<B>> =>
-    Effect.sync(() => derive(elements))
+export const deriveSignals = <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
+  derive
 
 // The name pairs with its detection here because derive joins detections by check name.
 export const makeNamedDetection = (name: string) => (detectionValue: Detection) =>

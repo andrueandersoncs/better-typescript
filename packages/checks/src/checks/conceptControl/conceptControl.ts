@@ -197,23 +197,25 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const candidateKey = referenceKey(candidate.symbol)
         const allowedOwners = pipe(callers, HashSet.add(candidateKey))
         const hasAtMostOneExternalOwner = HashSet.size(callers) <= 1
-
-        const ownersStayInsideCluster = HashSet.every(owners, (owner) =>
-          HashSet.has(allowedOwners, owner)
-        )
-
+        const ownerInAllowed = (owner: ReferenceKey<ts.Symbol>) => HashSet.has(allowedOwners, owner)
+        const ownersStayInsideCluster = HashSet.every(owners, ownerInAllowed)
         const clusterConditions = Array.make(hasAtMostOneExternalOwner, ownersStayInsideCluster)
 
         return Array.every(clusterConditions, Boolean)
       })
     }
 
+    const shapeGroup = (shape: string) => HashMap.get(index.shapeGroups, shape)
+
+    const sortByEntryOrder = (group: ReadonlyArray<DataStructureEntry>) =>
+      Array.sort(group, entryOrder)
+
     const duplicateTarget = (entry: DataStructureEntry) =>
       pipe(
         entry.shape,
-        Option.flatMap((shape) => HashMap.get(index.shapeGroups, shape)),
+        Option.flatMap(shapeGroup),
         Option.filter((group) => group.length > 1),
-        Option.map((group) => Array.sort(group, entryOrder)),
+        Option.map(sortByEntryOrder),
         Option.flatMap(Array.head),
         Option.filter((canonical) => canonical.symbol !== entry.symbol)
       )
@@ -229,11 +231,12 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.map(Struct.get("sourceFile"))
       )
 
+      const sourceFileForName = (fileName: string) =>
+        pipe(context.program.getSourceFile(fileName), Option.fromNullishOr)
+
       const declarationOwner = pipe(
         referenceKeySourceFileName(owner),
-        Option.flatMap((fileName) =>
-          pipe(context.program.getSourceFile(fileName), Option.fromNullishOr)
-        )
+        Option.flatMap(sourceFileForName)
       )
 
       return pipe(
@@ -258,22 +261,26 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         (range) => range.kind === ts.SyntaxKind.SingleLineCommentTrivia
       )
 
-      const prose = pipe(
-        lineRanges,
-        Array.map((range) => sourceText.slice(range.pos + 2, range.end).trim()),
-        Array.join(" ")
-      )
+      const commentProse = (range: ts.CommentRange) =>
+        sourceText.slice(range.pos + 2, range.end).trim()
+
+      const prose = pipe(lineRanges, Array.map(commentProse), Array.join(" "))
 
       return prose.toLowerCase().includes("because")
     }
 
-    const redundantPairs = Array.filterMap(entries, (entry) =>
-      pipe(
+    const pairWithRedundantTarget = (entry: DataStructureEntry) => {
+      const pairWithEntry = (target: DataStructureEntry) => Tuple.make(entry, target)
+
+      return pipe(
         redundantTarget(entry),
-        Option.map((target) => Tuple.make(entry, target)),
+        Option.map(pairWithEntry),
         Result.fromOption(Function.constVoid)
       )
-    )
+    }
+
+    const redundantPairs = Array.filterMap(entries, pairWithRedundantTarget)
+    const entrySymbolKey = (entry: DataStructureEntry) => referenceKey(entry.symbol)
 
     const redundantSymbols = pipe(
       redundantPairs,
@@ -283,14 +290,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
     const closedPairs = Array.filterMap(entries, (entry) => {
       const entryKey = referenceKey(entry.symbol)
+      const pairWithEntry = (owner: FunctionEntry) => Tuple.make(entry, owner)
 
       return HashSet.has(redundantSymbols, entryKey)
         ? Result.failVoid
-        : pipe(
-            closedOwner(entry),
-            Option.map((owner) => Tuple.make(entry, owner)),
-            Result.fromOption(Function.constVoid)
-          )
+        : pipe(closedOwner(entry), Option.map(pairWithEntry), Result.fromOption(Function.constVoid))
     })
 
     const closedSymbols = pipe(
@@ -305,12 +309,13 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const isRedundant = HashSet.has(redundantSymbols, entryKey)
       const exclusions = Array.make(excluded, isRedundant)
       const isExcluded = Array.some(exclusions, Boolean)
+      const pairWithEntry = (target: DataStructureEntry) => Tuple.make(entry, target)
 
       return isExcluded
         ? Result.failVoid
         : pipe(
             duplicateTarget(entry),
-            Option.map((target) => Tuple.make(entry, target)),
+            Option.map(pairWithEntry),
             Result.fromOption(Function.constVoid)
           )
     })
@@ -385,16 +390,14 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const modelFunctions = functionOwners(entry)
       const stem = functionDerivedStem(entry.name)
 
-      const matchingOwner = pipe(
-        stem,
-        Option.flatMap((value) =>
-          Array.findFirst(
-            modelFunctions,
-            (owner) => owner.name.toLowerCase() === value.toLowerCase()
-          )
-        )
-      )
+      const ownerMatchingStem = (value: string) => {
+        const nameMatchesStem = (owner: FunctionEntry) =>
+          owner.name.toLowerCase() === value.toLowerCase()
 
+        return Array.findFirst(modelFunctions, nameMatchesStem)
+      }
+
+      const matchingOwner = pipe(stem, Option.flatMap(ownerMatchingStem))
       const isBoundary = HashSet.has(roles, "boundary")
       const isProtocol = HashSet.has(roles, "protocol")
       const roleExemptFlags = Array.make(isBoundary, isProtocol)
@@ -413,9 +416,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
           const ownerKey = referenceKey(owner.symbol)
           const allowedOwners = pipe(callers, HashSet.add(ownerKey))
 
-          const ownersStayInsideCluster = HashSet.every(owners, (candidate) =>
+          const ownerInAllowed = (candidate: ReferenceKey<ts.Symbol>) =>
             HashSet.has(allowedOwners, candidate)
-          )
+
+          const ownersStayInsideCluster = HashSet.every(owners, ownerInAllowed)
 
           if (!ownersStayInsideCluster) {
             return Option.none()
@@ -539,7 +543,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
         return Array.some(occupationFlags, Boolean)
       }),
-      Array.map((entry) => referenceKey(entry.symbol)),
+      Array.map(entrySymbolKey),
       HashSet.fromIterable
     )
 

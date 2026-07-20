@@ -1,4 +1,4 @@
-import { Array, Effect } from "effect"
+import { Array } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -42,6 +42,4 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
   })
 }
 
-export const sideEffectLaundering = Effect.fn("SideEffectLaundering.derive")(
-  deriveSignals(collidingFileAdvice)
-)
+export const sideEffectLaundering = deriveSignals(collidingFileAdvice)

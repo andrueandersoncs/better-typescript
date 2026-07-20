@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { isProjectFile, unwrapExpression } from "./support/tsNode.js"
+import { binaryAssignmentTarget, isProjectFile, unwrapExpression } from "./support/tsNode.js"
 import { isUnseenType, type SeenTypes } from "./support/tsType.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -27,10 +27,6 @@ const hint =
 export type MutationNode =
   ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression | ts.DeleteExpression
 
-const hasAssignmentOperator = (expression: ts.BinaryExpression) =>
-  expression.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
-  expression.operatorToken.kind <= ts.SyntaxKind.LastAssignment
-
 const incrementDecrementKinds = HashSet.make(
   ts.SyntaxKind.PlusPlusToken,
   ts.SyntaxKind.MinusMinusToken
@@ -38,9 +34,6 @@ const incrementDecrementKinds = HashSet.make(
 
 const mutatesOperand = (unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression) =>
   HashSet.has(incrementDecrementKinds, unary.operator)
-
-const binaryAssignmentTarget = (expression: ts.BinaryExpression) =>
-  pipe(Option.liftPredicate(hasAssignmentOperator)(expression), Option.map(Struct.get("left")))
 
 const unaryMutationTarget = (
   unary: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression

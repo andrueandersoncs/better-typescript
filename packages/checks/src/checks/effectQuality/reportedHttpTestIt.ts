@@ -64,13 +64,14 @@ const propertyItCall =
     )
 
 // it.each(...)("name", cb) is still plain because the effect form is it.effect.
+const callExpressionPropertyAccess = (call: ts.CallExpression) =>
+  Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
+
 const eachItCall =
   (isVitestIt: (expression: ts.Expression) => boolean) => (callee: ts.Expression) =>
     pipe(
       Option.liftPredicate(ts.isCallExpression)(callee),
-      Option.flatMap((call) =>
-        Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression)
-      ),
+      Option.flatMap(callExpressionPropertyAccess),
       Option.exists((access) => {
         const root = unwrapTransparentExpression(access.expression)
         const rootNamedIt = identifierIsIt(root)

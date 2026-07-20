@@ -9,11 +9,11 @@ import { makeDetection } from "@better-typescript/core/engine/check"
 const errorTypeName = (typeName: ts.EntityName) =>
   ts.isIdentifier(typeName) ? typeName : typeName.right
 
+const isErrorNamedTypeReference = (typeReference: ts.TypeReferenceNode) =>
+  errorTypeName(typeReference.typeName).text === "Error"
+
 const isErrorTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
-  pipe(
-    Option.liftPredicate(ts.isTypeReferenceNode)(node),
-    Option.exists((typeReference) => errorTypeName(typeReference.typeName).text === "Error")
-  )
+  pipe(Option.liftPredicate(ts.isTypeReferenceNode)(node), Option.exists(isErrorNamedTypeReference))
 
 const message = "Avoid the built-in Error type."
 
@@ -30,20 +30,25 @@ const errorTypeMatches = (context: CheckContext) => {
     Option.fromNullishOr
   )
 
+  const isSameSymbol = (left: ts.Symbol) => (right: ts.Symbol) => left === right
+
+  const isGlobalErrorSymbol = (symbol: ts.Symbol) =>
+    pipe(globalErrorSymbol, Option.exists(isSameSymbol(symbol)))
+
   const matches = (typeReference: ts.TypeReferenceNode): ReadonlyArray<Detection> => {
     const typeName = errorTypeName(typeReference.typeName)
+
+    const errorTypeDetection = match({
+      node: typeName,
+      message,
+      hint
+    })
 
     return pipe(
       checker.getSymbolAtLocation(typeName),
       Option.fromNullishOr,
-      Option.filter((symbol) => Option.exists(globalErrorSymbol, (global) => global === symbol)),
-      Option.map(() =>
-        match({
-          node: typeName,
-          message,
-          hint
-        })
-      ),
+      Option.filter(isGlobalErrorSymbol),
+      Option.as(errorTypeDetection),
       Option.toArray
     )
   }

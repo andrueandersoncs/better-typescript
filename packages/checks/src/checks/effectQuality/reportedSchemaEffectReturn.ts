@@ -2,7 +2,7 @@ import { Array, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { isEffectInterfaceSymbol } from "../support/tsSignature.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
-import { inspectEffectFnCall } from "./reportedSchemaEffectFnShared.js"
+import { inspectEffectFnCall, type EffectFnNameInspection } from "./reportedSchemaEffectFnShared.js"
 
 const effectSymbolOfType = flow((type: ts.Type) => type.getSymbol(), Option.fromNullishOr)
 
@@ -45,11 +45,10 @@ export const functionLikeReturnsEffect =
       Option.exists(typeIsEffect)
     )
 
+const inspectionHasName = (inspection: EffectFnNameInspection) => Option.isSome(inspection.name)
+
 const expressionIsNamedEffectFn = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
-  pipe(
-    inspectEffectFnCall(checker)(expression),
-    Option.exists((inspection) => Option.isSome(inspection.name))
-  )
+  pipe(inspectEffectFnCall(checker)(expression), Option.exists(inspectionHasName))
 
 export const initializerIsNamedEffectFn =
   (checker: ts.TypeChecker) => (expression: ts.Expression) =>

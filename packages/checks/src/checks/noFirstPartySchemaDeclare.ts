@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
-import { isFirstPartySymbol } from "./support/tsNode.js"
+import { isFirstPartySymbol, symbolDeclarations } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
@@ -22,11 +22,14 @@ const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
 const typePredicateAssertedType = (predicate: ts.TypePredicate) =>
   Option.fromNullishOr(predicate.type)
 
-const typeSymbol = (type: ts.Type) =>
-  pipe(
+const typeSymbol = (type: ts.Type) => {
+  const symbolFromType = (candidate: ts.Type) => pipe(candidate.getSymbol(), Option.fromNullishOr)
+
+  return pipe(
     Option.fromNullishOr(type.aliasSymbol),
-    Option.orElse(() => pipe(type, (candidate) => candidate.getSymbol(), Option.fromNullishOr))
+    Option.orElse(() => symbolFromType(type))
   )
+}
 
 const opaquePrimitiveKinds = HashSet.make(
   ts.SyntaxKind.StringKeyword,
@@ -36,20 +39,21 @@ const opaquePrimitiveKinds = HashSet.make(
   ts.SyntaxKind.SymbolKeyword
 )
 
+const isOpaquePrimitiveType = (type: ts.TypeNode) => HashSet.has(opaquePrimitiveKinds, type.kind)
+
+const intersectionIsOpaqueAlias = (intersection: ts.IntersectionTypeNode) => {
+  const hasPrimitiveBase = Array.some(intersection.types, isOpaquePrimitiveType)
+  const hasOpaqueMarker = intersection.types.length > 1
+
+  return hasPrimitiveBase && hasOpaqueMarker
+}
+
 const isOpaqueAliasDeclaration = (declaration: ts.Declaration) =>
   pipe(
     Option.liftPredicate(ts.isTypeAliasDeclaration)(declaration),
     Option.map(Struct.get("type")),
     Option.filter(ts.isIntersectionTypeNode),
-    Option.exists((intersection) => {
-      const hasPrimitiveBase = Array.some(intersection.types, (type) =>
-        HashSet.has(opaquePrimitiveKinds, type.kind)
-      )
-
-      const hasOpaqueMarker = intersection.types.length > 1
-
-      return hasPrimitiveBase && hasOpaqueMarker
-    })
+    Option.exists(intersectionIsOpaqueAlias)
   )
 
 const isStructuralOwnedDeclaration = (declaration: ts.Declaration) => {
@@ -64,11 +68,11 @@ const isStructuralOwnedDeclaration = (declaration: ts.Declaration) => {
   return isNominalDeclaration || isStructuralAlias
 }
 
-const symbolDeclarations = (symbol: ts.Symbol): ReadonlyArray<ts.Declaration> =>
-  symbol.getDeclarations() ?? Array.empty()
+const isStructuralOwnedSymbol = (symbol: ts.Symbol) => {
+  const declarations = symbolDeclarations(symbol) ?? Array.empty()
 
-const isStructuralOwnedSymbol = (symbol: ts.Symbol) =>
-  pipe(symbol, symbolDeclarations, Array.some(isStructuralOwnedDeclaration))
+  return Array.some(declarations, isStructuralOwnedDeclaration)
+}
 
 const isFirstPartyStructuralModel = (type: ts.Type) => {
   const symbol = typeSymbol(type)
@@ -101,15 +105,12 @@ const schemaDeclareMatches = (context: CheckContext) => {
     const type = checker.getTypeAtLocation(predicate)
     const signatures = type.getCallSignatures()
 
+    const typePredicateOptionFromSignature = (signature: ts.Signature) =>
+      pipe(checker.getTypePredicateOfSignature(signature), Option.fromNullishOr)
+
     return pipe(
       Option.fromNullishOr(signatures[0]),
-      Option.flatMap((signature) =>
-        pipe(
-          signature,
-          (candidate) => checker.getTypePredicateOfSignature(candidate),
-          Option.fromNullishOr
-        )
-      ),
+      Option.flatMap(typePredicateOptionFromSignature),
       Option.flatMap(typePredicateAssertedType)
     )
   }

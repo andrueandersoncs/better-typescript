@@ -9,7 +9,7 @@ import { dispatchAndCollectionChecks } from "./dispatchAndCollectionChecks.js"
 import { defaultDerive } from "./defaultDerive.js"
 import { semanticNamingChecks } from "./semanticNamingChecks.js"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
-import type { NamedCheck, WiringConfig } from "@better-typescript/core/engine/wiring/data"
+import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
 
 // Category concatenation order is pinned because report block order is a public contract.
 const defaultChecks: ReadonlyArray<NamedCheck> = pipe(
@@ -32,4 +32,4 @@ const defaultConfigEntries = Array.of({
   wiring: defaultWiring
 })
 
-export const defaultConfig: WiringConfig = defineConfig(defaultConfigEntries)
+export const defaultConfig = defineConfig(defaultConfigEntries)

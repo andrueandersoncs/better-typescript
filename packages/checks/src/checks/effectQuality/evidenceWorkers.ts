@@ -167,11 +167,12 @@ export const keyedStreamWork =
       return emptyAdviceFindings
     }
 
+    const callIsFiberMapApi = (call: ts.CallExpression) =>
+      importedEffectApiAt(context.checker, call.expression, "FiberMap", fiberMapNames)
+
     const usesFiberMap = pipe(
       Option.liftPredicate(ts.isCallExpression)(node),
-      Option.exists((call) =>
-        importedEffectApiAt(context.checker, call.expression, "FiberMap", fiberMapNames)
-      )
+      Option.exists(callIsFiberMapApi)
     )
 
     // FiberMap is the preferred helper because its legitimate use should not be advised.

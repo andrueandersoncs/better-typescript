@@ -1,4 +1,4 @@
-import { Array, Effect, pipe } from "effect"
+import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -15,23 +15,19 @@ const minimumConstructions = 2
 const constructionNames = Array.make(externalDependencyConstructionName, moduleScopeEffectsName)
 
 const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const constructions = Array.filter(elements, (element) =>
-    Array.contains(constructionNames, element.name)
-  )
+  const isConstructionName = (name: string) => Array.contains(constructionNames, name)
+  const isConstructionElement = (element: NamedDetection) => isConstructionName(element.name)
+  const detectionPath = (element: NamedDetection) => element.detection.location.path
+  const constructions = Array.filter(elements, isConstructionElement)
+  const paths = pipe(constructions, Array.map(detectionPath), Array.dedupe)
 
-  const paths = pipe(
-    constructions,
-    Array.map((element) => element.detection.location.path),
-    Array.dedupe
-  )
+  const hasMinimumConstructions = (filePath: string) =>
+    Array.countBy(constructions, (element) => element.detection.location.path === filePath) >=
+    minimumConstructions
 
   return pipe(
     paths,
-    Array.filter(
-      (filePath) =>
-        Array.countBy(constructions, (element) => element.detection.location.path === filePath) >=
-        minimumConstructions
-    ),
+    Array.filter(hasMinimumConstructions),
     Array.map((filePath) => {
       const atPath = Array.filter(
         constructions,
@@ -73,6 +69,4 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
   )
 }
 
-export const hardToTestHotspot = Effect.fn("HardToTestHotspot.derive")(
-  deriveSignals(hardToTestAdvice)
-)
+export const hardToTestHotspot = deriveSignals(hardToTestAdvice)

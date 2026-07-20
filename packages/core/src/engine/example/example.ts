@@ -8,8 +8,10 @@ import {
   Match,
   Option,
   Order,
+  Struct,
   SynchronizedRef,
   Tuple,
+  flow,
   pipe
 } from "effect"
 import {
@@ -114,27 +116,27 @@ const readExampleTree: (
 )(function* (treeRoot: string) {
   const absoluteFiles = yield* collectTypeScriptFiles(treeRoot)
 
-  const snippets = yield* Effect.forEach(absoluteFiles, (absoluteFile) =>
-    Effect.gen(function* () {
-      const code = yield* Effect.try({
-        try: () => {
-          const text = fs.readFileSync(absoluteFile, "utf8")
+  const readSnippet = Effect.fn("Example.readSnippet")(function* (absoluteFile: string) {
+    const code = yield* Effect.try({
+      try: () => {
+        const text = fs.readFileSync(absoluteFile, "utf8")
 
-          return text.endsWith("\n") ? text.slice(0, -1) : text
-        },
-        catch: () =>
-          new ExampleLoadError({
-            message: `Unable to read example file: ${absoluteFile}`
-          })
-      })
-
-      const relative = path.relative(treeRoot, absoluteFile)
-      const segments = relative.split(path.sep)
-      const filePath = Array.join(segments, "/")
-
-      return makeExampleSnippet(filePath, code)
+        return text.endsWith("\n") ? text.slice(0, -1) : text
+      },
+      catch: () =>
+        new ExampleLoadError({
+          message: `Unable to read example file: ${absoluteFile}`
+        })
     })
-  )
+
+    const relative = path.relative(treeRoot, absoluteFile)
+    const segments = relative.split(path.sep)
+    const filePath = Array.join(segments, "/")
+
+    return makeExampleSnippet(filePath, code)
+  })
+
+  const snippets = yield* Effect.forEach(absoluteFiles, readSnippet)
 
   return yield* pipe(
     snippets,
@@ -181,17 +183,17 @@ const loadRefactorExamplesAt: (
 
   const pairNames = Array.sort(names, byPairName)
 
-  const examples = yield* Effect.forEach(pairNames, (pairName) =>
-    Effect.gen(function* () {
-      const pairRoot = path.join(exampleRoot, pairName)
-      const badRoot = path.join(pairRoot, "bad")
-      const goodRoot = path.join(pairRoot, "good")
-      const bad = yield* readExampleTree(badRoot)
-      const good = yield* readExampleTree(goodRoot)
+  const loadPairExample = Effect.fn("Example.loadPairExample")(function* (pairName: string) {
+    const pairRoot = path.join(exampleRoot, pairName)
+    const badRoot = path.join(pairRoot, "bad")
+    const goodRoot = path.join(pairRoot, "good")
+    const bad = yield* readExampleTree(badRoot)
+    const good = yield* readExampleTree(goodRoot)
 
-      return RefactorExample.make({ bad, good })
-    })
-  )
+    return RefactorExample.make({ bad, good })
+  })
+
+  const examples = yield* Effect.forEach(pairNames, loadPairExample)
 
   return yield* pipe(
     examples,
@@ -253,11 +255,21 @@ export const makeRefactorExampleResolver = Effect.fn("Example.makeRefactorExampl
       )
     })
 
+    const succeedInlineExamples = Effect.fn("Example.succeedInlineExamples")(
+      flow(Struct.get<InlineRefactorExamples, "examples">("examples"), Effect.succeed)
+    )
+
+    const collectDirectorySource = Effect.fn("Example.collectDirectorySource")(function* (
+      directory: DirectoryRefactorExamples
+    ) {
+      return yield* collectDirectoryExamples(directory.root)
+    })
+
     const resolve = Effect.fn("Example.resolve")(function* (source: RefactorExampleSource) {
       return yield* pipe(
         Match.value(source),
-        Match.tag("inline", (inline) => Effect.succeed(inline.examples)),
-        Match.tag("directory", (directory) => collectDirectoryExamples(directory.root)),
+        Match.tag("inline", succeedInlineExamples),
+        Match.tag("directory", collectDirectorySource),
         Match.exhaustive
       )
     })

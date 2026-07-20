@@ -40,14 +40,17 @@ export const BodyStatusWalk = Schema.Struct({
 
 export interface BodyStatusWalk extends Schema.Schema.Type<typeof BodyStatusWalk> {}
 
+const propertyAccessIsResponseBody = (access: ts.PropertyAccessExpression) =>
+  Array.contains(responseBodyNames, access.name.text)
+
+const propertyAccessIsHttpClientRequest = (access: ts.PropertyAccessExpression) =>
+  Array.contains(httpClientRequestNames, access.name.text)
+
 export const callIsResponseBodyRead = (call: ts.CallExpression) => {
   const callee = unwrapTransparentExpression(call.expression)
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(callee)
 
-  return pipe(
-    propertyAccess,
-    Option.exists((access) => Array.contains(responseBodyNames, access.name.text))
-  )
+  return pipe(propertyAccess, Option.exists(propertyAccessIsResponseBody))
 }
 
 export const callIsHttpClientRequest = (checker: ts.TypeChecker) => (call: ts.CallExpression) => {
@@ -56,12 +59,7 @@ export const callIsHttpClientRequest = (checker: ts.TypeChecker) => (call: ts.Ca
   const imported = importedLookup(call.expression)
   const callee = unwrapTransparentExpression(call.expression)
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(callee)
-
-  const propertyNamed = pipe(
-    propertyAccess,
-    Option.exists((access) => Array.contains(httpClientRequestNames, access.name.text))
-  )
-
+  const propertyNamed = pipe(propertyAccess, Option.exists(propertyAccessIsHttpClientRequest))
   const flags = Array.make(imported, propertyNamed)
 
   return Array.some(flags, Boolean)
@@ -91,9 +89,12 @@ export const nodeClassifiesStatus =
       checker
     )
 
+    const callExpressionIsStatusClassify = (call: ts.CallExpression) =>
+      isStatusClassify(call.expression)
+
     return pipe(
       Match.value(node),
-      Match.when(ts.isCallExpression, (call) => isStatusClassify(call.expression)),
+      Match.when(ts.isCallExpression, callExpressionIsStatusClassify),
       Match.when(ts.isPropertyAccessExpression, propertyAccessIsStatus),
       Match.when(ts.isBinaryExpression, binaryAccessesStatus),
       Match.when(ts.isIfStatement, ifStatementAccessesStatus),

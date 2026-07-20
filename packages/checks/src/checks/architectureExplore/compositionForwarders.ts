@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe, Result } from "effect"
+import { Array, Function, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
 
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
@@ -7,9 +7,14 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 
 import { CompositionForwarderData } from "./data.js"
-import { ExportReferenceIndex, isTestSourceFile, usageFor } from "./programSymbols.js"
+import {
+  ExportReferenceIndex,
+  type ExportedFunctionEntry,
+  isTestSourceFile,
+  usageFor
+} from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex } from "./architectureEvidence.js"
-import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { isExpressionBody, unwrapTransparentExpression } from "../support/tsNode.js"
 import { makeSilentCheck } from "../../defineCheck.js"
 import { compositionForwardersName } from "./names.js"
 
@@ -24,37 +29,41 @@ const emptyParameterNames: ReadonlyArray<string> = Array.empty()
 const expressionFromConciseBody = (body: ts.ConciseBody) => {
   const expressionBody = pipe(
     Option.some(body),
-    Option.filter((candidate): candidate is ts.Expression => !ts.isBlock(candidate)),
+    Option.filter(isExpressionBody),
     Option.map(unwrapTransparentExpression)
   )
+
+  const singleStatementBlock = (block: ts.Block) => block.statements.length === 1
 
   const blockBody = pipe(
     Option.some(body),
     Option.filter(ts.isBlock),
-    Option.filter((block) => block.statements.length === 1),
-    Option.flatMap((block) => Array.head(block.statements)),
+    Option.filter(singleStatementBlock),
+    Option.flatMap(Function.flow(Struct.get("statements"), Array.head)),
     Option.filter(ts.isReturnStatement),
-    Option.flatMap((statement) => Option.fromNullishOr(statement.expression)),
+    Option.flatMap(Function.flow(Struct.get("expression"), Option.fromNullishOr)),
     Option.map(unwrapTransparentExpression)
   )
 
   return pipe(expressionBody, Option.orElse(Function.constant(blockBody)))
 }
 
+const nestedSingleParamArrow = (arrow: ts.ArrowFunction) => arrow.parameters.length === 1
+
 const finalCompositionCall = (arrow: ts.ArrowFunction): Option.Option<ts.CallExpression> =>
   pipe(
     expressionFromConciseBody(arrow.body),
     Option.flatMap((expression) => {
-      const nestedSingleParamArrow = pipe(
+      const nestedCall = pipe(
         Option.some(expression),
         Option.filter(ts.isArrowFunction),
-        Option.filter((nested) => nested.parameters.length === 1),
+        Option.filter(nestedSingleParamArrow),
         Option.flatMap(finalCompositionCall)
       )
 
       const call = Option.liftPredicate(ts.isCallExpression)(expression)
 
-      return pipe(nestedSingleParamArrow, Option.orElse(Function.constant(call)))
+      return pipe(nestedCall, Option.orElse(Function.constant(call)))
     })
   )
 
@@ -82,6 +91,9 @@ const isAllowedCompositionExpression = (expression: ts.Expression): boolean =>
   )
 
 // Forwarder stepCount counts only CallExpressions because fingerprints also count pipe/flow stages.
+const countPropertyAccessCalls = (access: ts.PropertyAccessExpression) =>
+  callExpressionCount(access.expression)
+
 const callExpressionCount = (expression: ts.Expression): number =>
   pipe(
     expression,
@@ -98,19 +110,20 @@ const callExpressionCount = (expression: ts.Expression): number =>
 
       return 1 + nestedInCallee + nestedInArguments
     }),
-    Match.when(ts.isPropertyAccessExpression, (access) => callExpressionCount(access.expression)),
+    Match.when(ts.isPropertyAccessExpression, countPropertyAccessCalls),
     Match.orElse(Function.constant(0))
   )
 
+const parameterNameText = (parameter: ts.ParameterDeclaration) =>
+  ts.isIdentifier(parameter.name) ? Result.succeed(parameter.name.text) : Result.failVoid
+
 const compositionParameterNames = (arrow: ts.ArrowFunction): ReadonlyArray<string> => {
-  const currentNames = Array.filterMap(arrow.parameters, (parameter) =>
-    ts.isIdentifier(parameter.name) ? Result.succeed(parameter.name.text) : Result.failVoid
-  )
+  const currentNames = Array.filterMap(arrow.parameters, parameterNameText)
 
   const nestedNames = pipe(
     expressionFromConciseBody(arrow.body),
     Option.filter(ts.isArrowFunction),
-    Option.filter((nested) => nested.parameters.length === 1),
+    Option.filter(nestedSingleParamArrow),
     Option.map(compositionParameterNames),
     Option.getOrElse(Function.constant(emptyParameterNames))
   )
@@ -124,10 +137,16 @@ const referencesNonParameterOperation =
     const referencesOperation = referencesNonParameterOperation(parameterNames)
     const unwrapped = unwrapTransparentExpression(expression)
 
+    const isNonParameterIdentifier = (identifier: ts.Identifier) =>
+      !Array.contains(parameterNames, identifier.text)
+
+    const countPropertyAccessOperations = (access: ts.PropertyAccessExpression) =>
+      referencesOperation(access.expression)
+
     return pipe(
       Match.value(unwrapped),
-      Match.when(ts.isIdentifier, (identifier) => !Array.contains(parameterNames, identifier.text)),
-      Match.when(ts.isPropertyAccessExpression, (access) => referencesOperation(access.expression)),
+      Match.when(ts.isIdentifier, isNonParameterIdentifier),
+      Match.when(ts.isPropertyAccessExpression, countPropertyAccessOperations),
       Match.when(ts.isCallExpression, (call) => {
         const calleeReferencesOperation = referencesOperation(call.expression)
         const argumentReferencesOperation = Array.some(call.arguments, referencesOperation)
@@ -158,41 +177,41 @@ const compositionForwarderElements =
 
     const element = makeDetection(context)
 
-    return pipe(
-      index.entries,
-      Array.filter((entry) => entry.nameNode.getSourceFile() === context.sourceFile),
-      Array.filterMap((entry) =>
-        pipe(
-          Option.liftPredicate(ts.isArrowFunction)(entry.functionNode),
-          Option.filter(isCompositionForwarder),
-          Option.map((arrow) => {
-            const usage = usageFor(index)(entry)
+    const entryInSourceFile = (entry: ExportedFunctionEntry) =>
+      entry.nameNode.getSourceFile() === context.sourceFile
 
-            const stepCount = pipe(
-              finalCompositionCall(arrow),
-              Option.map(callExpressionCount),
-              Option.getOrElse(Function.constant(0))
-            )
+    const detectionForEntry = (entry: ExportedFunctionEntry) =>
+      pipe(
+        Option.liftPredicate(ts.isArrowFunction)(entry.functionNode),
+        Option.filter(isCompositionForwarder),
+        Option.map((arrow) => {
+          const usage = usageFor(index)(entry)
 
-            const data = CompositionForwarderData.make({
-              exportName: entry.nameNode.text,
-              stepCount,
-              callerCount: usage.productionCallCount,
-              callerPaths: usage.productionPaths,
-              hasNonCallReference: usage.hasProductionNonCallReference
-            })
+          const stepCount = pipe(
+            finalCompositionCall(arrow),
+            Option.map(callExpressionCount),
+            Option.getOrElse(Function.constant(0))
+          )
 
-            return element({
-              node: entry.nameNode,
-              message,
-              hint,
-              data
-            })
-          }),
-          Result.fromOption(Function.constVoid)
-        )
+          const data = CompositionForwarderData.make({
+            exportName: entry.nameNode.text,
+            stepCount,
+            callerCount: usage.productionCallCount,
+            callerPaths: usage.productionPaths,
+            hasNonCallReference: usage.hasProductionNonCallReference
+          })
+
+          return element({
+            node: entry.nameNode,
+            message,
+            hint,
+            data
+          })
+        }),
+        Result.fromOption(Function.constVoid)
       )
-    )
+
+    return pipe(index.entries, Array.filter(entryInSourceFile), Array.filterMap(detectionForEntry))
   }
 
 const compositionForwarderSubscriptions = Function.compose(

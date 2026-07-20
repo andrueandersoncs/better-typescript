@@ -29,7 +29,12 @@ import {
   propertyAssignmentNamed,
   isRuntimeFunctionLike
 } from "./support.js"
-import { unwrapCallee, unwrapTransparentExpression } from "../support/tsNode.js"
+import {
+  isExpressionBody,
+  singleStatementReturnExpression,
+  unwrapCallee,
+  unwrapTransparentExpression
+} from "../support/tsNode.js"
 
 const emptyServiceNames: ReadonlyArray<string> = Array.empty()
 
@@ -69,10 +74,7 @@ const emptyOrchestratorMetrics = OrchestratorMetrics.make({
   serviceNames: emptyServiceNames
 })
 
-const emptyFileShapeMetrics = FileShapeMetrics.make({
-  branchCount: 0,
-  functionCount: 0
-})
+const emptyFileShapeMetrics = FileShapeMetrics.make({ branchCount: 0, functionCount: 0 })
 
 const emptyServiceSurfaceMetrics = ServiceSurfaceMetrics.make({
   functionCount: 0,
@@ -251,10 +253,10 @@ const callIsRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.CallEx
 
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(node.expression)
 
-  const managedRuntimeMethod = Option.exists(propertyAccess, (expression) =>
+  const isManagedRuntimeMethod = (expression: ts.PropertyAccessExpression) =>
     isManagedRuntimeMethodAccess(checker, expression, compositionRuntimeNames)
-  )
 
+  const managedRuntimeMethod = Option.exists(propertyAccess, isManagedRuntimeMethod)
   const pipeRuntimeHandoff = callIsPipeRuntimeHandoff(checker, node, compositionRuntimeNames)
 
   const runMain = pipe(
@@ -287,10 +289,13 @@ const callIsRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.CallEx
 }
 
 const nestedInRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.Node) => {
+  const callIsRecognizedComposition = (call: ts.CallExpression) =>
+    callIsRecognizedCompositionApi(checker, call)
+
   const visit = (current: ts.Node): boolean => {
     const matchingCall = pipe(
       Option.liftPredicate(ts.isCallExpression)(current),
-      Option.exists((call) => callIsRecognizedCompositionApi(checker, call))
+      Option.exists(callIsRecognizedComposition)
     )
 
     const parentNested = pipe(Option.fromNullishOr(current.parent), Option.exists(visit))
@@ -308,58 +313,63 @@ const isServiceTagExpression = (checker: ts.TypeChecker, expression: ts.Expressi
 const addServiceName = (names: ReadonlyArray<string>, name: string): ReadonlyArray<string> =>
   Array.contains(names, name) ? names : Array.append(names, name)
 
-const serviceYieldName = (checker: ts.TypeChecker, node: ts.YieldExpression) =>
-  pipe(
+const serviceYieldName = (checker: ts.TypeChecker, node: ts.YieldExpression) => {
+  const expressionIsServiceTagCheck = (expr: ts.Expression) => isServiceTagExpression(checker, expr)
+  return pipe(
     Option.fromNullishOr(node.asteriskToken),
     Option.flatMap(() => Option.fromNullishOr(node.expression)),
-    Option.filter((expr) => isServiceTagExpression(checker, expr)),
+    Option.filter(expressionIsServiceTagCheck),
     Option.map((expr) => expr.getText())
   )
+}
 
 const collectOrchestratorMetrics = (context: CheckContext, owner: ts.FunctionLikeDeclaration) => {
   const root = pipe(Option.fromNullishOr(owner.body), Option.getOrElse(Function.constant(owner)))
+  const nodeIsOwnedByFunction = (candidate: ts.Node) => isOwnedByFunction(candidate, owner)
+  return foldAst((metrics: typeof emptyOrchestratorMetrics, node: ts.Node) => {
+    const qualifyingCallMetrics = (call: ts.CallExpression) =>
+      isQualifyingTransformationCall(context, owner, call)
+        ? OrchestratorMetrics.make({
+            ...metrics,
+            transformationCount: metrics.transformationCount + 1
+          })
+        : metrics
 
-  return foldAst((metrics: typeof emptyOrchestratorMetrics, node: ts.Node) =>
-    pipe(
-      Option.liftPredicate((candidate: ts.Node) => isOwnedByFunction(candidate, owner))(node),
-      Option.map((ownedNode) =>
-        pipe(
-          Match.value(ownedNode),
-          Match.when(isBranchNode, () =>
-            OrchestratorMetrics.make({
-              ...metrics,
-              branchCount: metrics.branchCount + 1
-            })
-          ),
-          Match.when(ts.isCallExpression, (call) =>
-            isQualifyingTransformationCall(context, owner, call)
-              ? OrchestratorMetrics.make({
-                  ...metrics,
-                  transformationCount: metrics.transformationCount + 1
-                })
-              : metrics
-          ),
-          Match.when(ts.isYieldExpression, (yieldNode) =>
-            pipe(
-              serviceYieldName(context.checker, yieldNode),
-              Option.map((text) => {
-                const serviceNames = addServiceName(metrics.serviceNames, text)
+    const yieldServiceMetrics = (yieldNode: ts.YieldExpression) =>
+      pipe(
+        serviceYieldName(context.checker, yieldNode),
+        Option.map((text) => {
+          const serviceNames = addServiceName(metrics.serviceNames, text)
 
-                return OrchestratorMetrics.make({
-                  ...metrics,
-                  yieldCount: metrics.yieldCount + 1,
-                  serviceNames
-                })
-              }),
-              Option.getOrElse(Function.constant(metrics))
-            )
-          ),
-          Match.orElse(Function.constant(metrics))
-        )
-      ),
+          return OrchestratorMetrics.make({
+            ...metrics,
+            yieldCount: metrics.yieldCount + 1,
+            serviceNames
+          })
+        }),
+        Option.getOrElse(Function.constant(metrics))
+      )
+
+    const pipeOf = (ownedNode: ts.Node) =>
+      pipe(
+        Match.value(ownedNode),
+        Match.when(isBranchNode, () =>
+          OrchestratorMetrics.make({
+            ...metrics,
+            branchCount: metrics.branchCount + 1
+          })
+        ),
+        Match.when(ts.isCallExpression, qualifyingCallMetrics),
+        Match.when(ts.isYieldExpression, yieldServiceMetrics),
+        Match.orElse(Function.constant(metrics))
+      )
+
+    return pipe(
+      Option.liftPredicate(nodeIsOwnedByFunction)(node),
+      Option.map(pipeOf),
       Option.getOrElse(Function.constant(metrics))
     )
-  )(root)(emptyOrchestratorMetrics)
+  })(root)(emptyOrchestratorMetrics)
 }
 
 const isOrchestratorFunctionArgument = (
@@ -433,38 +443,34 @@ const orchestratorElements =
       : Array.empty()
   }
 
+const resultExpressionFromBody = (bodyNode: ts.ConciseBody) =>
+  isExpressionBody(bodyNode) ? Option.some(bodyNode) : singleStatementReturnExpression(bodyNode)
+
 const functionResultExpression = (node: ts.FunctionLikeDeclaration) =>
-  pipe(
-    Option.fromNullishOr(node.body),
-    Option.flatMap((bodyNode) => {
-      if (!ts.isBlock(bodyNode)) {
-        return Option.some(bodyNode)
-      }
+  pipe(Option.fromNullishOr(node.body), Option.flatMap(resultExpressionFromBody))
 
-      return pipe(
-        bodyNode.statements,
-        Array.head,
-        Option.filter(Function.constant(bodyNode.statements.length === 1)),
-        Option.filter(ts.isReturnStatement),
-        Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
-      )
-    })
-  )
+const functionReturnsComposition = (checker: ts.TypeChecker, node: ts.FunctionLikeDeclaration) => {
+  const callIsRecognizedComposition2 = (call: ts.CallExpression) =>
+    callIsRecognizedCompositionApi(checker, call)
 
-const functionReturnsComposition = (checker: ts.TypeChecker, node: ts.FunctionLikeDeclaration) =>
-  pipe(
+  const pipeOf2 = (expression: ts.Expression) =>
+    pipe(
+      Option.liftPredicate(ts.isCallExpression)(expression),
+      Option.exists(callIsRecognizedComposition2)
+    )
+
+  return pipe(
     functionResultExpression(node),
     Option.map(unwrapTransparentExpression),
-    Option.exists((expression) =>
-      pipe(
-        Option.liftPredicate(ts.isCallExpression)(expression),
-        Option.exists((call) => callIsRecognizedCompositionApi(checker, call))
-      )
-    )
+    Option.exists(pipeOf2)
   )
+}
 
-const collectFileShape = (context: CheckContext, role: ArchitectureRole) =>
-  foldAst((metrics: typeof emptyFileShapeMetrics, node: ts.Node) => {
+const collectFileShape = (context: CheckContext, role: ArchitectureRole) => {
+  const functionReturnsCompositionCheck = (fn: ts.FunctionLikeDeclaration) =>
+    functionReturnsComposition(context.checker, fn)
+
+  return foldAst((metrics: typeof emptyFileShapeMetrics, node: ts.Node) => {
     const isRoot = role === "root"
     const nestedInComposition = nestedInRecognizedCompositionApi(context.checker, node)
     const nestedCompositionFlags = Array.make(isRoot, nestedInComposition)
@@ -473,7 +479,7 @@ const collectFileShape = (context: CheckContext, role: ArchitectureRole) =>
 
     const returnsComposition = pipe(
       Option.liftPredicate(isRuntimeFunctionLike)(node),
-      Option.exists((fn) => functionReturnsComposition(context.checker, fn))
+      Option.exists(functionReturnsCompositionCheck)
     )
 
     const returnedCompositionFlags = Array.make(isRoot, isRuntimeFunction, returnsComposition)
@@ -500,6 +506,7 @@ const collectFileShape = (context: CheckContext, role: ArchitectureRole) =>
           Match.orElse(Function.constant(metrics))
         )
   })(context.sourceFile)(emptyFileShapeMetrics)
+}
 
 const fileShapeData = (
   role: ArchitectureRole,
@@ -536,8 +543,11 @@ const fileShapeData = (
 
 const fileShapeElements =
   (index: FunctionalCoreEffectIndex) =>
-  (context: CheckContext): ReadonlyArray<Detection> =>
-    pipe(
+  (context: CheckContext): ReadonlyArray<Detection> => {
+    const shapeDetectionOf = (data: FunctionalCoreShapeData) =>
+      shapeDetection(context, context.sourceFile, data)
+
+    return pipe(
       roleForSourceFile(index, context.sourceFile),
       Option.filter((role) => {
         const isAdapter = role === "adapter"
@@ -551,9 +561,10 @@ const fileShapeElements =
 
         return fileShapeData(role, metrics)
       }),
-      Option.map((data) => shapeDetection(context, context.sourceFile, data)),
+      Option.map(shapeDetectionOf),
       Option.toArray
     )
+  }
 
 const findContextTagTypeArgument = (expression: ts.Expression): Option.Option<ts.TypeNode> =>
   pipe(
@@ -570,19 +581,22 @@ const findContextTagTypeArgument = (expression: ts.Expression): Option.Option<ts
     })
   )
 
+const findContextTagTypeArgumentOf = (heritage: ts.ExpressionWithTypeArguments) =>
+  findContextTagTypeArgument(heritage.expression)
+
 const contextServiceTypeNode = (context: CheckContext, declaration: ts.ClassDeclaration) => {
   const serviceNames = Array.of("Service")
-
+  const heritageTypesOf = (clause: ts.HeritageClause) => Array.fromIterable(clause.types)
   return pipe(
     Option.fromNullishOr(declaration.heritageClauses),
     Option.getOrElse(Array.empty),
-    Array.flatMap((clause) => Array.fromIterable(clause.types)),
+    Array.flatMap(heritageTypesOf),
     Array.findFirst((heritage) => {
       const callee = unwrapCallee(heritage.expression)
 
       return importedEffectApiAt(context.checker, callee, "Context", serviceNames)
     }),
-    Option.flatMap((heritage) => findContextTagTypeArgument(heritage.expression))
+    Option.flatMap(findContextTagTypeArgumentOf)
   )
 }
 
@@ -614,27 +628,36 @@ const effectSucceedSyncNames = Array.make("succeed", "sync")
 
 const effectMakeNames = Array.of("make")
 
-const effectWrappedServiceObject = (context: CheckContext, expression: ts.Expression) =>
-  pipe(
+const pipeOf3 = (call: ts.CallExpression) =>
+  pipe(Array.head(call.arguments), Option.flatMap(objectReturnedBy))
+
+const effectWrappedServiceObject = (context: CheckContext, expression: ts.Expression) => {
+  const importedEffectApiAtOf = (call: ts.CallExpression) =>
+    importedEffectApiAt(context.checker, call.expression, "Effect", effectSucceedSyncNames)
+
+  return pipe(
     expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isCallExpression),
-    Option.filter((call) =>
-      importedEffectApiAt(context.checker, call.expression, "Effect", effectSucceedSyncNames)
-    ),
-    Option.flatMap((call) => pipe(Array.head(call.arguments), Option.flatMap(objectReturnedBy)))
+    Option.filter(importedEffectApiAtOf),
+    Option.flatMap(pipeOf3)
   )
+}
 
-const effectServiceObject = (context: CheckContext, declaration: ts.ClassDeclaration) =>
-  pipe(
-    effectServiceConfigObject(context.checker, declaration),
-    Option.flatMap((config) =>
-      pipe(
-        propertyAssignmentNamed(config, effectMakeNames),
-        Option.flatMap((property) => effectWrappedServiceObject(context, property.initializer))
-      )
+const effectServiceObject = (context: CheckContext, declaration: ts.ClassDeclaration) => {
+  const effectWrappedServiceObjectOf = (property: ts.ObjectLiteralElementLike) =>
+    ts.isPropertyAssignment(property)
+      ? effectWrappedServiceObject(context, property.initializer)
+      : Option.none()
+
+  const pipeOf4 = (config: ts.ObjectLiteralExpression) =>
+    pipe(
+      propertyAssignmentNamed(config, effectMakeNames),
+      Option.flatMap(effectWrappedServiceObjectOf)
     )
-  )
+
+  return pipe(effectServiceConfigObject(context.checker, declaration), Option.flatMap(pipeOf4))
+}
 
 const typeLooksEffectful = (checker: ts.TypeChecker, type: ts.Type) => {
   const rendered = checker.typeToString(type)

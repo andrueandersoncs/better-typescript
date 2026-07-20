@@ -55,6 +55,21 @@ const scopeContainerAncestorKinds = HashSet.make(
   ts.SyntaxKind.ModuleDeclaration
 )
 
+const isFunctionLikeAncestorKind = (kind: ts.SyntaxKind) =>
+  HashSet.has(functionLikeAncestorKinds, kind)
+
+const isScopeContainerAncestorKind = (kind: ts.SyntaxKind) =>
+  HashSet.has(scopeContainerAncestorKinds, kind)
+
+const symbolAtIdentifier = (checker: ts.TypeChecker) => (identifier: ts.Identifier) =>
+  pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
+
+const isEffectfulBuiltinModule = (specifier: string) =>
+  HashSet.has(effectfulBuiltinModules, specifier)
+
+const isEffectRunMethodAccess = (access: ts.PropertyAccessExpression) =>
+  HashSet.has(effectRunMethodNames, access.name.text)
+
 const isModuleScopeCall = (current: ts.Node): boolean =>
   pipe(
     Option.fromNullishOr(current.parent),
@@ -63,8 +78,8 @@ const isModuleScopeCall = (current: ts.Node): boolean =>
       onSome: (ancestor) =>
         pipe(
           Match.value(ancestor.kind),
-          Match.when((kind) => HashSet.has(functionLikeAncestorKinds, kind), Function.constFalse),
-          Match.when((kind) => HashSet.has(scopeContainerAncestorKinds, kind), Function.constFalse),
+          Match.when(isFunctionLikeAncestorKind, Function.constFalse),
+          Match.when(isScopeContainerAncestorKind, Function.constFalse),
           Match.when(ts.SyntaxKind.SourceFile, () => {
             const expressionStatement = ts.isExpressionStatement(current)
             const variableStatement = ts.isVariableStatement(current)
@@ -83,17 +98,20 @@ const rootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier>
 
   const propertyRoot = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
-    Option.flatMap((access) => rootIdentifier(access.expression))
+    Option.map(Struct.get("expression")),
+    Option.flatMap(rootIdentifier)
   )
 
   const elementRoot = pipe(
     Option.liftPredicate(ts.isElementAccessExpression)(unwrapped),
-    Option.flatMap((access) => rootIdentifier(access.expression))
+    Option.map(Struct.get("expression")),
+    Option.flatMap(rootIdentifier)
   )
 
   const callRoot = pipe(
     Option.liftPredicate(ts.isCallExpression)(unwrapped),
-    Option.flatMap((call) => rootIdentifier(call.expression))
+    Option.map(Struct.get("expression")),
+    Option.flatMap(rootIdentifier)
   )
 
   return pipe(
@@ -109,9 +127,7 @@ const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor,
 const importedModuleSpecifier = (checker: ts.TypeChecker, expression: ts.Expression) =>
   pipe(
     rootIdentifier(expression),
-    Option.flatMap((identifier) =>
-      pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-    ),
+    Option.flatMap(symbolAtIdentifier(checker)),
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
     Option.flatMap(Array.findFirst(hasImportDeclarationAncestor)),
     Option.flatMap(importDeclarationAncestor),
@@ -128,12 +144,8 @@ const isTsSysRooted = (expression: ts.Expression): boolean =>
     Match.when(ts.isPropertyAccessExpression, (access) => {
       const receiver = unwrapTransparentExpression(access.expression)
       const receiverIdentifier = Option.liftPredicate(ts.isIdentifier)(receiver)
-
-      const receiverIsTs = Option.exists(
-        receiverIdentifier,
-        (identifier) => identifier.text === "ts"
-      )
-
+      const identifierTextIsTs = (identifier: ts.Identifier) => identifier.text === "ts"
+      const receiverIsTs = Option.exists(receiverIdentifier, identifierTextIsTs)
       const memberIsSys = access.name.text === "sys"
       const rootChecks = Array.make(receiverIsTs, memberIsSys)
       const rootedHere = Array.every(rootChecks, Boolean)
@@ -147,19 +159,22 @@ const isTsSysRooted = (expression: ts.Expression): boolean =>
     Match.orElse(Function.constFalse)
   )
 
-const isProcessMemberCall = (call: ts.CallExpression) =>
-  pipe(
+const isProcessMemberCall = (call: ts.CallExpression) => {
+  const identifierTextIsProcess = (identifier: ts.Identifier) => identifier.text === "process"
+
+  return pipe(
     call.expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isPropertyAccessExpression),
     Option.flatMap(rootIdentifier),
-    Option.exists((identifier) => identifier.text === "process")
+    Option.exists(identifierTextIsProcess)
   )
+}
 
 const isBuiltinEffectfulCall = (checker: ts.TypeChecker, call: ts.CallExpression) => {
   const fromBuiltinImport = pipe(
     importedModuleSpecifier(checker, call.expression),
-    Option.exists((specifier) => HashSet.has(effectfulBuiltinModules, specifier))
+    Option.exists(isEffectfulBuiltinModule)
   )
 
   const processCall = isProcessMemberCall(call)
@@ -170,12 +185,7 @@ const isBuiltinEffectfulCall = (checker: ts.TypeChecker, call: ts.CallExpression
 }
 
 const effectPackageRootSymbol = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(
-    rootIdentifier(expression),
-    Option.flatMap((identifier) =>
-      pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-    )
-  )
+  pipe(rootIdentifier(expression), Option.flatMap(symbolAtIdentifier(checker)))
 
 const isEffectPackageSpecifier = (specifier: string) => {
   const exactPackage = specifier === "effect"
@@ -201,21 +211,31 @@ const isEffectPackageCalleeRoot = (checker: ts.TypeChecker, expression: ts.Expre
   return Array.some(candidates, Boolean)
 }
 
+const effectPackageCalleeFromAccess =
+  (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
+    isEffectPackageCalleeRoot(checker, access.expression)
+
 const isEffectRunCall = (checker: ts.TypeChecker, call: ts.CallExpression) =>
   pipe(
     call.expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.filter((access) => HashSet.has(effectRunMethodNames, access.name.text)),
-    Option.exists((access) => isEffectPackageCalleeRoot(checker, access.expression))
+    Option.filter(isEffectRunMethodAccess),
+    Option.exists(effectPackageCalleeFromAccess(checker))
   )
 
 const classifiedModuleScopeEffectKind =
   (checker: ts.TypeChecker) =>
   (call: ts.CallExpression): Option.Option<ModuleScopeEffectData["kind"]> => {
+    const matchesEffectRunCall = (candidate: ts.CallExpression) =>
+      isEffectRunCall(checker, candidate)
+
+    const matchesBuiltinEffectfulCall = (candidate: ts.CallExpression) =>
+      isBuiltinEffectfulCall(checker, candidate)
+
     const effectRunKind = pipe(
       Option.some(call),
-      Option.filter((candidate) => isEffectRunCall(checker, candidate)),
+      Option.filter(matchesEffectRunCall),
       Option.as<ModuleScopeEffectData["kind"]>("effect-run")
     )
 
@@ -223,7 +243,7 @@ const classifiedModuleScopeEffectKind =
       pipe(
         Option.some(call),
         Option.filter(isModuleScopeCall),
-        Option.filter((candidate) => isBuiltinEffectfulCall(checker, candidate)),
+        Option.filter(matchesBuiltinEffectfulCall),
         Option.as<ModuleScopeEffectData["kind"]>("module-scope-io")
       )
 
@@ -245,17 +265,14 @@ const moduleScopeEffectElements = (context: CheckContext) => {
       return Array.empty()
     }
 
-    return pipe(
-      classifyEffectKind(node),
-      Option.map((kind) => {
-        const calleeText = node.expression.getText(context.sourceFile)
-        const data = ModuleScopeEffectData.make({ calleeText, kind })
-        const reported = element({ node, message, hint, data })
+    const detectionForKind = (kind: ModuleScopeEffectData["kind"]) => {
+      const calleeText = node.expression.getText(context.sourceFile)
+      const data = ModuleScopeEffectData.make({ calleeText, kind })
 
-        return reported
-      }),
-      Option.toArray
-    )
+      return element({ node, message, hint, data })
+    }
+
+    return pipe(classifyEffectKind(node), Option.map(detectionForKind), Option.toArray)
   }
 
   return handler

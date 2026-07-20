@@ -15,14 +15,16 @@ import {
   makeSilentCheck
 } from "@better-typescript/core/engine/wiring"
 import { signalOf } from "@better-typescript/core/engine/signal"
-import { withFallbackAdvice } from "@better-typescript/core/engine/report"
+import {
+  filterFallbackAdviceForUncoveredFiles,
+  withFallbackAdvice
+} from "@better-typescript/core/engine/report"
 import { makeDirectoryRefactorExamples } from "@better-typescript/core/engine/example"
 import {
   makeExampleSnippet,
   makeInlineRefactorExamples,
   makeRefactorExample
 } from "./exampleHelpers.js"
-import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
 import {
   astNodesIn,
@@ -80,8 +82,8 @@ const workspaceUpdateOf = (workspace: LoadedWorkspace): WorkspaceUpdate =>
   })
 
 const reportTexts =
-  <E>(config: WiringConfig<E>) =>
-  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<string>, E | ExampleLoadError> =>
+  (config: WiringConfig) =>
+  (workspace: LoadedWorkspace): Effect.Effect<ReadonlyArray<string>> =>
     pipe(
       reportEvents(config)(workspaceUpdateOf(workspace)),
       Effect.map((events) =>
@@ -209,10 +211,7 @@ const advice = (
 const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
   blocks.map((block) => block.split("\n")[0])
 
-const delayedAdvice = (items: ReadonlyArray<Advice>): Effect.Effect<ReadonlyArray<Advice>> =>
-  pipe(Effect.forEach(items, (item) => pipe(Effect.sleep("1 millis"), Effect.as(item))))
-
-const noDerive: Wiring["derive"] = () => Effect.succeed(Array.empty())
+const noDerive: Wiring["derive"] = () => []
 
 const fixedCheck = (elements: ReadonlyArray<Detection>): Check => fileCheck(() => elements)
 
@@ -349,7 +348,7 @@ test("each glob wiring derives from only its matching files", async () => {
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
-      return Effect.succeed([advice("directory", "packages/alpha", `alpha detections ${count}`)])
+      return [advice("directory", "packages/alpha", `alpha detections ${count}`)]
     }
   )
   const betaWiring = testWiring(
@@ -357,7 +356,7 @@ test("each glob wiring derives from only its matching files", async () => {
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
-      return Effect.succeed([advice("directory", "packages/beta", `beta detections ${count}`)])
+      return [advice("directory", "packages/beta", `beta detections ${count}`)]
     }
   )
   const config = defineConfig([
@@ -524,7 +523,7 @@ test("reportEvents renders advice remediation examples before evidence", async (
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(
-    reportFromTestWiring(testWiring([], () => Effect.succeed([fixedAdvice])))(workspace)
+    reportFromTestWiring(testWiring([], () => [fixedAdvice]))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -661,7 +660,7 @@ test("reportEvents orders advice before check blocks and sorts advice by level t
   )
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(
-    reportFromTestWiring(testWiring([groupedCheck], () => Effect.succeed(fixedAdvice)))(workspace)
+    reportFromTestWiring(testWiring([groupedCheck], () => fixedAdvice))(workspace)
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -687,8 +686,8 @@ test("reportEvents orders advice before check blocks and sorts advice by level t
   )
 })
 
-test("reportEvents preserves asynchronously emitted advice", async () => {
-  const delayedCheck = makeNamedCheck(
+test("reportEvents renders multiple advice items in report order", async () => {
+  const multiAdviceCheck = makeNamedCheck(
     "probe throw statements",
     fixedCheck([
       Detection.make({
@@ -702,12 +701,10 @@ test("reportEvents preserves asynchronously emitted advice", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(
     reportFromTestWiring(
-      testWiring([delayedCheck], () =>
-        delayedAdvice([
-          advice("file", "src/z.ts", "file z advice"),
-          advice("file", "src/a.ts", "file a advice")
-        ])
-      )
+      testWiring([multiAdviceCheck], () => [
+        advice("file", "src/z.ts", "file z advice"),
+        advice("file", "src/a.ts", "file a advice")
+      ])
     )(workspace)
   )
 
@@ -716,27 +713,6 @@ test("reportEvents preserves asynchronously emitted advice", async () => {
     "src/z.ts [file] — file z advice",
     "probe throw statements"
   ])
-})
-
-test("reportEvents preserves the derivation error channel", async () => {
-  const workspace = await loadFixtureWorkspace("no-throw")
-  const failure = "derive failure" as const
-
-  const fallibleWiring = makeWiring({
-    checks: [],
-    derive: () => Effect.fail(failure)
-  })
-
-  const fallibleConfig = defineConfig([{ files: ["**/*"], wiring: fallibleWiring }])
-
-  const output: Effect.Effect<
-    ReadonlyArray<string>,
-    typeof failure | ExampleLoadError
-  > = reportTexts(fallibleConfig)(workspace)
-
-  const actual = await Effect.runPromise(pipe(output, Effect.flip))
-
-  assert.equal(actual, failure)
 })
 
 test("reportEvents emits check blocks and omits silent checks", async () => {
@@ -775,8 +751,7 @@ test("reportEvents lets silent checks influence advice without rendering local c
       : []
   const silentInfluencedWiring: Wiring = makeWiring({
     checks: [throwProbeNamedCheck, silentProbeNamedCheck],
-    derive: (signals) =>
-      Effect.succeed(silentInfluencedAdvice(signalOf(signals)(silentProbeNamedCheck.name)))
+    derive: (signals) => silentInfluencedAdvice(signalOf(signals)(silentProbeNamedCheck.name))
   })
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(reportFromTestWiring(silentInfluencedWiring)(workspace))
@@ -844,6 +819,14 @@ test("withFallbackAdvice emits specific advice before applicable fallback and ru
     specificEffects,
     2,
     "expected the specific advice effect to run once for each withFallbackAdvice invocation"
+  )
+
+  assert.deepEqual(
+    filterFallbackAdviceForUncoveredFiles([specificA])([fallbackA, fallbackB]).map((item) => [
+      item.location.path,
+      item.title
+    ]),
+    [["src/b.ts", "density fallback b"]]
   )
 })
 

@@ -20,8 +20,10 @@ import {
   hasExportModifier,
   isProjectFile,
   propertyNameText,
+  symbolDeclarations,
   unwrapCallee,
-  unwrapTransparentExpression
+  unwrapTransparentExpression,
+  variableDeclarationInitializer
 } from "../support/tsNode.js"
 import { optionalStringLiteralLikeText } from "../support/stringLiteralText.js"
 
@@ -31,11 +33,17 @@ export class ImportedMember extends Data.Class<{
   readonly path: ReadonlyArray<string>
 }> {}
 
+export const importedMemberSubject = (member: ImportedMember) =>
+  `${member.moduleSpecifier}:${Array.join(member.path, ".")}`
+
 const emptyMemberPath: ReadonlyArray<string> = Array.empty()
 
 const emptyTypeReferences: ReadonlyArray<ts.TypeReferenceNode> = Array.empty()
 
 const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
+
+export const declarationsOfSymbol = (symbol: ts.Symbol): ReadonlyArray<ts.Declaration> =>
+  symbolDeclarations(symbol) ?? emptyDeclarations
 
 const emptyHeritageClauses: ReadonlyArray<ts.HeritageClause> = Array.empty()
 
@@ -55,6 +63,8 @@ export const moduleSpecifierText = flow(
   optionalStringLiteralLikeText
 )
 
+const identifierEmptyPath = (identifier: ts.Identifier) => Tuple.make(identifier, emptyMemberPath)
+
 const expressionPath = (
   expression: ts.Expression
 ): Option.Option<readonly [ts.Identifier, ReadonlyArray<string>]> =>
@@ -62,10 +72,7 @@ const expressionPath = (
     expression,
     unwrapTransparentExpression,
     Match.value,
-    Match.when(
-      ts.isIdentifier,
-      flow((identifier: ts.Identifier) => Tuple.make(identifier, emptyMemberPath), Option.some)
-    ),
+    Match.when(ts.isIdentifier, flow(identifierEmptyPath, Option.some)),
     Match.when(ts.isPropertyAccessExpression, (access) => {
       const memberName = access.name.text
 
@@ -99,10 +106,12 @@ const expressionPath = (
     Match.orElse(() => Option.none())
   )
 
+const identifierEmptyPath2 = (identifier: ts.Identifier) => Tuple.make(identifier, emptyMemberPath)
+
 const entityNamePath = (name: ts.EntityName): readonly [ts.Identifier, ReadonlyArray<string>] =>
   pipe(
     Match.value(name),
-    Match.when(ts.isIdentifier, (identifier) => Tuple.make(identifier, emptyMemberPath)),
+    Match.when(ts.isIdentifier, identifierEmptyPath2),
     Match.orElse((qualifiedName) => {
       const parent = entityNamePath(qualifiedName.left)
       const members = Array.append(parent[1], qualifiedName.right.text)
@@ -145,25 +154,23 @@ const bindingFromDeclaration = (declaration: ts.Declaration) => {
 
   return pipe(
     moduleSpecifier,
-    Option.flatMap((specifier) =>
-      pipe(
+    Option.flatMap((specifier) => {
+      const importSpecifierBinding = (importSpecifier: ts.ImportSpecifier) =>
+        bindingFromNamedSpecifier(specifier, importSpecifier)
+
+      const exportSpecifierBinding = (exportSpecifier: ts.ExportSpecifier) =>
+        bindingFromNamedSpecifier(specifier, exportSpecifier)
+
+      const defaultBindingFromImportClause = (importClause: ts.ImportClause) =>
+        pipe(
+          Option.fromNullishOr(importClause.name),
+          Option.map(() => makeDefaultImportedMemberFromModuleSpecifier(specifier))
+        )
+
+      return pipe(
         Match.value(declaration),
-        Match.when(
-          ts.isImportSpecifier,
-          flow(
-            (importSpecifier: ts.ImportSpecifier) =>
-              bindingFromNamedSpecifier(specifier, importSpecifier),
-            Option.some
-          )
-        ),
-        Match.when(
-          ts.isExportSpecifier,
-          flow(
-            (exportSpecifier: ts.ExportSpecifier) =>
-              bindingFromNamedSpecifier(specifier, exportSpecifier),
-            Option.some
-          )
-        ),
+        Match.when(ts.isImportSpecifier, flow(importSpecifierBinding, Option.some)),
+        Match.when(ts.isExportSpecifier, flow(exportSpecifierBinding, Option.some)),
         Match.when(
           ts.isNamespaceImport,
           flow(
@@ -180,21 +187,28 @@ const bindingFromDeclaration = (declaration: ts.Declaration) => {
             Option.some
           )
         ),
-        Match.when(ts.isImportClause, (importClause) =>
-          pipe(
-            Option.fromNullishOr(importClause.name),
-            Option.map(() => makeDefaultImportedMemberFromModuleSpecifier(specifier))
-          )
-        ),
+        Match.when(ts.isImportClause, defaultBindingFromImportClause),
         Match.orElse(() => Option.none())
       )
-    )
+    })
   )
 }
 
 const maximumBarrelDepth = 8
 
 const declarationHasBinding = flow(bindingFromDeclaration, Option.isSome)
+
+const someOf = (symbol: ts.Symbol) => {
+  const declarations = declarationsOfSymbol(symbol)
+
+  return Array.some(
+    declarations,
+    flow((candidate: ts.Declaration) => candidate.getSourceFile(), isProjectFile)
+  )
+}
+
+const pipeOf2 = (symbol: ts.Symbol) =>
+  pipe(declarationsOfSymbol(symbol), Array.findFirst(declarationHasBinding))
 
 const resolvedBarrelBinding = (
   checker: ts.TypeChecker,
@@ -210,31 +224,19 @@ const resolvedBarrelBinding = (
     return binding
   }
 
-  const moduleSymbol = pipe(
-    moduleDeclarationAncestor(declaration),
-    Option.flatMap((moduleDeclaration) =>
-      pipe(
-        Option.fromNullishOr(moduleDeclaration.moduleSpecifier),
-        Option.flatMap(
-          flow(
-            (moduleSpecifier) => checker.getSymbolAtLocation(moduleSpecifier),
-            Option.fromNullishOr
-          )
+  const pipeOf = (moduleDeclaration: ts.ImportDeclaration | ts.ExportDeclaration) =>
+    pipe(
+      Option.fromNullishOr(moduleDeclaration.moduleSpecifier),
+      Option.flatMap(
+        flow(
+          (moduleSpecifier) => checker.getSymbolAtLocation(moduleSpecifier),
+          Option.fromNullishOr
         )
       )
     )
-  )
 
-  const firstPartyModule = pipe(
-    moduleSymbol,
-    Option.exists((symbol) =>
-      Array.some(
-        symbol.declarations ?? emptyDeclarations,
-        flow((candidate) => candidate.getSourceFile(), isProjectFile)
-      )
-    )
-  )
-
+  const moduleSymbol = pipe(moduleDeclarationAncestor(declaration), Option.flatMap(pipeOf))
+  const firstPartyModule = pipe(moduleSymbol, Option.exists(someOf))
   const missingModule = Option.isNone(moduleSymbol)
   const externalModule = !firstPartyModule
   const keepBinding = externalModule || missingModule
@@ -248,15 +250,11 @@ const resolvedBarrelBinding = (
   const next = pipe(
     checker.getExportsOfModule(moduleSymbol.value),
     Array.findFirst((symbol) => symbol.name === importedName),
-    Option.flatMap((symbol) =>
-      pipe(symbol.declarations ?? emptyDeclarations, Array.findFirst(declarationHasBinding))
-    ),
-    Option.flatMap((candidate) =>
-      pipe(
-        bindingFromDeclaration(candidate),
-        Option.map((candidateBinding) => Tuple.make(candidate, candidateBinding))
-      )
-    )
+    Option.flatMap(pipeOf2),
+    Option.flatMap((candidate) => {
+      const makeOf = (candidateBinding: ImportedMember) => Tuple.make(candidate, candidateBinding)
+      return pipe(bindingFromDeclaration(candidate), Option.map(makeOf))
+    })
   )
 
   if (Option.isNone(next)) {
@@ -279,28 +277,30 @@ const importBindingAt = (
   checker: ts.TypeChecker,
   identifier: ts.Identifier,
   members: ReadonlyArray<string>
-) =>
-  pipe(
+) => {
+  const pipeOf3 = (declaration: ts.Declaration) =>
+    pipe(
+      bindingFromDeclaration(declaration),
+      Option.map((binding) => {
+        const path = Array.appendAll(binding.path, members)
+
+        const completeBinding = new ImportedMember({
+          moduleSpecifier: binding.moduleSpecifier,
+          path
+        })
+
+        return resolvedBarrelBinding(checker, declaration, completeBinding, maximumBarrelDepth)
+      })
+    )
+
+  return pipe(
     checker.getSymbolAtLocation(identifier),
     Option.fromNullishOr,
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
+    Option.map(declarationsOfSymbol),
     Option.flatMap(Array.findFirst(declarationHasBinding)),
-    Option.flatMap((declaration) =>
-      pipe(
-        bindingFromDeclaration(declaration),
-        Option.map((binding) => {
-          const path = Array.appendAll(binding.path, members)
-
-          const completeBinding = new ImportedMember({
-            moduleSpecifier: binding.moduleSpecifier,
-            path
-          })
-
-          return resolvedBarrelBinding(checker, declaration, completeBinding, maximumBarrelDepth)
-        })
-      )
-    )
+    Option.flatMap(pipeOf3)
   )
+}
 
 const importedMemberFromPath = (
   checker: ts.TypeChecker,
@@ -312,11 +312,12 @@ const importedMemberFromPath = (
   return importBindingAt(checker, root, members)
 }
 
-export const importedMemberAt = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(
-    expressionPath(expression),
-    Option.flatMap((path) => importedMemberFromPath(checker, path))
-  )
+export const importedMemberAt = (checker: ts.TypeChecker, expression: ts.Expression) => {
+  const memberFromPath = (path: readonly [ts.Identifier, ReadonlyArray<string>]) =>
+    importedMemberFromPath(checker, path)
+
+  return pipe(expressionPath(expression), Option.flatMap(memberFromPath))
+}
 
 export const importedTypeMemberAt = (checker: ts.TypeChecker, name: ts.EntityName) => {
   const path = entityNamePath(name)
@@ -332,6 +333,9 @@ const appendTypeReference = (
 
 const typeReferencesWithin = Function.flip(foldAst(appendTypeReference))(emptyTypeReferences)
 
+const typeReferencesWithinAlias = (alias: ts.TypeAliasDeclaration) =>
+  typeReferencesWithin(alias.type)
+
 export const localTypeReferenceTargets = (
   checker: ts.TypeChecker,
   node: ts.TypeReferenceNode
@@ -344,7 +348,7 @@ export const localTypeReferenceTargets = (
 
       return isAlias ? checker.getAliasedSymbol(symbol) : symbol
     }),
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
+    Option.map(declarationsOfSymbol),
     Option.map(
       Array.flatMap((declaration): ReadonlyArray<ts.TypeReferenceNode> => {
         const sourceFile = declaration.getSourceFile()
@@ -356,7 +360,7 @@ export const localTypeReferenceTargets = (
 
         return pipe(
           Match.value(declaration),
-          Match.when(ts.isTypeAliasDeclaration, (alias) => typeReferencesWithin(alias.type)),
+          Match.when(ts.isTypeAliasDeclaration, typeReferencesWithinAlias),
           Match.when(ts.isInterfaceDeclaration, typeReferencesWithin),
           Match.orElse(Function.constant(emptyTypeReferences))
         )
@@ -365,24 +369,26 @@ export const localTypeReferenceTargets = (
     Option.getOrElse(Function.constant(emptyTypeReferences))
   )
 
-export const typeReferenceIsGlobalPromise = (context: CheckContext, node: ts.TypeReferenceNode) =>
-  pipe(
+export const typeReferenceIsGlobalPromise = (context: CheckContext, node: ts.TypeReferenceNode) => {
+  const someOf2 = (declarations: ReadonlyArray<ts.Declaration>) =>
+    Array.some(
+      declarations,
+      flow(
+        (declaration: ts.Declaration) => declaration.getSourceFile(),
+        (sourceFile: ts.SourceFile) => context.program.isSourceFileDefaultLibrary(sourceFile)
+      )
+    )
+
+  return pipe(
     Option.liftPredicate(ts.isIdentifier)(node.typeName),
     Option.filter((typeName) => typeName.text === "Promise"),
     Option.flatMap(
       flow((typeName) => context.checker.getSymbolAtLocation(typeName), Option.fromNullishOr)
     ),
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
-    Option.exists((declarations) =>
-      Array.some(
-        declarations,
-        flow(
-          (declaration: ts.Declaration) => declaration.getSourceFile(),
-          (sourceFile) => context.program.isSourceFileDefaultLibrary(sourceFile)
-        )
-      )
-    )
+    Option.map(declarationsOfSymbol),
+    Option.exists(someOf2)
   )
+}
 
 export const effectApiMember = (
   member: ImportedMember,
@@ -406,11 +412,10 @@ export const importedEffectApiAt = (
   expression: ts.Expression,
   namespace: string,
   names: ReadonlyArray<string>
-) =>
-  pipe(
-    importedMemberAt(checker, expression),
-    Option.exists((member) => effectApiMember(member, namespace, names))
-  )
+) => {
+  const effectApiMemberOf = (member: ImportedMember) => effectApiMember(member, namespace, names)
+  return pipe(importedMemberAt(checker, expression), Option.exists(effectApiMemberOf))
+}
 
 const isEffectManagedRuntimeSource = (sourceFile: ts.SourceFile) => {
   const normalized = sourceFile.fileName.replaceAll("\\", "/")
@@ -423,6 +428,12 @@ const isEffectManagedRuntimeSource = (sourceFile: ts.SourceFile) => {
   return installed || vendored
 }
 
+const someOf3 = (declarations: ReadonlyArray<ts.Declaration>) =>
+  Array.some(
+    declarations,
+    flow((declaration: ts.Declaration) => declaration.getSourceFile(), isEffectManagedRuntimeSource)
+  )
+
 export const isManagedRuntimeMethodAccess = (
   checker: ts.TypeChecker,
   node: ts.PropertyAccessExpression,
@@ -434,28 +445,14 @@ export const isManagedRuntimeMethodAccess = (
     node.name,
     (nameNode) => checker.getSymbolAtLocation(nameNode),
     Option.fromNullishOr,
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
-    Option.exists((declarations) =>
-      Array.some(
-        declarations,
-        flow((declaration) => declaration.getSourceFile(), isEffectManagedRuntimeSource)
-      )
-    )
+    Option.map(declarationsOfSymbol),
+    Option.exists(someOf3)
   )
 
   const matchFlags = Array.make(nameMatches, managedRuntime)
 
   return Array.every(matchFlags, Boolean)
 }
-
-export const importedEffectApiSubject = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(
-    importedMemberAt(checker, expression),
-    Option.map((member) => {
-      const memberPath = Array.join(member.path, ".")
-      return `${member.moduleSpecifier}:${memberPath}`
-    })
-  )
 
 export const classExtendsEffectApi = (
   checker: ts.TypeChecker,
@@ -466,12 +463,13 @@ export const classExtendsEffectApi = (
   const clauses = declaration.heritageClauses ?? emptyHeritageClauses
   const names = Array.of(memberName)
 
-  return Array.some(clauses, (clause) =>
+  const someOf4 = (clause: ts.HeritageClause) =>
     Array.some(clause.types, (heritage) => {
       const callee = unwrapCallee(heritage.expression)
       return importedEffectApiAt(checker, callee, namespace, names)
     })
-  )
+
+  return Array.some(clauses, someOf4)
 }
 
 const effectServiceMakerObject = (
@@ -491,21 +489,28 @@ const effectServiceMakerObject = (
 
 const contextServiceNames = Array.of("Service")
 
+const makerObjectFromHeritage = (heritage: ts.ExpressionWithTypeArguments) =>
+  effectServiceMakerObject(heritage.expression)
+
 export const effectServiceConfigObject = (
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
-) =>
-  pipe(
+) => {
+  const importedEffectApiAtOf = (callee: ts.Expression) =>
+    importedEffectApiAt(checker, callee, "Context", contextServiceNames)
+
+  const heritageTypesOf = (clause: ts.HeritageClause) => Array.fromIterable(clause.types)
+
+  const unwrapHeritageCallee = (heritage: ts.ExpressionWithTypeArguments) =>
+    unwrapCallee(heritage.expression)
+
+  return pipe(
     declaration.heritageClauses ?? emptyHeritageClauses,
-    Array.flatMap((clause) => Array.fromIterable(clause.types)),
-    Array.findFirst(
-      flow(
-        (heritage) => unwrapCallee(heritage.expression),
-        (callee) => importedEffectApiAt(checker, callee, "Context", contextServiceNames)
-      )
-    ),
-    Option.flatMap((heritage) => effectServiceMakerObject(heritage.expression))
+    Array.flatMap(heritageTypesOf),
+    Array.findFirst(flow(unwrapHeritageCallee, importedEffectApiAtOf)),
+    Option.flatMap(makerObjectFromHeritage)
   )
+}
 
 const adapterOrRootRoles = HashSet.make("adapter" as ArchitectureRole, "root" as ArchitectureRole)
 
@@ -514,40 +519,40 @@ export const isAdapterOrRootRole = (role: ArchitectureRole) => HashSet.has(adapt
 export const propertyAssignmentNamed = (
   object: ts.ObjectLiteralExpression,
   names: ReadonlyArray<string>
-) =>
-  Array.findFirst(
-    object.properties,
-    (property): property is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(property) &&
-      pipe(
-        propertyNameText(property.name),
-        Option.exists((name) => Array.contains(names, name))
-      )
-  )
+) => {
+  const nameIsListed = (name: string) => Array.contains(names, name)
+
+  const isPropertyAssignmentOf = (property: ts.ObjectLiteralElementLike) =>
+    ts.isPropertyAssignment(property) &&
+    pipe(propertyNameText(property.name), Option.exists(nameIsListed))
+
+  return Array.findFirst(object.properties, isPropertyAssignmentOf)
+}
 
 const contextServiceLayerPropertyNames = Array.of("layer")
 
-const hasStaticModifier = (declaration: ts.PropertyDeclaration) =>
-  pipe(
-    Option.fromNullishOr(declaration.modifiers),
-    Option.exists((modifiers) =>
-      Array.some(modifiers, (modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
-    )
+const someOf5 = (modifiers: readonly ts.ModifierLike[]) =>
+  Array.some(
+    modifiers,
+    (modifier: ts.ModifierLike) => modifier.kind === ts.SyntaxKind.StaticKeyword
   )
+
+const hasStaticModifier = (declaration: ts.PropertyDeclaration) =>
+  pipe(Option.fromNullishOr(declaration.modifiers), Option.exists(someOf5))
+
+const nameIsListed2 = (name: string) => Array.contains(contextServiceLayerPropertyNames, name)
 
 const hasLayerStaticProperty = (declaration: ts.PropertyDeclaration) =>
   hasStaticModifier(declaration) &&
-  pipe(
-    propertyNameText(declaration.name),
-    Option.exists((name) => Array.contains(contextServiceLayerPropertyNames, name))
-  )
+  pipe(propertyNameText(declaration.name), Option.exists(nameIsListed2))
 
-export const contextServiceLayerProperty = (declaration: ts.ClassDeclaration) =>
-  Array.findFirst(
-    declaration.members,
-    (member): member is ts.PropertyDeclaration =>
-      ts.isPropertyDeclaration(member) && hasLayerStaticProperty(member)
-  )
+const isPropertyDeclarationOf = (member: ts.ClassElement) =>
+  ts.isPropertyDeclaration(member) && hasLayerStaticProperty(member)
+
+export const contextServiceLayerProperty = (declaration: ts.ClassDeclaration) => {
+  const members = declaration.members
+  return Array.findFirst(members, isPropertyDeclarationOf)
+}
 
 const contextReferenceNames = Array.of("Reference")
 
@@ -581,41 +586,51 @@ const declarationInitializesContextApi = (
   checker: ts.TypeChecker,
   declaration: ts.Declaration,
   names: ReadonlyArray<string>
-) =>
-  pipe(
+) => {
+  const callConstructsContextApiOf = (initializer: ts.Expression) =>
+    callConstructsContextApi(checker, initializer, names)
+
+  return pipe(
     Option.liftPredicate(ts.isVariableDeclaration)(declaration),
-    Option.flatMap((variable) => Option.fromNullishOr(variable.initializer)),
-    Option.exists((initializer) => callConstructsContextApi(checker, initializer, names))
+    Option.flatMap(variableDeclarationInitializer),
+    Option.exists(callConstructsContextApiOf)
   )
+}
 
-export const declarationIsContextService = (checker: ts.TypeChecker, declaration: ts.Declaration) =>
-  pipe(
-    Option.liftPredicate(ts.isClassDeclaration)(declaration),
-    Option.exists((classDeclaration) =>
-      classExtendsEffectApi(checker, classDeclaration, "Context", "Service")
-    )
-  ) || declarationInitializesContextApi(checker, declaration, contextServiceNames)
-
-export const declarationIsContextReference = (
+export const declarationIsContextService = (
   checker: ts.TypeChecker,
   declaration: ts.Declaration
-) => declarationInitializesContextApi(checker, declaration, contextReferenceNames)
+) => {
+  const classExtendsEffectApiOf = (classDeclaration: ts.ClassDeclaration) =>
+    classExtendsEffectApi(checker, classDeclaration, "Context", "Service")
 
-export const expressionIsServiceTag = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(
+  return (
+    pipe(
+      Option.liftPredicate(ts.isClassDeclaration)(declaration),
+      Option.exists(classExtendsEffectApiOf)
+    ) || declarationInitializesContextApi(checker, declaration, contextServiceNames)
+  )
+}
+
+const declarationIsContextReference = (checker: ts.TypeChecker, declaration: ts.Declaration) =>
+  declarationInitializesContextApi(checker, declaration, contextReferenceNames)
+
+export const expressionIsServiceTag = (checker: ts.TypeChecker, expression: ts.Expression) => {
+  const declarationIsContextServiceOf = (declaration: ts.Declaration) =>
+    declarationIsContextService(checker, declaration) ||
+    declarationIsContextReference(checker, declaration)
+
+  const someOf6 = (declarations: ReadonlyArray<ts.Declaration>) =>
+    Array.some(declarations, declarationIsContextServiceOf)
+
+  return pipe(
     expression,
     unwrapTransparentExpression,
     resolvedSymbolAtNode(checker),
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
-    Option.exists((declarations) =>
-      Array.some(
-        declarations,
-        (declaration) =>
-          declarationIsContextService(checker, declaration) ||
-          declarationIsContextReference(checker, declaration)
-      )
-    )
+    Option.map(declarationsOfSymbol),
+    Option.exists(someOf6)
   )
+}
 
 const provideServiceNames = Array.of("provideService")
 
@@ -634,14 +649,18 @@ export const callIsReferenceProvideService = (checker: ts.TypeChecker, node: ts.
     provideServiceNames
   )
 
+  const declarationIsContextReferenceCheck = (declaration: ts.Declaration) =>
+    declarationIsContextReference(checker, declaration)
+
+  const someOf7 = (declarations: ReadonlyArray<ts.Declaration>) =>
+    Array.some(declarations, declarationIsContextReferenceCheck)
+
   const referenceOverride = pipe(
     provideServiceTagArgument(node),
     Option.map(unwrapTransparentExpression),
     Option.flatMap(resolvedSymbolAtNode(checker)),
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
-    Option.exists((declarations) =>
-      Array.some(declarations, (declaration) => declarationIsContextReference(checker, declaration))
-    )
+    Option.map(declarationsOfSymbol),
+    Option.exists(someOf7)
   )
 
   const checks = Array.make(isProvideService, referenceOverride)
@@ -657,9 +676,12 @@ export const expressionIsEffectRuntimeRunner = (
   const current = unwrapTransparentExpression(expression)
   const direct = importedEffectApiAt(checker, current, "Effect", runtimeNames)
 
+  const importedEffectApiAtOf2 = (call: ts.CallExpression) =>
+    importedEffectApiAt(checker, call.expression, "Effect", runtimeNames)
+
   const curried = pipe(
     Option.liftPredicate(ts.isCallExpression)(current),
-    Option.exists((call) => importedEffectApiAt(checker, call.expression, "Effect", runtimeNames))
+    Option.exists(importedEffectApiAtOf2)
   )
 
   const checks = Array.make(direct, curried)
@@ -679,10 +701,10 @@ export const callIsPipeRuntimeHandoff = (
     Option.exists((access) => access.name.text === "pipe")
   )
 
-  const hasRunner = Array.some(node.arguments, (argument) =>
+  const expressionIsEffectRuntimeRunnerOf = (argument: ts.Expression) =>
     expressionIsEffectRuntimeRunner(checker, argument, runtimeNames)
-  )
 
+  const hasRunner = Array.some(node.arguments, expressionIsEffectRuntimeRunnerOf)
   const checks = Array.make(isPipe, hasRunner)
 
   return Array.every(checks, Boolean)
@@ -695,6 +717,8 @@ const effectBarrelPlatformCapabilityNames: Readonly<Record<string, true>> = {
 }
 
 const unstableHttpNamespaces = Array.make("http", "httpapi")
+
+const nameIsListed3 = (name: string) => Array.contains(unstableHttpNamespaces, name)
 
 export const importedMemberIsMovedPlatformCapability = (member: ImportedMember) => {
   const fromEffectBarrel = member.moduleSpecifier === "effect"
@@ -712,11 +736,7 @@ export const importedMemberIsMovedPlatformCapability = (member: ImportedMember) 
     Option.exists((name) => name === "unstable")
   )
 
-  const isHttpNamespace = pipe(
-    Option.fromNullishOr(member.path[1]),
-    Option.exists((name) => Array.contains(unstableHttpNamespaces, name))
-  )
-
+  const isHttpNamespace = pipe(Option.fromNullishOr(member.path[1]), Option.exists(nameIsListed3))
   const unstableChecks = Array.make(fromEffectBarrel, isUnstableNamespace, isHttpNamespace)
   const fromUnstableHttp = Array.every(unstableChecks, Boolean)
   const capabilitySources = Array.make(fromBarrel, fromUnstableHttp)
@@ -745,17 +765,18 @@ export const resolvedModuleSourceFile = (
 ) => {
   const moduleSpecifier = declaration.moduleSpecifier
 
-  const checkerSource = pipe(
-    Option.fromNullishOr(moduleSpecifier),
-    Option.flatMap((specifier) =>
-      pipe(
-        context.checker.getSymbolAtLocation(specifier),
-        Option.fromNullishOr,
-        Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
-        Option.flatMap((declarations) => Array.findFirst(declarations, ts.isSourceFile))
-      )
+  const findFirstOf = (declarations: ReadonlyArray<ts.Declaration>) =>
+    Array.findFirst(declarations, ts.isSourceFile)
+
+  const pipeOf4 = (specifier: ts.Node) =>
+    pipe(
+      context.checker.getSymbolAtLocation(specifier),
+      Option.fromNullishOr,
+      Option.map(declarationsOfSymbol),
+      Option.flatMap(findFirstOf)
     )
-  )
+
+  const checkerSource = pipe(Option.fromNullishOr(moduleSpecifier), Option.flatMap(pipeOf4))
 
   if (Option.isSome(checkerSource)) {
     return checkerSource
@@ -766,6 +787,9 @@ export const resolvedModuleSourceFile = (
     Option.filter(ts.isStringLiteralLike),
     Option.map(Struct.get("text"))
   )
+
+  const pipeOf5 = (resolved: ts.ResolvedModuleFull) =>
+    pipe(context.program.getSourceFile(resolved.resolvedFileName), Option.fromNullishOr)
 
   return pipe(
     specifier,
@@ -781,9 +805,7 @@ export const resolvedModuleSourceFile = (
 
       return Option.fromNullishOr(resolution.resolvedModule)
     }),
-    Option.flatMap((resolved) =>
-      pipe(context.program.getSourceFile(resolved.resolvedFileName), Option.fromNullishOr)
-    )
+    Option.flatMap(pipeOf5)
   )
 }
 
@@ -842,7 +864,7 @@ const symbolIsAmbient = (checker: ts.TypeChecker, identifier: ts.Identifier) =>
   pipe(
     checker.getSymbolAtLocation(identifier),
     Option.fromNullishOr,
-    Option.map((symbol) => symbol.declarations ?? emptyDeclarations),
+    Option.map(declarationsOfSymbol),
     Option.exists((declarations) => {
       const hasDeclaration = declarations.length > 0
 
@@ -861,12 +883,19 @@ const symbolIsAmbient = (checker: ts.TypeChecker, identifier: ts.Identifier) =>
 const ambientPathAt = (
   checker: ts.TypeChecker,
   expression: ts.Expression
-): Option.Option<ReadonlyArray<string>> =>
-  pipe(
+): Option.Option<ReadonlyArray<string>> => {
+  const pathRootIsAmbient = (path: readonly [ts.Identifier, ReadonlyArray<string>]) =>
+    symbolIsAmbient(checker, path[0])
+
+  const ambientPathSegments = (path: readonly [ts.Identifier, ReadonlyArray<string>]) =>
+    Array.prepend(path[1], path[0].text)
+
+  return pipe(
     expressionPath(expression),
-    Option.filter((path) => symbolIsAmbient(checker, path[0])),
-    Option.map((path) => Array.prepend(path[1], path[0].text))
+    Option.filter(pathRootIsAmbient),
+    Option.map(ambientPathSegments)
   )
+}
 
 const ambientDirectNames = Array.make(
   "fetch",
@@ -903,27 +932,30 @@ export const capabilitySubjectAt = (
   policy: FunctionalCoreEffectPolicy,
   node: ts.CallExpression | ts.NewExpression
 ) => {
+  const pathTextEquals = (path: ReadonlyArray<string>) => Array.join(path, ".") === "Date"
+
+  const pipeOf6 = (expression: ts.CallExpression | ts.NewExpression) =>
+    pipe(
+      ambientPathAt(context.checker, expression.expression),
+      Option.filter(pathTextEquals),
+      Option.as("new Date")
+    )
+
   const newDate = pipe(
     Option.liftPredicate(ts.isNewExpression)(node),
     Option.filter((expression) => (expression.arguments?.length ?? 0) === 0),
-    Option.flatMap((expression) =>
-      pipe(
-        ambientPathAt(context.checker, expression.expression),
-        Option.filter((path) => Array.join(path, ".") === "Date"),
-        Option.as("new Date")
-      )
-    )
+    Option.flatMap(pipeOf6)
   )
 
   const ambient = ambientCallSubject(context.checker, node.expression)
 
+  const memberMatchesPolicyPrefix = (member: ImportedMember) =>
+    moduleMatchesPolicyPrefix(policy, member.moduleSpecifier) ||
+    importedMemberIsMovedPlatformCapability(member)
+
   const imported = pipe(
     importedMemberAt(context.checker, node.expression),
-    Option.filter(
-      (member) =>
-        moduleMatchesPolicyPrefix(policy, member.moduleSpecifier) ||
-        importedMemberIsMovedPlatformCapability(member)
-    ),
+    Option.filter(memberMatchesPolicyPrefix),
     Option.map((member) => {
       const memberPath = Array.join(member.path, ".")
       return `${member.moduleSpecifier}:${memberPath}`
@@ -935,13 +967,15 @@ export const capabilitySubjectAt = (
   return Option.firstSomeOf(candidates)
 }
 
+const pathTextEquals2 = (path: ReadonlyArray<string>) => Array.join(path, ".") === "process.env"
+
 export const ambientCapabilityPropertySubject = (
   context: CheckContext,
   node: ts.PropertyAccessExpression
 ) =>
   pipe(
     ambientPathAt(context.checker, node),
-    Option.filter((path) => Array.join(path, ".") === "process.env"),
+    Option.filter(pathTextEquals2),
     Option.map(Array.join("."))
   )
 
@@ -982,25 +1016,27 @@ const isSuspensionCallbackDeclaration = (
     return isArgument && isSuspension
   }
 
+  const importedEffectApiAtOf3 = (call: ts.CallExpression) =>
+    importedEffectApiAt(checker, call.expression, "Effect", tryEffectNames)
+
+  const pipeOf7 = (assignment: ts.PropertyAssignment) =>
+    pipe(
+      Match.value(assignment.name),
+      Match.when(ts.isIdentifier, Struct.get<ts.Identifier, "text">("text")),
+      Match.when(ts.isStringLiteralLike, Struct.get<ts.StringLiteralLike, "text">("text")),
+      Match.orElse(Function.constant("")),
+      Option.liftPredicate((text) => text === "try"),
+      Option.map(() => assignment.parent),
+      Option.filter(ts.isObjectLiteralExpression),
+      Option.map(Struct.get("parent")),
+      Option.filter(ts.isCallExpression),
+      Option.map(importedEffectApiAtOf3)
+    )
+
   return pipe(
     Option.liftPredicate(ts.isPropertyAssignment)(parent),
     Option.filter((assignment) => assignment.initializer === declaration),
-    Option.flatMap((assignment) =>
-      pipe(
-        Match.value(assignment.name),
-        Match.when(ts.isIdentifier, Struct.get<ts.Identifier, "text">("text")),
-        Match.when(ts.isStringLiteralLike, Struct.get<ts.StringLiteralLike, "text">("text")),
-        Match.orElse(Function.constant("")),
-        Option.liftPredicate((text) => text === "try"),
-        Option.map(() => assignment.parent),
-        Option.filter(ts.isObjectLiteralExpression),
-        Option.map(Struct.get("parent")),
-        Option.filter(ts.isCallExpression),
-        Option.map((call) =>
-          importedEffectApiAt(checker, call.expression, "Effect", tryEffectNames)
-        )
-      )
-    ),
+    Option.flatMap(pipeOf7),
     Option.getOrElse(Function.constFalse)
   )
 }
@@ -1065,10 +1101,7 @@ export const resourceSubjectAt = (
 
       return factoryMatch || newSuffixMatch
     }),
-    Option.map((member) => {
-      const memberPath = Array.join(member.path, ".")
-      return `${member.moduleSpecifier}:${memberPath}`
-    })
+    Option.map(importedMemberSubject)
   )
 
 export const hasScopedLifecycleAncestor = (checker: ts.TypeChecker, node: ts.Node) => {
@@ -1079,13 +1112,11 @@ export const hasScopedLifecycleAncestor = (checker: ts.TypeChecker, node: ts.Nod
   return Array.every(scopedFlags, Boolean)
 }
 
+const runtimeFunctionLikeFrom = (parent: ts.Node) =>
+  isRuntimeFunctionLike(parent) ? Option.some(parent) : enclosingFunctionLike(parent)
+
 export const enclosingFunctionLike = (node: ts.Node): Option.Option<ts.FunctionLikeDeclaration> =>
-  pipe(
-    Option.fromNullishOr(node.parent),
-    Option.flatMap((parent) =>
-      isRuntimeFunctionLike(parent) ? Option.some(parent) : enclosingFunctionLike(parent)
-    )
-  )
+  pipe(Option.fromNullishOr(node.parent), Option.flatMap(runtimeFunctionLikeFrom))
 
 const enclosingVariableNameNode = (node: ts.Node): Option.Option<ts.Identifier> =>
   pipe(
@@ -1120,50 +1151,52 @@ const declarationNameNode = (declaration: ts.FunctionLikeDeclaration) => {
   return keepDirect ? directName : enclosingVariableNameNode(declaration)
 }
 
-export const hasSourceFileScope = (context: CheckContext, node: ts.Node) =>
-  pipe(
+export const hasSourceFileScope = (context: CheckContext, node: ts.Node) => {
+  const foldAstOf = (scopedSymbol: ts.Symbol) =>
+    foldAst((found: boolean, current: ts.Node): boolean => {
+      const isCall = ts.isCallExpression(current)
+      const notCall = !isCall
+      const skipNode = found || notCall
+
+      if (skipNode) {
+        return found
+      }
+
+      const isScoped = importedEffectApiAt(
+        context.checker,
+        current.expression,
+        "Effect",
+        effectLifecycleNames
+      )
+
+      if (!isScoped) {
+        return found
+      }
+
+      return foldAst((referenced: boolean, child: ts.Node): boolean => {
+        const isIdentifier = ts.isIdentifier(child)
+        const notIdentifier = !isIdentifier
+        const skipChild = referenced || notIdentifier
+
+        if (skipChild) {
+          return referenced
+        }
+
+        const symbol = context.checker.getSymbolAtLocation(child)
+
+        return symbol === scopedSymbol
+      })(current)(false)
+    })(context.sourceFile)(false)
+
+  return pipe(
     enclosingFunctionLike(node),
     Option.flatMap(declarationNameNode),
     Option.flatMap(
       flow((name: ts.Identifier) => context.checker.getSymbolAtLocation(name), Option.fromNullishOr)
     ),
-    Option.exists((scopedSymbol) =>
-      foldAst((found: boolean, current: ts.Node): boolean => {
-        const isCall = ts.isCallExpression(current)
-        const notCall = !isCall
-        const skipNode = found || notCall
-
-        if (skipNode) {
-          return found
-        }
-
-        const isScoped = importedEffectApiAt(
-          context.checker,
-          current.expression,
-          "Effect",
-          effectLifecycleNames
-        )
-
-        if (!isScoped) {
-          return found
-        }
-
-        return foldAst((referenced: boolean, child: ts.Node): boolean => {
-          const isIdentifier = ts.isIdentifier(child)
-          const notIdentifier = !isIdentifier
-          const skipChild = referenced || notIdentifier
-
-          if (skipChild) {
-            return referenced
-          }
-
-          const symbol = context.checker.getSymbolAtLocation(child)
-
-          return symbol === scopedSymbol
-        })(current)(false)
-      })(context.sourceFile)(false)
-    )
+    Option.exists(foldAstOf)
   )
+}
 
 export const isTopLevelExportedDeclaration = (node: ts.Node) => {
   const visitParent = (current: ts.Node): boolean =>

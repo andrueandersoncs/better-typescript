@@ -51,14 +51,20 @@ const isModuleScopeFunction = (fn: ts.FunctionLikeDeclaration) => {
   )
 }
 
+const lookupPropertyAssignment = (object: ts.ObjectLiteralExpression) =>
+  pipe(propertyAssignmentNamed(object, lookupNames), Option.filter(ts.isPropertyAssignment))
+
+const unwrappedPropertyInitializer = (property: ts.PropertyAssignment) =>
+  unwrapTransparentExpression(property.initializer)
+
 const lookupExpressionFromCacheOptions = (argument: ts.Expression) => {
   const unwrapped = unwrapTransparentExpression(argument)
   const asObject = objectLiteralArgument(argument)
 
   const fromObject = pipe(
     asObject,
-    Option.flatMap((object) => propertyAssignmentNamed(object, lookupNames)),
-    Option.map((property) => unwrapTransparentExpression(property.initializer)),
+    Option.flatMap(lookupPropertyAssignment),
+    Option.map(unwrappedPropertyInitializer),
     Option.filter(isFunctionLikeExpression)
   )
 

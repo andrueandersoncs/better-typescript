@@ -52,16 +52,17 @@ const queueFamilyNames = Array.make("Queue", "PubSub", "SubscriptionRef", "Deque
 const identifierIsQueueFamily = (identifier: ts.Identifier) =>
   Array.contains(queueFamilyNames, identifier.text)
 
+const typeReferenceIsQueueFamily = (reference: ts.TypeReferenceNode) =>
+  pipe(
+    Option.liftPredicate(ts.isIdentifier)(reference.typeName),
+    Option.exists(identifierIsQueueFamily)
+  )
+
 const matchQueueFamilyNode = (current: ts.Node) =>
   pipe(
     Match.value(current),
     Match.when(ts.isIdentifier, identifierIsQueueFamily),
-    Match.when(ts.isTypeReferenceNode, (reference) =>
-      pipe(
-        Option.liftPredicate(ts.isIdentifier)(reference.typeName),
-        Option.exists(identifierIsQueueFamily)
-      )
-    ),
+    Match.when(ts.isTypeReferenceNode, typeReferenceIsQueueFamily),
     Match.orElse(Function.constFalse)
   )
 

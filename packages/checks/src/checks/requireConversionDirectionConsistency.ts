@@ -7,6 +7,7 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
+  isNonBooleanResult,
   wordsMatch,
   type CallableSemantics
 } from "./support/callableSemantics.js"
@@ -33,15 +34,37 @@ const conversionOperations = HashSet.make(
 const claimedAgrees = (claimed: string) => (expectedWords: ReadonlyArray<string>) =>
   Array.some(expectedWords, wordsMatch(claimed))
 
-const explicitDisagreement = (expectedWords: ReadonlyArray<string>) => (claimed: string) =>
-  pipe(
+const explicitDisagreement = (expectedWords: ReadonlyArray<string>) => (claimed: string) => {
+  const disagreesWithClaimed = (words: ReadonlyArray<string>) => !claimedAgrees(claimed)(words)
+  const claimedWithExpected = (words: ReadonlyArray<string>) => Tuple.make(claimed, words[0])
+
+  return pipe(
     Option.liftPredicate(Array.isReadonlyArrayNonEmpty)(expectedWords),
-    Option.filter((words) => !claimedAgrees(claimed)(words)),
-    Option.map((words) => Tuple.make(claimed, words[0]))
+    Option.filter(disagreesWithClaimed),
+    Option.map(claimedWithExpected)
   )
+}
 
 // ConversionAxis is claim side because Match.exhaustive must reject unknown conversion axes.
 type ConversionAxis = "result" | "source"
+
+const isConversionOperation = (operation: string) => HashSet.has(conversionOperations, operation)
+const isDirectionRelation = (word: string) => HashSet.has(directionRelations, word)
+
+const isResultObjectOperation = (candidate: string) =>
+  HashSet.has(resultObjectOperations, candidate)
+
+const isSourceObjectOperation = (candidate: string) =>
+  HashSet.has(sourceObjectOperations, candidate)
+
+const hasConversionOperationOrNone = (semantics: CallableSemantics) =>
+  pipe(
+    semantics.name.operation,
+    Option.match({
+      onNone: Function.constTrue,
+      onSome: isConversionOperation
+    })
+  )
 
 const conversionDirectionMatches = (context: CheckContext) => {
   const match = makeDetection(context)
@@ -91,16 +114,8 @@ const conversionDirectionMatches = (context: CheckContext) => {
   const matches = (definition: FunctionDefinition): ReadonlyArray<Detection> =>
     pipe(
       semanticsFor(definition),
-      Option.filter((semantics) => semantics.result.shape !== "boolean"),
-      Option.filter((semantics) =>
-        pipe(
-          semantics.name.operation,
-          Option.match({
-            onNone: Function.constTrue,
-            onSome: (operation) => HashSet.has(conversionOperations, operation)
-          })
-        )
-      ),
+      Option.filter(isNonBooleanResult),
+      Option.filter(hasConversionOperationOrNone),
       Option.map((semantics) => {
         const report = disagreementDetection(semantics)
         const relation = semantics.name.relation
@@ -108,11 +123,17 @@ const conversionDirectionMatches = (context: CheckContext) => {
         const resultWords = semantics.result.words
         const sourceWords = semantics.sourceWords
 
+        const reportResultDisagreement = ([claimedWord, expected]: readonly [string, string]) =>
+          report("result")(claimedWord, expected)
+
+        const reportSourceDisagreement = ([claimedWord, expected]: readonly [string, string]) =>
+          report("source")(claimedWord, expected)
+
         const resultDisagreement = (claimed: Option.Option<string>) =>
           pipe(
             claimed,
             Option.flatMap(explicitDisagreement(resultWords)),
-            Option.map(([claimedWord, expected]) => report("result")(claimedWord, expected)),
+            Option.map(reportResultDisagreement),
             Option.toArray
           )
 
@@ -120,7 +141,7 @@ const conversionDirectionMatches = (context: CheckContext) => {
           pipe(
             claimed,
             Option.flatMap(explicitDisagreement(sourceWords)),
-            Option.map(([claimedWord, expected]) => report("source")(claimedWord, expected)),
+            Option.map(reportSourceDisagreement),
             Option.toArray
           )
 
@@ -132,60 +153,62 @@ const conversionDirectionMatches = (context: CheckContext) => {
           const resultDetections = resultDisagreement(resultClaim)
           const disagreementAxes = Array.make(sourceDetections, resultDetections)
           const bothAxesDisagree = Array.every(disagreementAxes, Array.isReadonlyArrayNonEmpty)
+          const flattenedDisagreements = () => Array.flatten(disagreementAxes)
 
           return pipe(
             Option.liftPredicate((value: boolean) => value)(bothAxesDisagree),
-            Option.map(() => Array.flatten(disagreementAxes)),
+            Option.map(flattenedDisagreements),
             Option.getOrElse(constantEmptyDetections)
           )
         }
 
+        const isFromRelation = (word: string) => word === "from"
+        const isToRelation = (word: string) => word === "to"
+
+        const fromDirectionDetections = () =>
+          completeDirectionDisagreement(semantics.name.source, semantics.name.object)
+
+        const toDirectionDetections = () =>
+          completeDirectionDisagreement(semantics.name.object, semantics.name.result)
+
         const fromDetections = pipe(
           relation,
-          Option.filter((word) => word === "from"),
-          Option.map(() =>
-            completeDirectionDisagreement(semantics.name.source, semantics.name.object)
-          ),
+          Option.filter(isFromRelation),
+          Option.map(fromDirectionDetections),
           Option.getOrElse(constantEmptyDetections)
         )
 
         const toDetections = pipe(
           relation,
-          Option.filter((word) => word === "to"),
-          Option.map(() =>
-            completeDirectionDisagreement(semantics.name.object, semantics.name.result)
-          ),
+          Option.filter(isToRelation),
+          Option.map(toDirectionDetections),
           Option.getOrElse(constantEmptyDetections)
         )
 
-        const hasDirectionRelation = pipe(
-          relation,
-          Option.exists((word) => HashSet.has(directionRelations, word))
-        )
+        const hasDirectionRelation = pipe(relation, Option.exists(isDirectionRelation))
+        const resultObjectDisagreement = () => resultDisagreement(semantics.name.object)
+        const sourceObjectDisagreement = () => sourceDisagreement(semantics.name.object)
+
+        const operationObjectDetectionsFor = (word: string) =>
+          pipe(
+            Match.value(word),
+            Match.when(isResultObjectOperation, resultObjectDisagreement),
+            Match.when(isSourceObjectOperation, sourceObjectDisagreement),
+            Match.orElse(constantEmptyDetections)
+          )
+
+        const operationObjectDetectionsWhenNoDirection = () =>
+          pipe(
+            operation,
+            Option.match({
+              onNone: constantEmptyDetections,
+              onSome: operationObjectDetectionsFor
+            })
+          )
 
         const operationObjectDetections = pipe(
           Option.liftPredicate((value: boolean) => !value)(hasDirectionRelation),
-          Option.map(() =>
-            pipe(
-              operation,
-              Option.match({
-                onNone: constantEmptyDetections,
-                onSome: (word) =>
-                  pipe(
-                    Match.value(word),
-                    Match.when(
-                      (candidate) => HashSet.has(resultObjectOperations, candidate),
-                      () => resultDisagreement(semantics.name.object)
-                    ),
-                    Match.when(
-                      (candidate) => HashSet.has(sourceObjectOperations, candidate),
-                      () => sourceDisagreement(semantics.name.object)
-                    ),
-                    Match.orElse(constantEmptyDetections)
-                  )
-              })
-            )
-          ),
+          Option.map(operationObjectDetectionsWhenNoDirection),
           Option.getOrElse(constantEmptyDetections)
         )
 

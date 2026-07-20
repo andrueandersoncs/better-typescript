@@ -14,7 +14,12 @@ import {
   Result
 } from "effect"
 import * as ts from "typescript"
-import { hasExportModifier, functionInitializer, resolvedSymbolAt } from "../support/tsNode.js"
+import {
+  hasExportModifier,
+  functionInitializer,
+  resolvedSymbolAt,
+  symbolDeclarations
+} from "../support/tsNode.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
@@ -86,12 +91,12 @@ export const isTestPath = (relativePath: string) => {
   const testLikeDirectories = Array.make("bench/", "test/", "tests/", "__tests__/")
   const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
 
-  const inTestLikeDirectory = Array.some(
-    testLikeDirectories,
-    (directory) => normalized.startsWith(directory) || normalized.includes(`/${directory}`)
-  )
+  const matchesTestLikeDirectory = (directory: string) =>
+    normalized.startsWith(directory) || normalized.includes(`/${directory}`)
 
-  const hasTestSuffix = Array.some(testSuffixes, (suffix) => normalized.endsWith(suffix))
+  const inTestLikeDirectory = Array.some(testLikeDirectories, matchesTestLikeDirectory)
+  const endsWithTestSuffix = (suffix: string) => normalized.endsWith(suffix)
+  const hasTestSuffix = Array.some(testSuffixes, endsWithTestSuffix)
 
   return inTestLikeDirectory || hasTestSuffix
 }
@@ -105,8 +110,14 @@ export const toWorkspacePath =
     return workspacePath.replaceAll(path.sep, "/")
   }
 
-export const isTestSourceFile = (root: string) => (sourceFile: ts.SourceFile) =>
-  pipe(sourceFile.fileName, (fileName) => path.relative(root, fileName), isTestPath)
+export const isTestSourceFile = (root: string) => {
+  const relativeToRoot = (fileName: string) => path.relative(root, fileName)
+
+  const sourceFileIsTest = (sourceFile: ts.SourceFile) =>
+    pipe(sourceFile.fileName, relativeToRoot, isTestPath)
+
+  return sourceFileIsTest
+}
 
 // Skip package library surfaces because test-only use does not prove an internal test seam.
 export const isPackageProject =
@@ -154,31 +165,36 @@ const variableFunctionEntries =
       return Array.empty()
     }
 
-    return Array.filterMap(statement.declarationList.declarations, (declaration) =>
-      pipe(
+    const entryForDeclaration = (declaration: ts.VariableDeclaration) => {
+      const entryForFunction = (
+        functionNode: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
+      ) => {
+        const entryForName = (nameNode: ts.Identifier) => {
+          const makeExportedFunctionEntry = (symbol: ts.Symbol) =>
+            new ExportedFunctionEntry({
+              symbol,
+              nameNode,
+              declarationNode: declaration,
+              functionNode
+            })
+
+          return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedFunctionEntry))
+        }
+
+        return pipe(
+          Option.liftPredicate(ts.isIdentifier)(declaration.name),
+          Option.flatMap(entryForName)
+        )
+      }
+
+      return pipe(
         functionInitializer(declaration),
-        Option.flatMap((functionNode) =>
-          pipe(
-            Option.liftPredicate(ts.isIdentifier)(declaration.name),
-            Option.flatMap((nameNode) =>
-              pipe(
-                resolvedSymbolAt(checker)(nameNode),
-                Option.map(
-                  (symbol) =>
-                    new ExportedFunctionEntry({
-                      symbol,
-                      nameNode,
-                      declarationNode: declaration,
-                      functionNode
-                    })
-                )
-              )
-            )
-          )
-        ),
+        Option.flatMap(entryForFunction),
         Result.fromOption(Function.constVoid)
       )
-    )
+    }
+
+    return Array.filterMap(statement.declarationList.declarations, entryForDeclaration)
   }
 
 const functionDeclarationEntry =
@@ -188,23 +204,19 @@ const functionDeclarationEntry =
       return Option.none()
     }
 
-    return pipe(
-      Option.fromNullishOr(declaration.name),
-      Option.flatMap((nameNode) =>
-        pipe(
-          resolvedSymbolAt(checker)(nameNode),
-          Option.map(
-            (symbol) =>
-              new ExportedFunctionEntry({
-                symbol,
-                nameNode,
-                declarationNode: declaration,
-                functionNode: declaration
-              })
-          )
-        )
-      )
-    )
+    const entryForName = (nameNode: ts.Identifier) => {
+      const makeExportedFunctionEntry = (symbol: ts.Symbol) =>
+        new ExportedFunctionEntry({
+          symbol,
+          nameNode,
+          declarationNode: declaration,
+          functionNode: declaration
+        })
+
+      return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedFunctionEntry))
+    }
+
+    return pipe(Option.fromNullishOr(declaration.name), Option.flatMap(entryForName))
   }
 
 const exportedFunctionsIn =
@@ -224,19 +236,17 @@ const exportedFunctionsIn =
 
 const namedExportEntry =
   (checker: ts.TypeChecker) =>
-  (nameNode: ts.Identifier, declarationNode: ts.Declaration, kind: ExportedSymbolKind) =>
-    pipe(
-      resolvedSymbolAt(checker)(nameNode),
-      Option.map(
-        (symbol) =>
-          new ExportedSymbolEntry({
-            symbol,
-            nameNode,
-            declarationNode,
-            kind
-          })
-      )
-    )
+  (nameNode: ts.Identifier, declarationNode: ts.Declaration, kind: ExportedSymbolKind) => {
+    const makeExportedSymbolEntry = (symbol: ts.Symbol) =>
+      new ExportedSymbolEntry({
+        symbol,
+        nameNode,
+        declarationNode,
+        kind
+      })
+
+    return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedSymbolEntry))
+  }
 
 const variableSymbolEntries =
   (checker: ts.TypeChecker) =>
@@ -245,18 +255,22 @@ const variableSymbolEntries =
       return Array.empty()
     }
 
-    return Array.filterMap(statement.declarationList.declarations, (declaration) =>
-      pipe(
-        Option.liftPredicate(ts.isIdentifier)(declaration.name),
-        Option.flatMap((nameNode) => {
-          const initializer = functionInitializer(declaration)
-          const kind: ExportedSymbolKind = Option.isSome(initializer) ? "function" : "value"
+    const entryForDeclaration = (declaration: ts.VariableDeclaration) => {
+      const entryForName = (nameNode: ts.Identifier) => {
+        const initializer = functionInitializer(declaration)
+        const kind: ExportedSymbolKind = Option.isSome(initializer) ? "function" : "value"
 
-          return namedExportEntry(checker)(nameNode, declaration, kind)
-        }),
+        return namedExportEntry(checker)(nameNode, declaration, kind)
+      }
+
+      return pipe(
+        Option.liftPredicate(ts.isIdentifier)(declaration.name),
+        Option.flatMap(entryForName),
         Result.fromOption(Function.constVoid)
       )
-    )
+    }
+
+    return Array.filterMap(statement.declarationList.declarations, entryForDeclaration)
   }
 
 const noExportedSymbolEntries: ReadonlyArray<ExportedSymbolEntry> = Array.empty()
@@ -269,10 +283,13 @@ const symbolEntriesForDeclaration =
       return noExportedSymbolEntries
     }
 
+    const entryForName = (nameNode: ts.Identifier) =>
+      namedExportEntry(checker)(nameNode, declaration, kind)
+
     return pipe(
       Option.fromNullishOr(declaration.name),
       Option.filter(ts.isIdentifier),
-      Option.flatMap((nameNode) => namedExportEntry(checker)(nameNode, declaration, kind)),
+      Option.flatMap(entryForName),
       Option.toArray
     )
   }
@@ -318,25 +335,25 @@ const isImportBinding = (node: ts.Identifier) => {
 
 const isDirectCallReference = (node: ts.Identifier) => {
   const parent = node.parent
+  const expressionIsNode = (call: ts.CallExpression) => call.expression === node
 
   const directCall = pipe(
     Option.liftPredicate(ts.isCallExpression)(parent),
-    Option.exists((call) => call.expression === node)
+    Option.exists(expressionIsNode)
   )
+
+  const accessInvokesNode = (access: ts.PropertyAccessExpression) => {
+    const hasReferencedName = access.name === node
+    const callParent = Option.liftPredicate(ts.isCallExpression)(access.parent)
+    const expressionIsAccess = (call: ts.CallExpression) => call.expression === access
+    const invokesAccess = pipe(callParent, Option.exists(expressionIsAccess))
+
+    return hasReferencedName && invokesAccess
+  }
 
   const propertyCall = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
-    Option.exists((access) => {
-      const hasReferencedName = access.name === node
-      const callParent = Option.liftPredicate(ts.isCallExpression)(access.parent)
-
-      const invokesAccess = pipe(
-        callParent,
-        Option.exists((call) => call.expression === access)
-      )
-
-      return hasReferencedName && invokesAccess
-    })
+    Option.exists(accessInvokesNode)
   )
 
   return directCall || propertyCall
@@ -406,12 +423,13 @@ const buildUsageMap =
     const checker = context.checker
     const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
-    const entryPairs = Array.map(entries, (entry) => {
-      const symbolKey = referenceKey(entry.symbol)
+    const entryPair = (entry: UsageScanEntry) => {
+      const key = referenceKey(entry.symbol)
 
-      return Tuple.make(symbolKey, entry)
-    })
+      return Tuple.make(key, entry)
+    }
 
+    const entryPairs = Array.map(entries, entryPair)
     const entriesBySymbol = HashMap.fromIterable(entryPairs)
     const relative = toRelativeFileName(context.projectRoot)
     const classifyTestSource = isTestSourceFile(context.workspaceRoot)
@@ -424,50 +442,61 @@ const buildUsageMap =
         const sourcePath = relative(sourceFile.fileName)
         const fromTest = classifyTestSource(sourceFile)
 
-        return foldAst(
-          (
-            current: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>,
-            node: ts.Node
-          ): HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage> =>
-            pipe(
-              Option.liftPredicate(ts.isIdentifier)(node),
-              Option.filter(Predicate.not(isImportBinding)),
-              Option.flatMap((currentIdentifier) =>
-                pipe(
-                  resolvedSymbolAt(checker)(currentIdentifier),
-                  Option.flatMap((symbol) => {
-                    const symbolKey = referenceKey(symbol)
+        const foldNode = (
+          current: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>,
+          node: ts.Node
+        ): HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage> => {
+          const resolveIdentifierUsages = (currentIdentifier: ts.Identifier) => {
+            const entryForSymbol = (symbol: ts.Symbol) => {
+              const symbolKey = referenceKey(symbol)
 
-                    return HashMap.get(entriesBySymbol, symbolKey)
-                  }),
-                  Option.filter((candidate) =>
-                    referenceFilter(candidate.declarationNode)(currentIdentifier)
-                  ),
-                  Option.map((candidate) => {
-                    const candidateKey = referenceKey(candidate.symbol)
+              return HashMap.get(entriesBySymbol, symbolKey)
+            }
 
-                    const usage = pipe(
-                      HashMap.get(current, candidateKey),
-                      Option.getOrElse(makeEmptyUsage)
-                    )
+            const matchesReferenceFilter = (candidate: UsageScanEntry) =>
+              referenceFilter(candidate.declarationNode)(currentIdentifier)
 
-                    const isCall = isDirectCallReference(currentIdentifier)
-                    const updated = makeUpdatedUsage(fromTest, isCall, sourcePath)(usage)
+            const updatedUsagesFor = (candidate: UsageScanEntry) => {
+              const candidateKey = referenceKey(candidate.symbol)
 
-                    return HashMap.set(current, candidateKey, updated)
-                  })
-                )
-              ),
-              Option.getOrElse(Function.constant(current))
+              const usage = pipe(
+                HashMap.get(current, candidateKey),
+                Option.getOrElse(makeEmptyUsage)
+              )
+
+              const isCall = isDirectCallReference(currentIdentifier)
+              const updated = makeUpdatedUsage(fromTest, isCall, sourcePath)(usage)
+
+              return HashMap.set(current, candidateKey, updated)
+            }
+
+            return pipe(
+              resolvedSymbolAt(checker)(currentIdentifier),
+              Option.flatMap(entryForSymbol),
+              Option.filter(matchesReferenceFilter),
+              Option.map(updatedUsagesFor)
             )
-        )(sourceFile)(usages)
+          }
+
+          return pipe(
+            Option.liftPredicate(ts.isIdentifier)(node),
+            Option.filter(Predicate.not(isImportBinding)),
+            Option.flatMap(resolveIdentifierUsages),
+            Option.getOrElse(Function.constant(current))
+          )
+        }
+
+        return foldAst(foldNode)(sourceFile)(usages)
       }
 
     const initialUsages = HashMap.empty<ReferenceKey<ts.Symbol>, ExportUsage>()
 
-    return Array.reduce(projectFiles, initialUsages, (current, sourceFile) =>
-      scanFile(sourceFile)(current)
-    )
+    const scanSourceFile = (
+      current: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>,
+      sourceFile: ts.SourceFile
+    ) => scanFile(sourceFile)(current)
+
+    return Array.reduce(projectFiles, initialUsages, scanSourceFile)
   }
 
 export const buildExportReferenceIndex = (context: ProgramContext) => {
@@ -506,11 +535,17 @@ export const symbolUsageFor =
 
 const moduleSourceFile =
   (context: ProgramContext, containingFile: ts.SourceFile) => (moduleSpecifier: ts.Expression) => {
+    const declarationsOf = Function.flow(
+      symbolDeclarations,
+      Option.fromNullishOr,
+      Option.getOrElse((): ReadonlyArray<ts.Declaration> => Array.empty())
+    )
+
     const checkerSource = pipe(
       context.checker.getSymbolAtLocation(moduleSpecifier),
       Option.fromNullishOr,
-      Option.map((symbol) => symbol.declarations ?? Array.empty()),
-      Option.flatMap((declarations) => Array.findFirst(declarations, ts.isSourceFile))
+      Option.map(declarationsOf),
+      Option.flatMap(Array.findFirst(ts.isSourceFile))
     )
 
     if (Option.isSome(checkerSource)) {
@@ -524,22 +559,21 @@ const moduleSourceFile =
 
     const compilerOptions = context.program.getCompilerOptions()
 
-    return pipe(
-      specifier,
-      Option.flatMap((text) => {
-        const resolution = ts.resolveModuleName(
-          text,
-          containingFile.fileName,
-          compilerOptions,
-          ts.sys
-        )
-
-        return Option.fromNullishOr(resolution.resolvedModule)
-      }),
-      Option.flatMap((resolved) =>
-        pipe(context.program.getSourceFile(resolved.resolvedFileName), Option.fromNullishOr)
+    const resolveModule = (text: string) => {
+      const resolution = ts.resolveModuleName(
+        text,
+        containingFile.fileName,
+        compilerOptions,
+        ts.sys
       )
-    )
+
+      return Option.fromNullishOr(resolution.resolvedModule)
+    }
+
+    const sourceFileForResolved = (resolved: ts.ResolvedModule) =>
+      pipe(context.program.getSourceFile(resolved.resolvedFileName), Option.fromNullishOr)
+
+    return pipe(specifier, Option.flatMap(resolveModule), Option.flatMap(sourceFileForResolved))
   }
 
 const statementModuleSpecifier = (statement: ts.Statement) => {
@@ -547,9 +581,12 @@ const statementModuleSpecifier = (statement: ts.Statement) => {
     return Option.some(statement.moduleSpecifier)
   }
 
+  const moduleSpecifierOf = (declaration: ts.ExportDeclaration) =>
+    pipe(declaration.moduleSpecifier, Option.fromNullishOr)
+
   return pipe(
     Option.liftPredicate(ts.isExportDeclaration)(statement),
-    Option.flatMap((declaration) => pipe(declaration.moduleSpecifier, Option.fromNullishOr))
+    Option.flatMap(moduleSpecifierOf)
   )
 }
 
@@ -558,26 +595,32 @@ export const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleE
   const classifyTestSource = isTestSourceFile(context.workspaceRoot)
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
-  return Array.flatMap(projectFiles, (sourceFile) => {
+  const edgesForSourceFile = (sourceFile: ts.SourceFile) => {
     const importerPath = relative(sourceFile.fileName)
     const fromTest = classifyTestSource(sourceFile)
 
-    return Array.filterMap(sourceFile.statements, (statement) =>
-      pipe(
+    const edgeForStatement = (statement: ts.Statement) => {
+      const makeModuleEdgeForImportedFile = (importedFile: ts.SourceFile) => {
+        const importedPath = relative(importedFile.fileName)
+
+        return new ModuleEdge({
+          importerPath,
+          importedPath,
+          fromTest
+        })
+      }
+
+      return pipe(
         statementModuleSpecifier(statement),
         Option.flatMap(moduleSourceFile(context, sourceFile)),
         Option.filter(isProjectSourceFile),
-        Option.map((importedFile) => {
-          const importedPath = relative(importedFile.fileName)
-
-          return new ModuleEdge({
-            importerPath,
-            importedPath,
-            fromTest
-          })
-        }),
+        Option.map(makeModuleEdgeForImportedFile),
         Result.fromOption(Function.constVoid)
       )
-    )
-  })
+    }
+
+    return Array.filterMap(sourceFile.statements, edgeForStatement)
+  }
+
+  return Array.flatMap(projectFiles, edgesForSourceFile)
 }

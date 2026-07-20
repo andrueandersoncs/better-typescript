@@ -65,11 +65,17 @@ const rootFileNames = HashSet.make(
 
 const testSuffixes = Array.make(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
 
-const containsSegment = (segments: ReadonlyArray<string>) => (names: HashSet.HashSet<string>) =>
-  Array.some(segments, (segment) => HashSet.has(names, segment))
+const containsSegment = (segments: ReadonlyArray<string>) => (names: HashSet.HashSet<string>) => {
+  const hasName = (segment: string) => HashSet.has(names, segment)
 
-const hasTestSuffix = (fileName: string) =>
-  Array.some(testSuffixes, (suffix) => fileName.endsWith(suffix))
+  return Array.some(segments, hasName)
+}
+
+const hasTestSuffix = (fileName: string) => {
+  const matchesSuffix = (suffix: string) => fileName.endsWith(suffix)
+
+  return Array.some(testSuffixes, matchesSuffix)
+}
 
 export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (projectRelativePath) => {
   const normalized = normalizePath(projectRelativePath)
@@ -102,17 +108,15 @@ export const conventionalArchitectureRoleOf: ArchitectureRoleClassifier = (proje
     domainRule
   )
 
-  return pipe(
-    roleRules,
-    Array.findFirst(([matches]) => matches),
-    Option.map(([, role]) => role)
-  )
+  const roleRuleMatches = ([matches]: readonly [boolean, ArchitectureRole]) => matches
+  const roleRuleRole = ([, role]: readonly [boolean, ArchitectureRole]) => role
+
+  return pipe(roleRules, Array.findFirst(roleRuleMatches), Option.map(roleRuleRole))
 }
 
-const pathLengthOrder: Order.Order<ArchitectureRolePath> = Order.mapInput(
-  Order.flip(Order.Number),
-  (entry) => normalizePath(entry.path).length
-)
+const architectureRolePathLength = (entry: ArchitectureRolePath) => normalizePath(entry.path).length
+
+const pathLengthOrder = Order.mapInput(Order.flip(Order.Number), architectureRolePathLength)
 
 const makeNormalizedRolePath = (entry: ArchitectureRolePath) => {
   const path = normalizePath(entry.path)
@@ -138,11 +142,10 @@ export const roleByPrefixes = (
   const roleForPath = (projectRelativePath: string) => {
     const normalized = normalizePath(projectRelativePath)
 
-    return pipe(
-      ordered,
-      Array.findFirst((entry) => pathContains(entry.path, normalized)),
-      Option.map(Struct.get("role"))
-    )
+    const containsNormalizedPath = (entry: ArchitectureRolePath) =>
+      pathContains(entry.path, normalized)
+
+    return pipe(ordered, Array.findFirst(containsNormalizedPath), Option.map(Struct.get("role")))
   }
 
   return roleForPath

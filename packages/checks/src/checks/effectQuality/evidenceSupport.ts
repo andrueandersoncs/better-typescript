@@ -5,7 +5,8 @@ import type { ArchitectureRole } from "../support/architectureRole.js"
 import {
   enclosingFunctionLike,
   importedEffectApiAt,
-  importedEffectApiSubject
+  importedMemberAt,
+  importedMemberSubject
 } from "../functionalCoreEffect/support.js"
 import { propertyNameText, unwrapTransparentExpression } from "../support/tsNode.js"
 import { declarationNameText } from "./astQueries.js"
@@ -13,7 +14,8 @@ import { declarationNameText } from "./astQueries.js"
 export const apiSubject =
   (context: CheckContext) => (fallback: string) => (expression: ts.Expression) =>
     pipe(
-      importedEffectApiSubject(context.checker, expression),
+      importedMemberAt(context.checker, expression),
+      Option.map(importedMemberSubject),
       Option.getOrElse(Function.constant(fallback))
     )
 

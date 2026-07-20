@@ -18,7 +18,7 @@ const EffectFnNameInspection = Schema.Struct({
 })
 
 // EffectFnNameInspection pairs node with optional name because filters need both together.
-interface EffectFnNameInspection extends Schema.Schema.Type<typeof EffectFnNameInspection> {}
+export interface EffectFnNameInspection extends Schema.Schema.Type<typeof EffectFnNameInspection> {}
 
 const makeEffectFnNameInspection = (name: Option.Option<string>) => (node: ts.Node) =>
   EffectFnNameInspection.make({ node, name })
@@ -44,25 +44,32 @@ const nestedEffectFnNameLiteral = (call: ts.CallExpression) =>
     )
   )
 
+const nestedCallIsEffectFnApi = (checker: ts.TypeChecker) => (nested: ts.CallExpression) =>
+  isEffectFnApi(checker)(nested.expression)
+
+const nameLiteralAsNode = (literal: ts.StringLiteralLike): ts.Node => literal
+
+const effectFnNameInspectionFromNested = (nested: ts.CallExpression) => {
+  const nameLiteral = nestedEffectFnNameLiteral(nested)
+
+  const evidenceNode = pipe(
+    nameLiteral,
+    Option.map(nameLiteralAsNode),
+    Option.getOrElse(Function.constant(nested.expression))
+  )
+
+  const name = pipe(nameLiteral, Option.map(Struct.get("text")))
+
+  return makeEffectFnNameInspection(name)(evidenceNode)
+}
+
 const inspectNamedEffectFnForm = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
   pipe(
     call.expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isCallExpression),
-    Option.filter((nested) => isEffectFnApi(checker)(nested.expression)),
-    Option.map((nested) => {
-      const nameLiteral = nestedEffectFnNameLiteral(nested)
-
-      const evidenceNode = pipe(
-        nameLiteral,
-        Option.map((literal): ts.Node => literal),
-        Option.getOrElse(Function.constant(nested.expression))
-      )
-
-      const name = pipe(nameLiteral, Option.map(Struct.get("text")))
-
-      return makeEffectFnNameInspection(name)(evidenceNode)
-    })
+    Option.filter(nestedCallIsEffectFnApi(checker)),
+    Option.map(effectFnNameInspectionFromNested)
   )
 
 const argumentIsEffectFnBody = (argument: ts.Expression) => {
@@ -83,15 +90,20 @@ const inspectBodyEffectFnForm = (checker: ts.TypeChecker) => (call: ts.CallExpre
   return isEffectFn && isBodyForm ? Option.some(inspection) : Option.none()
 }
 
+const inspectBodyEffectFnFormFallback =
+  (checker: ts.TypeChecker) => (call: ts.CallExpression) => () =>
+    inspectBodyEffectFnForm(checker)(call)
+
+const inspectEffectFnForms = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  pipe(
+    inspectNamedEffectFnForm(checker)(call),
+    Option.orElse(inspectBodyEffectFnFormFallback(checker)(call))
+  )
+
 export const inspectEffectFnCall = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
   pipe(
     expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isCallExpression),
-    Option.flatMap((call) =>
-      pipe(
-        inspectNamedEffectFnForm(checker)(call),
-        Option.orElse(() => inspectBodyEffectFnForm(checker)(call))
-      )
-    )
+    Option.flatMap(inspectEffectFnForms(checker))
   )

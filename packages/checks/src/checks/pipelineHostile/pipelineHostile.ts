@@ -1,9 +1,9 @@
-import { Array, Effect, pipe } from "effect"
+import { Array, Function, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
 import { packageExamples } from "../../defineCheck.js"
-import { PipelineHostileInput, PipelineSignals } from "./data.js"
+import { PipelineSignals } from "./data.js"
 
 export const pipelineHostileExamples = packageExamples("pipeline-hostile")
 
@@ -49,13 +49,4 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
   )
 }
 
-export const pipelineHostile = Effect.fn("PipelineHostile.derive")(function* (
-  input: PipelineHostileInput
-): Effect.fn.Return<ReadonlyArray<Advice>> {
-  const signals = PipelineSignals.make({
-    noNestedCalls: input.noNestedCalls,
-    preferCurriedDataLastFunctions: input.preferCurriedDataLastFunctions
-  })
-
-  return pipelineHostileAdviceFor(signals)
-})
+export const pipelineHostile = Function.compose(PipelineSignals.make, pipelineHostileAdviceFor)

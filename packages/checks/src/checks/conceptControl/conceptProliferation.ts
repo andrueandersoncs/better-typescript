@@ -1,6 +1,5 @@
 import {
   Array,
-  Effect,
   Function,
   HashMap,
   HashSet,
@@ -54,6 +53,35 @@ const signalKindCount = (counts: HashMap.HashMap<string, number>, data: ConceptS
   return HashMap.set(counts, data.kind, current + 1)
 }
 
+const relatedConceptsWithConcept = (item: ConceptSignalData) =>
+  Array.prepend(item.relatedConcepts, item.concept)
+
+const pairElementWithSignalData = (element: Detection) => {
+  const withData = (data: ConceptSignalData) => Tuple.make(element, data)
+
+  return pipe(signalData(element), Option.map(withData), Result.fromOption(Function.constVoid))
+}
+
+const isClosedAbstractionEntry = (entry: readonly [Detection, ConceptSignalData]) =>
+  entry[1].kind === "closed-abstraction"
+
+const closedAbstractionAdviceFromEntry = (entry: readonly [Detection, ConceptSignalData]) =>
+  makeClosedAbstractionAdvice(entry[0], entry[1])
+
+const isProliferationEntry = (entry: readonly [Detection, ConceptSignalData]) =>
+  HashSet.has(proliferationKinds, entry[1].kind)
+
+const elementDirectory = (element: Detection) => immediateDirectory(element.location.path)
+
+const proliferationAdviceFromDirectory = ([directory, grouped]: readonly [
+  string,
+  ReadonlyArray<Detection>
+]) => {
+  const advice = proliferationAdvice(directory, grouped)
+
+  return Result.fromOption(advice, Function.constVoid)
+}
+
 const makeClosedAbstractionAdvice = (element: Detection, data: ConceptSignalData) => {
   const externalCallers = makeEvidenceItem("external callers", data.externalCallers)
   const independentOwners = makeEvidenceItem("independent model owners", data.independentOwners)
@@ -83,12 +111,7 @@ const proliferationAdvice = (
     Function.flow(signalData, Result.fromOption(Function.constVoid))
   )
 
-  const concepts = pipe(
-    data,
-    Array.flatMap((item) => Array.prepend(item.relatedConcepts, item.concept)),
-    HashSet.fromIterable
-  )
-
+  const concepts = pipe(data, Array.flatMap(relatedConceptsWithConcept), HashSet.fromIterable)
   const enoughSignals = data.length >= 2
   const enoughConcepts = HashSet.size(concepts) >= 2
   const conditions = Array.make(enoughSignals, enoughConcepts)
@@ -125,42 +148,28 @@ const proliferationAdvice = (
 }
 
 const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
-  const typed = Array.filterMap(elements, (element) =>
-    pipe(
-      signalData(element),
-      Option.map((data) => Tuple.make(element, data)),
-      Result.fromOption(Function.constVoid)
-    )
-  )
+  const typed = Array.filterMap(elements, pairElementWithSignalData)
 
   const closed = pipe(
     typed,
-    Array.filter((entry) => entry[1].kind === "closed-abstraction"),
-    Array.map((entry) => makeClosedAbstractionAdvice(entry[0], entry[1]))
+    Array.filter(isClosedAbstractionEntry),
+    Array.map(closedAbstractionAdviceFromEntry)
   )
 
   const proliferationElements = pipe(
     typed,
-    Array.filter((entry) => HashSet.has(proliferationKinds, entry[1].kind)),
+    Array.filter(isProliferationEntry),
     Array.map(Struct.get(0))
   )
 
-  const byDirectory = Array.groupBy(proliferationElements, (element) =>
-    immediateDirectory(element.location.path)
-  )
+  const byDirectory = Array.groupBy(proliferationElements, elementDirectory)
 
   const proliferation = pipe(
     Record.toEntries(byDirectory),
-    Array.filterMap(([directory, grouped]) => {
-      const advice = proliferationAdvice(directory, grouped)
-
-      return Result.fromOption(advice, Function.constVoid)
-    })
+    Array.filterMap(proliferationAdviceFromDirectory)
   )
 
   return Array.appendAll(closed, proliferation)
 }
 
-export const conceptProliferation = Effect.fn("ConceptProliferation.derive")(
-  deriveSignals(conceptAdviceFor)
-)
+export const conceptProliferation = deriveSignals(conceptAdviceFor)

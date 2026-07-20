@@ -63,26 +63,34 @@ const seamCandidates =
   (context: ProgramContext) =>
   (
     sourceFiles: ReadonlyArray<ts.SourceFile>
-  ): ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]> =>
-    Array.flatMap(sourceFiles, (sourceFile) =>
-      Array.filterMap(sourceFile.statements, (statement) =>
-        pipe(
-          Option.liftPredicate(ts.isInterfaceDeclaration)(statement),
-          Option.filter(hasExportModifier),
-          Option.filter((declaration) => declaration.members.length > 0),
-          Option.filter((declaration) =>
-            Array.every(declaration.members, isBehaviouralMember(context.checker))
-          ),
-          Option.flatMap((declaration) =>
-            pipe(
-              resolvedSymbolAt(context.checker)(declaration.name),
-              Option.map((symbol) => Tuple.make(declaration, symbol))
-            )
-          ),
-          Result.fromOption(Function.constVoid)
-        )
+  ): ReadonlyArray<readonly [ts.InterfaceDeclaration, ts.Symbol]> => {
+    const isBehavioural = isBehaviouralMember(context.checker)
+    const resolveSymbol = resolvedSymbolAt(context.checker)
+
+    const hasBehaviouralMembers = (declaration: ts.InterfaceDeclaration) =>
+      Array.every(declaration.members, isBehavioural)
+
+    const pairWithSymbol = (declaration: ts.InterfaceDeclaration) => (symbol: ts.Symbol) =>
+      Tuple.make(declaration, symbol)
+
+    const interfaceWithSymbol = (declaration: ts.InterfaceDeclaration) =>
+      pipe(resolveSymbol(declaration.name), Option.map(pairWithSymbol(declaration)))
+
+    const candidateFromStatement = (statement: ts.Statement) =>
+      pipe(
+        Option.liftPredicate(ts.isInterfaceDeclaration)(statement),
+        Option.filter(hasExportModifier),
+        Option.filter((declaration) => declaration.members.length > 0),
+        Option.filter(hasBehaviouralMembers),
+        Option.flatMap(interfaceWithSymbol),
+        Result.fromOption(Function.constVoid)
       )
-    )
+
+    const candidatesInSourceFile = (sourceFile: ts.SourceFile) =>
+      Array.filterMap(sourceFile.statements, candidateFromStatement)
+
+    return Array.flatMap(sourceFiles, candidatesInSourceFile)
+  }
 
 const exportedVariableStatement = (declaration: ts.VariableDeclaration) =>
   pipe(
@@ -120,21 +128,23 @@ const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration) => {
     Option.map(hasExportModifier)
   )
 
+  const classMemberIsExported = (classMember: ts.ConstructorDeclaration | ts.MethodDeclaration) =>
+    pipe(
+      Option.liftPredicate(ts.isClassDeclaration)(classMember.parent),
+      Option.exists(hasExportModifier)
+    )
+
   const classExport = pipe(
     Option.liftPredicate(isClassDependencyOwner)(owner),
-    Option.map((classMember) =>
-      pipe(
-        Option.liftPredicate(ts.isClassDeclaration)(classMember.parent),
-        Option.exists(hasExportModifier)
-      )
-    )
+    Option.map(classMemberIsExported)
   )
+
+  const variableDeclarationParent = (expression: ts.ArrowFunction | ts.FunctionExpression) =>
+    Option.liftPredicate(ts.isVariableDeclaration)(expression.parent)
 
   const variableExport = pipe(
     Option.liftPredicate(isVariableDependencyOwner)(owner),
-    Option.flatMap((expression) =>
-      Option.liftPredicate(ts.isVariableDeclaration)(expression.parent)
-    ),
+    Option.flatMap(variableDeclarationParent),
     Option.flatMap(exportedVariableStatement),
     Option.map(Function.constant(true))
   )
@@ -147,23 +157,25 @@ const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration) => {
   )
 }
 
+const implementedFromClause = (checker: ts.TypeChecker) => (clause: ts.HeritageClause) =>
+  Array.filterMap(clause.types, (implemented) => {
+    const resolvedSymbol = resolvedSymbolAt(checker)(implemented.expression)
+
+    return Result.fromOption(resolvedSymbol, Function.constVoid)
+  })
+
 const implementedSymbols =
   (checker: ts.TypeChecker) =>
   (declaration: ts.ClassDeclaration): ReadonlyArray<ts.Symbol> => {
     const clauses = declaration.heritageClauses ?? Array.empty()
+    const resolveImplemented = implementedFromClause(checker)
 
     const implementsClauses = Array.filter(
       clauses,
       (clause) => clause.token === ts.SyntaxKind.ImplementsKeyword
     )
 
-    return Array.flatMap(implementsClauses, (clause) =>
-      Array.filterMap(clause.types, (implemented) => {
-        const resolvedSymbol = resolvedSymbolAt(checker)(implemented.expression)
-
-        return Result.fromOption(resolvedSymbol, Function.constVoid)
-      })
-    )
+    return Array.flatMap(implementsClauses, resolveImplemented)
   }
 
 const contextualInterfaceSymbol =
@@ -198,12 +210,10 @@ const buildIndex = (
   const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const candidates = seamCandidates(context)(sourceFiles)
 
-  const candidateSymbols = pipe(
-    candidates,
-    Array.map((candidate) => referenceKey(candidate[1])),
-    HashSet.fromIterable
-  )
+  const candidateSymbolKey = (candidate: readonly [ts.InterfaceDeclaration, ts.Symbol]) =>
+    referenceKey(candidate[1])
 
+  const candidateSymbols = pipe(candidates, Array.map(candidateSymbolKey), HashSet.fromIterable)
   const classifyTestSource = isTestSourceFile(context.workspaceRoot)
 
   const scanFile =

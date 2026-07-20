@@ -21,12 +21,10 @@ const structModuleSuffixes: ReadonlyArray<string> = Array.make("/Struct.d.ts", "
 const declarationIsEffectStructModule = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
   const fileName = sourceFile.fileName.replaceAll("\\", "/")
-
-  const inEffectPackage = Array.some(effectPackagePathSegments, (segment) =>
-    fileName.includes(segment)
-  )
-
-  const isStructModule = Array.some(structModuleSuffixes, (suffix) => fileName.endsWith(suffix))
+  const pathIncludesSegment = (segment: string) => fileName.includes(segment)
+  const pathEndsWithSuffix = (suffix: string) => fileName.endsWith(suffix)
+  const inEffectPackage = Array.some(effectPackagePathSegments, pathIncludesSegment)
+  const isStructModule = Array.some(structModuleSuffixes, pathEndsWithSuffix)
   const effectStructModuleConditions = Array.make(inEffectPackage, isStructModule)
 
   return Array.every(effectStructModuleConditions, Boolean)
@@ -54,41 +52,50 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
     const signatures = declaredType.getCallSignatures()
     const hasCallSignature = signatures.length > 0
 
-    const hasNoGenericSignature = !Array.some(signatures, (signature) => {
+    const signatureHasTypeParameters = (signature: ts.Signature) => {
       const typeParameterCount = signature.typeParameters?.length ?? 0
 
       return typeParameterCount > 0
-    })
+    }
 
+    const hasNoGenericSignature = !Array.some(signatures, signatureHasTypeParameters)
     const nonGenericCallableConditions = Array.make(hasCallSignature, hasNoGenericSignature)
-
     return Array.every(nonGenericCallableConditions, Boolean)
   }
 
-  const initializerIsStructGet = (initializer: ts.Expression) =>
-    pipe(
+  const initializerIsStructGet = (initializer: ts.Expression) => {
+    const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+
+    const symbolAtCalleeName = (callee: ts.PropertyAccessExpression) =>
+      pipe(checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
+
+    const resolveAlias = (symbol: ts.Symbol) => {
+      const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+
+      return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+    }
+
+    const isGetName = (symbol: ts.Symbol) => symbol.name === "get"
+
+    const structGetSymbol = (call: ts.CallExpression) =>
+      pipe(
+        call.expression,
+        Option.liftPredicate(ts.isPropertyAccessExpression),
+        Option.flatMap(symbolAtCalleeName),
+        Option.map(resolveAlias),
+        Option.filter(isGetName),
+        Option.filter(symbolDeclaredInEffectStructModule)
+      )
+
+    return pipe(
       initializer,
       unwrapTransparentExpression,
       Option.liftPredicate(ts.isCallExpression),
-      Option.filter((call) => call.arguments.length === 1),
-      Option.flatMap((call) =>
-        pipe(
-          call.expression,
-          Option.liftPredicate(ts.isPropertyAccessExpression),
-          Option.flatMap((callee) =>
-            pipe(checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
-          ),
-          Option.map((symbol) => {
-            const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-
-            return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-          }),
-          Option.filter((symbol) => symbol.name === "get"),
-          Option.filter(symbolDeclaredInEffectStructModule)
-        )
-      ),
+      Option.filter(hasOneArgument),
+      Option.flatMap(structGetSymbol),
       Option.isSome
     )
+  }
 
   const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
     pipe(

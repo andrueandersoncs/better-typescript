@@ -6,6 +6,9 @@ export type SeenTypes = ReadonlyArray<ts.Type>
 
 export const isVoidType = (type: ts.Type) => (type.flags & ts.TypeFlags.Void) !== 0
 
+export const isObjectType = (candidate: ts.Type): candidate is ts.ObjectType =>
+  (candidate.flags & ts.TypeFlags.Object) !== 0
+
 // Contextual any or unknown permits void because consumers accept void-returning implementations.
 const voidCompatibleFlags = ts.TypeFlags.Void | ts.TypeFlags.Any | ts.TypeFlags.Unknown
 
@@ -44,24 +47,20 @@ const isArrayLikeTypeWithSeen =
         const nextSeen = Array.append(seen, type)
         const isDirectArrayType = checker.isArrayType(type) || checker.isTupleType(type)
         const unionOrIntersection = Option.liftPredicate(isUnionOrIntersectionType)(type)
+        const checkNestedArrayLike = isArrayLikeTypeWithSeen(checker)(nextSeen)
 
-        const hasUnionOrIntersectionArrayType = Option.exists(unionOrIntersection, (type) =>
-          Array.some(type.types, isArrayLikeTypeWithSeen(checker)(nextSeen))
+        const unionOrIntersectionHasArrayLike = (candidate: ts.UnionOrIntersectionType) =>
+          Array.some(candidate.types, checkNestedArrayLike)
+
+        const hasUnionOrIntersectionArrayType = Option.exists(
+          unionOrIntersection,
+          unionOrIntersectionHasArrayLike
         )
 
         const baseConstraint = differentBaseConstraint(checker)(type)
-
-        const hasConstrainedArrayType = Option.exists(
-          baseConstraint,
-          isArrayLikeTypeWithSeen(checker)(nextSeen)
-        )
-
+        const hasConstrainedArrayType = Option.exists(baseConstraint, checkNestedArrayLike)
         const apparentType = differentApparentType(checker)(type)
-
-        const hasApparentArrayType = Option.exists(
-          apparentType,
-          isArrayLikeTypeWithSeen(checker)(nextSeen)
-        )
+        const hasApparentArrayType = Option.exists(apparentType, checkNestedArrayLike)
 
         const conditions = Array.make(
           isDirectArrayType,

@@ -11,17 +11,21 @@ export const roleMapFromProgram =
     const relative = toRelativeFileName(context.projectRoot)
     const sourceFiles = context.program.getSourceFiles()
 
+    const sourceFileRoleEntry = (sourceFile: ts.SourceFile) => {
+      const roleEntry = (role: ArchitectureRole) => Tuple.make(sourceFile.fileName, role)
+
+      return pipe(
+        sourceFile.fileName,
+        relative,
+        roleOf,
+        Option.map(roleEntry),
+        Result.fromOption(Function.constVoid)
+      )
+    }
+
     const entries = pipe(
       Array.filter(sourceFiles, isProjectSourceFile),
-      Array.filterMap((sourceFile) =>
-        pipe(
-          sourceFile.fileName,
-          relative,
-          roleOf,
-          Option.map((role) => Tuple.make(sourceFile.fileName, role)),
-          Result.fromOption(Function.constVoid)
-        )
-      )
+      Array.filterMap(sourceFileRoleEntry)
     )
 
     return HashMap.fromIterable(entries)

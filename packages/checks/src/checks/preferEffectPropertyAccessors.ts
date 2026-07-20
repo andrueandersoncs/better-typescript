@@ -4,7 +4,8 @@ import {
   conciseArrowBody,
   isFunctionDefinition,
   singleStatementReturnExpression,
-  unwrapTransparentExpression
+  unwrapTransparentExpression,
+  type FunctionDefinition
 } from "./support/tsNode.js"
 import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -27,6 +28,9 @@ const identifierBindingNameText = (name: ts.BindingName) =>
 
 const identifierParameterName = (parameter: ts.ParameterDeclaration) =>
   identifierBindingNameText(parameter.name)
+
+const functionDefinitionName = (definition: FunctionDefinition) =>
+  Option.fromNullishOr(definition.name)
 
 const hasIndexSignature = (type: ts.Type) => {
   const stringIndex = type.getStringIndexType()
@@ -62,19 +66,19 @@ const propertyAccessorMatches = (context: CheckContext) => {
   const ruleMatch = (node: ts.Node) => (access: ts.PropertyAccessExpression) => {
     const definition = Option.liftPredicate(isFunctionDefinition)(node)
 
+    const variableDeclarationName = pipe(
+      definition,
+      Option.map(Struct.get("parent")),
+      Option.flatMap(Option.liftPredicate(ts.isVariableDeclaration)),
+      Option.map(Struct.get("name")),
+      Option.flatMap(identifierBindingNameText)
+    )
+
     const name = pipe(
       definition,
-      Option.flatMap((functionDefinition) => Option.fromNullishOr(functionDefinition.name)),
+      Option.flatMap(functionDefinitionName),
       Option.map(propertyNameText),
-      Option.orElse(() =>
-        pipe(
-          definition,
-          Option.map(Struct.get("parent")),
-          Option.flatMap(Option.liftPredicate(ts.isVariableDeclaration)),
-          Option.map(Struct.get("name")),
-          Option.flatMap(identifierBindingNameText)
-        )
-      ),
+      Option.orElse(Function.constant(variableDeclarationName)),
       Option.getOrElse(Function.constant("this function"))
     )
 
@@ -109,6 +113,15 @@ const propertyAccessorMatches = (context: CheckContext) => {
     return pipe(
       paramName,
       Option.flatMap((parameterName) => {
+        const identifierTextIsParameter = (identifier: ts.Identifier) =>
+          identifier.text === parameterName
+
+        const accessReadsParameter = (access: ts.PropertyAccessExpression) =>
+          pipe(
+            Option.liftPredicate(ts.isIdentifier)(access.expression),
+            Option.exists(identifierTextIsParameter)
+          )
+
         const implicitExpression = pipe(
           Option.liftPredicate(ts.isArrowFunction)(node),
           Option.flatMap(conciseArrowBody)
@@ -125,12 +138,7 @@ const propertyAccessorMatches = (context: CheckContext) => {
         return pipe(
           Option.firstSomeOf(expressionCandidates),
           Option.flatMap(directPropertyAccessExpression),
-          Option.filter((access) =>
-            pipe(
-              Option.liftPredicate(ts.isIdentifier)(access.expression),
-              Option.exists((identifier) => identifier.text === parameterName)
-            )
-          )
+          Option.filter(accessReadsParameter)
         )
       }),
       Option.map(ruleMatch(node)),

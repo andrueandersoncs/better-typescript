@@ -2,7 +2,11 @@ import { Array, Function, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { importedEffectApiAt } from "../functionalCoreEffect/support.js"
-import { propertyNameText, unwrapTransparentExpression } from "../support/tsNode.js"
+import {
+  propertyNameText,
+  unwrapTransparentExpression,
+  variableDeclarationNameIsIdentifier
+} from "../support/tsNode.js"
 import type { EffectQualityIndex } from "./index.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
 import { makeRuleFinding } from "./makeFindings.js"
@@ -47,41 +51,63 @@ const heritageExtendsSchemaDecodedType =
     return Array.every(checks, Boolean)
   }
 
-const interfacePairsWithSchema = (schemaName: string) => (declaration: ts.InterfaceDeclaration) => {
-  const nameMatches = declaration.name.text === schemaName
-  const clauses = declaration.heritageClauses ?? emptyHeritageClauses
-  const extendsSchema = heritageExtendsSchemaDecodedType(schemaName)
-
-  const heritageMatches = Array.some(clauses, (clause) => {
+const heritageClausePairsWithSchema =
+  (extendsSchema: (heritage: ts.ExpressionWithTypeArguments) => boolean) =>
+  (clause: ts.HeritageClause) => {
     const isExtends = heritageClauseIsExtends(clause)
     const typeMatches = Array.some(clause.types, extendsSchema)
     const checks = Array.make(isExtends, typeMatches)
 
     return Array.every(checks, Boolean)
-  })
+  }
 
+const interfacePairsWithSchema = (schemaName: string) => (declaration: ts.InterfaceDeclaration) => {
+  const nameMatches = declaration.name.text === schemaName
+  const clauses = declaration.heritageClauses ?? emptyHeritageClauses
+  const extendsSchema = heritageExtendsSchemaDecodedType(schemaName)
+  const heritageMatches = Array.some(clauses, heritageClausePairsWithSchema(extendsSchema))
   const checks = Array.make(nameMatches, heritageMatches)
 
   return Array.every(checks, Boolean)
 }
 
-const sourceFileHasSchemaRecordInterface = (schemaName: string) => (sourceFile: ts.SourceFile) =>
-  Array.some(sourceFile.statements, (statement) =>
-    pipe(
-      Option.liftPredicate(ts.isInterfaceDeclaration)(statement),
-      Option.exists(interfacePairsWithSchema(schemaName))
-    )
+const statementIsSchemaRecordInterface = (schemaName: string) => (statement: ts.Statement) =>
+  pipe(
+    Option.liftPredicate(ts.isInterfaceDeclaration)(statement),
+    Option.exists(interfacePairsWithSchema(schemaName))
   )
+
+const sourceFileHasSchemaRecordInterface = (schemaName: string) => (sourceFile: ts.SourceFile) =>
+  Array.some(sourceFile.statements, statementIsSchemaRecordInterface(schemaName))
+
+const callIsSchemaStruct = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  importedEffectApiAt(checker, call.expression, "Schema", schemaStructNames)
 
 const isSchemaStructCall = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
   pipe(
     expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isCallExpression),
-    Option.exists((call) =>
-      importedEffectApiAt(checker, call.expression, "Schema", schemaStructNames)
-    )
+    Option.exists(callIsSchemaStruct(checker))
   )
+
+const declarationHasSchemaStructInitializer =
+  (checker: ts.TypeChecker) => (declaration: ts.VariableDeclaration) =>
+    pipe(Option.fromNullishOr(declaration.initializer), Option.exists(isSchemaStructCall(checker)))
+
+const declarationLacksSchemaRecordInterface =
+  (sourceFile: ts.SourceFile) => (declaration: ts.VariableDeclaration) => {
+    const name = (declaration.name as ts.Identifier).text
+    const hasInterface = sourceFileHasSchemaRecordInterface(name)(sourceFile)
+
+    return !hasInterface
+  }
+
+const schemaRecordInterfaceFindingFromDeclaration = (declaration: ts.VariableDeclaration) => {
+  const name = declaration.name as ts.Identifier
+
+  return makeRuleFinding("schema-record-interface")(name.text)(name)
+}
 
 export const schemaRecordInterfaceFindings = (
   context: CheckContext,
@@ -90,36 +116,26 @@ export const schemaRecordInterfaceFindings = (
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
     Option.liftPredicate(ts.isVariableDeclaration)(node),
-    Option.filter((declaration) => ts.isIdentifier(declaration.name)),
-    Option.filter((declaration) =>
-      pipe(
-        Option.fromNullishOr(declaration.initializer),
-        Option.exists(isSchemaStructCall(context.checker))
-      )
-    ),
-    Option.filter((declaration) => {
-      const name = (declaration.name as ts.Identifier).text
-      const hasInterface = sourceFileHasSchemaRecordInterface(name)(context.sourceFile)
-
-      return !hasInterface
-    }),
-    Option.map((declaration) => {
-      const name = declaration.name as ts.Identifier
-
-      return makeRuleFinding("schema-record-interface")(name.text)(name)
-    }),
+    Option.filter(variableDeclarationNameIsIdentifier),
+    Option.filter(declarationHasSchemaStructInitializer(context.checker)),
+    Option.filter(declarationLacksSchemaRecordInterface(context.sourceFile)),
+    Option.map(schemaRecordInterfaceFindingFromDeclaration),
     Option.toArray
   )
+
+const parenthesizedTypeIncludesUndefined = (parenthesized: ts.ParenthesizedTypeNode) =>
+  typeNodeIncludesUndefined(parenthesized.type)
+
+const unionTypeIncludesUndefined = (union: ts.UnionTypeNode) =>
+  Array.some(union.types, typeNodeIncludesUndefined)
 
 const typeNodeIncludesUndefined = (typeNode: ts.TypeNode): boolean => {
   const isUndefinedKeyword = typeNode.kind === ts.SyntaxKind.UndefinedKeyword
 
   const nestedIncludes = pipe(
     Match.value(typeNode),
-    Match.when(ts.isParenthesizedTypeNode, (parenthesized) =>
-      typeNodeIncludesUndefined(parenthesized.type)
-    ),
-    Match.when(ts.isUnionTypeNode, (union) => Array.some(union.types, typeNodeIncludesUndefined)),
+    Match.when(ts.isParenthesizedTypeNode, parenthesizedTypeIncludesUndefined),
+    Match.when(ts.isUnionTypeNode, unionTypeIncludesUndefined),
     Match.orElse(Function.constFalse)
   )
 
@@ -128,11 +144,16 @@ const typeNodeIncludesUndefined = (typeNode: ts.TypeNode): boolean => {
   return Array.some(checks, Boolean)
 }
 
+const propertyNameTextFromNode = (name: ts.Node) =>
+  ts.isPropertyName(name) ? propertyNameText(name) : Option.none()
+
+const propertyNameEqualsField = (fieldName: string) => (name: string) => name === fieldName
+
 const propertySignatureNameMatches = (fieldName: string) => (member: ts.PropertySignature) =>
   pipe(
     Option.fromNullishOr(member.name),
-    Option.flatMap((name) => (ts.isPropertyName(name) ? propertyNameText(name) : Option.none())),
-    Option.exists((name) => name === fieldName)
+    Option.flatMap(propertyNameTextFromNode),
+    Option.exists(propertyNameEqualsField(fieldName))
   )
 
 const propertySignatureIsUndefinedFreeOptional = (fieldName: string) => (member: ts.TypeElement) =>
@@ -174,19 +195,48 @@ const typeAliasHasUndefinedFreeOptionalField = (fieldName: string) => (statement
     Option.exists(typeLiteralHasUndefinedFreeOptionalField(fieldName))
   )
 
+const statementProvesUndefinedFreeOptionalField =
+  (fieldName: string) => (statement: ts.Statement) => {
+    const fromInterface = pipe(
+      Option.liftPredicate(ts.isInterfaceDeclaration)(statement),
+      Option.exists(interfaceHasUndefinedFreeOptionalField(fieldName))
+    )
+
+    const fromTypeAlias = typeAliasHasUndefinedFreeOptionalField(fieldName)(statement)
+    const checks = Array.make(fromInterface, fromTypeAlias)
+
+    return Array.some(checks, Boolean)
+  }
+
 const sourceFileProvesUndefinedFreeOptionalField =
   (fieldName: string) => (sourceFile: ts.SourceFile) =>
-    Array.some(sourceFile.statements, (statement) => {
-      const fromInterface = pipe(
-        Option.liftPredicate(ts.isInterfaceDeclaration)(statement),
-        Option.exists(interfaceHasUndefinedFreeOptionalField(fieldName))
-      )
+    Array.some(sourceFile.statements, statementProvesUndefinedFreeOptionalField(fieldName))
 
-      const fromTypeAlias = typeAliasHasUndefinedFreeOptionalField(fieldName)(statement)
-      const checks = Array.make(fromInterface, fromTypeAlias)
+const callIsSchemaOptional = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  importedEffectApiAt(checker, call.expression, "Schema", schemaOptionalNames)
 
-      return Array.some(checks, Boolean)
-    })
+const schemaOptionalKeyFindingFromCall = (fieldName: string) => (call: ts.CallExpression) =>
+  makeRuleFinding("schema-optional-key")(fieldName)(call.expression)
+
+const optionalKeyFindingForField =
+  (context: CheckContext) => (assignment: ts.PropertyAssignment) => (fieldName: string) =>
+    pipe(
+      assignment.initializer,
+      unwrapTransparentExpression,
+      Option.liftPredicate(ts.isCallExpression),
+      Option.filter(callIsSchemaOptional(context.checker)),
+      Option.filter(() =>
+        sourceFileProvesUndefinedFreeOptionalField(fieldName)(context.sourceFile)
+      ),
+      Option.map(schemaOptionalKeyFindingFromCall(fieldName))
+    )
+
+const optionalKeyFindingFromAssignment =
+  (context: CheckContext) => (assignment: ts.PropertyAssignment) =>
+    pipe(
+      propertyNameText(assignment.name),
+      Option.flatMap(optionalKeyFindingForField(context)(assignment))
+    )
 
 export const schemaOptionalKeyFindings = (
   context: CheckContext,
@@ -195,24 +245,6 @@ export const schemaOptionalKeyFindings = (
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
     Option.liftPredicate(ts.isPropertyAssignment)(node),
-    Option.flatMap((assignment) =>
-      pipe(
-        propertyNameText(assignment.name),
-        Option.flatMap((fieldName) =>
-          pipe(
-            assignment.initializer,
-            unwrapTransparentExpression,
-            Option.liftPredicate(ts.isCallExpression),
-            Option.filter((call) =>
-              importedEffectApiAt(context.checker, call.expression, "Schema", schemaOptionalNames)
-            ),
-            Option.filter(() =>
-              sourceFileProvesUndefinedFreeOptionalField(fieldName)(context.sourceFile)
-            ),
-            Option.map((call) => makeRuleFinding("schema-optional-key")(fieldName)(call.expression))
-          )
-        )
-      )
-    ),
+    Option.flatMap(optionalKeyFindingFromAssignment(context)),
     Option.toArray
   )

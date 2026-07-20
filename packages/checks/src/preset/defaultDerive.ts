@@ -1,5 +1,5 @@
-import { Array, Effect } from "effect"
-import { SystemicHotspotsInput } from "../checks/systemicHotspots/data.js"
+import { Array } from "effect"
+import { SystemicSignals } from "../checks/systemicHotspots/data.js"
 import { systemicHotspots } from "../checks/systemicHotspots/systemicHotspots.js"
 import { highSignalDensity } from "../checks/highSignalDensity.js"
 import { hotSubsystem } from "../checks/hotSubsystem/hotSubsystem.js"
@@ -9,24 +9,24 @@ import type { Signal } from "@better-typescript/core/engine/signal/data"
 import type { Advice, NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { defaultNamedElements, defaultSpecificAdvice } from "./defaultSpecificAdvice.js"
 
-const materializeDefaultAdvice = Effect.fn("DefaultDerive.materialize")(function* (
+const materializeDefaultAdvice = (
   signals: ReadonlyArray<Signal>,
   namedElements: ReadonlyArray<NamedDetection>
-): Effect.fn.Return<ReadonlyArray<Advice>> {
-  const specificItems = yield* defaultSpecificAdvice(signals)
-  const densityItems = yield* highSignalDensity(namedElements)
-  const subsystemItems = yield* hotSubsystem(namedElements)
-  const dominanceItems = yield* ruleDominance(namedElements)
+): ReadonlyArray<Advice> => {
+  const specificItems = defaultSpecificAdvice(signals)
+  const densityItems = highSignalDensity(namedElements)
+  const subsystemItems = hotSubsystem(namedElements)
+  const dominanceItems = ruleDominance(namedElements)
 
   const densityAfterFallbackSuppression =
     filterFallbackAdviceForUncoveredFiles(specificItems)(densityItems)
 
-  const systemicInput = new SystemicHotspotsInput({
+  const systemicSignals = SystemicSignals.make({
     hotSubsystem: subsystemItems,
     highSignalDensity: densityAfterFallbackSuppression
   })
 
-  const systemicItems = yield* systemicHotspots(systemicInput)
+  const systemicItems = systemicHotspots(systemicSignals)
 
   const adviceGroups = Array.make(
     specificItems,
@@ -37,12 +37,10 @@ const materializeDefaultAdvice = Effect.fn("DefaultDerive.materialize")(function
   )
 
   return Array.flatten(adviceGroups)
-})
+}
 
-export const defaultDerive = Effect.fn("DefaultDerive.derive")(function* (
-  signals: ReadonlyArray<Signal>
-): Effect.fn.Return<ReadonlyArray<Advice>> {
+export const defaultDerive = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> => {
   const namedElements = defaultNamedElements(signals)
 
-  return yield* materializeDefaultAdvice(signals, namedElements)
-})
+  return materializeDefaultAdvice(signals, namedElements)
+}

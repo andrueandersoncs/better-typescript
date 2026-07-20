@@ -14,6 +14,7 @@ import {
   Result,
   Struct,
   Tuple,
+  flow,
   pipe
 } from "effect"
 import type * as ts from "typescript"
@@ -164,43 +165,47 @@ const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A =
 }
 
 // Validation runs at construction because duplicate names must fail before analysis starts.
-export const makeWiring = <E = never>(
-  definition: Pick<Wiring<E>, "checks" | "derive">
-): Wiring<E> => {
-  const wiring = new Wiring<E>(definition)
+export const makeWiring = (definition: Pick<Wiring, "checks" | "derive">) => {
+  const wiring = new Wiring(definition)
   return validateCheckNames(wiring.checks, wiring)
 }
 
 // Merged derive preserves member order because later advice must not reorder earlier emissions.
-export const makeMergedWiring = <E = never>(wirings: ReadonlyArray<Wiring<E>>): Wiring<E> => {
+export const makeMergedWiring = (wirings: ReadonlyArray<Wiring>) => {
   const checks = Array.flatMap(wirings, Struct.get("checks"))
-
-  // FIXME: this can be simplified to a more pointfree style - there should also be a check/rule that can detect this automatically
-  const derive: Wiring<E>["derive"] = Effect.fn("Wiring.mergedDerive")((signals) =>
-    pipe(
-      Effect.forEach(wirings, (wiring) => wiring.derive(signals)),
-      Effect.map(Array.flatten)
-    )
-  )
+  const applyDerive = (signals: ReadonlyArray<Signal>) => (wiring: Wiring) => wiring.derive(signals)
+  const derive: Wiring["derive"] = (signals) => Array.flatMap(wirings, applyDerive(signals))
 
   return makeWiring({ checks, derive })
 }
 
-// Compiler requirements follow enrolled Check order because the same fleet owns analysis semantics.
-export const compilerOptionsForConfig = <E>(config: WiringConfig<E>): ts.CompilerOptions =>
-  pipe(
-    config,
-    Array.flatMap((entry) => Array.map(entry.wiring.checks, Struct.get("check"))),
-    compilerOptionsForChecks
+const emptyDetections: ReadonlyArray<Detection> = Array.empty()
+
+const checksFromEntry = (entry: WiringEntry) => Array.map(entry.wiring.checks, Struct.get("check"))
+
+const matchersForEntry = (entry: WiringEntry) => Array.map(entry.files, compileGlobMatcher)
+
+const emptySeenBuckets = (entry: WiringEntry) =>
+  Array.makeBy(entry.wiring.checks.length, () =>
+    pipe(HashMap.empty<string, ReadonlyArray<Detection>>(), HashMap.beginMutation)
   )
 
+const emptyElementBuckets = (entry: WiringEntry) =>
+  Array.makeBy(entry.wiring.checks.length, () => MutableList.make<Detection>())
+
+// Compiler requirements follow enrolled Check order because the same fleet owns analysis semantics.
+export const compilerOptionsForConfig: (config: WiringConfig) => ts.CompilerOptions = flow(
+  Array.flatMap(checksFromEntry),
+  compilerOptionsForChecks
+)
+
 // Glob compilation happens at config load because invalid patterns must not fail mid-analysis.
-export const defineConfig = <E = never>(
+export const defineConfig = (
   config: ReadonlyArray<{
     readonly files: Array.NonEmptyReadonlyArray<string>
-    readonly wiring: Pick<Wiring<E>, "checks" | "derive">
+    readonly wiring: Pick<Wiring, "checks" | "derive">
   }>
-): WiringConfig<E> => {
+): WiringConfig => {
   const invalidIndexes = Array.filterMap(config, (entry, index) => {
     const hasFiles = entry.files.length > 0
     const hasOnlyNonEmptyPatterns = Array.every(entry.files, isFileGlob)
@@ -219,7 +224,7 @@ export const defineConfig = <E = never>(
 
     const wiring = makeWiring(entry.wiring)
 
-    return new WiringEntry<E>({
+    return new WiringEntry({
       files: entry.files,
       wiring
     })
@@ -230,7 +235,6 @@ export const defineConfig = <E = never>(
   return validateCheckNames(checks, entries)
 }
 
-const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
 
 const relativeWorkspacePath = (
@@ -245,30 +249,16 @@ const relativeWorkspacePath = (
 
 // Sequential project loading is required because retaining every Program can exhaust the heap.
 export const workspaceSignalsForProjects =
-  <E>(config: WiringConfig<E>) =>
+  (config: WiringConfig) =>
   (workspaceRoot: string) =>
   <A>(projects: ReadonlyArray<A>) =>
   (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>> => {
-    const matchersByWiring = Array.map(config, (entry) =>
-      Array.map(entry.files, compileGlobMatcher)
-    )
-
-    const seenByWiring = Array.map(config, (entry) =>
-      Array.makeBy(entry.wiring.checks.length, () =>
-        pipe(HashMap.empty<string, ReadonlyArray<Detection>>(), HashMap.beginMutation)
-      )
-    )
-
-    const elementsByWiring = Array.map(config, (entry) =>
-      Array.makeBy(entry.wiring.checks.length, () => MutableList.make<Detection>())
-    )
-
+    const matchersByWiring = Array.map(config, matchersForEntry)
+    const seenByWiring = Array.map(config, emptySeenBuckets)
+    const elementsByWiring = Array.map(config, emptyElementBuckets)
     const seenByCheck = Array.flatten(seenByWiring)
     const elementsByCheck = Array.flatten(elementsByWiring)
-
-    const checks = Array.flatMap(config, (entry) =>
-      Array.map(entry.wiring.checks, Struct.get("check"))
-    )
+    const checks = Array.flatMap(config, checksFromEntry)
 
     const wiringIndexesByCheck = Array.flatMap(config, (entry, wiringIndex) =>
       Array.makeBy(entry.wiring.checks.length, () => wiringIndex)
@@ -362,10 +352,8 @@ export const workspaceSignalsForProjects =
             const key = JSON.stringify(dedupeKeyParts)
             const maybeBucket = HashMap.get(seen, key)
             const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
-
-            const alreadySeen = Array.some(bucket, (candidate) =>
-              Equal.equals(candidate.data, element.data)
-            )
+            const hasSameData = (candidate: Detection) => Equal.equals(candidate.data, element.data)
+            const alreadySeen = Array.some(bucket, hasSameData)
 
             if (alreadySeen) {
               return
@@ -409,13 +397,3 @@ export const workspaceSignalsForProjects =
       })
     )
   }
-
-// Workspace root stays explicit because glob candidates normalize against one shared boundary.
-export const collectWorkspaceSignals =
-  <E>(config: WiringConfig<E>) =>
-  (workspaceRoot: string) =>
-    Effect.fn("Wiring.collectWorkspaceSignals")(function* (
-      contexts: ReadonlyArray<ProgramContext>
-    ) {
-      return yield* workspaceSignalsForProjects(config)(workspaceRoot)(contexts)(Function.identity)
-    })

@@ -59,7 +59,7 @@ const constructionRootIdentifier = (expression: ts.Expression): Option.Option<ts
 
   return pipe(
     Option.liftPredicate(ts.isElementAccessExpression)(unwrapped),
-    Option.flatMap((access) => constructionRootIdentifier(access.expression))
+    Option.flatMap(Function.flow(Struct.get("expression"), constructionRootIdentifier))
   )
 }
 
@@ -70,12 +70,13 @@ export const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.Impor
 
 const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 
-const importedPathFor = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(
+const importedPathFor = (checker: ts.TypeChecker, expression: ts.Expression) => {
+  const symbolFromIdentifier = (identifier: ts.Identifier) =>
+    pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
+
+  return pipe(
     constructionRootIdentifier(expression),
-    Option.flatMap((identifier) =>
-      pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-    ),
+    Option.flatMap(symbolFromIdentifier),
     Option.map((symbol) => symbol.declarations ?? Array.empty()),
     Option.flatMap(Array.findFirst(hasImportDeclarationAncestor)),
     Option.flatMap(importDeclarationAncestor),
@@ -83,10 +84,12 @@ const importedPathFor = (checker: ts.TypeChecker, expression: ts.Expression) =>
     Option.filter(ts.isStringLiteralLike),
     Option.map(Struct.get("text"))
   )
+}
 
 const isCollaboratorName = (name: string) => {
   const knownName = HashSet.has(collaboratorNames, name)
-  const knownSuffix = Array.some(collaboratorSuffixes, (suffix) => name.endsWith(suffix))
+  const endsWithSuffix = (suffix: string) => name.endsWith(suffix)
+  const knownSuffix = Array.some(collaboratorSuffixes, endsWithSuffix)
 
   return knownName || knownSuffix
 }
@@ -121,14 +124,10 @@ const constructionElements = (context: CheckContext) => {
 
     const name = collaboratorName(node.expression)
     const importedPath = importedPathFor(context.checker, node.expression)
-
-    const evidence = pipe(
-      Option.all({ name, importedPath }),
-      Option.filter(({ name }) => isCollaboratorName(name))
-    )
+    const collaborator = pipe(name, Option.filter(isCollaboratorName))
 
     return pipe(
-      evidence,
+      Option.all({ name: collaborator, importedPath }),
       Option.map(({ name, importedPath }) => {
         const data = ExternalDependencyConstructionData.make({
           collaboratorName: name,

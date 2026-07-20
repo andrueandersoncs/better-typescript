@@ -4,7 +4,8 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import {
   classExtendsEffectApi,
   importedEffectApiAt,
-  importedMemberAt
+  importedMemberAt,
+  importedMemberSubject
 } from "../functionalCoreEffect/support.js"
 import { unwrapCallee, unwrapTransparentExpression } from "../support/tsNode.js"
 import type { EffectQualityIndex } from "./index.js"
@@ -13,10 +14,12 @@ import { makeRuleFinding } from "./makeFindings.js"
 
 const schemaClassModelNames = Array.make("Class", "TaggedClass")
 
-const classExtendsSchemaModel = (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
-  Array.some(schemaClassModelNames, (memberName) =>
+const classExtendsSchemaModel = (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) => {
+  const extendsSchemaMember = (memberName: string) =>
     classExtendsEffectApi(checker, declaration, "Schema", memberName)
-  )
+
+  return Array.some(schemaClassModelNames, extendsSchemaMember)
+}
 
 const classQualityFromNode = (context: CheckContext) => (node: ts.Node) =>
   pipe(
@@ -53,17 +56,20 @@ const schemaClassCallArgumentShape = (argument: ts.Expression) => {
   return Array.some(checks, Boolean)
 }
 
+const callIsSchemaClassModel = (checker: ts.TypeChecker) => (call: ts.CallExpression) => {
+  const callee = unwrapCallee(call.expression)
+
+  return importedEffectApiAt(checker, callee, "Schema", schemaClassModelNames)
+}
+
+const callHasSchemaClassArgumentShape = (call: ts.CallExpression) =>
+  pipe(Array.head(call.arguments), Option.exists(schemaClassCallArgumentShape))
+
 const callQualityFromNode = (context: CheckContext) => (node: ts.Node) =>
   pipe(
     Option.liftPredicate(ts.isCallExpression)(node),
-    Option.filter((call) => {
-      const callee = unwrapCallee(call.expression)
-
-      return importedEffectApiAt(context.checker, callee, "Schema", schemaClassModelNames)
-    }),
-    Option.filter((call) =>
-      pipe(Array.head(call.arguments), Option.exists(schemaClassCallArgumentShape))
-    ),
+    Option.filter(callIsSchemaClassModel(context.checker)),
+    Option.filter(callHasSchemaClassArgumentShape),
     Option.map((call) => {
       const callee = unwrapCallee(call.expression)
       const member = importedMemberAt(context.checker, callee)
@@ -72,7 +78,7 @@ const callQualityFromNode = (context: CheckContext) => (node: ts.Node) =>
 
       const subject = pipe(
         member,
-        Option.map((resolved) => `${resolved.moduleSpecifier}:${Array.join(resolved.path, ".")}`),
+        Option.map(importedMemberSubject),
         Option.getOrElse(fallbackText)
       )
 

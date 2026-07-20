@@ -2,7 +2,12 @@ import { Array, Function, Match, Option, Predicate, Struct, flow, pipe } from "e
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { classExtendsEffectApi, importedEffectApiAt } from "../functionalCoreEffect/support.js"
-import { propertyNameText, unwrapCallee, unwrapTransparentExpression } from "../support/tsNode.js"
+import {
+  classDeclarationName,
+  propertyNameText,
+  unwrapCallee,
+  unwrapTransparentExpression
+} from "../support/tsNode.js"
 import type { EffectQualityIndex } from "./index.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
 import { makeRuleFinding } from "./makeFindings.js"
@@ -14,49 +19,56 @@ const dataTaggedErrorNames = Array.make("TaggedError", "Error")
 
 const errorNamePattern = /Error$|Failure$|Exception$/u
 
+const propertyNameIsTag = (name: string) => name === "_tag"
+
+const propertyDeclarationIsTag = (property: ts.PropertyDeclaration) =>
+  pipe(propertyNameText(property.name), Option.exists(propertyNameIsTag))
+
 const classMemberIsTag = (member: ts.ClassElement) =>
   pipe(
     Option.liftPredicate(ts.isPropertyDeclaration)(member),
-    Option.exists((property) =>
-      pipe(
-        propertyNameText(property.name),
-        Option.exists((name) => name === "_tag")
-      )
-    )
+    Option.exists(propertyDeclarationIsTag)
   )
 
 const classHasTagMember = (declaration: ts.ClassDeclaration) =>
   Array.some(declaration.members, classMemberIsTag)
 
+const nameMatchesErrorPattern = (name: string) => errorNamePattern.test(name)
+
 const classNameLooksLikeError = (declaration: ts.ClassDeclaration) =>
   pipe(
     Option.fromNullishOr(declaration.name),
     Option.map(Struct.get("text")),
-    Option.exists((name) => errorNamePattern.test(name))
+    Option.exists(nameMatchesErrorPattern)
+  )
+
+const identifierIsError = (identifier: ts.Identifier) => identifier.text === "Error"
+
+const propertyAccessIsError = (access: ts.PropertyAccessExpression) => access.name.text === "Error"
+
+const nodeIsErrorConstructor = (current: ts.Expression) =>
+  pipe(
+    Match.value(current),
+    Match.when(ts.isIdentifier, identifierIsError),
+    Match.when(ts.isPropertyAccessExpression, propertyAccessIsError),
+    Match.orElse(Function.constFalse)
   )
 
 const heritageExpressionIsErrorConstructor = flow(
   unwrapTransparentExpression,
   unwrapCallee,
-  (current) =>
-    pipe(
-      Match.value(current),
-      Match.when(ts.isIdentifier, (identifier) => identifier.text === "Error"),
-      Match.when(ts.isPropertyAccessExpression, (access) => access.name.text === "Error"),
-      Match.orElse(Function.constFalse)
-    )
+  nodeIsErrorConstructor
 )
+
+const heritageTypeIsErrorConstructor = (heritage: ts.ExpressionWithTypeArguments) =>
+  heritageExpressionIsErrorConstructor(heritage.expression)
 
 const classExtendsBuiltinError = (declaration: ts.ClassDeclaration) => {
   const clauses = declaration.heritageClauses ?? emptyHeritageClauses
 
   return Array.some(clauses, (clause) => {
     const isExtends = heritageClauseIsExtends(clause)
-
-    const extendsError = Array.some(clause.types, (heritage) =>
-      heritageExpressionIsErrorConstructor(heritage.expression)
-    )
-
+    const extendsError = Array.some(clause.types, heritageTypeIsErrorConstructor)
     const checks = Array.make(isExtends, extendsError)
 
     return Array.every(checks, Boolean)
@@ -83,10 +95,12 @@ const classExtendsDataTaggedError =
   }
 
 const classAlreadySchemaTaggedError =
-  (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
-    Array.some(schemaTaggedErrorNames, (memberName) =>
+  (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) => {
+    const extendsSchemaMember = (memberName: string) =>
       classExtendsEffectApi(checker, declaration, "Schema", memberName)
-    )
+
+    return Array.some(schemaTaggedErrorNames, extendsSchemaMember)
+  }
 
 const classLooksLikeHandRolledError =
   (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) => {
@@ -103,10 +117,7 @@ const classLooksLikeHandRolledError =
     return Array.every(checks, Boolean)
   }
 
-const classDeclarationHasName = flow(
-  (declaration: ts.ClassDeclaration) => Option.fromNullishOr(declaration.name),
-  Option.isSome
-)
+const classDeclarationHasName = flow(classDeclarationName, Option.isSome)
 
 export const schemaErrorClassFindings = (
   context: CheckContext,

@@ -3,6 +3,7 @@ import { conceptControl } from "../checks/conceptControl/conceptControl.js"
 import { preferConditionalReturn } from "../checks/preferConditionalReturn.js"
 import { preferDirectBooleanReturn } from "../checks/preferDirectBooleanReturn.js"
 import { preferDirectYield } from "../checks/preferDirectYield.js"
+import { preferComposedCallbacks } from "../checks/preferComposedCallbacks.js"
 import { preferFunctionComposition } from "../checks/preferFunctionComposition.js"
 import { preferEtaReduction } from "../checks/preferEtaReduction.js"
 import { preferFunctionFlip } from "../checks/preferFunctionFlip.js"
@@ -16,6 +17,7 @@ export const conceptAndCompositionChecks: ReadonlyArray<NamedCheck> = Array.make
   preferConditionalReturn,
   preferDirectBooleanReturn,
   preferDirectYield,
+  preferComposedCallbacks,
   preferFunctionComposition,
   preferEtaReduction,
   preferFunctionFlip,

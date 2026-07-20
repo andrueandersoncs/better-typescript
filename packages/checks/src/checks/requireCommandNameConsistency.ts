@@ -69,31 +69,28 @@ const hasCommandRole = (semantics: CallableSemantics) => HashSet.has(semantics.r
 const isNeutralCallbackOrHandler = (semantics: CallableSemantics) =>
   hasWord(semantics.name.words)(neutralRoleWords)
 
+const isCommandOperation = (operation: string) => HashSet.has(commandOperations, operation)
+const isPredicateOperation = (operation: string) => HashSet.has(predicateOperations, operation)
+const isAccessorOperation = (operation: string) => HashSet.has(accessorOperations, operation)
+
+const isResultBearingOperation = (operation: string) =>
+  HashSet.has(resultBearingOperations, operation)
+
 const commandOperation = (semantics: CallableSemantics) =>
-  pipe(
-    semantics.name.operation,
-    Option.filter((operation) => HashSet.has(commandOperations, operation))
-  )
+  pipe(semantics.name.operation, Option.filter(isCommandOperation))
 
 const claimsCommandOperation = Function.compose(commandOperation, Option.isSome)
 
 const claimsPredicateOperation = (semantics: CallableSemantics) =>
-  pipe(
-    semantics.name.operation,
-    Option.exists((operation) => HashSet.has(predicateOperations, operation))
-  )
+  pipe(semantics.name.operation, Option.exists(isPredicateOperation))
 
 const hasExplicitAccessorProjectionOrResultStyle = (semantics: CallableSemantics) => {
   const projected = HashSet.has(semantics.roles, projectionRole)
-
-  const accessorOperation = pipe(
-    semantics.name.operation,
-    Option.exists((operation) => HashSet.has(accessorOperations, operation))
-  )
+  const accessorOperation = pipe(semantics.name.operation, Option.exists(isAccessorOperation))
 
   const resultBearingOperation = pipe(
     semantics.name.operation,
-    Option.exists((operation) => HashSet.has(resultBearingOperations, operation))
+    Option.exists(isResultBearingOperation)
   )
 
   const hasResult = Option.isSome(semantics.name.result)
@@ -104,6 +101,11 @@ const hasExplicitAccessorProjectionOrResultStyle = (semantics: CallableSemantics
 
   return Array.some(signals, Boolean)
 }
+
+const isNotNeutralCallbackOrHandler = (semantics: CallableSemantics) =>
+  !isNeutralCallbackOrHandler(semantics)
+
+const hasVoidResult = (candidate: CallableSemantics) => candidate.result.shape === "void"
 
 const commandNameConsistencyMatches = (context: CheckContext) => {
   const match = makeDetection(context)
@@ -125,9 +127,7 @@ const commandNameConsistencyMatches = (context: CheckContext) => {
   const hiddenCommand = (semantics: CallableSemantics) =>
     Option.gen(function* () {
       yield* Option.liftPredicate(hasCommandRole)(semantics)
-      yield* Option.liftPredicate(
-        (candidate: CallableSemantics) => candidate.result.shape === "void"
-      )(semantics)
+      yield* Option.liftPredicate(hasVoidResult)(semantics)
       const claimsCommand = claimsCommandOperation(semantics)
       const claimsPredicate = claimsPredicateOperation(semantics)
       yield* Option.liftPredicate((value: boolean) => !value)(claimsCommand)
@@ -144,7 +144,7 @@ const commandNameConsistencyMatches = (context: CheckContext) => {
   const matches = (definition: FunctionDefinition): ReadonlyArray<Detection> =>
     pipe(
       semanticsFor(definition),
-      Option.filter((semantics) => !isNeutralCallbackOrHandler(semantics)),
+      Option.filter(isNotNeutralCallbackOrHandler),
       Option.map((semantics) => {
         const falseClaim = falseCommandClaim(semantics)
         const hidden = hiddenCommand(semantics)

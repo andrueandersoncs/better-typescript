@@ -43,16 +43,17 @@ export const effectTestStyleFindings =
     const isPlainIt = callIsPlainIt(context.checker)
     const returnsEffect = callbackStaticallyReturnsEffect(context.checker)
 
+    const findingsWhenCallbackReturnsEffect = (call: ts.CallExpression) =>
+      pipe(
+        testCallbackArgument(call),
+        Option.filter(returnsEffect),
+        Option.map(() => findingsForPlainEffectIt(call))
+      )
+
     return pipe(
       callExpressionOf(node),
       Option.filter(isPlainIt),
-      Option.flatMap((call) =>
-        pipe(
-          testCallbackArgument(call),
-          Option.filter(returnsEffect),
-          Option.map(() => findingsForPlainEffectIt(call))
-        )
-      ),
+      Option.flatMap(findingsWhenCallbackReturnsEffect),
       Option.getOrElse(Function.constant(emptyRuleFindings))
     )
   }

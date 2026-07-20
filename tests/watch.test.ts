@@ -14,7 +14,6 @@ import {
   makeInlineRefactorExamples,
   makeRefactorExample
 } from "./exampleHelpers.js"
-import type { ExampleLoadError } from "@better-typescript/core/engine/example/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
 import { makeContext } from "@better-typescript/core/engine/sources"
@@ -56,7 +55,7 @@ const probeWiring = makeWiring({
     const detectionCount = signals[0]?.detections.length ?? 0
 
     if (detectionCount === 0) {
-      return Effect.succeed([])
+      return []
     }
     const advice: Advice = {
       location: Location.make({ path: "src/cases.ts", line: 1, column: 1 }),
@@ -67,7 +66,7 @@ const probeWiring = makeWiring({
       examples: probeExamples
     }
 
-    return Effect.succeed([advice])
+    return [advice]
   }
 })
 
@@ -170,22 +169,6 @@ test("reportEvents emits one root-scoped empty event for an empty initial report
   assert.equal(events.length, 1)
   assert.ok(events[0]?._tag === "empty")
   assert.equal(events[0].rootPath, syntheticRoot)
-})
-
-test("reportEvents preserves the derivation error channel", async () => {
-  const failure = "derive failure" as const
-  const fallibleWiring = makeWiring({
-    checks: [makeNamedCheck(probeName, throwProbeCheck, probeExamples)],
-    derive: () => Effect.fail(failure)
-  })
-  const fallibleConfig = defineConfig([{ files: ["src/cases.ts"], wiring: fallibleWiring }])
-  const output: Effect.Effect<
-    ReadonlyArray<ReportEvent>,
-    typeof failure | ExampleLoadError
-  > = reportEvents(fallibleConfig)(syntheticUpdate(initialSource))
-  const actual = await Effect.runPromise(pipe(output, Effect.flip))
-
-  assert.equal(actual, failure)
 })
 
 test("watchWorkspace waits for a change and closes its file watchers", async () => {

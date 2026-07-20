@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -27,17 +27,16 @@ const callerCountOf = (element: NamedDetection) =>
   )
 
 const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  const elementHasShallownessName = (element: NamedDetection) => isShallownessName(element.name)
+  const detectionPath = (element: NamedDetection) => element.detection.location.path
+
   const wrappers = pipe(
     elements,
-    Array.filter((element) => isShallownessName(element.name)),
+    Array.filter(elementHasShallownessName),
     Array.filter(isDeletableShallowness)
   )
 
-  const paths = pipe(
-    wrappers,
-    Array.map((element) => element.detection.location.path),
-    Array.dedupe
-  )
+  const paths = pipe(wrappers, Array.map(detectionPath), Array.dedupe)
 
   return Array.map(paths, (filePath) => {
     const atPath = Array.filter(wrappers, (element) => element.detection.location.path === filePath)
@@ -68,6 +67,4 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
   })
 }
 
-export const deletionTestShallowness = Effect.fn("DeletionTestShallowness.derive")(
-  deriveSignals(deletionAdvice)
-)
+export const deletionTestShallowness = deriveSignals(deletionAdvice)

@@ -1,4 +1,4 @@
-import { Array, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -15,35 +15,49 @@ const hint =
   "extracting nested call arguments into their own consts so no-nested-calls " +
   "stays satisfied."
 
-const isYieldStarOfIdentifier = (identifier: ts.Identifier) =>
-  pipe(
+const hasAsteriskToken = (node: ts.FunctionExpression | ts.YieldExpression) =>
+  pipe(node.asteriskToken, Option.fromNullishOr, Option.isSome)
+
+const lacksAsteriskToken = (node: ts.FunctionExpression | ts.YieldExpression) =>
+  pipe(node.asteriskToken, Option.fromNullishOr, Option.isNone)
+
+const isYieldStarOfIdentifier = (identifier: ts.Identifier) => {
+  const yieldsIdentifier = (yieldExpression: ts.YieldExpression) =>
+    yieldExpression.expression === identifier
+
+  return pipe(
     Option.liftPredicate(ts.isYieldExpression)(identifier.parent),
-    Option.filter((yieldExpression) =>
-      pipe(Option.fromNullishOr(yieldExpression.asteriskToken), Option.isSome)
-    ),
-    Option.exists((yieldExpression) => yieldExpression.expression === identifier)
+    Option.filter(hasAsteriskToken),
+    Option.exists(yieldsIdentifier)
   )
+}
 
 const preferDirectYieldMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = makeDetection(context)
 
-  const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) =>
-    pipe(
+  const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) => {
+    const hasMethodName = (access: ts.PropertyAccessExpression) => access.name.text === methodName
+
+    const isEffectRoot = (access: ts.PropertyAccessExpression) =>
+      pipe(
+        Option.liftPredicate(ts.isIdentifier)(access.expression),
+        Option.map(Struct.get("text")),
+        Option.exists((text) => text === "Effect")
+      )
+
+    const symbolAtAccessName = (access: ts.PropertyAccessExpression) =>
+      pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
+
+    return pipe(
       Option.some(call.expression),
       Option.filter(ts.isPropertyAccessExpression),
-      Option.filter((access) => access.name.text === methodName),
-      Option.filter((access) =>
-        pipe(
-          Option.liftPredicate(ts.isIdentifier)(access.expression),
-          Option.exists((identifier) => identifier.text === "Effect")
-        )
-      ),
-      Option.flatMap((access) =>
-        pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
-      ),
+      Option.filter(hasMethodName),
+      Option.filter(isEffectRoot),
+      Option.flatMap(symbolAtAccessName),
       Option.exists(symbolDeclaredInEffectPackage)
     )
+  }
 
   const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
     pipe(
@@ -66,9 +80,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
             const visit = (current: ts.Node): Option.Option<ts.FunctionExpression> => {
               const starredGenerator = pipe(
                 Option.liftPredicate(ts.isFunctionExpression)(current),
-                Option.filter((expression) =>
-                  pipe(Option.fromNullishOr(expression.asteriskToken), Option.isSome)
-                )
+                Option.filter(hasAsteriskToken)
               )
 
               if (Option.isSome(starredGenerator)) {
@@ -99,9 +111,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
               const nonGeneratorFunctionExpression = pipe(
                 Option.liftPredicate(ts.isFunctionExpression)(current),
-                Option.filter((expression) =>
-                  pipe(Option.fromNullishOr(expression.asteriskToken), Option.isNone)
-                ),
+                Option.filter(lacksAsteriskToken),
                 Option.isSome
               )
 
@@ -130,21 +140,30 @@ const preferDirectYieldMatches = (context: CheckContext) => {
         const appendMatchingReference = (
           references: ReadonlyArray<ts.Identifier>,
           node: ts.Node
-        ): ReadonlyArray<ts.Identifier> =>
-          pipe(
+        ): ReadonlyArray<ts.Identifier> => {
+          const isNotBindingName = (candidate: ts.Node) => candidate !== name
+          const isSameSymbol = (candidate: ts.Symbol) => candidate === symbol
+
+          const appendIdentifier = (identifier: ts.Identifier) =>
+            Array.append(references, identifier)
+
+          const matchingIdentifier = (identifier: ts.Identifier) =>
+            pipe(
+              checker.getSymbolAtLocation(identifier),
+              Option.fromNullishOr,
+              Option.filter(isSameSymbol),
+              Option.as(identifier)
+            )
+
+          return pipe(
             Option.some(node),
-            Option.filter((candidate) => candidate !== name),
+            Option.filter(isNotBindingName),
             Option.filter(ts.isIdentifier),
-            Option.flatMap((identifier) =>
-              pipe(
-                checker.getSymbolAtLocation(identifier),
-                Option.fromNullishOr,
-                Option.filter((candidate) => candidate === symbol),
-                Option.map(() => Array.append(references, identifier))
-              )
-            ),
-            Option.getOrElse(() => references)
+            Option.flatMap(matchingIdentifier),
+            Option.map(appendIdentifier),
+            Option.getOrElse(Function.constant(references))
           )
+        }
 
         const foldReferences = foldAst(appendMatchingReference)(generator)
         const references = foldReferences(emptyReferences)

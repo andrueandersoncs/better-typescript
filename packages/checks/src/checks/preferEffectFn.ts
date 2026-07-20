@@ -1,6 +1,11 @@
-import { Array, Function, Match, Option, pipe } from "effect"
+import { Array, Function, Match, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { functionInitializer, hasParameters, unwrapExpression } from "./support/tsNode.js"
+import {
+  functionInitializer,
+  hasParameters,
+  returnStatementExpression,
+  unwrapExpression
+} from "./support/tsNode.js"
 import { isEffectInterfaceSymbol, symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -20,7 +25,7 @@ const returnedExpression = (initializer: ts.ArrowFunction | ts.FunctionExpressio
     Option.liftPredicate(ts.isBlock)(body),
     Option.flatMap(singleBlockStatement),
     Option.filter(ts.isReturnStatement),
-    Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
+    Option.flatMap(returnStatementExpression)
   )
 
   const conciseResult = ts.isBlock(body) ? Option.none<ts.Expression>() : Option.some(body)
@@ -37,57 +42,72 @@ const isEffectGenAccess = (checker: ts.TypeChecker) => (access: ts.PropertyAcces
   )
 
 const effectGenCall =
-  (checker: ts.TypeChecker) => (initializer: ts.ArrowFunction | ts.FunctionExpression) =>
-    pipe(
+  (checker: ts.TypeChecker) => (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
+    const callIsEffectGen = (call: ts.CallExpression) =>
+      pipe(
+        Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression),
+        Option.exists(isEffectGenAccess(checker))
+      )
+
+    return pipe(
       returnedExpression(initializer),
       Option.map(unwrapExpression),
       Option.filter(ts.isCallExpression),
-      Option.filter((call) =>
-        pipe(
-          Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression),
-          Option.exists(isEffectGenAccess(checker))
-        )
-      )
+      Option.filter(callIsEffectGen)
     )
+  }
+
+const shorthandNameIsSelf = (shorthand: ts.ShorthandPropertyAssignment) =>
+  shorthand.name.text === "self"
+
+const identifierTextIsSelf = (name: ts.Identifier) => name.text === "self"
+
+const stringLiteralTextIsSelf = (name: ts.StringLiteralLike) => name.text === "self"
+
+const assignmentNameIsSelf = (assignment: ts.PropertyAssignment) =>
+  pipe(
+    Match.value(assignment.name),
+    Match.when(ts.isIdentifier, identifierTextIsSelf),
+    Match.when(ts.isStringLiteralLike, stringLiteralTextIsSelf),
+    Match.orElse(Function.constFalse)
+  )
+
+const propertyBindsSelf = (property: ts.ObjectLiteralElementLike) =>
+  pipe(
+    Match.value(property),
+    Match.when(ts.isShorthandPropertyAssignment, shorthandNameIsSelf),
+    Match.when(ts.isPropertyAssignment, assignmentNameIsSelf),
+    Match.orElse(Function.constFalse)
+  )
+
+const objectLiteralBindsSelf = (literal: ts.ObjectLiteralExpression) =>
+  Array.some(literal.properties, propertyBindsSelf)
 
 const selfBindingLiteral = (call: ts.CallExpression) =>
   pipe(
     Option.fromNullishOr(call.arguments[0]),
     Option.filter(ts.isObjectLiteralExpression),
-    Option.filter((literal) =>
-      Array.some(literal.properties, (property) =>
-        pipe(
-          Match.value(property),
-          Match.when(
-            ts.isShorthandPropertyAssignment,
-            (shorthand) => shorthand.name.text === "self"
-          ),
-          Match.when(ts.isPropertyAssignment, (assignment) =>
-            pipe(
-              Match.value(assignment.name),
-              Match.when(ts.isIdentifier, (name) => name.text === "self"),
-              Match.when(ts.isStringLiteralLike, (name) => name.text === "self"),
-              Match.orElse(Function.constFalse)
-            )
-          ),
-          Match.orElse(Function.constFalse)
-        )
-      )
-    )
+    Option.filter(objectLiteralBindsSelf)
   )
+
+const identifierTextIsThis = (name: ts.Identifier) => name.text === "this"
+
+const parameterIsThis = (parameter: ts.ParameterDeclaration) =>
+  pipe(Option.liftPredicate(ts.isIdentifier)(parameter.name), Option.exists(identifierTextIsThis))
+
+const generatorThisParameter = (generator: ts.FunctionExpression) =>
+  Array.findFirst(generator.parameters, parameterIsThis)
+
+const parameterTypeNode = Function.flow(
+  Struct.get<ts.ParameterDeclaration, "type">("type"),
+  Option.fromNullishOr
+)
 
 const generatorThisTypeText = (sourceFile: ts.SourceFile) => (call: ts.CallExpression) =>
   pipe(
     Array.findFirst(call.arguments, ts.isFunctionExpression),
-    Option.flatMap((generator) =>
-      Array.findFirst(generator.parameters, (parameter) =>
-        pipe(
-          Option.liftPredicate(ts.isIdentifier)(parameter.name),
-          Option.exists((name) => name.text === "this")
-        )
-      )
-    ),
-    Option.flatMap((parameter) => Option.fromNullishOr(parameter.type)),
+    Option.flatMap(generatorThisParameter),
+    Option.flatMap(parameterTypeNode),
     Option.map((typeNode) => typeNode.getText(sourceFile)),
     Option.getOrElse(Function.constant("..."))
   )
@@ -99,9 +119,11 @@ const ordinaryHint = (functionName: string) =>
 
 const selfBoundHint =
   (sourceFile: ts.SourceFile) => (functionName: string, call: ts.CallExpression) => {
+    const literalText = (literal: ts.ObjectLiteralExpression) => literal.getText(sourceFile)
+
     const selfBinding = pipe(
       selfBindingLiteral(call),
-      Option.map((literal) => literal.getText(sourceFile)),
+      Option.map(literalText),
       Option.getOrElse(Function.constant("{ self: this }"))
     )
 
@@ -115,14 +137,20 @@ const selfBoundHint =
   }
 
 const rewriteHint =
-  (sourceFile: ts.SourceFile) => (functionName: string, call: ts.CallExpression) =>
-    pipe(
+  (sourceFile: ts.SourceFile) => (functionName: string, call: ts.CallExpression) => {
+    const ordinary = ordinaryHint(functionName)
+    const ordinaryForFunction = Function.constant(ordinary)
+    const selfBound = selfBoundHint(sourceFile)(functionName, call)
+    const selfBoundForCall = Function.constant(selfBound)
+
+    return pipe(
       selfBindingLiteral(call),
       Option.match({
-        onNone: () => ordinaryHint(functionName),
-        onSome: () => selfBoundHint(sourceFile)(functionName, call)
+        onNone: ordinaryForFunction,
+        onSome: selfBoundForCall
       })
     )
+  }
 
 const effectFnMatches = (context: CheckContext) => {
   const checker = context.checker
@@ -131,36 +159,43 @@ const effectFnMatches = (context: CheckContext) => {
   const genCall = effectGenCall(checker)
   const hintFor = rewriteHint(sourceFile)
 
-  const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> =>
-    pipe(
+  const signatureReturnsEffect = (signature: ts.Signature) => {
+    const returnType = checker.getReturnTypeOfSignature(signature)
+    const typeSymbol = returnType.getSymbol()
+    const symbol = Option.fromNullishOr(typeSymbol)
+
+    return Option.exists(symbol, isEffectInterfaceSymbol)
+  }
+
+  const initializerReturnsEffect = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
+    const declaredSignature = checker.getSignatureFromDeclaration(initializer)
+    const signature = Option.fromNullishOr(declaredSignature)
+
+    return Option.exists(signature, signatureReturnsEffect)
+  }
+
+  const matches = (declaration: ts.VariableDeclaration): ReadonlyArray<Detection> => {
+    const detectionForGenCall = (call: ts.CallExpression) => {
+      const functionName = declaration.name.getText(sourceFile)
+      const hint = hintFor(functionName, call)
+
+      return match({
+        node: declaration.name,
+        message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
+        hint
+      })
+    }
+
+    return pipe(
       functionInitializer(declaration),
       Option.filter(hasParameters),
-      Option.filter((initializer) => {
-        const declaredSignature = checker.getSignatureFromDeclaration(initializer)
-        const signature = Option.fromNullishOr(declaredSignature)
-
-        return Option.exists(signature, (signature) => {
-          const returnType = checker.getReturnTypeOfSignature(signature)
-          const typeSymbol = returnType.getSymbol()
-          const symbol = Option.fromNullishOr(typeSymbol)
-
-          return Option.exists(symbol, isEffectInterfaceSymbol)
-        })
-      }),
+      Option.filter(initializerReturnsEffect),
       // Rewrite only Effect.gen wrappers because Effect.fn changes what plain combinator bodies build.
       Option.flatMap(genCall),
-      Option.map((call) => {
-        const functionName = declaration.name.getText(sourceFile)
-        const hint = hintFor(functionName, call)
-
-        return match({
-          node: declaration.name,
-          message: `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
-          hint
-        })
-      }),
+      Option.map(detectionForGenCall),
       Option.toArray
     )
+  }
 
   return matches
 }

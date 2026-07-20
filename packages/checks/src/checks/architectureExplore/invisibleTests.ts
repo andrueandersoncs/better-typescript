@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Result, Struct, pipe } from "effect"
+import { Array, Function, Result, Struct, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -70,4 +70,4 @@ const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   return Array.of(advice)
 }
 
-export const invisibleTests = Effect.fn("InvisibleTests.derive")(deriveSignals(invisibleAdvice))
+export const invisibleTests = deriveSignals(invisibleAdvice)

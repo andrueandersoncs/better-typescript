@@ -1,6 +1,7 @@
 import { Tuple, Array, Function, HashMap, Match, Option, Struct, pipe, Result } from "effect"
 import * as ts from "typescript"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
+import { isObjectType } from "./support/tsType.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "@better-typescript/core/engine/sources"
 import { makePlannedCheck } from "../defineCheck.js"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
@@ -48,9 +49,6 @@ const typeObjectTypeSymbol = (type: ts.Type) => {
 
   return Option.orElse(directSymbol, fallbackAlias)
 }
-
-const isObjectType = (type: ts.Type): type is ts.ObjectType =>
-  (type.flags & ts.TypeFlags.Object) !== 0
 
 const hasReferenceObjectFlag = (type: ts.ObjectType) =>
   (type.objectFlags & ts.ObjectFlags.Reference) !== 0
@@ -312,19 +310,29 @@ const isReadonlyTypeOperator = (node: ts.TypeNode): node is ts.TypeOperatorNode 
     Option.exists((operator) => operator.operator === ts.SyntaxKind.ReadonlyKeyword)
   )
 
-const tupleTypeNode = (node: ts.TypeNode): Option.Option<ts.TupleTypeNode> =>
-  pipe(
+const typeAliasTypeNode = Struct.get<ts.TypeAliasDeclaration, "type">("type")
+
+const tupleTypeNode = (node: ts.TypeNode): Option.Option<ts.TupleTypeNode> => {
+  const fromParenthesized = (parenthesized: ts.ParenthesizedTypeNode) =>
+    tupleTypeNode(parenthesized.type)
+
+  const fromReadonlyOperator = (operator: ts.TypeOperatorNode) => tupleTypeNode(operator.type)
+  const noneTupleType = Option.none<ts.TupleTypeNode>()
+
+  return pipe(
     Match.value(node),
     Match.when(ts.isTupleTypeNode, Option.some<ts.TupleTypeNode>),
-    Match.when(ts.isParenthesizedTypeNode, (parenthesized) => tupleTypeNode(parenthesized.type)),
-    Match.when(isReadonlyTypeOperator, (operator) => tupleTypeNode(operator.type)),
-    Match.orElse(() => Option.none())
+    Match.when(ts.isParenthesizedTypeNode, fromParenthesized),
+    Match.when(isReadonlyTypeOperator, fromReadonlyOperator),
+    Match.orElse(Function.constant(noneTupleType))
   )
+}
 
 const isTupleTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclaration =>
   pipe(
     Option.liftPredicate(ts.isTypeAliasDeclaration)(node),
-    Option.flatMap((declaration) => tupleTypeNode(declaration.type)),
+    Option.map(typeAliasTypeNode),
+    Option.flatMap(tupleTypeNode),
     Option.isSome
   )
 

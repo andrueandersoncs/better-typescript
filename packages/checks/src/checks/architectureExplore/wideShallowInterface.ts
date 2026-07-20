@@ -1,4 +1,4 @@
-import { Array, Effect, Option, pipe, Result, Function } from "effect"
+import { Array, Option, pipe, Result, Function } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -15,11 +15,13 @@ export const wideShallowInterfaceExamples = packageExamples("wide-shallow-interf
 const minimumForwarders = 3
 
 const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const burden = Array.filter(elements, (element) => element.name === interfaceBurdenName)
+  const isInterfaceBurdenElement = (element: NamedDetection) => element.name === interfaceBurdenName
+  const elementHasShallownessName = (element: NamedDetection) => isShallownessName(element.name)
+  const burden = Array.filter(elements, isInterfaceBurdenElement)
 
   const wrappers = pipe(
     elements,
-    Array.filter((element) => isShallownessName(element.name)),
+    Array.filter(elementHasShallownessName),
     Array.filter(isDeletableShallowness)
   )
 
@@ -62,6 +64,4 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
   })
 }
 
-export const wideShallowInterface = Effect.fn("WideShallowInterface.derive")(
-  deriveSignals(wideShallowAdvice)
-)
+export const wideShallowInterface = deriveSignals(wideShallowAdvice)

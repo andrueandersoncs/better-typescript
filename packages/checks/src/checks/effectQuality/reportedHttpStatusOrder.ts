@@ -19,6 +19,8 @@ import {
   nodeIsHttpRelatedCall
 } from "./reportedHttpStatusClassify.js"
 
+const functionBodyOf = (fn: ts.FunctionLikeDeclaration) => Option.fromNullishOr(fn.body)
+
 const statusDecodeOrderFinding = makeRuleFinding("http-status-decode-order")
 
 const bodyLooksHttpRelated = (checker: ts.TypeChecker) => (node: ts.CallExpression) => {
@@ -30,7 +32,7 @@ const bodyLooksHttpRelated = (checker: ts.TypeChecker) => (node: ts.CallExpressi
 
   const hasHttpClient = pipe(
     enclosingFunctionLike(node),
-    Option.flatMap((fn) => Option.fromNullishOr(fn.body)),
+    Option.flatMap(functionBodyOf),
     Option.exists(bodyContainsRelated)
   )
 
@@ -72,7 +74,7 @@ const bodyReadPrecedesInFunction =
   (call: ts.CallExpression) =>
     pipe(
       enclosingFunctionLike(call),
-      Option.flatMap((fn) => Option.fromNullishOr(fn.body)),
+      Option.flatMap(functionBodyOf),
       Option.exists(precedesStatus(call))
     )
 

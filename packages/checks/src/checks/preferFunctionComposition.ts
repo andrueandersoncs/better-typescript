@@ -1,4 +1,4 @@
-import { Array, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isFunctionInitializer, unwrapTransparentExpression } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -25,12 +25,10 @@ const identifierText = Struct.get<ts.Identifier, "text">("text")
 const carrierIdentifier = (expression: ts.Expression) =>
   pipe(expression, unwrapTowerCarrier, Option.some, Option.filter(ts.isIdentifier))
 
+const isPipeText = (text: string) => text === "pipe"
+
 const isPipeCallee = (expression: ts.Expression) =>
-  pipe(
-    carrierIdentifier(expression),
-    Option.map(identifierText),
-    Option.exists((text) => text === "pipe")
-  )
+  pipe(carrierIdentifier(expression), Option.map(identifierText), Option.exists(isPipeText))
 
 const isSeedIdentifier = (name: string) => (expression: ts.Expression) =>
   pipe(
@@ -48,17 +46,25 @@ const isUnaryCallTowerOver =
     const seedMatch = isSeedIdentifier(name)(carrier)
     const callOption = Option.liftPredicate(ts.isCallExpression)(carrier)
 
+    const callIsPipe = Function.flow(
+      Struct.get<ts.CallExpression, "expression">("expression"),
+      isPipeCallee
+    )
+
+    const callIsNotPipe = Predicate.not(callIsPipe)
+    const callHasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+
     const pipeTower = pipe(
       callOption,
-      Option.filter((call) => isPipeCallee(call.expression)),
+      Option.filter(callIsPipe),
       Option.flatMap(callFirstArgument),
       Option.exists(isUnaryCallTowerOver(name))
     )
 
     const unaryTower = pipe(
       callOption,
-      Option.filter((call) => call.arguments.length === 1),
-      Option.filter((call) => !isPipeCallee(call.expression)),
+      Option.filter(callHasOneArgument),
+      Option.filter(callIsNotPipe),
       Option.flatMap(callFirstArgument),
       Option.exists(isUnaryCallTowerOver(name))
     )
@@ -70,70 +76,78 @@ const isUnaryCallTowerOver =
 const functionCompositionMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
-  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
-    pipe(
-      Option.liftPredicate(ts.isBlock)(arrowFunction.body),
-      Option.filter((body) => body.statements.length === 2),
-      Option.flatMap((body) =>
-        Option.gen(function* () {
-          const firstStatement = yield* Option.fromNullishOr(body.statements[0])
-          const secondStatement = yield* Option.fromNullishOr(body.statements[1])
+  const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
+    const hasTwoStatements = (body: ts.Block) => body.statements.length === 2
 
-          const declarationList = yield* pipe(
-            Option.liftPredicate(ts.isVariableStatement)(firstStatement),
-            Option.map(Struct.get("declarationList"))
+    const returnExpression = Function.flow(
+      Struct.get<ts.ReturnStatement, "expression">("expression"),
+      Option.fromNullishOr
+    )
+
+    const compositionFromBody = (body: ts.Block) =>
+      Option.gen(function* () {
+        const firstStatement = yield* Option.fromNullishOr(body.statements[0])
+        const secondStatement = yield* Option.fromNullishOr(body.statements[1])
+
+        const declarationList = yield* pipe(
+          Option.liftPredicate(ts.isVariableStatement)(firstStatement),
+          Option.map(Struct.get("declarationList"))
+        )
+
+        const isConstList = (declarationList.flags & ts.NodeFlags.Const) !== 0
+        const hasOneDeclaration = declarationList.declarations.length === 1
+
+        yield* Option.liftPredicate((value: boolean) => value)(isConstList)
+        yield* Option.liftPredicate((value: boolean) => value)(hasOneDeclaration)
+
+        const binding = yield* Option.fromNullishOr(declarationList.declarations[0])
+
+        yield* Option.liftPredicate(ts.isIdentifier)(binding.name)
+
+        const initializer = yield* Option.fromNullishOr(binding.initializer)
+        yield* Option.liftPredicate(Predicate.not(isFunctionInitializer))(initializer)
+
+        const returned = yield* pipe(
+          Option.liftPredicate(ts.isReturnStatement)(secondStatement),
+          Option.flatMap(returnExpression)
+        )
+
+        const name = identifierText(binding.name as ts.Identifier)
+        const isBindingName = (text: string) => text === name
+
+        const referenceCount = foldAst((count: number, node: ts.Node): number =>
+          pipe(
+            Option.liftPredicate(ts.isIdentifier)(node),
+            Option.map(identifierText),
+            Option.exists(isBindingName)
           )
+            ? count + 1
+            : count
+        )(returned)(0)
 
-          const isConstList = (declarationList.flags & ts.NodeFlags.Const) !== 0
-          const hasOneDeclaration = declarationList.declarations.length === 1
+        const seedOnly = isSeedIdentifier(name)(returned)
+        const singleReference = referenceCount === 1
+        const tower = isUnaryCallTowerOver(name)(returned)
+        const threaded = singleReference && tower
+        const keepThreaded = !seedOnly
 
-          yield* Option.liftPredicate((value: boolean) => value)(isConstList)
-          yield* Option.liftPredicate((value: boolean) => value)(hasOneDeclaration)
+        yield* Option.liftPredicate((value: boolean) => value)(keepThreaded)
+        yield* Option.liftPredicate((value: boolean) => value)(threaded)
 
-          const binding = yield* Option.fromNullishOr(declarationList.declarations[0])
-
-          yield* Option.liftPredicate(ts.isIdentifier)(binding.name)
-
-          const initializer = yield* Option.fromNullishOr(binding.initializer)
-          yield* Option.liftPredicate((value: ts.Expression) => !isFunctionInitializer(value))(
-            initializer
-          )
-
-          const returned = yield* pipe(
-            Option.liftPredicate(ts.isReturnStatement)(secondStatement),
-            Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
-          )
-
-          const name = identifierText(binding.name as ts.Identifier)
-
-          const referenceCount = foldAst((count: number, node: ts.Node): number =>
-            pipe(
-              Option.liftPredicate(ts.isIdentifier)(node),
-              Option.map(identifierText),
-              Option.exists((text) => text === name)
-            )
-              ? count + 1
-              : count
-          )(returned)(0)
-
-          const seedOnly = isSeedIdentifier(name)(returned)
-          const singleReference = referenceCount === 1
-          const tower = isUnaryCallTowerOver(name)(returned)
-          const threaded = singleReference && tower
-          const keepThreaded = !seedOnly
-
-          yield* Option.liftPredicate((value: boolean) => value)(keepThreaded)
-          yield* Option.liftPredicate((value: boolean) => value)(threaded)
-
-          return match({
-            node: body,
-            message,
-            hint
-          })
+        return match({
+          node: body,
+          message,
+          hint
         })
-      ),
+      })
+
+    return pipe(
+      Option.liftPredicate(ts.isBlock)(arrowFunction.body),
+      Option.filter(hasTwoStatements),
+      Option.flatMap(compositionFromBody),
       Option.toArray
     )
+  }
 
   return matches
 }

@@ -77,15 +77,14 @@ export const httpClientPreference =
       return Array.some(members, Boolean)
     }
 
+    const expressionUsesHttpClient = (expression: ts.Expression) =>
+      pipe(importedMemberAt(context.checker, expression), Option.exists(memberUsesHttpClient))
+
     const currentUsesHttpClient = (current: ts.Node) =>
       pipe(
         Match.value(current),
-        Match.when(ts.isIdentifier, (identifier) =>
-          pipe(importedMemberAt(context.checker, identifier), Option.exists(memberUsesHttpClient))
-        ),
-        Match.when(ts.isPropertyAccessExpression, (access) =>
-          pipe(importedMemberAt(context.checker, access), Option.exists(memberUsesHttpClient))
-        ),
+        Match.when(ts.isIdentifier, expressionUsesHttpClient),
+        Match.when(ts.isPropertyAccessExpression, expressionUsesHttpClient),
         Match.orElse(Function.constFalse)
       )
 

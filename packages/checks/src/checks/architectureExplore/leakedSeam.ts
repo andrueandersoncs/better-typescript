@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Effect, Function, Option, Result, Tuple, pipe } from "effect"
+import { Array, Function, Option, Predicate, Result, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -9,6 +9,7 @@ import {
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { packageExamples } from "../../defineCheck.js"
 import { moduleGraphDataOf, seamLeakageDataOf } from "./evidence.js"
+import type { ModuleGraphData } from "./data.js"
 import { moduleGraphName, seamLeakageEvidenceName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
@@ -17,6 +18,40 @@ export const leakedSeamExamples = packageExamples("leaked-seam")
 const minimumLeaks = 2
 
 const directoryOf: (workspacePath: string) => string = path.posix.dirname
+
+const isProductionPath = Predicate.not(isTestPath)
+
+const directoryEdgesFromData = (
+  data: ModuleGraphData
+): ReadonlyArray<readonly [string, string]> => {
+  if (isTestPath(data.workspacePath)) {
+    return Array.empty<readonly [string, string]>()
+  }
+
+  const fromDirectory = directoryOf(data.workspacePath)
+
+  const edgeFromImport = (importedPath: string) => {
+    const toDirectory = directoryOf(importedPath)
+
+    return Tuple.make(fromDirectory, toDirectory)
+  }
+
+  const isCrossDirectory = ([from, to]: readonly [string, string]) => from !== to
+
+  return pipe(
+    data.importedWorkspacePaths,
+    Array.filter(isProductionPath),
+    Array.map(edgeFromImport),
+    Array.filter(isCrossDirectory)
+  )
+}
+
+const directoryEdgesFromElement = (element: NamedDetection) =>
+  pipe(
+    moduleGraphDataOf(element),
+    Option.map(directoryEdgesFromData),
+    Option.getOrElse(Array.empty)
+  )
 
 const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const leaks = Array.filter(elements, (element) => element.name === seamLeakageEvidenceName)
@@ -63,32 +98,9 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 }
 
 const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const graphElements = Array.filter(elements, (element) => element.name === moduleGraphName)
-
-  const directoryEdges = Array.flatMap(graphElements, (element) =>
-    pipe(
-      moduleGraphDataOf(element),
-      Option.map((data) => {
-        if (isTestPath(data.workspacePath)) {
-          return Array.empty<readonly [string, string]>()
-        }
-
-        const fromDirectory = directoryOf(data.workspacePath)
-
-        return pipe(
-          data.importedWorkspacePaths,
-          Array.filter((importedPath) => !isTestPath(importedPath)),
-          Array.map((importedPath) => {
-            const importedDirectory = directoryOf(importedPath)
-
-            return Tuple.make(fromDirectory, importedDirectory)
-          }),
-          Array.filter(([from, to]) => from !== to)
-        )
-      }),
-      Option.getOrElse(Array.empty)
-    )
-  )
+  const isModuleGraphElement = (element: NamedDetection) => element.name === moduleGraphName
+  const graphElements = Array.filter(elements, isModuleGraphElement)
+  const directoryEdges = Array.flatMap(graphElements, directoryEdgesFromElement)
 
   const directories = pipe(
     directoryEdges,
@@ -96,40 +108,40 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
     Array.dedupe
   )
 
-  const pairs = Array.flatMap(directories, (left) =>
-    pipe(
-      directories,
-      Array.filter((right) => left < right),
-      Array.filterMap((right) => {
-        const forwardCount = Array.countBy(directoryEdges, ([from, to]) => {
-          const fromMatches = from === left
-          const toMatches = to === right
-          const conditions = Array.make(fromMatches, toMatches)
+  const pairs = Array.flatMap(directories, (left) => {
+    const isGreaterThanLeft = (right: string) => left < right
 
-          return Array.every(conditions, Boolean)
-        })
+    const pairWithLeft = (right: string) => {
+      const forwardCount = Array.countBy(directoryEdges, ([from, to]) => {
+        const fromMatches = from === left
+        const toMatches = to === right
+        const conditions = Array.make(fromMatches, toMatches)
 
-        const reverseCount = Array.countBy(directoryEdges, ([from, to]) => {
-          const fromMatches = from === right
-          const toMatches = to === left
-          const conditions = Array.make(fromMatches, toMatches)
-
-          return Array.every(conditions, Boolean)
-        })
-
-        const smallestDirectionCount = Math.min(forwardCount, reverseCount)
-
-        if (smallestDirectionCount === 0) {
-          return Result.failVoid
-        }
-
-        const crossImports = forwardCount + reverseCount
-        const pair = Tuple.make(left, right, crossImports)
-
-        return Result.succeed(pair)
+        return Array.every(conditions, Boolean)
       })
-    )
-  )
+
+      const reverseCount = Array.countBy(directoryEdges, ([from, to]) => {
+        const fromMatches = from === right
+        const toMatches = to === left
+        const conditions = Array.make(fromMatches, toMatches)
+
+        return Array.every(conditions, Boolean)
+      })
+
+      const smallestDirectionCount = Math.min(forwardCount, reverseCount)
+
+      if (smallestDirectionCount === 0) {
+        return Result.failVoid
+      }
+
+      const crossImports = forwardCount + reverseCount
+      const pair = Tuple.make(left, right, crossImports)
+
+      return Result.succeed(pair)
+    }
+
+    return pipe(directories, Array.filter(isGreaterThanLeft), Array.filterMap(pairWithLeft))
+  })
 
   return Array.map(pairs, ([left, right, crossImports]) => {
     const smaller = left < right ? left : right
@@ -158,4 +170,4 @@ const leakedSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
   return Array.appendAll(fileAdvice, directoryAdvice)
 }
 
-export const leakedSeam = Effect.fn("LeakedSeam.derive")(deriveSignals(leakedSeamAdvice))
+export const leakedSeam = deriveSignals(leakedSeamAdvice)

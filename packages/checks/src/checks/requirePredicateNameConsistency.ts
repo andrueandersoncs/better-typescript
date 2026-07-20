@@ -98,17 +98,18 @@ const isBareVariantConstructor = (semantics: CallableSemantics) => {
   const words = semantics.name.words
   const singleWord = words.length === 1
   const headWord = Array.head(words)
-  const isVariant = Option.exists(headWord, (word) => HashSet.has(bareVariantConstructors, word))
+  const isBareVariantWord = (word: string) => HashSet.has(bareVariantConstructors, word)
+  const isVariant = Option.exists(headWord, isBareVariantWord)
   const checks = Array.make(singleWord, isVariant)
 
   return Array.every(checks, Boolean)
 }
 
+const isIncompatibleOperation = (operation: string) =>
+  HashSet.has(incompatibleOperations, operation)
+
 const incompatibleOperation = (semantics: CallableSemantics) =>
-  pipe(
-    semantics.name.operation,
-    Option.filter((operation) => HashSet.has(incompatibleOperations, operation))
-  )
+  pipe(semantics.name.operation, Option.filter(isIncompatibleOperation))
 
 const nonBooleanPredicateDetection =
   (match: ReturnType<typeof makeDetection>) => (semantics: CallableSemantics) =>

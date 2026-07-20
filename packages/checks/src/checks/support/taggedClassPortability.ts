@@ -251,12 +251,14 @@ const typeIsWireSafeWithSeen =
     const checkConstrainedOrStructural =
       constrainedOrStructuralTypeIsWireSafe(checker)(location)(nextSeen)(checkType)
 
+    const unionMembersAreWireSafe = (union: ts.UnionType) => Array.every(union.types, checkType)
+
     return pipe(
       Match.value(type),
       Match.when(typeIsWirePrimitive, Function.constTrue),
       Match.when(typeIsRejectedWireValue, Function.constFalse),
       Match.when(typeWasSeen(seen), Function.constTrue),
-      Match.when(typeIsUnion, (union) => Array.every(union.types, checkType)),
+      Match.when(typeIsUnion, unionMembersAreWireSafe),
       Match.when(typeIsIntersection, intersectionTypeIsWireSafe(checkType)),
       Match.orElse(checkConstrainedOrStructural)
     )
@@ -274,19 +276,28 @@ export const typeIsWireSafe =
   }
 
 export const schemaTaggedClassEncodedType =
-  (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
-    pipe(
-      schemaTaggedClassHeritage(checker)(declaration),
-      Option.flatMap(() =>
-        pipe(
-          declaration.name,
-          Option.fromNullishOr,
-          Option.flatMap(resolvedSymbolAt(checker)),
-          Option.map((symbol) => checker.getTypeOfSymbolAtLocation(symbol, declaration)),
-          Option.flatMap((staticType) =>
-            pipe(staticType.getProperty("Encoded"), Option.fromNullishOr)
-          ),
-          Option.map((encoded) => checker.getTypeOfSymbolAtLocation(encoded, declaration))
-        )
+  (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) => {
+    const typeOfSymbolAtDeclaration = (symbol: ts.Symbol) =>
+      checker.getTypeOfSymbolAtLocation(symbol, declaration)
+
+    const encodedProperty = (staticType: ts.Type) =>
+      pipe(staticType.getProperty("Encoded"), Option.fromNullishOr)
+
+    const typeOfEncodedAtDeclaration = (encoded: ts.Symbol) =>
+      checker.getTypeOfSymbolAtLocation(encoded, declaration)
+
+    const encodedTypeFromName = () =>
+      pipe(
+        declaration.name,
+        Option.fromNullishOr,
+        Option.flatMap(resolvedSymbolAt(checker)),
+        Option.map(typeOfSymbolAtDeclaration),
+        Option.flatMap(encodedProperty),
+        Option.map(typeOfEncodedAtDeclaration)
       )
+
+    return pipe(
+      schemaTaggedClassHeritage(checker)(declaration),
+      Option.flatMap(encodedTypeFromName)
     )
+  }

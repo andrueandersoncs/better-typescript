@@ -6,11 +6,14 @@ import {
   isTopLevelExportedDeclaration
 } from "../functionalCoreEffect/support.js"
 import {
+  functionDeclarationName,
   functionInitializer,
   hasExportModifier,
   hasParameters,
   isFunctionInitializer,
-  unwrapTransparentExpression
+  returnStatementExpression,
+  unwrapTransparentExpression,
+  variableDeclarationNameIsIdentifier
 } from "../support/tsNode.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
 import { makeRuleFinding } from "./makeFindings.js"
@@ -25,24 +28,28 @@ const effectGenNames = Array.of("gen")
 
 const serviceMethodFinding = makeRuleFinding("service-method-effect-fn")
 
+const callIsEffectGen = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  importedEffectApiAt(checker, call.expression, "Effect", effectGenNames)
+
 const isEffectGenCall = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
   pipe(
     expression,
     unwrapTransparentExpression,
     Option.liftPredicate(ts.isCallExpression),
-    Option.exists((call) => importedEffectApiAt(checker, call.expression, "Effect", effectGenNames))
+    Option.exists(callIsEffectGen(checker))
+  )
+
+const returnExpressionFromBlock = (block: ts.Block) =>
+  pipe(
+    Array.fromIterable(block.statements),
+    Array.findFirst(ts.isReturnStatement),
+    Option.flatMap(returnStatementExpression)
   )
 
 const returnedExpressionOfFunction = (declaration: ts.ArrowFunction | ts.FunctionExpression) =>
   pipe(
     Match.value(declaration.body),
-    Match.when(ts.isBlock, (block) =>
-      pipe(
-        Array.fromIterable(block.statements),
-        Array.findFirst(ts.isReturnStatement),
-        Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
-      )
-    ),
+    Match.when(ts.isBlock, returnExpressionFromBlock),
     Match.orElse(Option.some as (expression: ts.Expression) => Option.Option<ts.Expression>)
   )
 
@@ -56,19 +63,22 @@ const isPreferEffectFnOverlapShape =
       Option.exists(isEffectGenCall(checker))
     )
 
+const variableStatementIsExported =
+  (node: ts.VariableDeclaration) => (statement: ts.VariableStatement) => {
+    const hasExport = hasExportModifier(statement)
+    const isTopLevelExport = isTopLevelExportedDeclaration(node)
+    const checks = Array.make(hasExport, isTopLevelExport)
+
+    return Array.some(checks, Boolean)
+  }
+
 const exportedVariableDeclaration = (node: ts.VariableDeclaration) =>
   pipe(
     node.parent,
     Option.liftPredicate(ts.isVariableDeclarationList),
     Option.map(Struct.get("parent")),
     Option.filter(ts.isVariableStatement),
-    Option.filter((statement) => {
-      const hasExport = hasExportModifier(statement)
-      const isTopLevelExport = isTopLevelExportedDeclaration(node)
-      const checks = Array.make(hasExport, isTopLevelExport)
-
-      return Array.some(checks, Boolean)
-    }),
+    Option.filter(variableStatementIsExported(node)),
     Option.as(node)
   )
 
@@ -91,29 +101,30 @@ const variableInitializerNeedsEffectFn =
     return Array.every(reportChecks, Boolean)
   }
 
+const qualityFindingFromVariableDeclaration = (declaration: ts.VariableDeclaration) => {
+  const name = declaration.name as ts.Identifier
+
+  return serviceMethodFinding(name.text)(name)
+}
+
+const qualityFromVariableDeclaration =
+  (checker: ts.TypeChecker) => (declaration: ts.VariableDeclaration) =>
+    pipe(
+      Option.fromNullishOr(declaration.initializer),
+      Option.filter(variableInitializerNeedsEffectFn(checker)),
+      Option.map(() => qualityFindingFromVariableDeclaration(declaration))
+    )
+
 const qualityFromVariableNode = (context: CheckContext) => (node: ts.Node) =>
   pipe(
     Option.liftPredicate(ts.isVariableDeclaration)(node),
     Option.flatMap(exportedVariableDeclaration),
     Option.filter(Predicate.not(isPreferEffectFnOverlapShape(context.checker))),
-    Option.filter((declaration) => ts.isIdentifier(declaration.name)),
-    Option.flatMap((declaration) =>
-      pipe(
-        Option.fromNullishOr(declaration.initializer),
-        Option.filter(variableInitializerNeedsEffectFn(context.checker)),
-        Option.map(() => {
-          const name = declaration.name as ts.Identifier
-
-          return serviceMethodFinding(name.text)(name)
-        })
-      )
-    )
+    Option.filter(variableDeclarationNameIsIdentifier),
+    Option.flatMap(qualityFromVariableDeclaration(context.checker))
   )
 
-const functionDeclarationHasName = flow(
-  (declaration: ts.FunctionDeclaration) => Option.fromNullishOr(declaration.name),
-  Option.isSome
-)
+const functionDeclarationHasName = flow(functionDeclarationName, Option.isSome)
 
 const functionDeclarationIsExported = (declaration: ts.FunctionDeclaration) => {
   const hasExport = hasExportModifier(declaration)
@@ -123,29 +134,36 @@ const functionDeclarationIsExported = (declaration: ts.FunctionDeclaration) => {
   return Array.some(checks, Boolean)
 }
 
+const identifierNodeFromName = (name: ts.Identifier): ts.Node => name
+
+const evidenceFromFunctionDeclaration = (declaration: ts.FunctionDeclaration) =>
+  pipe(
+    functionDeclarationName(declaration),
+    Option.map(identifierNodeFromName),
+    Option.getOrElse(Function.constant(declaration))
+  )
+
+const subjectFromFunctionDeclaration = (declaration: ts.FunctionDeclaration) =>
+  pipe(
+    functionDeclarationName(declaration),
+    Option.map(Struct.get("text")),
+    Option.getOrElse(Function.constant("function"))
+  )
+
+const qualityFindingFromFunctionDeclaration = (declaration: ts.FunctionDeclaration) => {
+  const subject = subjectFromFunctionDeclaration(declaration)
+  const evidence = evidenceFromFunctionDeclaration(declaration)
+
+  return serviceMethodFinding(subject)(evidence)
+}
+
 const qualityFromFunctionNode = (context: CheckContext) => (node: ts.Node) =>
   pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(node),
     Option.filter(functionDeclarationHasName),
     Option.filter(functionDeclarationIsExported),
     Option.filter(functionLikeReturnsEffect(context.checker)),
-    Option.map((declaration) => {
-      const nameOption = Option.fromNullishOr(declaration.name)
-
-      const evidence = pipe(
-        nameOption,
-        Option.map((name): ts.Node => name),
-        Option.getOrElse(Function.constant(declaration))
-      )
-
-      const subject = pipe(
-        nameOption,
-        Option.map(Struct.get("text")),
-        Option.getOrElse(Function.constant("function"))
-      )
-
-      return serviceMethodFinding(subject)(evidence)
-    })
+    Option.map(qualityFindingFromFunctionDeclaration)
   )
 
 export const exportedEffectFunctionFindings = (

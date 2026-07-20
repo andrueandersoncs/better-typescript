@@ -53,8 +53,8 @@ const signalNamed = (signals: ReadonlyArray<Signal>, name: string): Signal => {
   return signal
 }
 
-const collectAdvice = (signals: ReadonlyArray<Signal>): Promise<ReadonlyArray<Advice>> =>
-  Effect.runPromise(functionalCoreEffectWiring.derive(signals))
+const collectAdvice = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> =>
+  functionalCoreEffectWiring.derive(signals)
 
 const boundaryDataOf = (detection: Detection): FunctionalCoreBoundaryData => {
   assert.ok(Schema.is(FunctionalCoreBoundaryData)(detection.data))
@@ -264,7 +264,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/ports/badPort.ts:14:pure-service:0:1:1:0:0"
   ])
 
-  const advice = await collectAdvice(signals)
+  const advice = collectAdvice(signals)
   const actualAdvice = advice.map((item) => `${item.location.path}:${item.title}`).sort()
 
   assert.deepEqual(actualAdvice, [

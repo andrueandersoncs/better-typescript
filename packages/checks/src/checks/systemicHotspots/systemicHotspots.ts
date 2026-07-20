@@ -1,7 +1,7 @@
-import { Array, Effect } from "effect"
+import { Array, Function } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
-import { SystemicHotspotsInput, SystemicSignals } from "./data.js"
+import { SystemicSignals } from "./data.js"
 import { packageExamples } from "../../defineCheck.js"
 
 export const systemicHotspotsExamples = packageExamples("systemic-hotspots")
@@ -33,13 +33,4 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   return isSystemic ? Array.of(advice) : Array.empty()
 }
 
-export const systemicHotspots = Effect.fn("SystemicHotspots.derive")(function* (
-  input: SystemicHotspotsInput
-): Effect.fn.Return<ReadonlyArray<Advice>> {
-  const signals = SystemicSignals.make({
-    hotSubsystem: input.hotSubsystem,
-    highSignalDensity: input.highSignalDensity
-  })
-
-  return systemicAdvice(signals)
-})
+export const systemicHotspots = Function.compose(SystemicSignals.make, systemicAdvice)

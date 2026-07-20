@@ -4,11 +4,32 @@ import { unwrapTransparentExpression } from "../support/tsNode.js"
 
 export const statusPropertyNames = Array.make("status", "ok", "statusText")
 
+const literalIsStatusProperty = (literal: ts.StringLiteralLike) =>
+  Array.contains(statusPropertyNames, literal.text)
+
+const propertyAccessNameIsStatus = (access: ts.PropertyAccessExpression) =>
+  Array.contains(statusPropertyNames, access.name.text)
+
+const prefixUnaryAccessesStatus = (unary: ts.PrefixUnaryExpression) =>
+  expressionAccessesStatus(unary.operand)
+
+const postfixUnaryAccessesStatus = (unary: ts.PostfixUnaryExpression) =>
+  expressionAccessesStatus(unary.operand)
+
+const parenthesizedAccessesStatus = (parenthesized: ts.ParenthesizedExpression) =>
+  expressionAccessesStatus(parenthesized.expression)
+
+const asExpressionAccessesStatus = (asExpression: ts.AsExpression) =>
+  expressionAccessesStatus(asExpression.expression)
+
+const satisfiesExpressionAccessesStatus = (satisfiesExpression: ts.SatisfiesExpression) =>
+  expressionAccessesStatus(satisfiesExpression.expression)
+
 const statusAccessOfExpression = (current: ts.Expression): boolean =>
   pipe(
     Match.value(current),
     Match.when(ts.isPropertyAccessExpression, (access) => {
-      const nameHit = Array.contains(statusPropertyNames, access.name.text)
+      const nameHit = propertyAccessNameIsStatus(access)
       const nested = expressionAccessesStatus(access.expression)
       const flags = Array.make(nameHit, nested)
 
@@ -19,7 +40,7 @@ const statusAccessOfExpression = (current: ts.Expression): boolean =>
 
       const literalStatus = pipe(
         Option.liftPredicate(ts.isStringLiteralLike)(argument),
-        Option.exists((literal) => Array.contains(statusPropertyNames, literal.text))
+        Option.exists(literalIsStatusProperty)
       )
 
       const nested = expressionAccessesStatus(access.expression)
@@ -31,10 +52,7 @@ const statusAccessOfExpression = (current: ts.Expression): boolean =>
       const callee = unwrapTransparentExpression(call.expression)
       const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(callee)
 
-      return pipe(
-        propertyAccess,
-        Option.exists((access) => Array.contains(statusPropertyNames, access.name.text))
-      )
+      return pipe(propertyAccess, Option.exists(propertyAccessNameIsStatus))
     }),
     Match.when(ts.isBinaryExpression, (binary) => {
       const left = expressionAccessesStatus(binary.left)
@@ -43,17 +61,11 @@ const statusAccessOfExpression = (current: ts.Expression): boolean =>
 
       return Array.some(flags, Boolean)
     }),
-    Match.when(ts.isPrefixUnaryExpression, (unary) => expressionAccessesStatus(unary.operand)),
-    Match.when(ts.isPostfixUnaryExpression, (unary) => expressionAccessesStatus(unary.operand)),
-    Match.when(ts.isParenthesizedExpression, (parenthesized) =>
-      expressionAccessesStatus(parenthesized.expression)
-    ),
-    Match.when(ts.isAsExpression, (asExpression) =>
-      expressionAccessesStatus(asExpression.expression)
-    ),
-    Match.when(ts.isSatisfiesExpression, (satisfiesExpression) =>
-      expressionAccessesStatus(satisfiesExpression.expression)
-    ),
+    Match.when(ts.isPrefixUnaryExpression, prefixUnaryAccessesStatus),
+    Match.when(ts.isPostfixUnaryExpression, postfixUnaryAccessesStatus),
+    Match.when(ts.isParenthesizedExpression, parenthesizedAccessesStatus),
+    Match.when(ts.isAsExpression, asExpressionAccessesStatus),
+    Match.when(ts.isSatisfiesExpression, satisfiesExpressionAccessesStatus),
     Match.when(ts.isConditionalExpression, (conditional) => {
       const condition = expressionAccessesStatus(conditional.condition)
       const whenTrue = expressionAccessesStatus(conditional.whenTrue)

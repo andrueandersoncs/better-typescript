@@ -1,6 +1,5 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Effect } from "effect"
 import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
@@ -28,37 +27,29 @@ const reportedSignal = (name: string, detections: ReadonlyArray<Detection>): Sig
 const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
   new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
 
-const collectAdvice = <E>(
-  advice: Effect.Effect<ReadonlyArray<Advice>, E>
-): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
-
 const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
   advice.filter((item) => item.title === title)
 
 const adviceCount = (advice: ReadonlyArray<Advice>, title: string): number =>
   adviceWithTitle(advice, title).length
 
-test("defaultDerive excludes silent signals from reported aggregate advice", async () => {
-  const advice = await collectAdvice(
-    defaultWiring.derive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])
-  )
+test("defaultDerive excludes silent signals from reported aggregate advice", () => {
+  const advice = defaultWiring.derive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])
 
   assert.equal(adviceCount(advice, "high signal density"), 0)
   assert.deepEqual(advice, [])
 })
 
-test("defaultDerive feeds systemic hotspots density after fallback suppression", async () => {
+test("defaultDerive feeds systemic hotspots density after fallback suppression", () => {
   const sharedState = { target: "shared-state" }
   const mcpFiles = ["src/mcp/one.ts", "src/mcp/two.ts", "src/mcp/three.ts"]
   const suppressedDensityFiles = [...mcpFiles, "src/specific.ts"]
   const noMutation = suppressedDensityFiles.flatMap((path) => detectionsAt(path, 10, sharedState))
   const noThrow = detectionsAt("src/dense.ts", 10)
-  const advice = await collectAdvice(
-    defaultWiring.derive([
-      reportedSignal("no-mutation", noMutation),
-      reportedSignal("no-throw", noThrow)
-    ])
-  )
+  const advice = defaultWiring.derive([
+    reportedSignal("no-mutation", noMutation),
+    reportedSignal("no-throw", noThrow)
+  ])
   const densityAdvice = adviceWithTitle(advice, "high signal density")
 
   assert.equal(adviceCount(advice, "hot subsystem"), 1)

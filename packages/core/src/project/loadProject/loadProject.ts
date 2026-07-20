@@ -115,10 +115,8 @@ export const loadProject = Effect.fn("LoadProject.load")(function* (
   compilerOptions: ts.CompilerOptions = {}
 ) {
   const workspace = yield* discoverWorkspace(projectPath)
-
-  const projects = Array.map(workspace.projects, (config) =>
-    loadProjectConfig(config, compilerOptions)
-  )
+  const loadConfig = (config: ProjectConfig) => loadProjectConfig(config, compilerOptions)
+  const projects = Array.map(workspace.projects, loadConfig)
 
   return LoadedWorkspace.make({ rootPath: workspace.rootPath, projects })
 })

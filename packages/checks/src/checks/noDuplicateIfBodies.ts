@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { alwaysExitsScope, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -7,12 +7,15 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
 
+const elseStatement = Function.flow(
+  Struct.get<ts.IfStatement, "elseStatement">("elseStatement"),
+  Option.fromNullishOr
+)
+
 const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatement =>
   pipe(
     Option.liftPredicate(ts.isIfStatement)(statement),
-    Option.exists(
-      Function.flow((ifStatement) => Option.fromNullishOr(ifStatement.elseStatement), Option.isNone)
-    )
+    Option.exists(Function.flow(elseStatement, Option.isNone))
   )
 
 const tokenTexts =
@@ -85,27 +88,33 @@ const duplicateIfMatches = (context: CheckContext) => {
     })
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
+    const isCurrentIfStatement = (statement: ts.Statement) => statement === ifStatement
+
+    const statementBefore = (block: ts.Block) => (statementIndex: number) =>
+      Option.fromNullishOr(block.statements[statementIndex - 1])
+
+    const previousGuardStatement = (block: ts.Block) =>
+      pipe(
+        Array.findFirstIndex(block.statements, isCurrentIfStatement),
+        Option.flatMap(statementBefore(block))
+      )
+
     const guardDuplicateMatch = isGuardIfStatement(ifStatement)
       ? pipe(
           Option.liftPredicate(ts.isBlock)(ifStatement.parent),
-          Option.flatMap((block) =>
-            pipe(
-              Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
-              Option.flatMap((statementIndex) =>
-                Option.fromNullishOr(block.statements[statementIndex - 1])
-              )
-            )
-          ),
+          Option.flatMap(previousGuardStatement),
           Option.filter(isGuardIfStatement),
           Option.flatMap(guardDup(ifStatement))
         )
       : Option.none()
 
+    const isElseOfParent = (parent: ts.IfStatement) => parent.elseStatement === ifStatement
+
     const bodyMatch = Option.isSome(guardDuplicateMatch)
       ? guardDuplicateMatch
       : pipe(
           Option.liftPredicate(ts.isIfStatement)(ifStatement.parent),
-          Option.filter((parent) => parent.elseStatement === ifStatement),
+          Option.filter(isElseOfParent),
           Option.flatMap(parentDup(ifStatement))
         )
 

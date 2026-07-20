@@ -55,14 +55,16 @@ const defaultConfigExport = makeConfigExport(defaultExportName)
 
 const ownConfigExport =
   (name: ConfigExportName) =>
-  (valueFromRecord: (record: Readonly<Record<string, unknown>>) => unknown) =>
-    flow(
-      Option.liftPredicate((candidate: Readonly<Record<string, unknown>>): boolean =>
-        Object.hasOwn(candidate, name)
-      ),
+  (valueFromRecord: (record: Readonly<Record<string, unknown>>) => unknown) => {
+    const recordHasOwnName = (candidate: Readonly<Record<string, unknown>>) =>
+      Object.hasOwn(candidate, name)
+
+    return flow(
+      Option.liftPredicate(recordHasOwnName),
       Option.map(valueFromRecord),
       Option.map(makeConfigExport(name))
     )
+  }
 
 const defaultOwnConfigExport = ownConfigExport(defaultExportName)(Struct.get(defaultExportName))
 
@@ -138,11 +140,14 @@ const resolvedExport = Effect.fn("WiringConfig.resolvedExport")(function* (
   const factoryOption = Option.liftPredicate(isFunctionValue)(value)
   const plainExport = Effect.succeed(value)
 
+  const resolveExportedValue = (exportedValue: () => unknown) =>
+    callFactory(configPath, exported.name, exportedValue)
+
   return yield* pipe(
     factoryOption,
     Option.match({
       onNone: Function.constant(plainExport),
-      onSome: (factory) => callFactory(configPath, exported.name, factory)
+      onSome: resolveExportedValue
     })
   )
 })
@@ -164,13 +169,11 @@ const isDirectoryExampleSource = (examples: Readonly<Record<string, unknown>>) =
   return Array.every(conditions, Boolean)
 }
 
+const isExampleSourceRecord = (examples: Readonly<Record<string, unknown>>) =>
+  isInlineExampleSource(examples) || isDirectoryExampleSource(examples)
+
 const isRefactorExampleSource = (value: unknown) =>
-  pipe(
-    Option.liftPredicate(isRecord)(value),
-    Option.exists(
-      (examples) => isInlineExampleSource(examples) || isDirectoryExampleSource(examples)
-    )
-  )
+  pipe(Option.liftPredicate(isRecord)(value), Option.exists(isExampleSourceRecord))
 
 const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>) => {
   const hasStringName = typeof record.name === "string"
@@ -289,9 +292,9 @@ const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(functi
     return yield* failConfig(configPath, reason)
   }
 
-  const derive = record.derive as Wiring<unknown>["derive"]
+  const derive = record.derive as Wiring["derive"]
 
-  return new Wiring<unknown>({ checks, derive })
+  return new Wiring({ checks, derive })
 })
 
 const isUnknownArray: (value: unknown) => value is ReadonlyArray<unknown> = Array.isArray
@@ -312,14 +315,14 @@ const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(functi
 
   const record = recordOption.value
 
+  const isStringFileGlob = (value: unknown): value is string =>
+    Predicate.isString(value) && isFileGlob(value)
+
   const filesOption = pipe(
     record.files,
     Option.liftPredicate(isUnknownArray),
     Option.filter((files): files is Array.NonEmptyReadonlyArray<string> => {
-      const hasOnlyFileGlobs = Array.every(
-        files,
-        (value): value is string => Predicate.isString(value) && isFileGlob(value)
-      )
+      const hasOnlyFileGlobs = Array.every(files, isStringFileGlob)
 
       return hasOnlyFileGlobs && Array.isReadonlyArrayNonEmpty(files)
     })
@@ -334,7 +337,7 @@ const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(functi
   const files = filesOption.value
   const wiring = yield* validateWiringShape(configPath, `${fieldPath}.wiring`, record.wiring)
 
-  return new WiringEntry<unknown>({ files, wiring })
+  return new WiringEntry({ files, wiring })
 })
 
 const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(function* (
@@ -348,8 +351,10 @@ const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(func
     )
   }
 
-  const entries: ReadonlyArray<Pick<WiringEntry<unknown>, "files" | "wiring">> =
-    yield* Effect.forEach(value, (entry, index) => validateWiringEntry(configPath, entry, index))
+  const entries: ReadonlyArray<Pick<WiringEntry, "files" | "wiring">> = yield* Effect.forEach(
+    value,
+    (entry, index) => validateWiringEntry(configPath, entry, index)
+  )
 
   return yield* Effect.try({
     try: () => defineConfig(entries),
@@ -365,10 +370,10 @@ const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(func
 export const decodeWiringConfig: (
   configPath: string,
   moduleValue: unknown
-) => Effect.Effect<WiringConfig<unknown>, ProjectWiringConfigError> = Effect.fn(
-  "WiringConfig.decode"
-)(function* (configPath: string, moduleValue: unknown) {
-  const exportValue = yield* resolvedExport(configPath, moduleValue)
+) => Effect.Effect<WiringConfig, ProjectWiringConfigError> = Effect.fn("WiringConfig.decode")(
+  function* (configPath: string, moduleValue: unknown) {
+    const exportValue = yield* resolvedExport(configPath, moduleValue)
 
-  return yield* validateWiringConfig(configPath, exportValue)
-})
+    return yield* validateWiringConfig(configPath, exportValue)
+  }
+)

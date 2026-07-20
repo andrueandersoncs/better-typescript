@@ -1,4 +1,4 @@
-import { Array, pipe, Option } from "effect"
+import { Array, Function, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
 import { isReturnTypeDeclaration, namedDetectionTarget } from "./support/tsNode.js"
 import type { ReturnTypeDeclaration } from "./support/tsNode.js"
@@ -32,7 +32,15 @@ const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   return Array.some(conditions, Boolean)
 }
 
-const parameterTypeNode = (param: ts.ParameterDeclaration) => Option.fromNullishOr(param.type)
+const parameterTypeNode = Function.flow(
+  Struct.get<ts.ParameterDeclaration, "type">("type"),
+  Option.fromNullishOr
+)
+
+const returnTypeNode = Function.flow(
+  Struct.get<ReturnTypeDeclaration, "type">("type"),
+  Option.fromNullishOr
+)
 
 // RawObjectTarget is shared raw-object syntax because owners need one node vocabulary.
 export type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
@@ -45,7 +53,7 @@ const isRawObjectTarget = (node: ts.Node): node is RawObjectTarget =>
   ) ||
   pipe(
     Option.liftPredicate(isReturnTypeDeclaration)(node),
-    Option.flatMap((decl) => Option.fromNullishOr(decl.type)),
+    Option.flatMap(returnTypeNode),
     Option.exists(containsRawObjectType)
   )
 

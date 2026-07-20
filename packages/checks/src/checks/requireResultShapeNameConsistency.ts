@@ -7,6 +7,7 @@ import { makeCheck } from "../defineCheck.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
+  isNonBooleanResult,
   type CallableSemantics,
   type ResultCardinality,
   type ResultShape
@@ -31,64 +32,51 @@ const keyedOperations = HashSet.make("group", "index")
 const collectionOperations = HashSet.make("filter", "map")
 const optionalOneOperations = HashSet.make("head", "last")
 
+const isNumberOperation = (candidate: string) => HashSet.has(numberOperations, candidate)
+const isKeyedOperation = (candidate: string) => HashSet.has(keyedOperations, candidate)
+const isCollectionOperation = (candidate: string) => HashSet.has(collectionOperations, candidate)
+const isOptionalOneOperation = (candidate: string) => HashSet.has(optionalOneOperations, candidate)
+
+const numberExpectation = (label: string): Option.Option<ResultExpectation> =>
+  Option.some({
+    _tag: "shape",
+    expected: "number",
+    label
+  })
+
+const keyedExpectation = (label: string): Option.Option<ResultExpectation> =>
+  Option.some({
+    _tag: "shape",
+    expected: "keyed",
+    label
+  })
+
+const collectionExpectation = (label: string): Option.Option<ResultExpectation> =>
+  Option.some({
+    _tag: "shape",
+    expected: "collection",
+    label
+  })
+
+const optionalOneExpectation = (label: string): Option.Option<ResultExpectation> =>
+  Option.some({
+    _tag: "cardinality",
+    expected: "optional-one",
+    label
+  })
+
 const expectationForOperation = (operation: string) =>
   pipe(
     Match.value(operation),
-    Match.when(
-      (candidate) => HashSet.has(numberOperations, candidate),
-      (label) =>
-        pipe(
-          {
-            _tag: "shape",
-            expected: "number",
-            label
-          } satisfies ResultExpectation,
-          Option.some
-        )
-    ),
-    Match.when(
-      (candidate) => HashSet.has(keyedOperations, candidate),
-      (label) =>
-        pipe(
-          {
-            _tag: "shape",
-            expected: "keyed",
-            label
-          } satisfies ResultExpectation,
-          Option.some
-        )
-    ),
-    Match.when(
-      (candidate) => HashSet.has(collectionOperations, candidate),
-      (label) =>
-        pipe(
-          {
-            _tag: "shape",
-            expected: "collection",
-            label
-          } satisfies ResultExpectation,
-          Option.some
-        )
-    ),
-    Match.when(
-      (candidate) => HashSet.has(optionalOneOperations, candidate),
-      (label) =>
-        pipe(
-          {
-            _tag: "cardinality",
-            expected: "optional-one",
-            label
-          } satisfies ResultExpectation,
-          Option.some
-        )
-    ),
+    Match.when(isNumberOperation, numberExpectation),
+    Match.when(isKeyedOperation, keyedExpectation),
+    Match.when(isCollectionOperation, collectionExpectation),
+    Match.when(isOptionalOneOperation, optionalOneExpectation),
     Match.orElse(() => Option.none())
   )
 
 const namedExpectation = (semantics: CallableSemantics) =>
   pipe(semantics.name.operation, Option.flatMap(expectationForOperation))
-
-const isBooleanResult = (semantics: CallableSemantics) => semantics.result.shape === "boolean"
 
 const contradicts =
   (semantics: CallableSemantics) =>
@@ -122,48 +110,49 @@ const resultShapeNameMatches = (context: CheckContext) => {
   const match = makeDetection(context)
   const semanticsFor = callableSemantics(context)
 
+  const detectionFor = (semantics: CallableSemantics) =>
+    Option.gen(function* () {
+      const expectation = yield* namedExpectation(semantics)
+      yield* Option.liftPredicate(contradicts(semantics))(expectation)
+
+      const observed = pipe(
+        Match.value(expectation),
+        Match.tag("shape", () => semantics.result.shape),
+        Match.tag("cardinality", () => semantics.result.cardinality),
+        Match.exhaustive
+      )
+
+      const expected = pipe(
+        Match.value(expectation),
+        Match.tag("shape", (claim) => {
+          const expectedShape = claim.expected
+
+          return expectedShape
+        }),
+        Match.tag("cardinality", (claim) => {
+          const expectedCardinality = claim.expected
+
+          return expectedCardinality
+        }),
+        Match.exhaustive
+      )
+
+      return match({
+        node: semantics.node,
+        message:
+          `${semantics.name.text} claims a ${expected} result via ${expectation.label}, ` +
+          `but returns ${observed}.`,
+        hint:
+          `Align the name with the actual result, or change the return type to ${expected}. ` +
+          `Keep strong operation words only when the result shape matches.`
+      })
+    })
+
   const matches = (definition: FunctionDefinition): ReadonlyArray<Detection> =>
     pipe(
       semanticsFor(definition),
-      Option.filter((semantics) => !isBooleanResult(semantics)),
-      Option.flatMap((semantics) =>
-        Option.gen(function* () {
-          const expectation = yield* namedExpectation(semantics)
-          yield* Option.liftPredicate(contradicts(semantics))(expectation)
-
-          const observed = pipe(
-            Match.value(expectation),
-            Match.tag("shape", () => semantics.result.shape),
-            Match.tag("cardinality", () => semantics.result.cardinality),
-            Match.exhaustive
-          )
-
-          const expected = pipe(
-            Match.value(expectation),
-            Match.tag("shape", (claim) => {
-              const expectedShape = claim.expected
-
-              return expectedShape
-            }),
-            Match.tag("cardinality", (claim) => {
-              const expectedCardinality = claim.expected
-
-              return expectedCardinality
-            }),
-            Match.exhaustive
-          )
-
-          return match({
-            node: semantics.node,
-            message:
-              `${semantics.name.text} claims a ${expected} result via ${expectation.label}, ` +
-              `but returns ${observed}.`,
-            hint:
-              `Align the name with the actual result, or change the return type to ${expected}. ` +
-              `Keep strong operation words only when the result shape matches.`
-          })
-        })
-      ),
+      Option.filter(isNonBooleanResult),
+      Option.flatMap(detectionFor),
       Option.toArray
     )
 

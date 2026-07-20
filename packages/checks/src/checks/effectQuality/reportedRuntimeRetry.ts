@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Match, Option, flow, pipe } from "effect"
+import { Array, Function, HashSet, Match, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { propertyAssignmentNamed } from "../functionalCoreEffect/support.js"
@@ -64,20 +64,22 @@ const boundedRetryScheduleFinding = makeRuleFinding("bounded-retry-schedule")
 
 const emptyCommentRanges: ReadonlyArray<ts.CommentRange> = Array.empty()
 
+const commentRangeText = (sourceText: string) => (range: ts.CommentRange) =>
+  sourceText.slice(range.pos, range.end)
+
 const leadingCommentText = (sourceFile: ts.SourceFile) => (node: ts.Node) => {
   const fullStart = node.getFullStart()
   const leadingRanges = ts.getLeadingCommentRanges(sourceFile.text, fullStart)
   const ranges = leadingRanges ?? emptyCommentRanges
 
-  return pipe(
-    ranges,
-    Array.map((range) => sourceFile.text.slice(range.pos, range.end)),
-    Array.join("\n")
-  )
+  return pipe(ranges, Array.map(commentRangeText(sourceFile.text)), Array.join("\n"))
 }
 
+const commentsMatchUnboundedWaiver = (comments: string) =>
+  unboundedRetryWaiverPattern.test(comments)
+
 const hasUnboundedRetryWaiver = (sourceFile: ts.SourceFile) =>
-  flow(leadingCommentText(sourceFile), (comments) => unboundedRetryWaiverPattern.test(comments))
+  flow(leadingCommentText(sourceFile), commentsMatchUnboundedWaiver)
 
 const scheduleExpressionIsBounded =
   (checker: ts.TypeChecker) =>
@@ -122,49 +124,57 @@ const scheduleExpressionIsBounded =
     )
   }
 
-const timesPropertyIsBound = (property: ts.PropertyAssignment) => {
-  const value = unwrapTransparentExpression(property.initializer)
-  const asNumber = ts.isNumericLiteral(value)
-  const asIdentifier = ts.isIdentifier(value)
-
-  return asNumber || asIdentifier
-}
-
-const retryOptionsAreBounded = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
+const timesPropertyIsBound = (property: ts.ObjectLiteralElementLike) =>
   pipe(
-    objectLiteralArgument(expression),
-    Option.exists((object) => {
-      const hasTimes = pipe(
-        propertyAssignmentNamed(object, timesNames),
-        Option.exists(timesPropertyIsBound)
-      )
+    Option.liftPredicate(ts.isPropertyAssignment)(property),
+    Option.map(flow(Struct.get("initializer"), unwrapTransparentExpression)),
+    Option.exists((value) => {
+      const asNumber = ts.isNumericLiteral(value)
+      const asIdentifier = ts.isIdentifier(value)
 
-      const hasWhileUntil = pipe(propertyAssignmentNamed(object, whileUntilNames), Option.isSome)
-      const scheduleProperty = propertyAssignmentNamed(object, scheduleNames)
-
-      const scheduleBounded = pipe(
-        scheduleProperty,
-        Option.map((property) => scheduleExpressionIsBounded(checker)(property.initializer)),
-        Option.getOrElse(Function.constant(false))
-      )
-
-      const hasSchedule = Option.isSome(scheduleProperty)
-      const scheduleMissingBound = scheduleBounded === false
-      const unboundedSchedule = hasSchedule && scheduleMissingBound
-      const lacksTimes = hasTimes === false
-      const lacksWhileUntil = hasWhileUntil === false
-      const lacksBound = lacksTimes && lacksWhileUntil
-      const unboundedAndUnbound = unboundedSchedule && lacksBound
-      const timesOrWhile = hasTimes || hasWhileUntil
-      const scheduleAbsent = hasSchedule === false
-      const boundedOrAbsentSchedule = scheduleBounded || scheduleAbsent
-      const explicitlyBounded = timesOrWhile || boundedOrAbsentSchedule
-      const notUnboundedCombo = unboundedAndUnbound === false
-      const boundedFlags = Array.make(notUnboundedCombo, explicitlyBounded)
-
-      return Array.every(boundedFlags, Boolean)
+      return asNumber || asIdentifier
     })
   )
+
+const propertyScheduleIsBounded =
+  (checker: ts.TypeChecker) => (property: ts.ObjectLiteralElementLike) =>
+    ts.isPropertyAssignment(property) && scheduleExpressionIsBounded(checker)(property.initializer)
+
+const objectRetryOptionsAreBounded =
+  (checker: ts.TypeChecker) => (object: ts.ObjectLiteralExpression) => {
+    const hasTimes = pipe(
+      propertyAssignmentNamed(object, timesNames),
+      Option.exists(timesPropertyIsBound)
+    )
+
+    const hasWhileUntil = pipe(propertyAssignmentNamed(object, whileUntilNames), Option.isSome)
+    const scheduleProperty = propertyAssignmentNamed(object, scheduleNames)
+
+    const scheduleBounded = pipe(
+      scheduleProperty,
+      Option.map(propertyScheduleIsBounded(checker)),
+      Option.getOrElse(Function.constant(false))
+    )
+
+    const hasSchedule = Option.isSome(scheduleProperty)
+    const scheduleMissingBound = scheduleBounded === false
+    const unboundedSchedule = hasSchedule && scheduleMissingBound
+    const lacksTimes = hasTimes === false
+    const lacksWhileUntil = hasWhileUntil === false
+    const lacksBound = lacksTimes && lacksWhileUntil
+    const unboundedAndUnbound = unboundedSchedule && lacksBound
+    const timesOrWhile = hasTimes || hasWhileUntil
+    const scheduleAbsent = hasSchedule === false
+    const boundedOrAbsentSchedule = scheduleBounded || scheduleAbsent
+    const explicitlyBounded = timesOrWhile || boundedOrAbsentSchedule
+    const notUnboundedCombo = unboundedAndUnbound === false
+    const boundedFlags = Array.make(notUnboundedCombo, explicitlyBounded)
+
+    return Array.every(boundedFlags, Boolean)
+  }
+
+const retryOptionsAreBounded = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
+  pipe(objectLiteralArgument(expression), Option.exists(objectRetryOptionsAreBounded(checker)))
 
 const expressionIsObjectLiteral = flow(unwrapTransparentExpression, ts.isObjectLiteralExpression)
 
@@ -201,6 +211,13 @@ const retryPolicyIsUnbounded = (checker: ts.TypeChecker) => (expression: ts.Expr
   return optionsUnbounded || scheduleUnbounded
 }
 
+const unboundedRetryFinding = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  pipe(
+    retryPolicyExpression(call),
+    Option.filter(retryPolicyIsUnbounded(checker)),
+    Option.map(() => boundedRetryScheduleFinding("Effect.retry")(call))
+  )
+
 export const boundedRetryScheduleFindings = (
   context: CheckContext,
   _index: EffectQualityIndex,
@@ -215,13 +232,7 @@ export const boundedRetryScheduleFindings = (
     callExpressionOf(node),
     Option.filter(matchesRetry),
     Option.filter(lacksWaiver),
-    Option.flatMap((call) =>
-      pipe(
-        retryPolicyExpression(call),
-        Option.filter(retryPolicyIsUnbounded(context.checker)),
-        Option.map(() => boundedRetryScheduleFinding("Effect.retry")(call))
-      )
-    ),
+    Option.flatMap(unboundedRetryFinding(context.checker)),
     Option.toArray
   )
 }

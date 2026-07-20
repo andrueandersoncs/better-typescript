@@ -18,11 +18,16 @@ const cacheNamePattern = /cache/i
 
 const ttlFieldPattern = /^(expires?(At)?|expiry|ttl|deadline|validUntil|staleAt)$/i
 
+const propertyAssignmentName = (assignment: ts.PropertyAssignment) => Option.some(assignment.name)
+
+const shorthandPropertyAssignmentName = (assignment: ts.ShorthandPropertyAssignment) =>
+  Option.some(assignment.name)
+
 const propertyNameOption = (property: ts.ObjectLiteralElementLike) =>
   pipe(
     Match.value(property),
-    Match.when(ts.isPropertyAssignment, (assignment) => Option.some(assignment.name)),
-    Match.when(ts.isShorthandPropertyAssignment, (assignment) => Option.some(assignment.name)),
+    Match.when(ts.isPropertyAssignment, propertyAssignmentName),
+    Match.when(ts.isShorthandPropertyAssignment, shorthandPropertyAssignmentName),
     Match.orElse(() => Option.none())
   )
 

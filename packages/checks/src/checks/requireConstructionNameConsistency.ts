@@ -36,17 +36,19 @@ const isExactSingleWord = (word: string) => (semantics: CallableSemantics) => {
 
 const isBareMake = isExactSingleWord("make")
 
-const isExactVariantConstructor = (semantics: CallableSemantics) =>
-  pipe(
-    Array.head(semantics.name.words),
-    Option.exists((word) => {
-      const singleWord = semantics.name.words.length === 1
-      const knownVariant = HashSet.has(variantConstructors, word)
-      const conditions = Array.make(singleWord, knownVariant)
+const isExactVariantConstructor = (semantics: CallableSemantics) => {
+  const words = semantics.name.words
+  const singleWord = words.length === 1
 
-      return Array.every(conditions, Boolean)
-    })
-  )
+  const isKnownVariantWord = (word: string) => {
+    const knownVariant = HashSet.has(variantConstructors, word)
+    const conditions = Array.make(singleWord, knownVariant)
+
+    return Array.every(conditions, Boolean)
+  }
+
+  return pipe(Array.head(words), Option.exists(isKnownVariantWord))
+}
 
 const isAllowedConstructionName = (semantics: CallableSemantics) => {
   const bareMake = isBareMake(semantics)
@@ -56,11 +58,10 @@ const isAllowedConstructionName = (semantics: CallableSemantics) => {
   return Array.some(checks, Boolean)
 }
 
+const isFactoryOperation = (operation: string) => HashSet.has(factoryOperations, operation)
+
 const factoryOperation = (semantics: CallableSemantics) =>
-  pipe(
-    semantics.name.operation,
-    Option.filter((operation) => HashSet.has(factoryOperations, operation))
-  )
+  pipe(semantics.name.operation, Option.filter(isFactoryOperation))
 
 const hasFactoryClaim = Function.compose(factoryOperation, Option.isSome)
 
@@ -79,18 +80,21 @@ const hasFactoryMasquerade = (semantics: CallableSemantics) => {
   return Array.some(lookupOrProjection, Boolean)
 }
 
-const resultNounAgreesOrAbsent = (semantics: CallableSemantics) =>
-  pipe(
+const resultNounAgreesOrAbsent = (semantics: CallableSemantics) => {
+  const agreesWithClaimed = (claimed: string) => {
+    const expected = callableExpectedResultWords(semantics)
+
+    return Array.some(expected, wordsMatch(claimed))
+  }
+
+  return pipe(
     semantics.name.result,
     Option.match({
       onNone: Function.constTrue,
-      onSome: (claimed) => {
-        const expected = callableExpectedResultWords(semantics)
-
-        return Array.some(expected, wordsMatch(claimed))
-      }
+      onSome: agreesWithClaimed
     })
   )
+}
 
 const constructionNameMatches = (context: CheckContext) => {
   const match = makeDetection(context)

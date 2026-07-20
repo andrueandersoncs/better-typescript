@@ -17,11 +17,16 @@ import { foldAst } from "@better-typescript/core/engine/sources"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 
 import {
+  declarationListIsConst,
   isFunctionInitializer,
+  returnStatementExpression,
+  symbolDeclarations,
   unwrapCallee,
   unwrapCarrier,
+  variableDeclarationInitializer,
   type FunctionDefinition
 } from "./tsNode.js"
+import { isObjectType } from "./tsType.js"
 
 // ResultShape is the shared runtime result category because every naming policy compares one shape.
 export type ResultShape =
@@ -323,8 +328,11 @@ export const identifierWords: (text: string) => ReadonlyArray<string> = Function
 const symbolIdentifierWords = Function.compose(symbolName, identifierWords)
 const esPluralSuffixes = Array.make("s", "x", "z", "ch", "sh")
 
-const hasEsPluralSuffix = (word: string) =>
-  Array.some(esPluralSuffixes, (suffix) => word.endsWith(suffix))
+const hasEsPluralSuffix = (word: string) => {
+  const matchesPluralSuffix = (suffix: string) => word.endsWith(suffix)
+
+  return Array.some(esPluralSuffixes, matchesPluralSuffix)
+}
 
 export const wordsMatch =
   (expected: string) =>
@@ -378,8 +386,11 @@ export const wordsMatch =
     return Array.some(checks, Boolean)
   }
 
-export const hasWord = (words: ReadonlyArray<string>) => (candidates: HashSet.HashSet<string>) =>
-  Array.some(words, (word) => HashSet.has(candidates, word))
+export const hasWord = (words: ReadonlyArray<string>) => (candidates: HashSet.HashSet<string>) => {
+  const wordInCandidates = (word: string) => HashSet.has(candidates, word)
+
+  return Array.some(words, wordInCandidates)
+}
 
 const symbolResultWords = (symbol: Option.Option<ts.Symbol>): ReadonlyArray<string> =>
   pipe(symbol, Option.map(symbolIdentifierWords), Option.getOrElse(constantEmptyStrings))
@@ -395,12 +406,11 @@ export const typeResultWords = (type: ts.Type): ReadonlyArray<string> => {
 const normalizedSymbolName = (symbol: ts.Symbol) =>
   pipe(symbolIdentifierWords(symbol), Array.join(""))
 
-const symbolHasCarrierName = (symbol: Option.Option<ts.Symbol>) =>
-  pipe(
-    symbol,
-    Option.map(normalizedSymbolName),
-    Option.exists((name) => HashSet.has(carrierWords, name))
-  )
+const symbolHasCarrierName = (symbol: Option.Option<ts.Symbol>) => {
+  const nameIsCarrier = (name: string) => HashSet.has(carrierWords, name)
+
+  return pipe(symbol, Option.map(normalizedSymbolName), Option.exists(nameIsCarrier))
+}
 
 const isNamedCarrierType = (type: ts.Type) => {
   const aliasCarrier = pipe(Option.fromNullishOr(type.aliasSymbol), symbolHasCarrierName)
@@ -425,41 +435,37 @@ const firstRelation = (words: ReadonlyArray<string>) =>
     Array.head
   )
 
-const firstOperation = (words: ReadonlyArray<string>) =>
-  pipe(
-    words,
-    Array.dropWhile((word) => HashSet.has(modifierWords, word)),
-    Array.head,
-    Option.filter((word) => HashSet.has(operationWords, word))
-  )
+const isModifierWord = (word: string) => HashSet.has(modifierWords, word)
+const isOperationWord = (word: string) => HashSet.has(operationWords, word)
+const isNonModifierWord = (word: string) => !HashSet.has(modifierWords, word)
 
-const semanticNouns = (words: ReadonlyArray<string>) =>
-  Array.filter(words, (word) => !HashSet.has(modifierWords, word))
+const firstOperation = (words: ReadonlyArray<string>) =>
+  pipe(words, Array.dropWhile(isModifierWord), Array.head, Option.filter(isOperationWord))
+
+const semanticNouns = (words: ReadonlyArray<string>) => Array.filter(words, isNonModifierWord)
 
 const makeCallableNameClaims = (node: ts.Identifier) => {
   const words = identifierWords(node.text)
   const operation = firstOperation(words)
   const relationEntryOption = firstRelation(words)
-
-  const relation = pipe(
-    relationEntryOption,
-    Option.map(([word]) => word)
-  )
-
-  const relationIndex = pipe(
-    relationEntryOption,
-    Option.map(([, index]) => index)
-  )
+  const relationEntryWord = ([word]: readonly [string, number]) => word
+  const relationEntryIndex = ([, index]: readonly [string, number]) => index
+  const takeWordsBefore = (index: number) => Array.take(words, index)
+  const dropWordsAfter = (index: number) => Array.drop(words, index + 1)
+  const relationIsToWord = (word: string) => word === "to"
+  const operationClaimsResultWord = (word: string) => HashSet.has(resultBearingOperations, word)
+  const relation = pipe(relationEntryOption, Option.map(relationEntryWord))
+  const relationIndex = pipe(relationEntryOption, Option.map(relationEntryIndex))
 
   const beforeRelation = pipe(
     relationIndex,
-    Option.map((index) => Array.take(words, index)),
+    Option.map(takeWordsBefore),
     Option.getOrElse(Function.constant(words))
   )
 
   const afterRelation = pipe(
     relationIndex,
-    Option.map((index) => Array.drop(words, index + 1)),
+    Option.map(dropWordsAfter),
     Option.getOrElse(constantEmptyStrings)
   )
 
@@ -467,13 +473,9 @@ const makeCallableNameClaims = (node: ts.Identifier) => {
   const claimedNouns = Option.isSome(operation) ? Array.drop(beforeNouns, 1) : beforeNouns
   const afterNouns = semanticNouns(afterRelation)
   const object = pipe(claimedNouns, Array.last)
-  const relationIsTo = Option.exists(relation, (word) => word === "to")
+  const relationIsTo = Option.exists(relation, relationIsToWord)
   const resultFromRelation = relationIsTo ? pipe(afterNouns, Array.last) : object
-
-  const operationClaimsResult = Option.exists(operation, (word) =>
-    HashSet.has(resultBearingOperations, word)
-  )
-
+  const operationClaimsResult = Option.exists(operation, operationClaimsResultWord)
   const hasNoOperation = Option.isNone(operation)
   const hasRelation = Option.isSome(relation)
   const resultClaimChecks = Array.make(operationClaimsResult, hasNoOperation, hasRelation)
@@ -495,12 +497,18 @@ const makeCallableNameClaims = (node: ts.Identifier) => {
 
 const identifierName = Option.liftPredicate(ts.isIdentifier)
 
+// NamedOwnerDeclaration is shared because owner lookup reads one declaration name field.
+type NamedOwnerDeclaration = ts.VariableDeclaration | ts.PropertyAssignment | ts.PropertyDeclaration
+
+const namedDeclarationIdentifier = (declaration: NamedOwnerDeclaration) =>
+  identifierName(declaration.name)
+
 const ownerName = (definition: FunctionDefinition) =>
   pipe(
     Match.value(definition.parent),
-    Match.when(ts.isVariableDeclaration, (declaration) => identifierName(declaration.name)),
-    Match.when(ts.isPropertyAssignment, (declaration) => identifierName(declaration.name)),
-    Match.when(ts.isPropertyDeclaration, (declaration) => identifierName(declaration.name)),
+    Match.when(ts.isVariableDeclaration, namedDeclarationIdentifier),
+    Match.when(ts.isPropertyAssignment, namedDeclarationIdentifier),
+    Match.when(ts.isPropertyDeclaration, namedDeclarationIdentifier),
     Match.orElse(constantNoneIdentifier)
   )
 
@@ -511,34 +519,39 @@ export const functionName = (definition: FunctionDefinition) => {
   return pipe(directName, Option.orElse(Function.constant(enclosingName)))
 }
 
-const enclosingFunctionLike = (node: ts.Node): Option.Option<ts.SignatureDeclaration> =>
-  pipe(
-    Option.fromNullishOr(node.parent),
-    Option.flatMap((parent) =>
-      ts.isFunctionLike(parent) ? Option.some(parent) : enclosingFunctionLike(parent)
-    )
-  )
+const enclosingFunctionLike = (node: ts.Node): Option.Option<ts.SignatureDeclaration> => {
+  const parentFunctionLike = (parent: ts.Node): Option.Option<ts.SignatureDeclaration> =>
+    ts.isFunctionLike(parent) ? Option.some(parent) : enclosingFunctionLike(parent)
 
-const ownedReturnExpressions = (definition: FunctionDefinition) =>
-  Function.flip(
+  return pipe(Option.fromNullishOr(node.parent), Option.flatMap(parentFunctionLike))
+}
+
+const ownedReturnExpressions = (definition: FunctionDefinition) => {
+  const returnOwnedByDefinition = (statement: ts.ReturnStatement) => {
+    const ownerIsDefinition = (owner: ts.SignatureDeclaration) => owner === definition
+
+    return pipe(enclosingFunctionLike(statement), Option.exists(ownerIsDefinition))
+  }
+
+  const appendReturnedExpression =
+    (expressions: ReadonlyArray<ts.Expression>) => (returned: ts.Expression) =>
+      Array.append(expressions, returned)
+
+  return Function.flip(
     foldAst<ReadonlyArray<ts.Expression>>((expressions, node) =>
       pipe(
         node,
         Option.liftPredicate(ts.isReturnStatement),
-        Option.filter((statement) =>
-          pipe(
-            enclosingFunctionLike(statement),
-            Option.exists((owner) => owner === definition)
-          )
-        ),
-        Option.flatMap((statement) => Option.fromNullishOr(statement.expression)),
+        Option.filter(returnOwnedByDefinition),
+        Option.flatMap(returnStatementExpression),
         Option.match({
           onNone: Function.constant(expressions),
-          onSome: (returned) => Array.append(expressions, returned)
+          onSome: appendReturnedExpression(expressions)
         })
       )
     )
   )(emptyExpressions)
+}
 
 export const resultExpressions = (definition: FunctionDefinition): ReadonlyArray<ts.Expression> => {
   const body = definition.body
@@ -586,25 +599,38 @@ const terminalDefinition = (definition: FunctionDefinition) =>
 
 const parameterSymbols =
   (checker: ts.TypeChecker) =>
-  (definition: FunctionDefinition): ReadonlyArray<ts.Symbol> =>
-    Array.filterMap(definition.parameters, (parameter) =>
-      pipe(
+  (definition: FunctionDefinition): ReadonlyArray<ts.Symbol> => {
+    const parameterSymbol = (parameter: ts.ParameterDeclaration) => {
+      const symbolAtName = (name: ts.Identifier) =>
+        pipe(checker.getSymbolAtLocation(name), Option.fromNullishOr)
+
+      return pipe(
         Option.liftPredicate(ts.isIdentifier)(parameter.name),
-        Option.flatMap((name) => pipe(checker.getSymbolAtLocation(name), Option.fromNullishOr)),
+        Option.flatMap(symbolAtName),
         Result.fromOption(Function.constVoid)
       )
-    )
+    }
+
+    return Array.filterMap(definition.parameters, parameterSymbol)
+  }
+
+const objectTypeIsReference = (candidate: ts.ObjectType) =>
+  pipe(candidate.objectFlags & ts.ObjectFlags.Reference, Boolean)
+
+const objectTypeIsTuple = (candidate: ts.ObjectType) =>
+  pipe(candidate.objectFlags & ts.ObjectFlags.Tuple, Boolean)
+
+const typeArgumentsOfReference = (checker: ts.TypeChecker) => (candidate: ts.ObjectType) =>
+  checker.getTypeArguments(candidate as ts.TypeReference)
 
 const objectTypeReferenceArguments =
   (checker: ts.TypeChecker) =>
   (type: ts.Type): ReadonlyArray<ts.Type> =>
     pipe(
       type,
-      Option.liftPredicate((candidate): candidate is ts.ObjectType =>
-        pipe(candidate.flags & ts.TypeFlags.Object, Boolean)
-      ),
-      Option.filter((candidate) => pipe(candidate.objectFlags & ts.ObjectFlags.Reference, Boolean)),
-      Option.map((candidate) => checker.getTypeArguments(candidate as ts.TypeReference)),
+      Option.liftPredicate(isObjectType),
+      Option.filter(objectTypeIsReference),
+      Option.map(typeArgumentsOfReference(checker)),
       Option.getOrElse(constantEmptyTypes)
     )
 
@@ -624,12 +650,7 @@ const nestedTypes =
   }
 
 const isTupleType = (type: ts.Type) =>
-  pipe(
-    Option.liftPredicate((candidate: ts.Type): candidate is ts.ObjectType =>
-      pipe(candidate.flags & ts.TypeFlags.Object, Boolean)
-    )(type),
-    Option.exists((candidate) => pipe(candidate.objectFlags & ts.ObjectFlags.Tuple, Boolean))
-  )
+  pipe(Option.liftPredicate(isObjectType)(type), Option.exists(objectTypeIsTuple))
 
 const typeContainsNullish = (type: ts.Type) => {
   const ownNullish = (type.flags & nullishFlags) !== 0
@@ -862,11 +883,12 @@ const callableResult = (checker: ts.TypeChecker) => (definition: FunctionDefinit
     Option.map((returnType) => {
       const payload = payloadType(checker)(returnType)
       const returnWords = typeResultWords(returnType)
+      const isNonCarrierWord = (word: string) => !HashSet.has(carrierWords, word)
 
       const words = pipe(
         typeResultWords(payload),
         Array.appendAll(returnWords),
-        Array.filter((word) => !HashSet.has(carrierWords, word)),
+        Array.filter(isNonCarrierWord),
         Array.dedupe
       )
 
@@ -886,21 +908,25 @@ const callableResult = (checker: ts.TypeChecker) => (definition: FunctionDefinit
     })
   )
 
-const constVariableInitializer = (symbol: ts.Symbol) =>
-  pipe(
-    symbol,
-    (current) => current.getDeclarations(),
-    Option.fromNullishOr,
-    Option.flatMap((candidates) => Array.findFirst(candidates, ts.isVariableDeclaration)),
-    Option.filter((declaration) => {
-      const declarationList = Option.liftPredicate(ts.isVariableDeclarationList)(declaration.parent)
+const firstVariableDeclaration = (candidates: ReadonlyArray<ts.Declaration>) =>
+  Array.findFirst(candidates, ts.isVariableDeclaration)
 
-      return Option.exists(declarationList, (list) =>
-        pipe(list.flags & ts.NodeFlags.Const, Boolean)
-      )
-    }),
-    Option.flatMap((declaration) => Option.fromNullishOr(declaration.initializer))
+const constVariableInitializer = (symbol: ts.Symbol) => {
+  const declarationIsConst = (declaration: ts.VariableDeclaration) => {
+    const declarationList = Option.liftPredicate(ts.isVariableDeclarationList)(declaration.parent)
+
+    return Option.exists(declarationList, declarationListIsConst)
+  }
+
+  return pipe(
+    symbol,
+    symbolDeclarations,
+    Option.fromNullishOr,
+    Option.flatMap(firstVariableDeclaration),
+    Option.filter(declarationIsConst),
+    Option.flatMap(variableDeclarationInitializer)
   )
+}
 
 // ProjectionOrigin tracks recursive provenance because aliases and wrappers share traversal.
 class ProjectionOrigin extends Data.Class<{
@@ -910,12 +936,10 @@ class ProjectionOrigin extends Data.Class<{
   readonly valueType: ts.Type
 }> {}
 
+const isNonRelationWord = (word: string) => !HashSet.has(relationWords, word)
+
 const resultHead = (text: string) =>
-  pipe(
-    identifierWords(text),
-    Array.takeWhile((word) => !HashSet.has(relationWords, word)),
-    Array.last
-  )
+  pipe(identifierWords(text), Array.takeWhile(isNonRelationWord), Array.last)
 
 const resultHeadsFor =
   (projectionHead: string) =>
@@ -991,30 +1015,32 @@ const projectionEvidence =
             valueType
           })
 
-          const direct = pipe(
-            symbol,
-            Option.filter((candidate) =>
-              Array.some(currentBindings, (binding) => binding === candidate)
-            ),
-            Option.as(directOrigin)
-          )
+          const isCurrentBinding = (candidate: ts.Symbol) => {
+            const bindingIsCandidate = (binding: ts.Symbol) => binding === candidate
+
+            return Array.some(currentBindings, bindingIsCandidate)
+          }
+
+          const isUnvisitedSymbol = (candidate: ts.Symbol) => {
+            const visitedIsCandidate = (visited: ts.Symbol) => visited === candidate
+
+            return !Array.some(visitedSymbols, visitedIsCandidate)
+          }
+
+          const originFromAlias = (candidate: ts.Symbol) => {
+            const initializer = constVariableInitializer(candidate)
+            const nextVisited = Array.append(visitedSymbols, candidate)
+            const analyzeInitializer = projectionOrigin(currentBindings)(nextVisited)
+
+            return pipe(initializer, Option.flatMap(analyzeInitializer))
+          }
+
+          const direct = pipe(symbol, Option.filter(isCurrentBinding), Option.as(directOrigin))
 
           return pipe(
             direct,
             Option.orElse(() =>
-              pipe(
-                symbol,
-                Option.filter(
-                  (candidate) => !Array.some(visitedSymbols, (visited) => visited === candidate)
-                ),
-                Option.flatMap((candidate) => {
-                  const initializer = constVariableInitializer(candidate)
-                  const nextVisited = Array.append(visitedSymbols, candidate)
-                  const analyzeInitializer = projectionOrigin(currentBindings)(nextVisited)
-
-                  return pipe(initializer, Option.flatMap(analyzeInitializer))
-                })
-              )
+              pipe(symbol, Option.filter(isUnvisitedSymbol), Option.flatMap(originFromAlias))
             )
           )
         }
@@ -1128,19 +1154,21 @@ const projectionEvidence =
               const hasSingleArgument = call.arguments.length === 1
               const rootCallee = unwrapCallee(call.expression)
               const callee = unwrapCarrier(rootCallee)
+              const identifierText = (identifier: ts.Identifier) => Option.some(identifier.text)
+
+              const propertyAccessNameText = (access: ts.PropertyAccessExpression) =>
+                Option.some(access.name.text)
+
+              const nameIsDirectCarrier = (name: string) => HashSet.has(directCarrierNames, name)
 
               const calleeName = pipe(
                 Match.value(callee),
-                Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
-                Match.when(ts.isPropertyAccessExpression, (access) =>
-                  Option.some(access.name.text)
-                ),
+                Match.when(ts.isIdentifier, identifierText),
+                Match.when(ts.isPropertyAccessExpression, propertyAccessNameText),
                 Match.orElse(Function.constant(noneString))
               )
 
-              const passesThroughDirectArgument = Option.exists(calleeName, (name) =>
-                HashSet.has(directCarrierNames, name)
-              )
+              const passesThroughDirectArgument = Option.exists(calleeName, nameIsDirectCarrier)
 
               const directArgumentChecks = Array.make(
                 hasSingleArgument,
@@ -1183,12 +1211,15 @@ const projectionEvidence =
           return Option.some(origin)
         }
 
+        const analyzeAwaitExpression = (node: ts.AwaitExpression) => analyze(node.expression)
+
+        const analyzeYieldExpression = (node: ts.YieldExpression) =>
+          pipe(Option.fromNullishOr(node.expression), Option.flatMap(analyze))
+
         return pipe(
           Match.value(current),
-          Match.when(ts.isAwaitExpression, (node) => analyze(node.expression)),
-          Match.when(ts.isYieldExpression, (node) =>
-            pipe(Option.fromNullishOr(node.expression), Option.flatMap(analyze))
-          ),
+          Match.when(ts.isAwaitExpression, analyzeAwaitExpression),
+          Match.when(ts.isYieldExpression, analyzeYieldExpression),
           Match.when(ts.isIdentifier, identifierOrigin),
           Match.when(isThisExpression, thisOrigin),
           Match.when(ts.isPropertyAccessExpression, accessOrigin),
@@ -1200,38 +1231,37 @@ const projectionEvidence =
 
     const expressions = resultExpressions(terminal)
 
-    const origins = pipe(
-      expressions,
-      Array.filterMap((expression) =>
-        pipe(
-          projectionOrigin(bindings)(emptySymbols)(expression),
-          Result.fromOption(Function.constVoid)
-        )
+    const expressionProjectionOrigin = (expression: ts.Expression) =>
+      pipe(
+        projectionOrigin(bindings)(emptySymbols)(expression),
+        Result.fromOption(Function.constVoid)
       )
-    )
 
+    const origins = pipe(expressions, Array.filterMap(expressionProjectionOrigin))
     const originPath = (origin: ProjectionOrigin) => Array.join(origin.path, "\u0000")
     const allResultsTraced = origins.length === expressions.length
     const unique = Array.dedupeWith(origins, (self, that) => originPath(self) === originPath(that))
+    const originHasPath = (origin: ProjectionOrigin) => origin.path.length > 0
+
+    const projectionEvidenceFromOrigin = (origin: ProjectionOrigin) =>
+      pipe(
+        origin.head,
+        Option.map(
+          () =>
+            new ProjectionEvidence({
+              path: origin.path,
+              resultWords: origin.resultWords
+            })
+        )
+      )
 
     return pipe(
       unique,
       Option.liftPredicate((origins) => origins.length === 1),
       Option.filter(Function.constant(allResultsTraced)),
       Option.flatMap(Array.head),
-      Option.filter((origin) => origin.path.length > 0),
-      Option.flatMap((origin) =>
-        pipe(
-          origin.head,
-          Option.map(
-            () =>
-              new ProjectionEvidence({
-                path: origin.path,
-                resultWords: origin.resultWords
-              })
-          )
-        )
-      )
+      Option.filter(originHasPath),
+      Option.flatMap(projectionEvidenceFromOrigin)
     )
   }
 
@@ -1265,43 +1295,58 @@ const sourceWords = (checker: ts.TypeChecker) =>
     sourceWordsFromParameters(checker)
   )
 
+const identifierWordsFromText = (identifier: ts.Identifier) => identifierWords(identifier.text)
+
+const propertyAccessNameWords = (access: ts.PropertyAccessExpression) =>
+  identifierWords(access.name.text)
+
 const directCalleeWords = (callee: ts.Expression) =>
   pipe(
     Match.value(callee),
-    Match.when(ts.isIdentifier, (identifier) => identifierWords(identifier.text)),
-    Match.when(ts.isPropertyAccessExpression, (access) => identifierWords(access.name.text)),
+    Match.when(ts.isIdentifier, identifierWordsFromText),
+    Match.when(ts.isPropertyAccessExpression, propertyAccessNameWords),
     Match.orElse(constantEmptyStrings)
   )
 
 const calleeWords = Function.compose(unwrapCarrier, directCalleeWords)
 
-const expressionOperationWords = (expression: ts.Expression): ReadonlyArray<string> =>
-  foldAst<ReadonlyArray<string>>((words, node) => {
-    const callWords = pipe(
-      Option.liftPredicate(ts.isCallExpression)(node),
-      Option.map((call) => calleeWords(call.expression)),
-      Option.getOrElse(constantEmptyStrings)
-    )
+const callExpressionWords = (call: ts.CallExpression) => calleeWords(call.expression)
 
-    const newWords = pipe(
-      Option.liftPredicate(ts.isNewExpression)(node),
-      Option.map((current) => calleeWords(current.expression)),
-      Option.getOrElse(constantEmptyStrings)
-    )
+const newExpressionWords = (current: ts.NewExpression) => calleeWords(current.expression)
 
-    const propertyWords = pipe(
-      Option.liftPredicate(ts.isPropertyAccessExpression)(node),
-      Option.map((access) => identifierWords(access.name.text)),
-      Option.getOrElse(constantEmptyStrings)
-    )
+const appendExpressionOperationWords = (
+  words: ReadonlyArray<string>,
+  node: ts.Node
+): ReadonlyArray<string> => {
+  const callWords = pipe(
+    Option.liftPredicate(ts.isCallExpression)(node),
+    Option.map(callExpressionWords),
+    Option.getOrElse(constantEmptyStrings)
+  )
 
-    return pipe(
-      words,
-      Array.appendAll(callWords),
-      Array.appendAll(newWords),
-      Array.appendAll(propertyWords)
-    )
-  })(expression)(emptyStrings)
+  const newWords = pipe(
+    Option.liftPredicate(ts.isNewExpression)(node),
+    Option.map(newExpressionWords),
+    Option.getOrElse(constantEmptyStrings)
+  )
+
+  const propertyWords = pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(node),
+    Option.map(propertyAccessNameWords),
+    Option.getOrElse(constantEmptyStrings)
+  )
+
+  return pipe(
+    words,
+    Array.appendAll(callWords),
+    Array.appendAll(newWords),
+    Array.appendAll(propertyWords)
+  )
+}
+
+const foldExpressionOperationWords = foldAst(appendExpressionOperationWords)
+
+const expressionOperationWords = Function.flip(foldExpressionOperationWords)(emptyStrings)
 
 const returnedOperationWords = (definition: FunctionDefinition): ReadonlyArray<string> =>
   pipe(resultExpressions(definition), Array.flatMap(expressionOperationWords), Array.dedupe)
@@ -1310,9 +1355,11 @@ const expressionRootOperationWords = (expression: ts.Expression): ReadonlyArray<
   pipe(
     unwrapCarrier(expression),
     Option.liftPredicate(ts.isCallExpression),
-    Option.map((call) => calleeWords(call.expression)),
+    Option.map(callExpressionWords),
     Option.getOrElse(constantEmptyStrings)
   )
+
+const isConstructionOperationWord = (word: string) => HashSet.has(constructionOperations, word)
 
 const expressionIsConstruction = (expression: ts.Expression) => {
   const current = unwrapCarrier(expression)
@@ -1324,15 +1371,11 @@ const expressionIsConstruction = (expression: ts.Expression) => {
 
   const callWords = pipe(
     call,
-    Option.map((node) => calleeWords(node.expression)),
+    Option.map(callExpressionWords),
     Option.getOrElse(constantEmptyStrings)
   )
 
-  const constructionCall = pipe(
-    callWords,
-    Array.head,
-    Option.exists((word) => HashSet.has(constructionOperations, word))
-  )
+  const constructionCall = pipe(callWords, Array.head, Option.exists(isConstructionOperationWord))
 
   return direct || constructionCall
 }
@@ -1469,3 +1512,6 @@ export const callableSemantics =
 
     return semantics
   }
+
+export const isNonBooleanResult = (semantics: CallableSemantics) =>
+  semantics.result.shape !== "boolean"

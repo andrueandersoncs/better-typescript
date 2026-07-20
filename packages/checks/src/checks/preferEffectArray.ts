@@ -121,17 +121,14 @@ const preferEffectArrayMatches = (context: CheckContext) => {
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
     const methodCall = isReceiverArrayType(receiverType) ? methodName : Option.none()
 
-    return pipe(
-      methodCall,
-      Option.map((methodName: ArrayPrototypeMethod) =>
-        match({
-          node: callExpression,
-          message: `Avoid Array.prototype.${methodName}().`,
-          hint
-        })
-      ),
-      Option.toArray
-    )
+    const detectionForMethod = (method: ArrayPrototypeMethod) =>
+      match({
+        node: callExpression,
+        message: `Avoid Array.prototype.${method}().`,
+        hint
+      })
+
+    return pipe(methodCall, Option.map(detectionForMethod), Option.toArray)
   }
 
   return matches

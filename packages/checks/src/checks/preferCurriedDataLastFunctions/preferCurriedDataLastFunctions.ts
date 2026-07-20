@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashMap, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import {
@@ -7,7 +7,11 @@ import {
   outermostTransparentWrapper,
   unwrapTransparentExpression
 } from "../support/tsNode.js"
-import { isFunctionDefinition, isFunctionInitializer } from "../support/tsNode.js"
+import {
+  isFunctionDefinition,
+  isFunctionInitializer,
+  type FunctionDefinition
+} from "../support/tsNode.js"
 import {
   callArguments,
   isSameNode,
@@ -88,22 +92,26 @@ const isRuntimeParameter = (parameter: ts.ParameterDeclaration) => {
 const parameterHasRestToken = (parameter: ts.ParameterDeclaration) =>
   pipe(Option.fromNullishOr(parameter.dotDotDotToken), Option.isSome)
 
-const hasRestParameter = (declaration: ts.Node) =>
-  pipe(
-    Option.liftPredicate(isFunctionDefinition)(declaration),
-    Option.exists((functionDefinition) =>
-      Array.some(functionDefinition.parameters, parameterHasRestToken)
-    )
-  )
+const hasRestParameter = (declaration: ts.Node) => {
+  const definitionHasRestParameter = (functionDefinition: FunctionDefinition) =>
+    Array.some(functionDefinition.parameters, parameterHasRestToken)
 
-const runtimeParameters = (declaration: ts.Node): ReadonlyArray<ts.ParameterDeclaration> =>
-  pipe(
+  return pipe(
     Option.liftPredicate(isFunctionDefinition)(declaration),
-    Option.map((functionDefinition) =>
-      Array.filter(functionDefinition.parameters, isRuntimeParameter)
-    ),
+    Option.exists(definitionHasRestParameter)
+  )
+}
+
+const runtimeParameters = (declaration: ts.Node): ReadonlyArray<ts.ParameterDeclaration> => {
+  const runtimeParametersOf = (functionDefinition: FunctionDefinition) =>
+    Array.filter(functionDefinition.parameters, isRuntimeParameter)
+
+  return pipe(
+    Option.liftPredicate(isFunctionDefinition)(declaration),
+    Option.map(runtimeParametersOf),
     Option.getOrElse(Array.empty)
   )
+}
 
 const hasDisallowedParameterList = (declaration: ts.Node) => {
   const declarationHasRestParameter = hasRestParameter(declaration)
@@ -135,13 +143,15 @@ const hasCurriedArrowBody = (declaration: ts.Node) => {
 const contextualType = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
   pipe(checker.getContextualType(expression), Option.fromNullishOr)
 
-const isContextuallyTypedFunction = (checker: ts.TypeChecker) => (declaration: ts.Node) =>
-  pipe(
+const isContextuallyTypedFunction = (checker: ts.TypeChecker) => (declaration: ts.Node) => {
+  const expressionHasCallSignature = (expression: ts.Expression) =>
+    pipe(contextualType(checker)(expression), Option.exists(hasCallSignature(checker)))
+
+  return pipe(
     Option.liftPredicate(isFunctionInitializer)(declaration),
-    Option.exists((expression) =>
-      pipe(contextualType(checker)(expression), Option.exists(hasCallSignature(checker)))
-    )
+    Option.exists(expressionHasCallSignature)
   )
+}
 
 const symbolAtLocation = (checker: ts.TypeChecker) => (node: ts.Node) =>
   pipe(
@@ -273,10 +283,11 @@ const buildSymbolUses = (context: ProgramContext) => {
 
         const expression = outermostTransparentWrapper(node)
         const expressionParent = expression.parent
+        const callUsesExpression = (call: ts.CallExpression) => call.expression === expression
 
         const isDirectCall = pipe(
           Option.liftPredicate(ts.isCallExpression)(expressionParent),
-          Option.exists((call) => call.expression === expression)
+          Option.exists(callUsesExpression)
         )
 
         if (isDirectCall) {
@@ -290,20 +301,26 @@ const buildSymbolUses = (context: ProgramContext) => {
 
         const signatureType = pipe(
           parentCall,
-          Option.flatMap((call) =>
-            pipe(
-              index,
-              Option.flatMap((position) =>
-                pipe(
-                  resolvedCallSignature(checker)(call),
-                  Option.flatMap((signature) =>
-                    Option.fromNullishOr(signature.parameters[position])
-                  ),
-                  Option.map((parameter) => checker.getTypeOfSymbolAtLocation(parameter, call))
-                )
+          Option.flatMap((call) => {
+            const typeOfCallParameter = (parameter: ts.Symbol) =>
+              checker.getTypeOfSymbolAtLocation(parameter, call)
+
+            const parameterTypeAt = (position: number) => {
+              const signature = resolvedCallSignature(checker)(call)
+
+              const parameters = pipe(
+                signature,
+                Option.map(Struct.get("parameters")),
+                Option.getOrElse(Array.empty)
               )
-            )
-          )
+
+              const parameter = Option.fromNullishOr(parameters[position])
+
+              return pipe(parameter, Option.map(typeOfCallParameter))
+            }
+
+            return pipe(index, Option.flatMap(parameterTypeAt))
+          })
         )
 
         const optionHasCallableType = (type: Option.Option<ts.Type>) =>
@@ -312,11 +329,12 @@ const buildSymbolUses = (context: ProgramContext) => {
         const contextualTypes = Array.make(expressionContextualType, signatureType)
         const hasCallableContext = Array.some(contextualTypes, optionHasCallableType)
 
+        const callHasExternalCallbackBoundary = (call: ts.CallExpression) =>
+          pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
+
         const hasExternalCallbackBoundary = pipe(
           parentCall,
-          Option.exists((call) =>
-            pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
-          )
+          Option.exists(callHasExternalCallbackBoundary)
         )
 
         const contextualArgumentChecks = Array.make(hasCallableContext, hasExternalCallbackBoundary)

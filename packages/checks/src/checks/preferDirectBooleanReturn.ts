@@ -1,6 +1,10 @@
 import { Array, Function, Match, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { unwrapExpression, unwrapSingleStatementBlock } from "./support/tsNode.js"
+import {
+  returnStatementExpression,
+  unwrapExpression,
+  unwrapSingleStatementBlock
+} from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeDetection } from "@better-typescript/core/engine/check"
@@ -19,9 +23,6 @@ const booleanLiteralValue = (expression: ts.Expression) => {
 
 const isNonBooleanLiteral = (expression: ts.Expression) =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
-
-const returnStatementExpression = (statement: ts.ReturnStatement) =>
-  Option.fromNullishOr(statement.expression)
 
 const isFalseKeyword = (expression: ts.Expression) =>
   unwrapExpression(expression).kind === ts.SyntaxKind.FalseKeyword
@@ -87,18 +88,24 @@ const booleanReturnMatches = (context: CheckContext) => {
       const trueLiteral = booleanLiteralValue(whenTrue)
       const falseLiteral = booleanLiteralValue(whenFalse)
 
-      const bothLiteral = pipe(
-        Option.all({ trueLiteral, falseLiteral }),
-        Option.filter(({ trueLiteral, falseLiteral }) => trueLiteral !== falseLiteral),
-        Option.map(({ trueLiteral }) => literalBranchMatch(node, node.condition, trueLiteral))
-      )
+      const bothLiteral = Option.gen(function* () {
+        const whenTrueLiteral = yield* trueLiteral
+        const whenFalseLiteral = yield* falseLiteral
+        const literalsMatch = whenTrueLiteral === whenFalseLiteral
+
+        yield* Option.liftPredicate((value: boolean) => !value)(literalsMatch)
+
+        return literalBranchMatch(node, node.condition, whenTrueLiteral)
+      })
 
       const falseElseDetection = andFalseMatch(node)
+      const whenTrueIsNonBooleanLiteral = () => isNonBooleanLiteral(whenTrue)
+      const whenFalseIsNonBooleanLiteral = () => isNonBooleanLiteral(whenFalse)
 
       const falseElseArm = pipe(
         Option.some(whenFalse),
         Option.filter(isFalseKeyword),
-        Option.filter(() => isNonBooleanLiteral(whenTrue)),
+        Option.filter(whenTrueIsNonBooleanLiteral),
         Option.as(falseElseDetection)
       )
 
@@ -107,7 +114,7 @@ const booleanReturnMatches = (context: CheckContext) => {
       const falseThenArm = pipe(
         Option.some(whenTrue),
         Option.filter(isFalseKeyword),
-        Option.filter(() => isNonBooleanLiteral(whenFalse)),
+        Option.filter(whenFalseIsNonBooleanLiteral),
         Option.as(falseThenDetection)
       )
 
@@ -117,6 +124,9 @@ const booleanReturnMatches = (context: CheckContext) => {
     }
 
     if (ts.isIfStatement(node)) {
+      const matchLiteralBranch = (literalValue: boolean) =>
+        literalBranchMatch(node, node.expression, literalValue)
+
       return pipe(
         Option.gen(function* () {
           const unwrappedStatement = unwrapSingleStatementBlock(node.thenStatement)
@@ -129,7 +139,7 @@ const booleanReturnMatches = (context: CheckContext) => {
 
           return yield* booleanLiteralValue(expression)
         }),
-        Option.map((literalValue) => literalBranchMatch(node, node.expression, literalValue)),
+        Option.map(matchLiteralBranch),
         Option.toArray
       )
     }
@@ -137,41 +147,44 @@ const booleanReturnMatches = (context: CheckContext) => {
     return Array.filterMap(node.statements, (statement, index) => {
       const nextStatement = Option.fromNullishOr(node.statements[index + 1])
 
+      const lastReturnExpression = (block: ts.Block) => {
+        const blockStatements = block.statements
+        const lastIndex = blockStatements.length - 1
+        const lastThenStatement = Option.fromNullishOr(blockStatements[lastIndex])
+
+        return pipe(
+          lastThenStatement,
+          Option.filter(ts.isReturnStatement),
+          Option.flatMap(returnStatementExpression)
+        )
+      }
+
+      const andFalseFromIf = (ifStatement: ts.IfStatement) =>
+        Option.gen(function* () {
+          const elseBranch = Option.fromNullishOr(ifStatement.elseStatement)
+          yield* Option.liftPredicate(Option.isNone)(elseBranch)
+
+          const thenStatement = ifStatement.thenStatement
+          const thenBlock = Option.liftPredicate(ts.isBlock)(thenStatement)
+
+          const thenBranchExpr = Option.match(thenBlock, {
+            onNone: () =>
+              pipe(
+                Option.liftPredicate(ts.isReturnStatement)(thenStatement),
+                Option.flatMap(returnStatementExpression)
+              ),
+            onSome: lastReturnExpression
+          })
+
+          yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
+          yield* Option.filter(nextStatement, isFalseLiteralReturn)
+
+          return andFalseMatch(ifStatement)
+        })
+
       return pipe(
         Option.liftPredicate(ts.isIfStatement)(statement),
-        Option.flatMap((ifStatement) =>
-          Option.gen(function* () {
-            const elseBranch = Option.fromNullishOr(ifStatement.elseStatement)
-            yield* Option.liftPredicate(Option.isNone)(elseBranch)
-
-            const thenStatement = ifStatement.thenStatement
-            const thenBlock = Option.liftPredicate(ts.isBlock)(thenStatement)
-
-            const thenBranchExpr = Option.match(thenBlock, {
-              onNone: () =>
-                pipe(
-                  Option.liftPredicate(ts.isReturnStatement)(thenStatement),
-                  Option.flatMap(returnStatementExpression)
-                ),
-              onSome: (block) => {
-                const blockStatements = block.statements
-                const lastIndex = blockStatements.length - 1
-                const lastThenStatement = Option.fromNullishOr(blockStatements[lastIndex])
-
-                return pipe(
-                  lastThenStatement,
-                  Option.filter(ts.isReturnStatement),
-                  Option.flatMap(returnStatementExpression)
-                )
-              }
-            })
-
-            yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
-            yield* Option.filter(nextStatement, isFalseLiteralReturn)
-
-            return andFalseMatch(ifStatement)
-          })
-        ),
+        Option.flatMap(andFalseFromIf),
         Result.fromOption(Function.constVoid)
       )
     })

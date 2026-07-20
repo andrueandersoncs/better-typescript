@@ -70,12 +70,14 @@ const effectErrorChannel =
 
 const typeIsNever = (type: ts.Type) => (type.flags & ts.TypeFlags.Never) !== 0
 
+const typeIsNonNever = (type: ts.Type) => typeIsNever(type) === false
+
 const typeIsNonNeverError = (checker: ts.TypeChecker) => (type: ts.Type) => {
   const isNever = typeIsNever(type)
   const isNonNever = isNever === false
 
   if (type.isUnion()) {
-    const nonNever = Array.filter(type.types, (part) => typeIsNever(part) === false)
+    const nonNever = Array.filter(type.types, typeIsNonNever)
 
     return nonNever.length > 0
   }
@@ -171,6 +173,37 @@ const parentIsMethodOrFunctionPipe =
     return Array.some(flags, Boolean)
   }
 
+const directCatchCauseFinding = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  pipe(
+    catchCauseSelfExpression(checker)(call),
+    Option.flatMap(typedErrorFromSelf(checker)),
+    Option.map(() => typedErrorRecoveryFinding("catchCause")(call))
+  )
+
+const pipeCallTypedErrorFinding =
+  (checker: ts.TypeChecker) => (subject: ts.Node) => (call: ts.CallExpression) =>
+    pipe(
+      pipeCallSelfExpression(call),
+      Option.flatMap(typedErrorFromSelf(checker)),
+      Option.map(() => typedErrorRecoveryFinding("catchCause")(subject))
+    )
+
+const pipeStageCatchCauseFinding = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
+  pipe(
+    Option.fromNullishOr(expression.parent),
+    Option.filter(ts.isCallExpression),
+    Option.filter(callIsMethodOrFunctionPipe(checker)),
+    Option.flatMap(pipeCallTypedErrorFinding(checker)(expression))
+  )
+
+const dataLastCatchCauseFinding = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  pipe(
+    Option.fromNullishOr(call.parent),
+    Option.filter(ts.isCallExpression),
+    Option.filter(parentIsMethodOrFunctionPipe(checker)),
+    Option.flatMap(pipeCallTypedErrorFinding(checker)(call))
+  )
+
 export const typedErrorRecoveryFindings = (
   context: CheckContext,
   _index: EffectQualityIndex,
@@ -178,55 +211,19 @@ export const typedErrorRecoveryFindings = (
 ): ReadonlyArray<EffectQualityRuleFinding> => {
   const checker = context.checker
   const catchCall = pipe(callExpressionOf(node), Option.filter(isCatchCauseCall(checker)))
-
-  const fromDirect = pipe(
-    catchCall,
-    Option.flatMap((call) =>
-      pipe(
-        catchCauseSelfExpression(checker)(call),
-        Option.flatMap(typedErrorFromSelf(checker)),
-        Option.map(() => typedErrorRecoveryFinding("catchCause")(call))
-      )
-    )
-  )
+  const fromDirect = pipe(catchCall, Option.flatMap(directCatchCauseFinding(checker)))
 
   const fromPipeStage = pipe(
     Option.liftPredicate(isExpressionReferenceNode)(node),
     Option.filter(isCatchCauseReference(checker)),
-    Option.flatMap((expression) =>
-      pipe(
-        Option.fromNullishOr(expression.parent),
-        Option.filter(ts.isCallExpression),
-        Option.filter(callIsMethodOrFunctionPipe(checker)),
-        Option.flatMap((call) =>
-          pipe(
-            pipeCallSelfExpression(call),
-            Option.flatMap(typedErrorFromSelf(checker)),
-            Option.map(() => typedErrorRecoveryFinding("catchCause")(expression))
-          )
-        )
-      )
-    )
+    Option.flatMap(pipeStageCatchCauseFinding(checker))
   )
 
   // Data-last catchCause stages need the outer pipe receiver because the call is the stage itself.
   const fromDataLastStage = pipe(
     callExpressionOf(node),
     Option.filter(isCatchCauseCall(checker)),
-    Option.flatMap((call) =>
-      pipe(
-        Option.fromNullishOr(call.parent),
-        Option.filter(ts.isCallExpression),
-        Option.filter(parentIsMethodOrFunctionPipe(checker)),
-        Option.flatMap((parent) =>
-          pipe(
-            pipeCallSelfExpression(parent),
-            Option.flatMap(typedErrorFromSelf(checker)),
-            Option.map(() => typedErrorRecoveryFinding("catchCause")(call))
-          )
-        )
-      )
-    )
+    Option.flatMap(dataLastCatchCauseFinding(checker))
   )
 
   const findings = Array.make(fromDirect, fromPipeStage, fromDataLastStage)

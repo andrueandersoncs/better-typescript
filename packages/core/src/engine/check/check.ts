@@ -125,9 +125,10 @@ export const runChecks =
     const sourceFiles = Array.filter(allSourceFiles, isProjectSourceFile)
 
     const plans = Array.map(checks, (check, checkIndex) => {
-      const isActive = Array.some(sourceFiles, (sourceFile) =>
+      const sourceFileIsActive = (sourceFile: ts.SourceFile) =>
         includesSourceFile(checkIndex, sourceFile)
-      )
+
+      const isActive = Array.some(sourceFiles, sourceFileIsActive)
 
       return isActive ? check.plan(context) : Array.empty<Subscription>()
     })

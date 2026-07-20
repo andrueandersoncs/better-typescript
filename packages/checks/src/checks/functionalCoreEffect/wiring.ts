@@ -10,7 +10,7 @@ import { makeFunctionalCoreShapeEvidence } from "./shapeEvidence.js"
 
 const boundaryExamples = packageExamples("functional-core-effect-boundaries")
 
-export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy): Wiring => {
+export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy) => {
   const boundaryPlan = makeFunctionalCoreEffect(policy)
 
   const boundaryCheck = makeNamedCheck(

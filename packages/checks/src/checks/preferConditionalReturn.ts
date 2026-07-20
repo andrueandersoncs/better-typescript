@@ -69,35 +69,36 @@ const conditionalReturnDetections = (context: CheckContext) => {
     Array.filterMap(block.statements, (statement, index) => {
       const nextStatement = Option.fromNullishOr(block.statements[index + 1])
 
+      const conditionalFromIf = (ifStatement: ts.IfStatement) =>
+        Option.gen(function* () {
+          const thenExpression = yield* returnExpression(ifStatement.thenStatement)
+          const elseStatement = Option.fromNullishOr(ifStatement.elseStatement)
+          const fallbackStatement = Option.isSome(elseStatement) ? elseStatement : nextStatement
+          const fallbackExpression = yield* Option.flatMap(fallbackStatement, returnExpression)
+          const unwrappedCondition = unwrapExpression(ifStatement.expression)
+
+          const negatedCondition = pipe(
+            Option.liftPredicate(ts.isPrefixUnaryExpression)(unwrappedCondition),
+            Option.flatMap(negatedPrefixUnaryExpressionOperand)
+          )
+
+          const returnText = Option.match(negatedCondition, {
+            onNone: () =>
+              ternaryText(sourceFile)(ifStatement.expression)(thenExpression)(fallbackExpression),
+            onSome: (operand) =>
+              ternaryText(sourceFile)(operand)(fallbackExpression)(thenExpression)
+          })
+
+          return match({
+            node: ifStatement,
+            message: "Avoid if statements that only choose between two return values.",
+            hint: `Return a conditional expression instead: return ${returnText}.`
+          })
+        })
+
       return pipe(
         Option.liftPredicate(ts.isIfStatement)(statement),
-        Option.flatMap((ifStatement) =>
-          Option.gen(function* () {
-            const thenExpression = yield* returnExpression(ifStatement.thenStatement)
-            const elseStatement = Option.fromNullishOr(ifStatement.elseStatement)
-            const fallbackStatement = Option.isSome(elseStatement) ? elseStatement : nextStatement
-            const fallbackExpression = yield* Option.flatMap(fallbackStatement, returnExpression)
-            const unwrappedCondition = unwrapExpression(ifStatement.expression)
-
-            const negatedCondition = pipe(
-              Option.liftPredicate(ts.isPrefixUnaryExpression)(unwrappedCondition),
-              Option.flatMap(negatedPrefixUnaryExpressionOperand)
-            )
-
-            const returnText = Option.match(negatedCondition, {
-              onNone: () =>
-                ternaryText(sourceFile)(ifStatement.expression)(thenExpression)(fallbackExpression),
-              onSome: (operand) =>
-                ternaryText(sourceFile)(operand)(fallbackExpression)(thenExpression)
-            })
-
-            return match({
-              node: ifStatement,
-              message: "Avoid if statements that only choose between two return values.",
-              hint: `Return a conditional expression instead: return ${returnText}.`
-            })
-          })
-        ),
+        Option.flatMap(conditionalFromIf),
         Result.fromOption(Function.constVoid)
       )
     })

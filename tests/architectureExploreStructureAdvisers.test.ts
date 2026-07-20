@@ -1,6 +1,5 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { Effect } from "effect"
 import {
   ExportSurfaceData,
   ImportUsageData,
@@ -29,10 +28,6 @@ const detectionAt = (path: string, line: number, data?: unknown): Detection =>
     hint: "hint",
     ...(data === undefined ? {} : { data })
   })
-
-const collectAdvice = <E>(
-  advice: Effect.Effect<ReadonlyArray<Advice>, E>
-): Promise<ReadonlyArray<Advice>> => Effect.runPromise(advice)
 
 const nameUsage = (name: string, referenceCount: number): ImportedNameUsage =>
   ImportedNameUsage.make({ name, referenceCount, callCount: referenceCount })
@@ -86,7 +81,7 @@ const callerGraph = (callerPath: string, hubPath: string): Detection =>
     })
   )
 
-test("registration ceremony fires at 15 imports and 0.8 low-ref ratio", async () => {
+test("registration ceremony fires at 15 imports and 0.8 low-ref ratio", () => {
   const importer = "src/registry.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>
     makeNamedDetection(importUsageName)(
@@ -94,7 +89,7 @@ test("registration ceremony fires at 15 imports and 0.8 low-ref ratio", async ()
     )
   )
 
-  const advice = await collectAdvice(registrationCeremony(elements))
+  const advice = registrationCeremony(elements)
 
   assert.equal(advice.length, 1)
   assert.equal(advice[0]?.title, "registration ceremony")
@@ -104,7 +99,7 @@ test("registration ceremony fires at 15 imports and 0.8 low-ref ratio", async ()
   assert.equal(measureCount(advice[0]!, "single-use-imports"), 15)
 })
 
-test("registration ceremony stays silent at 14 imports or 0.7 ratio", async () => {
+test("registration ceremony stays silent at 14 imports or 0.7 ratio", () => {
   const importer = "src/registry.ts"
 
   const fourteen = Array.from({ length: 14 }, (_, index) =>
@@ -124,14 +119,14 @@ test("registration ceremony stays silent at 14 imports or 0.7 ratio", async () =
     )
   )
 
-  const fourteenAdvice = await collectAdvice(registrationCeremony(fourteen))
-  const lowRatioAdvice = await collectAdvice(registrationCeremony(lowRatio))
+  const fourteenAdvice = registrationCeremony(fourteen)
+  const lowRatioAdvice = registrationCeremony(lowRatio)
 
   assert.equal(fourteenAdvice.length, 0)
   assert.equal(lowRatioAdvice.length, 0)
 })
 
-test("registration ceremony ignores fromTest importers", async () => {
+test("registration ceremony ignores fromTest importers", () => {
   const importer = "tests/registry.test.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>
     makeNamedDetection(importUsageName)(
@@ -139,12 +134,12 @@ test("registration ceremony ignores fromTest importers", async () => {
     )
   )
 
-  const advice = await collectAdvice(registrationCeremony(elements))
+  const advice = registrationCeremony(elements)
 
   assert.equal(advice.length, 0)
 })
 
-test("hub module fires at 12 operations, fan-in 3, fan-out 6", async () => {
+test("hub module fires at 12 operations, fan-in 3, fan-out 6", () => {
   const hubPath = "src/hub.ts"
   const imported = Array.from({ length: 6 }, (_, index) => `src/dep-${index}.ts`)
   const callers = ["src/caller-a.ts", "src/caller-b.ts", "src/caller-c.ts"]
@@ -155,7 +150,7 @@ test("hub module fires at 12 operations, fan-in 3, fan-out 6", async () => {
     ...callers.map((caller) => makeNamedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
   ]
 
-  const advice = await collectAdvice(hubModule(elements))
+  const advice = hubModule(elements)
 
   assert.equal(advice.length, 1)
   assert.equal(advice[0]?.title, "hub module")
@@ -166,7 +161,7 @@ test("hub module fires at 12 operations, fan-in 3, fan-out 6", async () => {
   assert.equal(measureCount(advice[0]!, "fan-out-modules"), 6)
 })
 
-test("hub module stays silent when any threshold leg is below limit", async () => {
+test("hub module stays silent when any threshold leg is below limit", () => {
   const hubPath = "src/hub.ts"
   const imported = Array.from({ length: 6 }, (_, index) => `src/dep-${index}.ts`)
   const callers = ["src/caller-a.ts", "src/caller-b.ts", "src/caller-c.ts"]
@@ -179,16 +174,16 @@ test("hub module stays silent when any threshold leg is below limit", async () =
       .map((caller) => makeNamedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
   ]
 
-  const lowOps = await collectAdvice(hubModule(elementsFor(11, 3, 6)))
-  const lowFanIn = await collectAdvice(hubModule(elementsFor(12, 2, 6)))
-  const lowFanOut = await collectAdvice(hubModule(elementsFor(12, 3, 5)))
+  const lowOps = hubModule(elementsFor(11, 3, 6))
+  const lowFanIn = hubModule(elementsFor(12, 2, 6))
+  const lowFanOut = hubModule(elementsFor(12, 3, 5))
 
   assert.equal(lowOps.length, 0)
   assert.equal(lowFanIn.length, 0)
   assert.equal(lowFanOut.length, 0)
 })
 
-test("hub module ignores fromTest fan-in edges", async () => {
+test("hub module ignores fromTest fan-in edges", () => {
   const hubPath = "src/hub.ts"
   const imported = Array.from({ length: 6 }, (_, index) => `src/dep-${index}.ts`)
 
@@ -200,12 +195,12 @@ test("hub module ignores fromTest fan-in edges", async () => {
     makeNamedDetection(moduleGraphName)(callerGraph("src/caller-b.ts", hubPath))
   ]
 
-  const advice = await collectAdvice(hubModule(elements))
+  const advice = hubModule(elements)
 
   assert.equal(advice.length, 0)
 })
 
-test("invisible tests fires when evidence has no test paths", async () => {
+test("invisible tests fires when evidence has no test paths", () => {
   const elements = [
     makeNamedDetection(moduleGraphName)(
       detectionAt(
@@ -226,7 +221,7 @@ test("invisible tests fires when evidence has no test paths", async () => {
     )
   ]
 
-  const advice = await collectAdvice(invisibleTests(elements))
+  const advice = invisibleTests(elements)
 
   assert.equal(advice.length, 1)
   assert.equal(advice[0]?.title, "invisible tests")
@@ -236,7 +231,7 @@ test("invisible tests fires when evidence has no test paths", async () => {
   assert.deepEqual(advice[0]?.examples, emptyRefactorExampleSource)
 })
 
-test("invisible tests stays silent when any path is a test path", async () => {
+test("invisible tests stays silent when any path is a test path", () => {
   const elements = [
     makeNamedDetection(moduleGraphName)(
       detectionAt(
@@ -254,7 +249,7 @@ test("invisible tests stays silent when any path is a test path", async () => {
     )
   ]
 
-  const advice = await collectAdvice(invisibleTests(elements))
+  const advice = invisibleTests(elements)
 
   assert.equal(advice.length, 0)
 })

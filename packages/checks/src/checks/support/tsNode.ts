@@ -1,5 +1,6 @@
 import { Array, Function, HashSet, Match, pipe, Option, Struct } from "effect"
 import * as ts from "typescript"
+import { stringLiteralLikeText } from "./stringLiteralText.js"
 // FunctionInitializer is the shared function shape because owners must agree.
 export type FunctionInitializer = ts.ArrowFunction | ts.FunctionExpression
 
@@ -113,12 +114,17 @@ export const isReturnedExpressionNode = (node: ts.Node): node is ReturnedExpress
 export const isCallLikeExpression = (node: ts.Node): node is CallLikeExpression =>
   ts.isCallExpression(node) || ts.isNewExpression(node)
 
+export const isExpressionBody = (body: ts.ConciseBody): body is ts.Expression => !ts.isBlock(body)
+
 const expressionBodiedArrow = (definition: FunctionDefinition) =>
   pipe(
     Option.liftPredicate(ts.isArrowFunction)(definition),
     Option.map(Struct.get("body")),
-    Option.filter((body): body is ts.Expression => !ts.isBlock(body))
+    Option.filter(isExpressionBody)
   )
+
+export const returnStatementExpression = (statement: ts.ReturnStatement) =>
+  Option.fromNullishOr(statement.expression)
 
 export const singleStatementReturnExpression = (body: ts.Block) =>
   pipe(
@@ -126,16 +132,24 @@ export const singleStatementReturnExpression = (body: ts.Block) =>
     Option.liftPredicate((statements) => statements.length === 1),
     Option.flatMap(Array.head),
     Option.filter(ts.isReturnStatement),
-    Option.flatMap((statement) => Option.fromNullishOr(statement.expression))
+    Option.flatMap(returnStatementExpression)
   )
+
+const blockReturnStatements = (body: ts.Block) =>
+  Array.filter(body.statements, ts.isReturnStatement)
+
+const singleReturnHasOne = (returns: ReadonlyArray<ts.ReturnStatement>) => returns.length === 1
+
+const firstReturnExpression = (returns: ReadonlyArray<ts.ReturnStatement>) =>
+  pipe(Array.head(returns), Option.flatMap(returnStatementExpression))
 
 const singleReturnExpression = (definition: FunctionDefinition) =>
   pipe(
     Option.fromNullishOr(definition.body),
     Option.filter(ts.isBlock),
-    Option.map((body) => Array.filter(body.statements, ts.isReturnStatement)),
-    Option.filter((returns) => returns.length === 1),
-    Option.flatMap((returns) => Option.fromNullishOr(returns[0].expression))
+    Option.map(blockReturnStatements),
+    Option.filter(singleReturnHasOne),
+    Option.flatMap(firstReturnExpression)
   )
 
 export const returnedExpression = (definition: FunctionDefinition) => {
@@ -333,8 +347,9 @@ export const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnT
 }
 
 const containsAnyKeyword = (node: ts.Node): boolean => {
+  const anyKeywordChild = (child: ts.Node) => (containsAnyKeyword(child) ? child : void 0)
   const isAnyKeyword = node.kind === ts.SyntaxKind.AnyKeyword
-  const anyChild = ts.forEachChild(node, (child) => (containsAnyKeyword(child) ? child : void 0))
+  const anyChild = ts.forEachChild(node, anyKeywordChild)
   const hasAnyDescendant = pipe(Option.fromNullishOr(anyChild), Option.isSome)
   const ambientConditions = Array.make(isAnyKeyword, hasAnyDescendant)
   return Array.some(ambientConditions, Boolean)
@@ -346,26 +361,54 @@ export const hasAnyReturnType = (decl: ReturnTypeDeclaration) => {
   return Option.exists(returnType, containsAnyKeyword)
 }
 
+const optionNodeText = (node: ts.Identifier | ts.StringLiteralLike | ts.NumericLiteral) =>
+  Option.some(node.text)
+
+const noneString = Option.none<string>()
+const constantNoneString = Function.constant(noneString)
+
+const computedPropertyStringText = (computed: ts.ComputedPropertyName) =>
+  stringLiteralLikeText(computed.expression)
+
 export const propertyNameText = (name: ts.PropertyName) =>
   pipe(
     Match.value(name),
-    Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
-    Match.when(ts.isStringLiteralLike, (literal) => Option.some(literal.text)),
-    Match.when(ts.isNumericLiteral, (literal) => Option.some(literal.text)),
-    Match.when(ts.isComputedPropertyName, (computed) =>
-      pipe(
-        Option.liftPredicate(ts.isStringLiteralLike)(computed.expression),
-        Option.map(Struct.get("text"))
-      )
-    ),
-    Match.orElse(() => Option.none())
+    Match.when(ts.isIdentifier, optionNodeText),
+    Match.when(ts.isStringLiteralLike, optionNodeText),
+    Match.when(ts.isNumericLiteral, optionNodeText),
+    Match.when(ts.isComputedPropertyName, computedPropertyStringText),
+    Match.orElse(constantNoneString)
   )
 
 export const bindingNameText = (name: ts.BindingName) =>
   pipe(
     Match.value(name),
-    Match.when(ts.isIdentifier, (identifier) => Option.some(identifier.text)),
-    Match.orElse(() => Option.none())
+    Match.when(ts.isIdentifier, optionNodeText),
+    Match.orElse(constantNoneString)
   )
 
 export const callExpressionOf = Option.liftPredicate(ts.isCallExpression)
+
+export const symbolDeclarations = (symbol: ts.Symbol) => symbol.getDeclarations()
+
+export const declarationListIsConst = (list: ts.VariableDeclarationList) =>
+  pipe(list.flags & ts.NodeFlags.Const, Boolean)
+
+export const variableDeclarationInitializer = (declaration: ts.VariableDeclaration) =>
+  Option.fromNullishOr(declaration.initializer)
+
+export const functionDeclarationName = (declaration: ts.FunctionDeclaration) =>
+  Option.fromNullishOr(declaration.name)
+
+export const classDeclarationName = (declaration: ts.ClassDeclaration) =>
+  Option.fromNullishOr(declaration.name)
+
+export const variableDeclarationNameIsIdentifier = (declaration: ts.VariableDeclaration) =>
+  ts.isIdentifier(declaration.name)
+
+const hasAssignmentOperator = (expression: ts.BinaryExpression) =>
+  expression.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+  expression.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+
+export const binaryAssignmentTarget = (expression: ts.BinaryExpression) =>
+  pipe(Option.liftPredicate(hasAssignmentOperator)(expression), Option.map(Struct.get("left")))

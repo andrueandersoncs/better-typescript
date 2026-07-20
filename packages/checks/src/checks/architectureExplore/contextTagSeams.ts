@@ -9,7 +9,12 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { ContextTagSeamData } from "./data.js"
-import { isExtendsClause, resolvedSymbolAt, unwrapCallee } from "../support/tsNode.js"
+import {
+  classDeclarationName,
+  isExtendsClause,
+  resolvedSymbolAt,
+  unwrapCallee
+} from "../support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { isTestSourceFile } from "./programSymbols.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
@@ -85,14 +90,10 @@ const seamHeritageExpression = (declaration: ts.ClassDeclaration): Option.Option
 const isSeamClassDeclaration = (checker: ts.TypeChecker) => (declaration: ts.ClassDeclaration) =>
   pipe(seamHeritageExpression(declaration), Option.exists(isContextOrEffectSeamAccess(checker)))
 
-const classDeclarationName = (declaration: ts.ClassDeclaration) =>
-  Option.fromNullishOr(declaration.name)
+const hasClassName = Function.flow(classDeclarationName, Option.isSome)
 
 const namedClassDeclaration = (statement: ts.Statement) =>
-  pipe(
-    Option.liftPredicate(ts.isClassDeclaration)(statement),
-    Option.filter((declaration) => pipe(declaration, classDeclarationName, Option.isSome))
-  )
+  pipe(Option.liftPredicate(ts.isClassDeclaration)(statement), Option.filter(hasClassName))
 
 const seamCandidates =
   (context: ProgramContext) =>
@@ -100,27 +101,33 @@ const seamCandidates =
     sourceFiles: ReadonlyArray<ts.SourceFile>
   ): ReadonlyArray<readonly [ts.ClassDeclaration, ts.Symbol]> => {
     const classifyTestSource = isTestSourceFile(context.workspaceRoot)
+    const isSeamClass = isSeamClassDeclaration(context.checker)
+    const resolveSymbol = resolvedSymbolAt(context.checker)
 
-    return Array.flatMap(sourceFiles, (sourceFile) => {
-      if (classifyTestSource(sourceFile)) {
-        return Array.empty<readonly [ts.ClassDeclaration, ts.Symbol]>()
-      }
+    const pairWithSymbol = (declaration: ts.ClassDeclaration) => (symbol: ts.Symbol) =>
+      Tuple.make(declaration, symbol)
 
-      return Array.filterMap(sourceFile.statements, (statement) =>
-        pipe(
-          namedClassDeclaration(statement),
-          Option.filter(isSeamClassDeclaration(context.checker)),
-          Option.flatMap((declaration) =>
-            pipe(
-              Option.fromNullishOr(declaration.name),
-              Option.flatMap(resolvedSymbolAt(context.checker)),
-              Option.map((symbol) => Tuple.make(declaration, symbol))
-            )
-          ),
-          Result.fromOption(Function.constVoid)
-        )
+    const classWithSymbol = (declaration: ts.ClassDeclaration) =>
+      pipe(
+        Option.fromNullishOr(declaration.name),
+        Option.flatMap(resolveSymbol),
+        Option.map(pairWithSymbol(declaration))
       )
-    })
+
+    const candidateFromStatement = (statement: ts.Statement) =>
+      pipe(
+        namedClassDeclaration(statement),
+        Option.filter(isSeamClass),
+        Option.flatMap(classWithSymbol),
+        Result.fromOption(Function.constVoid)
+      )
+
+    const candidatesInSourceFile = (sourceFile: ts.SourceFile) =>
+      classifyTestSource(sourceFile)
+        ? Array.empty<readonly [ts.ClassDeclaration, ts.Symbol]>()
+        : Array.filterMap(sourceFile.statements, candidateFromStatement)
+
+    return Array.flatMap(sourceFiles, candidatesInSourceFile)
   }
 
 const ancestorMatching =
@@ -160,6 +167,12 @@ const isTypeNodeAncestor = (current: ts.Node): boolean => {
 
 const isTypePositionReference = flow(ancestorMatching(isTypeNodeAncestor), Option.isSome)
 
+const isNotImportDeclarationAncestor = (identifier: ts.Identifier) =>
+  !isImportDeclarationAncestor(identifier)
+
+const isNotTypePositionReference = (identifier: ts.Identifier) =>
+  !isTypePositionReference(identifier)
+
 const argumentEqualsCurrent = (current: ts.Node) => (argument: ts.Expression) =>
   argument === current
 
@@ -168,10 +181,10 @@ const argumentCallExpression = (node: ts.Node) => {
     const parent = current.parent
     const parenthesizedParent = Option.liftPredicate(ts.isParenthesizedExpression)(parent)
 
-    const unwrapParenthesis = Option.exists(
-      parenthesizedParent,
-      (expression) => expression.expression === current
-    )
+    const expressionIsCurrent = (expression: ts.ParenthesizedExpression) =>
+      expression.expression === current
+
+    const unwrapParenthesis = Option.exists(parenthesizedParent, expressionIsCurrent)
 
     if (unwrapParenthesis) {
       return visit(parent)
@@ -180,10 +193,10 @@ const argumentCallExpression = (node: ts.Node) => {
     const callParent = Option.liftPredicate(ts.isCallExpression)(parent)
     const equalsCurrent = argumentEqualsCurrent(current)
 
-    return pipe(
-      callParent,
-      Option.filter((call) => Array.some(call.arguments, equalsCurrent))
-    )
+    const callHasCurrentArgument = (call: ts.CallExpression) =>
+      Array.some(call.arguments, equalsCurrent)
+
+    return pipe(callParent, Option.filter(callHasCurrentArgument))
   }
 
   return visit(node)
@@ -293,42 +306,42 @@ const buildIndex = (
         ): HashMap.HashMap<ReferenceKey<ts.Symbol>, readonly [number, number, number]> =>
           pipe(
             Option.liftPredicate(ts.isIdentifier)(node),
-            Option.filter((identifier) => {
-              const importAncestor = isImportDeclarationAncestor(identifier)
+            Option.filter(isNotImportDeclarationAncestor),
+            Option.filter(isNotTypePositionReference),
+            Option.flatMap((identifier) => {
+              const lookupCandidate = (symbol: ts.Symbol) => {
+                const symbolKey = referenceKey(symbol)
 
-              return !importAncestor
-            }),
-            Option.filter((identifier) => {
-              const typePosition = isTypePositionReference(identifier)
+                return HashMap.get(candidateLookup, symbolKey)
+              }
 
-              return !typePosition
-            }),
-            Option.flatMap((identifier) =>
-              pipe(
+              const outsideDeclaration = (candidate: readonly [ts.ClassDeclaration, ts.Symbol]) => {
+                const insideDeclaration = referenceIsInsideDeclaration(candidate[0])(identifier)
+
+                return !insideDeclaration
+              }
+
+              const updatedCountsForReference = (
+                candidate: readonly [ts.ClassDeclaration, ts.Symbol]
+              ) => {
+                const adapter = isAdapterReference(context.checker)(identifier)
+
+                if (adapter) {
+                  const kind = fromTest ? "testAdapter" : "productionAdapter"
+
+                  return incrementCounts(kind)(candidate[1])(current)
+                }
+
+                return incrementCounts("consumer")(candidate[1])(current)
+              }
+
+              return pipe(
                 resolvedSymbolAt(context.checker)(identifier),
-                Option.flatMap((symbol) => {
-                  const symbolKey = referenceKey(symbol)
-
-                  return HashMap.get(candidateLookup, symbolKey)
-                }),
-                Option.filter((candidate) => {
-                  const insideDeclaration = referenceIsInsideDeclaration(candidate[0])(identifier)
-
-                  return !insideDeclaration
-                }),
-                Option.map((candidate) => {
-                  const adapter = isAdapterReference(context.checker)(identifier)
-
-                  if (adapter) {
-                    const kind = fromTest ? "testAdapter" : "productionAdapter"
-
-                    return incrementCounts(kind)(candidate[1])(current)
-                  }
-
-                  return incrementCounts("consumer")(candidate[1])(current)
-                })
+                Option.flatMap(lookupCandidate),
+                Option.filter(outsideDeclaration),
+                Option.map(updatedCountsForReference)
               )
-            ),
+            }),
             Option.getOrElse(Function.constant(current))
           )
       )(sourceFile)(counts)

@@ -40,24 +40,28 @@ const siblingDispatchGuard =
       return Option.none()
     }
 
+    const isCurrentIfStatement = (statement: ts.Statement) => statement === ifStatement
+    const statementAtOffset = (index: number) => Option.fromNullishOr(block.statements[index])
+
     return pipe(
-      Array.findFirstIndex(block.statements, (statement) => statement === ifStatement),
+      Array.findFirstIndex(block.statements, isCurrentIfStatement),
       Option.map((index) => index + offset),
-      Option.flatMap((index) => Option.fromNullishOr(block.statements[index])),
+      Option.flatMap(statementAtOffset),
       Option.filter(isDispatchGuard)
     )
   }
 
-const continuesChain = (offset: number) => (ifStatement: ts.IfStatement) =>
-  pipe(
-    siblingDispatchGuard(offset)(ifStatement),
-    Option.exists((sibling) => {
-      const firstDiscriminants = discriminants(ifStatement)
-      const secondDiscriminants = discriminants(sibling)
+const continuesChain = (offset: number) => (ifStatement: ts.IfStatement) => {
+  const sharesDiscriminant = (sibling: ts.IfStatement) => {
+    const firstDiscriminants = discriminants(ifStatement)
+    const secondDiscriminants = discriminants(sibling)
+    const secondHasName = (name: string) => HashSet.has(secondDiscriminants, name)
 
-      return HashSet.some(firstDiscriminants, (name) => HashSet.has(secondDiscriminants, name))
-    })
-  )
+    return HashSet.some(firstDiscriminants, secondHasName)
+  }
+
+  return pipe(siblingDispatchGuard(offset)(ifStatement), Option.exists(sharesDiscriminant))
+}
 
 // Report only the chain head because it shares a subject with the next guard but not a prior guard.
 const isChainHead = (ifStatement: ts.IfStatement) => {
@@ -80,28 +84,30 @@ const chainLengthFrom = (ifStatement: ts.IfStatement): number =>
 
 const returnsOne: () => number = Function.constant(1)
 
-const isLongEnough = (head: ts.IfStatement) => chainLengthFrom(head) >= minimumChainLength
+const isLongEnough = Function.flow(chainLengthFrom, (length) => length >= minimumChainLength)
 
 const manualTypeDispatchMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
-  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> =>
-    pipe(
+  const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
+    const dispatchDetection = (node: ts.IfStatement) =>
+      match({
+        node,
+        message: "Avoid dispatching on a value with a chain of if statements that each return.",
+        hint:
+          "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
+          "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
+          "error rather than a silent fall-through."
+      })
+
+    return pipe(
       Option.liftPredicate(isDispatchGuard)(ifStatement),
       Option.filter(isChainHead),
       Option.filter(isLongEnough),
-      Option.map((node) =>
-        match({
-          node,
-          message: "Avoid dispatching on a value with a chain of if statements that each return.",
-          hint:
-            "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) " +
-            "with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile " +
-            "error rather than a silent fall-through."
-        })
-      ),
+      Option.map(dispatchDetection),
       Option.toArray
     )
+  }
 
   return matches
 }

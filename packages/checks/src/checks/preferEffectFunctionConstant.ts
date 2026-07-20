@@ -1,6 +1,12 @@
 import { Array, Function, HashSet, pipe, Option } from "effect"
 import * as ts from "typescript"
-import { conciseArrowBody, isFunctionInitializer, unwrapExpression } from "./support/tsNode.js"
+import {
+  conciseArrowBody,
+  declarationListIsConst,
+  isFunctionInitializer,
+  unwrapExpression,
+  variableDeclarationNameIsIdentifier
+} from "./support/tsNode.js"
 import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -113,14 +119,8 @@ const isPrimitiveLiteralExpression = (expression: ts.Expression) => {
   return HashSet.has(primitiveLiteralKinds, unwrapped.kind)
 }
 
-const declarationNameIsIdentifier = (declaration: ts.VariableDeclaration) =>
-  ts.isIdentifier(declaration.name)
-
 const variableDeclarationList = (declaration: ts.VariableDeclaration) =>
   pipe(Option.some(declaration.parent), Option.filter(ts.isVariableDeclarationList))
-
-const declarationListIsConst = (declarationList: ts.VariableDeclarationList) =>
-  (declarationList.flags & ts.NodeFlags.Const) !== 0
 
 const declarationListHasSingleDeclaration = (declarationList: ts.VariableDeclarationList) =>
   hasSingleElement(declarationList.declarations)
@@ -128,8 +128,45 @@ const declarationListHasSingleDeclaration = (declarationList: ts.VariableDeclara
 const functionConstantMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
-  const matches = (node: ts.Node): ReadonlyArray<Detection> =>
-    pipe(
+  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
+    const declarationIsInSourceFile = (candidate: ts.Declaration) =>
+      candidate.getSourceFile() === context.sourceFile
+
+    const declarationPrecedesNode = (candidate: ts.VariableDeclaration) =>
+      candidate.end <= node.getStart(context.sourceFile)
+
+    const identifierIsStableConst = (identifier: ts.Identifier) =>
+      pipe(
+        Option.gen(function* () {
+          const symbolCandidate = context.checker.getSymbolAtLocation(identifier)
+          const symbol = yield* Option.fromNullishOr(symbolCandidate)
+          const declarationCandidates = symbol.getDeclarations()
+          const declarations = yield* Option.fromNullishOr(declarationCandidates)
+
+          yield* Option.liftPredicate(hasSingleElement)(declarations)
+          const declaration = yield* Option.fromNullishOr(declarations[0])
+
+          const variableDeclaration = yield* Option.liftPredicate(ts.isVariableDeclaration)(
+            declaration
+          )
+
+          yield* Option.liftPredicate(variableDeclarationNameIsIdentifier)(variableDeclaration)
+          yield* Option.liftPredicate(declarationIsInSourceFile)(variableDeclaration)
+          yield* Option.liftPredicate(declarationPrecedesNode)(variableDeclaration)
+
+          yield* pipe(
+            Option.some(variableDeclaration),
+            Option.flatMap(variableDeclarationList),
+            Option.filter(declarationListIsConst),
+            Option.filter(declarationListHasSingleDeclaration)
+          )
+
+          return variableDeclaration
+        }),
+        Option.isSome
+      )
+
+    return pipe(
       Option.gen(function* () {
         yield* Option.liftPredicate(isEligibleFunction)(node)
 
@@ -148,48 +185,13 @@ const functionConstantMatches = (context: CheckContext) => {
 
         const isStableIdentifier = pipe(
           Option.liftPredicate(ts.isIdentifier)(unwrapped),
-          Option.exists((identifier) =>
-            pipe(
-              Option.gen(function* () {
-                const symbolCandidate = context.checker.getSymbolAtLocation(identifier)
-                const symbol = yield* Option.fromNullishOr(symbolCandidate)
-                const declarationCandidates = symbol.getDeclarations()
-                const declarations = yield* Option.fromNullishOr(declarationCandidates)
-
-                yield* Option.liftPredicate(hasSingleElement)(declarations)
-                const declaration = yield* Option.fromNullishOr(declarations[0])
-
-                const variableDeclaration = yield* Option.liftPredicate(ts.isVariableDeclaration)(
-                  declaration
-                )
-
-                yield* Option.liftPredicate(
-                  (candidate: ts.Declaration): boolean =>
-                    candidate.getSourceFile() === context.sourceFile
-                )(variableDeclaration)
-                yield* Option.liftPredicate(declarationNameIsIdentifier)(variableDeclaration)
-                yield* Option.liftPredicate(
-                  (candidate: ts.VariableDeclaration): boolean =>
-                    candidate.end <= node.getStart(context.sourceFile)
-                )(variableDeclaration)
-                yield* pipe(
-                  Option.some(variableDeclaration),
-                  Option.flatMap(variableDeclarationList),
-                  Option.filter(declarationListIsConst),
-                  Option.filter(declarationListHasSingleDeclaration)
-                )
-
-                return variableDeclaration
-              }),
-              Option.isSome
-            )
-          )
+          Option.exists(identifierIsStableConst)
         )
 
-        yield* Option.liftPredicate((_expression: ts.Expression): boolean => {
-          const nodeText2 = Array.make(isPrimitive, isStableIdentifier)
-          return Array.some(nodeText2, Boolean)
-        })(expression)
+        const constantExpressionFlags = Array.make(isPrimitive, isStableIdentifier)
+        const isConstantExpression = Array.some(constantExpressionFlags, Boolean)
+
+        yield* Option.liftPredicate(Function.constant(isConstantExpression))(expression)
         const expressionText = expression.getText(context.sourceFile)
 
         return match({
@@ -202,6 +204,7 @@ const functionConstantMatches = (context: CheckContext) => {
       }),
       Option.toArray
     )
+  }
 
   return matches
 }

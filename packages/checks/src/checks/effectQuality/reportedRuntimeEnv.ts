@@ -3,12 +3,11 @@ import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { ArchitectureRole } from "../support/architectureRole.js"
 import { ambientCapabilityPropertySubject } from "../functionalCoreEffect/support.js"
-import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { binaryAssignmentTarget, unwrapTransparentExpression } from "../support/tsNode.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
-import type { EffectQualityIndex } from "./index.js"
+import { roleForSourceFile, type EffectQualityIndex } from "./index.js"
 import { isRootRole, isTestRole } from "./architectureRoles.js"
 import { makeRuleFinding } from "./makeFindings.js"
-import { roleOf } from "./reportedRuntimeSupport.js"
 
 const processEnvSubject = "process.env"
 
@@ -25,17 +24,22 @@ const isRootOrTest = (role: ArchitectureRole) => {
 
 const isNonRootOrTest = Predicate.not(isRootOrTest)
 
+const ambientCapabilitySubject = (context: CheckContext) => (access: ts.PropertyAccessExpression) =>
+  ambientCapabilityPropertySubject(context, access)
+
 const processEnvironmentSubject = (context: CheckContext, node: ts.Node) => {
+  const ambientSubject = ambientCapabilitySubject(context)
+
   const fromProperty = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(node),
-    Option.flatMap((access) => ambientCapabilityPropertySubject(context, access))
+    Option.flatMap(ambientSubject)
   )
 
   const nestedPropertyAccess = (access: ts.PropertyAccessExpression) =>
     pipe(
       unwrapTransparentExpression(access.expression),
       Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.flatMap((inner) => ambientCapabilityPropertySubject(context, inner)),
+      Option.flatMap(ambientSubject),
       Option.map(Function.constant(processEnvSubject))
     )
 
@@ -48,7 +52,7 @@ const processEnvironmentSubject = (context: CheckContext, node: ts.Node) => {
     pipe(
       unwrapTransparentExpression(access.expression),
       Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.flatMap((inner) => ambientCapabilityPropertySubject(context, inner)),
+      Option.flatMap(ambientSubject),
       Option.map(Function.constant(processEnvSubject))
     )
 
@@ -70,53 +74,51 @@ export const processEnvironmentFindings = (
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
-    roleOf(index, context.sourceFile),
+    roleForSourceFile(index, context.sourceFile),
     Option.filter(isNonRootOrTest),
     Option.flatMap(() => processEnvironmentSubject(context, node)),
     Option.map(Function.flip(processEnvironmentFinding)(node)),
     Option.toArray
   )
 
-const isAssignmentOperator = (expression: ts.BinaryExpression) => {
-  const kind = expression.operatorToken.kind
-  const atLeastFirst = kind >= ts.SyntaxKind.FirstAssignment
-  const atMostLast = kind <= ts.SyntaxKind.LastAssignment
-
-  return atLeastFirst && atMostLast
-}
+const deleteExpressionTarget = (expression: ts.DeleteExpression) =>
+  Option.some(expression.expression)
 
 const assignmentTarget = (node: ts.Node) =>
   pipe(
     Match.value(node),
-    Match.when(ts.isBinaryExpression, (expression) =>
-      isAssignmentOperator(expression) ? Option.some(expression.left) : Option.none()
-    ),
-    Match.when(ts.isDeleteExpression, (expression) => Option.some(expression.expression)),
+    Match.when(ts.isBinaryExpression, binaryAssignmentTarget),
+    Match.when(ts.isDeleteExpression, deleteExpressionTarget),
     Match.orElse(() => Option.none())
   )
+
+const accessExpressionUnwrapped = (
+  access: ts.PropertyAccessExpression | ts.ElementAccessExpression
+) => unwrapTransparentExpression(access.expression)
 
 const ambientCapabilityFromTarget =
   (context: CheckContext) =>
   (target: ts.Expression): Option.Option<string> => {
     const unwrapped = unwrapTransparentExpression(target)
+    const ambientSubject = ambientCapabilitySubject(context)
 
     const direct = pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
-      Option.flatMap((access) => ambientCapabilityPropertySubject(context, access))
+      Option.flatMap(ambientSubject)
     )
 
     const nested = pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
-      Option.map((access) => unwrapTransparentExpression(access.expression)),
+      Option.map(accessExpressionUnwrapped),
       Option.filter(ts.isPropertyAccessExpression),
-      Option.flatMap((access) => ambientCapabilityPropertySubject(context, access))
+      Option.flatMap(ambientSubject)
     )
 
     const element = pipe(
       Option.liftPredicate(ts.isElementAccessExpression)(unwrapped),
-      Option.map((access) => unwrapTransparentExpression(access.expression)),
+      Option.map(accessExpressionUnwrapped),
       Option.filter(ts.isPropertyAccessExpression),
-      Option.flatMap((access) => ambientCapabilityPropertySubject(context, access))
+      Option.flatMap(ambientSubject)
     )
 
     return pipe(
@@ -132,7 +134,7 @@ export const globalConfigMutationFindings = (
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
-    roleOf(index, context.sourceFile),
+    roleForSourceFile(index, context.sourceFile),
     Option.filter(isTestRole),
     Option.flatMap(() =>
       pipe(

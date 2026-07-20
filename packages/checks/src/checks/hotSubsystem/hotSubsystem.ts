@@ -1,4 +1,4 @@
-import { Tuple, Array, Effect, HashMap, Option, Struct, pipe } from "effect"
+import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
 import { Advice, FileDetections } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -63,8 +63,10 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
 
   const directoryEntries = Array.flatMap(files, (file) => {
     const parents = parentDirectories(file.path)
-    const directories = Array.filter(parents, (directory) => directory.includes("/"))
-    const entries = Array.map(directories, (directory) => Tuple.make(directory, file))
+    const isNestedDirectory = (directory: string) => directory.includes("/")
+    const directories = Array.filter(parents, isNestedDirectory)
+    const entryForDirectory = (directory: string) => Tuple.make(directory, file)
+    const entries = Array.map(directories, entryForDirectory)
 
     return entries
   })
@@ -122,4 +124,4 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
   return Array.map(deepest, makeSubsystemAdvice)
 }
 
-export const hotSubsystem = Effect.fn("HotSubsystem.derive")(deriveSignals(hotSubsystemAdvice))
+export const hotSubsystem = deriveSignals(hotSubsystemAdvice)

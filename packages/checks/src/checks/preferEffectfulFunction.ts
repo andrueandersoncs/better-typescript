@@ -1,4 +1,4 @@
-import { Array, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -18,13 +18,11 @@ import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
 // Methods stay excluded because typed adapters are valid runtime boundaries.
 type EffectfulFunctionDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration
 
+const expressionFromBody = (body: ts.ConciseBody) =>
+  ts.isBlock(body) ? singleStatementReturnExpression(body) : Option.some(body)
+
 const functionResult = (definition: FunctionDefinition) =>
-  pipe(
-    Option.fromNullishOr(definition.body),
-    Option.flatMap((body) =>
-      ts.isBlock(body) ? singleStatementReturnExpression(body) : Option.some(body)
-    )
-  )
+  pipe(Option.fromNullishOr(definition.body), Option.flatMap(expressionFromBody))
 
 const calleeName = (expression: ts.LeftHandSideExpression): Option.Option<ts.Node> => {
   const unwrapped = unwrapExpression(expression)
@@ -46,22 +44,32 @@ const functionDefinition = (
     ? functionInitializer(declaration)
     : Option.some(declaration)
 
+const callExpressionCalleeName = (call: ts.CallExpression) => calleeName(call.expression)
+
+const variableDeclarationType = Function.flow(
+  Struct.get<ts.VariableDeclaration, "type">("type"),
+  Option.fromNullishOr
+)
+
 const isEffectRunSyncCall =
   (checker: ts.TypeChecker) =>
-  (expression: ts.Expression): boolean =>
-    pipe(
+  (expression: ts.Expression): boolean => {
+    const symbolIsEverySync = (symbol: ts.Symbol) => {
+      const nameMatches = symbol.name === "runSync"
+      const fromEffect = symbolDeclaredInEffectPackage(symbol)
+      const conditions = Array.make(nameMatches, fromEffect)
+
+      return Array.every(conditions, Boolean)
+    }
+
+    return pipe(
       unwrapExpression(expression),
       Option.liftPredicate(ts.isCallExpression),
-      Option.flatMap((call) => calleeName(call.expression)),
+      Option.flatMap(callExpressionCalleeName),
       Option.flatMap(resolvedSymbolAt(checker)),
-      Option.exists((symbol) => {
-        const nameMatches = symbol.name === "runSync"
-        const fromEffect = symbolDeclaredInEffectPackage(symbol)
-        const conditions = Array.make(nameMatches, fromEffect)
-
-        return Array.every(conditions, Boolean)
-      })
+      Option.exists(symbolIsEverySync)
     )
+  }
 
 const effectfulFunctionMatches = (context: CheckContext) => {
   const match = makeDetection(context)
@@ -71,7 +79,7 @@ const effectfulFunctionMatches = (context: CheckContext) => {
   const matches = (declaration: EffectfulFunctionDeclaration): ReadonlyArray<Detection> => {
     const declaredType = pipe(
       Option.liftPredicate(ts.isVariableDeclaration)(declaration),
-      Option.flatMap((variable) => Option.fromNullishOr(variable.type))
+      Option.flatMap(variableDeclarationType)
     )
 
     const hasExplicitFunctionContract = Option.isSome(declaredType)
@@ -84,32 +92,28 @@ const effectfulFunctionMatches = (context: CheckContext) => {
     const name = pipe(Option.fromNullishOr(declaration.name), Option.filter(ts.isIdentifier))
     const definition = functionDefinition(declaration)
 
-    const candidate = Option.all({
-      definition,
-      name
+    const detectionForRunSync = Option.gen(function* () {
+      const functionDefinitionValue = yield* definition
+      const functionNameNode = yield* name
+      const functionName = functionNameNode.getText(context.sourceFile)
+
+      const makeRunSyncDetection = () =>
+        match({
+          node: functionNameNode,
+          message: `Avoid synchronously unwrapping an Effect in ${functionName}.`,
+          hint:
+            `Return the Effect from ${functionName} and compose callers with yield* or ` +
+            "Effect.flatMap. Reserve Effect.runSync for the application runtime boundary."
+        })
+
+      return yield* pipe(
+        functionResult(functionDefinitionValue),
+        Option.filter(runSyncResult),
+        Option.map(makeRunSyncDetection)
+      )
     })
 
-    return pipe(
-      candidate,
-      Option.flatMap(({ definition, name }) =>
-        pipe(
-          functionResult(definition),
-          Option.filter(runSyncResult),
-          Option.map(() => {
-            const functionName = name.getText(context.sourceFile)
-
-            return match({
-              node: name,
-              message: `Avoid synchronously unwrapping an Effect in ${functionName}.`,
-              hint:
-                `Return the Effect from ${functionName} and compose callers with yield* or ` +
-                "Effect.flatMap. Reserve Effect.runSync for the application runtime boundary."
-            })
-          })
-        )
-      ),
-      Option.toArray
-    )
+    return Option.toArray(detectionForRunSync)
   }
 
   return matches

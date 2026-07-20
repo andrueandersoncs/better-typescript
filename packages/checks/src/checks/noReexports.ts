@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -12,18 +12,24 @@ const hint =
   "Import the dependency where it is used and expose a locally defined public interface instead."
 
 const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string) => {
+  const isNameText = (text: string) => text === name
+
   const namespaceMatches = pipe(
     bindings,
     Option.liftPredicate(ts.isNamespaceImport),
-    Option.exists((namespace) => namespace.name.text === name)
+    Option.map(Function.flow(Struct.get("name"), Struct.get("text"))),
+    Option.exists(isNameText)
   )
+
+  const elementHasName = (element: ts.ImportSpecifier) => element.name.text === name
+
+  const namedImportsDeclareName = (namedImports: ts.NamedImports) =>
+    Array.some(namedImports.elements, elementHasName)
 
   const namedImportMatches = pipe(
     bindings,
     Option.liftPredicate(ts.isNamedImports),
-    Option.exists((namedImports) =>
-      Array.some(namedImports.elements, (element) => element.name.text === name)
-    )
+    Option.exists(namedImportsDeclareName)
   )
 
   const importMatches = Array.make(namespaceMatches, namedImportMatches)
@@ -31,30 +37,45 @@ const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string
   return Array.some(importMatches, Boolean)
 }
 
-const importDeclaresName = (statement: ts.Statement, name: string) =>
-  pipe(
+const importClause = Function.flow(
+  Struct.get<ts.ImportDeclaration, "importClause">("importClause"),
+  Option.fromNullishOr
+)
+
+const importDeclaresName = (statement: ts.Statement, name: string) => {
+  const isNameText = (text: string) => text === name
+
+  const bindingsDeclareName = (bindings: ts.NamedImportBindings) =>
+    namedBindingsDeclareName(bindings, name)
+
+  return pipe(
     statement,
     Option.liftPredicate(ts.isImportDeclaration),
-    Option.flatMap((declaration) => Option.fromNullishOr(declaration.importClause)),
+    Option.flatMap(importClause),
     Option.exists((clause) => {
       const defaultImportMatches = pipe(
         clause.name,
         Option.fromNullishOr,
-        Option.exists((identifier) => identifier.text === name)
+        Option.map(Struct.get("text")),
+        Option.exists(isNameText)
       )
 
       const namedImportMatches = pipe(
         clause.namedBindings,
         Option.fromNullishOr,
-        Option.exists((bindings) => namedBindingsDeclareName(bindings, name))
+        Option.exists(bindingsDeclareName)
       )
 
       return defaultImportMatches || namedImportMatches
     })
   )
+}
 
-const isImportedName = (sourceFile: ts.SourceFile, name: string) =>
-  Array.some(sourceFile.statements, (statement) => importDeclaresName(statement, name))
+const isImportedName = (sourceFile: ts.SourceFile, name: string) => {
+  const statementDeclaresName = (statement: ts.Statement) => importDeclaresName(statement, name)
+
+  return Array.some(sourceFile.statements, statementDeclaresName)
+}
 
 const localNameOf = (specifier: ts.ExportSpecifier) =>
   (specifier.propertyName ?? specifier.name).text
@@ -72,20 +93,24 @@ const directReexportNodes = (declaration: ts.ExportDeclaration): ReadonlyArray<t
 const importedReexportNodes = (
   sourceFile: ts.SourceFile,
   declaration: ts.ExportDeclaration
-): ReadonlyArray<ts.ExportSpecifier> =>
-  pipe(
+): ReadonlyArray<ts.ExportSpecifier> => {
+  const isImportedSpecifier = (specifier: ts.ExportSpecifier) => {
+    const localName = localNameOf(specifier)
+
+    return isImportedName(sourceFile, localName)
+  }
+
+  const importedElements = (clause: ts.NamedExports) =>
+    Array.filter(clause.elements, isImportedSpecifier)
+
+  return pipe(
     declaration.exportClause,
     Option.fromNullishOr,
     Option.filter(ts.isNamedExports),
-    Option.map((clause) =>
-      Array.filter(clause.elements, (specifier) => {
-        const localName = localNameOf(specifier)
-
-        return isImportedName(sourceFile, localName)
-      })
-    ),
-    Option.getOrElse(() => Array.empty())
+    Option.map(importedElements),
+    Option.getOrElse(Array.empty)
   )
+}
 
 const reexportDeclarationNodes =
   (sourceFile: ts.SourceFile) =>
@@ -100,12 +125,16 @@ const reexportDeclarationNodes =
     )
 
 const isImportedExportAssignment =
-  (sourceFile: ts.SourceFile) => (assignment: ts.ExportAssignment) =>
-    pipe(
+  (sourceFile: ts.SourceFile) => (assignment: ts.ExportAssignment) => {
+    const identifierIsImported = (identifier: ts.Identifier) =>
+      isImportedName(sourceFile, identifier.text)
+
+    return pipe(
       assignment.expression,
       Option.liftPredicate(ts.isIdentifier),
-      Option.exists((identifier) => isImportedName(sourceFile, identifier.text))
+      Option.exists(identifierIsImported)
     )
+  }
 
 const reexportElements = (context: CheckContext): ReadonlyArray<Detection> => {
   const element = makeDetection(context)
@@ -124,7 +153,9 @@ const reexportElements = (context: CheckContext): ReadonlyArray<Detection> => {
     Array.appendAll(exportedAssignments)
   )
 
-  return Array.map(declarations, (node) => element({ node, message, hint }))
+  const detectionFor = (node: ts.Node) => element({ node, message, hint })
+
+  return Array.map(declarations, detectionFor)
 }
 
 export const noReexports = makeFileCheck("no-reexports", reexportElements)

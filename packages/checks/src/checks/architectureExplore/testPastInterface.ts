@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Option, Result, Struct, Tuple, pipe } from "effect"
+import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeAdviceLocation,
@@ -57,22 +57,38 @@ const workspaceTestOnlySymbols =
       return Array.every(conditions, Boolean)
     })
 
+const isSeamLeakageFromTest = Function.flow(
+  seamLeakageDataOf,
+  Option.exists(Struct.get("fromTest"))
+)
+
 const testPastInterfaceAdvice = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
-  const testOnlyExports = Array.filter(elements, (element) => element.name === testOnlyExportsName)
+  const isTestOnlyExportElement = (element: NamedDetection) => element.name === testOnlyExportsName
+  const isSeamLeakageElement = (element: NamedDetection) => element.name === seamLeakageEvidenceName
+  const isExportSurfaceElement = (element: NamedDetection) => element.name === exportSurfaceName
+  const testOnlyExports = Array.filter(elements, isTestOnlyExportElement)
 
   const testImports = pipe(
     elements,
-    Array.filter((element) => element.name === seamLeakageEvidenceName),
-    Array.filter((element) =>
-      pipe(seamLeakageDataOf(element), Option.exists(Struct.get("fromTest")))
-    )
+    Array.filter(isSeamLeakageElement),
+    Array.filter(isSeamLeakageFromTest)
   )
 
   const edges = workspaceImportEdges(elements)
-  const exportSurfaces = Array.filter(elements, (element) => element.name === exportSurfaceName)
+  const exportSurfaces = Array.filter(elements, isExportSurfaceElement)
   const testOnlySymbolsOf = workspaceTestOnlySymbols(edges)
+
+  const hasTestOnlySymbols = (element: NamedDetection) =>
+    pipe(
+      exportSurfaceDataOf(element),
+      Option.exists((data) => {
+        const symbols = testOnlySymbolsOf(data)
+
+        return symbols.length > 0
+      })
+    )
 
   const programPaths = pipe(
     Array.appendAll(testOnlyExports, testImports),
@@ -81,16 +97,7 @@ const testPastInterfaceAdvice = (
 
   const workspacePaths = pipe(
     exportSurfaces,
-    Array.filter((element) =>
-      pipe(
-        exportSurfaceDataOf(element),
-        Option.exists((data) => {
-          const symbols = testOnlySymbolsOf(data)
-
-          return symbols.length > 0
-        })
-      )
-    ),
+    Array.filter(hasTestOnlySymbols),
     Array.map((element) => element.detection.location.path)
   )
 
@@ -171,6 +178,4 @@ const testPastInterfaceAdvice = (
   })
 }
 
-export const testPastInterface = Effect.fn("TestPastInterface.derive")(
-  deriveSignals(testPastInterfaceAdvice)
-)
+export const testPastInterface = deriveSignals(testPastInterfaceAdvice)

@@ -2,13 +2,10 @@ import { Array, Function, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { importedEffectApiAt } from "../functionalCoreEffect/support.js"
 import { callExpressionOf, unwrapCallee, unwrapTransparentExpression } from "../support/tsNode.js"
-import { roleForSourceFile } from "./index.js"
 
 export const layerAcquisitionNames = Array.make("effect", "effectDiscard", "effectContext")
 
-export const pipeNames = Array.of("pipe")
-
-export const roleOf = roleForSourceFile
+const pipeNames = Array.of("pipe")
 
 export const effectApiCall =
   (checker: ts.TypeChecker) =>
@@ -67,9 +64,6 @@ export const isPipeCall = (checker: ts.TypeChecker) => (call: ts.CallExpression)
   return Array.some(flags, Boolean)
 }
 
-export const pipeStages = (call: ts.CallExpression): ReadonlyArray<ts.Expression> =>
-  Array.fromIterable(call.arguments)
-
 export const isExpressionReferenceNode = (candidate: ts.Node): candidate is ts.Expression => {
   const asIdentifier = ts.isIdentifier(candidate)
   const asProperty = ts.isPropertyAccessExpression(candidate)
@@ -77,14 +71,27 @@ export const isExpressionReferenceNode = (candidate: ts.Node): candidate is ts.E
   return asIdentifier || asProperty
 }
 
-export const pipeParentContainsStage =
+const stageEqualsExpression = (expression: ts.Expression) => (stage: ts.Expression) =>
+  stage === expression
+
+const stagesContainExpression =
+  (expression: ts.Expression) => (stages: ReadonlyArray<ts.Expression>) =>
+    Array.some(stages, stageEqualsExpression(expression))
+
+const pipeParentContainsStage =
   (checker: ts.TypeChecker) => (expression: ts.Expression) => (parent: ts.Node) =>
     pipe(
       Option.liftPredicate(ts.isCallExpression)(parent),
       Option.filter(isPipeCall(checker)),
-      Option.map(pipeStages),
-      Option.exists((stages) => Array.some(stages, (stage) => stage === expression))
+      Option.map(flow(Struct.get("arguments"), Array.fromIterable)),
+      Option.exists(stagesContainExpression(expression))
     )
+
+const expressionIsPipeStage = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
+  pipe(
+    Option.fromNullishOr(expression.parent),
+    Option.exists(pipeParentContainsStage(checker)(expression))
+  )
 
 export const callOrPipeStageSubject =
   (checker: ts.TypeChecker) =>
@@ -103,12 +110,7 @@ export const callOrPipeStageSubject =
     const asReference = pipe(
       Option.liftPredicate(isExpressionReferenceNode)(node),
       Option.filter(matchesReference),
-      Option.filter((expression) =>
-        pipe(
-          Option.fromNullishOr(expression.parent),
-          Option.exists(pipeParentContainsStage(checker)(expression))
-        )
-      ),
+      Option.filter(expressionIsPipeStage(checker)),
       Option.map((expression) => expression as ts.Node)
     )
 

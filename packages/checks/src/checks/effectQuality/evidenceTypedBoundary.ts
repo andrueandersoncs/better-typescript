@@ -18,15 +18,17 @@ const domainErrorPattern = /Error|Fail|Fault|Defect|Tagged/i
 
 const builtinErrorPattern = /^(Error|TypeError|RangeError)$/
 
+const newExpressionCalleeText = (expression: ts.NewExpression) =>
+  pipe(expression.expression.getText(), Option.some)
+
+const callExpressionCalleeText = (expression: ts.CallExpression) =>
+  pipe(expression.expression.getText(), Option.some)
+
 const constructionTextOf = (current: ts.Node) =>
   pipe(
     Match.value(current),
-    Match.when(ts.isNewExpression, (expression) =>
-      pipe(expression.expression.getText(), Option.some)
-    ),
-    Match.when(ts.isCallExpression, (expression) =>
-      pipe(expression.expression.getText(), Option.some)
-    ),
+    Match.when(ts.isNewExpression, newExpressionCalleeText),
+    Match.when(ts.isCallExpression, callExpressionCalleeText),
     Match.orElse(() => Option.none())
   )
 

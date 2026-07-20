@@ -97,10 +97,10 @@ const createWorkspaceServices = (
   const emptySnapshots = HashMap.empty<string, ts.IScriptSnapshot>()
   const snapshots = MutableRef.make(emptySnapshots)
 
-  const languageServices = Array.map(workspace.projects, (config) =>
+  const makeLanguageServiceForProject = (config: ProjectConfig) =>
     createProjectLanguageService(documentRegistry, snapshots, config, compilerOptions)
-  )
 
+  const languageServices = Array.map(workspace.projects, makeLanguageServiceForProject)
   const contexts = Array.zipWith(workspace.projects, languageServices, contextFromLanguageService)
 
   return new WorkspaceServices(languageServices, contexts)

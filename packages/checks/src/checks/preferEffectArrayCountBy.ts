@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import {
   resolvedSymbolAt,
@@ -34,19 +34,23 @@ const symbolIsFromEffectArrayModule = (symbol: ts.Symbol) => {
   return symbolDeclaredInEffectPackage(symbol) && declaredInArrayModule
 }
 
+const propertyNameIsFilter = (access: ts.PropertyAccessExpression) => access.name.text === "filter"
+
 const effectArrayFilterAccess =
   (checker: ts.TypeChecker) =>
-  (call: ts.CallExpression): Option.Option<ts.PropertyAccessExpression> =>
-    pipe(
+  (call: ts.CallExpression): Option.Option<ts.PropertyAccessExpression> => {
+    const accessIsEffectArrayFilter = (access: ts.PropertyAccessExpression) =>
+      pipe(resolvedSymbolAt(checker)(access.name), Option.exists(symbolIsFromEffectArrayModule))
+
+    return pipe(
       call.expression,
       unwrapCallee,
       unwrapTransparentExpression,
       Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.filter((access) => access.name.text === "filter"),
-      Option.filter((access) =>
-        pipe(resolvedSymbolAt(checker)(access.name), Option.exists(symbolIsFromEffectArrayModule))
-      )
+      Option.filter(propertyNameIsFilter),
+      Option.filter(accessIsEffectArrayFilter)
     )
+  }
 
 const calleeNameNode = (call: ts.CallExpression) => {
   const callee = pipe(call.expression, unwrapCallee, unwrapTransparentExpression)
@@ -62,12 +66,16 @@ const calleeNameNode = (call: ts.CallExpression) => {
   )
 }
 
+const identifierTextIsPipe = (name: ts.Identifier) => name.text === "pipe"
+
+const callHasSingleArgument = (stage: ts.CallExpression) => stage.arguments.length === 1
+
 const isEffectPipeEndingInArrayFilter =
   (checker: ts.TypeChecker) =>
   (call: ts.CallExpression): boolean => {
     const isEffectPipe = pipe(
       calleeNameNode(call),
-      Option.filter((name) => name.text === "pipe"),
+      Option.filter(identifierTextIsPipe),
       Option.flatMap(resolvedSymbolAt(checker)),
       Option.exists(symbolDeclaredInEffectPackage)
     )
@@ -78,7 +86,7 @@ const isEffectPipeEndingInArrayFilter =
     const lastStageIsArrayFilter = pipe(
       Array.last(call.arguments),
       Option.filter(ts.isCallExpression),
-      Option.filter((stage) => stage.arguments.length === 1),
+      Option.filter(callHasSingleArgument),
       Option.flatMap(effectArrayFilterAccess(checker)),
       Option.isSome
     )
@@ -95,6 +103,14 @@ const isFilteredArrayCall =
     return directFilter || pipedFilter
   }
 
+const accessExpressionCarrier = Function.flow(
+  Struct.get<ts.PropertyAccessExpression, "expression">("expression"),
+  unwrapCarrier
+)
+
+const propertyNameIsLength = (candidate: ts.PropertyAccessExpression) =>
+  candidate.name.text === "length"
+
 const effectArrayFilterLengthMatches = (context: CheckContext) => {
   const match = makeDetection(context)
   const isFilteredArray = isFilteredArrayCall(context.checker)
@@ -102,8 +118,8 @@ const effectArrayFilterLengthMatches = (context: CheckContext) => {
   const matches = (access: ts.PropertyAccessExpression): ReadonlyArray<Detection> =>
     pipe(
       Option.some(access),
-      Option.filter((candidate) => candidate.name.text === "length"),
-      Option.map((candidate) => unwrapCarrier(candidate.expression)),
+      Option.filter(propertyNameIsLength),
+      Option.map(accessExpressionCarrier),
       Option.filter(ts.isCallExpression),
       Option.filter(isFilteredArray),
       Option.map(() => match({ node: access, message, hint })),

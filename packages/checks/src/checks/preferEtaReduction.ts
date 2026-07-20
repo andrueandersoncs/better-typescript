@@ -1,4 +1,4 @@
-import { Tuple, Array, Function, Option, Struct, pipe } from "effect"
+import { Tuple, Array, Function, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { conciseArrowBody, unwrapCarrier } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -99,59 +99,63 @@ const etaReductionMatches = (context: CheckContext) => {
     return boundCalleeNeedsThis
   }
 
-  const referenceCount = (name: string): ((node: ts.Node) => number) =>
-    Function.flip(
+  const referenceCount = (name: string): ((node: ts.Node) => number) => {
+    const isNameText = (text: string) => text === name
+
+    return Function.flip(
       foldAst((count: number, current: ts.Node): number =>
         pipe(
           Option.liftPredicate(ts.isIdentifier)(current),
           Option.map(identifierText),
-          Option.exists((text) => text === name)
+          Option.exists(isNameText)
         )
           ? count + 1
           : count
       )
     )(0)
+  }
 
   const unaryCalleeTower =
     (parameterName: string) =>
     (expression: ts.Expression): Option.Option<ReadonlyArray<ts.Expression>> => {
       const unwrapped = unwrapCarrier(expression)
+      const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
 
       const callOption = pipe(
         Option.liftPredicate(ts.isCallExpression)(unwrapped),
-        Option.filter((call) => call.arguments.length === 1)
+        Option.filter(hasOneArgument)
       )
 
-      return pipe(
-        callOption,
-        Option.flatMap((call) =>
-          Option.gen(function* () {
-            const onlyArgument = yield* Option.fromNullishOr(call.arguments[0])
-            const argument = unwrapCarrier(onlyArgument)
-            const callee = call.expression
-            const mentionCount = referenceCount(parameterName)(callee)
-            const calleeMentionsParameter = mentionCount > 0
+      const isParameterName = (text: string) => text === parameterName
 
-            yield* Option.liftPredicate((value: boolean) => !value)(calleeMentionsParameter)
+      const calleesFromCall = (call: ts.CallExpression) =>
+        Option.gen(function* () {
+          const onlyArgument = yield* Option.fromNullishOr(call.arguments[0])
+          const argument = unwrapCarrier(onlyArgument)
+          const callee = call.expression
+          const mentionCount = referenceCount(parameterName)(callee)
+          const calleeMentionsParameter = mentionCount > 0
 
-            const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(argument)
+          yield* Option.liftPredicate((value: boolean) => !value)(calleeMentionsParameter)
 
-            const argumentIsParameter = pipe(
-              argumentIdentifier,
-              Option.map(identifierText),
-              Option.exists((text) => text === parameterName)
-            )
+          const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(argument)
 
-            if (argumentIsParameter) {
-              return Tuple.make(callee)
-            }
+          const argumentIsParameter = pipe(
+            argumentIdentifier,
+            Option.map(identifierText),
+            Option.exists(isParameterName)
+          )
 
-            const inner = yield* unaryCalleeTower(parameterName)(argument)
+          if (argumentIsParameter) {
+            return Tuple.make(callee)
+          }
 
-            return Array.append(inner, callee)
-          })
-        )
-      )
+          const inner = yield* unaryCalleeTower(parameterName)(argument)
+
+          return Array.append(inner, callee)
+        })
+
+      return pipe(callOption, Option.flatMap(calleesFromCall))
     }
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
@@ -176,7 +180,7 @@ const etaReductionMatches = (context: CheckContext) => {
         const body = yield* conciseArrowBody(arrowFunction)
         const callees = yield* unaryCalleeTower(parameterName)(body)
         const hasSteps = Array.length(callees) > 0
-        const freeCallees = Array.every(callees, (callee) => !calleeRequiresThis(callee))
+        const freeCallees = Array.every(callees, Predicate.not(calleeRequiresThis))
 
         yield* Option.liftPredicate((value: boolean) => value)(hasSteps)
         yield* Option.liftPredicate((value: boolean) => value)(freeCallees)

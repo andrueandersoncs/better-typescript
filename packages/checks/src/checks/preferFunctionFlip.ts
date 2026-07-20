@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, pipe } from "effect"
+import { Array, Function, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { conciseArrowBody, unwrapCarrier } from "./support/tsNode.js"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -95,31 +95,35 @@ const functionFlipMatches = (context: CheckContext) => {
     return boundCalleeNeedsThis
   }
 
-  const referenceCount = (name: string): ((node: ts.Node) => number) =>
-    Function.flip(
+  const referenceCount = (name: string): ((node: ts.Node) => number) => {
+    const isNameText = (text: string) => text === name
+
+    return Function.flip(
       foldAst((count: number, current: ts.Node): number =>
         pipe(
           Option.liftPredicate(ts.isIdentifier)(current),
           Option.map(identifierText),
-          Option.exists((text) => text === name)
+          Option.exists(isNameText)
         )
           ? count + 1
           : count
       )
     )(0)
+  }
+
+  const hasOneArgument = (call: ts.CallExpression) => call.arguments.length === 1
+  const isNonSpreadArgument = Predicate.not(ts.isSpreadElement)
+
+  const firstArgumentIsNonSpread = (call: ts.CallExpression) =>
+    pipe(Option.fromNullishOr(call.arguments[0]), Option.exists(isNonSpreadArgument))
 
   const unaryCall = (expression: ts.Expression) =>
     pipe(
       expression,
       unwrapCarrier,
       Option.liftPredicate(ts.isCallExpression),
-      Option.filter((call) => call.arguments.length === 1),
-      Option.filter((call) =>
-        pipe(
-          Option.fromNullishOr(call.arguments[0]),
-          Option.exists((argument) => !ts.isSpreadElement(argument))
-        )
-      )
+      Option.filter(hasOneArgument),
+      Option.filter(firstArgumentIsNonSpread)
     )
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
@@ -153,11 +157,12 @@ const functionFlipMatches = (context: CheckContext) => {
         const innerArgument = yield* Option.fromNullishOr(innerCall.arguments[0])
         const innerArgumentCarrier = unwrapCarrier(innerArgument)
         const argumentIdentifier = Option.liftPredicate(ts.isIdentifier)(innerArgumentCarrier)
+        const isParameterName = (text: string) => text === parameterName
 
         const argumentIsParameter = pipe(
           argumentIdentifier,
           Option.map(identifierText),
-          Option.exists((text) => text === parameterName)
+          Option.exists(isParameterName)
         )
 
         yield* Option.liftPredicate((value: boolean) => value)(argumentIsParameter)

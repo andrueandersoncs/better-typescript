@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, Tuple, pipe, Result } from "effect"
+import { Array, Function, Option, Predicate, Struct, Tuple, pipe, Result } from "effect"
 import * as ts from "typescript"
 
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
@@ -9,9 +9,14 @@ import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
 
 import { PassThroughWrapperData } from "./data.js"
-import { ExportReferenceIndex, ModuleEdge, usageFor } from "./programSymbols.js"
+import {
+  ExportReferenceIndex,
+  type ExportedFunctionEntry,
+  ModuleEdge,
+  usageFor
+} from "./programSymbols.js"
 import { evidenceCheck, exportReferenceIndex, moduleEdges } from "./architectureEvidence.js"
-import { unwrapExpression } from "../support/tsNode.js"
+import { isExpressionBody, unwrapExpression } from "../support/tsNode.js"
 import { makeSilentCheck } from "../../defineCheck.js"
 import { passThroughWrappersName } from "./names.js"
 
@@ -27,7 +32,23 @@ const forwardingMessage =
 const forwardingHint =
   "Use caller count in Architecture Explore Advice: delete low-leverage indirection, but keep operations whose behaviour or naming would otherwise reappear across callers."
 
-const isExpressionBody = (body: ts.ConciseBody): body is ts.Expression => !ts.isBlock(body)
+const headStatement = (block: ts.Block) => Array.head(block.statements)
+
+const returnCallExpression = Function.flow(
+  Struct.get<ts.ReturnStatement, "expression">("expression"),
+  Option.fromNullishOr,
+  Option.map(unwrapExpression),
+  Option.filter(ts.isCallExpression)
+)
+
+const identifierText = Function.flow(
+  unwrapExpression,
+  Option.liftPredicate(ts.isIdentifier),
+  Option.map(Struct.get("text")),
+  Result.fromOption(Function.constVoid)
+)
+
+const isPublicStatement = Predicate.not(ts.isImportDeclaration)
 
 const callExpressionBody = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
@@ -43,15 +64,9 @@ const callExpressionBody = (
 
       const blockCall = pipe(
         Option.liftPredicate(ts.isBlock)(body),
-        Option.flatMap((block) => Array.head(block.statements)),
+        Option.flatMap(headStatement),
         Option.filter(ts.isReturnStatement),
-        Option.flatMap((statement) =>
-          pipe(
-            Option.fromNullishOr(statement.expression),
-            Option.map(unwrapExpression),
-            Option.filter(ts.isCallExpression)
-          )
-        )
+        Option.flatMap(returnCallExpression)
       )
 
       return pipe(expressionCall, Option.orElse(Function.constant(blockCall)))
@@ -86,12 +101,14 @@ const forwardingRootIdentifier = (expression: ts.Expression): Option.Option<ts.I
 
   const propertyRoot = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
-    Option.flatMap((access) => forwardingRootIdentifier(access.expression))
+    Option.map(Struct.get("expression")),
+    Option.flatMap(forwardingRootIdentifier)
   )
 
   const elementRoot = pipe(
     Option.liftPredicate(ts.isElementAccessExpression)(unwrapped),
-    Option.flatMap((access) => forwardingRootIdentifier(access.expression))
+    Option.map(Struct.get("expression")),
+    Option.flatMap(forwardingRootIdentifier)
   )
 
   return pipe(
@@ -106,16 +123,8 @@ const consumedParameterNames = (
   parameters: ReadonlyArray<ts.Identifier>
 ): Option.Option<ReadonlyArray<string>> => {
   const parameterNames = Array.map(parameters, Struct.get("text"))
-
-  const argumentNames = Array.filterMap(call.arguments, (argument) =>
-    pipe(
-      argument,
-      unwrapExpression,
-      Option.liftPredicate(ts.isIdentifier),
-      Option.map(Struct.get("text")),
-      Result.fromOption(Function.constVoid)
-    )
-  )
+  const isParameterName = (name: string) => Array.contains(parameterNames, name)
+  const argumentNames = Array.filterMap(call.arguments, identifierText)
 
   if (argumentNames.length !== call.arguments.length) {
     return Option.none()
@@ -124,7 +133,7 @@ const consumedParameterNames = (
   const receiverName = pipe(
     forwardingRootIdentifier(call.expression),
     Option.map(Struct.get("text")),
-    Option.filter((name) => Array.contains(parameterNames, name)),
+    Option.filter(isParameterName),
     Option.toArray
   )
 
@@ -135,34 +144,41 @@ const consumedParameterNames = (
 
 const isExactForwarder = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
-) =>
-  pipe(
+) => {
+  const consumedByParameters = (parameters: ReadonlyArray<ts.Identifier>) => {
+    const namesConsumedBy = (call: ts.CallExpression) => consumedParameterNames(call, parameters)
+
+    const matchesForwardingShape = (consumedNames: ReadonlyArray<string>) => {
+      const parameterNames = Array.map(parameters, Struct.get("text"))
+
+      return Array.match(consumedNames, {
+        onEmpty: () => parameterNames.length === 0,
+        onNonEmpty: () => {
+          const sameOrder = Array.every(
+            parameterNames,
+            (name, index) => consumedNames[index] === name
+          )
+
+          const sameLength = consumedNames.length === parameterNames.length
+
+          return sameOrder && sameLength
+        }
+      })
+    }
+
+    return pipe(
+      callExpressionBody(node),
+      Option.flatMap(namesConsumedBy),
+      Option.map(matchesForwardingShape)
+    )
+  }
+
+  return pipe(
     parameterIdentifiers(node),
-    Option.flatMap((parameters) =>
-      pipe(
-        callExpressionBody(node),
-        Option.flatMap((call) => consumedParameterNames(call, parameters)),
-        Option.map((consumedNames) => {
-          const parameterNames = Array.map(parameters, Struct.get("text"))
-
-          return Array.match(consumedNames, {
-            onEmpty: () => parameterNames.length === 0,
-            onNonEmpty: () => {
-              const sameOrder = Array.every(
-                parameterNames,
-                (name, index) => consumedNames[index] === name
-              )
-
-              const sameLength = consumedNames.length === parameterNames.length
-
-              return sameOrder && sameLength
-            }
-          })
-        })
-      )
-    ),
+    Option.flatMap(consumedByParameters),
     Option.getOrElse(Function.constant(false))
   )
+}
 
 const hasModuleSpecifier = Function.flow(
   Struct.get<ts.ExportDeclaration, "moduleSpecifier">("moduleSpecifier"),
@@ -171,11 +187,7 @@ const hasModuleSpecifier = Function.flow(
 )
 
 const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.ExportDeclaration> => {
-  const publicStatements = Array.filter(
-    sourceFile.statements,
-    (statement) => !ts.isImportDeclaration(statement)
-  )
-
+  const publicStatements = Array.filter(sourceFile.statements, isPublicStatement)
   const reexports = Array.filter(publicStatements, ts.isExportDeclaration)
   const allReexports = Array.every(reexports, hasModuleSpecifier)
   const onlyReexports = reexports.length === publicStatements.length
@@ -192,28 +204,33 @@ const passThroughElements =
     const relative = toRelativeFileName(projectRoot)
     const filePath = relative(sourceFile.fileName)
 
+    const entryIsExactForwarder = (entry: ExportedFunctionEntry) =>
+      isExactForwarder(entry.functionNode)
+
+    const detectionForEntry = (entry: (typeof references.entries)[number]) => {
+      const usage = usageFor(references)(entry)
+
+      const data = PassThroughWrapperData.make({
+        kind: "forwarding-call",
+        exportCount: 1,
+        callerCount: usage.productionCallCount,
+        callerPaths: usage.productionPaths,
+        hasNonCallReference: usage.hasProductionNonCallReference
+      })
+
+      return element({
+        node: entry.nameNode,
+        message: forwardingMessage,
+        hint: forwardingHint,
+        data
+      })
+    }
+
     const forwarding = pipe(
       references.entries,
       Array.filter((entry) => entry.nameNode.getSourceFile() === sourceFile),
-      Array.filter((entry) => isExactForwarder(entry.functionNode)),
-      Array.map((entry) => {
-        const usage = usageFor(references)(entry)
-
-        const data = PassThroughWrapperData.make({
-          kind: "forwarding-call",
-          exportCount: 1,
-          callerCount: usage.productionCallCount,
-          callerPaths: usage.productionPaths,
-          hasNonCallReference: usage.hasProductionNonCallReference
-        })
-
-        return element({
-          node: entry.nameNode,
-          message: forwardingMessage,
-          hint: forwardingHint,
-          data
-        })
-      })
+      Array.filter(entryIsExactForwarder),
+      Array.map(detectionForEntry)
     )
 
     const reexports = reexportOnlyStatements(sourceFile)

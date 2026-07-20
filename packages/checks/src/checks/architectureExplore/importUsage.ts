@@ -56,16 +56,20 @@ const importBindings = (node: ts.ImportDeclaration): ReadonlyArray<ts.Identifier
 
   const namedBindings = pipe(
     Option.fromNullishOr(clause.value.namedBindings),
-    Option.map((bindings) =>
-      pipe(
+    Option.map((bindings) => {
+      const namespaceImportNames = (namespaceImport: ts.NamespaceImport) =>
+        Array.of(namespaceImport.name)
+
+      const namedImportNames = (namedImports: ts.NamedImports) =>
+        Array.map(namedImports.elements, Struct.get("name"))
+
+      return pipe(
         Match.value(bindings),
-        Match.when(ts.isNamespaceImport, (namespaceImport) => Array.of(namespaceImport.name)),
-        Match.when(ts.isNamedImports, (namedImports) =>
-          Array.map(namedImports.elements, Struct.get("name"))
-        ),
+        Match.when(ts.isNamespaceImport, namespaceImportNames),
+        Match.when(ts.isNamedImports, namedImportNames),
         Match.exhaustive
       )
-    ),
+    }),
     Option.getOrElse(Array.empty)
   )
 

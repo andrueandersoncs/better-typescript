@@ -4,15 +4,14 @@ import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { propertyAssignmentNamed } from "../functionalCoreEffect/support.js"
 import { callExpressionOf, unwrapTransparentExpression } from "../support/tsNode.js"
 import type { EffectQualityRuleFinding } from "./findings.js"
-import type { EffectQualityIndex } from "./index.js"
+import { roleForSourceFile, type EffectQualityIndex } from "./index.js"
 import { isTestRole } from "./architectureRoles.js"
 import { makeRuleFinding } from "./makeFindings.js"
 import {
   callArgumentAt,
   callOrPipeStageSubject,
   effectApiCall,
-  objectLiteralArgument,
-  roleOf
+  objectLiteralArgument
 } from "./reportedRuntimeSupport.js"
 
 const runCollectNames = Array.of("runCollect")
@@ -39,17 +38,20 @@ export const unboundedStreamCollectFindings = (
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
-    roleOf(index, context.sourceFile),
+    roleForSourceFile(index, context.sourceFile),
     Option.filter(isNonTestRole),
     Option.flatMap(() => callOrPipeStageSubject(context.checker)("Stream")(runCollectNames)(node)),
     Option.map(unboundedStreamCollectFinding("Stream.runCollect")),
     Option.toArray
   )
 
+const capacityPropertyAssignment = (object: ts.ObjectLiteralExpression) =>
+  pipe(propertyAssignmentNamed(object, capacityNames), Option.filter(ts.isPropertyAssignment))
+
 const bufferCapacityIsUnbounded = (expression: ts.Expression) =>
   pipe(
     objectLiteralArgument(expression),
-    Option.flatMap((object) => propertyAssignmentNamed(object, capacityNames)),
+    Option.flatMap(capacityPropertyAssignment),
     Option.map(Struct.get("initializer")),
     Option.flatMap(stringLiteralText),
     Option.contains("unbounded")

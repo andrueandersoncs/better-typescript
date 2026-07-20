@@ -10,6 +10,18 @@ const configStringNames = Array.of("string")
 
 const anyKeywordType = (typeNode: ts.TypeNode) => typeNode.kind === ts.SyntaxKind.AnyKeyword
 
+const asExpressionHasAnyType = (expression: ts.AsExpression) => anyKeywordType(expression.type)
+
+const typeAssertionHasAnyType = (expression: ts.TypeAssertion) => anyKeywordType(expression.type)
+
+const unsafeCastFindingFromTypeNode = makeRuleFinding("unsafe-casts")("as any")
+
+const asExpressionUnsafeCastFinding = (expression: ts.AsExpression) =>
+  unsafeCastFindingFromTypeNode(expression.type)
+
+const typeAssertionUnsafeCastFinding = (expression: ts.TypeAssertion) =>
+  unsafeCastFindingFromTypeNode(expression.type)
+
 export const unsafeCastFindings = (
   _context: CheckContext,
   _index: EffectQualityIndex,
@@ -17,14 +29,14 @@ export const unsafeCastFindings = (
 ): ReadonlyArray<EffectQualityRuleFinding> => {
   const asAny = pipe(
     Option.liftPredicate(ts.isAsExpression)(node),
-    Option.filter((expression) => anyKeywordType(expression.type)),
-    Option.map((expression) => makeRuleFinding("unsafe-casts")("as any")(expression.type))
+    Option.filter(asExpressionHasAnyType),
+    Option.map(asExpressionUnsafeCastFinding)
   )
 
   const typeAssertionAny = pipe(
     Option.liftPredicate(ts.isTypeAssertionExpression)(node),
-    Option.filter((expression) => anyKeywordType(expression.type)),
-    Option.map((expression) => makeRuleFinding("unsafe-casts")("as any")(expression.type))
+    Option.filter(typeAssertionHasAnyType),
+    Option.map(typeAssertionUnsafeCastFinding)
   )
 
   return pipe(Array.make(asAny, typeAssertionAny), Array.flatMap(Option.toArray))
@@ -58,6 +70,24 @@ export const typescriptNamespaceFindings = (
     Option.toArray
   )
 
+const callIsConfigString = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
+  importedEffectApiAt(checker, call.expression, "Config", configStringNames)
+
+const configSecretFindingFromLiteral = (literal: ts.StringLiteralLike) =>
+  makeRuleFinding("config-secret-redaction")(literal.text)(literal)
+
+const configSecretFromCall =
+  (sensitiveConfigKey: (key: string) => boolean) => (call: ts.CallExpression) => {
+    const literalIsSensitive = (literal: ts.StringLiteralLike) => sensitiveConfigKey(literal.text)
+
+    return pipe(
+      Array.head(call.arguments),
+      Option.filter(ts.isStringLiteralLike),
+      Option.filter(literalIsSensitive),
+      Option.map(configSecretFindingFromLiteral)
+    )
+  }
+
 export const configSecretRedactionFindings = (
   context: CheckContext,
   index: EffectQualityIndex,
@@ -65,16 +95,7 @@ export const configSecretRedactionFindings = (
 ): ReadonlyArray<EffectQualityRuleFinding> =>
   pipe(
     Option.liftPredicate(ts.isCallExpression)(node),
-    Option.filter((call) =>
-      importedEffectApiAt(context.checker, call.expression, "Config", configStringNames)
-    ),
-    Option.flatMap((call) =>
-      pipe(
-        Array.head(call.arguments),
-        Option.filter(ts.isStringLiteralLike),
-        Option.filter((literal) => index.policy.sensitiveConfigKey(literal.text)),
-        Option.map((literal) => makeRuleFinding("config-secret-redaction")(literal.text)(literal))
-      )
-    ),
+    Option.filter(callIsConfigString(context.checker)),
+    Option.flatMap(configSecretFromCall(index.policy.sensitiveConfigKey)),
     Option.toArray
   )

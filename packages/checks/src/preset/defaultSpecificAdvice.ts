@@ -1,4 +1,4 @@
-import { Array, Effect, Struct } from "effect"
+import { Array, Struct } from "effect"
 import { ImperativeStateManagerInput } from "../checks/imperativeStateManager/data.js"
 import { imperativeStateManager } from "../checks/imperativeStateManager/imperativeStateManager.js"
 import { PipelineHostileInput } from "../checks/pipelineHostile/data.js"
@@ -21,24 +21,22 @@ export const defaultNamedElements = (
   return Array.flatMap(reportedSignals, nameReportedDetections)
 }
 
-const materializeSpecificAdvice = Effect.fn("DefaultSpecificAdvice.materialize")(function* (
+const materializeSpecificAdvice = (
   imperativeInput: ImperativeStateManagerInput,
   pipelineInput: PipelineHostileInput,
   namedElements: ReadonlyArray<NamedDetection>,
   conceptSignals: ReadonlyArray<Signal["detections"][number]>
-): Effect.fn.Return<ReadonlyArray<Advice>> {
-  const imperativeAdvice = yield* imperativeStateManager(imperativeInput)
-  const sideEffectAdvice = yield* sideEffectLaundering(namedElements)
-  const pipelineAdvice = yield* pipelineHostile(pipelineInput)
-  const conceptAdvice = yield* conceptProliferation(conceptSignals)
+): ReadonlyArray<Advice> => {
+  const imperativeAdvice = imperativeStateManager(imperativeInput)
+  const sideEffectAdvice = sideEffectLaundering(namedElements)
+  const pipelineAdvice = pipelineHostile(pipelineInput)
+  const conceptAdvice = conceptProliferation(conceptSignals)
   const adviceGroups = Array.make(imperativeAdvice, sideEffectAdvice, pipelineAdvice, conceptAdvice)
 
   return Array.flatten(adviceGroups)
-})
+}
 
-export const defaultSpecificAdvice = Effect.fn("DefaultSpecificAdvice.derive")(function* (
-  signals: ReadonlyArray<Signal>
-): Effect.fn.Return<ReadonlyArray<Advice>> {
+export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> => {
   const elementsOf = signalOf(signals)
   const namedElements = defaultNamedElements(signals)
   const noMutation = elementsOf("no-mutation")
@@ -63,10 +61,5 @@ export const defaultSpecificAdvice = Effect.fn("DefaultSpecificAdvice.derive")(f
     preferCurriedDataLastFunctions: preferCurried
   })
 
-  return yield* materializeSpecificAdvice(
-    imperativeInput,
-    pipelineInput,
-    namedElements,
-    conceptSignals
-  )
-})
+  return materializeSpecificAdvice(imperativeInput, pipelineInput, namedElements, conceptSignals)
+}

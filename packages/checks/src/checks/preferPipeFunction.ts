@@ -13,29 +13,32 @@ const pipeMethodCallMatches = (context: CheckContext) => {
   const checker = context.checker
   const match = makeDetection(context)
 
-  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> =>
-    pipe(
+  const matches = (callExpression: ts.CallExpression): ReadonlyArray<Detection> => {
+    const isEffectPipeAccess = (access: ts.PropertyAccessExpression) =>
+      pipe(
+        checker.getSymbolAtLocation(access.name),
+        Option.fromNullishOr,
+        Option.exists(symbolDeclaredInEffectPackage)
+      )
+
+    const pipeMethodDetection = (access: ts.PropertyAccessExpression) =>
+      match({
+        node: access.name,
+        message: "Avoid calling .pipe() as a method.",
+        hint:
+          'Import pipe from "effect" and call it as a standalone function: ' +
+          "pipe(value, fn1, fn2) instead of value.pipe(fn1, fn2)."
+      })
+
+    return pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(callExpression.expression),
       Option.filter(isPipeName),
       // Rewrite only Effect Pipeable.pipe because Node streams and RxJS keep different pipe semantics.
-      Option.filter((access) =>
-        pipe(
-          checker.getSymbolAtLocation(access.name),
-          Option.fromNullishOr,
-          Option.exists(symbolDeclaredInEffectPackage)
-        )
-      ),
-      Option.map((access) =>
-        match({
-          node: access.name,
-          message: "Avoid calling .pipe() as a method.",
-          hint:
-            'Import pipe from "effect" and call it as a standalone function: ' +
-            "pipe(value, fn1, fn2) instead of value.pipe(fn1, fn2)."
-        })
-      ),
+      Option.filter(isEffectPipeAccess),
+      Option.map(pipeMethodDetection),
       Option.toArray
     )
+  }
 
   return matches
 }

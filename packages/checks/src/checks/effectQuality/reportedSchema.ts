@@ -15,7 +15,7 @@ import {
   schemaOptionalKeyFindings
 } from "./reportedSchemaRecordOptional.js"
 import { schemaErrorClassFindings } from "./reportedSchemaErrorClass.js"
-import { serviceMethodEffectFnFindings } from "./reportedSchemaServiceFn.js"
+import { serviceMethodEffectFnFindings } from "./reportedSchemaServiceMethod.js"
 import { effectFnNameFindings } from "./reportedSchemaFnName.js"
 
 const collectors: ReadonlyArray<

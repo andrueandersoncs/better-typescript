@@ -1,6 +1,6 @@
 import { Array, Function, HashMap, Option, pipe, Result } from "effect"
 import * as ts from "typescript"
-import { functionInitializer } from "./support/tsNode.js"
+import { functionDeclarationName, functionInitializer } from "./support/tsNode.js"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import type { CheckContext, Subscription } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -16,9 +16,6 @@ const functionNameFromVariableDeclaration = (declaration: ts.VariableDeclaration
 
     return yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
   })
-
-const functionDeclarationName = (declaration: ts.FunctionDeclaration) =>
-  Option.fromNullishOr(declaration.name)
 
 const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => {
   const variableDeclarationFunctions = ts.isVariableStatement(statement)

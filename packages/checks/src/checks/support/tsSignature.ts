@@ -2,6 +2,7 @@ import { Array, Function, HashSet, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import {
+  functionDeclarationName,
   isCallLikeExpression,
   outermostTransparentWrapper,
   type CallLikeExpression
@@ -220,9 +221,6 @@ const escapeCarrier = (node: ts.Node): Option.Option<EscapeCarrier> => {
     Option.orElse(() => escapeCarrier(parent))
   )
 }
-
-const functionDeclarationName = (declaration: ts.FunctionDeclaration): Option.Option<ts.Node> =>
-  Option.fromNullishOr(declaration.name)
 
 // A written Map or Set type escapes because its carrier crosses an external boundary.
 export const typeReferenceEscapesExternally =

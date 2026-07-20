@@ -37,16 +37,19 @@ const functionKeywordMatches = (context: CheckContext) => {
           return Array.filter(decls, ts.isFunctionDeclaration)
         })
 
-        return !Option.exists(declarations, (decls) =>
-          Array.some(decls, (candidate) => {
-            const isImplementation = candidate === declaration
-            const body = Option.fromNullishOr(candidate.body)
-            const hasNoBody = Option.isNone(body)
-            const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
+        const isOverloadSibling = (candidate: ts.FunctionDeclaration) => {
+          const isImplementation = candidate === declaration
+          const body = Option.fromNullishOr(candidate.body)
+          const hasNoBody = Option.isNone(body)
+          const overloadSiblingConditions = Array.make(!isImplementation, hasNoBody)
 
-            return Array.every(overloadSiblingConditions, Boolean)
-          })
-        )
+          return Array.every(overloadSiblingConditions, Boolean)
+        }
+
+        const hasOverloadSibling = (decls: ReadonlyArray<ts.FunctionDeclaration>) =>
+          Array.some(decls, isOverloadSibling)
+
+        return !Option.exists(declarations, hasOverloadSibling)
       })
 
     const shouldFlag = isNotGenerator && isDisallowedKind

@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -14,11 +14,16 @@ const implicitReturnMatches = (context: CheckContext) => {
     const hasOneStatement = arrowFunction.body.statements.length === 1
     const firstStatement = arrowFunction.body.statements[0]
 
+    const returnExpression = Function.flow(
+      Struct.get<ts.ReturnStatement, "expression">("expression"),
+      Option.fromNullishOr
+    )
+
     const hasSingleValueReturn =
       hasOneStatement &&
       pipe(
         Option.liftPredicate(ts.isReturnStatement)(firstStatement),
-        Option.flatMap((statement) => Option.fromNullishOr(statement.expression)),
+        Option.flatMap(returnExpression),
         Option.isSome
       )
 
