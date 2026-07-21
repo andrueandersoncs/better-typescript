@@ -1,6 +1,6 @@
 import { test } from "node:test"
-import { noInstanceof } from "@better-typescript/checks/noInstanceof"
-import { assertCheckFixture } from "./ruleTestAssertions.js"
+import { noInstanceof } from "@better-typescript/guidance/policies/noInstanceof"
+import { assertPolicyFixture } from "./ruleTestAssertions.js"
 
 test("no-instanceof reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixture(noInstanceof))
+  assertPolicyFixture(noInstanceof))

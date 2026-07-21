@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { once } from "node:events"
 import * as path from "node:path"
 import { Effect } from "effect"
-import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
+import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 
 interface SelfHostBenchmarkTarget {
@@ -31,7 +31,7 @@ export const selfHostBenchmarkTarget = async (
   rootPath: string
 ): Promise<SelfHostBenchmarkTarget> => {
   const config = await Effect.runPromise(loadWiringConfig(rootPath, defaultConfig))
-  const checkNames = config.flatMap((entry) => entry.wiring.checks.map((check) => check.name))
+  const checkNames = config.flatMap((entry) => entry.wiring.policies.map((check) => check.name))
 
   return {
     rootPath,

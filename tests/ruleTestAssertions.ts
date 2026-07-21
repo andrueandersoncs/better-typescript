@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url"
 import { Array, Effect } from "effect"
 import type * as ts from "typescript"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
-import { compilerOptionsForChecks } from "@better-typescript/core/engine/check"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
+import { compilerOptionsForPolicies } from "@better-typescript/core/engine/policy"
 
 interface SourceLocation {
   readonly fileName: string
@@ -152,18 +152,18 @@ const markersInFixture = (fixturePath: string): ReadonlyArray<LineMarker> => {
   })
 }
 
-const runNamedCheckFixture = async (
-  named: NamedCheck,
+const runPolicyFixture = async (
+  named: Policy,
   compilerOptionOverrides: ts.CompilerOptions
 ): Promise<ReadonlyArray<Detection>> => {
   const fixturePath = path.join(fixturesRoot, named.name)
-  const checkCompilerOptions = compilerOptionsForChecks(Array.of(named.check))
+  const checkCompilerOptions = compilerOptionsForPolicies(Array.of(named))
   const compilerOptions = { ...checkCompilerOptions, ...compilerOptionOverrides }
   const workspace = await Effect.runPromise(loadProject(fixturePath, compilerOptions))
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
     )
   )
 
@@ -178,13 +178,13 @@ const columnKey = (fileName: string, line: number, column: number): string =>
 const sortedKeys = (keys: ReadonlyArray<string>): ReadonlyArray<string> =>
   [...keys].sort((left, right) => left.localeCompare(right))
 
-export const assertCheckFixture = async (
-  named: NamedCheck,
+export const assertPolicyFixture = async (
+  named: Policy,
   compilerOptionOverrides: ts.CompilerOptions = {}
 ): Promise<void> => {
   const fixturePath = path.join(fixturesRoot, named.name)
   const markers = markersInFixture(fixturePath)
-  const elements = await runNamedCheckFixture(named, compilerOptionOverrides)
+  const elements = await runPolicyFixture(named, compilerOptionOverrides)
 
   for (const element of elements) {
     assert.ok(element.message.length > 0, "expected every detection to carry a nonempty message")
@@ -289,12 +289,12 @@ export const assertCheckFixture = async (
   }
 }
 
-export const assertCheckFixtureExpectations = async (
-  named: NamedCheck,
+export const assertPolicyFixtureExpectations = async (
+  named: Policy,
   disallowed: ReadonlyArray<ExpectedDetection>,
   allowed: ReadonlyArray<FixtureItem> = []
 ): Promise<void> => {
-  const elements = await runNamedCheckFixture(named, {})
+  const elements = await runPolicyFixture(named, {})
 
   assertDisallowedFixtureItems(elements, disallowed)
 

@@ -1,20 +1,20 @@
 import { Option, pipe } from "effect"
 import { defineConfig, makeWiring, makeMergedWiring } from "@better-typescript/core/engine/wiring"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import {
-  architectureExploreChecks,
+  architectureExplorePolicies,
   architectureExploreWiring
-} from "@better-typescript/checks/preset/architectureExploreWiring"
+} from "@better-typescript/guidance/preset/architectureExploreWiring"
 import {
   ArchitectureRolePath,
   conventionalArchitectureRoleOf,
   roleByPrefixes
-} from "@better-typescript/checks/architectureRole"
+} from "@better-typescript/guidance/architectureRole"
 import {
   defaultFunctionalCoreEffectPolicy,
   FunctionalCoreEffectPolicy
-} from "@better-typescript/checks/functionalCoreEffect/policy"
-import { makeFunctionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
+} from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
+import { makeFunctionalCoreEffectWiring } from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
 
 // This example is documentation for the opt-in architecture fleets. Copy it to
 // a consumer project's better-typescript.config.ts to load it. It stays under
@@ -43,7 +43,7 @@ const boundaryWiring = makeMergedWiring([
 
 // The union evidence list pairs with the shared derive because advisers tolerate absent signals.
 const exploreWiring = makeWiring({
-  checks: architectureExploreChecks,
+  policies: architectureExplorePolicies,
   derive: architectureExploreWiring.derive
 })
 

@@ -1,6 +1,6 @@
 import { Data, Schema } from "effect"
 import type * as ts from "typescript"
-import { TsProgram } from "../../engine/tsSchema.js"
+import { TsProgram } from "@better-typescript/matchers/tsSchema"
 
 // ProjectConfig is leaf config + commandLine because watch starts first.
 export class ProjectConfig extends Data.Class<{

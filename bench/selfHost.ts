@@ -26,7 +26,7 @@ console.table(
 console.log(
   JSON.stringify({
     benchmark: "self-host",
-    checks: target.checkNames.length,
+    policies: target.checkNames.length,
     runsMs: report.durationsMs,
     minimumMs: report.minimumMs,
     medianMs: report.medianMs,

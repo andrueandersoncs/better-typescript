@@ -11,17 +11,18 @@ import {
   ArchitectureRolePath,
   conventionalArchitectureRoleOf,
   roleByPrefixes
-} from "@better-typescript/checks/architectureRole"
-import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/checks/functionalCoreEffect/policy"
+} from "@better-typescript/guidance/architectureRole"
+import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
 import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring
-} from "@better-typescript/checks/functionalCoreEffect/wiring"
+} from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData
-} from "@better-typescript/checks/functionalCoreEffect/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+} from "@better-typescript/matchers/builtins/functionalCoreEffect/data"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
+import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "functional-core-effect")
@@ -30,10 +31,10 @@ const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return Promise.all(
-    functionalCoreEffectWiring.checks.map(async (named) => {
+    functionalCoreEffectWiring.policies.filter(isProgramPolicy).map(async (named) => {
       const detections = await Promise.all(
         workspace.projects.map((project) =>
-          Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
+          Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
         )
       )
 
@@ -280,15 +281,15 @@ test("shape evidence and advice require the documented thresholds", async () => 
   ])
 })
 
-test("wiring exposes one reported policy check and silent shape evidence", async () => {
-  const checks = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).checks
-  const boundaryCheck = checks[0]
-  assert.ok(boundaryCheck)
+test("wiring exposes one reported policy and silent shape evidence", async () => {
+  const policies = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).policies
+  const boundaryPolicy = policies[0]
+  assert.ok(boundaryPolicy)
   const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-  const boundaryExamples = await Effect.runPromise(resolve(boundaryCheck.examples))
+  const boundaryExamples = await Effect.runPromise(resolve(boundaryPolicy.examples))
 
   assert.deepEqual(
-    checks.map((check) => [check.name, check.reported]),
+    policies.map((policy) => [policy.name, policy.reported]),
     [
       ["functional-core-effect-boundaries", true],
       ["functional-core-effect-shape-evidence", false]

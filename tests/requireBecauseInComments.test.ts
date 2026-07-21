@@ -2,9 +2,9 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Array } from "effect"
-import { requireBecauseInComments } from "@better-typescript/checks/requireBecauseInComments"
+import { requireBecauseInComments } from "@better-typescript/guidance/policies/requireBecauseInComments"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runCheckOnProject, loadProject } from "@better-typescript/core/project/loadProject"
+import { runPolicyOnProject, loadProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -168,7 +168,7 @@ const runRequireBecauseInCommentsFixture = async (): Promise<ReadonlyArray<Detec
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(requireBecauseInComments.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(requireBecauseInComments))(project))
     )
   )
 

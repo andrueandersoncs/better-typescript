@@ -1,0 +1,41 @@
+{
+  "name": "@better-typescript/matchers",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./matcher": "./dist/matcher/matcher.js",
+    "./matcher/data": "./dist/matcher/data.js",
+    "./sources": "./dist/sources/sources.js",
+    "./sources/data": "./dist/sources/data.js",
+    "./sources/comments": "./dist/sources/comments.js",
+    "./sources/comments/data": "./dist/sources/commentsData.js",
+    "./equivalence": "./dist/equivalence.js",
+    "./tsSchema": "./dist/tsSchema.js",
+    "./*": "./dist/*.js",
+    "./package.json": "./package.json",
+    "./support/*": "./dist/support/*.js",
+    "./support/*.js": "./dist/support/*.js",
+    "./builtins/*": "./dist/builtins/*.js",
+    "./builtins/*.js": "./dist/builtins/*.js",
+    "./builtins/*/*.js": "./dist/builtins/*/*.js",
+    "./builtins/*/data": "./dist/builtins/*/data.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "effect": "^4.0.0-beta.98"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0 || ^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "typescript": "^6.0.3"
+  }
+}

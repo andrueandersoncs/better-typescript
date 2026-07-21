@@ -21,7 +21,7 @@ import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } fr
 export const deriveSignals = <A, B>(derive: (elements: ReadonlyArray<A>) => ReadonlyArray<B>) =>
   derive
 
-// The name pairs with its detection here because derive joins detections by check name.
+// The name pairs with its detection here because derive joins detections by policy name.
 export const makeNamedDetection = (name: string) => (detectionValue: Detection) =>
   NamedDetection.make({ name, detection: detectionValue })
 
@@ -70,7 +70,7 @@ const addDetectionCount = (counts: HashMap.HashMap<string, number>, element: Nam
 const addNameCount = (counts: HashMap.HashMap<string, number>, name: string) =>
   addCount(name)(counts)
 
-const addFileCheckCounts = (counts: HashMap.HashMap<string, number>, file: FileDetections) => {
+const addFilePolicyCounts = (counts: HashMap.HashMap<string, number>, file: FileDetections) => {
   const distinctNames = pipe(
     file.elements,
     Array.map(namedDetectionName),
@@ -84,14 +84,14 @@ const addFileCheckCounts = (counts: HashMap.HashMap<string, number>, file: FileD
 export const makeCountSummary = (elements: ReadonlyArray<NamedDetection>) => {
   const files = byFile(elements)
   const emptyCounts = HashMap.empty<string, number>()
-  const countsByCheck = Array.reduce(elements, emptyCounts, addDetectionCount)
-  const filesByCheck = Array.reduce(files, emptyCounts, addFileCheckCounts)
+  const countsByPolicy = Array.reduce(elements, emptyCounts, addDetectionCount)
+  const filesByPolicy = Array.reduce(files, emptyCounts, addFilePolicyCounts)
 
   return CountSummary.make({
     total: elements.length,
     fileCount: files.length,
-    countsByCheck,
-    filesByCheck
+    countsByPolicy,
+    filesByPolicy
   })
 }
 
@@ -128,7 +128,7 @@ export const evidenceFromCounts = (
 
 const lineKey = (named: NamedDetection) => `${named.detection.location.line}`
 
-const hasDistinctChecks = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
+const hasDistinctPolicies = (entry: readonly [string, ReadonlyArray<NamedDetection>]) => {
   const elements = Tuple.get(entry, 1)
   const names = Array.map(elements, namedDetectionName)
   const distinct = HashSet.fromIterable(names)
@@ -153,23 +153,23 @@ export const collidingLines = (
 ): ReadonlyArray<EvidenceItem> => {
   const grouped = Array.groupBy(elements, lineKey)
   const entries = Record.toEntries(grouped)
-  const collisions = Array.filter(entries, hasDistinctChecks)
+  const collisions = Array.filter(entries, hasDistinctPolicies)
   const evidence = Array.map(collisions, makeCollisionEvidence)
 
   return Array.sort(evidence, byMeasure)
 }
 
-export const dominantCheckEvidence =
+export const dominantPolicyEvidence =
   (numerator: number) =>
   (denominator: number) =>
   (minSpread: number) =>
   (summary: CountSummary): ReadonlyArray<EvidenceItem> => {
-    const entries = HashMap.toEntries(summary.countsByCheck)
+    const entries = HashMap.toEntries(summary.countsByPolicy)
 
     const dominant = Array.filter(entries, (entry) => {
       const measure = Tuple.get(entry, 0)
       const count = Tuple.get(entry, 1)
-      const spread = countAt(summary.filesByCheck)(measure)
+      const spread = countAt(summary.filesByPolicy)(measure)
       const holdsShare = count * denominator >= summary.total * numerator
 
       return holdsShare && spread >= minSpread

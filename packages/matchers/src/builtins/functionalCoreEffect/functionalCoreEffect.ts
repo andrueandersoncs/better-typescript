@@ -1,0 +1,1587 @@
+import { Array, Function, Match, Option, Record as EffectRecord, Struct, pipe, flow } from "effect"
+import { strictEqual } from "@better-typescript/matchers/equivalence"
+import * as ts from "typescript"
+import {
+  nodeMatch,
+  type Match as FactMatch,
+  type MatchContext,
+  type Subscription
+} from "@better-typescript/matchers/matcher/data"
+import { nodeSubscriptions } from "@better-typescript/matchers/matcher"
+import { foldAst } from "@better-typescript/matchers/sources"
+import { FunctionalCoreBoundaryData, type FunctionalCoreBoundaryKind } from "./data.js"
+import type { ArchitectureRole } from "../../support/architectureRole.js"
+import {
+  type FunctionalCoreEffectIndex,
+  roleForSourceFile,
+  withFunctionalCoreEffectIndex
+} from "./index.js"
+import type { FunctionalCoreEffectPolicy } from "./policy.js"
+import { ambientCapabilityPropertySubject, capabilitySubjectAt } from "./capabilitySubjects.js"
+import {
+  hasScopedLifecycleAncestor,
+  hasSuspensionBoundary,
+  resourceSubjectAt,
+  hasSourceFileScope
+} from "./lifecycleBoundaries.js"
+import {
+  importHasRuntimeValue,
+  moduleMatchesPolicyPrefix,
+  resolvedModuleSourceFile
+} from "./moduleResolution.js"
+import { isTopLevelExportedDeclaration } from "./functionScope.js"
+import { callIsPipeRuntimeHandoff } from "./effectRuntimeApis.js"
+import {
+  callIsReferenceProvideService,
+  contextServiceLayerProperty,
+  declarationIsContextService,
+  effectServiceConfigFromExpression,
+  effectServiceConfigObject
+} from "./effectServiceApis.js"
+import {
+  effectApiMember,
+  importedEffectApiAt,
+  isManagedRuntimeMethodAccess,
+  specifierIsEffect
+} from "./effectApiMembers.js"
+import { importedMemberIsMovedPlatformCapability } from "./movedPlatformCapabilities.js"
+import { isAdapterOrRootRole } from "./adapterRootRoles.js"
+import {
+  declarationsOfSymbol,
+  importedMemberAt,
+  importedMemberSubject,
+  importedTypeMemberAt,
+  localTypeReferenceTargets,
+  moduleSpecifierText,
+  typeReferenceIsGlobalPromise,
+  type ImportedMember
+} from "./importedMembers.js"
+import { classDeclarationName, variableDeclarationInitializer } from "../../support/tsNode.js"
+
+const emptyPath: ReadonlyArray<string> = Array.empty()
+const emptyIdentifiers: ReadonlyArray<ts.Identifier> = Array.empty()
+const emptyDetections: ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> = Array.empty()
+const emptySymbols: ReadonlyArray<ts.Symbol> = Array.empty()
+const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
+
+const noneIdentifier: Option.Option<ts.Identifier> = Option.none()
+const noneString: Option.Option<string> = Option.none()
+const constantNoneIdentifier = Function.constant(noneIdentifier)
+const constantNoneString = Function.constant(noneString)
+
+const boundaryDetection = (
+  _context: MatchContext,
+  node: ts.Node,
+  role: ArchitectureRole,
+  kind: FunctionalCoreBoundaryKind,
+  subject: string,
+  targetRole: Option.Option<ArchitectureRole> = Option.none()
+) => {
+  const resolvedTargetRole = Option.getOrUndefined(targetRole)
+
+  const data = FunctionalCoreBoundaryData.make({
+    kind,
+    role,
+    subject,
+    targetRole: resolvedTargetRole
+  })
+
+  return nodeMatch(node, data)
+}
+
+const allowedTargetRoles: Readonly<
+  Record<ArchitectureRole, Readonly<Record<ArchitectureRole, boolean>>>
+> = {
+  domain: {
+    domain: true,
+    port: false,
+    application: false,
+    adapter: false,
+    root: false,
+    test: false
+  },
+  port: {
+    domain: true,
+    port: true,
+    application: false,
+    adapter: false,
+    root: false,
+    test: false
+  },
+  application: {
+    domain: true,
+    port: true,
+    application: true,
+    adapter: false,
+    root: false,
+    test: false
+  },
+  adapter: {
+    domain: true,
+    port: true,
+    application: true,
+    adapter: true,
+    root: false,
+    test: false
+  },
+  root: {
+    domain: true,
+    port: true,
+    application: true,
+    adapter: true,
+    root: true,
+    test: true
+  },
+  test: {
+    domain: true,
+    port: true,
+    application: true,
+    adapter: true,
+    root: true,
+    test: true
+  }
+}
+
+const capabilityForbiddenRoles: Readonly<Record<ArchitectureRole, boolean>> = {
+  domain: true,
+  port: true,
+  application: true,
+  adapter: false,
+  root: false,
+  test: false
+}
+
+const canImportRole = (importer: ArchitectureRole, imported: ArchitectureRole) =>
+  allowedTargetRoles[importer][imported]
+
+const forbiddenDomainNamespaces: Readonly<Record<string, true>> = {
+  Effect: true,
+  Layer: true,
+  Context: true,
+  Stream: true,
+  Sink: true,
+  Channel: true,
+  Ref: true,
+  SynchronizedRef: true,
+  Queue: true,
+  PubSub: true,
+  SubscriptionRef: true,
+  References: true,
+  Runtime: true,
+  ManagedRuntime: true,
+  Scope: true,
+  Latch: true,
+  Semaphore: true
+}
+
+const namespaceIsForbidden = (namespace: string) =>
+  strictEqual(true)(forbiddenDomainNamespaces[namespace])
+
+const isForbiddenDomainMember = (moduleSpecifier: string, path: ReadonlyArray<string>) => {
+  if (moduleSpecifier.startsWith("effect/")) {
+    const effectPath = moduleSpecifier.slice("effect/".length)
+    const segments = effectPath.split("/")
+    const namespace = Array.get(segments, 0)
+
+    return pipe(namespace, Option.exists(namespaceIsForbidden))
+  }
+
+  const isEffectModule = strictEqual("effect")(moduleSpecifier)
+  const pathHead = Array.get(path, 0)
+
+  const namespaceForbidden = pipe(
+    pathHead,
+    Option.match({
+      onNone: Function.constTrue,
+      onSome: namespaceIsForbidden
+    })
+  )
+
+  return isEffectModule && namespaceForbidden
+}
+
+const rootIdentifierFromAccess = (access: ts.PropertyAccessExpression) =>
+  propertyAccessRootIdentifier(access.expression)
+
+const propertyAccessRootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> =>
+  pipe(
+    Match.value(expression),
+    Match.when(ts.isIdentifier, Option.some<ts.Identifier>),
+    Match.when(ts.isPropertyAccessExpression, rootIdentifierFromAccess),
+    Match.orElse(constantNoneIdentifier)
+  )
+
+const qualifiedNameRootIdentifier = (name: ts.EntityName): ts.Identifier =>
+  ts.isIdentifier(name) ? name : qualifiedNameRootIdentifier(name.left)
+
+const memberIsForbiddenDomain = (member: ImportedMember) =>
+  isForbiddenDomainMember(member.moduleSpecifier, member.path)
+
+const propertyAccessForbiddenSubject = (
+  context: MatchContext,
+  current: ts.PropertyAccessExpression,
+  referencesBinding: (candidate: ts.Identifier) => boolean
+) =>
+  pipe(
+    propertyAccessRootIdentifier(current.expression),
+    Option.filter(referencesBinding),
+    Option.flatMap(() => importedMemberAt(context.checker, current)),
+    Option.filter(memberIsForbiddenDomain),
+    Option.map(Struct.get("moduleSpecifier"))
+  )
+
+const qualifiedNameForbiddenSubject = (
+  context: MatchContext,
+  current: ts.QualifiedName,
+  referencesBinding: (candidate: ts.Identifier) => boolean
+): Option.Option<string> => {
+  const root = qualifiedNameRootIdentifier(current)
+
+  if (!referencesBinding(root)) {
+    return Option.none()
+  }
+
+  return pipe(
+    importedTypeMemberAt(context.checker, current),
+    Option.filter(memberIsForbiddenDomain),
+    Option.map(Struct.get("moduleSpecifier"))
+  )
+}
+
+const bareBindingForbiddenSubject = (binding: Option.Option<ImportedMember>) =>
+  pipe(binding, Option.filter(memberIsForbiddenDomain), Option.map(Struct.get("moduleSpecifier")))
+
+const identifierIsPropertyAccessRoot = (parent: ts.Node, current: ts.Identifier) => {
+  const expressionIsCurrent = flow(
+    Struct.get<ts.PropertyAccessExpression, "expression">("expression"),
+    strictEqual(current)
+  )
+
+  return pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
+    Option.exists(expressionIsCurrent)
+  )
+}
+
+const identifierIsQualifiedNameRoot = (parent: ts.Node, current: ts.Identifier) => {
+  const leftIsCurrent = flow(Struct.get<ts.QualifiedName, "left">("left"), strictEqual(current))
+
+  return pipe(Option.liftPredicate(ts.isQualifiedName)(parent), Option.exists(leftIsCurrent))
+}
+
+const namespaceBindingSubject = (context: MatchContext, identifier: ts.Identifier) => {
+  const symbolAtIdentifier = context.checker.getSymbolAtLocation(identifier)
+  const bindingSymbolOption = Option.fromNullishOr(symbolAtIdentifier)
+  const binding = importedMemberAt(context.checker, identifier)
+
+  return pipe(
+    Option.all({ bindingSymbol: bindingSymbolOption, binding }),
+    Option.flatMap(({ bindingSymbol }) => {
+      const referencesBinding = flow(
+        (candidate: ts.Identifier) => context.checker.getSymbolAtLocation(candidate),
+        strictEqual(bindingSymbol)
+      )
+
+      const subjectFromIdentifier = (current: ts.Identifier): Option.Option<string> => {
+        const isSelf = strictEqual(identifier)(current)
+        const bound = referencesBinding(current)
+        const unbound = strictEqual(false)(bound)
+        const skipChecks = Array.make(isSelf, unbound)
+
+        if (Array.some(skipChecks, Boolean)) {
+          return Option.none()
+        }
+
+        const parent = current.parent
+        const isPropertyRoot = identifierIsPropertyAccessRoot(parent, current)
+        const isQualifiedRoot = identifierIsQualifiedNameRoot(parent, current)
+        const memberAccessRoots = Array.make(isPropertyRoot, isQualifiedRoot)
+        const isMemberAccessRoot = Array.some(memberAccessRoots, Boolean)
+
+        return isMemberAccessRoot ? Option.none() : bareBindingForbiddenSubject(binding)
+      }
+
+      const propertyAccessForbiddenSubjectOf = (access: ts.PropertyAccessExpression) =>
+        propertyAccessForbiddenSubject(context, access, referencesBinding)
+
+      const qualifiedNameForbiddenSubjectOf = (qualified: ts.QualifiedName) =>
+        qualifiedNameForbiddenSubject(context, qualified, referencesBinding)
+
+      const reduceForbiddenSubject = (subject: Option.Option<string>, current: ts.Node) => {
+        if (Option.isSome(subject)) {
+          return subject
+        }
+
+        return pipe(
+          Match.value(current),
+          Match.when(ts.isPropertyAccessExpression, propertyAccessForbiddenSubjectOf),
+          Match.when(ts.isQualifiedName, qualifiedNameForbiddenSubjectOf),
+          Match.when(ts.isIdentifier, subjectFromIdentifier),
+          Match.orElse(constantNoneString)
+        )
+      }
+
+      const fold = foldAst(reduceForbiddenSubject)
+
+      return fold(context.sourceFile)(noneString)
+    })
+  )
+}
+
+const forbiddenDomainMemberAt = (
+  context: MatchContext,
+  identifier: ts.Identifier,
+  inspectNamespaceUsage: boolean
+) =>
+  pipe(
+    importedMemberAt(context.checker, identifier),
+    Option.flatMap((member) => {
+      const isNamespaceBinding = strictEqual(0)(member.path.length)
+      const inspectFlags = Array.make(inspectNamespaceUsage, isNamespaceBinding)
+      const shouldInspectNamespace = Array.every(inspectFlags, Boolean)
+
+      if (shouldInspectNamespace) {
+        return namespaceBindingSubject(context, identifier)
+      }
+
+      return pipe(
+        Option.some(member),
+        Option.filter(memberIsForbiddenDomain),
+        Option.map(Struct.get("moduleSpecifier"))
+      )
+    })
+  )
+
+const importBindingIdentifiers = (
+  declaration: ts.ImportDeclaration
+): ReadonlyArray<ts.Identifier> => {
+  const importClauseOption = Option.fromNullishOr(declaration.importClause)
+
+  if (Option.isNone(importClauseOption)) {
+    return emptyIdentifiers
+  }
+
+  const importClause = importClauseOption.value
+  const defaultBinding = pipe(Option.fromNullishOr(importClause.name), Option.toArray)
+  const namedBindingsOption = Option.fromNullishOr(importClause.namedBindings)
+
+  if (Option.isNone(namedBindingsOption)) {
+    return defaultBinding
+  }
+
+  const namedBindings = namedBindingsOption.value
+
+  const named = ts.isNamespaceImport(namedBindings)
+    ? Array.of(namedBindings.name)
+    : Array.map(namedBindings.elements, Struct.get("name"))
+
+  return Array.appendAll(defaultBinding, named)
+}
+
+const firstForbiddenDomainMember = (
+  context: MatchContext,
+  identifiers: ReadonlyArray<ts.Identifier>,
+  inspectNamespaceUsage: boolean
+) => {
+  const forbiddenDomainMemberAtOf = (identifier: ts.Identifier) =>
+    forbiddenDomainMemberAt(context, identifier, inspectNamespaceUsage)
+
+  return pipe(
+    identifiers,
+    Array.map(forbiddenDomainMemberAtOf),
+    Array.findFirst(Option.isSome),
+    Option.flatten
+  )
+}
+
+const forbiddenDomainImport = (context: MatchContext, declaration: ts.ImportDeclaration) => {
+  const identifiers = importBindingIdentifiers(declaration)
+  return firstForbiddenDomainMember(context, identifiers, true)
+}
+
+const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
+  const roleForResolvedSourceFile = (sourceFile: ts.SourceFile) =>
+    roleForSourceFile(index, sourceFile)
+
+  const subjectMatchesPolicyPrefix = (subject: string) =>
+    moduleMatchesPolicyPrefix(index.policy, subject)
+
+  const elementsForContext = (context: MatchContext) => {
+    const elementsForNode = (
+      node: ts.ImportDeclaration
+    ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+      const role = roleForSourceFile(index, context.sourceFile)
+
+      if (Option.isNone(role)) {
+        return emptyDetections
+      }
+
+      const resolvedRole = role.value
+
+      const targetRole = pipe(
+        resolvedModuleSourceFile(context, node),
+        Option.flatMap(roleForResolvedSourceFile)
+      )
+
+      const cannotImportRole = (target: ArchitectureRole) => !canImportRole(resolvedRole, target)
+
+      const directionDetection = pipe(
+        targetRole,
+        Option.filter(cannotImportRole),
+        Option.map((target) => {
+          const subject = `${resolvedRole} -> ${target}`
+          const targetOption = Option.some(target)
+
+          return boundaryDetection(
+            context,
+            node.moduleSpecifier,
+            resolvedRole,
+            "dependency-direction",
+            subject,
+            targetOption
+          )
+        }),
+        Option.toArray
+      )
+
+      const domainEffectProgramDetection = (subject: string) =>
+        boundaryDetection(
+          context,
+          node.moduleSpecifier,
+          resolvedRole,
+          "domain-effect-program",
+          subject
+        )
+
+      const domainDetection = strictEqual("domain")(resolvedRole)
+        ? pipe(
+            forbiddenDomainImport(context, node),
+            Option.map(domainEffectProgramDetection),
+            Option.toArray
+          )
+        : emptyDetections
+
+      const importProvidesRuntime = importHasRuntimeValue(node)
+      const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+
+      const moduleCapability = pipe(
+        moduleSpecifierText(node),
+        Option.filter(Function.constant(importProvidesRuntime)),
+        Option.filter(subjectMatchesPolicyPrefix)
+      )
+
+      const pipeOf = (identifier: ts.Identifier) =>
+        pipe(
+          importedMemberAt(context.checker, identifier),
+          Option.filter(importedMemberIsMovedPlatformCapability),
+          Option.map(importedMemberSubject)
+        )
+
+      const barrelCapability = importProvidesRuntime
+        ? pipe(
+            importBindingIdentifiers(node),
+            Array.map(pipeOf),
+            Array.findFirst(Option.isSome),
+            Option.flatten
+          )
+        : Option.none()
+
+      const directCapabilityDetection = (subject: string) =>
+        boundaryDetection(context, node.moduleSpecifier, resolvedRole, "direct-capability", subject)
+
+      const capabilityDetection = pipe(
+        moduleCapability,
+        Option.orElse(Function.constant(barrelCapability)),
+        Option.filter(Function.constant(roleForbidsCapability)),
+        Option.map(directCapabilityDetection),
+        Option.toArray
+      )
+
+      const domainAndCapability = Array.appendAll(domainDetection, capabilityDetection)
+      return Array.appendAll(directionDetection, domainAndCapability)
+    }
+
+    return elementsForNode
+  }
+
+  return elementsForContext
+}
+
+const exportBindingIdentifiers = (
+  declaration: ts.ExportDeclaration
+): ReadonlyArray<ts.Identifier> => {
+  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
+
+  if (Option.isNone(exportClauseOption)) {
+    return emptyIdentifiers
+  }
+
+  const exportClause = exportClauseOption.value
+
+  const names = ts.isNamespaceExport(exportClause)
+    ? Array.of(exportClause.name)
+    : Array.map(exportClause.elements, Struct.get("name"))
+
+  return Array.filter(names, ts.isIdentifier)
+}
+
+const moduleSpecifierIsForbiddenDomain = (moduleSpecifier: string) =>
+  isForbiddenDomainMember(moduleSpecifier, emptyPath)
+
+const forbiddenDomainExport = (context: MatchContext, declaration: ts.ExportDeclaration) => {
+  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
+
+  if (Option.isNone(exportClauseOption)) {
+    return pipe(moduleSpecifierText(declaration), Option.filter(moduleSpecifierIsForbiddenDomain))
+  }
+
+  const identifiers = exportBindingIdentifiers(declaration)
+  return firstForbiddenDomainMember(context, identifiers, false)
+}
+
+const exportElementIsValue = flow(
+  Struct.get<ts.ExportSpecifier, "isTypeOnly">("isTypeOnly"),
+  strictEqual(false)
+)
+
+const namedExportsHaveValue = (named: ts.NamedExports) =>
+  Array.some(named.elements, exportElementIsValue)
+
+const exportClauseAllowsRuntime = (exportClause: ts.NamedExportBindings) =>
+  pipe(
+    Match.value(exportClause),
+    Match.when(ts.isNamespaceExport, Function.constTrue),
+    Match.when(ts.isNamedExports, namedExportsHaveValue),
+    Match.exhaustive
+  )
+
+const exportHasRuntimeValue = (declaration: ts.ExportDeclaration) => {
+  const isValueExport = strictEqual(false)(declaration.isTypeOnly)
+  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
+
+  const clauseAllowsRuntime = Option.match(exportClauseOption, {
+    onNone: Function.constTrue,
+    onSome: exportClauseAllowsRuntime
+  })
+
+  const runtimeChecks = Array.make(isValueExport, clauseAllowsRuntime)
+  return Array.every(runtimeChecks, Boolean)
+}
+
+const architectureExportElements = (index: FunctionalCoreEffectIndex) => {
+  const roleForResolvedSourceFile2 = (sourceFile: ts.SourceFile) =>
+    roleForSourceFile(index, sourceFile)
+
+  const subjectMatchesPolicyPrefix2 = (subject: string) =>
+    moduleMatchesPolicyPrefix(index.policy, subject)
+
+  const elementsForContext = (context: MatchContext) => {
+    const elementsForNode = (
+      node: ts.ExportDeclaration
+    ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+      const role = roleForSourceFile(index, context.sourceFile)
+      const moduleSpecifierOption = Option.fromNullishOr(node.moduleSpecifier)
+      const exportInputs = Option.all({ role, moduleSpecifier: moduleSpecifierOption })
+
+      if (Option.isNone(exportInputs)) {
+        return emptyDetections
+      }
+
+      const resolvedRole = exportInputs.value.role
+      const resolvedModuleSpecifier = exportInputs.value.moduleSpecifier
+
+      const targetRole = pipe(
+        resolvedModuleSourceFile(context, node),
+        Option.flatMap(roleForResolvedSourceFile2)
+      )
+
+      const cannotImportRole2 = (target: ArchitectureRole) => !canImportRole(resolvedRole, target)
+
+      const directionDetection = pipe(
+        targetRole,
+        Option.filter(cannotImportRole2),
+        Option.map((target) => {
+          const subject = `${resolvedRole} -> ${target}`
+          const targetOption = Option.some(target)
+
+          return boundaryDetection(
+            context,
+            resolvedModuleSpecifier,
+            resolvedRole,
+            "dependency-direction",
+            subject,
+            targetOption
+          )
+        }),
+        Option.toArray
+      )
+
+      const domainEffectProgramDetection2 = (subject: string) =>
+        boundaryDetection(
+          context,
+          resolvedModuleSpecifier,
+          resolvedRole,
+          "domain-effect-program",
+          subject
+        )
+
+      const domainDetection = strictEqual("domain")(resolvedRole)
+        ? pipe(
+            forbiddenDomainExport(context, node),
+            Option.map(domainEffectProgramDetection2),
+            Option.toArray
+          )
+        : emptyDetections
+
+      const exportProvidesRuntime = exportHasRuntimeValue(node)
+      const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+
+      const moduleCapability = pipe(
+        moduleSpecifierText(node),
+        Option.filter(Function.constant(exportProvidesRuntime)),
+        Option.filter(subjectMatchesPolicyPrefix2)
+      )
+
+      const pipeOf2 = (identifier: ts.Identifier) =>
+        pipe(
+          importedMemberAt(context.checker, identifier),
+          Option.filter(importedMemberIsMovedPlatformCapability),
+          Option.map(importedMemberSubject)
+        )
+
+      const barrelCapability = exportProvidesRuntime
+        ? pipe(
+            exportBindingIdentifiers(node),
+            Array.map(pipeOf2),
+            Array.findFirst(Option.isSome),
+            Option.flatten
+          )
+        : Option.none()
+
+      const directCapabilityDetection2 = (subject: string) =>
+        boundaryDetection(
+          context,
+          resolvedModuleSpecifier,
+          resolvedRole,
+          "direct-capability",
+          subject
+        )
+
+      const capabilityDetection = pipe(
+        moduleCapability,
+        Option.orElse(Function.constant(barrelCapability)),
+        Option.filter(Function.constant(roleForbidsCapability)),
+        Option.map(directCapabilityDetection2),
+        Option.toArray
+      )
+
+      const domainAndCapability = Array.appendAll(domainDetection, capabilityDetection)
+      return Array.appendAll(directionDetection, domainAndCapability)
+    }
+
+    return elementsForNode
+  }
+
+  return elementsForContext
+}
+
+const runtimeNames = Array.make(
+  "runCallback",
+  "runFork",
+  "runPromise",
+  "runPromiseExit",
+  "runSync",
+  "runSyncExit",
+  "runCallbackWith",
+  "runForkWith",
+  "runPromiseWith",
+  "runPromiseExitWith",
+  "runSyncWith",
+  "runSyncExitWith"
+)
+
+const provideEffectNames = Array.make(
+  "provide",
+  "provideService",
+  "provideServiceEffect",
+  "provideContext"
+)
+
+const provideLayerNames = Array.make("provide", "provideMerge")
+
+const serviceLocatorEffectNames = Array.make("context", "contextWith")
+
+const serviceLocatorContextNames = Array.make(
+  "get",
+  "getOption",
+  "getOrElse",
+  "getUnsafe",
+  "getOrUndefined",
+  "getReferenceUnsafe"
+)
+
+const portLayerNames = Array.make("effect", "succeed")
+
+const managedRuntimeMakeNames = Array.of("make")
+
+const contextTypeNames = Array.of("Context")
+const managedRuntimeTypeNames = Array.of("ManagedRuntime")
+
+const platformRuntimePrefixes = Array.make(
+  "@effect/platform-node",
+  "@effect/platform-bun",
+  "@effect/platform-deno",
+  "@effect/platform-browser"
+)
+
+const stateConstructors: Readonly<Record<string, ReadonlyArray<string>>> = {
+  Ref: Array.of("makeUnsafe"),
+  SynchronizedRef: Array.of("makeUnsafe"),
+  Latch: Array.of("makeUnsafe"),
+  Semaphore: Array.of("makeUnsafe")
+}
+
+const stateConstructorEntries = EffectRecord.toEntries(stateConstructors)
+
+const callIsRuntimeExecution = (context: MatchContext, node: ts.CallExpression) => {
+  const directEffect = importedEffectApiAt(context.checker, node.expression, "Effect", runtimeNames)
+
+  const isManagedRuntimeMethod = (expression: ts.PropertyAccessExpression) =>
+    isManagedRuntimeMethodAccess(context.checker, expression, runtimeNames)
+
+  const managedRuntimeMethod = pipe(
+    Option.liftPredicate(ts.isPropertyAccessExpression)(node.expression),
+    Option.exists(isManagedRuntimeMethod)
+  )
+
+  const pipeRuntimeHandoff = callIsPipeRuntimeHandoff(context.checker, node, runtimeNames)
+
+  const runMain = pipe(
+    importedMemberAt(context.checker, node.expression),
+    Option.exists((member) => {
+      const emptyName = Function.constant("")
+      const lastOption = Array.last(member.path)
+      const name = pipe(lastOption, Option.getOrElse(emptyName))
+
+      const platformRuntime = Array.some(platformRuntimePrefixes, (prefix) =>
+        member.moduleSpecifier.startsWith(prefix)
+      )
+
+      const isRunMain = strictEqual("runMain")(name)
+      return platformRuntime && isRunMain
+    })
+  )
+
+  const checks = Array.make(directEffect, managedRuntimeMethod, pipeRuntimeHandoff, runMain)
+
+  return Array.some(checks, Boolean)
+}
+
+const callIsProvisioning = (context: MatchContext, node: ts.CallExpression) => {
+  const effectProvide = importedEffectApiAt(
+    context.checker,
+    node.expression,
+    "Effect",
+    provideEffectNames
+  )
+
+  const referenceOverride = callIsReferenceProvideService(context.checker, node)
+  const needsProvisioning = strictEqual(false)(referenceOverride)
+  const effectProvisioningChecks = Array.make(effectProvide, needsProvisioning)
+  const effectProvisioning = Array.every(effectProvisioningChecks, Boolean)
+
+  const layerProvide = importedEffectApiAt(
+    context.checker,
+    node.expression,
+    "Layer",
+    provideLayerNames
+  )
+
+  const managedRuntimeMake = importedEffectApiAt(
+    context.checker,
+    node.expression,
+    "ManagedRuntime",
+    managedRuntimeMakeNames
+  )
+
+  const checks = Array.make(effectProvisioning, layerProvide, managedRuntimeMake)
+  return Array.some(checks, Boolean)
+}
+
+const callIsServiceLocator = (context: MatchContext, node: ts.CallExpression) => {
+  const effectContext = importedEffectApiAt(
+    context.checker,
+    node.expression,
+    "Effect",
+    serviceLocatorEffectNames
+  )
+
+  const contextLookup = importedEffectApiAt(
+    context.checker,
+    node.expression,
+    "Context",
+    serviceLocatorContextNames
+  )
+
+  const checks = Array.make(effectContext, contextLookup)
+  return Array.some(checks, Boolean)
+}
+
+const callIsPortLayer = (context: MatchContext, node: ts.CallExpression) =>
+  importedEffectApiAt(context.checker, node.expression, "Layer", portLayerNames)
+
+const callIsEscapingState = (context: MatchContext, node: ts.CallExpression) =>
+  Array.some(stateConstructorEntries, ([namespace, names]) =>
+    importedEffectApiAt(context.checker, node.expression, namespace, names)
+  )
+
+const detectionWhen = (
+  shouldDetect: boolean,
+  detectionValue: FactMatch<FunctionalCoreBoundaryData>
+): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> =>
+  shouldDetect ? Array.of(detectionValue) : emptyDetections
+
+const callExpressionElements =
+  (index: FunctionalCoreEffectIndex) =>
+  (context: MatchContext) =>
+  (node: ts.CallExpression): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+    const role = roleForSourceFile(index, context.sourceFile)
+
+    if (Option.isNone(role)) {
+      return emptyDetections
+    }
+
+    const resolvedRole = role.value
+
+    if (strictEqual("test")(resolvedRole)) {
+      return emptyDetections
+    }
+
+    const expressionText = node.expression.getText()
+    const fallbackSubject = Function.constant(expressionText)
+
+    const subject = pipe(
+      importedMemberAt(context.checker, node.expression),
+      Option.map(importedMemberSubject),
+      Option.getOrElse(fallbackSubject)
+    )
+
+    const notRoot = resolvedRole !== "root"
+    const isRuntimeExecution = callIsRuntimeExecution(context, node)
+    const shouldReportRuntime = notRoot && isRuntimeExecution
+
+    const runtimeDetection = boundaryDetection(
+      context,
+      node.expression,
+      resolvedRole,
+      "runtime-execution",
+      subject
+    )
+
+    const runtime = detectionWhen(shouldReportRuntime, runtimeDetection)
+    const isProvisioning = callIsProvisioning(context, node)
+    const shouldReportProvisioning = notRoot && isProvisioning
+
+    const provisioningDetection = boundaryDetection(
+      context,
+      node.expression,
+      resolvedRole,
+      "dependency-provisioning",
+      subject
+    )
+
+    const provisioning = detectionWhen(shouldReportProvisioning, provisioningDetection)
+    const isPort = strictEqual("port")(resolvedRole)
+    const isPortLayerCall = callIsPortLayer(context, node)
+    const shouldReportPortLayer = isPort && isPortLayerCall
+
+    const portLayerDetection = boundaryDetection(
+      context,
+      node.expression,
+      resolvedRole,
+      "port-live-implementation",
+      subject
+    )
+
+    const portLayer = detectionWhen(shouldReportPortLayer, portLayerDetection)
+    const isServiceLocatorCall = callIsServiceLocator(context, node)
+    const shouldReportServiceLocator = notRoot && isServiceLocatorCall
+
+    const serviceLocatorDetection = boundaryDetection(
+      context,
+      node.expression,
+      resolvedRole,
+      "service-locator",
+      subject
+    )
+
+    const serviceLocator = detectionWhen(shouldReportServiceLocator, serviceLocatorDetection)
+    const importedExpression = importedMemberAt(context.checker, node.expression)
+    const expressionNotImported = Option.isNone(importedExpression)
+    const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+    const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
+
+    const ambientCapability = pipe(
+      capabilitySubjectAt(context, index.policy, node),
+      Option.filter(Function.constant(expressionNotImported))
+    )
+
+    const directCapabilityDetection3 = (capability: string) =>
+      boundaryDetection(context, node.expression, resolvedRole, "direct-capability", capability)
+
+    const directCapability = pipe(
+      ambientCapability,
+      Option.filter(Function.constant(roleForbidsCapability)),
+      Option.map(directCapabilityDetection3),
+      Option.toArray
+    )
+
+    const hasSuspension = hasSuspensionBoundary(context.checker, node)
+    const lacksSuspension = strictEqual(false)(hasSuspension)
+
+    const unsuspendedAdapterEffectDetection = (capability: string) =>
+      boundaryDetection(
+        context,
+        node.expression,
+        resolvedRole,
+        "unsuspended-adapter-effect",
+        capability
+      )
+
+    const unsuspended = pipe(
+      capabilitySubjectAt(context, index.policy, node),
+      Option.filter(Function.constant(adapterOrRoot)),
+      Option.filter(Function.constant(lacksSuspension)),
+      Option.map(unsuspendedAdapterEffectDetection),
+      Option.toArray
+    )
+
+    const hasScopedLifecycle = hasScopedLifecycleAncestor(context.checker, node)
+    const fileScopesFunction = hasSourceFileScope(context, node)
+    const lacksScopedLifecycle = strictEqual(false)(hasScopedLifecycle)
+    const lacksFileScope = strictEqual(false)(fileScopesFunction)
+    const unscopedChecks = Array.make(lacksScopedLifecycle, lacksFileScope)
+    const unscoped = Array.every(unscopedChecks, Boolean)
+
+    const unscopedResourceDetection = (resource: string) =>
+      boundaryDetection(context, node.expression, resolvedRole, "unscoped-resource", resource)
+
+    const unscopedResource = pipe(
+      resourceSubjectAt(context, index.policy, node),
+      Option.filter(Function.constant(adapterOrRoot)),
+      Option.filter(Function.constant(unscoped)),
+      Option.map(unscopedResourceDetection),
+      Option.toArray
+    )
+
+    const isEscapingState = callIsEscapingState(context, node)
+
+    const escapingStateConditions = Array.make(
+      isEscapingState,
+      lacksScopedLifecycle,
+      lacksFileScope
+    )
+
+    const shouldReportEscaping = Array.every(escapingStateConditions, Boolean)
+
+    const escapingStateDetection = boundaryDetection(
+      context,
+      node.expression,
+      resolvedRole,
+      "escaping-runtime-state",
+      subject
+    )
+
+    const escapingState = detectionWhen(shouldReportEscaping, escapingStateDetection)
+
+    const groups = Array.make(
+      runtime,
+      provisioning,
+      portLayer,
+      serviceLocator,
+      directCapability,
+      unsuspended,
+      unscopedResource,
+      escapingState
+    )
+
+    return Array.flatten(groups)
+  }
+
+const newExpressionElements =
+  (index: FunctionalCoreEffectIndex) =>
+  (context: MatchContext) =>
+  (node: ts.NewExpression): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+    const role = roleForSourceFile(index, context.sourceFile)
+
+    if (Option.isNone(role)) {
+      return emptyDetections
+    }
+
+    const resolvedRole = role.value
+
+    if (strictEqual("test")(resolvedRole)) {
+      return emptyDetections
+    }
+
+    const capability = capabilitySubjectAt(context, index.policy, node)
+    const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+    const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
+    const hasSuspension = hasSuspensionBoundary(context.checker, node)
+    const lacksSuspension = strictEqual(false)(hasSuspension)
+
+    const directCapabilityDetection4 = (subject: string) =>
+      boundaryDetection(context, node.expression, resolvedRole, "direct-capability", subject)
+
+    const directCapability = pipe(
+      capability,
+      Option.filter(Function.constant(roleForbidsCapability)),
+      Option.map(directCapabilityDetection4),
+      Option.toArray
+    )
+
+    const unsuspendedAdapterEffectDetection2 = (subject: string) =>
+      boundaryDetection(
+        context,
+        node.expression,
+        resolvedRole,
+        "unsuspended-adapter-effect",
+        subject
+      )
+
+    const unsuspended = pipe(
+      capability,
+      Option.filter(Function.constant(adapterOrRoot)),
+      Option.filter(Function.constant(lacksSuspension)),
+      Option.map(unsuspendedAdapterEffectDetection2),
+      Option.toArray
+    )
+
+    const hasScopedLifecycle = hasScopedLifecycleAncestor(context.checker, node)
+    const fileScopesFunction = hasSourceFileScope(context, node)
+    const lacksScopedLifecycle = strictEqual(false)(hasScopedLifecycle)
+    const lacksFileScope = strictEqual(false)(fileScopesFunction)
+    const unscopedChecks = Array.make(lacksScopedLifecycle, lacksFileScope)
+    const unscoped = Array.every(unscopedChecks, Boolean)
+
+    const unscopedResourceDetection2 = (subject: string) =>
+      boundaryDetection(context, node.expression, resolvedRole, "unscoped-resource", subject)
+
+    const unscopedDetections = pipe(
+      resourceSubjectAt(context, index.policy, node),
+      Option.filter(Function.constant(adapterOrRoot)),
+      Option.filter(Function.constant(unscoped)),
+      Option.map(unscopedResourceDetection2),
+      Option.toArray
+    )
+
+    const groups = Array.make(directCapability, unsuspended, unscopedDetections)
+    return Array.flatten(groups)
+  }
+
+const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
+  const elementsForContext = (context: MatchContext) => {
+    const declarationIsContextServiceCheck = (declaration: ts.Declaration) =>
+      declarationIsContextService(context.checker, declaration)
+
+    const elementsForNode = (
+      node: ts.PropertyAccessExpression
+    ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+      const role = roleForSourceFile(index, context.sourceFile)
+
+      if (Option.isNone(role)) {
+        return emptyDetections
+      }
+
+      const resolvedRole = role.value
+
+      if (strictEqual("test")(resolvedRole)) {
+        return emptyDetections
+      }
+
+      const ambient = ambientCapabilityPropertySubject(context, node)
+      const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+      const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
+      const hasSuspension = hasSuspensionBoundary(context.checker, node)
+      const lacksSuspension = strictEqual(false)(hasSuspension)
+
+      const directCapabilityDetection5 = (subject: string) =>
+        boundaryDetection(context, node, resolvedRole, "direct-capability", subject)
+
+      const directCapability = pipe(
+        ambient,
+        Option.filter(Function.constant(roleForbidsCapability)),
+        Option.map(directCapabilityDetection5),
+        Option.toArray
+      )
+
+      const unsuspendedAdapterEffectDetection3 = (subject: string) =>
+        boundaryDetection(context, node, resolvedRole, "unsuspended-adapter-effect", subject)
+
+      const unsuspended = pipe(
+        ambient,
+        Option.filter(Function.constant(adapterOrRoot)),
+        Option.filter(Function.constant(lacksSuspension)),
+        Option.map(unsuspendedAdapterEffectDetection3),
+        Option.toArray
+      )
+
+      const accessIsNamedLayer = (access: ts.PropertyAccessExpression) =>
+        strictEqual("layer")(access.name.text)
+
+      const layerSelection = pipe(
+        Option.liftPredicate(accessIsNamedLayer)(node),
+        Option.flatMap((access) => {
+          const expressionSymbol = context.checker.getSymbolAtLocation(access.expression)
+          const symbolOption = Option.fromNullishOr(expressionSymbol)
+
+          const resolvedSymbol = pipe(
+            symbolOption,
+            Option.map((symbol) => {
+              const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+              return isAlias ? context.checker.getAliasedSymbol(symbol) : symbol
+            })
+          )
+
+          const emptyDeclarationsFallback = Function.constant(emptyDeclarations)
+
+          const declarations = pipe(
+            resolvedSymbol,
+            Option.map(declarationsOfSymbol),
+            Option.getOrElse(emptyDeclarationsFallback)
+          )
+
+          return Array.findFirst(declarations, declarationIsContextServiceCheck)
+        }),
+        Option.filter(Function.constant(resolvedRole !== "root")),
+        Option.map(() => {
+          const subject = node.getText()
+          return boundaryDetection(context, node, resolvedRole, "dependency-provisioning", subject)
+        }),
+        Option.toArray
+      )
+
+      const groups = Array.make(directCapability, unsuspended, layerSelection)
+      return Array.flatten(groups)
+    }
+
+    return elementsForNode
+  }
+
+  return elementsForContext
+}
+
+const classDeclarationElements =
+  (index: FunctionalCoreEffectIndex) =>
+  (context: MatchContext) =>
+  (node: ts.ClassDeclaration): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+    const role = roleForSourceFile(index, context.sourceFile)
+
+    if (Option.isNone(role)) {
+      return emptyDetections
+    }
+
+    const resolvedRole = role.value
+
+    if (resolvedRole !== "port") {
+      return emptyDetections
+    }
+
+    const serviceConfig = effectServiceConfigObject(context.checker, node)
+    const liveService = Option.isSome(serviceConfig)
+
+    if (!liveService) {
+      return emptyDetections
+    }
+
+    const target = pipe(classDeclarationName(node), Option.getOrElse(Function.constant(node)))
+    const targetText = target.getText()
+
+    const liveImplementation = boundaryDetection(
+      context,
+      target,
+      resolvedRole,
+      "port-live-implementation",
+      targetText
+    )
+
+    const embeddedLayerDetection = (propertyName: ts.PropertyName) => {
+      const subject = `${targetText}.${propertyName.getText()}`
+      return boundaryDetection(
+        context,
+        propertyName,
+        resolvedRole,
+        "port-live-implementation",
+        subject
+      )
+    }
+
+    const embeddedLayer = pipe(
+      contextServiceLayerProperty(node),
+      Option.map(Struct.get("name")),
+      Option.flatMap(Option.fromNullishOr),
+      Option.map(embeddedLayerDetection),
+      Option.toArray
+    )
+
+    return Array.prepend(embeddedLayer, liveImplementation)
+  }
+
+const variableDeclarationElements = (index: FunctionalCoreEffectIndex) => {
+  const elementsForContext = (context: MatchContext) => {
+    const configFromExpression = (expression: ts.Expression) =>
+      effectServiceConfigFromExpression(context.checker, expression)
+
+    const elementsForNode = (
+      node: ts.VariableDeclaration
+    ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+      const role = roleForSourceFile(index, context.sourceFile)
+
+      if (Option.isNone(role)) {
+        return emptyDetections
+      }
+
+      const resolvedRole = role.value
+
+      if (resolvedRole !== "port") {
+        return emptyDetections
+      }
+
+      const serviceConfig = pipe(
+        variableDeclarationInitializer(node),
+        Option.flatMap(configFromExpression)
+      )
+
+      if (Option.isNone(serviceConfig)) {
+        return emptyDetections
+      }
+
+      const targetText = node.name.getText()
+
+      const liveImplementation = boundaryDetection(
+        context,
+        node.name,
+        resolvedRole,
+        "port-live-implementation",
+        targetText
+      )
+
+      return Array.of(liveImplementation)
+    }
+
+    return elementsForNode
+  }
+
+  return elementsForContext
+}
+
+const forbiddenContractEffectNamespaces: Readonly<Record<string, true>> = {
+  Ref: true,
+  SynchronizedRef: true,
+  Queue: true,
+  PubSub: true,
+  SubscriptionRef: true,
+  References: true,
+  Runtime: true,
+  ManagedRuntime: true,
+  Latch: true,
+  Semaphore: true
+}
+
+const emptyNamespace = Function.constant("")
+
+const effectSubpathNamespace = (specifier: string) => {
+  const effectPath = specifier.slice("effect/".length)
+  const segments = effectPath.split("/")
+  const namespace = Array.get(segments, 0)
+
+  return pipe(namespace, Option.getOrElse(emptyNamespace))
+}
+
+const barrelPathNamespace = (path: ReadonlyArray<string>) =>
+  pipe(Array.get(path, 0), Option.getOrElse(emptyNamespace))
+
+const effectNamespaceFromMember = (member: ImportedMember) =>
+  pipe(
+    Option.liftPredicate(specifierIsEffect)(member.moduleSpecifier),
+    Option.map(() => barrelPathNamespace(member.path)),
+    Option.orElse(() =>
+      pipe(
+        Option.liftPredicate((specifier: string) => specifier.startsWith("effect/"))(
+          member.moduleSpecifier
+        ),
+        Option.map(effectSubpathNamespace)
+      )
+    ),
+    Option.getOrElse(emptyNamespace)
+  )
+
+const typeReferenceSubject = (
+  context: MatchContext,
+  policy: FunctionalCoreEffectPolicy,
+  node: ts.TypeReferenceNode,
+  visited: ReadonlyArray<ts.Symbol> = emptySymbols
+): Option.Option<string> => {
+  if (typeReferenceIsGlobalPromise(context, node)) {
+    return Option.some("Promise")
+  }
+
+  const direct = pipe(
+    importedTypeMemberAt(context.checker, node.typeName),
+    Option.filter((member) => {
+      const effectNamespace = effectNamespaceFromMember(member)
+      const stateOrRuntime = strictEqual(true)(forbiddenContractEffectNamespaces[effectNamespace])
+      const capability = moduleMatchesPolicyPrefix(policy, member.moduleSpecifier)
+      const emptyName = Function.constant("")
+      const lastOption = Array.last(member.path)
+      const typeName = pipe(lastOption, Option.getOrElse(emptyName))
+
+      const infrastructureSuffix = Array.some(policy.resourceTypeSuffixes, (suffix) =>
+        typeName.endsWith(suffix)
+      )
+
+      const checks = Array.make(stateOrRuntime, capability, infrastructureSuffix)
+      return Array.some(checks, Boolean)
+    }),
+    Option.map(importedMemberSubject)
+  )
+
+  if (Option.isSome(direct)) {
+    return direct
+  }
+
+  const typeNameSymbol = context.checker.getSymbolAtLocation(node.typeName)
+  const symbolOption = Option.fromNullishOr(typeNameSymbol)
+
+  const someOf = (symbol: ts.Symbol) => {
+    const candidateEqualsSymbol = strictEqual(symbol)
+    const alreadyVisited = Array.some(visited, candidateEqualsSymbol)
+    return strictEqual(false)(alreadyVisited)
+  }
+
+  return pipe(
+    symbolOption,
+    Option.filter(someOf),
+    Option.map((symbol) => {
+      const nextVisited = Array.append(visited, symbol)
+      const targets = localTypeReferenceTargets(context.checker, node)
+
+      const typeReferenceSubjectOf = (target: ts.TypeReferenceNode) =>
+        typeReferenceSubject(context, policy, target, nextVisited)
+
+      return pipe(
+        targets,
+        Array.map(typeReferenceSubjectOf),
+        Array.findFirst(Option.isSome),
+        Option.flatten
+      )
+    }),
+    Option.flatten
+  )
+}
+
+const typeIsServiceLocator = (
+  context: MatchContext,
+  node: ts.TypeReferenceNode,
+  visited: ReadonlyArray<ts.Symbol> = emptySymbols
+): boolean => {
+  const direct = pipe(
+    importedTypeMemberAt(context.checker, node.typeName),
+    Option.exists((member) => {
+      const contextType = effectApiMember(member, "Context", contextTypeNames)
+      const managedRuntimeType = effectApiMember(member, "ManagedRuntime", managedRuntimeTypeNames)
+      const checks = Array.make(contextType, managedRuntimeType)
+      return Array.some(checks, Boolean)
+    })
+  )
+
+  const typeNameSymbol = context.checker.getSymbolAtLocation(node.typeName)
+  const unresolvedSymbolOption = Option.fromNullishOr(typeNameSymbol)
+
+  const symbolOption = pipe(
+    unresolvedSymbolOption,
+    Option.map((unresolvedSymbol) => {
+      const isAlias = (unresolvedSymbol.flags & ts.SymbolFlags.Alias) !== 0
+      return isAlias ? context.checker.getAliasedSymbol(unresolvedSymbol) : unresolvedSymbol
+    })
+  )
+
+  const someOf2 = (symbol: ts.Symbol) => {
+    const candidateEqualsSymbol = strictEqual(symbol)
+    return Array.some(visited, candidateEqualsSymbol)
+  }
+
+  const alreadyVisited = pipe(symbolOption, Option.exists(someOf2))
+  const notVisited = strictEqual(false)(alreadyVisited)
+
+  const nested = pipe(
+    symbolOption,
+    Option.filter(Function.constant(notVisited)),
+    Option.map((symbol) => {
+      const nextVisited = Array.append(visited, symbol)
+      const targets = localTypeReferenceTargets(context.checker, node)
+
+      const targetIsServiceLocator = (target: ts.TypeReferenceNode) =>
+        typeIsServiceLocator(context, target, nextVisited)
+
+      return Array.some(targets, targetIsServiceLocator)
+    }),
+    Option.getOrElse(Function.constFalse)
+  )
+
+  const checks = Array.make(direct, nested)
+  return Array.some(checks, Boolean)
+}
+
+const typeReferenceElements =
+  (index: FunctionalCoreEffectIndex) =>
+  (context: MatchContext) =>
+  (node: ts.TypeReferenceNode): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+    const role = roleForSourceFile(index, context.sourceFile)
+
+    if (Option.isNone(role)) {
+      return emptyDetections
+    }
+
+    const resolvedRole = role.value
+    const isTestRole = strictEqual("test")(resolvedRole)
+    const isRootRole = strictEqual("root")(resolvedRole)
+    const skippedRoles = Array.make(isTestRole, isRootRole)
+
+    if (Array.some(skippedRoles, Boolean)) {
+      return emptyDetections
+    }
+
+    const typeNameText = node.typeName.getText()
+    const isServiceLocatorType = typeIsServiceLocator(context, node)
+
+    const serviceLocatorDetection = boundaryDetection(
+      context,
+      node.typeName,
+      resolvedRole,
+      "service-locator",
+      typeNameText
+    )
+
+    const serviceLocator = detectionWhen(isServiceLocatorType, serviceLocatorDetection)
+    const isPortRole = strictEqual("port")(resolvedRole)
+    const isTopLevelExport = isTopLevelExportedDeclaration(node)
+    const shouldCheckInfrastructure = isPortRole && isTopLevelExport
+
+    const infrastructureContractDetection = (subject: string) =>
+      boundaryDetection(context, node.typeName, resolvedRole, "infrastructure-contract", subject)
+
+    const infrastructureContract = shouldCheckInfrastructure
+      ? pipe(
+          typeReferenceSubject(context, index.policy, node),
+          Option.map(infrastructureContractDetection),
+          Option.toArray
+        )
+      : emptyDetections
+
+    const isDomainRole = strictEqual("domain")(resolvedRole)
+    const isGlobalPromise = typeReferenceIsGlobalPromise(context, node)
+    const shouldCheckDomainPromise = isDomainRole && isGlobalPromise
+
+    const domainPromiseDetection = boundaryDetection(
+      context,
+      node.typeName,
+      resolvedRole,
+      "domain-effect-program",
+      "Promise"
+    )
+
+    const domainPromise = detectionWhen(shouldCheckDomainPromise, domainPromiseDetection)
+    const groups = Array.make(serviceLocator, infrastructureContract, domainPromise)
+    return Array.flatten(groups)
+  }
+
+const asyncKeywordElements =
+  (index: FunctionalCoreEffectIndex) =>
+  (context: MatchContext) =>
+  (node: ts.Node): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
+    const role = roleForSourceFile(index, context.sourceFile)
+
+    if (Option.isNone(role)) {
+      return emptyDetections
+    }
+
+    const resolvedRole = role.value
+
+    if (resolvedRole !== "domain") {
+      return emptyDetections
+    }
+
+    const domainPromise = boundaryDetection(
+      context,
+      node,
+      resolvedRole,
+      "domain-effect-program",
+      "Promise"
+    )
+
+    return Array.of(domainPromise)
+  }
+
+const isAsyncKeyword = (
+  node: ts.Node
+): node is ts.Node & { readonly kind: ts.SyntaxKind.AsyncKeyword } =>
+  strictEqual(ts.SyntaxKind.AsyncKeyword)(node.kind)
+
+const exportKinds = Array.of(ts.SyntaxKind.ExportDeclaration)
+const asyncKeywordKinds = Array.of(ts.SyntaxKind.AsyncKeyword)
+const importKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
+const callKinds = Array.of(ts.SyntaxKind.CallExpression)
+const newKinds = Array.of(ts.SyntaxKind.NewExpression)
+const propertyKinds = Array.of(ts.SyntaxKind.PropertyAccessExpression)
+const classKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
+const variableKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
+const typeReferenceKinds = Array.of(ts.SyntaxKind.TypeReference)
+
+const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subscription> => {
+  const importElements = architectureImportElements(index)
+  const exportElements = architectureExportElements(index)
+  const callElements = callExpressionElements(index)
+  const newElements = newExpressionElements(index)
+  const propertyElements = propertyAccessElements(index)
+  const classElements = classDeclarationElements(index)
+  const variableElements = variableDeclarationElements(index)
+  const typeReferenceElementsForIndex = typeReferenceElements(index)
+  const asyncElements = asyncKeywordElements(index)
+  const importSubscriptions = nodeSubscriptions(importKinds)(ts.isImportDeclaration)(importElements)
+  const exportSubscriptions = nodeSubscriptions(exportKinds)(ts.isExportDeclaration)(exportElements)
+  const callSubscriptions = nodeSubscriptions(callKinds)(ts.isCallExpression)(callElements)
+  const newSubscriptions = nodeSubscriptions(newKinds)(ts.isNewExpression)(newElements)
+
+  const propertySubscriptions = nodeSubscriptions(propertyKinds)(ts.isPropertyAccessExpression)(
+    propertyElements
+  )
+
+  const classSubscriptions = nodeSubscriptions(classKinds)(ts.isClassDeclaration)(classElements)
+
+  const variableSubscriptions = nodeSubscriptions(variableKinds)(ts.isVariableDeclaration)(
+    variableElements
+  )
+
+  const typeReferenceSubscriptions = nodeSubscriptions(typeReferenceKinds)(ts.isTypeReferenceNode)(
+    typeReferenceElementsForIndex
+  )
+
+  const asyncSubscriptions = nodeSubscriptions(asyncKeywordKinds)(isAsyncKeyword)(asyncElements)
+
+  const groups = Array.make(
+    importSubscriptions,
+    exportSubscriptions,
+    callSubscriptions,
+    newSubscriptions,
+    propertySubscriptions,
+    classSubscriptions,
+    variableSubscriptions,
+    typeReferenceSubscriptions,
+    asyncSubscriptions
+  )
+
+  return Array.flatten(groups)
+}
+
+export const makeFunctionalCoreEffect = withFunctionalCoreEffectIndex(subscriptionsFor)

@@ -1,10 +1,10 @@
 import * as path from "node:path"
 import { Array, Effect, Equal, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import type { Check } from "../../engine/check/data.js"
+import type { Policy } from "../../engine/policy/data.js"
 import type { Detection } from "../../engine/location/data.js"
-import { makeContext } from "../../engine/sources/sources.js"
-import { compilerOptionsForChecks, runChecks } from "../../engine/check/check.js"
+import { makeContext } from "@better-typescript/matchers/sources"
+import { compilerOptionsForPolicies, runPolicies } from "../../engine/policy/policy.js"
 import { strictEqual } from "../../engine/equivalence.js"
 import {
   CircularProjectReferenceError,
@@ -64,11 +64,11 @@ const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
 const includeEverySourceFile = Function.constant(true)
 
-// The one-Check runner owns compiler requirements because callers should not know Check internals.
-const programForChecks =
-  (checks: ReadonlyArray<Check>) =>
+// programForPolicies owns compiler requirements because callers should not know Policy internals.
+const programForPolicies =
+  (policies: ReadonlyArray<Policy>) =>
   (program: ts.Program): ts.Program => {
-    const compilerOptions = compilerOptionsForChecks(checks)
+    const compilerOptions = compilerOptionsForPolicies(policies)
     const currentOptions = program.getCompilerOptions()
 
     const optionMatches = ([name, value]: [string, unknown]) => {
@@ -97,15 +97,15 @@ const programForChecks =
     )
   }
 
-export const runCheckOnProject =
-  (checks: ReadonlyArray<Check>) =>
+export const runPolicyOnProject =
+  (policies: ReadonlyArray<Policy>) =>
   (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
     Effect.sync(() => {
-      const program = programForChecks(checks)(project.program)
+      const program = programForPolicies(policies)(project.program)
       const createContext = makeContext(project.rootPath)
       const context = createContext(program)
-      const checksInEveryFile = runChecks(checks)(includeEverySourceFile)
-      const detections = checksInEveryFile(context)
+      const policiesInEveryFile = runPolicies(policies)(includeEverySourceFile)
+      const detections = policiesInEveryFile(context)
 
       return pipe(detections, Array.head, Option.getOrElse(noDetections))
     })

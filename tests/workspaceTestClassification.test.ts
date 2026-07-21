@@ -3,16 +3,16 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect, Function, Order, pipe } from "effect"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { makeContext } from "@better-typescript/core/engine/sources"
-import { runChecks } from "@better-typescript/core/engine/check"
+import { ProgramContext } from "@better-typescript/matchers/sources/data"
+import { makeContext } from "@better-typescript/matchers/sources"
+import { runPolicies } from "@better-typescript/core/engine/policy"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { compositionForwarders } from "@better-typescript/checks/architectureExplore/compositionForwarders"
-import { moduleScopeEffects } from "@better-typescript/checks/architectureExplore/moduleScopeEffects"
-import { testOnlyExports } from "@better-typescript/checks/architectureExplore/testOnlyExports"
-import { isTestPath } from "@better-typescript/checks/architectureExplore/programSymbols"
+import { compositionForwarders } from "@better-typescript/guidance/policies/compositionForwarders"
+import { moduleScopeEffects } from "@better-typescript/guidance/policies/moduleScopeEffects"
+import { testOnlyExports } from "@better-typescript/guidance/policies/testOnlyExports"
+import { isTestPath } from "@better-typescript/matchers/builtins/architectureExplore/paths"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "workspace-test-helpers")
@@ -29,14 +29,14 @@ const workspacePathFor =
   }
 
 const runWorkspaceChecks = async (
-  checks: ReadonlyArray<NamedCheck>
+  policies: ReadonlyArray<Policy>
 ): Promise<ReadonlyArray<ReadonlyArray<string>>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const executableChecks = Array.map(checks, (named) => named.check)
+  const executablePolicies = policies
 
   return Array.reduce(
     workspace.projects,
-    Array.map(executableChecks, () => Array.empty<string>()),
+    Array.map(executablePolicies, () => Array.empty<string>()),
     (current, project) => {
       const loaded = makeContext(project.rootPath)(project.program)
 
@@ -47,7 +47,7 @@ const runWorkspaceChecks = async (
         workspaceRoot: workspace.rootPath
       })
 
-      const projectDetections = runChecks(executableChecks)(includeEverySourceFile)(context)
+      const projectDetections = runPolicies(executablePolicies)(includeEverySourceFile)(context)
       const toWorkspacePath = workspacePathFor(workspace.rootPath, project.rootPath)
 
       return Array.map(current, (paths, checkIndex) => {

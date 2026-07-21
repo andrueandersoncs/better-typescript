@@ -16,7 +16,7 @@ type RuleOutput = { readonly ok: true }
 type RuleContext = { readonly sourceFile: string }
 type ClassDeclaration = { readonly kind: "class" }
 
-declare const nodeCheck: <N>(
+declare const nodeMatcher: <N>(
   handler: (node: N, context: RuleContext) => ReadonlyArray<RuleOutput>
 ) => void
 
@@ -25,4 +25,4 @@ const ruleStyleMatches = ( // ~detect 26
   context: RuleContext
 ): ReadonlyArray<RuleOutput> => [{ ok: true }]
 
-nodeCheck(ruleStyleMatches)
+nodeMatcher(ruleStyleMatches)

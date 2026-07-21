@@ -1,6 +1,6 @@
 import { test } from "node:test"
-import { noExplicitAnyReturn } from "@better-typescript/checks/noExplicitAnyReturn"
-import { assertCheckFixture } from "./ruleTestAssertions.js"
+import { noExplicitAnyReturn } from "@better-typescript/guidance/policies/noExplicitAnyReturn"
+import { assertPolicyFixture } from "./ruleTestAssertions.js"
 
 test("no-explicit-any-return reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixture(noExplicitAnyReturn))
+  assertPolicyFixture(noExplicitAnyReturn))

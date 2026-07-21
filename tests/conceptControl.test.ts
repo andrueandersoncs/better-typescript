@@ -3,12 +3,12 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Array, Effect, HashMap, HashSet, Option } from "effect"
-import { conceptControl } from "@better-typescript/checks/conceptControl"
-import { buildConceptIndex } from "@better-typescript/checks/conceptControl/conceptIndex"
-import { referenceKey } from "@better-typescript/checks/support/referenceKey"
+import { conceptControl } from "@better-typescript/guidance/policies/conceptControl"
+import { buildConceptIndex } from "@better-typescript/matchers/builtins/conceptControl/conceptIndex"
+import { referenceKey } from "@better-typescript/matchers/support/referenceKey"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { ProgramContext } from "@better-typescript/matchers/sources/data"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "concept-control")
@@ -29,7 +29,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projects = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(conceptControl.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(conceptControl))(project))
     )
   )
 

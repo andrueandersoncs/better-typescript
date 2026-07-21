@@ -7,9 +7,9 @@
     "dist"
   ],
   "exports": {
-    "./engine/check": "./dist/engine/check/check.js",
     "./engine/equivalence": "./dist/engine/equivalence.js",
-    "./engine/check/data": "./dist/engine/check/data.js",
+    "./engine/policy": "./dist/engine/policy/policy.js",
+    "./engine/policy/data": "./dist/engine/policy/data.js",
     "./engine/location": "./dist/engine/location/location.js",
     "./engine/location/data": "./dist/engine/location/data.js",
     "./engine/derive": "./dist/engine/derive/derive.js",
@@ -23,10 +23,6 @@
     "./engine/watch": "./dist/engine/watch/watch.js",
     "./engine/workspacePrograms": "./dist/engine/watch/workspacePrograms.js",
     "./engine/watch/data": "./dist/engine/watch/data.js",
-    "./engine/sources": "./dist/engine/sources/sources.js",
-    "./engine/sources/data": "./dist/engine/sources/data.js",
-    "./engine/sources/comments": "./dist/engine/sources/comments.js",
-    "./engine/sources/comments/data": "./dist/engine/sources/commentsData.js",
     "./engine/example": "./dist/engine/example/example.js",
     "./engine/example/data": "./dist/engine/example/data.js",
     "./project/loadProject": "./dist/project/loadProject/loadProject.js",
@@ -41,6 +37,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@better-typescript/matchers": "0.0.0",
     "effect": "^4.0.0-beta.98",
     "jiti": "^2.7.0",
     "minimatch": "^10.2.5"

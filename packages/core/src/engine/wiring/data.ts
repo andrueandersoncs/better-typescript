@@ -1,20 +1,14 @@
 import { Array, Data, HashSet, Schema } from "effect"
-import type { Check } from "../check/data.js"
+import { Policy, WorkspacePolicy } from "../policy/data.js"
 import type { Advice } from "../derive/data.js"
-import type { RefactorExampleSource } from "../example/data.js"
 import type { Signal } from "../signal/data.js"
 
-// NamedCheck binds name and policy to its check because consumers share identity.
-export class NamedCheck extends Data.Class<{
-  readonly name: string
-  readonly check: Check
-  readonly reported: boolean
-  readonly examples: RefactorExampleSource
-}> {}
+// WiringPolicy is the ordered policy union because one fleet can mix program and workspace stages.
+export type WiringPolicy = Policy | WorkspacePolicy
 
-// Wiring is the check set plus advice derivation for one scope because both halves travel together.
+// Wiring pairs policies with advice derivation because both halves travel together.
 export class Wiring extends Data.Class<{
-  readonly checks: ReadonlyArray<NamedCheck>
+  readonly policies: ReadonlyArray<WiringPolicy>
   readonly derive: (signals: ReadonlyArray<Signal>) => ReadonlyArray<Advice>
 }> {}
 
@@ -27,17 +21,28 @@ export class WiringEntry extends Data.Class<{
 // WiringConfig is the ordered entry boundary because loading preserves order.
 export type WiringConfig = ReadonlyArray<WiringEntry>
 
+// WiringFilesInput is the authoring files half because defineConfig validates globs once.
+export class WiringFilesInput extends Data.Class<{
+  readonly files: Array.NonEmptyReadonlyArray<string>
+}> {}
+
+// WiringEntryInput is the authoring entry bag because defineConfig owns construction.
+export class WiringEntryInput extends Data.Class<{
+  readonly files: Array.NonEmptyReadonlyArray<string>
+  readonly wiring: Pick<Wiring, "policies" | "derive">
+}> {}
+
 const duplicateNameArray = Schema.Array(Schema.String)
 
-// DuplicateCheckNamesError carries structured collision names because CLI handling needs them.
-export class DuplicateCheckNamesError extends Schema.TaggedErrorClass<DuplicateCheckNamesError>()(
-  "DuplicateCheckNamesError",
+// DuplicatePolicyNamesError carries structured collision names because CLI handling needs them.
+export class DuplicatePolicyNamesError extends Schema.TaggedErrorClass<DuplicatePolicyNamesError>()(
+  "DuplicatePolicyNamesError",
   {
     names: duplicateNameArray
   }
 ) {
   get message(): string {
-    return `Duplicate check names: ${Array.join(this.names, ", ")}`
+    return `Duplicate policy names: ${Array.join(this.names, ", ")}`
   }
 }
 
@@ -63,3 +68,18 @@ export class DuplicateNameState extends Data.Class<{
   readonly collisions: HashSet.HashSet<string>
   readonly names: ReadonlyArray<string>
 }> {}
+
+const policyInstanceSchema = Schema.instanceOf(Policy)
+const workspacePolicyInstanceSchema = Schema.instanceOf(WorkspacePolicy)
+
+// ProgramPolicySlot indexes a program Policy in wiring because collection is cross-entry.
+export const ProgramPolicySlot = Schema.Struct({
+  wiringIndex: Schema.Number,
+  policyIndex: Schema.Number,
+  policy: policyInstanceSchema
+})
+
+export interface ProgramPolicySlot extends Schema.Schema.Type<typeof ProgramPolicySlot> {}
+
+export const isProgramPolicy = Schema.is(policyInstanceSchema)
+export const isWorkspacePolicy = Schema.is(workspacePolicyInstanceSchema)

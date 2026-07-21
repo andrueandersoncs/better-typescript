@@ -3,26 +3,26 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runChecks } from "@better-typescript/core/engine/check"
-import { makeContext } from "@better-typescript/core/engine/sources"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { runPolicies } from "@better-typescript/core/engine/policy"
+import { makeContext } from "@better-typescript/matchers/sources"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
   exportReferenceIndex,
   moduleEdges
-} from "@better-typescript/checks/architectureExplore/architectureEvidence"
-import { importUsage } from "@better-typescript/checks/architectureExplore/importUsage"
-import { moduleGraph } from "@better-typescript/checks/architectureExplore/moduleGraph"
-import { passThroughWrappers } from "@better-typescript/checks/architectureExplore/passThroughWrappers"
-import { testOnlyExports } from "@better-typescript/checks/architectureExplore/testOnlyExports"
-import { compositionForwarders } from "@better-typescript/checks/architectureExplore/compositionForwarders"
+} from "@better-typescript/matchers/builtins/architectureExplore/architectureEvidence"
+import { importUsage } from "@better-typescript/guidance/policies/importUsage"
+import { moduleGraph } from "@better-typescript/guidance/policies/moduleGraph"
+import { passThroughWrappers } from "@better-typescript/guidance/policies/passThroughWrappers"
+import { testOnlyExports } from "@better-typescript/guidance/policies/testOnlyExports"
+import { compositionForwarders } from "@better-typescript/guidance/policies/compositionForwarders"
 import {
   ImportUsageData,
   ModuleGraphData,
   PassThroughWrapperData,
   TestOnlyExportData
-} from "@better-typescript/checks/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExplore/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const evidenceFixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")
@@ -34,20 +34,20 @@ const importUsageFixturePath = path.join(
 
 const includeEverySourceFile = (): boolean => true
 
-const runFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(evidenceFixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
     )
   )
 
   return projectDetections.flat()
 }
 
-const runChecksOnFixture = async (
+const runPoliciesOnFixture = async (
   fixturePath: string,
-  checks: ReadonlyArray<NamedCheck>
+  policies: ReadonlyArray<Policy>
 ): Promise<ReadonlyArray<ReadonlyArray<Detection>>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const project = workspace.projects[0]
@@ -55,7 +55,7 @@ const runChecksOnFixture = async (
   assert.ok(project !== undefined)
 
   const context = makeContext(project.rootPath)(project.program)
-  return runChecks(Array.map(checks, (named) => named.check))(includeEverySourceFile)(context)
+  return runPolicies(policies)(includeEverySourceFile)(context)
 }
 
 const dataAs = <A>(
@@ -106,7 +106,7 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
 test("shared export-reference consumers keep detection parity and order", async () => {
   const checks = Array.make(testOnlyExports, passThroughWrappers, compositionForwarders)
 
-  const detectionsByCheck = await runChecksOnFixture(evidenceFixturePath, checks)
+  const detectionsByCheck = await runPoliciesOnFixture(evidenceFixturePath, checks)
 
   const testOnly = detectionsByCheck[0]
   const passThrough = detectionsByCheck[1]
@@ -141,7 +141,7 @@ test("shared export-reference consumers keep detection parity and order", async 
 test("module graph and pass-through preserve detection parity and order", async () => {
   const checks = Array.make(moduleGraph, passThroughWrappers)
 
-  const detectionsByCheck = await runChecksOnFixture(evidenceFixturePath, checks)
+  const detectionsByCheck = await runPoliciesOnFixture(evidenceFixturePath, checks)
 
   const graphDetections = detectionsByCheck[0]
   assert.ok(graphDetections !== undefined)
@@ -156,7 +156,10 @@ test("module graph and pass-through preserve detection parity and order", async 
 })
 
 test("importUsage counts default, named, aliased, and namespace imports in source order", async () => {
-  const detectionsByCheck = await runChecksOnFixture(importUsageFixturePath, Array.of(importUsage))
+  const detectionsByCheck = await runPoliciesOnFixture(
+    importUsageFixturePath,
+    Array.of(importUsage)
+  )
   const detections = detectionsByCheck[0] ?? Array.empty()
   const importData = Array.flatMap(detections, (detection) =>
     pipe(dataAs(Schema.is(ImportUsageData), detection), Option.toArray)

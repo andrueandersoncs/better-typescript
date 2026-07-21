@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@better-typescript/checks": "0.0.0",
+    "@better-typescript/guidance": "0.0.0",
     "@better-typescript/core": "0.0.0",
     "@effect/platform-node": "^4.0.0-beta.98",
     "effect": "^4.0.0-beta.98"

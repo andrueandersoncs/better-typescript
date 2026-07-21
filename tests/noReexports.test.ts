@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect } from "effect"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { noReexports } from "@better-typescript/checks/noReexports"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { noReexports } from "@better-typescript/guidance/policies/noReexports"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")
@@ -14,7 +14,7 @@ const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(noReexports.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(noReexports))(project))
     )
   )
 

@@ -6,18 +6,18 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, pipe } from "effect"
 import * as ts from "typescript"
-import { noUnused } from "@better-typescript/checks/noUnused"
-import { compilerOptionsForChecks, runChecks } from "@better-typescript/core/engine/check"
+import { noUnused } from "@better-typescript/guidance/policies/noUnused"
+import { compilerOptionsForPolicies, runPolicies } from "@better-typescript/core/engine/policy"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
-import { makeContext, isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { makeContext, isProjectSourceFile } from "@better-typescript/matchers/sources"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noUnusedFixturePath = path.join(testDirectory, "fixtures", "no-unused")
 
 const includeEverySourceFile = () => true
-const noUnusedCompilerOptions = compilerOptionsForChecks([noUnused.check])
+const noUnusedCompilerOptions = compilerOptionsForPolicies([noUnused])
 
 const collectPrograms = (workspace: WorkspaceConfigs, compilerOptions: ts.CompilerOptions = {}) =>
   Effect.scoped(workspacePrograms.materialize(workspace, compilerOptions))
@@ -77,7 +77,7 @@ test("workspacePrograms emits exactly one workspace update", async () => {
   assert.equal(update.contexts.length, workspace.projects.length)
 })
 
-test("loadProject preserves configured compiler options when no Check requires more", async () => {
+test("loadProject preserves configured compiler options when no Matcher requires more", async () => {
   const loaded = await Effect.runPromise(loadProject(noUnusedFixturePath))
   const options = loaded.projects[0]?.program.getCompilerOptions()
 
@@ -140,7 +140,7 @@ test("workspacePrograms preserves no-unused fixture diagnostics with primary pro
   assert.equal(options.noUnusedParameters, true)
   assert.equal(options.noEmit, true)
 
-  const detections = runChecks([noUnused.check])(includeEverySourceFile)(context)[0] ?? []
+  const detections = runPolicies([noUnused])(includeEverySourceFile)(context)[0] ?? []
   const identities = sortIdentities(detections.map(detectionIdentity))
 
   assert.deepEqual(identities, [
@@ -167,10 +167,8 @@ test("loadProject and workspacePrograms agree on no-unused detections", async ()
   const loadedContext = makeContext(loaded.projects[0]!.rootPath)(loaded.projects[0]!.program)
   const oneShotContext = oneShot.contexts[0]!
 
-  const loadedDetections =
-    runChecks([noUnused.check])(includeEverySourceFile)(loadedContext)[0] ?? []
-  const oneShotDetections =
-    runChecks([noUnused.check])(includeEverySourceFile)(oneShotContext)[0] ?? []
+  const loadedDetections = runPolicies([noUnused])(includeEverySourceFile)(loadedContext)[0] ?? []
+  const oneShotDetections = runPolicies([noUnused])(includeEverySourceFile)(oneShotContext)[0] ?? []
 
   assert.deepEqual(
     sortIdentities(loadedDetections.map(detectionIdentity)),

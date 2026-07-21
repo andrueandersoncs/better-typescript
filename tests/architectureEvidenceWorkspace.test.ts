@@ -3,23 +3,24 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect, Function, Option, Order, Result, Schema, pipe } from "effect"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive"
-import { ProgramContext } from "@better-typescript/core/engine/sources/data"
-import { makeContext } from "@better-typescript/core/engine/sources"
-import { runChecks } from "@better-typescript/core/engine/check"
+import { runPolicies } from "@better-typescript/core/engine/policy"
+import { ProgramContext } from "@better-typescript/matchers/sources/data"
+import { makeContext } from "@better-typescript/matchers/sources"
+import { runMatchers } from "@better-typescript/matchers/matcher"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { importUsage } from "@better-typescript/checks/architectureExplore/importUsage"
-import { moduleIdentity } from "@better-typescript/checks/architectureExplore/moduleIdentity"
-import { exportSurface } from "@better-typescript/checks/architectureExplore/exportSurface"
-import { moduleGraph } from "@better-typescript/checks/architectureExplore/moduleGraph"
+import { importUsage } from "@better-typescript/guidance/policies/importUsage"
+import { moduleIdentity } from "@better-typescript/guidance/policies/moduleIdentity"
+import { exportSurface } from "@better-typescript/guidance/policies/exportSurface"
+import { moduleGraph } from "@better-typescript/guidance/policies/moduleGraph"
 import {
   ExportSurfaceData,
   ImportUsageData,
   ModuleIdentityData
-} from "@better-typescript/checks/architectureExplore/data"
-import { workspaceImportEdges } from "@better-typescript/checks/architectureExplore/evidence"
+} from "@better-typescript/matchers/builtins/architectureExplore/data"
+import { workspaceImportEdges } from "@better-typescript/guidance/architectureExplore/evidence"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-workspace")
@@ -43,18 +44,18 @@ const decodeData = <A>(
     pipe(dataAs(guard, detection), Result.fromOption(Function.constVoid))
   )
 
-const runWorkspaceChecks = async (
-  checks: ReadonlyArray<NamedCheck>
+const runWorkspacePolicies = async (
+  policies: ReadonlyArray<Policy>
 ): Promise<{
   readonly rootPath: string
-  readonly detectionsByCheck: ReadonlyArray<ReadonlyArray<Detection>>
+  readonly detectionsByPolicy: ReadonlyArray<ReadonlyArray<Detection>>
 }> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const executableChecks = Array.map(checks, (named) => named.check)
+  const executablePolicies = policies
 
-  const detectionsByCheck = Array.reduce(
+  const detectionsByPolicy = Array.reduce(
     workspace.projects,
-    Array.map(executableChecks, () => Array.empty<Detection>()),
+    Array.map(executablePolicies, () => Array.empty<Detection>()),
     (current, project) => {
       const loaded = makeContext(project.rootPath)(project.program)
 
@@ -65,7 +66,7 @@ const runWorkspaceChecks = async (
         workspaceRoot: workspace.rootPath
       })
 
-      const projectDetections = runChecks(executableChecks)(includeEverySourceFile)(context)
+      const projectDetections = runPolicies(executablePolicies)(includeEverySourceFile)(context)
 
       return Array.map(current, (detections, checkIndex) =>
         Array.appendAll(detections, projectDetections[checkIndex] ?? Array.empty())
@@ -75,7 +76,7 @@ const runWorkspaceChecks = async (
 
   return {
     rootPath: workspace.rootPath,
-    detectionsByCheck
+    detectionsByPolicy
   }
 }
 
@@ -93,8 +94,8 @@ test("workspace fixture discovers lib, app, and checks projects", async () => {
 })
 
 test("importUsage records package, relative, and test imports with call counts", async () => {
-  const { detectionsByCheck } = await runWorkspaceChecks(Array.of(importUsage))
-  const importData = decodeData(Schema.is(ImportUsageData), detectionsByCheck[0] ?? Array.empty())
+  const { detectionsByPolicy } = await runWorkspacePolicies(Array.of(importUsage))
+  const importData = decodeData(Schema.is(ImportUsageData), detectionsByPolicy[0] ?? Array.empty())
 
   const appPackageImport = Array.findFirst(
     importData,
@@ -137,10 +138,10 @@ test("importUsage records package, relative, and test imports with call counts",
 })
 
 test("moduleIdentity publishes exact and wildcard package aliases", async () => {
-  const { detectionsByCheck } = await runWorkspaceChecks(Array.of(moduleIdentity))
+  const { detectionsByPolicy } = await runWorkspacePolicies(Array.of(moduleIdentity))
   const identityData = decodeData(
     Schema.is(ModuleIdentityData),
-    detectionsByCheck[0] ?? Array.empty()
+    detectionsByPolicy[0] ?? Array.empty()
   )
 
   const utilIdentity = Array.findFirst(
@@ -158,10 +159,10 @@ test("moduleIdentity publishes exact and wildcard package aliases", async () => 
 })
 
 test("exportSurface excludes home-file refs and splits test references", async () => {
-  const { detectionsByCheck } = await runWorkspaceChecks(Array.of(exportSurface))
+  const { detectionsByPolicy } = await runWorkspacePolicies(Array.of(exportSurface))
   const surfaceData = decodeData(
     Schema.is(ExportSurfaceData),
-    detectionsByCheck[0] ?? Array.empty()
+    detectionsByPolicy[0] ?? Array.empty()
   )
 
   const utilSurface = Array.findFirst(
@@ -208,14 +209,46 @@ test("exportSurface excludes home-file refs and splits test references", async (
   assert.equal(pipe(onlyTested, Option.getOrThrow).callCount, 1)
 })
 
-test("workspaceImportEdges joins checks test import to lib util via aliases", async () => {
-  const checks = Array.make(importUsage, moduleIdentity, exportSurface, moduleGraph)
-  const { detectionsByCheck } = await runWorkspaceChecks(checks)
-  const names = Array.map(checks, (named) => named.name)
+test("exportSurface records program-indexed evidence against the containing file", async () => {
+  const workspace = await Effect.runPromise(loadProject(fixturePath))
+  const libProject = pipe(
+    workspace.projects,
+    Array.findFirst(
+      (project) => path.relative(workspace.rootPath, project.rootPath) === "packages/lib"
+    ),
+    Option.getOrThrow
+  )
+  const loaded = makeContext(libProject.rootPath)(libProject.program)
+  const context = ProgramContext.make({
+    program: loaded.program,
+    checker: loaded.checker,
+    projectRoot: loaded.projectRoot,
+    workspaceRoot: workspace.rootPath
+  })
+  const matchesByPolicy = runMatchers(Array.of(exportSurface.matcher))(includeEverySourceFile)(
+    context
+  )
+  const matches = matchesByPolicy[0] ?? Array.empty()
+  const utilSurface = pipe(
+    matches,
+    Array.findFirst(
+      (match) =>
+        Schema.is(ExportSurfaceData)(match.fact) &&
+        match.fact.workspacePath === "packages/lib/src/util.ts"
+    ),
+    Option.getOrThrow
+  )
 
+  assert.equal(utilSurface.target._tag, "FileTarget")
+})
+
+test("workspaceImportEdges joins checks test import to lib util via aliases", async () => {
+  const policies = Array.make(importUsage, moduleIdentity, exportSurface, moduleGraph)
+  const { detectionsByPolicy } = await runWorkspacePolicies(policies)
+  const names = Array.map(policies, (named) => named.name)
   const named = Array.flatten(
-    Array.map(detectionsByCheck, (detections, checkIndex) =>
-      Array.map(detections, makeNamedDetection(names[checkIndex] ?? ""))
+    Array.map(detectionsByPolicy, (detections, policyIndex) =>
+      Array.map(detections, makeNamedDetection(names[policyIndex] ?? ""))
     )
   )
 

@@ -2,9 +2,9 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Array } from "effect"
-import { noMultiLineComments } from "@better-typescript/checks/noMultiLineComments"
+import { noMultiLineComments } from "@better-typescript/guidance/policies/noMultiLineComments"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -152,7 +152,7 @@ const runNoMultiLineCommentsFixture = async (): Promise<ReadonlyArray<Detection>
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(noMultiLineComments.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(noMultiLineComments))(project))
     )
   )
 

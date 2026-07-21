@@ -6,16 +6,16 @@ import {
   ImportedNameUsage,
   InterfaceBurdenData,
   ModuleGraphData
-} from "@better-typescript/checks/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExplore/data"
 import {
   exportSurfaceName,
   importUsageName,
   interfaceBurdenName,
   moduleGraphName
-} from "@better-typescript/checks/architectureExplore/names"
-import { registrationCeremony } from "@better-typescript/checks/architectureExplore/registrationCeremony"
-import { hubModule } from "@better-typescript/checks/architectureExplore/hubModule"
-import { invisibleTests } from "@better-typescript/checks/architectureExplore/invisibleTests"
+} from "@better-typescript/guidance/architectureExplore/names"
+import { registrationCeremony } from "@better-typescript/guidance/architectureExplore/registrationCeremony"
+import { hubModule } from "@better-typescript/guidance/architectureExplore/hubModule"
+import { invisibleTests } from "@better-typescript/guidance/architectureExplore/invisibleTests"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"

@@ -5,6 +5,6 @@
     "rootDir": "src",
     "composite": true
   },
-  "references": [{ "path": "../core" }, { "path": "../checks" }],
+  "references": [{ "path": "../matchers" }, { "path": "../core" }, { "path": "../guidance" }],
   "include": ["src/**/*.ts"]
 }

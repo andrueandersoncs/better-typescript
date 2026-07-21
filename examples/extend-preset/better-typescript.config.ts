@@ -1,6 +1,5 @@
 import { Array } from "effect"
 import * as ts from "typescript"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -13,18 +12,14 @@ import {
   InlineRefactorExamples,
   RefactorExample
 } from "@better-typescript/core/engine/example/data"
-import {
-  defineConfig,
-  makeWiring,
-  makeMergedWiring,
-  makeNamedCheck
-} from "@better-typescript/core/engine/wiring"
+import { defineConfig, makeWiring, makeMergedWiring } from "@better-typescript/core/engine/wiring"
+import { definePolicy, oneFinding } from "@better-typescript/core/engine/policy"
 import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import { functionalCoreEffectWiring } from "@better-typescript/checks/functionalCoreEffect/wiring"
-import { nodeCheck } from "@better-typescript/core/engine/check"
-import { makeDetection } from "@better-typescript/core/engine/check"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import { functionalCoreEffectWiring } from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
+import { nodeMatcher } from "@better-typescript/matchers/matcher"
+import { nodeMatch } from "@better-typescript/matchers/matcher/data"
 
 // This example is documentation. Copy it to a consumer project's
 // better-typescript.config.ts to load it. It stays under examples/ so this
@@ -40,21 +35,8 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
   )
 }
 
-const noConsoleLog: Check = nodeCheck([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
-  (context) => {
-    const element = makeDetection(context)
-
-    return (node): ReadonlyArray<Detection> =>
-      isConsoleLogCall(node)
-        ? [
-            element({
-              node,
-              message: "Avoid console.log in runtime code.",
-              hint: "Return data to the caller or use this project's structured logger at the boundary."
-            })
-          ]
-        : []
-  }
+const noConsoleLogMatcher = nodeMatcher([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
+  () => (node) => (isConsoleLogCall(node) ? [nodeMatch(node, null)] : [])
 )
 
 const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number =>
@@ -91,14 +73,21 @@ const consoleLogExamples = [
   })
 ] as const
 
-const consoleLogCheck = makeNamedCheck(
-  "acme/no-console-log",
-  noConsoleLog,
-  InlineRefactorExamples.make({ examples: consoleLogExamples })
-)
+const consoleLogPolicy = definePolicy({
+  name: "acme/no-console-log",
+  matcher: noConsoleLogMatcher,
+  guidance: () => (match) =>
+    oneFinding(
+      match.target,
+      "Avoid console.log in runtime code.",
+      "Return data to the caller or use this project's structured logger at the boundary.",
+      null
+    ),
+  examples: InlineRefactorExamples.make({ examples: consoleLogExamples })
+})
 
 const localWiring = makeWiring({
-  checks: [consoleLogCheck],
+  policies: [consoleLogPolicy],
   derive: (signals) => {
     const elementsOf = signalOf(signals)
     const specificAdvice = consoleLogBoundaryAdvice(elementsOf("acme/no-console-log"))
@@ -123,7 +112,7 @@ const localWiring = makeWiring({
   }
 })
 
-// makeMergedWiring concatenates checks and derive stages, so extending the preset
+// makeMergedWiring concatenates policies and derive stages, so extending the preset
 // stays a single composition because the merge preserves both halves together.
 const extendedWiring = makeMergedWiring([defaultWiring, functionalCoreEffectWiring, localWiring])
 

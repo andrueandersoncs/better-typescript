@@ -2,9 +2,9 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Array } from "effect"
-import { noBlankLinesBetweenSingleLineDeclarations } from "@better-typescript/checks/noBlankLinesBetweenSingleLineDeclarations"
+import { noBlankLinesBetweenSingleLineDeclarations } from "@better-typescript/guidance/policies/noBlankLinesBetweenSingleLineDeclarations"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -88,7 +88,7 @@ const runNoBlankLinesBetweenSingleLineDeclarationsFixture = async (): Promise<
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
       Effect.runPromise(
-        runCheckOnProject(Array.of(noBlankLinesBetweenSingleLineDeclarations.check))(project)
+        runPolicyOnProject(Array.of(noBlankLinesBetweenSingleLineDeclarations))(project)
       )
     )
   )

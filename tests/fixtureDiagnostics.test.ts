@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 import { Effect } from "effect"
 import * as ts from "typescript"
 import type { LoadedProject } from "@better-typescript/core/project/loadProject/data"
-import { isProjectSourceFile } from "@better-typescript/core/engine/sources"
+import { isProjectSourceFile } from "@better-typescript/matchers/sources"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { packageExamplesRoot } from "./packageExamples.js"
 

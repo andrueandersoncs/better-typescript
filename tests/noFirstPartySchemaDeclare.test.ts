@@ -1,6 +1,6 @@
 import { test } from "node:test"
-import { noFirstPartySchemaDeclare } from "@better-typescript/checks/noFirstPartySchemaDeclare"
-import { assertCheckFixture } from "./ruleTestAssertions.js"
+import { noFirstPartySchemaDeclare } from "@better-typescript/guidance/policies/noFirstPartySchemaDeclare"
+import { assertPolicyFixture } from "./ruleTestAssertions.js"
 
 test("no-first-party-schema-declare reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixture(noFirstPartySchemaDeclare))
+  assertPolicyFixture(noFirstPartySchemaDeclare))

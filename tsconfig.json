@@ -1,8 +1,9 @@
 {
   "files": [],
   "references": [
+    { "path": "packages/matchers" },
     { "path": "packages/core" },
-    { "path": "packages/checks" },
+    { "path": "packages/guidance" },
     { "path": "packages/cli" },
     { "path": "tests" },
     { "path": "tsconfig.selfhost.json" },

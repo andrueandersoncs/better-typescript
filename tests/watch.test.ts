@@ -6,8 +6,6 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Fiber, Function, pipe } from "effect"
 import * as ts from "typescript"
-import type { Check } from "@better-typescript/core/engine/check/data"
-import { makeDetection, nodeCheck } from "@better-typescript/core/engine/check"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import {
   makeExampleSnippet,
@@ -16,11 +14,14 @@ import {
 } from "./exampleHelpers.js"
 import { Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
-import { makeContext } from "@better-typescript/core/engine/sources"
-import type { ProgramContext } from "@better-typescript/core/engine/sources/data"
+import { makeContext } from "@better-typescript/matchers/sources"
+import type { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { reportEvents, watchWorkspace } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
-import { defineConfig, makeWiring, makeNamedCheck } from "@better-typescript/core/engine/wiring"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
+import { definePolicy, oneFinding } from "@better-typescript/core/engine/policy"
+import { nodeMatcher } from "@better-typescript/matchers/matcher"
+import { nodeMatch } from "@better-typescript/matchers/matcher/data"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 
@@ -39,18 +40,17 @@ const probeExamples = makeInlineRefactorExamples([
   )
 ])
 
-const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
-  (context) => (node) => [
-    makeDetection(context)({
-      node,
-      message: probeMessage,
-      hint: probeHint
-    })
-  ]
-)
+const throwProbePolicy = definePolicy({
+  name: probeName,
+  matcher: nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(() => (node) => [
+    nodeMatch(node, null)
+  ]),
+  guidance: () => (match) => oneFinding(match.target, probeMessage, probeHint, null),
+  examples: probeExamples
+})
 
 const probeWiring = makeWiring({
-  checks: [makeNamedCheck(probeName, throwProbeCheck, probeExamples)],
+  policies: [throwProbePolicy],
   derive: (signals) => {
     const detectionCount = signals[0]?.detections.length ?? 0
 

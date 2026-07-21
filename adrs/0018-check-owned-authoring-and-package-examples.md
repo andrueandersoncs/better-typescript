@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted. Package ownership is superseded by [ADR-0024](0024-matcher-policy-guidance-factoring.md);
+example-source ownership remains accepted.
 
 ## Date
 

@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"

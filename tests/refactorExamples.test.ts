@@ -9,19 +9,20 @@ import {
   packageExampleRoot,
   packageExamplesRoot
 } from "./packageExamples.js"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
 import {
   makeDirectoryRefactorExamples,
   makeRefactorExampleResolver
 } from "@better-typescript/core/engine/example"
-import { runCheckOnProject, loadProject } from "@better-typescript/core/project/loadProject"
+import { runPolicyOnProject, loadProject } from "@better-typescript/core/project/loadProject"
+import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
 
-const runSide = async (check: (typeof defaultWiring.checks)[number]["check"], sideRoot: string) => {
+const runSide = async (policy: Policy, sideRoot: string) => {
   const workspace = await Effect.runPromise(loadProject(sideRoot))
   const nested = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(policy))(project))
     )
   )
 
@@ -29,7 +30,9 @@ const runSide = async (check: (typeof defaultWiring.checks)[number]["check"], si
 }
 
 test("reported checks load fixture example trees with at least one pair", async () => {
-  const reported = defaultWiring.checks.filter((check: NamedCheck) => check.reported)
+  const reported = defaultWiring.policies
+    .filter(isProgramPolicy)
+    .filter((policy) => policy.reported)
   const resolve = await Effect.runPromise(makeRefactorExampleResolver())
 
   for (const named of reported) {
@@ -47,9 +50,9 @@ test("reported checks load fixture example trees with at least one pair", async 
 
 test("fixture refactor examples: bad trees detect and good trees stay clean", async () => {
   const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-  const withExamples: Array<NamedCheck> = []
+  const withExamples: Array<Policy> = []
 
-  for (const named of defaultWiring.checks) {
+  for (const named of defaultWiring.policies.filter(isProgramPolicy)) {
     const examples = await Effect.runPromise(resolve(named.examples))
     if (examples.length > 0) {
       withExamples.push(named)
@@ -61,8 +64,8 @@ test("fixture refactor examples: bad trees detect and good trees stay clean", as
   for (const named of withExamples) {
     for (const pairRoot of packageExamplePairRoots(named.name)) {
       const pairName = path.basename(pairRoot)
-      const badDetections = await runSide(named.check, path.join(pairRoot, "bad"))
-      const goodDetections = await runSide(named.check, path.join(pairRoot, "good"))
+      const badDetections = await runSide(named, path.join(pairRoot, "bad"))
+      const goodDetections = await runSide(named, path.join(pairRoot, "good"))
 
       if (badDetections.length === 0) {
         failures.push(`${named.name} example/${pairName}/bad should detect`)

@@ -1,9 +1,9 @@
 import * as assert from "node:assert/strict"
 import { test } from "node:test"
 import {
-  architectureExploreChecks,
+  architectureExplorePolicies,
   architectureExploreWiring
-} from "@better-typescript/checks/preset/architectureExploreWiring"
+} from "@better-typescript/guidance/preset/architectureExploreWiring"
 import {
   CompositionForwarderData,
   ContextTagSeamData,
@@ -20,7 +20,7 @@ import {
   SeamLeakageData,
   SingleAdapterSeamData,
   TestOnlyExportData
-} from "@better-typescript/checks/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExplore/data"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
@@ -71,7 +71,7 @@ const graphData = (workspacePath: string, importedPaths: ReadonlyArray<string>):
   })
 
 test("architectureExploreWiring contains only relational silent evidence checks", () => {
-  const names = architectureExploreChecks.map((check) => check.name)
+  const names = architectureExplorePolicies.map((check) => check.name)
 
   assert.deepEqual(names, [
     "pass-through-wrappers",
@@ -91,10 +91,10 @@ test("architectureExploreWiring contains only relational silent evidence checks"
   ])
   assert.equal(new Set(names).size, names.length)
   assert.equal(
-    architectureExploreChecks.every((check) => !check.reported),
+    architectureExplorePolicies.every((check) => !check.reported),
     true
   )
-  assert.equal(makeWiring(architectureExploreWiring).checks.length, 14)
+  assert.equal(makeWiring(architectureExploreWiring).policies.length, 14)
 })
 
 test("deletion test removes low-leverage exact forwarders", () => {

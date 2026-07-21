@@ -6,14 +6,12 @@ import { fileURLToPath } from "node:url"
 import { Effect, Function, Schema } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
-import { Detection } from "@better-typescript/core/engine/location/data"
 import { workspaceSignalsForProjects } from "@better-typescript/core/engine/wiring"
-import { makeContext } from "@better-typescript/core/engine/sources"
-import {
-  makeCheckFromSubscriptions,
-  makeDetection,
-  fileCheck
-} from "@better-typescript/core/engine/check"
+import { makeContext } from "@better-typescript/matchers/sources"
+import { definePolicy, defineSilentPolicy, oneFinding } from "@better-typescript/core/engine/policy"
+import { makeMatcherFromSubscriptions, fileMatcher } from "@better-typescript/matchers/matcher"
+import { fileMatch } from "@better-typescript/matchers/matcher/data"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
@@ -26,18 +24,45 @@ const configFileName = "better-typescript.config.ts"
 const virtualConfigPath = path.join(testDirectory, configFileName)
 
 const fallbackWiring: Wiring = makeWiring({
-  checks: [],
+  policies: [],
   derive: () => []
 })
 
 const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
 
-const emptyCheck = makeCheckFromSubscriptions(() => [])
+const emptyMatcher = makeMatcherFromSubscriptions(() => [])
+const emptyGuidance = () => () => []
 
-const emptyCheckConfigPreamble = [
-  'import { makeCheckFromSubscriptions } from "@better-typescript/core/engine/check"',
+const makeEmptyPolicy = (name: string, reported = true) =>
+  reported
+    ? definePolicy({
+        name,
+        matcher: emptyMatcher,
+        guidance: emptyGuidance,
+        examples: emptyRefactorExampleSource
+      })
+    : defineSilentPolicy({
+        name,
+        matcher: emptyMatcher,
+        guidance: emptyGuidance,
+        examples: emptyRefactorExampleSource
+      })
+
+const emptyPolicy = makeEmptyPolicy("empty-policy")
+
+const emptyPolicyConfigPreamble = [
+  'import { definePolicy, defineSilentPolicy } from "@better-typescript/core/engine/policy"',
+  'import { makeMatcherFromSubscriptions, fileMatcher } from "@better-typescript/matchers/matcher"',
+  'import { fileMatch } from "@better-typescript/matchers/matcher/data"',
+  'import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"',
+  'import { oneFinding } from "@better-typescript/core/engine/policy"',
   "",
-  "const emptyCheck = makeCheckFromSubscriptions(() => [])",
+  "const emptyMatcher = makeMatcherFromSubscriptions(() => [])",
+  "const emptyGuidance = () => () => []",
+  "const makeEmptyPolicy = (name, reported = true) =>",
+  "  reported",
+  "    ? definePolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
+  "    : defineSilentPolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
   ""
 ]
 
@@ -97,19 +122,19 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
     await writeConfig(
       projectDirectory,
       [
-        ...emptyCheckConfigPreamble,
+        ...emptyPolicyConfigPreamble,
         "export default [",
         "  {",
         '    files: ["src/**/*.{ts,tsx}", "scripts/*.mts"],',
         "    wiring: {",
-        '      checks: [{ name: "source-check", check: emptyCheck }],',
+        '      policies: [makeEmptyPolicy("source-check")],',
         "      derive: () => []",
         "    }",
         "  },",
         "  {",
         '    files: ["tests/**/*.ts"],',
         "    wiring: {",
-        '      checks: [{ name: "test-helper", reported: false, check: emptyCheck }],',
+        '      policies: [makeEmptyPolicy("test-helper", false)],',
         "      derive: () => []",
         "    }",
         "  }",
@@ -124,11 +149,11 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
     assert.deepEqual(config[0]?.files, ["src/**/*.{ts,tsx}", "scripts/*.mts"])
     assert.deepEqual(config[1]?.files, ["tests/**/*.ts"])
     assert.deepEqual(
-      config.map((entry) => entry.wiring.checks[0]?.name),
+      config.map((entry) => entry.wiring.policies[0]?.name),
       ["source-check", "test-helper"]
     )
     assert.deepEqual(
-      config.map((entry) => entry.wiring.checks[0]?.reported),
+      config.map((entry) => entry.wiring.policies[0]?.reported),
       [true, false]
     )
   })
@@ -141,7 +166,7 @@ test("decodeWiringConfig accepts a named zero-argument config factory", async ()
         {
           files: ["src/**/*.ts"],
           wiring: {
-            checks: [{ name: "named-factory-check", check: emptyCheck }],
+            policies: [makeEmptyPolicy("named-factory-check")],
             derive: () => []
           }
         }
@@ -149,7 +174,7 @@ test("decodeWiringConfig accepts a named zero-argument config factory", async ()
     })
   )
 
-  assert.equal(config[0]?.wiring.checks[0]?.name, "named-factory-check")
+  assert.equal(config[0]?.wiring.policies[0]?.name, "named-factory-check")
 })
 
 test("decodeWiringConfig accepts a default zero-argument config factory", async () => {
@@ -159,7 +184,7 @@ test("decodeWiringConfig accepts a default zero-argument config factory", async 
         {
           files: ["src/**/*.ts"],
           wiring: {
-            checks: [{ name: "default-factory-check", check: emptyCheck }],
+            policies: [makeEmptyPolicy("default-factory-check")],
             derive: () => []
           }
         }
@@ -167,29 +192,26 @@ test("decodeWiringConfig accepts a default zero-argument config factory", async 
     })
   )
 
-  assert.equal(config[0]?.wiring.checks[0]?.name, "default-factory-check")
+  assert.equal(config[0]?.wiring.policies[0]?.name, "default-factory-check")
 })
 
 test("decoded glob config drives workspace signals end to end", async () => {
   await runInTempProject(async (projectDirectory) => {
+    const configuredPolicy = definePolicy({
+      name: "config-extra-check",
+      matcher: fileMatcher((context) => [fileMatch(context.sourceFile, null)]),
+      guidance: () => (match) =>
+        oneFinding(match.target, "configured detection", "loaded from project config", null),
+      examples: emptyRefactorExampleSource
+    })
+
     const config = await Effect.runPromise(
       decodeWiringConfig(virtualConfigPath, {
         default: [
           {
             files: ["src/**/cases.ts"],
             wiring: {
-              checks: [
-                {
-                  name: "config-extra-check",
-                  check: fileCheck((context) => [
-                    makeDetection(context)({
-                      node: context.sourceFile,
-                      message: "configured detection",
-                      hint: "loaded from project config"
-                    })
-                  ])
-                }
-              ],
+              policies: [configuredPolicy],
               derive: () => []
             }
           }
@@ -231,7 +253,7 @@ test("decodeWiringConfig rejects empty and blank file glob arrays", async () => 
   const blankError = await decodeFailure([
     {
       files: ["src/**/*.ts", "  "],
-      wiring: { checks: [], derive: () => [] }
+      wiring: { policies: [], derive: () => [] }
     }
   ])
 
@@ -241,7 +263,7 @@ test("decodeWiringConfig rejects empty and blank file glob arrays", async () => 
   const emptyError = await decodeFailure([
     {
       files: [],
-      wiring: { checks: [], derive: () => [] }
+      wiring: { policies: [], derive: () => [] }
     }
   ])
 
@@ -250,7 +272,7 @@ test("decodeWiringConfig rejects empty and blank file glob arrays", async () => 
 
 test("decodeWiringConfig rejects the legacy bare wiring shape", async () => {
   const error = await decodeFailure({
-    checks: [{ name: "legacy-check", check: emptyCheck }],
+    policies: [makeEmptyPolicy("legacy-check")],
     derive: () => []
   })
 
@@ -262,7 +284,7 @@ test("decodeWiringConfig rejects the legacy named wiring export", async () => {
     wiring: [
       {
         files: ["src/**/*.ts"],
-        wiring: { checks: [], derive: () => [] }
+        wiring: { policies: [], derive: () => [] }
       }
     ]
   })
@@ -270,12 +292,14 @@ test("decodeWiringConfig rejects the legacy named wiring export", async () => {
   assert.match(error.message, /exported config must be an array/)
 })
 
-test("decodeWiringConfig rejects legacy per-check paths", async () => {
+test("decodeWiringConfig rejects legacy per-policy paths", async () => {
   const error = await decodeFailure([
     {
       files: ["src/**/*.ts"],
       wiring: {
-        checks: [{ name: "legacy-scope", paths: ["src"], check: emptyCheck }],
+        policies: [
+          { name: "legacy-scope", paths: ["src"], matcher: emptyMatcher, guidance: emptyGuidance }
+        ],
         derive: () => []
       }
     }
@@ -283,16 +307,18 @@ test("decodeWiringConfig rejects legacy per-check paths", async () => {
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExampleSource \}/
+    /config\[0\]\.wiring\.policies\[0\] must be a Policy \(matcher\.plan function\) or WorkspacePolicy \(matcher\.match function\)/
   )
 })
 
-test("decodeWiringConfig rejects array-valued check examples", async () => {
+test("decodeWiringConfig rejects array-valued policy examples", async () => {
   const error = await decodeFailure([
     {
       files: ["src/**/*.ts"],
       wiring: {
-        checks: [{ name: "array-examples", check: emptyCheck, examples: [] }],
+        policies: [
+          { name: "array-examples", matcher: emptyMatcher, guidance: emptyGuidance, examples: [] }
+        ],
         derive: () => []
       }
     }
@@ -300,16 +326,23 @@ test("decodeWiringConfig rejects array-valued check examples", async () => {
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExampleSource \}/
+    /config\[0\]\.wiring\.policies\[0\] must be a Policy \(matcher\.plan function\) or WorkspacePolicy \(matcher\.match function\)/
   )
 })
 
-test("decodeWiringConfig rejects legacy thunk-valued check examples", async () => {
+test("decodeWiringConfig rejects legacy thunk-valued policy examples", async () => {
   const error = await decodeFailure([
     {
       files: ["src/**/*.ts"],
       wiring: {
-        checks: [{ name: "thunk-examples", check: emptyCheck, examples: () => [] }],
+        policies: [
+          {
+            name: "thunk-examples",
+            matcher: emptyMatcher,
+            guidance: emptyGuidance,
+            examples: () => []
+          }
+        ],
         derive: () => []
       }
     }
@@ -317,51 +350,58 @@ test("decodeWiringConfig rejects legacy thunk-valued check examples", async () =
 
   assert.match(
     error.message,
-    /config\[0\]\.wiring\.checks\[0\] must be \{ name: string, check: \{ plan: function \}, reported\?: boolean, examples\?: RefactorExampleSource \}/
+    /config\[0\]\.wiring\.policies\[0\] must be a Policy \(matcher\.plan function\) or WorkspacePolicy \(matcher\.match function\)/
   )
 })
 
-test("decodeWiringConfig accepts inline RefactorExampleSource check examples", async () => {
+test("decodeWiringConfig accepts inline RefactorExampleSource policy examples", async () => {
   const examples = makeInlineRefactorExamples([])
   const config = await Effect.runPromise(
     decodeWiringConfig(virtualConfigPath, [
       {
         files: ["src/**/*.ts"],
         wiring: {
-          checks: [{ name: "inline-examples", check: emptyCheck, examples }],
+          policies: [
+            definePolicy({
+              name: "inline-examples",
+              matcher: emptyMatcher,
+              guidance: emptyGuidance,
+              examples
+            })
+          ],
           derive: () => []
         }
       }
     ])
   )
 
-  const decodedExamples = config[0]?.wiring.checks[0]?.examples
+  const decodedExamples = config[0]?.wiring.policies[0]?.examples
 
-  assert.equal(config[0]?.wiring.checks[0]?.name, "inline-examples")
+  assert.equal(config[0]?.wiring.policies[0]?.name, "inline-examples")
   assert.ok(Schema.is(InlineRefactorExamples)(decodedExamples))
   assert.equal(decodedExamples._tag, "inline")
   assert.deepEqual(decodedExamples.examples, [])
 })
 
-test("decodeWiringConfig rejects duplicate check names across wiring entries", async () => {
+test("decodeWiringConfig rejects duplicate policy names across wiring entries", async () => {
   const error = await decodeFailure([
     {
       files: ["src/**/*.ts"],
       wiring: {
-        checks: [{ name: "duplicate-check", check: emptyCheck }],
+        policies: [makeEmptyPolicy("duplicate-check")],
         derive: () => []
       }
     },
     {
       files: ["tests/**/*.ts"],
       wiring: {
-        checks: [{ name: "duplicate-check", reported: false, check: emptyCheck }],
+        policies: [makeEmptyPolicy("duplicate-check", false)],
         derive: () => []
       }
     }
   ])
 
-  assert.match(error.message, /Duplicate check names: duplicate-check/)
+  assert.match(error.message, /Duplicate policy names: duplicate-check/)
 })
 
 test("decodeWiringConfig rejects invalid wiring entry shapes", async () => {
@@ -372,7 +412,7 @@ test("decodeWiringConfig rejects invalid wiring entry shapes", async () => {
     }
   ])
 
-  assert.match(error.message, /config\[0\]\.wiring must be an object with checks and derive/)
+  assert.match(error.message, /config\[0\]\.wiring must be an object with policies and derive/)
 })
 
 test("decodeWiringConfig rejects throwing config factories", async () => {

@@ -2,7 +2,7 @@ import { Data } from "effect"
 import type { RefactorExampleSource } from "../example/data.js"
 import type { Detection } from "../location/data.js"
 
-// Signal is one named check result because rendering and advice share it.
+// Signal is one named policy result because rendering and advice share it.
 export class Signal extends Data.Class<{
   readonly name: string
   readonly reported: boolean

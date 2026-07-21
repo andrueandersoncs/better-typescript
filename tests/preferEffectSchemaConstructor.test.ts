@@ -1,6 +1,6 @@
 import { test } from "node:test"
-import { preferEffectSchemaConstructor } from "@better-typescript/checks/preferEffectSchemaConstructor"
-import { assertCheckFixture } from "./ruleTestAssertions.js"
+import { preferEffectSchemaConstructor } from "@better-typescript/guidance/policies/preferEffectSchemaConstructor"
+import { assertPolicyFixture } from "./ruleTestAssertions.js"
 
 test("prefer-effect-schema-constructor reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixture(preferEffectSchemaConstructor))
+  assertPolicyFixture(preferEffectSchemaConstructor))

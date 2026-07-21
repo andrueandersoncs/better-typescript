@@ -3,7 +3,7 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { Effect, Hash, HashMap, HashSet, Option } from "effect"
 import * as ts from "typescript"
-import { referenceKey } from "@better-typescript/checks/support/referenceKey"
+import { referenceKey } from "@better-typescript/matchers/support/referenceKey"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 
 test("referenceKey gives Effect collections stable declaration identity", async () => {

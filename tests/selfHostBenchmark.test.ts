@@ -10,7 +10,7 @@ import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../bench/selfHost
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.dirname(testDirectory)
 
-test("self-host benchmark runs the built CLI with every enrolled Check", async () => {
+test("self-host benchmark runs the built CLI with every enrolled Policy", async () => {
   const target = await selfHostBenchmarkTarget(repoRoot)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
@@ -37,7 +37,7 @@ test("every self-host wiring covers every package source tree", () => {
   assert.equal(selfHostConfig.length, 3)
   assert.ok(
     selfHostConfig.every((entry) => entry.files.includes("packages/*/src/**")),
-    "every self-host wiring must cover packages/checks, packages/core, and packages/cli"
+    "every self-host wiring must cover packages/*/src/**"
   )
 })
 

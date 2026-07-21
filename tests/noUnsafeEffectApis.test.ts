@@ -1,7 +1,7 @@
 import { test } from "node:test"
-import { noUnsafeEffectApis } from "@better-typescript/checks/noUnsafeEffectApis"
+import { noUnsafeEffectApis } from "@better-typescript/guidance/policies/noUnsafeEffectApis"
 import {
-  assertCheckFixtureExpectations,
+  assertPolicyFixtureExpectations,
   type ExpectedDetection,
   type FixtureItem
 } from "./ruleTestAssertions.js"
@@ -99,4 +99,4 @@ const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
 ]
 
 test("no-unsafe-effect-apis reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixtureExpectations(noUnsafeEffectApis, disallowedFixtureItems, allowedFixtureItems))
+  assertPolicyFixtureExpectations(noUnsafeEffectApis, disallowedFixtureItems, allowedFixtureItems))

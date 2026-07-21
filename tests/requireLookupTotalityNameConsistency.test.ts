@@ -1,6 +1,6 @@
 import { test } from "node:test"
-import { requireLookupTotalityNameConsistency } from "@better-typescript/checks/requireLookupTotalityNameConsistency"
-import { assertCheckFixture } from "./ruleTestAssertions.js"
+import { requireLookupTotalityNameConsistency } from "@better-typescript/guidance/policies/requireLookupTotalityNameConsistency"
+import { assertPolicyFixture } from "./ruleTestAssertions.js"
 
 test("require-lookup-totality-name-consistency reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixture(requireLookupTotalityNameConsistency))
+  assertPolicyFixture(requireLookupTotalityNameConsistency))

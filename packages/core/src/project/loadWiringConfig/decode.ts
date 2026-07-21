@@ -1,308 +1,60 @@
-import { Array, Effect, Function, Option, Predicate, Struct, flow, pipe } from "effect"
-import { NamedCheck, Wiring, WiringEntry } from "../../engine/wiring/data.js"
-import type { WiringConfig } from "../../engine/wiring/data.js"
+import { Array, Effect, Option, Predicate, pipe } from "effect"
+import { Wiring, WiringEntry, type WiringConfig } from "../../engine/wiring/data.js"
 import { defineConfig, isFileGlob } from "../../engine/wiring/wiring.js"
-import type { Check } from "../../engine/check/data.js"
-import type { RefactorExampleSource } from "../../engine/example/data.js"
-import { emptyRefactorExampleSource } from "../../engine/example/example.js"
-import { strictEqual } from "../../engine/equivalence.js"
-import { ConfigExport, type ConfigExportName, ProjectWiringConfigError } from "./data.js"
+import {
+  failConfig,
+  formatCause as formatCauseImpl,
+  isFunctionType,
+  isRecord,
+  makeProjectWiringConfigError as makeProjectWiringConfigErrorImpl,
+  resolvedExport
+} from "./decodeExport.js"
+import { validatePolicies } from "./decodePolicy.js"
+import type { ProjectWiringConfigError } from "./data.js"
 
-const defaultExportName = "default"
-const configExportName = "config"
-
-// The loader shell reuses this constructor because both paths must fail with one error shape.
-export const makeProjectWiringConfigError = (configPath: string, reason: string) => {
-  const fields = { configPath, reason }
-
-  return new ProjectWiringConfigError(fields)
-}
-
-const failConfig = (
-  configPath: string,
-  reason: string
-): Effect.Effect<never, ProjectWiringConfigError> =>
-  pipe(makeProjectWiringConfigError(configPath, reason), Effect.fail)
-
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
-  const isObject = strictEqual("object")(typeof value)
-  const isPresent = value !== null
-  const conditions = Array.make(isObject, isPresent)
-  return Array.every(conditions, Boolean)
-}
-
-const isFunctionValue = (value: unknown): value is () => unknown =>
-  strictEqual("function")(typeof value)
-
-const isError = (cause: unknown): cause is { readonly message: string } => cause instanceof Error
-
-const hasText = (value: string) => value.length > 0
-
-// The loader shell reuses this formatter because module-load failures render like decode failures.
-export const formatCause = (cause: unknown) => {
-  const fallbackText = String(cause)
-
-  return pipe(
-    Option.liftPredicate(isError)(cause),
-    Option.map(Struct.get("message")),
-    Option.filter(hasText),
-    Option.getOrElse(Function.constant(fallbackText))
-  )
-}
-
-const makeConfigExport = (name: ConfigExportName) => (value: unknown) =>
-  new ConfigExport({ name, value })
-
-const defaultConfigExport = makeConfigExport(defaultExportName)
-
-const ownConfigExport =
-  (name: ConfigExportName) =>
-  (valueFromRecord: (record: Readonly<Record<string, unknown>>) => unknown) => {
-    const recordHasOwnName = (candidate: Readonly<Record<string, unknown>>) =>
-      Object.hasOwn(candidate, name)
-
-    return flow(
-      Option.liftPredicate(recordHasOwnName),
-      Option.map(valueFromRecord),
-      Option.map(makeConfigExport(name))
-    )
-  }
-
-const defaultOwnConfigExport = ownConfigExport(defaultExportName)(Struct.get(defaultExportName))
-
-const configOwnConfigExport = ownConfigExport(configExportName)(Struct.get(configExportName))
-
-const configExportFromRecord = (record: Readonly<Record<string, unknown>>) => {
-  const defaultOwn = defaultOwnConfigExport(record)
-  const directExport = defaultConfigExport(record)
-
-  return pipe(
-    configOwnConfigExport(record),
-    Option.orElse(Function.constant(defaultOwn)),
-    Option.getOrElse(Function.constant(directExport))
-  )
-}
-
-const configExportFromFunction = defaultConfigExport
-
-const selectedExport = Effect.fn("WiringConfig.selectedExport")(function* (
-  configPath: string,
-  moduleValue: unknown
-) {
-  const recordValueOption = Option.liftPredicate(isRecord)(moduleValue)
-  const recordExport = pipe(recordValueOption, Option.map(configExportFromRecord))
-  const functionValueOption = Option.liftPredicate(isFunctionValue)(moduleValue)
-  const functionExport = pipe(functionValueOption, Option.map(configExportFromFunction))
-  const exportOption = pipe(recordExport, Option.orElse(Function.constant(functionExport)))
-
-  const missingExport = failConfig(
-    configPath,
-    "config must export a default configuration or named config"
-  )
-
-  return yield* pipe(
-    exportOption,
-    Option.match({
-      onNone: Function.constant(missingExport),
-      onSome: Effect.succeed
-    })
-  )
-})
-
-const callFactory = Effect.fn("WiringConfig.callFactory")(function* (
-  configPath: string,
-  exportName: ConfigExportName,
-  factory: () => unknown
-) {
-  const hasParameters = factory.length > 0
-
-  if (hasParameters) {
-    const reason = `${exportName} export factory must take zero arguments`
-
-    return yield* failConfig(configPath, reason)
-  }
-
-  return yield* Effect.try({
-    try: factory,
-    catch: (cause) => {
-      const causeMessage = formatCause(cause)
-      const reason = `${exportName} export factory failed: ${causeMessage}`
-
-      return makeProjectWiringConfigError(configPath, reason)
-    }
-  })
-})
-
-const resolvedExport = Effect.fn("WiringConfig.resolvedExport")(function* (
-  configPath: string,
-  moduleValue: unknown
-) {
-  const exported = yield* selectedExport(configPath, moduleValue)
-  const value = exported.value
-  const factoryOption = Option.liftPredicate(isFunctionValue)(value)
-  const plainExport = Effect.succeed(value)
-
-  const resolveExportedValue = (exportedValue: () => unknown) =>
-    callFactory(configPath, exported.name, exportedValue)
-
-  return yield* pipe(
-    factoryOption,
-    Option.match({
-      onNone: Function.constant(plainExport),
-      onSome: resolveExportedValue
-    })
-  )
-})
-
-const checkShapeReason =
-  "{ name: string, check: { plan: function }, reported?: boolean, examples?: RefactorExampleSource }"
-
-const isInlineExampleSource = (examples: Readonly<Record<string, unknown>>) => {
-  const hasInlineTag = strictEqual("inline")(examples._tag)
-  const hasExamplesArray = Array.isArray(examples.examples)
-  const conditions = Array.make(hasInlineTag, hasExamplesArray)
-  return Array.every(conditions, Boolean)
-}
-
-const isDirectoryExampleSource = (examples: Readonly<Record<string, unknown>>) => {
-  const hasDirectoryTag = strictEqual("directory")(examples._tag)
-  const hasRootString = strictEqual("string")(typeof examples.root)
-  const conditions = Array.make(hasDirectoryTag, hasRootString)
-  return Array.every(conditions, Boolean)
-}
-
-const isExampleSourceRecord = (examples: Readonly<Record<string, unknown>>) =>
-  isInlineExampleSource(examples) || isDirectoryExampleSource(examples)
-
-const isRefactorExampleSource = (value: unknown) =>
-  pipe(Option.liftPredicate(isRecord)(value), Option.exists(isExampleSourceRecord))
-
-const hasNamedCheckFields = (record: Readonly<Record<string, unknown>>) => {
-  const hasStringName = strictEqual("string")(typeof record.name)
-
-  const checkHasPlan = (check: Readonly<Record<string, unknown>>) =>
-    strictEqual("function")(typeof check.plan)
-
-  const hasCheckPlan = pipe(
-    Option.liftPredicate(isRecord)(record.check),
-    Option.exists(checkHasPlan)
-  )
-
-  const reported = Object.hasOwn(record, "reported") ? Option.some(record.reported) : Option.none()
-
-  const hasValidReported = pipe(
-    reported,
-    Option.match({
-      onNone: Function.constant(true),
-      onSome: (reported) => strictEqual("boolean")(typeof reported)
-    })
-  )
-
-  const examples = Object.hasOwn(record, "examples") ? Option.some(record.examples) : Option.none()
-
-  const hasValidExamples = pipe(
-    examples,
-    Option.match({
-      onNone: Function.constant(true),
-      onSome: isRefactorExampleSource
-    })
-  )
-
-  const hasNoLegacyPaths = !Object.hasOwn(record, "paths")
-
-  const namedCheckShapeConditions = Array.make(
-    hasStringName,
-    hasCheckPlan,
-    hasValidReported,
-    hasValidExamples,
-    hasNoLegacyPaths
-  )
-
-  return Array.every(namedCheckShapeConditions, Boolean)
-}
-
-const invalidNamedCheck = (value: unknown) => {
-  const recordOption = Option.liftPredicate(isRecord)(value)
-  const hasValidShape = Option.exists(recordOption, hasNamedCheckFields)
-
-  return !hasValidShape
-}
-
-const makeNamedCheckFrom = (value: unknown) => {
-  const record = value as Readonly<Record<string, unknown>>
-  const name = record.name as string
-  const check = record.check as Check
-  const reported = Object.hasOwn(record, "reported") ? (record.reported as boolean) : true
-
-  const examples = Object.hasOwn(record, "examples")
-    ? (record.examples as RefactorExampleSource)
-    : emptyRefactorExampleSource
-
-  return new NamedCheck({ name, check, reported, examples })
-}
-
-const validateNamedChecks = Effect.fn("WiringConfig.validateNamedChecks")(function* (
-  configPath: string,
-  fieldPath: string,
-  value: unknown
-) {
-  const isCheckArray = Array.isArray(value)
-  const missingCheckArray = !isCheckArray
-
-  if (missingCheckArray) {
-    const reason = `${fieldPath} must be an array of ${checkShapeReason}`
-
-    return yield* failConfig(configPath, reason)
-  }
-
-  const checks = value as ReadonlyArray<unknown>
-
-  const invalidIndex = pipe(
-    Array.findFirstIndex(checks, invalidNamedCheck),
-    Option.getOrElse(() => -1)
-  )
-
-  const hasInvalidCheck = invalidIndex >= 0
-
-  if (hasInvalidCheck) {
-    const reason = `${fieldPath}[${invalidIndex}] must be ${checkShapeReason}`
-
-    return yield* failConfig(configPath, reason)
-  }
-
-  return Array.map(checks, makeNamedCheckFrom)
-})
+export const formatCause = formatCauseImpl
+export const makeProjectWiringConfigError = makeProjectWiringConfigErrorImpl
 
 const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(function* (
   configPath: string,
   fieldPath: string,
   value: unknown
 ) {
-  const isWiringRecord = isRecord(value)
-  const missingWiringRecord = !isWiringRecord
-
-  if (missingWiringRecord) {
-    const reason = `${fieldPath} must be an object with checks and derive`
-
-    return yield* failConfig(configPath, reason)
+  if (!isRecord(value)) {
+    return yield* failConfig(configPath, `${fieldPath} must be an object with policies and derive`)
   }
 
-  const record = value as Readonly<Record<string, unknown>>
-  const checks = yield* validateNamedChecks(configPath, `${fieldPath}.checks`, record.checks)
-  const deriveIsFunction = strictEqual("function")(typeof record.derive)
+  const policiesPath = `${fieldPath}.policies`
+  const policies = yield* validatePolicies(configPath, policiesPath, value.policies)
 
-  if (!deriveIsFunction) {
-    const reason = `${fieldPath}.derive must be a function`
-
-    return yield* failConfig(configPath, reason)
+  if (!isFunctionType(typeof value.derive)) {
+    return yield* failConfig(configPath, `${fieldPath}.derive must be a function`)
   }
 
-  const derive = record.derive as Wiring["derive"]
+  const derive = value.derive as Wiring["derive"]
 
-  return new Wiring({ checks, derive })
+  return new Wiring({ policies, derive })
 })
 
 const isUnknownArray: (value: unknown) => value is ReadonlyArray<unknown> = Array.isArray
+
+const isStringFileGlob = (value: unknown): value is string => {
+  const isString = Predicate.isString(value)
+  const isGlob = isString && isFileGlob(value)
+  const conditions = Array.make(isString, isGlob)
+
+  return Array.every(conditions, Boolean)
+}
+
+const isNonEmptyFileGlobArray = (
+  files: ReadonlyArray<unknown>
+): files is Array.NonEmptyReadonlyArray<string> => {
+  const everyGlob = Array.every(files, isStringFileGlob)
+  const nonEmpty = Array.isReadonlyArrayNonEmpty(files)
+  const conditions = Array.make(everyGlob, nonEmpty)
+
+  return Array.every(conditions, Boolean)
+}
 
 const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(function* (
   configPath: string,
@@ -313,34 +65,27 @@ const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(functi
   const recordOption = Option.liftPredicate(isRecord)(value)
 
   if (Option.isNone(recordOption)) {
-    const reason = `${fieldPath} must be an object with files and wiring`
-
-    return yield* failConfig(configPath, reason)
+    return yield* failConfig(configPath, `${fieldPath} must be an object with files and wiring`)
   }
 
   const record = recordOption.value
 
-  const isStringFileGlob = (value: unknown): value is string =>
-    Predicate.isString(value) && isFileGlob(value)
-
   const filesOption = pipe(
     record.files,
     Option.liftPredicate(isUnknownArray),
-    Option.filter((files): files is Array.NonEmptyReadonlyArray<string> => {
-      const hasOnlyFileGlobs = Array.every(files, isStringFileGlob)
-
-      return hasOnlyFileGlobs && Array.isReadonlyArrayNonEmpty(files)
-    })
+    Option.filter(isNonEmptyFileGlobArray)
   )
 
   if (Option.isNone(filesOption)) {
-    const reason = `${fieldPath}.files must be a non-empty array of non-empty glob strings`
-
-    return yield* failConfig(configPath, reason)
+    return yield* failConfig(
+      configPath,
+      `${fieldPath}.files must be a non-empty array of non-empty glob strings`
+    )
   }
 
   const files = filesOption.value
-  const wiring = yield* validateWiringShape(configPath, `${fieldPath}.wiring`, record.wiring)
+  const wiringPath = `${fieldPath}.wiring`
+  const wiring = yield* validateWiringShape(configPath, wiringPath, record.wiring)
 
   return new WiringEntry({ files, wiring })
 })
@@ -352,13 +97,16 @@ const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(func
   if (!Array.isArray(value)) {
     return yield* failConfig(
       configPath,
-      "exported config must be an array of { files: string[], wiring: { checks, derive } }"
+      "exported config must be an array of { files: string[], wiring: { policies, derive } }"
     )
   }
 
+  const validateEntryAt = (entry: unknown, index: number) =>
+    validateWiringEntry(configPath, entry, index)
+
   const entries: ReadonlyArray<Pick<WiringEntry, "files" | "wiring">> = yield* Effect.forEach(
     value,
-    (entry, index) => validateWiringEntry(configPath, entry, index)
+    validateEntryAt
   )
 
   return yield* Effect.try({

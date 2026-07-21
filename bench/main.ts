@@ -10,10 +10,10 @@ import {
 } from "@better-typescript/core/engine/wiring"
 import { reportEvents } from "@better-typescript/core/engine/watch"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
-import { makeContext } from "@better-typescript/core/engine/sources"
+import { makeContext } from "@better-typescript/matchers/sources"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
-import { defaultWiring } from "@better-typescript/checks/preset/defaultWiring"
-import { architectureExploreWiring } from "@better-typescript/checks/preset/architectureExploreWiring"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import { architectureExploreWiring } from "@better-typescript/guidance/preset/architectureExploreWiring"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type {
   LoadedProject,

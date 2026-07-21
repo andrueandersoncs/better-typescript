@@ -1,6 +1,6 @@
 import { test } from "node:test"
-import { noNestedIfStatements } from "@better-typescript/checks/noNestedIfStatements"
-import { assertCheckFixture } from "./ruleTestAssertions.js"
+import { noNestedIfStatements } from "@better-typescript/guidance/policies/noNestedIfStatements"
+import { assertPolicyFixture } from "./ruleTestAssertions.js"
 
 test("no-nested-if-statements reports disallowed and permits allowed fixture items", () =>
-  assertCheckFixture(noNestedIfStatements))
+  assertPolicyFixture(noNestedIfStatements))

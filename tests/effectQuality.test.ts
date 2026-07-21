@@ -9,9 +9,10 @@ import {
   EffectQualityRuleData,
   type EffectQualityAdviceKind,
   type EffectQualityRuleKind
-} from "@better-typescript/checks/effectQuality/data"
-import { effectQualityWiring } from "@better-typescript/checks/effectQuality/wiring"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+} from "@better-typescript/matchers/builtins/effectQuality/data"
+import { effectQualityWiring } from "@better-typescript/guidance/preset/effectQualityWiring"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
+import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "effect-quality")
@@ -20,10 +21,10 @@ const runSignals = async (): Promise<ReadonlyArray<Signal>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   return Promise.all(
-    effectQualityWiring.checks.map(async (named) => {
+    effectQualityWiring.policies.filter(isProgramPolicy).map(async (named) => {
       const detections = await Promise.all(
         workspace.projects.map((project) =>
-          Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
+          Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
         )
       )
 

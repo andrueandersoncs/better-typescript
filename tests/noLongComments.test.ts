@@ -2,9 +2,9 @@ import * as path from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Array } from "effect"
-import { noLongComments } from "@better-typescript/checks/noLongComments"
+import { noLongComments } from "@better-typescript/guidance/policies/noLongComments"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
   assertAllowedFixtureItems,
   assertDisallowedFixtureItems,
@@ -83,7 +83,7 @@ const runNoLongCommentsFixture = async (): Promise<ReadonlyArray<Detection>> => 
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(noLongComments.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(noLongComments))(project))
     )
   )
 

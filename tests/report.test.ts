@@ -4,43 +4,53 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { Array, Effect, pipe } from "effect"
 import * as ts from "typescript"
-import type { Check } from "@better-typescript/core/engine/check/data"
 import { Detection, Location } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import type { NamedCheck, Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
+import type { Policy, WorkspacePolicy } from "@better-typescript/core/engine/policy/data"
+import type { Wiring, WiringConfig, WiringPolicy } from "@better-typescript/core/engine/wiring/data"
+import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import {
-  defineConfig,
-  makeWiring,
-  makeNamedCheck,
-  makeSilentCheck
-} from "@better-typescript/core/engine/wiring"
+  definePolicy,
+  defineSilentPolicy,
+  defineWorkspacePolicy,
+  oneFinding
+} from "@better-typescript/core/engine/policy"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import {
   filterFallbackAdviceForUncoveredFiles,
   withFallbackAdvice
 } from "@better-typescript/core/engine/report"
-import { makeDirectoryRefactorExamples } from "@better-typescript/core/engine/example"
+import {
+  makeDirectoryRefactorExamples,
+  emptyRefactorExampleSource
+} from "@better-typescript/core/engine/example"
 import {
   makeExampleSnippet,
   makeInlineRefactorExamples,
   makeRefactorExample
 } from "./exampleHelpers.js"
-import { defaultConfig } from "@better-typescript/checks/preset/defaultWiring"
+import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
 import {
   astNodesIn,
   makeContext,
   foldAst,
   isProjectSourceFile
-} from "@better-typescript/core/engine/sources"
+} from "@better-typescript/matchers/sources"
 import { reportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
-  makeCheckFromSubscriptions,
-  makeDetection,
-  fileCheck,
-  nodeCheck
-} from "@better-typescript/core/engine/check"
+  directoryMatcher,
+  fileMatcher,
+  makeMatcherFromSubscriptions,
+  nodeMatcher
+} from "@better-typescript/matchers/matcher"
+import {
+  directoryMatch,
+  fileMatch,
+  nodeMatch,
+  positionTarget
+} from "@better-typescript/matchers/matcher/data"
 import type {
   LoadedProject,
   LoadedWorkspace
@@ -58,6 +68,7 @@ const fixturePath = (name: string): string => path.join(testDirectory, "fixtures
 const noThrowFixturePath = fixturePath("no-throw")
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
+const unit = null
 
 const loadFixtureWorkspace = (name: string): Promise<LoadedWorkspace> =>
   Effect.runPromise(loadProject(fixturePath(name)))
@@ -121,32 +132,43 @@ const collectAstSignatures = (project: LoadedProject): ReadonlyArray<string> => 
   )
 }
 
-const throwProbeCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
-  (context) => (node) => [
-    makeDetection(context)({
-      node,
-      message: probeMessage,
-      hint: probeHint
-    })
-  ]
+const throwProbeMatcher = nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
+  () => (node) => [nodeMatch(node, unit)]
 )
 
-const throwProbeNamedCheck: NamedCheck = makeNamedCheck(
-  "probe throw statements",
-  throwProbeCheck,
-  probeExamples
-)
+const throwProbePolicy: Policy = definePolicy({
+  name: "probe throw statements",
+  matcher: throwProbeMatcher,
+  guidance: () => (match) => oneFinding(match.target, probeMessage, probeHint, unit),
+  examples: probeExamples
+})
 
-const silentProbeNamedCheck: NamedCheck = makeSilentCheck(
-  "silent-only probe",
-  fileCheck(() => [
-    Detection.make({
-      location: location("src/silent-observation.ts", 1, 1),
-      message: "silent observation",
-      hint: "silent observations only feed advice"
-    })
-  ])
-)
+const syntheticSourceFile = (context: { readonly projectRoot: string }, relativePath: string) =>
+  ts.createSourceFile(
+    path.join(context.projectRoot, relativePath),
+    "",
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  )
+
+const silentProbeNamedPolicy: Policy = defineSilentPolicy({
+  name: "silent-only probe",
+  matcher: fileMatcher((context) => {
+    const projectFiles = context.program
+      .getSourceFiles()
+      .filter((file) => !file.isDeclarationFile && !file.fileName.includes("node_modules"))
+    return projectFiles[0] === context.sourceFile ? [fileMatch(context.sourceFile, unit)] : []
+  }),
+  guidance: (context) => () =>
+    oneFinding(
+      positionTarget(syntheticSourceFile(context, "src/silent-observation.ts"), 1, 1),
+      "silent observation",
+      "silent observations only feed advice",
+      unit
+    ),
+  examples: emptyRefactorExampleSource
+})
 
 const detectionRecord = (element: Detection) => ({
   path: element.location.path,
@@ -209,23 +231,77 @@ const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
 
 const noDerive: Wiring["derive"] = () => []
 
-const fixedCheck = (elements: ReadonlyArray<Detection>): Check => fileCheck(() => elements)
+const fixedDetectionPolicy = (
+  name: string,
+  elements: ReadonlyArray<Detection>,
+  examples = probeExamples,
+  reported = true
+): Policy => {
+  const matcher = fileMatcher((context) => {
+    if (elements.length === 0) return []
+    const projectFiles = context.program
+      .getSourceFiles()
+      .filter((file) => !file.isDeclarationFile && !file.fileName.includes("node_modules"))
+    return projectFiles[0] === context.sourceFile
+      ? Array.of(fileMatch(context.sourceFile, elements))
+      : []
+  })
+  const guidance =
+    (context: { readonly projectRoot: string }) =>
+    (match: { readonly fact: ReadonlyArray<Detection> }) =>
+      match.fact.flatMap((element) =>
+        oneFinding(
+          positionTarget(
+            syntheticSourceFile(context, element.location.path),
+            element.location.line ?? 1,
+            element.location.column ?? 1
+          ),
+          element.message,
+          element.hint,
+          element.data
+        )
+      )
+  return reported
+    ? definePolicy({ name, matcher, guidance: guidance as any, examples })
+    : defineSilentPolicy({ name, matcher, guidance: guidance as any, examples })
+}
+
+const fileVisitPolicy = (name: string, message: string, hint: string): Policy =>
+  definePolicy({
+    name,
+    matcher: fileMatcher((context) => [fileMatch(context.sourceFile, unit)]),
+    guidance: () => (match) => oneFinding(match.target, message, hint, unit),
+    examples: probeExamples
+  })
 
 const testWiring = (
-  checks: ReadonlyArray<NamedCheck>,
+  policies: ReadonlyArray<WiringPolicy>,
   derive: Wiring["derive"] = noDerive
-): Wiring => makeWiring({ checks, derive })
+): Wiring => makeWiring({ policies, derive })
 
 const configFor = (wiring: Wiring, files: WiringConfig[number]["files"] = ["**/*"]): WiringConfig =>
   defineConfig([{ files, wiring }])
 
 const reportFromTestWiring = (wiring: Wiring) => reportTexts(configFor(wiring))
 
-const noOpCheck: Check = makeCheckFromSubscriptions(() => [])
+const emptyMatcher = makeMatcherFromSubscriptions(() => [])
+const emptyGuidance = () => () => []
 
-const namedNoOpCheck = (name: string): NamedCheck => makeNamedCheck(name, noOpCheck, probeExamples)
+const namedNoOpPolicy = (name: string): Policy =>
+  definePolicy({
+    name,
+    matcher: emptyMatcher,
+    guidance: emptyGuidance,
+    examples: probeExamples
+  })
 
-const silentNoOpCheck = (name: string): NamedCheck => makeSilentCheck(name, noOpCheck)
+const silentNoOpPolicy = (name: string): Policy =>
+  defineSilentPolicy({
+    name,
+    matcher: emptyMatcher,
+    guidance: emptyGuidance,
+    examples: emptyRefactorExampleSource
+  })
 
 const thrownMessage = (run: () => unknown): string => {
   try {
@@ -250,38 +326,47 @@ test("astNodesIn emits fixture AST elements in stable traversal order", async ()
 
 test("foldAst traverses deeply nested trees without call stack recursion", () => {
   const depth = 20_000
-  const root = Array.makeBy(depth, () => undefined).reduce<ts.Expression>(
+  const rootExpression = Array.makeBy(depth, () => undefined).reduce<ts.Expression>(
     (expression) => ts.factory.createParenthesizedExpression(expression),
     ts.factory.createIdentifier("value")
   )
-  const nodeCount = foldAst((count: number) => count + 1)(root)(0)
+  const nodeCount = foldAst((count: number) => count + 1)(rootExpression)(0)
 
   assert.equal(nodeCount, depth + 1)
 })
 
-test("runCheckOnProject applies probe subscriptions to matching fixture nodes", async () => {
+test("runPolicyOnProject applies probe subscriptions to matching fixture nodes", async () => {
   const project = await loadFixtureProject("no-throw")
-  const elements = await Effect.runPromise(runCheckOnProject(Array.of(throwProbeCheck))(project))
+  const elements = await Effect.runPromise(runPolicyOnProject(Array.of(throwProbePolicy))(project))
 
   assert.deepEqual(
     elements.map(detectionRecord),
     expectedThrowProbeElements,
-    "expected the probe check to report every throw statement with source locations in fixture order"
+    "expected the probe policy to report every throw statement with source locations in fixture order"
   )
 })
 
 test("glob config runs every wiring whose file patterns match", async () => {
-  const fileProbe: Check = fileCheck((context) => [
-    makeDetection(context)({
-      node: context.sourceFile,
-      message: "visited glob-matched file",
-      hint: "run each wiring only on matching files"
-    })
+  const alphaWiring = testWiring([
+    fileVisitPolicy(
+      "alpha files",
+      "visited glob-matched file",
+      "run each wiring only on matching files"
+    )
   ])
-  const alphaWiring = testWiring([makeNamedCheck("alpha files", fileProbe, probeExamples)])
-  const betaWiring = testWiring([makeNamedCheck("beta file", fileProbe, probeExamples)])
+  const betaWiring = testWiring([
+    fileVisitPolicy(
+      "beta file",
+      "visited glob-matched file",
+      "run each wiring only on matching files"
+    )
+  ])
   const allPackagesWiring = testWiring([
-    makeNamedCheck("all package files", fileProbe, probeExamples)
+    fileVisitPolicy(
+      "all package files",
+      "visited glob-matched file",
+      "run each wiring only on matching files"
+    )
   ])
   const config = defineConfig([
     {
@@ -308,14 +393,13 @@ test("glob config runs every wiring whose file patterns match", async () => {
 })
 
 test("glob config excludes negated patterns from a positive scope", async () => {
-  const fileProbe: Check = fileCheck((context) => [
-    makeDetection(context)({
-      node: context.sourceFile,
-      message: "visited included glob file",
-      hint: "exclude configured paths from a positive scope"
-    })
+  const wiring = testWiring([
+    fileVisitPolicy(
+      "included package files",
+      "visited included glob file",
+      "exclude configured paths from a positive scope"
+    )
   ])
-  const wiring = testWiring([makeNamedCheck("included package files", fileProbe, probeExamples)])
   const config = defineConfig([
     {
       files: ["packages/**/src/*.ts", "!packages/beta/**"],
@@ -332,15 +416,14 @@ test("glob config excludes negated patterns from a positive scope", async () => 
 })
 
 test("each glob wiring derives from only its matching files", async () => {
-  const fileProbe: Check = fileCheck((context) => [
-    makeDetection(context)({
-      node: context.sourceFile,
-      message: "derived glob input",
-      hint: "derive independently per wiring"
-    })
-  ])
   const alphaWiring = testWiring(
-    [makeNamedCheck("alpha derived input", fileProbe, probeExamples)],
+    [
+      fileVisitPolicy(
+        "alpha derived input",
+        "derived glob input",
+        "derive independently per wiring"
+      )
+    ],
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
@@ -348,7 +431,9 @@ test("each glob wiring derives from only its matching files", async () => {
     }
   )
   const betaWiring = testWiring(
-    [makeNamedCheck("beta derived input", fileProbe, probeExamples)],
+    [
+      fileVisitPolicy("beta derived input", "derived glob input", "derive independently per wiring")
+    ],
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
@@ -370,17 +455,45 @@ test("each glob wiring derives from only its matching files", async () => {
   ])
 })
 
+test("workspace directory policies use scoped canonical paths and deduplicate projects", async () => {
+  const directoryPolicy: WorkspacePolicy = defineWorkspacePolicy({
+    name: "scoped source directory",
+    matcher: directoryMatcher((target) =>
+      Array.of(directoryMatch(target, target.sourceFiles.length))
+    ),
+    guidance: () => (match) =>
+      oneFinding(
+        match.target,
+        "scoped source directory",
+        "collect canonical workspace-relative paths before directory matching",
+        match.fact
+      ),
+    examples: probeExamples
+  })
+  const config = defineConfig([
+    {
+      files: ["packages/alpha/**/*.ts"],
+      wiring: testWiring([directoryPolicy])
+    }
+  ])
+  const workspace = await loadFixtureWorkspace("glob-wirings")
+  const duplicatedWorkspace: LoadedWorkspace = {
+    ...workspace,
+    projects: [...workspace.projects, ...workspace.projects]
+  }
+  const blocks = await collectEffect(reportTexts(config)(duplicatedWorkspace))
+
+  assert.equal(workspace.projects.length, 2)
+  assert.equal(blocks.length, 1)
+  assert.ok(blocks[0]?.includes("  packages/alpha/src"))
+  assert.ok(!blocks[0]?.includes("packages/beta/src"))
+})
+
 test("reportEvents analyzes referenced projects sequentially", async () => {
-  const check = makeNamedCheck(
+  const policy = fileVisitPolicy(
     "visited source files",
-    fileCheck((context) => [
-      makeDetection(context)({
-        node: context.sourceFile,
-        message: "visited source file",
-        hint: "analyze every referenced project"
-      })
-    ]),
-    probeExamples
+    "visited source file",
+    "analyze every referenced project"
   )
   const workspace = await Effect.runPromise(loadProject(fixturePath("glob-wirings")))
   const update = new WorkspaceUpdate({
@@ -389,7 +502,7 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
   })
   const blocks = await collectEffect(
     pipe(
-      reportEvents(configFor(testWiring([check])))(update),
+      reportEvents(configFor(testWiring([policy])))(update),
       Effect.map((events) =>
         events.flatMap((event) => (event._tag === "signal" ? [event.text] : []))
       )
@@ -403,11 +516,16 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
   )
 })
 
-test("an unmatched glob wiring invokes neither checks nor derive", async () => {
-  const mustNotRun: Check = makeCheckFromSubscriptions(() => {
-    throw new Error("check ran")
+test("an unmatched glob wiring invokes neither policies nor derive", async () => {
+  const mustNotRun = definePolicy({
+    name: "absent files",
+    matcher: makeMatcherFromSubscriptions(() => {
+      throw new Error("policy ran")
+    }),
+    guidance: emptyGuidance,
+    examples: probeExamples
   })
-  const wiring = testWiring([makeNamedCheck("absent files", mustNotRun, probeExamples)], () => {
+  const wiring = testWiring([mustNotRun], () => {
     throw new Error("derive ran")
   })
   const config = configFor(wiring, ["missing/**/*.ts"])
@@ -417,11 +535,16 @@ test("an unmatched glob wiring invokes neither checks nor derive", async () => {
   assert.deepEqual(blocks, [])
 })
 
-test("reportEvents does not load examples for a check without detections", async () => {
+test("reportEvents does not load examples for a policy without detections", async () => {
   const missingExamples = makeDirectoryRefactorExamples(fixturePath("missing-report-examples"))
-  const noOutputCheck = makeNamedCheck("no output", noOpCheck, missingExamples)
+  const noOutputPolicy = definePolicy({
+    name: "no output",
+    matcher: emptyMatcher,
+    guidance: emptyGuidance,
+    examples: missingExamples
+  })
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([noOutputCheck]))(workspace))
+  const blocks = await collectEffect(reportFromTestWiring(testWiring([noOutputPolicy]))(workspace))
 
   assert.deepEqual(blocks, [])
 })
@@ -432,15 +555,15 @@ test("glob wiring drops detections outside its matched files", async () => {
     message: "outside configured glob",
     hint: "drop this detection"
   })
-  const check = makeNamedCheck("outside detection", fixedCheck([outsideDetection]), probeExamples)
-  const config = configFor(testWiring([check]), ["src/cases.ts"])
+  const policy = fixedDetectionPolicy("outside detection", [outsideDetection])
+  const config = configFor(testWiring([policy]), ["src/cases.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(reportTexts(config)(workspace))
 
   assert.deepEqual(blocks, [])
 })
 
-test("reportEvents collapses duplicate workspace detections by check and location", async () => {
+test("reportEvents collapses duplicate workspace detections by policy and location", async () => {
   const workspace = await Effect.runPromise(loadProject(noThrowFixturePath))
   const [project] = workspace.projects
 
@@ -451,7 +574,7 @@ test("reportEvents collapses duplicate workspace detections by check and locatio
     projects: [project, project]
   }
   const blocks = await collectEffect(
-    reportFromTestWiring(testWiring([throwProbeNamedCheck]))(duplicatedWorkspace)
+    reportFromTestWiring(testWiring([throwProbePolicy]))(duplicatedWorkspace)
   )
 
   assert.equal(blocks.length, 1)
@@ -465,29 +588,28 @@ test("reportEvents collapses duplicate workspace detections by check and locatio
 })
 
 test("reportEvents preserves two distinct detections emitted at the same AST location", async () => {
-  const doubleDetectionCheck: Check = nodeCheck([ts.SyntaxKind.ThrowStatement])(
-    ts.isThrowStatement
-  )((context) => (node) => {
-    const element = makeDetection(context)
-
-    return [
-      element({
-        node,
-        message: "first interpretation",
-        hint: "handle the first interpretation"
-      }),
-      element({
-        node,
-        message: "second interpretation",
-        hint: "handle the second interpretation"
-      })
-    ]
+  const doubleDetectionPolicy = definePolicy({
+    name: "two messages on one node",
+    matcher: nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(() => (node) => [
+      nodeMatch(node, "first"),
+      nodeMatch(node, "second")
+    ]),
+    guidance: () => (match) => {
+      const which = match.fact as string
+      return which === "first"
+        ? oneFinding(match.target, "first interpretation", "handle the first interpretation", unit)
+        : oneFinding(
+            match.target,
+            "second interpretation",
+            "handle the second interpretation",
+            unit
+          )
+    },
+    examples: probeExamples
   })
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(
-    reportFromTestWiring(
-      testWiring([makeNamedCheck("two messages on one node", doubleDetectionCheck, probeExamples)])
-    )(workspace)
+    reportFromTestWiring(testWiring([doubleDetectionPolicy]))(workspace)
   )
 
   assert.equal(blocks.length, 2)
@@ -536,25 +658,21 @@ test("reportEvents renders advice remediation examples before evidence", async (
   ])
 })
 
-test("reportEvents groups locations under the check prose name, message, and hint", async () => {
-  const groupedCheck = makeNamedCheck(
-    "probe throw statements",
-    fixedCheck([
-      Detection.make({
-        location: location("src/cases.ts", 4, 3),
-        message: probeMessage,
-        hint: probeHint
-      }),
-      Detection.make({
-        location: location("src/cases.ts", 9, 5),
-        message: probeMessage,
-        hint: probeHint
-      })
-    ]),
-    probeExamples
-  )
+test("reportEvents groups locations under the policy prose name, message, and hint", async () => {
+  const groupedPolicy = fixedDetectionPolicy("probe throw statements", [
+    Detection.make({
+      location: location("src/cases.ts", 4, 3),
+      message: probeMessage,
+      hint: probeHint
+    }),
+    Detection.make({
+      location: location("src/cases.ts", 9, 5),
+      message: probeMessage,
+      hint: probeHint
+    })
+  ])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([groupedCheck]))(workspace))
+  const blocks = await collectEffect(reportFromTestWiring(testWiring([groupedPolicy]))(workspace))
 
   assert.deepEqual(blocks, [
     [
@@ -571,35 +689,31 @@ test("reportEvents groups locations under the check prose name, message, and hin
   ])
 })
 
-test("reportEvents splits one check into distinct message and hint groups", async () => {
-  const splitCheck = makeNamedCheck(
-    "probe throw statements",
-    fixedCheck([
-      Detection.make({
-        location: location("src/cases.ts", 4, 3),
-        message: "throw statement",
-        hint: "yield typed errors instead of throwing"
-      }),
-      Detection.make({
-        location: location("src/cases.ts", 9, 5),
-        message: "throw statement",
-        hint: "yield typed errors instead of throwing"
-      }),
-      Detection.make({
-        location: location("src/cases.ts", 19, 5),
-        message: "throw expression",
-        hint: "yield typed errors instead of throwing"
-      }),
-      Detection.make({
-        location: location("src/cases.ts", 26, 3),
-        message: "throw statement",
-        hint: "return error values instead"
-      })
-    ]),
-    probeExamples
-  )
+test("reportEvents splits one policy into distinct message and hint groups", async () => {
+  const splitPolicy = fixedDetectionPolicy("probe throw statements", [
+    Detection.make({
+      location: location("src/cases.ts", 4, 3),
+      message: "throw statement",
+      hint: "yield typed errors instead of throwing"
+    }),
+    Detection.make({
+      location: location("src/cases.ts", 9, 5),
+      message: "throw statement",
+      hint: "yield typed errors instead of throwing"
+    }),
+    Detection.make({
+      location: location("src/cases.ts", 19, 5),
+      message: "throw expression",
+      hint: "yield typed errors instead of throwing"
+    }),
+    Detection.make({
+      location: location("src/cases.ts", 26, 3),
+      message: "throw statement",
+      hint: "return error values instead"
+    })
+  ])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([splitCheck]))(workspace))
+  const blocks = await collectEffect(reportFromTestWiring(testWiring([splitPolicy]))(workspace))
 
   assert.deepEqual(blocks, [
     [
@@ -636,27 +750,23 @@ test("reportEvents splits one check into distinct message and hint groups", asyn
   ])
 })
 
-test("reportEvents orders advice before check blocks and sorts advice by level then path", async () => {
+test("reportEvents orders advice before policy blocks and sorts advice by level then path", async () => {
   const fixedAdvice = [
     advice("project", "ignored.ts", "project advice"),
     advice("file", "src/z.ts", "file z advice"),
     advice("directory", "src", "directory advice"),
     advice("file", "src/a.ts", "file a advice")
   ]
-  const groupedCheck = makeNamedCheck(
-    "probe throw statements",
-    fixedCheck([
-      Detection.make({
-        location: location("src/cases.ts", 4, 3),
-        message: probeMessage,
-        hint: probeHint
-      })
-    ]),
-    probeExamples
-  )
+  const groupedPolicy = fixedDetectionPolicy("probe throw statements", [
+    Detection.make({
+      location: location("src/cases.ts", 4, 3),
+      message: probeMessage,
+      hint: probeHint
+    })
+  ])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(
-    reportFromTestWiring(testWiring([groupedCheck], () => fixedAdvice))(workspace)
+    reportFromTestWiring(testWiring([groupedPolicy], () => fixedAdvice))(workspace)
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -683,21 +793,17 @@ test("reportEvents orders advice before check blocks and sorts advice by level t
 })
 
 test("reportEvents renders multiple advice items in report order", async () => {
-  const multiAdviceCheck = makeNamedCheck(
-    "probe throw statements",
-    fixedCheck([
-      Detection.make({
-        location: location("src/cases.ts", 4, 3),
-        message: probeMessage,
-        hint: probeHint
-      })
-    ]),
-    probeExamples
-  )
+  const multiAdvicePolicy = fixedDetectionPolicy("probe throw statements", [
+    Detection.make({
+      location: location("src/cases.ts", 4, 3),
+      message: probeMessage,
+      hint: probeHint
+    })
+  ])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(
     reportFromTestWiring(
-      testWiring([multiAdviceCheck], () => [
+      testWiring([multiAdvicePolicy], () => [
         advice("file", "src/z.ts", "file z advice"),
         advice("file", "src/a.ts", "file a advice")
       ])
@@ -711,20 +817,20 @@ test("reportEvents renders multiple advice items in report order", async () => {
   ])
 })
 
-test("reportEvents emits check blocks and omits silent checks", async () => {
+test("reportEvents emits policy blocks and omits silent policies", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(reportTexts(defaultConfig)(workspace))
   const headers = firstLines(blocks)
 
-  assert.ok(headers.includes("no-throw"), "expected the no-throw check to emit a report block")
+  assert.ok(headers.includes("no-throw"), "expected the no-throw policy to emit a report block")
   assert.equal(
     headers.includes("prefer-curried-data-last-functions"),
     false,
-    "expected silent checks to stay out of report blocks"
+    "expected silent policies to stay out of report blocks"
   )
 })
 
-test("reportEvents lets silent checks influence advice without rendering local check blocks", async () => {
+test("reportEvents lets silent policies influence advice without rendering local policy blocks", async () => {
   const silentInfluencedAdvice = (
     silentDetections: ReadonlyArray<Detection>
   ): ReadonlyArray<Advice> =>
@@ -737,7 +843,7 @@ test("reportEvents lets silent checks influence advice without rendering local c
             remediation: "act on silent-derived evidence",
             evidence: [
               {
-                measure: silentProbeNamedCheck.name,
+                measure: silentProbeNamedPolicy.name,
                 count: silentDetections.length
               }
             ],
@@ -746,8 +852,8 @@ test("reportEvents lets silent checks influence advice without rendering local c
         ]
       : []
   const silentInfluencedWiring: Wiring = makeWiring({
-    checks: [throwProbeNamedCheck, silentProbeNamedCheck],
-    derive: (signals) => silentInfluencedAdvice(signalOf(signals)(silentProbeNamedCheck.name))
+    policies: [throwProbePolicy, silentProbeNamedPolicy],
+    derive: (signals) => silentInfluencedAdvice(signalOf(signals)(silentProbeNamedPolicy.name))
   })
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await collectEffect(reportFromTestWiring(silentInfluencedWiring)(workspace))
@@ -755,16 +861,16 @@ test("reportEvents lets silent checks influence advice without rendering local c
 
   assert.ok(
     headers.includes("project [project] — silent-influenced advice"),
-    "expected advice to consume silent check output"
+    "expected advice to consume silent policy output"
   )
   assert.ok(
-    headers.includes(throwProbeNamedCheck.name),
-    "expected configured reported checks to render report blocks"
+    headers.includes(throwProbePolicy.name),
+    "expected configured reported policies to render report blocks"
   )
   assert.equal(
-    headers.includes(silentProbeNamedCheck.name),
+    headers.includes(silentProbeNamedPolicy.name),
     false,
-    "expected silent checks to feed advice without rendering report blocks"
+    "expected silent policies to feed advice without rendering report blocks"
   )
 })
 
@@ -826,26 +932,26 @@ test("withFallbackAdvice emits specific advice before applicable fallback and ru
   )
 })
 
-test("makeWiring rejects duplicate reported check names and reports the collisions", () => {
+test("makeWiring rejects duplicate reported policy names and reports the collisions", () => {
   const message = thrownMessage(() =>
-    makeWiring(testWiring([namedNoOpCheck("same-check"), namedNoOpCheck("same-check")]))
+    makeWiring(testWiring([namedNoOpPolicy("same-check"), namedNoOpPolicy("same-check")]))
   )
 
-  assert.match(message, /Duplicate check names: same-check/)
+  assert.match(message, /Duplicate policy names: same-check/)
 })
 
-test("makeWiring rejects duplicate silent check names and reports the collisions", () => {
+test("makeWiring rejects duplicate silent policy names and reports the collisions", () => {
   const message = thrownMessage(() =>
-    makeWiring(testWiring([silentNoOpCheck("same-check"), silentNoOpCheck("same-check")]))
+    makeWiring(testWiring([silentNoOpPolicy("same-check"), silentNoOpPolicy("same-check")]))
   )
 
-  assert.match(message, /Duplicate check names: same-check/)
+  assert.match(message, /Duplicate policy names: same-check/)
 })
 
-test("makeWiring rejects duplicate names across reported and silent checks", () => {
+test("makeWiring rejects duplicate names across reported and silent policies", () => {
   const message = thrownMessage(() =>
-    makeWiring(testWiring([namedNoOpCheck("shared-name"), silentNoOpCheck("shared-name")]))
+    makeWiring(testWiring([namedNoOpPolicy("shared-name"), silentNoOpPolicy("shared-name")]))
   )
 
-  assert.match(message, /Duplicate check names: shared-name/)
+  assert.match(message, /Duplicate policy names: shared-name/)
 })

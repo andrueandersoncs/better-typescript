@@ -3,24 +3,24 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { Detection as DetectionData } from "@better-typescript/core/engine/location/data"
 import { Location } from "@better-typescript/core/engine/location/data"
 import { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
-import { compositionFingerprints } from "@better-typescript/checks/architectureExplore/compositionFingerprints"
-import { duplicatedOrchestration } from "@better-typescript/checks/architectureExplore/duplicatedOrchestration"
-import { CompositionFingerprintData } from "@better-typescript/checks/architectureExplore/data"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
+import { compositionFingerprints } from "@better-typescript/guidance/policies/compositionFingerprints"
+import { duplicatedOrchestration } from "@better-typescript/guidance/architectureExplore/duplicatedOrchestration"
+import { CompositionFingerprintData } from "@better-typescript/matchers/builtins/architectureExplore/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-orchestration")
 
-const runFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
     )
   )
 
@@ -39,9 +39,10 @@ const dataAs = <A>(
 const fingerprintData = (
   fingerprint: string,
   stepCount: number,
-  exportName: string
+  exportName: string,
+  projectPath = "project"
 ): CompositionFingerprintData =>
-  CompositionFingerprintData.make({ fingerprint, stepCount, exportName })
+  CompositionFingerprintData.make({ projectPath, fingerprint, stepCount, exportName })
 
 const detectionAt = (filePath: string, line: number, data: CompositionFingerprintData): Detection =>
   DetectionData.make({
@@ -123,4 +124,16 @@ test("duplicated orchestration stays silent for one site or distinct fingerprint
 
   assert.equal(singleSite.length, 0)
   assert.equal(distinct.length, 0)
+})
+
+test("duplicated orchestration does not combine matching fingerprints across projects", () => {
+  const fingerprint = "pipe>stageOne>stageTwo>stageThree"
+  const alpha = fingerprintData(fingerprint, 4, "runAlpha", "alpha")
+  const beta = fingerprintData(fingerprint, 4, "runBeta", "beta")
+  const advice = duplicatedOrchestration([
+    namedFingerprint("src/clone.ts", 4, alpha),
+    namedFingerprint("src/clone.ts", 4, beta)
+  ])
+
+  assert.equal(advice.length, 0)
 })

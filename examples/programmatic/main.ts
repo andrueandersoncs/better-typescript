@@ -1,6 +1,6 @@
 import { Array, Effect } from "effect"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
-import { noThrow } from "@better-typescript/checks/noThrow"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
+import { noThrow } from "@better-typescript/guidance/policies/noThrow"
 
 // This example is documentation because the programmatic surface deserves one runnable reference.
 const projectDirectory = process.argv[2] ?? "."
@@ -11,7 +11,7 @@ const detections = await Effect.runPromise(
 
     const perProject = yield* Effect.forEach(
       workspace.projects,
-      runCheckOnProject(Array.of(noThrow.check))
+      runPolicyOnProject(Array.of(noThrow))
     )
 
     return Array.flatten(perProject)

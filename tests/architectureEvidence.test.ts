@@ -3,16 +3,16 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Effect, Option, Schema, pipe, Array } from "effect"
-import type { NamedCheck } from "@better-typescript/core/engine/wiring/data"
+import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { passThroughWrappers } from "@better-typescript/checks/architectureExplore/passThroughWrappers"
-import { interfaceBurden } from "@better-typescript/checks/architectureExplore/interfaceBurden"
-import { moduleGraph } from "@better-typescript/checks/architectureExplore/moduleGraph"
-import { testOnlyExports } from "@better-typescript/checks/architectureExplore/testOnlyExports"
-import { seamLeakageEvidence } from "@better-typescript/checks/architectureExplore/seamLeakageEvidence"
-import { externalDependencyConstruction } from "@better-typescript/checks/architectureExplore/externalDependencyConstruction"
-import { singleAdapterSeams } from "@better-typescript/checks/architectureExplore/singleAdapterSeams"
-import { loadProject, runCheckOnProject } from "@better-typescript/core/project/loadProject"
+import { passThroughWrappers } from "@better-typescript/guidance/policies/passThroughWrappers"
+import { interfaceBurden } from "@better-typescript/guidance/policies/interfaceBurden"
+import { moduleGraph } from "@better-typescript/guidance/policies/moduleGraph"
+import { testOnlyExports } from "@better-typescript/guidance/policies/testOnlyExports"
+import { seamLeakageEvidence } from "@better-typescript/guidance/policies/seamLeakageEvidence"
+import { externalDependencyConstruction } from "@better-typescript/guidance/policies/externalDependencyConstruction"
+import { singleAdapterSeams } from "@better-typescript/guidance/policies/singleAdapterSeams"
+import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
   ExternalDependencyConstructionData,
   InterfaceBurdenData,
@@ -21,16 +21,16 @@ import {
   SeamLeakageData,
   SingleAdapterSeamData,
   TestOnlyExportData
-} from "@better-typescript/checks/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExplore/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")
 
-const runFixture = async (named: NamedCheck): Promise<ReadonlyArray<Detection>> => {
+const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runCheckOnProject(Array.of(named.check))(project))
+      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
     )
   )
 

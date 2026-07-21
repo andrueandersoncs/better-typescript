@@ -1,7 +1,7 @@
 import { Array, Effect, Function, HashMap, MutableRef, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { makeContext } from "../sources/sources.js"
-import type { ProgramContext } from "../sources/data.js"
+import { makeContext } from "@better-typescript/matchers/sources"
+import type { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { WorkspaceUpdate } from "./data.js"
 import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
 import {
@@ -45,12 +45,13 @@ const snapshotFor =
   }
 
 const createProjectLanguageService = (
-  documentRegistry: ts.DocumentRegistry,
+  documentRegistryFor: (options: ts.CompilerOptions) => ts.DocumentRegistry,
   snapshots: MutableRef.MutableRef<HashMap.HashMap<string, ts.IScriptSnapshot>>,
   config: ProjectConfig,
   compilerOptions: ts.CompilerOptions
 ) => {
   const options = withAnalysisCompilerOptions(config.parsed.options, compilerOptions)
+  const documentRegistry = documentRegistryFor(options)
   const rootNames = config.parsed.fileNames
   const scriptVersion = "0"
 
@@ -69,7 +70,6 @@ const createProjectLanguageService = (
     directoryExists: ts.sys.directoryExists,
     getDirectories: ts.sys.getDirectories,
     realpath: ts.sys.realpath,
-    getProjectReferences: Function.constant(config.parsed.projectReferences),
     jsDocParsingMode: analysisJsDocParsingMode
   }
 
@@ -88,17 +88,44 @@ const createWorkspaceServices = (
   workspace: WorkspaceConfigs,
   compilerOptions: ts.CompilerOptions
 ) => {
-  const documentRegistry = ts.createDocumentRegistry(
+  // Isolate option buckets because registries must release the documents they acquired.
+  const keyRegistry = ts.createDocumentRegistry(
     ts.sys.useCaseSensitiveFileNames,
     workspace.rootPath,
     analysisJsDocParsingMode
   )
 
+  const emptyRegistries = HashMap.empty<string, ts.DocumentRegistry>()
+  const registries = MutableRef.make(emptyRegistries)
+
+  const documentRegistryFor = (options: ts.CompilerOptions) => {
+    const key = keyRegistry.getKeyForCompilationSettings(options)
+    const currentRegistries = MutableRef.get(registries)
+    const existing = HashMap.get(currentRegistries, key)
+
+    if (Option.isSome(existing)) {
+      return existing.value
+    }
+
+    const documentRegistry = ts.createDocumentRegistry(
+      ts.sys.useCaseSensitiveFileNames,
+      workspace.rootPath,
+      analysisJsDocParsingMode
+    )
+
+    const latestRegistries = MutableRef.get(registries)
+    const updated = HashMap.set(latestRegistries, key, documentRegistry)
+
+    MutableRef.set(registries, updated)
+
+    return documentRegistry
+  }
+
   const emptySnapshots = HashMap.empty<string, ts.IScriptSnapshot>()
   const snapshots = MutableRef.make(emptySnapshots)
 
   const makeLanguageServiceForProject = (config: ProjectConfig) =>
-    createProjectLanguageService(documentRegistry, snapshots, config, compilerOptions)
+    createProjectLanguageService(documentRegistryFor, snapshots, config, compilerOptions)
 
   const languageServices = Array.map(workspace.projects, makeLanguageServiceForProject)
   const contexts = Array.zipWith(workspace.projects, languageServices, contextFromLanguageService)
