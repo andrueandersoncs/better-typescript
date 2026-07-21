@@ -10,7 +10,8 @@ import {
   pipe,
   Result,
   Struct,
-  Tuple
+  Tuple,
+  flow
 } from "effect"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -338,22 +339,22 @@ const hasEsPluralSuffix = (word: string) => {
 export const wordsMatch =
   (expected: string) =>
   (actual: string): boolean => {
-    const exact = strictEqual(actual, expected)
-    const actualIsPlural = strictEqual(actual, `${expected}s`)
-    const expectedIsPlural = strictEqual(expected, `${actual}s`)
+    const exact = strictEqual(expected)(actual)
+    const actualIsPlural = strictEqual(`${expected}s`)(actual)
+    const expectedIsPlural = strictEqual(`${actual}s`)(expected)
     const expectedSupportsEsPlural = hasEsPluralSuffix(expected)
-    const actualMatchesExpectedEsPlural = strictEqual(actual, `${expected}es`)
+    const actualMatchesExpectedEsPlural = strictEqual(`${expected}es`)(actual)
     const actualEsPluralChecks = Array.make(expectedSupportsEsPlural, actualMatchesExpectedEsPlural)
     const actualIsEsPlural = Array.every(actualEsPluralChecks, Boolean)
     const actualSupportsEsPlural = hasEsPluralSuffix(actual)
-    const expectedMatchesActualEsPlural = strictEqual(expected, `${actual}es`)
+    const expectedMatchesActualEsPlural = strictEqual(`${actual}es`)(expected)
     const expectedEsPluralChecks = Array.make(actualSupportsEsPlural, expectedMatchesActualEsPlural)
     const expectedIsEsPlural = Array.every(expectedEsPluralChecks, Boolean)
     const expectedEndsInY = expected.endsWith("y")
     const actualEndsInIes = actual.endsWith("ies")
     const expectedStem = expected.slice(0, -1)
     const actualStem = actual.slice(0, -3)
-    const stemsMatchActualYPlural = strictEqual(expectedStem, actualStem)
+    const stemsMatchActualYPlural = strictEqual(actualStem)(expectedStem)
 
     const actualYPluralChecks = Array.make(
       expectedEndsInY,
@@ -366,7 +367,7 @@ export const wordsMatch =
     const expectedEndsInIes = expected.endsWith("ies")
     const actualSingularStem = actual.slice(0, -1)
     const expectedPluralStem = expected.slice(0, -3)
-    const stemsMatchExpectedYPlural = strictEqual(actualSingularStem, expectedPluralStem)
+    const stemsMatchExpectedYPlural = strictEqual(expectedPluralStem)(actualSingularStem)
 
     const expectedYPluralChecks = Array.make(
       actualEndsInY,
@@ -455,7 +456,7 @@ const makeCallableNameClaims = (node: ts.Identifier) => {
   const relationEntryIndex = ([, index]: readonly [string, number]) => index
   const takeWordsBefore = (index: number) => Array.take(words, index)
   const dropWordsAfter = (index: number) => Array.drop(words, index + 1)
-  const relationIsToWord = (word: string) => strictEqual(word, "to")
+  const relationIsToWord = strictEqual("to")
   const operationClaimsResultWord = (word: string) => HashSet.has(resultBearingOperations, word)
   const relation = pipe(relationEntryOption, Option.map(relationEntryWord))
   const relationIndex = pipe(relationEntryOption, Option.map(relationEntryIndex))
@@ -531,7 +532,7 @@ const enclosingFunctionLike = (node: ts.Node): Option.Option<ts.SignatureDeclara
 
 const ownedReturnExpressions = (definition: FunctionDefinition) => {
   const returnOwnedByDefinition = (statement: ts.ReturnStatement) => {
-    const ownerIsDefinition = (owner: ts.SignatureDeclaration) => strictEqual(owner, definition)
+    const ownerIsDefinition = strictEqual(definition)
 
     return pipe(enclosingFunctionLike(statement), Option.exists(ownerIsDefinition))
   }
@@ -567,8 +568,10 @@ export const resultExpressions = (definition: FunctionDefinition): ReadonlyArray
 }
 
 export const singleResultExpression = (definition: FunctionDefinition) => {
-  const hasSingleExpression = (expressions: ReadonlyArray<ts.Expression>) =>
-    strictEqual(expressions.length, 1)
+  const hasSingleExpression = flow(
+    Struct.get<ReadonlyArray<ts.Expression>, "length">("length"),
+    strictEqual(1)
+  )
 
   return pipe(
     resultExpressions(definition),
@@ -586,7 +589,7 @@ const semanticDefinitions =
       Option.filter(isFunctionInitializer)
     )
 
-    const atLimit = strictEqual(remainingDepth, 0)
+    const atLimit = strictEqual(0)(remainingDepth)
 
     return pipe(
       nestedDefinition,
@@ -652,7 +655,7 @@ const nestedTypes =
       unionMembers,
       Array.appendAll(aliasArguments),
       Array.appendAll(referenceArguments),
-      Array.dedupeWith((self, that) => strictEqual(self, that))
+      Array.dedupeWith((self, that) => strictEqual(that)(self))
     )
   }
 
@@ -677,7 +680,7 @@ const carrierPayload = (checker: ts.TypeChecker) => {
     const referenceArguments = objectTypeReferenceArguments(checker)(type)
     const explicitArguments = Array.appendAll(aliasArguments, referenceArguments)
     const nested = children(type)
-    const isNonNullishType = (candidate: ts.Type) => strictEqual(candidate.flags & nullishFlags, 0)
+    const isNonNullishType = (candidate: ts.Type) => strictEqual(0)(candidate.flags & nullishFlags)
     const withoutNullish = Array.filter(nested, isNonNullishType)
 
     const fallbackCandidates = Array.isReadonlyArrayNonEmpty(withoutNullish)
@@ -705,8 +708,8 @@ const payloadType =
     const visit = (current: ts.Type, remainingDepth: number): ts.Type => {
       const next = payload(current)
       const nextType = pipe(next, Option.getOrElse(Function.constant(current)))
-      const unchanged = strictEqual(nextType, current)
-      const depthExhausted = strictEqual(remainingDepth, 0)
+      const unchanged = strictEqual(current)(nextType)
+      const depthExhausted = strictEqual(0)(remainingDepth)
       const completionFlags = Array.make(depthExhausted, unchanged)
       const complete = Array.some(completionFlags, Boolean)
 
@@ -718,11 +721,13 @@ const payloadType =
 
 const singleNonNullishMember = (type: ts.Type) => {
   const members = type.isUnion() ? type.types : emptyTypes
-  const isNonNullishType = (candidate: ts.Type) => strictEqual(candidate.flags & nullishFlags, 0)
+  const isNonNullishType = (candidate: ts.Type) => strictEqual(0)(candidate.flags & nullishFlags)
   const nonNullish = Array.filter(members, isNonNullishType)
 
-  const hasSingleCandidate = (candidates: ReadonlyArray<ts.Type>) =>
-    strictEqual(candidates.length, 1)
+  const hasSingleCandidate = flow(
+    Struct.get<ReadonlyArray<ts.Type>, "length">("length"),
+    strictEqual(1)
+  )
 
   return pipe(nonNullish, Option.liftPredicate(hasSingleCandidate), Option.flatMap(Array.head))
 }
@@ -738,7 +743,7 @@ const typeLayerWords =
         const namedCarrier = isNamedCarrierType(current)
         const words = namedCarrier ? typeResultWords(current) : emptyStrings
 
-        if (strictEqual(remainingDepth, 0)) {
+        if (strictEqual(0)(remainingDepth)) {
           return words
         }
 
@@ -835,10 +840,10 @@ const resultExecution =
 const resultCardinality =
   (shape: ResultShape) =>
   (totality: ResultTotality): ResultCardinality => {
-    const keyed = strictEqual(shape, "keyed")
-    const many = strictEqual(shape, "collection")
-    const optional = strictEqual(totality, "optional")
-    const unknown = strictEqual(shape, "unknown")
+    const keyed = strictEqual("keyed")(shape)
+    const many = strictEqual("collection")(shape)
+    const optional = strictEqual("optional")(totality)
+    const unknown = strictEqual("unknown")(shape)
 
     return pipe(
       Match.value(true),
@@ -854,8 +859,10 @@ const terminalCallableReturnType =
   (checker: ts.TypeChecker) =>
   (root: ts.Type): ts.Type => {
     const visit = (remainingDepth: number, current: ts.Type): ts.Type => {
-      const hasSingleSignature = (signatures: ReadonlyArray<ts.Signature>) =>
-        strictEqual(signatures.length, 1)
+      const hasSingleSignature = flow(
+        Struct.get<ReadonlyArray<ts.Signature>, "length">("length"),
+        strictEqual(1)
+      )
 
       const signature = pipe(
         current.getCallSignatures(),
@@ -955,7 +962,7 @@ const resultHeadsFor =
     pipe(typeResultWords(valueType), Array.prepend(projectionHead), Array.dedupe)
 
 const supportsPayloadComparison = (type: ts.Type) =>
-  strictEqual(type.flags & unsupportedPayloadFlags, 0)
+  strictEqual(0)(type.flags & unsupportedPayloadFlags)
 
 const carriedPayloadType =
   (checker: ts.TypeChecker) =>
@@ -970,7 +977,7 @@ const carriedPayloadType =
         const flowsFromSource = checker.isTypeAssignableTo(candidate, sourceType)
         const matchChecks = Array.make(supported, flowsFromSource)
         const matches = Array.every(matchChecks, Boolean)
-        const atLimit = strictEqual(remainingDepth, 0)
+        const atLimit = strictEqual(0)(remainingDepth)
         const nested = children(candidate)
         const nextDepth = remainingDepth - 1
         const descended = pipe(nested, Array.map(visit(nextDepth)), Option.firstSomeOf)
@@ -995,7 +1002,7 @@ const isResultCarrierType = (type: ts.Type) => {
 }
 
 const isThisExpression = (node: ts.Node): node is ts.ThisExpression =>
-  strictEqual(node.kind, ts.SyntaxKind.ThisKeyword)
+  strictEqual(ts.SyntaxKind.ThisKeyword)(node.kind)
 
 const projectionEvidence =
   (checker: ts.TypeChecker) =>
@@ -1025,13 +1032,13 @@ const projectionEvidence =
           })
 
           const isCurrentBinding = (candidate: ts.Symbol) => {
-            const bindingIsCandidate = (binding: ts.Symbol) => strictEqual(binding, candidate)
+            const bindingIsCandidate = strictEqual(candidate)
 
             return Array.some(currentBindings, bindingIsCandidate)
           }
 
           const isUnvisitedSymbol = (candidate: ts.Symbol) => {
-            const visitedIsCandidate = (visited: ts.Symbol) => strictEqual(visited, candidate)
+            const visitedIsCandidate = strictEqual(candidate)
 
             return !Array.some(visitedSymbols, visitedIsCandidate)
           }
@@ -1160,7 +1167,7 @@ const projectionEvidence =
 
               const callbacks = Array.filter(call.arguments, isFunctionInitializer)
               const hasCallbacks = Array.isReadonlyArrayNonEmpty(callbacks)
-              const hasSingleArgument = strictEqual(call.arguments.length, 1)
+              const hasSingleArgument = strictEqual(1)(call.arguments.length)
               const rootCallee = unwrapCallee(call.expression)
               const callee = unwrapCarrier(rootCallee)
               const identifierText = (identifier: ts.Identifier) => Option.some(identifier.text)
@@ -1194,14 +1201,16 @@ const projectionEvidence =
                 const selfPath = originPath(self)
                 const thatPath = originPath(that)
 
-                return strictEqual(selfPath, thatPath)
+                return strictEqual(thatPath)(selfPath)
               }
 
               const uniqueOrigins = Array.dedupeWith(origins, sameOriginPath)
-              const allCandidatesTraced = strictEqual(origins.length, candidateArguments.length)
+              const allCandidatesTraced = strictEqual(candidateArguments.length)(origins.length)
 
-              const hasSingleOrigin = (candidates: ReadonlyArray<ProjectionOrigin>) =>
-                strictEqual(candidates.length, 1)
+              const hasSingleOrigin = flow(
+                Struct.get<ReadonlyArray<ProjectionOrigin>, "length">("length"),
+                strictEqual(1)
+              )
 
               return pipe(
                 uniqueOrigins,
@@ -1254,13 +1263,13 @@ const projectionEvidence =
 
     const origins = pipe(expressions, Array.filterMap(expressionProjectionOrigin))
     const originPath = (origin: ProjectionOrigin) => Array.join(origin.path, "\u0000")
-    const allResultsTraced = strictEqual(origins.length, expressions.length)
+    const allResultsTraced = strictEqual(expressions.length)(origins.length)
 
     const sameOriginPath = (self: ProjectionOrigin, that: ProjectionOrigin) => {
       const selfPath = originPath(self)
       const thatPath = originPath(that)
 
-      return strictEqual(selfPath, thatPath)
+      return strictEqual(thatPath)(selfPath)
     }
 
     const unique = Array.dedupeWith(origins, sameOriginPath)
@@ -1278,8 +1287,10 @@ const projectionEvidence =
         )
       )
 
-    const hasSingleOrigin = (origins: ReadonlyArray<ProjectionOrigin>) =>
-      strictEqual(origins.length, 1)
+    const hasSingleOrigin = flow(
+      Struct.get<ReadonlyArray<ProjectionOrigin>, "length">("length"),
+      strictEqual(1)
+    )
 
     return pipe(
       unique,
@@ -1423,10 +1434,10 @@ const semanticRoles =
     const conversion = hasWord(rootOperations)(conversionOperations)
     const aggregation = hasWord(rootOperations)(aggregationOperations)
     const hasCommandOperation = hasWord(operations)(commandOperations)
-    const isEffectExecution = strictEqual(result.execution, "effect")
+    const isEffectExecution = strictEqual("effect")(result.execution)
     const effectfulCommandFlags = Array.make(isEffectExecution, hasCommandOperation)
     const effectfulCommand = Array.every(effectfulCommandFlags, Boolean)
-    const isVoidShape = strictEqual(result.shape, "void")
+    const isVoidShape = strictEqual("void")(result.shape)
     const commandFlags = Array.make(isVoidShape, effectfulCommand)
     const command = Array.some(commandFlags, Boolean)
     const constructionEntry = makeSemanticRoleEntry("construction", allConstructed)
@@ -1512,7 +1523,7 @@ export const callableSemantics =
     const cached = pipe(
       MutableRef.get(semanticsCache),
       Option.filter((entry) => {
-        const isSameProgram = strictEqual(entry.program, context.program)
+        const isSameProgram = strictEqual(context.program)(entry.program)
 
         return isSameProgram
       })

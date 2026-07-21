@@ -61,7 +61,7 @@ class InferenceProbe implements Equal.Equal {
   ) {}
 
   [Equal.symbol](that: Equal.Equal): boolean {
-    return strictEqual(this, that)
+    return strictEqual(that)(this)
   }
 
   [Hash.symbol]() {
@@ -195,8 +195,8 @@ const symbolOccursThroughFunctions = (
 ): boolean => {
   const nodeReachesTarget = (node: ts.Node) => {
     const symbolReachesTarget = (symbol: ts.Symbol) => {
-      const targetMatch = strictEqual(symbol, target)
-      const isUnseenSymbol = (candidate: ts.Symbol) => strictEqual(candidate, symbol)
+      const targetMatch = strictEqual(target)(symbol)
+      const isUnseenSymbol = strictEqual(symbol)
       const unseen = !Array.some(seen, isUnseenSymbol)
       const body = functionBodyForSymbol(symbol)
       const unseenBody = pipe(body, Option.filter(Function.constant(unseen)))
@@ -396,7 +396,7 @@ const functionDeclarationProbe =
           Option.getOrElse(Function.constant(1))
         )
 
-        const unambiguous = strictEqual(symbolDeclarationCount, 1)
+        const unambiguous = strictEqual(1)(symbolDeclarationCount)
         const eligibility = Array.make(!recursive, !ambient, unambiguous)
 
         return Array.every(eligibility, Boolean)
@@ -637,7 +637,7 @@ const nodeType = (
 const sensitiveTypeFlags = ts.TypeFlags.Any | ts.TypeFlags.Never | ts.TypeFlags.Unknown
 
 const sameSensitiveFlags = (left: ts.Type, right: ts.Type) =>
-  strictEqual(left.flags & sensitiveTypeFlags, right.flags & sensitiveTypeFlags)
+  strictEqual(right.flags & sensitiveTypeFlags)(left.flags & sensitiveTypeFlags)
 
 const mutuallyAssignable = (checker: ts.TypeChecker, left: ts.Type, right: ts.Type) =>
   checker.isTypeAssignableTo(left, right) && checker.isTypeAssignableTo(right, left)
@@ -669,7 +669,7 @@ const signaturesEquivalent = (
   const assignableReturns = mutuallyAssignable(checker, leftReturn, rightReturn)
   const returnFlags = Array.make(sameReturnFlags, assignableReturns)
   const returnsMatch = Array.every(returnFlags, Boolean)
-  const sameParameterCount = strictEqual(leftParameters.length, rightParameters.length)
+  const sameParameterCount = strictEqual(rightParameters.length)(leftParameters.length)
   const signatureFlags = Array.make(sameParameterCount, parametersMatch, returnsMatch)
 
   return Array.every(signatureFlags, Boolean)
@@ -703,8 +703,8 @@ const typesEquivalent = (
   const rightText = typeText(checker, right, rightNode)
   const sameFlags = sameSensitiveFlags(left, right)
   const assignable = mutuallyAssignable(checker, left, right)
-  const sameSignatureCount = strictEqual(leftSignatures.length, rightSignatures.length)
-  const sameText = strictEqual(leftText, rightText)
+  const sameSignatureCount = strictEqual(rightSignatures.length)(leftSignatures.length)
+  const sameText = strictEqual(rightText)(leftText)
 
   const equivalenceFlags = Array.make(
     sameFlags,
@@ -748,7 +748,7 @@ const functionInitializersEquivalent = (
     return typesEquivalent(checker, expectedFunction, probeFunction, expectedType, probeType)
   })
 
-  const sameFunctionCount = strictEqual(expectedFunctions.length, probeFunctions.length)
+  const sameFunctionCount = strictEqual(probeFunctions.length)(expectedFunctions.length)
   const equivalenceFlags = Array.make(sameFunctionCount, functionsMatch)
 
   return Array.every(equivalenceFlags, Boolean)
@@ -916,7 +916,7 @@ const findingIndex = (context: ProgramContext) => {
     Option.filter((entry) => {
       const program = Tuple.get(entry, 0)
 
-      return strictEqual(program, context.program)
+      return strictEqual(context.program)(program)
     })
   )
 

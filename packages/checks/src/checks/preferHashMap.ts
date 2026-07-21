@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe, Struct } from "effect"
+import { Array, Function, Match, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { isInAmbientContext, type NewOrTypeReferenceNode } from "./support/tsNode.js"
 import {
@@ -12,7 +12,7 @@ import { makePlannedCheck } from "../defineCheck.js"
 import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isMapIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "Map")
+const isMapIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Map"))
 
 const constructorMessage = "Avoid constructing a built-in Map."
 
@@ -122,13 +122,11 @@ const mutableHashMapImportMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (declaration: ts.ImportDeclaration): ReadonlyArray<Detection> => {
-    const isMutableHashMapModule = (moduleName: string) =>
-      strictEqual(moduleName, mutableHashMapModuleName)
-
-    const isEffectModule = (moduleName: string) => strictEqual(moduleName, effectModuleName)
+    const isMutableHashMapModule = strictEqual(mutableHashMapModuleName)
+    const isEffectModule = strictEqual(effectModuleName)
 
     const mutableHashMapSpecifier = (specifier: ts.ImportSpecifier) =>
-      strictEqual(specifier.propertyName?.text ?? specifier.name.text, mutableHashMapName)
+      strictEqual(mutableHashMapName)(specifier.propertyName?.text ?? specifier.name.text)
 
     const mutableHashMapBindings = (bindings: ts.NamedImports): ReadonlyArray<ts.Node> =>
       Array.filter(bindings.elements, mutableHashMapSpecifier)
@@ -169,7 +167,7 @@ const mutableHashMapImportMatches = (context: CheckContext) => {
 }
 
 const isMutableHashMapAccess = (access: ts.PropertyAccessExpression) =>
-  strictEqual(access.name.text, mutableHashMapName)
+  strictEqual(mutableHashMapName)(access.name.text)
 
 const isMutableHashMapNamespaceAccess = (node: ts.Node): node is ts.PropertyAccessExpression =>
   pipe(
@@ -184,8 +182,10 @@ const mutableHashMapNamespaceMatches = (context: CheckContext) => {
     const symbolAtIdentifier = (identifier: ts.Identifier) =>
       pipe(context.checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
 
-    const isEffectModuleSpecifier = (moduleSpecifier: ts.StringLiteralLike) =>
-      strictEqual(moduleSpecifier.text, effectModuleName)
+    const isEffectModuleSpecifier = flow(
+      Struct.get<ts.StringLiteralLike, "text">("text"),
+      strictEqual(effectModuleName)
+    )
 
     const namespaceImportFromEffect = (declaration: ts.Declaration) =>
       pipe(

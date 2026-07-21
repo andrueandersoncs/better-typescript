@@ -35,7 +35,7 @@ export const discoverWorkspace: (
   const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
 
   const projects = Array.dedupeWith(discoveredProjects, (self, that) =>
-    strictEqual(self.configPath, that.configPath)
+    strictEqual(that.configPath)(self.configPath)
   )
 
   const workspaceRootPath = path.dirname(configPath.value)
@@ -155,7 +155,7 @@ const discoverConfig: (
   }
 
   const references = parsedConfig.projectReferences ?? Array.empty()
-  const hasNoOwnFiles = strictEqual(parsedConfig.fileNames.length, 0)
+  const hasNoOwnFiles = strictEqual(0)(parsedConfig.fileNames.length)
   const hasReferences = references.length > 0
   const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
 

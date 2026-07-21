@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Function, pipe, Result } from "effect"
+import { Array, Function, Struct, flow, pipe, Result } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -50,11 +50,11 @@ const testOnlyExportElements =
 
     const element = makeDetection(context)
 
-    const isEntryInSourceFile = (entry: (typeof index.entries)[number]) => {
-      const entrySourceFile = entry.nameNode.getSourceFile()
-
-      return strictEqual(entrySourceFile, context.sourceFile)
-    }
+    const isEntryInSourceFile = flow(
+      Struct.get<(typeof index.entries)[number], "nameNode">("nameNode"),
+      (nameNode) => nameNode.getSourceFile(),
+      strictEqual(context.sourceFile)
+    )
 
     return pipe(
       index.entries,

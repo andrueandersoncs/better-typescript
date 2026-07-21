@@ -1,4 +1,4 @@
-import { Array, Function, Option, Predicate, Result, Struct } from "effect"
+import { Array, Function, Option, Predicate, Result, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { makeFileCheck } from "../defineCheck.js"
 import { Detection } from "@better-typescript/core/engine/location/data"
@@ -9,8 +9,10 @@ import type { SourceComment } from "@better-typescript/core/engine/sources/comme
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isSingleLineComment = (comment: SourceComment) =>
-  strictEqual(comment.kind, ts.SyntaxKind.SingleLineCommentTrivia)
+const isSingleLineComment = flow(
+  Struct.get<SourceComment, "kind">("kind"),
+  strictEqual(ts.SyntaxKind.SingleLineCommentTrivia)
+)
 
 const message = "Avoid multi-line comments."
 

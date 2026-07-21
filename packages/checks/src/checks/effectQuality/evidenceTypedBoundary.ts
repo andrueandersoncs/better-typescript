@@ -46,7 +46,7 @@ const isRawErrorConstruction = (expression: ts.NewExpression) => {
   const callee = unwrapTransparentExpression(expression.expression)
   const isIdentifier = ts.isIdentifier(callee)
   const calleeText = isIdentifier ? callee.text : ""
-  const isErrorName = strictEqual(calleeText, "Error")
+  const isErrorName = strictEqual("Error")(calleeText)
   const checks = Array.make(isIdentifier, isErrorName)
 
   return Array.every(checks, Boolean)
@@ -57,8 +57,8 @@ export const typedBoundaryError =
   (role: ArchitectureRole) =>
   (node: ts.CallExpression): ReadonlyArray<EffectQualityAdviceFinding> => {
     // Map adapter/app failures to domain errors because callers need typed boundaries.
-    const isAdapter = strictEqual(role, "adapter")
-    const isApplication = strictEqual(role, "application")
+    const isAdapter = strictEqual("adapter")(role)
+    const isApplication = strictEqual("application")(role)
     const allowed = Array.make(isAdapter, isApplication)
 
     if (!Array.some(allowed, Boolean)) {

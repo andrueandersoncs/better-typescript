@@ -18,7 +18,7 @@ const conditionExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expre
 }
 
 const binaryExpressionIsStringKeyIn = (expression: ts.BinaryExpression) => {
-  const isInOperator = strictEqual(expression.operatorToken.kind, ts.SyntaxKind.InKeyword)
+  const isInOperator = strictEqual(ts.SyntaxKind.InKeyword)(expression.operatorToken.kind)
   const keyExpression = unwrapExpression(expression.left)
 
   const hasStringKey =

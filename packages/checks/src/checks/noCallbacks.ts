@@ -49,7 +49,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
   const isValueDeclaration = ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)
 
   if (isValueDeclaration) {
-    const isTypeAnnotation = strictEqual(parent.type, typeNode)
+    const isTypeAnnotation = strictEqual(typeNode)(parent.type)
     const initializer = Option.fromNullishOr(parent.initializer)
     const isNotRuntimeFunction = !Option.exists(initializer, isRuntimeFunctionLike)
 
@@ -59,7 +59,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
   const aliasDeclaration = Option.liftPredicate(ts.isTypeAliasDeclaration)(parent)
 
   const hasTypeAliasFunctionType = Option.exists(aliasDeclaration, (alias) => {
-    const aliasTypeIsNode = strictEqual(alias.type, typeNode)
+    const aliasTypeIsNode = strictEqual(typeNode)(alias.type)
 
     return aliasTypeIsNode
   })
@@ -67,7 +67,7 @@ const isCallbackStyleCandidate = (node: ts.Node): node is CallbackStyleDeclarati
   const propertySignature = Option.liftPredicate(ts.isPropertySignature)(parent)
 
   const hasPropertySignatureFunctionType = Option.exists(propertySignature, (signature) => {
-    const signatureTypeIsNode = strictEqual(signature.type, typeNode)
+    const signatureTypeIsNode = strictEqual(typeNode)(signature.type)
 
     return signatureTypeIsNode
   })

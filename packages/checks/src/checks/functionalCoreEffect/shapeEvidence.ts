@@ -99,8 +99,7 @@ const isBranchNode = (node: ts.Node) => {
 }
 
 const isOwnedByFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration) => {
-  const declarationIsOwner = (declaration: ts.FunctionLikeDeclaration) =>
-    strictEqual(declaration, owner)
+  const declarationIsOwner = strictEqual(owner)
 
   return pipe(enclosingFunctionLike(node), Option.exists(declarationIsOwner))
 }
@@ -132,11 +131,11 @@ const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
 
 const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration) => {
   const visit = (current: ts.Node): boolean => {
-    const atOwner = strictEqual(current, owner)
-    const atBody = strictEqual(current, owner.body)
+    const atOwner = strictEqual(owner)(current)
+    const atBody = strictEqual(owner.body)(current)
     const boundaryFlags = Array.make(atOwner, atBody)
     const atBoundary = Array.some(boundaryFlags, Boolean)
-    const isFalse = (value: boolean) => strictEqual(value, false)
+    const isFalse = strictEqual(false)
     return pipe(
       Option.liftPredicate(isFalse)(atBoundary),
       Option.map(() => {
@@ -154,7 +153,7 @@ const nestedBeneathYield = (node: ts.Node, owner: ts.FunctionLikeDeclaration) =>
 }
 
 const namespaceIsEffectControlRuntime = (namespace: string) =>
-  strictEqual(effectControlRuntimeNamespaces[namespace], true)
+  strictEqual(true)(effectControlRuntimeNamespaces[namespace])
 
 const effectSubpathNamespace = (specifier: string) => {
   const effectPath = specifier.slice("effect/".length)
@@ -197,11 +196,11 @@ const isQualifyingTransformationCall = (
 ) => {
   const owned = isOwnedByFunction(node, owner)
   const nested = nestedBeneathYield(node, owner)
-  const notNested = strictEqual(nested, false)
+  const notNested = strictEqual(false)(nested)
   const continueFlags = Array.make(owned, notNested)
   const continues = Array.every(continueFlags, Boolean)
   const ownedByRuntime = callOwnedByEffectControlRuntime(context.checker, node)
-  const external = strictEqual(ownedByRuntime, false)
+  const external = strictEqual(false)(ownedByRuntime)
   const continueExternalFlags = Array.make(continues, external)
 
   return Array.every(continueExternalFlags, Boolean)
@@ -282,7 +281,7 @@ const callIsRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.CallEx
       const platformBrowser = member.moduleSpecifier.startsWith("@effect/platform-browser")
       const platformFlags = Array.make(platformNode, platformBun, platformDeno, platformBrowser)
       const platformRuntime = Array.some(platformFlags, Boolean)
-      const isRunMain = strictEqual(name, "runMain")
+      const isRunMain = strictEqual("runMain")(name)
       const runMainFlags = Array.make(platformRuntime, isRunMain)
 
       return Array.every(runMainFlags, Boolean)
@@ -413,7 +412,7 @@ const orchestratorElements =
   (context: CheckContext) =>
   (node: ts.CallExpression): ReadonlyArray<Detection> => {
     const role = roleForSourceFile(index, context.sourceFile)
-    const roleIsApplication = (value: ArchitectureRole) => strictEqual(value, "application")
+    const roleIsApplication = strictEqual("application")
     const applicationRole = Option.exists(role, roleIsApplication)
     const isOrchestrator = callIsEffectOrchestrator(context, node)
     const relevantFlags = Array.make(applicationRole, isOrchestrator)
@@ -485,7 +484,7 @@ const collectFileShape = (context: CheckContext, role: ArchitectureRole) => {
     functionReturnsComposition(context.checker, fn)
 
   return foldAst((metrics: typeof emptyFileShapeMetrics, node: ts.Node) => {
-    const isRoot = strictEqual(role, "root")
+    const isRoot = strictEqual("root")(role)
     const nestedInComposition = nestedInRecognizedCompositionApi(context.checker, node)
     const nestedCompositionFlags = Array.make(isRoot, nestedInComposition)
     const nestedComposition = Array.every(nestedCompositionFlags, Boolean)
@@ -526,12 +525,12 @@ const fileShapeData = (
   role: ArchitectureRole,
   metrics: typeof emptyFileShapeMetrics
 ): Option.Option<FunctionalCoreShapeData> => {
-  const isAdapter = strictEqual(role, "adapter")
+  const isAdapter = strictEqual("adapter")(role)
   const adapterBranches = metrics.branchCount >= 3
   const adapterFunctions = metrics.functionCount >= 2
   const adapterEvidenceFlags = Array.make(isAdapter, adapterBranches, adapterFunctions)
   const adapterEvidence = Array.every(adapterEvidenceFlags, Boolean)
-  const isRoot = strictEqual(role, "root")
+  const isRoot = strictEqual("root")(role)
   const rootBranches = metrics.branchCount >= 2
   const rootFunctions = metrics.functionCount >= 2
   const rootVolumeFlags = Array.make(rootBranches, rootFunctions)
@@ -564,8 +563,8 @@ const fileShapeElements =
     return pipe(
       roleForSourceFile(index, context.sourceFile),
       Option.filter((role) => {
-        const isAdapter = strictEqual(role, "adapter")
-        const isRoot = strictEqual(role, "root")
+        const isAdapter = strictEqual("adapter")(role)
+        const isRoot = strictEqual("root")(role)
         const roleFlags = Array.make(isAdapter, isRoot)
 
         return Array.some(roleFlags, Boolean)
@@ -686,7 +685,7 @@ const serviceSurfaceMetrics = (checker: ts.TypeChecker, type: ts.Type, location:
   return Array.reduce(properties, emptyServiceSurfaceMetrics, (metrics, property) => {
     const propertyType = checker.getTypeOfSymbolAtLocation(property, location)
     const signatures = propertyType.getCallSignatures()
-    const isNonFunction = strictEqual(signatures.length, 0)
+    const isNonFunction = strictEqual(0)(signatures.length)
 
     const effectful = Array.some(signatures, (signature) => {
       const returnType = signature.getReturnType()
@@ -718,8 +717,8 @@ const pureServiceElements =
     const relevantRole = pipe(
       role,
       Option.filter((value) => {
-        const isPort = strictEqual(value, "port")
-        const isApplication = strictEqual(value, "application")
+        const isPort = strictEqual("port")(value)
+        const isApplication = strictEqual("application")(value)
         const roleFlags = Array.make(isPort, isApplication)
 
         return Array.some(roleFlags, Boolean)
@@ -751,8 +750,8 @@ const pureServiceElements =
           Option.map(([type, location]) => serviceSurfaceMetrics(context.checker, type, location)),
           Option.filter((metrics) => {
             const hasFunctions = metrics.functionCount > 0
-            const allFunctions = strictEqual(metrics.nonFunctionCount, 0)
-            const allPure = strictEqual(metrics.effectfulMemberCount, 0)
+            const allFunctions = strictEqual(0)(metrics.nonFunctionCount)
+            const allPure = strictEqual(0)(metrics.effectfulMemberCount)
             const purityFlags = Array.make(hasFunctions, allFunctions, allPure)
 
             return Array.every(purityFlags, Boolean)

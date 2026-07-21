@@ -1,4 +1,4 @@
-import { Array, Data, Match, HashMap, MutableRef, Option, Result, Struct, pipe } from "effect"
+import { Array, Data, Match, HashMap, MutableRef, Option, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -19,7 +19,10 @@ const hint =
   "Counts are purely syntactic within the importing file; local shadowing of an import binding can inflate or hide references."
 
 const isNamedCallReference = (node: ts.Identifier) => {
-  const callExpressionIsNode = (call: ts.CallExpression) => strictEqual(call.expression, node)
+  const callExpressionIsNode = flow(
+    Struct.get<ts.CallExpression, "expression">("expression"),
+    strictEqual(node)
+  )
 
   return pipe(
     Option.liftPredicate(ts.isCallExpression)(node.parent),
@@ -33,10 +36,12 @@ const isNamespaceCallReference = (node: ts.Identifier) => {
   const namespaceCall = pipe(
     Option.liftPredicate(ts.isPropertyAccessExpression)(node.parent),
     Option.exists((access) => {
-      const isObject = strictEqual(access.expression, node)
+      const isObject = strictEqual(node)(access.expression)
 
-      const callExpressionIsAccess = (call: ts.CallExpression) =>
-        strictEqual(call.expression, access)
+      const callExpressionIsAccess = flow(
+        Struct.get<ts.CallExpression, "expression">("expression"),
+        strictEqual(access)
+      )
 
       const invokesAccess = pipe(
         Option.liftPredicate(ts.isCallExpression)(access.parent),
@@ -201,7 +206,7 @@ const countNode =
 const importUsageCounts = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> => {
   const records = collectImportRecords(sourceFile)
 
-  if (strictEqual(records.length, 0)) {
+  if (strictEqual(0)(records.length)) {
     return records
   }
 

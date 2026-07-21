@@ -59,7 +59,7 @@ const blankLineMatches = (context: CheckContext) => {
     const missingPadding = pipe(
       siblingsOption,
       Option.map((siblings) => {
-        const isCurrentNode = (sibling: ts.Node) => strictEqual(sibling, node)
+        const isCurrentNode = strictEqual(node)
 
         const index = pipe(
           Array.findFirstIndex(siblings, isCurrentNode),
@@ -96,7 +96,7 @@ const blankLineMatches = (context: CheckContext) => {
         const paddingConditions = Array.make(aboveOk, belowOk)
         const paddingOk = Array.every(paddingConditions, Boolean)
 
-        return strictEqual(paddingOk, false)
+        return strictEqual(false)(paddingOk)
       }),
       Option.getOrElse(fallbackFalse)
     )

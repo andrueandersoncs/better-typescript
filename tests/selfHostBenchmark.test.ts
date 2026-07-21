@@ -14,7 +14,7 @@ test("self-host benchmark runs the built CLI with every enrolled Check", async (
   const target = await selfHostBenchmarkTarget(repoRoot)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
-  assert.equal(target.checkNames.length, 97)
+  assert.equal(target.checkNames.length, 99)
   assert.ok(target.checkNames.includes("no-unused"))
   assert.ok(target.checkNames.includes("prefer-effectful-function"))
   assert.ok(target.checkNames.includes("prefer-inferred-types"))

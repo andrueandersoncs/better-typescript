@@ -106,11 +106,11 @@ const isConfidentlySingular = (word: string) => {
 }
 
 const singularize = (word: string) => {
-  if (strictEqual(word, "children")) {
+  if (strictEqual("children")(word)) {
     return "child"
   }
 
-  if (strictEqual(word, "people")) {
+  if (strictEqual("people")(word)) {
     return "person"
   }
 
@@ -152,11 +152,11 @@ const singularize = (word: string) => {
 const yVowels = Array.make("a", "e", "i", "o", "u")
 
 const pluralize = (word: string) => {
-  if (strictEqual(word, "child")) {
+  if (strictEqual("child")(word)) {
     return "children"
   }
 
-  if (strictEqual(word, "person")) {
+  if (strictEqual("person")(word)) {
     return "people"
   }
 
@@ -223,7 +223,7 @@ const cardinalityContradiction =
       const cardinality = semantics.result.cardinality
       const expectsSingular = Array.contains(singularCardinality, cardinality)
       const expectsPlural = Array.contains(pluralCardinality, cardinality)
-      const namedObject = strictEqual(semantics.result.shape, "object")
+      const namedObject = strictEqual("object")(semantics.result.shape)
       const pluralClaim = isConfidentlyPlural(claimed)
       const singularClaim = isConfidentlySingular(claimed)
       const singularPluralMismatch = Array.make(expectsSingular, pluralClaim, !namedObject)

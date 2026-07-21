@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe, Struct } from "effect"
+import { Array, Function, Match, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import {
   functionInitializer,
@@ -15,12 +15,12 @@ import { makeDetection } from "@better-typescript/core/engine/check"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  strictEqual(block.statements.length, 1)
+  strictEqual(1)(block.statements.length)
     ? Option.fromNullishOr(block.statements[0])
     : Option.none()
 
 const isGenPropertyName = (access: ts.PropertyAccessExpression) =>
-  strictEqual(access.name.text, "gen")
+  strictEqual("gen")(access.name.text)
 
 const returnedExpression = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
   const body = initializer.body
@@ -62,11 +62,14 @@ const effectGenCall =
   }
 
 const shorthandNameIsSelf = (shorthand: ts.ShorthandPropertyAssignment) =>
-  strictEqual(shorthand.name.text, "self")
+  strictEqual("self")(shorthand.name.text)
 
-const identifierTextIsSelf = (name: ts.Identifier) => strictEqual(name.text, "self")
+const identifierTextIsSelf = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("self"))
 
-const stringLiteralTextIsSelf = (name: ts.StringLiteralLike) => strictEqual(name.text, "self")
+const stringLiteralTextIsSelf = flow(
+  Struct.get<ts.StringLiteralLike, "text">("text"),
+  strictEqual("self")
+)
 
 const assignmentNameIsSelf = (assignment: ts.PropertyAssignment) =>
   pipe(
@@ -94,7 +97,7 @@ const selfBindingLiteral = (call: ts.CallExpression) =>
     Option.filter(objectLiteralBindsSelf)
   )
 
-const identifierTextIsThis = (name: ts.Identifier) => strictEqual(name.text, "this")
+const identifierTextIsThis = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("this"))
 
 const parameterIsThis = (parameter: ts.ParameterDeclaration) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(parameter.name), Option.exists(identifierTextIsThis))

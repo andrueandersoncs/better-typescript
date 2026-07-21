@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe } from "effect"
+import { Array, Function, Match, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { toRelativeFileName } from "@better-typescript/core/engine/location"
@@ -20,8 +20,8 @@ import {
   isHttpClientMember
 } from "./evidenceHttpBoundaryShared.js"
 
-const relativeSourcePath = (index: EffectQualityIndex) => (sourceFile: ts.SourceFile) =>
-  toRelativeFileName(index.projectRoot)(sourceFile.fileName)
+const relativeSourcePath = (index: EffectQualityIndex) =>
+  flow(Struct.get<ts.SourceFile, "fileName">("fileName"), toRelativeFileName(index.projectRoot))
 
 export const rawFetchOutsideAdapter =
   (context: CheckContext) =>

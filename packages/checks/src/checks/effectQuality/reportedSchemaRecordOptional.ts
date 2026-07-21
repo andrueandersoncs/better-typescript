@@ -36,7 +36,7 @@ const typeQueryTargetsName = (schemaName: string) => (typeNode: ts.TypeNode) =>
 const heritageExtendsSchemaDecodedType =
   (schemaName: string) => (heritage: ts.ExpressionWithTypeArguments) => {
     const expressionText = heritage.expression.getText()
-    const isBareType = strictEqual(expressionText, "Type")
+    const isBareType = strictEqual("Type")(expressionText)
     const isQualifiedType = expressionText.endsWith(".Type")
     const typeReferenceCandidates = Array.make(isBareType, isQualifiedType)
     const referencesType = Array.some(typeReferenceCandidates, Boolean)
@@ -63,7 +63,7 @@ const heritageClausePairsWithSchema =
   }
 
 const interfacePairsWithSchema = (schemaName: string) => (declaration: ts.InterfaceDeclaration) => {
-  const nameMatches = strictEqual(declaration.name.text, schemaName)
+  const nameMatches = strictEqual(schemaName)(declaration.name.text)
   const clauses = declaration.heritageClauses ?? emptyHeritageClauses
   const extendsSchema = heritageExtendsSchemaDecodedType(schemaName)
   const heritageMatches = Array.some(clauses, heritageClausePairsWithSchema(extendsSchema))
@@ -131,7 +131,7 @@ const unionTypeIncludesUndefined = (union: ts.UnionTypeNode) =>
   Array.some(union.types, typeNodeIncludesUndefined)
 
 const typeNodeIncludesUndefined = (typeNode: ts.TypeNode): boolean => {
-  const isUndefinedKeyword = strictEqual(typeNode.kind, ts.SyntaxKind.UndefinedKeyword)
+  const isUndefinedKeyword = strictEqual(ts.SyntaxKind.UndefinedKeyword)(typeNode.kind)
 
   const nestedIncludes = pipe(
     Match.value(typeNode),
@@ -148,8 +148,7 @@ const typeNodeIncludesUndefined = (typeNode: ts.TypeNode): boolean => {
 const propertyNameTextFromNode = (name: ts.Node) =>
   ts.isPropertyName(name) ? propertyNameText(name) : Option.none()
 
-const propertyNameEqualsField = (fieldName: string) => (name: string) =>
-  strictEqual(name, fieldName)
+const propertyNameEqualsField = strictEqual
 
 const propertySignatureNameMatches = (fieldName: string) => (member: ts.PropertySignature) =>
   pipe(

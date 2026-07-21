@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from "effect"
+import { Array, Function, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { isCallLikeExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -8,7 +8,7 @@ import { makePlannedCheck } from "../defineCheck.js"
 import { nodeSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isArrayIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "Array")
+const isArrayIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Array"))
 
 const message = "Avoid primitive Array constructors."
 

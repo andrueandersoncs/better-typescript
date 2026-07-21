@@ -46,8 +46,8 @@ const isFunctionLike = (node: ts.Node) => HashSet.has(functionLikeKinds, node.ki
 const parentContinuesFunctionSearch = (parent: ts.Node) => {
   const parentIsFunction = isFunctionLike(parent)
   const parentIsSourceFile = ts.isSourceFile(parent)
-  const parentIsNotFunction = strictEqual(parentIsFunction, false)
-  const parentIsNotSourceFile = strictEqual(parentIsSourceFile, false)
+  const parentIsNotFunction = strictEqual(false)(parentIsFunction)
+  const parentIsNotSourceFile = strictEqual(false)(parentIsSourceFile)
   const continueSearchConditions = Array.make(parentIsNotFunction, parentIsNotSourceFile)
 
   return Array.every(continueSearchConditions, Boolean)
@@ -81,7 +81,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
     const endPosition = node.getEnd()
     const start = sourceFile.getLineAndCharacterOfPosition(startPosition)
     const end = sourceFile.getLineAndCharacterOfPosition(endPosition)
-    const currentIsSingleLine = strictEqual(end.line, start.line)
+    const currentIsSingleLine = strictEqual(start.line)(end.line)
     const insideFunction = isInsideFunction(node)
     const parent = node.parent
 
@@ -93,7 +93,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
     const hasBlankLineAfterPreviousSingleLine = pipe(
       siblingsOption,
       Option.map((siblings) => {
-        const isCurrentNode = (sibling: ts.Node) => strictEqual(sibling, node)
+        const isCurrentNode = strictEqual(node)
 
         const index = pipe(
           Array.findFirstIndex(siblings, isCurrentNode),
@@ -110,7 +110,7 @@ const contiguousSingleLineBlankLineMatches = (context: CheckContext) => {
             const previousEndPosition = prev.getEnd()
             const previousStart = sourceFile.getLineAndCharacterOfPosition(previousStartPosition)
             const previousEnd = sourceFile.getLineAndCharacterOfPosition(previousEndPosition)
-            const previousIsSingleLine = strictEqual(previousEnd.line, previousStart.line)
+            const previousIsSingleLine = strictEqual(previousStart.line)(previousEnd.line)
             const beforeEnd = prev.getEnd()
             const afterStart = node.getStart(sourceFile)
             const between = text.slice(beforeEnd, afterStart)

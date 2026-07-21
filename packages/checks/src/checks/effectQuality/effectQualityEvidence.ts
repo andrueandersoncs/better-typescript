@@ -10,7 +10,7 @@ import type { EffectQualityAdviceFinding } from "./findings.js"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const isSyntaxKindNumber = (candidate: string | number): candidate is ts.SyntaxKind =>
-  strictEqual(typeof candidate, "number")
+  strictEqual("number")(typeof candidate)
 
 const isInSyntaxKindRange = (candidate: ts.SyntaxKind) => {
   const isNonNegative = candidate >= 0

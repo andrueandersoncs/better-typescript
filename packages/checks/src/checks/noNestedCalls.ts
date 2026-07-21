@@ -38,11 +38,11 @@ const nestedCallMatches = (context: CheckContext) => {
 
         const callerExpression = consumer.expression
         const callerName = ts.isIdentifier(callerExpression) ? callerExpression.text : undefined
-        const isPipeName = strictEqual(callerName, "pipe")
+        const isPipeName = strictEqual("pipe")(callerName)
         const isCallConsumer = ts.isCallExpression(consumer)
         const consumerArguments = callArguments(consumer)
         const firstArgument = Array.head(consumerArguments)
-        const isSameCall = (arg: ts.Expression) => strictEqual(arg, call)
+        const isSameCall = strictEqual(call)
         const isFirstArg = Option.exists(firstArgument, isSameCall)
         const isPipeCall = isPipeName && isFirstArg
         const isPipeFirstArg = isCallConsumer && isPipeCall

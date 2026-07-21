@@ -1,4 +1,4 @@
-import { Array, Function, Option, Schema, Struct, pipe } from "effect"
+import { Array, Function, Option, Schema, Struct, pipe, flow } from "effect"
 import * as ts from "typescript"
 import { importedEffectApiAt } from "../functionalCoreEffect/support.js"
 import {
@@ -44,8 +44,8 @@ const nestedEffectFnNameLiteral = (call: ts.CallExpression) =>
     )
   )
 
-const nestedCallIsEffectFnApi = (checker: ts.TypeChecker) => (nested: ts.CallExpression) =>
-  isEffectFnApi(checker)(nested.expression)
+const nestedCallIsEffectFnApi = (checker: ts.TypeChecker) =>
+  flow(Struct.get<ts.CallExpression, "expression">("expression"), isEffectFnApi(checker))
 
 const nameLiteralAsNode = (literal: ts.StringLiteralLike): ts.Node => literal
 

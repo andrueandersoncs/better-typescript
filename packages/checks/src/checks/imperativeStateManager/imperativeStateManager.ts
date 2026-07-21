@@ -1,4 +1,4 @@
-import { Array, Function, Option, Schema, pipe } from "effect"
+import { Array, Function, Option, Schema, pipe, Struct, flow } from "effect"
 import { Advice, type EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
@@ -12,8 +12,10 @@ export const imperativeStateManagerExamples = packageExamples("imperative-state-
 const isSharedStateMutation = (element: Detection) => {
   const data = Option.fromNullishOr(element.data)
 
-  const isSharedStateTarget = (value: MutationElementData) =>
-    strictEqual(value.target, "shared-state")
+  const isSharedStateTarget = flow(
+    Struct.get<MutationElementData, "target">("target"),
+    strictEqual("shared-state")
+  )
 
   const sharedState = pipe(
     data,
@@ -26,7 +28,7 @@ const isSharedStateMutation = (element: Detection) => {
 }
 
 const sharedMutationCountAt = (path: string) => (elements: ReadonlyArray<Detection>) => {
-  const matchesPath = (element: Detection) => strictEqual(element.location.path, path)
+  const matchesPath = (element: Detection) => strictEqual(path)(element.location.path)
   const atPath = Array.filter(elements, matchesPath)
   const sharedStateMutations = Array.filter(atPath, isSharedStateMutation)
 

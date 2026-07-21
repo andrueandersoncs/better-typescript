@@ -106,7 +106,7 @@ const hasExplicitAccessorProjectionOrResultStyle = (semantics: CallableSemantics
 const isNotNeutralCallbackOrHandler = (semantics: CallableSemantics) =>
   !isNeutralCallbackOrHandler(semantics)
 
-const hasVoidResult = (candidate: CallableSemantics) => strictEqual(candidate.result.shape, "void")
+const hasVoidResult = (candidate: CallableSemantics) => strictEqual("void")(candidate.result.shape)
 
 const commandNameConsistencyMatches = (context: CheckContext) => {
   const match = makeDetection(context)

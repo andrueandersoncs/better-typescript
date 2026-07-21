@@ -203,7 +203,7 @@ export const publicQueue =
   (role: ArchitectureRole) =>
   (node: ts.Node): ReadonlyArray<EffectQualityAdviceFinding> => {
     // Ports already forbid infrastructure contracts via FCE because other public surfaces need advice.
-    const isPort = strictEqual(role, "port")
+    const isPort = strictEqual("port")(role)
     const testRole = isTestRole(role)
     const nonProduction = !isProductionRole(role)
     const skipRoles = Array.make(isPort, testRole, nonProduction)

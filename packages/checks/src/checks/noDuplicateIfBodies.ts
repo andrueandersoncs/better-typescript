@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe, Struct } from "effect"
+import { Array, Function, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { alwaysExitsScope, unwrapSingleStatementBlock } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -22,12 +22,12 @@ const isGuardIfStatement = (statement: ts.Statement): statement is ts.IfStatemen
 const tokenTexts =
   (sourceFile: ts.SourceFile) =>
   (node: ts.Node): ReadonlyArray<string> => {
-    if (strictEqual(node.kind, ts.SyntaxKind.SemicolonToken)) {
+    if (strictEqual(ts.SyntaxKind.SemicolonToken)(node.kind)) {
       return Array.empty()
     }
 
     const children = node.getChildren(sourceFile)
-    const isLeafToken = strictEqual(children.length, 0)
+    const isLeafToken = strictEqual(0)(children.length)
     const nodeText = node.getText(sourceFile)
     return isLeafToken ? Array.of(nodeText) : Array.flatMap(children, tokenTexts(sourceFile))
   }
@@ -48,7 +48,7 @@ const duplicateIfMatches = (context: CheckContext) => {
     const firstFingerprint = fingerprint(firstIfStatement.thenStatement)
     const secondFingerprint = fingerprint(secondIfStatement.thenStatement)
 
-    return strictEqual(firstFingerprint, secondFingerprint)
+    return strictEqual(secondFingerprint)(firstFingerprint)
   }
 
   const combineConditions = (firstIfStatement: ts.IfStatement) => (ifStatement: ts.IfStatement) => {
@@ -93,7 +93,7 @@ const duplicateIfMatches = (context: CheckContext) => {
     })
 
   const matches = (ifStatement: ts.IfStatement): ReadonlyArray<Detection> => {
-    const isCurrentIfStatement = (statement: ts.Statement) => strictEqual(statement, ifStatement)
+    const isCurrentIfStatement = strictEqual(ifStatement)
 
     const statementBefore = (block: ts.Block) => (statementIndex: number) =>
       Option.fromNullishOr(block.statements[statementIndex - 1])
@@ -113,8 +113,10 @@ const duplicateIfMatches = (context: CheckContext) => {
         )
       : Option.none()
 
-    const isElseOfParent = (parent: ts.IfStatement) =>
-      strictEqual(parent.elseStatement, ifStatement)
+    const isElseOfParent = flow(
+      Struct.get<ts.IfStatement, "elseStatement">("elseStatement"),
+      strictEqual(ifStatement)
+    )
 
     const bodyMatch = Option.isSome(guardDuplicateMatch)
       ? guardDuplicateMatch

@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, Match, Option, pipe, Result, Struct, Tuple } from "effect"
+import { Array, Function, HashMap, Match, Option, pipe, Result, Struct, Tuple, flow } from "effect"
 import * as ts from "typescript"
 import { outermostTransparentWrapper } from "./support/tsNode.js"
 import { isObjectType } from "./support/tsType.js"
@@ -107,8 +107,8 @@ const buildConstructionIndex = (
         ? Array.filter(contextualType.types, matchesLiteralShape(literal))
         : Array.of(contextualType)
 
-  const hasTypeReferenceTarget = (target: ts.GenericType) => (reference: ts.TypeReference) =>
-    strictEqual(reference.target, target)
+  const hasTypeReferenceTarget = (target: ts.GenericType) =>
+    flow(Struct.get<ts.TypeReference, "target">("target"), strictEqual(target))
 
   const sameTypeReferenceTarget =
     (declaredMember: ts.TypeReference) =>
@@ -129,7 +129,7 @@ const buildConstructionIndex = (
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.TypeReference): ReadonlyArray<ts.Type> => {
       const typeArguments = checker.getTypeArguments(declaredMember)
-      const isTypeParameter = (candidate: ts.Type) => strictEqual(candidate, typeParameter)
+      const isTypeParameter = strictEqual(typeParameter)
 
       const parameterPosition = pipe(
         Array.findFirstIndex(typeArguments, isTypeParameter),
@@ -155,7 +155,7 @@ const buildConstructionIndex = (
     (typeParameter: ts.Type) =>
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.Type): ReadonlyArray<ts.Type> => {
-      if (strictEqual(declaredMember, typeParameter)) {
+      if (strictEqual(typeParameter)(declaredMember)) {
         return contextualMembers
       }
 
@@ -220,7 +220,7 @@ const buildConstructionIndex = (
         Option.gen(function* () {
           const argument = outermostTransparentWrapper(literal)
           const call = yield* Option.liftPredicate(ts.isCallExpression)(argument.parent)
-          const isArgument = (candidate: ts.Expression) => strictEqual(candidate, argument)
+          const isArgument = strictEqual(argument)
           const argumentPosition = yield* Array.findFirstIndex(call.arguments, isArgument)
           const callContextualType = checker.getContextualType(call)
           const contextual = yield* Option.fromNullishOr(callContextualType)
@@ -307,8 +307,10 @@ const objectTypeDeclarationMatches =
   }
 
 const isReadonlyTypeOperator = (node: ts.TypeNode): node is ts.TypeOperatorNode => {
-  const isReadonlyOperator = (operator: ts.TypeOperatorNode) =>
-    strictEqual(operator.operator, ts.SyntaxKind.ReadonlyKeyword)
+  const isReadonlyOperator = flow(
+    Struct.get<ts.TypeOperatorNode, "operator">("operator"),
+    strictEqual(ts.SyntaxKind.ReadonlyKeyword)
+  )
 
   return pipe(Option.liftPredicate(ts.isTypeOperatorNode)(node), Option.exists(isReadonlyOperator))
 }

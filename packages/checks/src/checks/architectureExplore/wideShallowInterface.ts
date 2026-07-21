@@ -1,4 +1,4 @@
-import { Array, Option, pipe, Result, Function } from "effect"
+import { Array, Option, pipe, Result, Function, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -16,8 +16,10 @@ export const wideShallowInterfaceExamples = packageExamples("wide-shallow-interf
 const minimumForwarders = 3
 
 const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isInterfaceBurdenElement = (element: NamedDetection) =>
-    strictEqual(element.name, interfaceBurdenName)
+  const isInterfaceBurdenElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(interfaceBurdenName)
+  )
 
   const elementHasShallownessName = (element: NamedDetection) => isShallownessName(element.name)
   const burden = Array.filter(elements, isInterfaceBurdenElement)
@@ -32,7 +34,7 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
     const filePath = burdenElement.detection.location.path
 
     const hasPath = (element: NamedDetection) =>
-      strictEqual(element.detection.location.path, filePath)
+      strictEqual(filePath)(element.detection.location.path)
 
     const forwarders = Array.filter(wrappers, hasPath)
 

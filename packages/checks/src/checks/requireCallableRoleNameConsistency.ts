@@ -118,13 +118,13 @@ const roleExpectation =
     const hasInput = parameters >= 1
     const hasProjection = Option.isSome(semantics.projection)
     const isConstruction = HashSet.has(semantics.roles, "construction")
-    const isVoid = strictEqual(shape, "void")
-    const isEffect = strictEqual(execution, "effect")
+    const isVoid = strictEqual("void")(shape)
+    const isEffect = strictEqual("effect")(execution)
     const voidOrEffectFlags = Array.make(isVoid, isEffect)
     const isVoidOrEffect = Array.some(voidOrEffectFlags, Boolean)
     const isCallable = returnsCallable(checker)(semantics.definition)
-    const isBoolean = strictEqual(shape, "boolean")
-    const isNumber = strictEqual(shape, "number")
+    const isBoolean = strictEqual("boolean")(shape)
+    const isNumber = strictEqual("number")(shape)
     const isNonVoid = shape !== "void"
 
     return pipe(

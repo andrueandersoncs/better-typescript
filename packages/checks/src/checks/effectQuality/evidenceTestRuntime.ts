@@ -26,8 +26,8 @@ const timeEffectNames = Array.make(
 )
 
 const isTestClockMember = (member: ImportedMember) => {
-  const fromDirect = strictEqual(member.moduleSpecifier, "effect/testing/TestClock")
-  const fromTestingModule = strictEqual(member.moduleSpecifier, "effect/testing")
+  const fromDirect = strictEqual("effect/testing/TestClock")(member.moduleSpecifier)
+  const fromTestingModule = strictEqual("effect/testing")(member.moduleSpecifier)
   const path0 = Array.get(member.path, 0)
   const path1 = Array.get(member.path, 1)
   const fromTestingPath = pipe(path0, Option.contains("TestClock"))
@@ -35,7 +35,7 @@ const isTestClockMember = (member: ImportedMember) => {
   const fromTestingNamespace = Array.every(fromTestingParts, Boolean)
   const fromBarrelPath0 = pipe(path0, Option.contains("testing"))
   const fromBarrelPath1 = pipe(path1, Option.contains("TestClock"))
-  const fromBarrelModule = strictEqual(member.moduleSpecifier, "effect")
+  const fromBarrelModule = strictEqual("effect")(member.moduleSpecifier)
   const fromBarrelParts = Array.make(fromBarrelModule, fromBarrelPath0, fromBarrelPath1)
   const fromBarrel = Array.every(fromBarrelParts, Boolean)
   const sources = Array.make(fromDirect, fromTestingNamespace, fromBarrel)
@@ -95,7 +95,7 @@ const isItLiveCall = (node: ts.CallExpression) => {
     return isPropertyAccess
   }
 
-  const isLiveName = strictEqual(expression.name.text, "live")
+  const isLiveName = strictEqual("live")(expression.name.text)
 
   if (!isLiveName) {
     return isLiveName
@@ -104,7 +104,7 @@ const isItLiveCall = (node: ts.CallExpression) => {
   const receiver = unwrapTransparentExpression(expression.expression)
   const isIdentifier = ts.isIdentifier(receiver)
   const receiverText = isIdentifier ? receiver.text : ""
-  const isItName = strictEqual(receiverText, "it")
+  const isItName = strictEqual("it")(receiverText)
   const checks = Array.make(isIdentifier, isItName)
 
   return Array.every(checks, Boolean)

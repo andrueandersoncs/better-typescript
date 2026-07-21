@@ -1,4 +1,4 @@
-import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
+import { Array, Function, Option, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { fileSubscriptions, makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -32,8 +32,10 @@ const moduleGraphElements =
     const filePath = relative(context.sourceFile.fileName)
     const workspaceRelative = toWorkspacePath(projectRoot, context.workspaceRoot)
 
-    const importsFromFile = (edge: (typeof edges)[number]) =>
-      strictEqual(edge.importerPath, filePath)
+    const importsFromFile = flow(
+      Struct.get<(typeof edges)[number], "importerPath">("importerPath"),
+      strictEqual(filePath)
+    )
 
     const importedPaths = pipe(
       edges,
@@ -42,7 +44,7 @@ const moduleGraphElements =
       Array.dedupe
     )
 
-    if (strictEqual(importedPaths.length, 0)) {
+    if (strictEqual(0)(importedPaths.length)) {
       return Array.empty()
     }
 

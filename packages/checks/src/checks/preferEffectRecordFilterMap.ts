@@ -1,4 +1,4 @@
-import { Array } from "effect"
+import { Array, flow } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
 import { makeCheck } from "../defineCheck.js"
@@ -20,11 +20,7 @@ const objectLiteralPropertyCount = (expression: ts.Expression) => {
   return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
 }
 
-const hasNoProperties = (expression: ts.Expression) => {
-  const propertyCount = objectLiteralPropertyCount(expression)
-
-  return strictEqual(propertyCount, 0)
-}
+const hasNoProperties = flow(objectLiteralPropertyCount, strictEqual(0))
 
 const hasSomeProperties = (expression: ts.Expression) => objectLiteralPropertyCount(expression) > 0
 

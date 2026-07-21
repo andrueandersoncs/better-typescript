@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { EffectQualityRuleFinding } from "./findings.js"
@@ -13,7 +13,7 @@ const inflightDedupeMapFinding = makeRuleFinding("inflight-dedupe-map")
 
 const emptyTypes = Array.empty<ts.Type>()
 
-const identifierTextIsMap = (identifier: ts.Identifier) => strictEqual(identifier.text, "Map")
+const identifierTextIsMap = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Map"))
 
 const isMapIdentifier = (expression: ts.Expression) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(expression), Option.exists(identifierTextIsMap))
@@ -57,12 +57,12 @@ const typeMentionsConstructor =
   (name: string) =>
   (type: ts.Type): boolean => {
     const visit = (current: ts.Type, seen: ReadonlyArray<ts.Type>): boolean => {
-      const previousEqualsCurrent = (previous: ts.Type) => strictEqual(previous, current)
+      const previousEqualsCurrent = strictEqual(current)
       const alreadySeen = Array.some(seen, previousEqualsCurrent)
-      const notSeen = strictEqual(alreadySeen, false)
+      const notSeen = strictEqual(false)(alreadySeen)
       const nextSeen = Array.append(seen, current)
       const symbolName = typeSymbolName(current)
-      const matchesName = strictEqual(symbolName, name)
+      const matchesName = strictEqual(name)(symbolName)
       const unionParts = current.isUnionOrIntersection() ? current.types : emptyTypes
       const visitNext = (candidate: ts.Type) => visit(candidate, nextSeen)
       const unionMentions = Array.some(unionParts, visitNext)

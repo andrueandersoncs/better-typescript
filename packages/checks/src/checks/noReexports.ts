@@ -13,7 +13,7 @@ const hint =
   "Import the dependency where it is used and expose a locally defined public interface instead."
 
 const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string) => {
-  const isNameText = (text: string) => strictEqual(text, name)
+  const isNameText = strictEqual(name)
 
   const namespaceMatches = pipe(
     bindings,
@@ -22,7 +22,7 @@ const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string
     Option.exists(isNameText)
   )
 
-  const elementHasName = (element: ts.ImportSpecifier) => strictEqual(element.name.text, name)
+  const elementHasName = (element: ts.ImportSpecifier) => strictEqual(name)(element.name.text)
 
   const namedImportsDeclareName = (namedImports: ts.NamedImports) =>
     Array.some(namedImports.elements, elementHasName)
@@ -44,7 +44,7 @@ const importClause = Function.flow(
 )
 
 const importDeclaresName = (statement: ts.Statement, name: string) => {
-  const isNameText = (text: string) => strictEqual(text, name)
+  const isNameText = strictEqual(name)
 
   const bindingsDeclareName = (bindings: ts.NamedImportBindings) =>
     namedBindingsDeclareName(bindings, name)

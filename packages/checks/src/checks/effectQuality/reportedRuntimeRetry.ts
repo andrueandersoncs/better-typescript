@@ -110,7 +110,7 @@ const scheduleExpressionIsBounded =
       const methodCombinesBound = isBoundMethod && eitherSideBounded
       const propertyBoundByMethod = isBoundMethod ? methodCombinesBound : receiverBounded
       const propertyBound = isPropertyAccess && propertyBoundByMethod
-      const notPropertyAccess = strictEqual(isPropertyAccess, false)
+      const notPropertyAccess = strictEqual(false)(isPropertyAccess)
       const unboundByShape = isForeverOrBase || notPropertyAccess
       const namedOrProperty = boundByName || propertyBound
 
@@ -158,17 +158,17 @@ const objectRetryOptionsAreBounded =
     )
 
     const hasSchedule = Option.isSome(scheduleProperty)
-    const scheduleMissingBound = strictEqual(scheduleBounded, false)
+    const scheduleMissingBound = strictEqual(false)(scheduleBounded)
     const unboundedSchedule = hasSchedule && scheduleMissingBound
-    const lacksTimes = strictEqual(hasTimes, false)
-    const lacksWhileUntil = strictEqual(hasWhileUntil, false)
+    const lacksTimes = strictEqual(false)(hasTimes)
+    const lacksWhileUntil = strictEqual(false)(hasWhileUntil)
     const lacksBound = lacksTimes && lacksWhileUntil
     const unboundedAndUnbound = unboundedSchedule && lacksBound
     const timesOrWhile = hasTimes || hasWhileUntil
-    const scheduleAbsent = strictEqual(hasSchedule, false)
+    const scheduleAbsent = strictEqual(false)(hasSchedule)
     const boundedOrAbsentSchedule = scheduleBounded || scheduleAbsent
     const explicitlyBounded = timesOrWhile || boundedOrAbsentSchedule
-    const notUnboundedCombo = strictEqual(unboundedAndUnbound, false)
+    const notUnboundedCombo = strictEqual(false)(unboundedAndUnbound)
     const boundedFlags = Array.make(notUnboundedCombo, explicitlyBounded)
 
     return Array.every(boundedFlags, Boolean)
@@ -202,11 +202,11 @@ const retryPolicyIsUnbounded = (checker: ts.TypeChecker) => (expression: ts.Expr
   const unwrapped = unwrapTransparentExpression(expression)
   const asObject = ts.isObjectLiteralExpression(unwrapped)
   const optionsBounded = asObject ? retryOptionsAreBounded(checker)(unwrapped) : true
-  const optionsMissingBound = strictEqual(optionsBounded, false)
+  const optionsMissingBound = strictEqual(false)(optionsBounded)
   const optionsUnbounded = asObject && optionsMissingBound
   const scheduleBounded = asObject ? true : scheduleExpressionIsBounded(checker)(unwrapped)
-  const scheduleMissingBound = strictEqual(scheduleBounded, false)
-  const notObject = strictEqual(asObject, false)
+  const scheduleMissingBound = strictEqual(false)(scheduleBounded)
+  const notObject = strictEqual(false)(asObject)
   const scheduleUnbounded = notObject && scheduleMissingBound
 
   return optionsUnbounded || scheduleUnbounded
@@ -225,12 +225,7 @@ export const boundedRetryScheduleFindings = (
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> => {
   const matchesRetry = effectApiCall(context.checker)("Effect")(retryNames)
-
-  const lacksWaiver = (call: ts.CallExpression) => {
-    const hasWaiver = hasUnboundedRetryWaiver(context.sourceFile)(call)
-
-    return strictEqual(hasWaiver, false)
-  }
+  const lacksWaiver = flow(hasUnboundedRetryWaiver(context.sourceFile), strictEqual(false))
 
   return pipe(
     callExpressionOf(node),

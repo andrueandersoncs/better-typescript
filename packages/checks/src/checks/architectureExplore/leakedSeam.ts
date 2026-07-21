@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { Array, Function, Option, Predicate, Result, Tuple, pipe } from "effect"
+import { Array, Function, Option, Predicate, Result, Tuple, pipe, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -55,13 +55,19 @@ const directoryEdgesFromElement = (element: NamedDetection) =>
   )
 
 const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isSeamLeakageElement = (element: NamedDetection) =>
-    strictEqual(element.name, seamLeakageEvidenceName)
+  const isSeamLeakageElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(seamLeakageEvidenceName)
+  )
 
   const hasPath = (filePath: string) => (element: NamedDetection) =>
-    strictEqual(element.detection.location.path, filePath)
+    strictEqual(filePath)(element.detection.location.path)
 
-  const isInternalPath = (data: SeamLeakageData) => strictEqual(data.kind, "internal-path")
+  const isInternalPath = flow(
+    Struct.get<SeamLeakageData, "kind">("kind"),
+    strictEqual("internal-path")
+  )
+
   const leaks = Array.filter(elements, isSeamLeakageElement)
 
   const paths = pipe(
@@ -106,8 +112,10 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 }
 
 const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isModuleGraphElement = (element: NamedDetection) =>
-    strictEqual(element.name, moduleGraphName)
+  const isModuleGraphElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(moduleGraphName)
+  )
 
   const graphElements = Array.filter(elements, isModuleGraphElement)
   const directoryEdges = Array.flatMap(graphElements, directoryEdgesFromElement)
@@ -123,16 +131,16 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
 
     const pairWithLeft = (right: string) => {
       const forwardCount = Array.countBy(directoryEdges, ([from, to]) => {
-        const fromMatches = strictEqual(from, left)
-        const toMatches = strictEqual(to, right)
+        const fromMatches = strictEqual(left)(from)
+        const toMatches = strictEqual(right)(to)
         const conditions = Array.make(fromMatches, toMatches)
 
         return Array.every(conditions, Boolean)
       })
 
       const reverseCount = Array.countBy(directoryEdges, ([from, to]) => {
-        const fromMatches = strictEqual(from, right)
-        const toMatches = strictEqual(to, left)
+        const fromMatches = strictEqual(right)(from)
+        const toMatches = strictEqual(left)(to)
         const conditions = Array.make(fromMatches, toMatches)
 
         return Array.every(conditions, Boolean)
@@ -140,7 +148,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
 
       const smallestDirectionCount = Math.min(forwardCount, reverseCount)
 
-      if (strictEqual(smallestDirectionCount, 0)) {
+      if (strictEqual(0)(smallestDirectionCount)) {
         return Result.failVoid
       }
 

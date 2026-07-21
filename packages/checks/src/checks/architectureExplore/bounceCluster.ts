@@ -1,4 +1,4 @@
-import { Array, Option, Tuple, pipe } from "effect"
+import { Array, Option, Struct, Tuple, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -31,11 +31,11 @@ const neighborsOf = (
       const from = Tuple.get(edge, 0)
       const to = Tuple.get(edge, 1)
 
-      if (strictEqual(from, path)) {
+      if (strictEqual(path)(from)) {
         return Array.of(to)
       }
 
-      return strictEqual(to, path) ? Array.of(from) : Array.empty()
+      return strictEqual(path)(to) ? Array.of(from) : Array.empty()
     }),
     Array.dedupe
   )
@@ -114,8 +114,10 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     Array.dedupe
   )
 
-  const isModuleGraphElement = (element: NamedDetection) =>
-    strictEqual(element.name, moduleGraphName)
+  const isModuleGraphElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(moduleGraphName)
+  )
 
   const graphElements = Array.filter(elements, isModuleGraphElement)
 

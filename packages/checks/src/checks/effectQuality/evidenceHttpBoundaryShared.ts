@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { importedMemberAt, type ImportedMember } from "../functionalCoreEffect/support.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
@@ -8,7 +8,7 @@ export const isAmbientFetchCallee = (checker: ts.TypeChecker) => (expression: ts
   const current = unwrapTransparentExpression(expression)
   const isIdentifier = ts.isIdentifier(current)
   const identifierText = isIdentifier ? current.text : ""
-  const isFetchName = strictEqual(identifierText, "fetch")
+  const isFetchName = strictEqual("fetch")(identifierText)
   const isFetchIdentifier = Array.make(isIdentifier, isFetchName)
   const isFetch = Array.every(isFetchIdentifier, Boolean)
 
@@ -29,7 +29,7 @@ export const isAmbientFetchCallee = (checker: ts.TypeChecker) => (expression: ts
         const isDomLibParts = Array.make(isDeclarationFile, isDomFile)
         const isDomLib = Array.every(isDomLibParts, Boolean)
         const hasFunctionFlag = (symbol.flags & ts.SymbolFlags.Function) !== 0
-        const hasNoDeclarations = strictEqual(declarations.length, 0)
+        const hasNoDeclarations = strictEqual(0)(declarations.length)
         const globalParts = Array.make(hasFunctionFlag, hasNoDeclarations)
         const isGlobalFunction = Array.every(globalParts, Boolean)
         const ambientConditions = Array.make(isDomLib, isGlobalFunction)
@@ -47,14 +47,14 @@ export const isAmbientFetchCallee = (checker: ts.TypeChecker) => (expression: ts
   )
 }
 
-export const isBareFetchCall = (checker: ts.TypeChecker) => (node: ts.CallExpression) =>
-  isAmbientFetchCallee(checker)(node.expression)
+export const isBareFetchCall = (checker: ts.TypeChecker) =>
+  flow(Struct.get<ts.CallExpression, "expression">("expression"), isAmbientFetchCallee(checker))
 
 export const isHttpClientMember = (member: ImportedMember) => {
   const specifier = member.moduleSpecifier
   const path = member.path
-  const direct = strictEqual(specifier, "effect/unstable/http/HttpClient")
-  const isHttpBarrel = strictEqual(specifier, "effect/unstable/http")
+  const direct = strictEqual("effect/unstable/http/HttpClient")(specifier)
+  const isHttpBarrel = strictEqual("effect/unstable/http")(specifier)
   const pathHead = Array.head(path)
   const pathHeadIsHttpClient = pipe(pathHead, Option.contains("HttpClient"))
   const httpBarrelParts = Array.make(isHttpBarrel, pathHeadIsHttpClient)
@@ -64,13 +64,13 @@ export const isHttpClientMember = (member: ImportedMember) => {
   const path2 = Array.get(path, 2)
   const unstablePath0 = pipe(path0, Option.contains("http"))
   const unstablePath1 = pipe(path1, Option.contains("HttpClient"))
-  const unstableModule = strictEqual(specifier, "effect/unstable")
+  const unstableModule = strictEqual("effect/unstable")(specifier)
   const unstableParts = Array.make(unstableModule, unstablePath0, unstablePath1)
   const unstableBarrel = Array.every(unstableParts, Boolean)
   const effectPath0 = pipe(path0, Option.contains("unstable"))
   const effectPath1 = pipe(path1, Option.contains("http"))
   const effectPath2 = pipe(path2, Option.contains("HttpClient"))
-  const effectModule = strictEqual(specifier, "effect")
+  const effectModule = strictEqual("effect")(specifier)
   const effectParts = Array.make(effectModule, effectPath0, effectPath1, effectPath2)
   const effectBarrel = Array.every(effectParts, Boolean)
   const sources = Array.make(direct, httpBarrel, unstableBarrel, effectBarrel)
@@ -81,8 +81,8 @@ export const isHttpClientMember = (member: ImportedMember) => {
 export const isFetchHttpClientMember = (member: ImportedMember) => {
   const specifier = member.moduleSpecifier
   const path = member.path
-  const direct = strictEqual(specifier, "effect/unstable/http/FetchHttpClient")
-  const isHttpBarrel = strictEqual(specifier, "effect/unstable/http")
+  const direct = strictEqual("effect/unstable/http/FetchHttpClient")(specifier)
+  const isHttpBarrel = strictEqual("effect/unstable/http")(specifier)
   const pathHead = Array.head(path)
   const pathHeadIsFetchHttpClient = pipe(pathHead, Option.contains("FetchHttpClient"))
   const httpBarrelParts = Array.make(isHttpBarrel, pathHeadIsFetchHttpClient)
@@ -93,7 +93,7 @@ export const isFetchHttpClientMember = (member: ImportedMember) => {
   const effectPath0 = pipe(path0, Option.contains("unstable"))
   const effectPath1 = pipe(path1, Option.contains("http"))
   const effectPath2 = pipe(path2, Option.contains("FetchHttpClient"))
-  const effectModule = strictEqual(specifier, "effect")
+  const effectModule = strictEqual("effect")(specifier)
   const effectParts = Array.make(effectModule, effectPath0, effectPath1, effectPath2)
   const effectBarrel = Array.every(effectParts, Boolean)
   const sources = Array.make(direct, httpBarrel, effectBarrel)

@@ -38,7 +38,7 @@ const referencesSymbol = (checker: ts.TypeChecker) => (symbol: ts.Symbol) =>
       const notIdentifier = !isIdentifier
       const skipNode = referenced || notIdentifier
       const symbolAtNode = checker.getSymbolAtLocation(node)
-      const matchesSymbol = strictEqual(symbolAtNode, symbol)
+      const matchesSymbol = strictEqual(symbol)(symbolAtNode)
 
       return skipNode ? referenced : matchesSymbol
     })
@@ -50,7 +50,7 @@ const isDirectForward =
   (body: ts.Expression): boolean => {
     const expression = unwrapCarrier(body)
     const callExpression = Option.liftPredicate(ts.isCallExpression)(expression)
-    const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
+    const hasOneArgument = (call: ts.CallExpression) => strictEqual(1)(call.arguments.length)
     const singleArgumentCall = pipe(callExpression, Option.filter(hasOneArgument))
     const firstArgument = (call: ts.CallExpression) => Option.fromNullishOr(call.arguments[0])
 
@@ -64,7 +64,7 @@ const isDirectForward =
     const symbolAt = (identifier: ts.Identifier) =>
       pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
 
-    const matchesTarget = (current: ts.Symbol) => strictEqual(current, symbol)
+    const matchesTarget = strictEqual(symbol)
 
     return pipe(onlyArgument, Option.flatMap(symbolAt), Option.exists(matchesTarget))
   }
@@ -91,7 +91,7 @@ const composedCallbackMatches = (context: CheckContext) => {
       Option.gen(function* () {
         yield* Option.liftPredicate(arrowIsCallArgument)(arrowFunction)
 
-        const hasOneParameter = strictEqual(arrowFunction.parameters.length, 1)
+        const hasOneParameter = strictEqual(1)(arrowFunction.parameters.length)
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])

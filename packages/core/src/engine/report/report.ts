@@ -175,7 +175,7 @@ export const makeBlockSignalEvent = (block: ReportBlock) =>
 export const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
-    if (strictEqual(blocks.length, 0)) {
+    if (strictEqual(0)(blocks.length)) {
       const emptyReportEvent = EmptyReportEvent.make({ rootPath })
 
       return Array.of(emptyReportEvent)

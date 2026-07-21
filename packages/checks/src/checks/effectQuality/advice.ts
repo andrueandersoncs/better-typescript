@@ -1,4 +1,4 @@
-import { Array, Option, Result, Schema, Struct, pipe } from "effect"
+import { Array, Option, Result, Schema, Struct, pipe, flow } from "effect"
 import { makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -65,8 +65,10 @@ const remediations: Readonly<Record<EffectQualityAdviceKind, string>> = {
     "Prefer Effect's typed HTTP client unless a documented raw-fetch exception applies."
 }
 
-const isEffectQualityAdviceSignal = (signal: Signal) =>
-  strictEqual(signal.name, effectQualityAdviceCheckName)
+const isEffectQualityAdviceSignal = flow(
+  Struct.get<Signal, "name">("name"),
+  strictEqual(effectQualityAdviceCheckName)
+)
 
 const evidenceDetections = (signals: ReadonlyArray<Signal>): ReadonlyArray<Detection> =>
   pipe(

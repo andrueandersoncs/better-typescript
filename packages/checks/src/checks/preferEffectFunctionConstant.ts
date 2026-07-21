@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import {
   conciseArrowBody,
@@ -35,12 +35,17 @@ const fallbackModifiers = Function.constant(emptyModifiers)
 
 const message = "Avoid a handwritten constant thunk."
 
-const modifierIsAsync = (modifier: ts.ModifierLike) =>
-  strictEqual(modifier.kind, ts.SyntaxKind.AsyncKeyword)
+const modifierIsAsync = flow(
+  Struct.get<ts.ModifierLike, "kind">("kind"),
+  strictEqual(ts.SyntaxKind.AsyncKeyword)
+)
 
 const hasElements = (items: ReadonlyArray<unknown>) => items.length > 0
 
-const hasSingleElement = (items: ReadonlyArray<unknown>) => strictEqual(items.length, 1)
+const hasSingleElement = flow(
+  Struct.get<ReadonlyArray<unknown>, "length">("length"),
+  strictEqual(1)
+)
 
 const isEligibleFunction = (node: ts.Node) =>
   pipe(
@@ -74,7 +79,7 @@ const isEligibleFunction = (node: ts.Node) =>
         Option.exists(hasElements)
       )
 
-      const hasNoParameters = strictEqual(initializer.parameters.length, 0)
+      const hasNoParameters = strictEqual(0)(initializer.parameters.length)
       const eligibility = Array.make(hasNoParameters, !hasAsync, !hasGenerator, !hasTypeParameters)
 
       return Array.every(eligibility, Boolean)
@@ -126,11 +131,10 @@ const functionConstantMatches = (context: CheckContext) => {
   const match = makeDetection(context)
 
   const matches = (node: ts.Node): ReadonlyArray<Detection> => {
-    const declarationIsInSourceFile = (candidate: ts.Declaration) => {
-      const candidateSourceFile = candidate.getSourceFile()
-
-      return strictEqual(candidateSourceFile, context.sourceFile)
-    }
+    const declarationIsInSourceFile = flow(
+      (candidate: ts.Declaration) => candidate.getSourceFile(),
+      strictEqual(context.sourceFile)
+    )
 
     const declarationPrecedesNode = (candidate: ts.VariableDeclaration) =>
       candidate.end <= node.getStart(context.sourceFile)

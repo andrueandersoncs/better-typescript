@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result, Struct, Tuple, pipe } from "effect"
+import { Array, Function, Option, Result, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -27,11 +27,13 @@ const edgesForSymbol = (
   fromTest: boolean
 ): ReadonlyArray<WorkspaceImportEdge> =>
   Array.filter(edges, (edge) => {
-    const importsWorkspacePath = strictEqual(edge.importedPath, workspacePath)
-    const matchesTestOrigin = strictEqual(edge.fromTest, fromTest)
+    const importsWorkspacePath = strictEqual(workspacePath)(edge.importedPath)
+    const matchesTestOrigin = strictEqual(fromTest)(edge.fromTest)
 
-    const usageHasSymbolName = (usage: (typeof edge.names)[number]) =>
-      strictEqual(usage.name, symbolName)
+    const usageHasSymbolName = flow(
+      Struct.get<(typeof edge.names)[number], "name">("name"),
+      strictEqual(symbolName)
+    )
 
     const importsSymbol = Array.some(edge.names, usageHasSymbolName)
     const conditions = Array.make(importsWorkspacePath, matchesTestOrigin, importsSymbol)
@@ -40,7 +42,10 @@ const edgesForSymbol = (
   })
 
 const crossTestCallCount = (edges: ReadonlyArray<WorkspaceImportEdge>, symbolName: string) => {
-  const usageHasSymbolName = (usage: ImportedNameUsage) => strictEqual(usage.name, symbolName)
+  const usageHasSymbolName = flow(
+    Struct.get<ImportedNameUsage, "name">("name"),
+    strictEqual(symbolName)
+  )
 
   return pipe(
     edges,
@@ -58,7 +63,7 @@ const workspaceTestOnlySymbols =
       const crossTestImports = edgesForSymbol(edges, data.workspacePath, symbol.name, true)
       const inProjectProd = symbol.referencingFileCount - symbol.referencingTestFileCount
       const productionCallers = inProjectProd + crossProdImports.length
-      const hasNoProductionCallers = strictEqual(productionCallers, 0)
+      const hasNoProductionCallers = strictEqual(0)(productionCallers)
       const hasCrossTestImports = crossTestImports.length > 0
       const conditions = Array.make(hasNoProductionCallers, hasCrossTestImports)
 
@@ -73,14 +78,20 @@ const isSeamLeakageFromTest = Function.flow(
 const testPastInterfaceAdvice = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
-  const isTestOnlyExportElement = (element: NamedDetection) =>
-    strictEqual(element.name, testOnlyExportsName)
+  const isTestOnlyExportElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(testOnlyExportsName)
+  )
 
-  const isSeamLeakageElement = (element: NamedDetection) =>
-    strictEqual(element.name, seamLeakageEvidenceName)
+  const isSeamLeakageElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(seamLeakageEvidenceName)
+  )
 
-  const isExportSurfaceElement = (element: NamedDetection) =>
-    strictEqual(element.name, exportSurfaceName)
+  const isExportSurfaceElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(exportSurfaceName)
+  )
 
   const testOnlyExports = Array.filter(elements, isTestOnlyExportElement)
 
@@ -119,7 +130,7 @@ const testPastInterfaceAdvice = (
 
   return Array.map(paths, (filePath) => {
     const hasPath = (element: NamedDetection) =>
-      strictEqual(element.detection.location.path, filePath)
+      strictEqual(filePath)(element.detection.location.path)
 
     const exportsAtPath = Array.filter(testOnlyExports, hasPath)
     const importsAtPath = Array.filter(testImports, hasPath)

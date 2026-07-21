@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -13,7 +13,7 @@ const newErrorElements = (context: CheckContext) => {
   const element = makeDetection(context)
 
   const matches = (node: ts.NewExpression): ReadonlyArray<Detection> => {
-    const isErrorIdentifier = (expression: ts.Identifier) => strictEqual(expression.text, "Error")
+    const isErrorIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Error"))
 
     const isBareError = pipe(
       Option.liftPredicate(ts.isIdentifier)(node.expression),

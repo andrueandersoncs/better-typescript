@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, HashSet, Option, Struct, pipe } from "effect"
+import { Array, Function, HashMap, HashSet, Option, Struct, pipe, flow } from "effect"
 import * as ts from "typescript"
 import { foldAst, isProjectSourceFile } from "@better-typescript/core/engine/sources"
 import {
@@ -124,7 +124,7 @@ const hasDisallowedParameterList = (declaration: ts.Node) => {
 
 const hasCurriedArrowBody = (declaration: ts.Node) => {
   const parameters = runtimeParameters(declaration)
-  const hasSingleRuntimeParameter = strictEqual(parameters.length, 1)
+  const hasSingleRuntimeParameter = strictEqual(1)(parameters.length)
   const hasNoRestParameter = !hasRestParameter(declaration)
   const parameterChecks = Array.make(hasSingleRuntimeParameter, hasNoRestParameter)
   const hasCurriedParameterList = Array.every(parameterChecks, Boolean)
@@ -202,8 +202,8 @@ const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulato
 // NameDeclaration is naming syntax protocol because variable, function, and method share lookup.
 export type NameDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration
 
-const declarationHasName = (identifier: ts.Identifier) => (declaration: NameDeclaration) =>
-  strictEqual(declaration.name, identifier)
+const declarationHasName = (identifier: ts.Identifier) =>
+  flow(Struct.get<NameDeclaration, "name">("name"), strictEqual(identifier))
 
 const buildSymbolUses = (context: ProgramContext) => {
   const checker = context.checker
@@ -285,8 +285,10 @@ const buildSymbolUses = (context: ProgramContext) => {
         const expression = outermostTransparentWrapper(node)
         const expressionParent = expression.parent
 
-        const callUsesExpression = (call: ts.CallExpression) =>
-          strictEqual(call.expression, expression)
+        const callUsesExpression = flow(
+          Struct.get<ts.CallExpression, "expression">("expression"),
+          strictEqual(expression)
+        )
 
         const isDirectCall = pipe(
           Option.liftPredicate(ts.isCallExpression)(expressionParent),

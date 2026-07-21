@@ -112,7 +112,7 @@ const walkBodyStatus =
       return state
     }
 
-    if (strictEqual(current, bodyRead)) {
+    if (strictEqual(bodyRead)(current)) {
       return BodyStatusWalk.make({
         sawBodyRead: true,
         sawStatusBefore: state.sawStatusBefore

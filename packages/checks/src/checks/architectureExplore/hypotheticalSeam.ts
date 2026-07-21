@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result, pipe } from "effect"
+import { Array, Function, Option, Result, pipe, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -26,7 +26,7 @@ const isHypotheticalContext = (element: NamedDetection) =>
     contextTagSeamDataOf(element),
     Option.exists((data) => {
       const hasAtMostOneProductionAdapter = data.productionAdapterCount <= 1
-      const hasNoTestAdapter = strictEqual(data.testAdapterCount, 0)
+      const hasNoTestAdapter = strictEqual(0)(data.testAdapterCount)
       const conditions = Array.make(hasAtMostOneProductionAdapter, hasNoTestAdapter)
 
       return Array.every(conditions, Boolean)
@@ -34,16 +34,24 @@ const isHypotheticalContext = (element: NamedDetection) =>
   )
 
 const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isSingleAdapterSeamsElement = (element: NamedDetection) =>
-    strictEqual(element.name, singleAdapterSeamsName)
+  const isSingleAdapterSeamsElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(singleAdapterSeamsName)
+  )
 
-  const isContextTagSeamsElement = (element: NamedDetection) =>
-    strictEqual(element.name, contextTagSeamsName)
+  const isContextTagSeamsElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(contextTagSeamsName)
+  )
 
   const hasPath = (filePath: string) => (element: NamedDetection) =>
-    strictEqual(element.detection.location.path, filePath)
+    strictEqual(filePath)(element.detection.location.path)
 
-  const hasNoConsumers = (data: ContextTagSeamData) => strictEqual(data.consumerCount, 0)
+  const hasNoConsumers = flow(
+    Struct.get<ContextTagSeamData, "consumerCount">("consumerCount"),
+    strictEqual(0)
+  )
+
   const singleAdapterSeams = Array.filter(elements, isSingleAdapterSeamsElement)
 
   const contextSeams = pipe(

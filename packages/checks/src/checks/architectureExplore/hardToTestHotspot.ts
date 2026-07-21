@@ -1,4 +1,4 @@
-import { Array, pipe } from "effect"
+import { Array, pipe, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -23,7 +23,7 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
   const paths = pipe(constructions, Array.map(detectionPath), Array.dedupe)
 
   const hasPath = (filePath: string) => (element: NamedDetection) =>
-    strictEqual(element.detection.location.path, filePath)
+    strictEqual(filePath)(element.detection.location.path)
 
   const hasMinimumConstructions = (filePath: string) =>
     Array.countBy(constructions, hasPath(filePath)) >= minimumConstructions
@@ -34,11 +34,15 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
     Array.map((filePath) => {
       const atPath = Array.filter(constructions, hasPath(filePath))
 
-      const isExternalDependencyConstruction = (element: NamedDetection) =>
-        strictEqual(element.name, externalDependencyConstructionName)
+      const isExternalDependencyConstruction = flow(
+        Struct.get<NamedDetection, "name">("name"),
+        strictEqual(externalDependencyConstructionName)
+      )
 
-      const isModuleScopeEffects = (element: NamedDetection) =>
-        strictEqual(element.name, moduleScopeEffectsName)
+      const isModuleScopeEffects = flow(
+        Struct.get<NamedDetection, "name">("name"),
+        strictEqual(moduleScopeEffectsName)
+      )
 
       const constructorCount = Array.countBy(atPath, isExternalDependencyConstruction)
       const moduleScopeCount = Array.countBy(atPath, isModuleScopeEffects)

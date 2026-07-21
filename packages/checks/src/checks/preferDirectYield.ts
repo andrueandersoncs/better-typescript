@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe, Struct } from "effect"
+import { Array, Function, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { foldAst } from "@better-typescript/core/engine/sources"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -23,8 +23,10 @@ const lacksAsteriskToken = (node: ts.FunctionExpression | ts.YieldExpression) =>
   pipe(node.asteriskToken, Option.fromNullishOr, Option.isNone)
 
 const isYieldStarOfIdentifier = (identifier: ts.Identifier) => {
-  const yieldsIdentifier = (yieldExpression: ts.YieldExpression) =>
-    strictEqual(yieldExpression.expression, identifier)
+  const yieldsIdentifier = flow(
+    Struct.get<ts.YieldExpression, "expression">("expression"),
+    strictEqual(identifier)
+  )
 
   return pipe(
     Option.liftPredicate(ts.isYieldExpression)(identifier.parent),
@@ -39,10 +41,10 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
   const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) => {
     const hasMethodName = (access: ts.PropertyAccessExpression) =>
-      strictEqual(access.name.text, methodName)
+      strictEqual(methodName)(access.name.text)
 
     const isEffectRoot = (access: ts.PropertyAccessExpression) => {
-      const isEffectText = (text: string) => strictEqual(text, "Effect")
+      const isEffectText = strictEqual("Effect")
 
       return pipe(
         Option.liftPredicate(ts.isIdentifier)(access.expression),
@@ -147,7 +149,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
           node: ts.Node
         ): ReadonlyArray<ts.Identifier> => {
           const isNotBindingName = (candidate: ts.Node) => candidate !== name
-          const isSameSymbol = (candidate: ts.Symbol) => strictEqual(candidate, symbol)
+          const isSameSymbol = strictEqual(symbol)
 
           const appendIdentifier = (identifier: ts.Identifier) =>
             Array.append(references, identifier)
@@ -172,7 +174,7 @@ const preferDirectYieldMatches = (context: CheckContext) => {
 
         const foldReferences = foldAst(appendMatchingReference)(generator)
         const references = foldReferences(emptyReferences)
-        const hasOneReference = strictEqual(references.length, 1)
+        const hasOneReference = strictEqual(1)(references.length)
 
         yield* Option.liftPredicate((value: boolean) => value)(hasOneReference)
 

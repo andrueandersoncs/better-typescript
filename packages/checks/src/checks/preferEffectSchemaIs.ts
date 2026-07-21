@@ -16,7 +16,7 @@ const strictTagComparisonOperators = HashSet.make(
 )
 
 const hasTagPropertyName = (expression: ts.PropertyAccessExpression) =>
-  strictEqual(expression.name.text, tagPropertyName)
+  strictEqual(tagPropertyName)(expression.name.text)
 
 const tagPropertyAccess = (expression: ts.Expression) =>
   pipe(
@@ -99,9 +99,8 @@ const schemaIsMatches = (context: CheckContext) => {
 
     const schemaIsCheck = `Schema.is($schema)(${valueText})`
 
-    const isNegated = strictEqual(
-      expression.operatorToken.kind,
-      ts.SyntaxKind.ExclamationEqualsEqualsToken
+    const isNegated = strictEqual(ts.SyntaxKind.ExclamationEqualsEqualsToken)(
+      expression.operatorToken.kind
     )
 
     const suggestion = isNegated ? `!${schemaIsCheck}` : schemaIsCheck

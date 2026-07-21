@@ -8,7 +8,8 @@ import {
   Record,
   Struct,
   Tuple,
-  pipe
+  pipe,
+  flow
 } from "effect"
 import { formatRefactorExample } from "../example/example.js"
 import type { RefactorExample } from "../example/data.js"
@@ -188,7 +189,7 @@ export const adviceLevelRank = (advice: Advice) =>
   pipe(Record.get(adviceLevelRanks, advice.level), Option.getOrElse(zeroAdviceLevelRank))
 
 export const advicePath = (advice: Advice) =>
-  strictEqual(advice.level, "project") ? "project" : advice.location.path
+  strictEqual("project")(advice.level) ? "project" : advice.location.path
 
 const byAdviceLevel = Order.mapInput(Order.Number, adviceLevelRank)
 const byAdvicePath = Order.mapInput(Order.String, advicePath)
@@ -214,6 +215,6 @@ export const adviceText =
     return Array.join(lines, "\n")
   }
 
-export const isFileLevelAdvice = (advice: Advice) => strictEqual(advice.level, "file")
+export const isFileLevelAdvice = flow(Struct.get<Advice, "level">("level"), strictEqual("file"))
 
 export const fileAdvicePath = (advice: Advice) => advice.location.path

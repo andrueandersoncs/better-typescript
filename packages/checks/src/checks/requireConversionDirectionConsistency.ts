@@ -168,8 +168,8 @@ const conversionDirectionMatches = (context: CheckContext) => {
           )
         }
 
-        const isFromRelation = (word: string) => strictEqual(word, "from")
-        const isToRelation = (word: string) => strictEqual(word, "to")
+        const isFromRelation = strictEqual("from")
+        const isToRelation = strictEqual("to")
 
         const fromDirectionDetections = () =>
           completeDirectionDisagreement(semantics.name.source, semantics.name.object)

@@ -11,7 +11,7 @@ import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const containsRawObjectType = (typeNode: ts.TypeNode): boolean => {
   const isTypeLiteral = ts.isTypeLiteralNode(typeNode)
-  const isObjectKeyword = strictEqual(typeNode.kind, ts.SyntaxKind.ObjectKeyword)
+  const isObjectKeyword = strictEqual(ts.SyntaxKind.ObjectKeyword)(typeNode.kind)
   const isUnionType = ts.isUnionTypeNode(typeNode)
   const unionContainsRaw = isUnionType && Array.some(typeNode.types, containsRawObjectType)
   const isIntersectionType = ts.isIntersectionTypeNode(typeNode)

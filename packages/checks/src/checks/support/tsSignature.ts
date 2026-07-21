@@ -9,7 +9,7 @@ import {
 } from "./tsNode.js"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-export const isSameNode = (node: ts.Node) => (candidate: ts.Node) => strictEqual(candidate, node)
+export const isSameNode = strictEqual
 
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()
@@ -154,12 +154,9 @@ const nameNodeEscapes =
           const isEscapingReference = pipe(
             Option.liftPredicate(ts.isIdentifier)(candidate),
             Option.exists((identifier) => {
-              const isDeclarationName = strictEqual(identifier, nameNode)
+              const isDeclarationName = strictEqual(nameNode)(identifier)
               const nodeSymbol = symbolAtNode(checker)(identifier)
-
-              const isSameSymbol = (candidateSymbol: ts.Symbol) =>
-                strictEqual(candidateSymbol, symbol)
-
+              const isSameSymbol = strictEqual(symbol)
               const refersToSymbol = Option.exists(nodeSymbol, isSameSymbol)
               const isExternalArgument = isExternalArgumentPosition(checker)(identifier)
 
@@ -177,7 +174,7 @@ const nameNodeEscapes =
             ? true
             : ts.forEachChild(candidate, candidateMatches)
 
-          return strictEqual(childMatch, true)
+          return strictEqual(true)(childMatch)
         }
 
         return candidateMatches(sourceFile)
@@ -194,7 +191,7 @@ export const constructionEscapesExternally =
     const escapesThroughVariable = pipe(
       Option.liftPredicate(ts.isVariableDeclaration)(outermost.parent),
       Option.filter((declaration) => {
-        const initializerIsOutermost = strictEqual(declaration.initializer, outermost)
+        const initializerIsOutermost = strictEqual(outermost)(declaration.initializer)
 
         return initializerIsOutermost
       }),
@@ -278,7 +275,7 @@ export const symbolDeclaredInEffectPackage = (symbol: ts.Symbol) => {
 }
 
 export const isEffectInterfaceSymbol = (symbol: ts.Symbol) => {
-  const isNamedEffect = strictEqual(symbol.name, "Effect")
+  const isNamedEffect = strictEqual("Effect")(symbol.name)
   const fromEffect = symbolDeclaredInEffectPackage(symbol)
   const checks = Array.make(isNamedEffect, fromEffect)
 

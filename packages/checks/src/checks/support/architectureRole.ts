@@ -129,7 +129,7 @@ const makeNormalizedRolePath = (entry: ArchitectureRolePath) => {
 }
 
 const pathContains = (prefix: string, candidate: string) => {
-  const exact = strictEqual(candidate, prefix)
+  const exact = strictEqual(prefix)(candidate)
   const nested = candidate.startsWith(`${prefix}/`)
 
   return exact || nested

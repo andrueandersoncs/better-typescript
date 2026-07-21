@@ -1,4 +1,16 @@
-import { Array, Data, Function, HashMap, Option, Result, Schema, Tuple, pipe } from "effect"
+import {
+  Array,
+  Data,
+  Function,
+  HashMap,
+  Option,
+  Result,
+  Schema,
+  Tuple,
+  pipe,
+  Struct,
+  flow
+} from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import {
@@ -96,7 +108,7 @@ export const isShallownessName = (name: string) => Array.contains(shallownessNam
 const directorySegments = (filePath: string): ReadonlyArray<string> => {
   const normalized = filePath.replaceAll("\\", "/")
   const separator = normalized.lastIndexOf("/")
-  const directory = strictEqual(separator, -1) ? "." : normalized.slice(0, separator)
+  const directory = strictEqual(-1)(separator) ? "." : normalized.slice(0, separator)
 
   return directory.split("/")
 }
@@ -116,7 +128,7 @@ export const commonDirectory = (paths: ReadonlyArray<string>) => {
 
   const common = Array.reduce(remaining, first, takeCommonPrefix)
 
-  return strictEqual(common.length, 0) ? "." : Array.join(common, "/")
+  return strictEqual(0)(common.length) ? "." : Array.join(common, "/")
 }
 
 // WorkspaceImportEdge is the joined cross-package edge because advisers need one shared graph.
@@ -181,14 +193,20 @@ const usageEdgeOf = (aliasTable: HashMap.HashMap<string, string>) => (element: N
 export const workspaceImportEdges = (
   elements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<WorkspaceImportEdge> => {
-  const isModuleIdentityElement = (element: NamedDetection) =>
-    strictEqual(element.name, moduleIdentityName)
+  const isModuleIdentityElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(moduleIdentityName)
+  )
 
-  const isModuleGraphElement = (element: NamedDetection) =>
-    strictEqual(element.name, moduleGraphName)
+  const isModuleGraphElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(moduleGraphName)
+  )
 
-  const isImportUsageElement = (element: NamedDetection) =>
-    strictEqual(element.name, importUsageName)
+  const isImportUsageElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(importUsageName)
+  )
 
   const identityElements = Array.filter(elements, isModuleIdentityElement)
   const aliasEntries = Array.flatMap(identityElements, aliasEntriesOf)

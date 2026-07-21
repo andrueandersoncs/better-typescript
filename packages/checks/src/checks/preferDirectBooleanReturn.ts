@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe, Result } from "effect"
+import { Array, Function, Match, Option, Struct, flow, pipe, Result } from "effect"
 import * as ts from "typescript"
 import {
   returnStatementExpression,
@@ -25,11 +25,11 @@ const booleanLiteralValue = (expression: ts.Expression) => {
 const isNonBooleanLiteral = (expression: ts.Expression) =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
 
-const isFalseKeyword = (expression: ts.Expression) => {
-  const unwrappedKind = unwrapExpression(expression).kind
-
-  return strictEqual(unwrappedKind, ts.SyntaxKind.FalseKeyword)
-}
+const isFalseKeyword = flow(
+  unwrapExpression,
+  Struct.get<ts.Expression, "kind">("kind"),
+  strictEqual(ts.SyntaxKind.FalseKeyword)
+)
 
 const isFalseLiteralReturn = (statement: ts.Statement) =>
   pipe(
@@ -95,7 +95,7 @@ const booleanReturnMatches = (context: CheckContext) => {
       const bothLiteral = Option.gen(function* () {
         const whenTrueLiteral = yield* trueLiteral
         const whenFalseLiteral = yield* falseLiteral
-        const literalsMatch = strictEqual(whenTrueLiteral, whenFalseLiteral)
+        const literalsMatch = strictEqual(whenFalseLiteral)(whenTrueLiteral)
 
         yield* Option.liftPredicate((value: boolean) => !value)(literalsMatch)
 

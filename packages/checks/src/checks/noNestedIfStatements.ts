@@ -36,7 +36,7 @@ const containingIfStatementFrom =
       return containingIfStatementFrom(parentNode)(grandparent)
     }
 
-    const isElseBranch = strictEqual(parentNode.elseStatement, child)
+    const isElseBranch = strictEqual(child)(parentNode.elseStatement)
 
     return isElseBranch
       ? containingIfStatementFrom(parentNode)(grandparent)

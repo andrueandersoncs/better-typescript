@@ -28,7 +28,7 @@ const hasRole =
     HashSet.has(semantics.roles, role)
 
 const isExactSingleWord = (word: string) => (semantics: CallableSemantics) => {
-  const singleWord = strictEqual(semantics.name.words.length, 1)
+  const singleWord = strictEqual(1)(semantics.name.words.length)
   const firstWord = Array.head(semantics.name.words)
   const matchesWord = Option.contains(firstWord, word)
   const conditions = Array.make(singleWord, matchesWord)
@@ -40,7 +40,7 @@ const isBareMake = isExactSingleWord("make")
 
 const isExactVariantConstructor = (semantics: CallableSemantics) => {
   const words = semantics.name.words
-  const singleWord = strictEqual(words.length, 1)
+  const singleWord = strictEqual(1)(words.length)
 
   const isKnownVariantWord = (word: string) => {
     const knownVariant = HashSet.has(variantConstructors, word)

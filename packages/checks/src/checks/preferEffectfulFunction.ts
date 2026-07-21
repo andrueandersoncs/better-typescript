@@ -56,7 +56,7 @@ const isEffectRunSyncCall =
   (checker: ts.TypeChecker) =>
   (expression: ts.Expression): boolean => {
     const symbolIsEverySync = (symbol: ts.Symbol) => {
-      const nameMatches = strictEqual(symbol.name, "runSync")
+      const nameMatches = strictEqual("runSync")(symbol.name)
       const fromEffect = symbolDeclaredInEffectPackage(symbol)
       const conditions = Array.make(nameMatches, fromEffect)
 

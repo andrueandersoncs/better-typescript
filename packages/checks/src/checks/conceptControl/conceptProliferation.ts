@@ -66,7 +66,7 @@ const pairElementWithSignalData = (element: Detection) => {
 const isClosedAbstractionEntry = (entry: readonly [Detection, ConceptSignalData]) => {
   const data = Tuple.get(entry, 1)
 
-  return strictEqual(data.kind, "closed-abstraction")
+  return strictEqual("closed-abstraction")(data.kind)
 }
 
 const closedAbstractionAdviceFromEntry = (entry: readonly [Detection, ConceptSignalData]) => {

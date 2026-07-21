@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, HashSet, Option, pipe, Tuple } from "effect"
+import { Array, Function, HashMap, HashSet, Option, pipe, Tuple, Struct, flow } from "effect"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -139,9 +139,9 @@ const operationsForRole = (role: SemanticRole) =>
 const fallbackOperation =
   (semantics: CallableSemantics) =>
   (role: SemanticRole): string => {
-    if (strictEqual(role, "lookup")) {
-      const isOptionalTotality = strictEqual(semantics.result.totality, "optional")
-      const isOptionalCardinality = strictEqual(semantics.result.cardinality, "optional-one")
+    if (strictEqual("lookup")(role)) {
+      const isOptionalTotality = strictEqual("optional")(semantics.result.totality)
+      const isOptionalCardinality = strictEqual("optional-one")(semantics.result.cardinality)
       const optionalFlags = Array.make(isOptionalTotality, isOptionalCardinality)
       const optional = Array.some(optionalFlags, Boolean)
 
@@ -159,10 +159,13 @@ const isVagueOperation = (word: string) => HashSet.has(vagueOperations, word)
 const isConventionalRoleNoun = (word: string) => HashSet.has(conventionalRoleNouns, word)
 const isRuntimeEntry = (word: string) => HashSet.has(runtimeEntries, word)
 const isConventionalEventObject = (object: string) => HashSet.has(conventionalEventObjects, object)
-const isHandleOperation = (operation: string) => strictEqual(operation, "handle")
+const isHandleOperation = strictEqual("handle")
 
 const uniqueStrongerRole = (semantics: CallableSemantics) => {
-  const hasSingleRole = (roles: ReadonlyArray<SemanticRole>) => strictEqual(roles.length, 1)
+  const hasSingleRole = flow(
+    Struct.get<ReadonlyArray<SemanticRole>, "length">("length"),
+    strictEqual(1)
+  )
 
   return pipe(
     Array.fromIterable(semantics.roles),
@@ -195,7 +198,7 @@ const suggestedOperation =
 const capitalize = (word: string) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`
 
 const camelCaseWord = (word: string, index: number) =>
-  strictEqual(index, 0) ? word : capitalize(word)
+  strictEqual(0)(index) ? word : capitalize(word)
 
 const toCamelCase = (words: ReadonlyArray<string>) =>
   pipe(words, Array.map(camelCaseWord), Array.join(""))
@@ -204,7 +207,7 @@ const suggestedName =
   (vague: string) =>
   (operation: string) =>
   (semantics: CallableSemantics): string => {
-    const replaceVagueWord = (word: string) => (strictEqual(word, vague) ? operation : word)
+    const replaceVagueWord = (word: string) => (strictEqual(vague)(word) ? operation : word)
 
     return pipe(semantics.name.words, Array.map(replaceVagueWord), toCamelCase)
   }
@@ -212,7 +215,7 @@ const suggestedName =
 const isConventionalEntry = (semantics: CallableSemantics) => {
   const words = semantics.name.words
   const hasRoleNoun = Array.some(words, isConventionalRoleNoun)
-  const isSingleWord = strictEqual(words.length, 1)
+  const isSingleWord = strictEqual(1)(words.length)
   const isRuntimeEntryWord = pipe(Array.head(words), Option.exists(isRuntimeEntry))
   const bareRuntimeEntryFlags = Array.make(isSingleWord, isRuntimeEntryWord)
   const bareRuntimeEntry = Array.every(bareRuntimeEntryFlags, Boolean)
@@ -237,12 +240,12 @@ const specificOperationNameMatches = (context: CheckContext) => {
       const vague = yield* claimedVagueOperation(semantics)
       const role = yield* uniqueStrongerRole(semantics)
       const suggested = suggestedOperation(semantics)(role)
-      const suggestedMatchesVague = strictEqual(suggested, vague)
+      const suggestedMatchesVague = strictEqual(vague)(suggested)
 
       yield* Option.liftPredicate((value: boolean) => !value)(suggestedMatchesVague)
 
       const renamed = suggestedName(vague)(suggested)(semantics)
-      const renamedMatchesText = strictEqual(renamed, semantics.name.text)
+      const renamedMatchesText = strictEqual(semantics.name.text)(renamed)
 
       yield* Option.liftPredicate((value: boolean) => !value)(renamedMatchesText)
 

@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { importedEffectApiAt } from "../functionalCoreEffect/support.js"
@@ -9,8 +9,10 @@ import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const configStringNames = Array.of("string")
 
-const anyKeywordType = (typeNode: ts.TypeNode) =>
-  strictEqual(typeNode.kind, ts.SyntaxKind.AnyKeyword)
+const anyKeywordType = flow(
+  Struct.get<ts.TypeNode, "kind">("kind"),
+  strictEqual(ts.SyntaxKind.AnyKeyword)
+)
 
 const asExpressionHasAnyType = (expression: ts.AsExpression) => anyKeywordType(expression.type)
 

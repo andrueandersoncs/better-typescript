@@ -1,4 +1,4 @@
-import { Array, Function, Option, Predicate, Struct, Tuple, pipe, Result } from "effect"
+import { Array, Function, Option, Predicate, Struct, Tuple, pipe, Result, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 
@@ -93,7 +93,7 @@ const parameterIdentifiers = (
     )
   })
 
-  return strictEqual(identifiers.length, node.parameters.length)
+  return strictEqual(node.parameters.length)(identifiers.length)
     ? Option.some(identifiers)
     : Option.none()
 }
@@ -155,7 +155,7 @@ const isExactForwarder = (
       const parameterNames = Array.map(parameters, Struct.get("text"))
 
       return Array.match(consumedNames, {
-        onEmpty: () => strictEqual(parameterNames.length, 0),
+        onEmpty: () => strictEqual(0)(parameterNames.length),
         onNonEmpty: () => {
           const sameOrder = Array.every(parameterNames, (name, index) => {
             const candidate = Array.get(consumedNames, index)
@@ -163,7 +163,7 @@ const isExactForwarder = (
             return Option.contains(candidate, name)
           })
 
-          const sameLength = strictEqual(consumedNames.length, parameterNames.length)
+          const sameLength = strictEqual(parameterNames.length)(consumedNames.length)
 
           return sameOrder && sameLength
         }
@@ -194,7 +194,7 @@ const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Exp
   const publicStatements = Array.filter(sourceFile.statements, isPublicStatement)
   const reexports = Array.filter(publicStatements, ts.isExportDeclaration)
   const allReexports = Array.every(reexports, hasModuleSpecifier)
-  const onlyReexports = strictEqual(reexports.length, publicStatements.length)
+  const onlyReexports = strictEqual(publicStatements.length)(reexports.length)
 
   return allReexports && onlyReexports ? reexports : Array.empty()
 }
@@ -230,11 +230,11 @@ const passThroughElements =
       })
     }
 
-    const isEntryInSourceFile = (entry: (typeof references.entries)[number]) => {
-      const entrySourceFile = entry.nameNode.getSourceFile()
-
-      return strictEqual(entrySourceFile, sourceFile)
-    }
+    const isEntryInSourceFile = flow(
+      Struct.get<(typeof references.entries)[number], "nameNode">("nameNode"),
+      (nameNode) => nameNode.getSourceFile(),
+      strictEqual(sourceFile)
+    )
 
     const forwarding = pipe(
       references.entries,
@@ -245,8 +245,10 @@ const passThroughElements =
 
     const reexports = reexportOnlyStatements(sourceFile)
 
-    const importsFilePath = (edge: (typeof edges)[number]) =>
-      strictEqual(edge.importedPath, filePath)
+    const importsFilePath = flow(
+      Struct.get<(typeof edges)[number], "importedPath">("importedPath"),
+      strictEqual(filePath)
+    )
 
     const inboundPaths = pipe(
       edges,

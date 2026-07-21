@@ -27,7 +27,7 @@ const fieldsAreWireSafe = (checker: ts.TypeChecker) => (heritage: ts.ExpressionW
       onNone: Function.constant(true),
       onSome: (fieldsNode) => {
         const isEmptyLiteral = (literal: ts.TypeLiteralNode) =>
-          strictEqual(literal.members.length, 0)
+          strictEqual(0)(literal.members.length)
 
         return pipe(
           Option.liftPredicate(ts.isTypeLiteralNode)(fieldsNode),

@@ -80,7 +80,7 @@ export const callIsEffectApi =
     importedEffectApiAt(checker, node.expression, namespace, names)
 
 const assignmentBindingName = (parent: ts.BinaryExpression) => {
-  const isEquals = strictEqual(parent.operatorToken.kind, ts.SyntaxKind.EqualsToken)
+  const isEquals = strictEqual(ts.SyntaxKind.EqualsToken)(parent.operatorToken.kind)
 
   if (!isEquals) {
     return Option.none<string>()
@@ -96,10 +96,10 @@ export const newMapBindingName = (node: ts.NewExpression) => {
   const expression = unwrapTransparentExpression(node.expression)
   const identifierMap = ts.isIdentifier(expression)
   const identifierText = identifierMap ? expression.text : ""
-  const identifierIsMap = strictEqual(identifierText, "Map")
+  const identifierIsMap = strictEqual("Map")(identifierText)
   const propertyMap = ts.isPropertyAccessExpression(expression)
   const propertyText = propertyMap ? expression.name.text : ""
-  const propertyIsMap = strictEqual(propertyText, "Map")
+  const propertyIsMap = strictEqual("Map")(propertyText)
   const mapIdentifier = Array.make(identifierMap, identifierIsMap)
   const mapProperty = Array.make(propertyMap, propertyIsMap)
   const isIdentifierMap = Array.every(mapIdentifier, Boolean)

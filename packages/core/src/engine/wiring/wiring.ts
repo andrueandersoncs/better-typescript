@@ -164,7 +164,7 @@ const addDuplicateName = (state: DuplicateNameState, check: NamedCheck) => {
 const validateCheckNames = <A>(checks: ReadonlyArray<NamedCheck>, value: A): A => {
   const names = Array.reduce(checks, emptyDuplicateNameState, addDuplicateName).names
 
-  return strictEqual(names.length, 0) ? value : failDuplicateCheckNames(names)
+  return strictEqual(0)(names.length) ? value : failDuplicateCheckNames(names)
 }
 
 // Validation runs at construction because duplicate names must fail before analysis starts.

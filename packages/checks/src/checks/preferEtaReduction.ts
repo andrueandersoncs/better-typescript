@@ -79,9 +79,9 @@ const etaReductionMatches = (context: CheckContext) => {
       Option.exists(isNamespaceSymbol)
     )
 
-    const receiverLacksConstructor = strictEqual(receiverIsConstructor, false)
+    const receiverLacksConstructor = strictEqual(false)(receiverIsConstructor)
     const methodNeedsReceiver = isMethod && receiverLacksConstructor
-    const receiverIsInstance = strictEqual(receiverIsNamespace, false)
+    const receiverIsInstance = strictEqual(false)(receiverIsNamespace)
     const instanceMethod = methodNeedsReceiver && receiverIsInstance
 
     return instanceMethod
@@ -94,14 +94,14 @@ const etaReductionMatches = (context: CheckContext) => {
     const isFree = isCall || isIdentifier
     const isPropertyAccess = ts.isPropertyAccessExpression(unwrapped)
     const propertyNeedsThis = isPropertyAccess ? propertyAccessRequiresThis(unwrapped) : true
-    const isBound = strictEqual(isFree, false)
+    const isBound = strictEqual(false)(isFree)
     const boundCalleeNeedsThis = isBound && propertyNeedsThis
 
     return boundCalleeNeedsThis
   }
 
   const referenceCount = (name: string): ((node: ts.Node) => number) => {
-    const isNameText = (text: string) => strictEqual(text, name)
+    const isNameText = strictEqual(name)
 
     return Function.flip(
       foldAst((count: number, current: ts.Node): number =>
@@ -120,14 +120,14 @@ const etaReductionMatches = (context: CheckContext) => {
     (parameterName: string) =>
     (expression: ts.Expression): Option.Option<ReadonlyArray<ts.Expression>> => {
       const unwrapped = unwrapCarrier(expression)
-      const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
+      const hasOneArgument = (call: ts.CallExpression) => strictEqual(1)(call.arguments.length)
 
       const callOption = pipe(
         Option.liftPredicate(ts.isCallExpression)(unwrapped),
         Option.filter(hasOneArgument)
       )
 
-      const isParameterName = (text: string) => strictEqual(text, parameterName)
+      const isParameterName = strictEqual(parameterName)
 
       const calleesFromCall = (call: ts.CallExpression) =>
         Option.gen(function* () {
@@ -162,7 +162,7 @@ const etaReductionMatches = (context: CheckContext) => {
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> =>
     pipe(
       Option.gen(function* () {
-        const hasOneParameter = strictEqual(arrowFunction.parameters.length, 1)
+        const hasOneParameter = strictEqual(1)(arrowFunction.parameters.length)
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])
@@ -172,7 +172,7 @@ const etaReductionMatches = (context: CheckContext) => {
         const isIdentifierName = ts.isIdentifier(parameter.name)
         const hasRestOrDefault = hasRest || hasDefault
         const isComplex = hasRestOrDefault || isOptional
-        const isNotComplex = strictEqual(isComplex, false)
+        const isNotComplex = strictEqual(false)(isComplex)
         const isSimple = isIdentifierName && isNotComplex
 
         yield* Option.liftPredicate((value: boolean) => value)(isSimple)
@@ -187,7 +187,7 @@ const etaReductionMatches = (context: CheckContext) => {
         yield* Option.liftPredicate((value: boolean) => value)(freeCallees)
 
         const calleeCount = Array.length(callees)
-        const isSingleStep = strictEqual(calleeCount, 1)
+        const isSingleStep = strictEqual(1)(calleeCount)
 
         return match({
           node: arrowFunction,

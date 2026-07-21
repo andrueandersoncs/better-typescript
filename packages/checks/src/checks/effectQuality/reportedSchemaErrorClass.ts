@@ -20,7 +20,7 @@ const dataTaggedErrorNames = Array.make("TaggedError", "Error")
 
 const errorNamePattern = /Error$|Failure$|Exception$/u
 
-const propertyNameIsTag = (name: string) => strictEqual(name, "_tag")
+const propertyNameIsTag = strictEqual("_tag")
 
 const propertyDeclarationIsTag = (property: ts.PropertyDeclaration) =>
   pipe(propertyNameText(property.name), Option.exists(propertyNameIsTag))
@@ -43,10 +43,10 @@ const classNameLooksLikeError = (declaration: ts.ClassDeclaration) =>
     Option.exists(nameMatchesErrorPattern)
   )
 
-const identifierIsError = (identifier: ts.Identifier) => strictEqual(identifier.text, "Error")
+const identifierIsError = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Error"))
 
 const propertyAccessIsError = (access: ts.PropertyAccessExpression) =>
-  strictEqual(access.name.text, "Error")
+  strictEqual("Error")(access.name.text)
 
 const nodeIsErrorConstructor = (current: ts.Expression) =>
   pipe(

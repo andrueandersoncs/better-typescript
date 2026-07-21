@@ -82,7 +82,7 @@ const claimsPredicate = (semantics: CallableSemantics) => {
   const words = semantics.name.words
   const first = pipe(words, Array.head, Option.getOrElse(Function.constant("")))
   const predicatePrefix = HashSet.has(predicateOperations, first)
-  const singleWord = strictEqual(words.length, 1)
+  const singleWord = strictEqual(1)(words.length)
   const isAmbiguousStandalone = HashSet.has(ambiguousStandalonePredicates, first)
   const standaloneAmbiguousChecks = Array.make(singleWord, isAmbiguousStandalone)
   const standaloneAmbiguous = Array.every(standaloneAmbiguousChecks, Boolean)
@@ -97,7 +97,7 @@ const claimsPredicate = (semantics: CallableSemantics) => {
 
 const isBareVariantConstructor = (semantics: CallableSemantics) => {
   const words = semantics.name.words
-  const singleWord = strictEqual(words.length, 1)
+  const singleWord = strictEqual(1)(words.length)
   const headWord = Array.head(words)
   const isBareVariantWord = (word: string) => HashSet.has(bareVariantConstructors, word)
   const isVariant = Option.exists(headWord, isBareVariantWord)
@@ -145,7 +145,7 @@ const predicateNameMatches = (context: CheckContext) => {
       semanticsFor(definition),
       Option.map((semantics) => {
         const predicateClaim = claimsPredicate(semantics)
-        const booleanResult = strictEqual(semantics.result.shape, "boolean")
+        const booleanResult = strictEqual("boolean")(semantics.result.shape)
         const bareVariant = isBareVariantConstructor(semantics)
         const nonBoolean = !booleanResult
         const nonBareVariant = !bareVariant

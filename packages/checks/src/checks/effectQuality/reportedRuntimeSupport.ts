@@ -51,8 +51,10 @@ export const hasAncestor =
     return Option.exists(parent, visit)
   }
 
-export const identifierTextIsPipe = (identifier: ts.Identifier) =>
-  strictEqual(identifier.text, "pipe")
+export const identifierTextIsPipe = flow(
+  Struct.get<ts.Identifier, "text">("text"),
+  strictEqual("pipe")
+)
 
 export const isPipeCall = (checker: ts.TypeChecker) => (call: ts.CallExpression) => {
   const callee = unwrapCallee(call.expression)
@@ -75,8 +77,7 @@ export const isExpressionReferenceNode = (candidate: ts.Node): candidate is ts.E
   return asIdentifier || asProperty
 }
 
-const stageEqualsExpression = (expression: ts.Expression) => (stage: ts.Expression) =>
-  strictEqual(stage, expression)
+const stageEqualsExpression = strictEqual
 
 const stagesContainExpression =
   (expression: ts.Expression) => (stages: ReadonlyArray<ts.Expression>) =>

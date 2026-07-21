@@ -28,7 +28,7 @@ const callIsArgumentOfValidation =
   (validates: (call: ts.CallExpression) => boolean) =>
   (call: ts.CallExpression) =>
   (candidate: ts.CallExpression) => {
-    const argumentEqualsCall = (argument: ts.Expression) => strictEqual(argument, call)
+    const argumentEqualsCall = strictEqual(call)
     const isArgument = Array.some(candidate.arguments, argumentEqualsCall)
     const isValidation = validates(candidate)
     const flags = Array.make(isArgument, isValidation)

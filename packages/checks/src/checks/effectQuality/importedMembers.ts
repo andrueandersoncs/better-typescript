@@ -8,5 +8,5 @@ export const memberLastName = (member: ImportedMember) =>
 export const memberSubject = (member: ImportedMember) => {
   const path = Array.join(member.path, ".")
 
-  return strictEqual(path.length, 0) ? member.moduleSpecifier : `${member.moduleSpecifier}:${path}`
+  return strictEqual(0)(path.length) ? member.moduleSpecifier : `${member.moduleSpecifier}:${path}`
 }

@@ -42,7 +42,7 @@ const siblingDispatchGuard =
       return Option.none()
     }
 
-    const isCurrentIfStatement = (statement: ts.Statement) => strictEqual(statement, ifStatement)
+    const isCurrentIfStatement = strictEqual(ifStatement)
     const statementAtOffset = (index: number) => Option.fromNullishOr(block.statements[index])
 
     return pipe(

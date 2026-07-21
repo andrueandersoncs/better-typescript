@@ -1,4 +1,4 @@
-import { Array } from "effect"
+import { Array, flow } from "effect"
 import * as ts from "typescript"
 import { unwrapExpression } from "./support/tsNode.js"
 import { makeCheck } from "../defineCheck.js"
@@ -20,11 +20,7 @@ const arrayLiteralElementCount = (expression: ts.Expression) => {
   return ts.isArrayLiteralExpression(unwrapped) ? unwrapped.elements.length : -1
 }
 
-const isEmptyArrayLiteral = (expression: ts.Expression) => {
-  const elementCount = arrayLiteralElementCount(expression)
-
-  return strictEqual(elementCount, 0)
-}
+const isEmptyArrayLiteral = flow(arrayLiteralElementCount, strictEqual(0))
 
 const isNonEmptyArrayBranch = (expression: ts.Expression) =>
   arrayLiteralElementCount(expression) !== 0

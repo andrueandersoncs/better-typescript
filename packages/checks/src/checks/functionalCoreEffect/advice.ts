@@ -1,4 +1,4 @@
-import { Array, Option, Record, Result, Schema, Struct, Tuple, pipe } from "effect"
+import { Array, Option, Record, Result, Schema, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
 import { Advice } from "@better-typescript/core/engine/derive/data"
@@ -42,7 +42,7 @@ const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>>
 }
 
 const detectionsOf = (signals: ReadonlyArray<Signal>, name: string): ReadonlyArray<Detection> => {
-  const signalNamed = (signal: Signal) => strictEqual(signal.name, name)
+  const signalNamed = flow(Struct.get<Signal, "name">("name"), strictEqual(name))
 
   return pipe(
     Array.findFirst(signals, signalNamed),
@@ -114,8 +114,8 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
   const relevant = pipe(
     boundaryPairs(detections),
     Array.filter(([, data]) => {
-      const isDomain = strictEqual(data.role, "domain")
-      const isApplication = strictEqual(data.role, "application")
+      const isDomain = strictEqual("domain")(data.role)
+      const isApplication = strictEqual("application")(data.role)
 
       return isDomain || isApplication
     })
@@ -137,7 +137,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       }
 
       const evidence = Array.map(kinds, (kind) => {
-        const count = Array.countBy(elements, ([, data]) => strictEqual(data.kind, kind))
+        const count = Array.countBy(elements, ([, data]) => strictEqual(kind)(data.kind))
 
         return makeEvidenceItem(kind, count)
       })

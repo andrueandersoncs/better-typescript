@@ -37,7 +37,7 @@ const symbolIsFromEffectArrayModule = (symbol: ts.Symbol) => {
 }
 
 const propertyNameIsFilter = (access: ts.PropertyAccessExpression) =>
-  strictEqual(access.name.text, "filter")
+  strictEqual("filter")(access.name.text)
 
 const effectArrayFilterAccess =
   (checker: ts.TypeChecker) =>
@@ -69,7 +69,7 @@ const calleeNameNode = (call: ts.CallExpression) => {
   )
 }
 
-const callHasSingleArgument = (stage: ts.CallExpression) => strictEqual(stage.arguments.length, 1)
+const callHasSingleArgument = (stage: ts.CallExpression) => strictEqual(1)(stage.arguments.length)
 
 const isEffectPipeEndingInArrayFilter =
   (checker: ts.TypeChecker) =>
@@ -110,7 +110,7 @@ const accessExpressionCarrier = Function.flow(
 )
 
 const propertyNameIsLength = (candidate: ts.PropertyAccessExpression) =>
-  strictEqual(candidate.name.text, "length")
+  strictEqual("length")(candidate.name.text)
 
 const effectArrayFilterLengthMatches = (context: CheckContext) => {
   const match = makeDetection(context)

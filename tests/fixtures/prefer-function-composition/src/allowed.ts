@@ -40,6 +40,10 @@ declare const flow: {
   ): (...a: A) => D
 }
 
+type Named = { readonly name: string }
+
+declare const strictEqual: <A>(left: A) => <B>(right: B) => boolean
+
 const alreadyFlow = flow(
   fileSubscriptions,
   Function.constant,
@@ -103,3 +107,6 @@ const multiConstBody = (n: number): number => {
 
   return second
 }
+
+const optionalModuleGraphElement = (element: Named | undefined): boolean =>
+  strictEqual("module-graph")(element?.name)

@@ -32,11 +32,11 @@ const callIsJsonParse = (node: ts.CallExpression) => {
     return isPropertyAccess
   }
 
-  const isParse = strictEqual(expression.name.text, "parse")
+  const isParse = strictEqual("parse")(expression.name.text)
   const receiver = unwrapTransparentExpression(expression.expression)
   const isIdentifier = ts.isIdentifier(receiver)
   const receiverText = isIdentifier ? receiver.text : ""
-  const isJsonName = strictEqual(receiverText, "JSON")
+  const isJsonName = strictEqual("JSON")(receiverText)
   const jsonParts = Array.make(isIdentifier, isJsonName)
   const jsonReceiver = Array.every(jsonParts, Boolean)
   const checks = Array.make(isParse, jsonReceiver)
@@ -54,7 +54,7 @@ const requestJsonAccess = (expression: ts.Expression) => {
 
   const method = access.name.text
   const receiver = access.expression.getText()
-  const isJsonMethod = strictEqual(method, "json")
+  const isJsonMethod = strictEqual("json")(method)
   const looksLikeRequest = /request|req|body|payload|event/i.test(receiver)
   const checks = Array.make(isJsonMethod, looksLikeRequest)
 

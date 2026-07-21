@@ -8,7 +8,7 @@ import { makeCheck } from "../defineCheck.js"
 import { makeDetection } from "@better-typescript/core/engine/check"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isPipeName = (access: ts.PropertyAccessExpression) => strictEqual(access.name.text, "pipe")
+const isPipeName = (access: ts.PropertyAccessExpression) => strictEqual("pipe")(access.name.text)
 
 const pipeMethodCallMatches = (context: CheckContext) => {
   const checker = context.checker

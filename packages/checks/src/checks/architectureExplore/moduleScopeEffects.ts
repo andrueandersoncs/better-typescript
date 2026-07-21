@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Match, Option, Struct, pipe } from "effect"
+import { Array, Function, HashSet, Match, Option, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 import { nodeCheck, makeDetection } from "@better-typescript/core/engine/check"
@@ -145,9 +145,9 @@ const isTsSysRooted = (expression: ts.Expression): boolean =>
     Match.when(ts.isPropertyAccessExpression, (access) => {
       const receiver = unwrapTransparentExpression(access.expression)
       const receiverIdentifier = Option.liftPredicate(ts.isIdentifier)(receiver)
-      const identifierTextIsTs = (identifier: ts.Identifier) => strictEqual(identifier.text, "ts")
+      const identifierTextIsTs = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("ts"))
       const receiverIsTs = Option.exists(receiverIdentifier, identifierTextIsTs)
-      const memberIsSys = strictEqual(access.name.text, "sys")
+      const memberIsSys = strictEqual("sys")(access.name.text)
       const rootChecks = Array.make(receiverIsTs, memberIsSys)
       const rootedHere = Array.every(rootChecks, Boolean)
 
@@ -161,8 +161,10 @@ const isTsSysRooted = (expression: ts.Expression): boolean =>
   )
 
 const isProcessMemberCall = (call: ts.CallExpression) => {
-  const identifierTextIsProcess = (identifier: ts.Identifier) =>
-    strictEqual(identifier.text, "process")
+  const identifierTextIsProcess = flow(
+    Struct.get<ts.Identifier, "text">("text"),
+    strictEqual("process")
+  )
 
   return pipe(
     call.expression,
@@ -190,7 +192,7 @@ const effectPackageRootSymbol = (checker: ts.TypeChecker, expression: ts.Express
   pipe(rootIdentifier(expression), Option.flatMap(symbolAtIdentifier(checker)))
 
 const isEffectPackageSpecifier = (specifier: string) => {
-  const exactPackage = strictEqual(specifier, "effect")
+  const exactPackage = strictEqual("effect")(specifier)
   const packageSubpath = specifier.startsWith("effect/")
   const candidates = Array.make(exactPackage, packageSubpath)
 

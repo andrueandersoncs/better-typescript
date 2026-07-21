@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, pipe } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import type { ReturnedExpressionNode } from "./support/tsNode.js"
 import {
@@ -27,8 +27,10 @@ const optionHint =
   "annotate it with the library's own callback type so the undefined stays in the " +
   "library's declaration, not yours."
 
-const isUndefinedIdentifier = (identifier: ts.Identifier) =>
-  strictEqual(identifier.text, "undefined")
+const isUndefinedIdentifier = flow(
+  Struct.get<ts.Identifier, "text">("text"),
+  strictEqual("undefined")
+)
 
 const isUndefinedExpression = (expression: ts.Expression) => {
   const unwrapped = unwrapExpression(expression)

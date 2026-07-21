@@ -1,4 +1,4 @@
-import { Array, Option, pipe, Predicate } from "effect"
+import { Array, Option, pipe, Predicate, Struct, flow } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -8,7 +8,7 @@ import { makeDetection } from "@better-typescript/core/engine/check"
 import { makeCheck } from "../defineCheck.js"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
-const isWeakMapText = (identifier: ts.Identifier) => strictEqual(identifier.text, "WeakMap")
+const isWeakMapText = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("WeakMap"))
 
 const weakMapIdentifier = (node: ts.Node): node is ts.Identifier =>
   pipe(Option.liftPredicate(ts.isIdentifier)(node), Option.exists(isWeakMapText))

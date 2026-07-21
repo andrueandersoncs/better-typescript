@@ -12,7 +12,7 @@ const implicitReturnMatches = (context: CheckContext) => {
 
   const matches = (arrowFunction: ts.ArrowFunction): ReadonlyArray<Detection> => {
     if (!ts.isBlock(arrowFunction.body)) return Array.empty()
-    const hasOneStatement = strictEqual(arrowFunction.body.statements.length, 1)
+    const hasOneStatement = strictEqual(1)(arrowFunction.body.statements.length)
     const firstStatement = arrowFunction.body.statements[0]
 
     const returnExpression = Function.flow(

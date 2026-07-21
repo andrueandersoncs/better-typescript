@@ -73,7 +73,7 @@ const scheduleHasJitter = (checker: ts.TypeChecker) =>
 const retryScheduleArgument = (node: ts.CallExpression) => {
   const arity = node.arguments.length
   const hasScheduleSlot = arity >= 2
-  const hasSingleArgument = strictEqual(arity, 1)
+  const hasSingleArgument = strictEqual(1)(arity)
 
   if (hasScheduleSlot) {
     return Option.fromNullishOr(node.arguments[1])
@@ -164,7 +164,7 @@ export const idempotentRetry =
     }
 
     const operation = operationNameNear(node)
-    const missingOperation = strictEqual(operation.length, 0)
+    const missingOperation = strictEqual(0)(operation.length)
     const alreadyIdempotent = index.policy.idempotentOperation(operation)
     const notMutation = !mutationOperationPattern.test(operation)
     const quiet = Array.make(missingOperation, alreadyIdempotent, notMutation)

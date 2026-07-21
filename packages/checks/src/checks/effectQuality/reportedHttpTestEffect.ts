@@ -9,7 +9,7 @@ const effectTypeSymbolOption = flow(
 )
 
 const symbolIsNamedEffectFromPackage = (candidate: ts.Symbol) => {
-  const namedEffect = strictEqual(candidate.name, "Effect")
+  const namedEffect = strictEqual("Effect")(candidate.name)
   const fromPackage = symbolDeclaredInEffectPackage(candidate)
   const flags = Array.make(namedEffect, fromPackage)
 
@@ -17,8 +17,8 @@ const symbolIsNamedEffectFromPackage = (candidate: ts.Symbol) => {
 }
 
 const symbolLooksLikeEffectAlias = (candidate: ts.Symbol) => {
-  const namedEffect = strictEqual(candidate.name, "Effect")
-  const namedDefault = strictEqual(candidate.name, "default")
+  const namedEffect = strictEqual("Effect")(candidate.name)
+  const namedDefault = strictEqual("default")(candidate.name)
   const nameOkFlags = Array.make(namedEffect, namedDefault)
   const nameOk = Array.some(nameOkFlags, Boolean)
   const fromEffect = symbolDeclaredInEffectPackage(candidate)

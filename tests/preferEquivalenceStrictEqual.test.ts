@@ -10,7 +10,7 @@ test("prefer-equivalence-strict-equal reports disallowed and permits allowed fix
 test("strict equality helper preserves identity and NaN semantics", () => {
   const reference = {}
 
-  assert.ok(strictEqual(reference, reference))
-  assert.equal(strictEqual(reference, {}), false)
-  assert.equal(strictEqual(Number.NaN, Number.NaN), false)
+  assert.ok(strictEqual(reference)(reference))
+  assert.equal(strictEqual(reference)({}), false)
+  assert.equal(strictEqual(Number.NaN)(Number.NaN), false)
 })

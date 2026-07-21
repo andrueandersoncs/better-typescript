@@ -52,14 +52,14 @@ const effectRootSymbol = (checker: ts.TypeChecker) => (access: ts.PropertyAccess
   )
 
 const rootIsContextSeam = (root: ts.Identifier, member: string) => {
-  const isContextRoot = strictEqual(root.text, "Context")
+  const isContextRoot = strictEqual("Context")(root.text)
   const isContextMember = Array.contains(contextSeamMembers, member)
 
   return isContextRoot && isContextMember
 }
 
 const rootIsEffectSeam = (root: ts.Identifier, member: string) => {
-  const isEffectRoot = strictEqual(root.text, "Effect")
+  const isEffectRoot = strictEqual("Effect")(root.text)
   const isEffectMember = Array.contains(effectSeamMembers, member)
 
   return isEffectRoot && isEffectMember
@@ -162,7 +162,7 @@ const ancestorMatching =
 const referenceIsInsideDeclaration = (declaration: ts.Node) => (node: ts.Node) => {
   const nodeSourceFile = node.getSourceFile()
   const declarationSourceFile = declaration.getSourceFile()
-  const sameFile = strictEqual(nodeSourceFile, declarationSourceFile)
+  const sameFile = strictEqual(declarationSourceFile)(nodeSourceFile)
   const afterStart = node.pos >= declaration.pos
   const beforeEnd = node.end <= declaration.end
   const checks = Array.make(sameFile, afterStart, beforeEnd)
@@ -197,8 +197,10 @@ const argumentCallExpression = (node: ts.Node) => {
     const parent = current.parent
     const parenthesizedParent = Option.liftPredicate(ts.isParenthesizedExpression)(parent)
 
-    const expressionIsCurrent = (expression: ts.ParenthesizedExpression) =>
-      strictEqual(expression.expression, current)
+    const expressionIsCurrent = flow(
+      Struct.get<ts.ParenthesizedExpression, "expression">("expression"),
+      strictEqual(current)
+    )
 
     const unwrapParenthesis = Option.exists(parenthesizedParent, expressionIsCurrent)
 
@@ -219,7 +221,10 @@ const argumentCallExpression = (node: ts.Node) => {
 }
 
 const accessIsLayerRoot = (access: ts.PropertyAccessExpression) => {
-  const identifierTextIsLayer = (root: ts.Identifier) => strictEqual(root.text, "Layer")
+  const identifierTextIsLayer = flow(
+    Struct.get<ts.Identifier, "text">("text"),
+    strictEqual("Layer")
+  )
 
   return pipe(
     Option.liftPredicate(ts.isIdentifier)(access.expression),
@@ -241,15 +246,19 @@ const isTagOfCall = (node: ts.Identifier) => {
   const ofAccess = pipe(
     propertyAccess,
     Option.filter((access) => {
-      const isReceiver = strictEqual(access.expression, node)
-      const isOf = strictEqual(access.name.text, "of")
+      const isReceiver = strictEqual(node)(access.expression)
+      const isOf = strictEqual("of")(access.name.text)
 
       return isReceiver && isOf
     })
   )
 
   return Option.exists(ofAccess, (access) => {
-    const callExpressionIsAccess = (call: ts.CallExpression) => strictEqual(call.expression, access)
+    const callExpressionIsAccess = flow(
+      Struct.get<ts.CallExpression, "expression">("expression"),
+      strictEqual(access)
+    )
+
     const callParent = Option.liftPredicate(ts.isCallExpression)(access.parent)
 
     return Option.exists(callParent, callExpressionIsAccess)
@@ -275,9 +284,9 @@ const incrementCounts =
     const productionCount = Tuple.get(current, 0)
     const testCount = Tuple.get(current, 1)
     const consumerCount = Tuple.get(current, 2)
-    const isProductionAdapter = strictEqual(kind, "productionAdapter")
-    const isTestAdapter = strictEqual(kind, "testAdapter")
-    const isConsumer = strictEqual(kind, "consumer")
+    const isProductionAdapter = strictEqual("productionAdapter")(kind)
+    const isTestAdapter = strictEqual("testAdapter")(kind)
+    const isConsumer = strictEqual("consumer")(kind)
     const production = isProductionAdapter ? productionCount + 1 : productionCount
     const test = isTestAdapter ? testCount + 1 : testCount
     const consumers = isConsumer ? consumerCount + 1 : consumerCount
@@ -402,7 +411,7 @@ const contextTagSeamElements =
         const declaration = Tuple.get(candidate, 0)
         const declarationSourceFile = declaration.getSourceFile()
 
-        return strictEqual(declarationSourceFile, context.sourceFile)
+        return strictEqual(context.sourceFile)(declarationSourceFile)
       }),
       Array.map((candidate) => {
         const declaration = Tuple.get(candidate, 0)

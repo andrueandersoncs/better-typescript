@@ -41,7 +41,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 
   return Array.map(paths, (filePath) => {
     const hasPath = (element: NamedDetection) =>
-      strictEqual(element.detection.location.path, filePath)
+      strictEqual(filePath)(element.detection.location.path)
 
     const atPath = Array.filter(wrappers, hasPath)
 

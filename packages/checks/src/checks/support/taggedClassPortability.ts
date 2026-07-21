@@ -26,7 +26,7 @@ const declarationComesFromEffectModule =
 const symbolIsEffectTaggedClass =
   (moduleSuffixes: ReadonlyArray<string>) => (symbol: ts.Symbol) => {
     const taggedClassName = symbol.getName()
-    const nameIsTaggedClass = strictEqual(taggedClassName, "TaggedClass")
+    const nameIsTaggedClass = strictEqual("TaggedClass")(taggedClassName)
 
     const declarations = pipe(
       symbol.getDeclarations(),
@@ -101,12 +101,12 @@ const typeIsRejectedWireValue = typeHasAnyFlags(rejectedWireTypeFlags)
 const typeWasSeen =
   (seen: SeenTypes) =>
   (type: ts.Type): boolean => {
-    const isSameType = (candidate: ts.Type) => strictEqual(candidate, type)
+    const isSameType = strictEqual(type)
 
     return Array.some(seen, isSameType)
   }
 
-const memberIsDefined = (member: ts.Type) => strictEqual(member.flags & ts.TypeFlags.Undefined, 0)
+const memberIsDefined = (member: ts.Type) => strictEqual(0)(member.flags & ts.TypeFlags.Undefined)
 
 const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
   Array.filter(type.types, memberIsDefined)

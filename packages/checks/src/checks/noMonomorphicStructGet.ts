@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { hasExportModifier, unwrapTransparentExpression } from "./support/tsNode.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
@@ -66,7 +66,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
   }
 
   const initializerIsStructGet = (initializer: ts.Expression) => {
-    const hasOneArgument = (call: ts.CallExpression) => strictEqual(call.arguments.length, 1)
+    const hasOneArgument = (call: ts.CallExpression) => strictEqual(1)(call.arguments.length)
 
     const symbolAtCalleeName = (callee: ts.PropertyAccessExpression) =>
       pipe(checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
@@ -77,7 +77,7 @@ const monomorphicStructGetMatches = (context: CheckContext) => {
       return isAlias ? checker.getAliasedSymbol(symbol) : symbol
     }
 
-    const isGetName = (symbol: ts.Symbol) => strictEqual(symbol.name, "get")
+    const isGetName = flow(Struct.get<ts.Symbol, "name">("name"), strictEqual("get"))
 
     const structGetSymbol = (call: ts.CallExpression) =>
       pipe(

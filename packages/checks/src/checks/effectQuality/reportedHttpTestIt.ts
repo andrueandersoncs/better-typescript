@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { importedMemberAt, type ImportedMember } from "../functionalCoreEffect/support.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
@@ -10,7 +10,7 @@ const plainItMethods = Array.make("only", "skip", "todo", "concurrent", "sequent
 
 const moduleIsEffectVitest = (moduleSpecifier: string) =>
   Array.some(effectVitestModules, (candidate) => {
-    const exact = strictEqual(moduleSpecifier, candidate)
+    const exact = strictEqual(candidate)(moduleSpecifier)
     const nested = moduleSpecifier.startsWith(`${candidate}/`)
     const flags = Array.make(exact, nested)
 
@@ -19,7 +19,7 @@ const moduleIsEffectVitest = (moduleSpecifier: string) =>
 
 const memberIsEffectVitestIt = (member: ImportedMember) => {
   const vitestModule = moduleIsEffectVitest(member.moduleSpecifier)
-  const singlePath = strictEqual(member.path.length, 1)
+  const singlePath = strictEqual(1)(member.path.length)
   const pathHead = Array.get(member.path, 0)
   const namedIt = pipe(pathHead, Option.contains("it"))
   const flags = Array.make(vitestModule, singlePath, namedIt)
@@ -34,7 +34,7 @@ const expressionIsEffectVitestIt = (checker: ts.TypeChecker) => (expression: ts.
   return Option.exists(member, memberIsEffectVitestIt)
 }
 
-const identifierTextIsIt = (identifier: ts.Identifier) => strictEqual(identifier.text, "it")
+const identifierTextIsIt = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("it"))
 
 const identifierIsIt = (expression: ts.Expression) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(expression), Option.exists(identifierTextIsIt))
@@ -76,7 +76,7 @@ const eachItCall =
       Option.exists((access) => {
         const root = unwrapTransparentExpression(access.expression)
         const rootNamedIt = identifierIsIt(root)
-        const isEach = strictEqual(access.name.text, "each")
+        const isEach = strictEqual("each")(access.name.text)
         const vitestIt = isVitestIt(root)
         const flags = Array.make(rootNamedIt, isEach, vitestIt)
 

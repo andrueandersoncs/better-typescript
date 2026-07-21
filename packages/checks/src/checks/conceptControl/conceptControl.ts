@@ -9,7 +9,8 @@ import {
   Struct,
   pipe,
   Tuple,
-  Result
+  Result,
+  flow
 } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
@@ -61,8 +62,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const match = makeDetection(context)
     const found = MutableList.make<Detection>()
 
-    const entryInSourceFile = (entry: DataStructureEntry) =>
-      strictEqual(entry.sourceFile, context.sourceFile)
+    const entryInSourceFile = flow(
+      Struct.get<DataStructureEntry, "sourceFile">("sourceFile"),
+      strictEqual(context.sourceFile)
+    )
 
     const entries = Array.filter(index.dataStructures, entryInSourceFile)
 
@@ -124,7 +127,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     }
 
     const canonicalSymbol = (symbol: ts.Symbol) =>
-      strictEqual(symbol.flags & ts.SymbolFlags.Alias, 0)
+      strictEqual(0)(symbol.flags & ts.SymbolFlags.Alias)
         ? symbol
         : checker.getAliasedSymbol(symbol)
 
@@ -147,8 +150,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         const emptyClauses = Array.empty<ts.HeritageClause>()
         const clauses = declaration.heritageClauses ?? emptyClauses
         const types = Array.flatMap(clauses, Struct.get("types"))
-        const isEmpty = strictEqual(declaration.members.length, 0)
-        const hasSingleHeritage = strictEqual(types.length, 1)
+        const isEmpty = strictEqual(0)(declaration.members.length)
+        const hasSingleHeritage = strictEqual(1)(types.length)
         const emptyInterfaceAlias = isEmpty && hasSingleHeritage
 
         return emptyInterfaceAlias
@@ -263,8 +266,10 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Option.getOrElse(Function.constant(emptyRanges))
       )
 
-      const rangeIsSingleLineComment = (range: ts.CommentRange) =>
-        strictEqual(range.kind, ts.SyntaxKind.SingleLineCommentTrivia)
+      const rangeIsSingleLineComment = flow(
+        Struct.get<ts.CommentRange, "kind">("kind"),
+        strictEqual(ts.SyntaxKind.SingleLineCommentTrivia)
+      )
 
       const lineRanges = Array.filter(leadingRanges, rangeIsSingleLineComment)
 
@@ -412,11 +417,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       const ownerMatchingStem = (value: string) => {
         const loweredValue = value.toLowerCase()
 
-        const nameMatchesStem = (owner: FunctionEntry) => {
-          const loweredOwnerName = owner.name.toLowerCase()
-
-          return strictEqual(loweredOwnerName, loweredValue)
-        }
+        const nameMatchesStem = flow(
+          Struct.get<FunctionEntry, "name">("name"),
+          (name) => name.toLowerCase(),
+          strictEqual(loweredValue)
+        )
 
         return Array.findFirst(modelFunctions, nameMatchesStem)
       }
@@ -486,7 +491,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         Array.filter((sourceFile) => sourceFile !== entry.sourceFile)
       )
 
-      const hasNoExternalOwners = strictEqual(externalOwners.length, 0)
+      const hasNoExternalOwners = strictEqual(0)(externalOwners.length)
       const isExportedWithoutConsumers = entry.exported && hasNoExternalOwners
       const speculative = isExportedWithoutConsumers && roleNotExempt
 
@@ -573,11 +578,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       HashSet.fromIterable
     )
 
-    const bagInSourceFile = (bag: ParameterBag) => {
-      const bagSourceFile = bag.node.getSourceFile()
-
-      return strictEqual(bagSourceFile, context.sourceFile)
-    }
+    const bagInSourceFile = flow(
+      Struct.get<ParameterBag, "node">("node"),
+      (node) => node.getSourceFile(),
+      strictEqual(context.sourceFile)
+    )
 
     pipe(
       index.parameterBags,
@@ -618,11 +623,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       })
     )
 
-    const conversionInSourceFile = (conversion: PassThroughConversion) => {
-      const conversionSourceFile = conversion.node.getSourceFile()
-
-      return strictEqual(conversionSourceFile, context.sourceFile)
-    }
+    const conversionInSourceFile = flow(
+      Struct.get<PassThroughConversion, "node">("node"),
+      (node) => node.getSourceFile(),
+      strictEqual(context.sourceFile)
+    )
 
     pipe(
       index.passThroughConversions,

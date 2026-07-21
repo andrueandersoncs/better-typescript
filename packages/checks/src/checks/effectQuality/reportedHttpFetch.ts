@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, Struct, pipe } from "effect"
+import { Array, Function, Match, Option, Struct, pipe, flow } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import { foldAst } from "@better-typescript/core/engine/sources"
@@ -26,13 +26,13 @@ const expressionIsFetchCallee = (expression: ts.Expression) => {
   const current = unwrapTransparentExpression(expression)
 
   if (ts.isIdentifier(current)) {
-    return strictEqual(current.text, "fetch")
+    return strictEqual("fetch")(current.text)
   }
 
   const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(current)
 
   const accessIsNamedFetch = (access: ts.PropertyAccessExpression) =>
-    strictEqual(access.name.text, "fetch")
+    strictEqual("fetch")(access.name.text)
 
   const unwrapAccessExpression = (access: ts.PropertyAccessExpression) =>
     unwrapTransparentExpression(access.expression)
@@ -95,7 +95,7 @@ const expressionReferencesName =
   (expression: ts.Expression): boolean => {
     const current = unwrapTransparentExpression(expression)
     const recur = expressionReferencesName(name)
-    const identifierIsName = (identifier: ts.Identifier) => strictEqual(identifier.text, name)
+    const identifierIsName = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual(name))
 
     const propertyAccessReferencesName = (access: ts.PropertyAccessExpression) =>
       recur(access.expression)
@@ -150,8 +150,8 @@ const shorthandPropertyPassesSignal =
     pipe(
       Option.liftPredicate(ts.isShorthandPropertyAssignment)(property),
       Option.exists((shorthand) => {
-        const namedSignal = strictEqual(shorthand.name.text, "signal")
-        const signalParamIsSignal = strictEqual(signalName, "signal")
+        const namedSignal = strictEqual("signal")(shorthand.name.text)
+        const signalParamIsSignal = strictEqual("signal")(signalName)
         const flags = Array.make(namedSignal, signalParamIsSignal)
 
         return Array.every(flags, Boolean)

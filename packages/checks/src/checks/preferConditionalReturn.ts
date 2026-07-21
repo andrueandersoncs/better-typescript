@@ -12,7 +12,7 @@ const maximumReturnExpressionLength = 100
 const containsYieldExpression = (node: ts.Node): boolean => {
   const isYield = ts.isYieldExpression(node)
   const childResult = ts.forEachChild(node, containsYieldExpression)
-  const childContainsYield = strictEqual(childResult, true)
+  const childContainsYield = strictEqual(true)(childResult)
 
   return isYield || childContainsYield
 }
@@ -20,7 +20,7 @@ const containsYieldExpression = (node: ts.Node): boolean => {
 const negatedPrefixUnaryExpressionOperand = (
   expression: ts.PrefixUnaryExpression
 ): Option.Option<ts.Expression> => {
-  const isNegation = strictEqual(expression.operator, ts.SyntaxKind.ExclamationToken)
+  const isNegation = strictEqual(ts.SyntaxKind.ExclamationToken)(expression.operator)
 
   return isNegation ? Option.some(expression.operand) : Option.none()
 }

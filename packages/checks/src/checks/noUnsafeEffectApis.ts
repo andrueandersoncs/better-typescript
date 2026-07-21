@@ -1,4 +1,15 @@
-import { Array, Function, HashSet, Iterable, Match, Option, pipe, Predicate, Struct } from "effect"
+import {
+  Array,
+  Function,
+  HashSet,
+  Iterable,
+  Match,
+  Option,
+  pipe,
+  Predicate,
+  Struct,
+  flow
+} from "effect"
 import * as ts from "typescript"
 import { resolvedSymbolAt } from "./support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "./support/tsSignature.js"
@@ -28,8 +39,10 @@ const importOrExportNameKinds = HashSet.make(
 )
 
 const identifierIsAccessName = (identifier: ts.Identifier) => {
-  const accessNameIsIdentifier = (access: ts.PropertyAccessExpression) =>
-    strictEqual(access.name, identifier)
+  const accessNameIsIdentifier = flow(
+    Struct.get<ts.PropertyAccessExpression, "name">("name"),
+    strictEqual(identifier)
+  )
 
   return pipe(
     identifier.parent,

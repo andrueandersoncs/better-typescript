@@ -18,7 +18,7 @@ const productionSleepLoopsFinding = makeRuleFinding("production-sleep-loops")
 const isTrueLiteral = (expression: ts.Expression) => {
   const unwrapped = unwrapTransparentExpression(expression)
 
-  return strictEqual(unwrapped.kind, ts.SyntaxKind.TrueKeyword)
+  return strictEqual(ts.SyntaxKind.TrueKeyword)(unwrapped.kind)
 }
 
 const isEmptyForCondition = (condition: ts.ForStatement["condition"]) =>

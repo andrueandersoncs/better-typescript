@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -10,11 +10,12 @@ import { strictEqual } from "@better-typescript/core/engine/equivalence"
 const errorTypeName = (typeName: ts.EntityName) =>
   ts.isIdentifier(typeName) ? typeName : typeName.right
 
-const isErrorNamedTypeReference = (typeReference: ts.TypeReferenceNode) => {
-  const typeNameText = errorTypeName(typeReference.typeName).text
-
-  return strictEqual(typeNameText, "Error")
-}
+const isErrorNamedTypeReference = flow(
+  Struct.get<ts.TypeReferenceNode, "typeName">("typeName"),
+  errorTypeName,
+  Struct.get("text"),
+  strictEqual("Error")
+)
 
 const isErrorTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
   pipe(Option.liftPredicate(ts.isTypeReferenceNode)(node), Option.exists(isErrorNamedTypeReference))
@@ -34,10 +35,8 @@ const errorTypeMatches = (context: CheckContext) => {
     Option.fromNullishOr
   )
 
-  const isSameSymbol = (left: ts.Symbol) => (right: ts.Symbol) => strictEqual(left, right)
-
   const isGlobalErrorSymbol = (symbol: ts.Symbol) =>
-    pipe(globalErrorSymbol, Option.exists(isSameSymbol(symbol)))
+    pipe(globalErrorSymbol, Option.exists(strictEqual(symbol)))
 
   const matches = (typeReference: ts.TypeReferenceNode): ReadonlyArray<Detection> => {
     const typeName = errorTypeName(typeReference.typeName)

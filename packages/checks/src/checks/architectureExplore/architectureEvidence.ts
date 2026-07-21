@@ -1,4 +1,4 @@
-import { Data, Function, MutableRef, Option, Struct, pipe } from "effect"
+import { Data, Function, MutableRef, Option, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import type * as ts from "typescript"
 import { makeCheckFromSubscriptions } from "@better-typescript/core/engine/check"
@@ -36,8 +36,10 @@ const buildArchitectureEvidence = (context: ProgramContext) => {
 const architectureEvidence = (context: ProgramContext) => {
   const cached = MutableRef.get(evidenceCache)
 
-  const matchesProgram = (entry: CachedArchitectureEvidence) =>
-    strictEqual(entry.program, context.program)
+  const matchesProgram = flow(
+    Struct.get<CachedArchitectureEvidence, "program">("program"),
+    strictEqual(context.program)
+  )
 
   const current = pipe(cached, Option.filter(matchesProgram))
 

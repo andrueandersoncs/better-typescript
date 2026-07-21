@@ -76,7 +76,7 @@ const closeBraceKind = (
 
   if (closesTemplateSubstitution) {
     const templateKind = scanner.reScanTemplateToken(false)
-    const staysInTemplate = strictEqual(templateKind, ts.SyntaxKind.TemplateMiddle)
+    const staysInTemplate = strictEqual(ts.SyntaxKind.TemplateMiddle)(templateKind)
 
     return Tuple.make(templateKind, staysInTemplate ? contexts : rest)
   }
@@ -131,7 +131,7 @@ export const sourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceC
     const [contexts, previous] = state
     const kind = scanner.scan()
 
-    if (strictEqual(kind, ts.SyntaxKind.EndOfFileToken)) {
+    if (strictEqual(ts.SyntaxKind.EndOfFileToken)(kind)) {
       return Option.none()
     }
 
@@ -161,5 +161,5 @@ export const onlyBlankBetween = (text: string) => (a: SourceComment) => (b: Sour
   const trimmed = between.trim()
   const gapLength = trimmed.length
 
-  return strictEqual(gapLength, 0)
+  return strictEqual(0)(gapLength)
 }

@@ -65,7 +65,7 @@ const optionalClaimContradiction =
   (match: ReturnType<typeof makeDetection>) => (semantics: CallableSemantics) => {
     const claims = claimedOptionalWords(semantics.name.words)
     const hasClaim = Array.isReadonlyArrayNonEmpty(claims)
-    const returnsTotal = strictEqual(semantics.result.totality, "total")
+    const returnsTotal = strictEqual("total")(semantics.result.totality)
     const conditions = Array.make(hasClaim, returnsTotal)
     const contradicts = Array.every(conditions, Boolean)
     const claimLabel = formatClaims(claims)
@@ -92,7 +92,7 @@ const totalClaimContradiction =
     const sequenceClaims = claimedTotalSequenceLabels(semantics.name.words)
     const claims = pipe(wordClaims, Array.appendAll(sequenceClaims), Array.dedupe)
     const hasClaim = Array.isReadonlyArrayNonEmpty(claims)
-    const returnsOptional = strictEqual(semantics.result.totality, "optional")
+    const returnsOptional = strictEqual("optional")(semantics.result.totality)
     const conditions = Array.make(hasClaim, returnsOptional)
     const contradicts = Array.every(conditions, Boolean)
     const claimLabel = formatClaims(claims)

@@ -84,7 +84,7 @@ export const cachePreference =
       return emptyAdviceFindings
     }
 
-    const isSetName = strictEqual(expression.name.text, "set")
+    const isSetName = strictEqual("set")(expression.name.text)
 
     if (!isSetName) {
       return emptyAdviceFindings

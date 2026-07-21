@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, pipe, Result } from "effect"
+import { Array, Function, Match, Option, pipe, Result, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 
@@ -196,9 +196,9 @@ const pointFreeStageName = (argument: ts.Expression) =>
     Option.flatMap(calleeName)
   )
 
-const isPipeIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "pipe")
+const isPipeIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("pipe"))
 
-const isFlowIdentifier = (identifier: ts.Identifier) => strictEqual(identifier.text, "flow")
+const isFlowIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("flow"))
 
 // Preorder DFS collects callee and point-free stage names because fingerprints mirror source order.
 const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
@@ -219,7 +219,7 @@ const walkCallExpression = (call: ts.CallExpression): ReadonlyArray<string> => {
   const keepPointFreeComposition = Function.constant(isPointFreeComposition)
 
   const argumentNames = Array.flatMap(call.arguments, (argument, index) => {
-    const isFirstArgument = strictEqual(index, 0)
+    const isFirstArgument = strictEqual(0)(index)
     const skipDataSubjectChecks = Array.make(barePipe, isFirstArgument)
     const skipDataSubject = Array.every(skipDataSubjectChecks, Boolean)
     const keepNonDataSubject = () => !skipDataSubject
@@ -320,11 +320,11 @@ const compositionFingerprintElements =
 
     const element = makeDetection(context)
 
-    const isEntryInSourceFile = (entry: (typeof index.entries)[number]) => {
-      const entrySourceFile = entry.nameNode.getSourceFile()
-
-      return strictEqual(entrySourceFile, context.sourceFile)
-    }
+    const isEntryInSourceFile = flow(
+      Struct.get<(typeof index.entries)[number], "nameNode">("nameNode"),
+      (nameNode) => nameNode.getSourceFile(),
+      strictEqual(context.sourceFile)
+    )
 
     return pipe(
       index.entries,

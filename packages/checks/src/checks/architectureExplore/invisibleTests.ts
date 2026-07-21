@@ -1,4 +1,4 @@
-import { Array, Function, Result, Struct, pipe } from "effect"
+import { Array, Function, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -12,14 +12,20 @@ import { exportSurfaceName, importUsageName, moduleGraphName } from "./names.js"
 import { isTestPath } from "./programSymbols.js"
 
 const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
-  const isModuleGraphElement = (element: NamedDetection) =>
-    strictEqual(element.name, moduleGraphName)
+  const isModuleGraphElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(moduleGraphName)
+  )
 
-  const isImportUsageElement = (element: NamedDetection) =>
-    strictEqual(element.name, importUsageName)
+  const isImportUsageElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(importUsageName)
+  )
 
-  const isExportSurfaceElement = (element: NamedDetection) =>
-    strictEqual(element.name, exportSurfaceName)
+  const isExportSurfaceElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(exportSurfaceName)
+  )
 
   const moduleGraphPaths = pipe(
     elements,
@@ -54,7 +60,7 @@ const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
     Array.dedupe
   )
 
-  const hasNoPaths = strictEqual(paths.length, 0)
+  const hasNoPaths = strictEqual(0)(paths.length)
   const hasTestPath = Array.some(paths, isTestPath)
   const skipConditions = Array.make(hasNoPaths, hasTestPath)
   const shouldSkip = Array.some(skipConditions, Boolean)

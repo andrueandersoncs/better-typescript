@@ -1,12 +1,11 @@
-import { Array, Function, Option, pipe, Struct } from "effect"
+import { Array, Function, Option, Tuple, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import {
-  conciseArrowBody,
   isFunctionDefinition,
-  singleStatementReturnExpression,
   unwrapTransparentExpression,
   type FunctionDefinition
 } from "./support/tsNode.js"
+import { unaryAdapter } from "./support/unaryAdapter.js"
 import { makeCheck } from "../defineCheck.js"
 import type { CheckContext } from "@better-typescript/core/engine/check/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -24,11 +23,33 @@ const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const directPropertyAccessExpression = (expression: ts.Expression) =>
   pipe(unwrapTransparentExpression(expression), Option.liftPredicate(ts.isPropertyAccessExpression))
 
+const hasNoOptionalChain = flow(
+  Struct.get<ts.PropertyAccessExpression, "questionDotToken">("questionDotToken"),
+  Option.fromNullishOr,
+  Option.isNone
+)
+
+const identifierText = Struct.get<ts.Identifier, "text">("text")
+
+const accessExpressionIsParameter = (parameterName: string) =>
+  flow(
+    Struct.get<ts.PropertyAccessExpression, "expression">("expression"),
+    Option.liftPredicate(ts.isIdentifier),
+    Option.map(identifierText),
+    Option.exists(strictEqual(parameterName))
+  )
+
+const isDirectParameterPropertyAccess =
+  (parameterName: string) => (access: ts.PropertyAccessExpression) => {
+    const noOptionalChain = hasNoOptionalChain(access)
+    const readsParameter = accessExpressionIsParameter(parameterName)(access)
+    const conditions = Array.make(noOptionalChain, readsParameter)
+
+    return Array.every(conditions, Boolean)
+  }
+
 const identifierBindingNameText = (name: ts.BindingName) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
-
-const identifierParameterName = (parameter: ts.ParameterDeclaration) =>
-  identifierBindingNameText(parameter.name)
 
 const functionDefinitionName = (definition: FunctionDefinition) =>
   Option.fromNullishOr(definition.name)
@@ -98,54 +119,21 @@ const propertyAccessorMatches = (context: CheckContext) => {
     })
   }
 
-  const matches = (node: ts.Node): ReadonlyArray<Detection> => {
-    if (!isFunctionDefinition(node)) {
-      return Array.empty()
-    }
-
-    const hasSingleParam = strictEqual(node.parameters.length, 1)
-
-    const singleParam = hasSingleParam
-      ? Option.fromNullishOr(node.parameters[0])
-      : Option.none<ts.ParameterDeclaration>()
-
-    const paramName = pipe(singleParam, Option.flatMap(identifierParameterName))
-
-    return pipe(
-      paramName,
-      Option.flatMap((parameterName) => {
-        const identifierTextIsParameter = (identifier: ts.Identifier) =>
-          strictEqual(identifier.text, parameterName)
-
-        const accessReadsParameter = (access: ts.PropertyAccessExpression) =>
-          pipe(
-            Option.liftPredicate(ts.isIdentifier)(access.expression),
-            Option.exists(identifierTextIsParameter)
-          )
-
-        const implicitExpression = pipe(
-          Option.liftPredicate(ts.isArrowFunction)(node),
-          Option.flatMap(conciseArrowBody)
-        )
-
-        const blockExpression = pipe(
-          Option.fromNullishOr(node.body),
-          Option.filter(ts.isBlock),
-          Option.flatMap(singleStatementReturnExpression)
-        )
-
-        const expressionCandidates = Array.make(implicitExpression, blockExpression)
+  const matches = (node: ts.Node): ReadonlyArray<Detection> =>
+    pipe(
+      unaryAdapter(node),
+      Option.flatMap((adapter) => {
+        const expression = Tuple.get(adapter, 3)
+        const parameterName = Tuple.get(adapter, 2).text
 
         return pipe(
-          Option.firstSomeOf(expressionCandidates),
-          Option.flatMap(directPropertyAccessExpression),
-          Option.filter(accessReadsParameter)
+          directPropertyAccessExpression(expression),
+          Option.filter(isDirectParameterPropertyAccess(parameterName))
         )
       }),
       Option.map(ruleMatch(node)),
       Option.toArray
     )
-  }
 
   return matches
 }

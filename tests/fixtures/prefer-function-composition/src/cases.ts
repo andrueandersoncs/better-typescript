@@ -27,6 +27,10 @@ declare const pipe: {
   <A, B, C>(value: A, ab: (a: A) => B, bc: (b: B) => C): C
 }
 
+type Named = { readonly name: string }
+
+declare const strictEqual: <A>(left: A) => <B>(right: B) => boolean
+
 const fileCheckLike = (
   handler: (input: string) => ReadonlyArray<number>
 ): number => { // ~detect 14
@@ -53,4 +57,23 @@ const pipeAfterBinding = (symbol: string | null): string | null => { // ~detect 
   const value = Option.fromNullishOr(symbol)
 
   return pipe(value, (current) => current)
+}
+
+const moduleGraphElement = (element: Named): boolean => // ~detect
+  strictEqual("module-graph")(element.name)
+
+type SourceFile = {}
+
+type ExportEntry = {
+  readonly nameNode: {
+    getSourceFile(): SourceFile
+  }
+}
+
+declare const sourceFile: SourceFile
+
+const entryInSourceFile = (entry: ExportEntry): boolean => { // ~detect
+  const entrySourceFile = entry.nameNode.getSourceFile()
+
+  return strictEqual(sourceFile)(entrySourceFile)
 }

@@ -1,4 +1,4 @@
-import { Array, Function, Option, Predicate, Result, Struct, pipe } from "effect"
+import { Array, Function, Option, Predicate, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -22,11 +22,15 @@ const minimumFanOut = 6
 const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const edges = workspaceImportEdges(elements)
 
-  const isInterfaceBurdenElement = (element: NamedDetection) =>
-    strictEqual(element.name, interfaceBurdenName)
+  const isInterfaceBurdenElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(interfaceBurdenName)
+  )
 
-  const isModuleGraphElement = (element: NamedDetection) =>
-    strictEqual(element.name, moduleGraphName)
+  const isModuleGraphElement = flow(
+    Struct.get<NamedDetection, "name">("name"),
+    strictEqual(moduleGraphName)
+  )
 
   const isProductionWorkspaceBurden = (data: InterfaceBurdenData) =>
     pipe(
@@ -66,7 +70,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
     const fanIn = pipe(
       edges,
       Array.filter((edge) => {
-        const importsWorkspacePath = strictEqual(edge.importedPath, workspacePath)
+        const importsWorkspacePath = strictEqual(workspacePath)(edge.importedPath)
         const isProductionImport = !edge.fromTest
         const conditions = Array.make(importsWorkspacePath, isProductionImport)
 
@@ -76,8 +80,10 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
       Array.dedupe
     ).length
 
-    const matchesWorkspacePath = (data: (typeof moduleGraphs)[number]) =>
-      strictEqual(data.workspacePath, workspacePath)
+    const matchesWorkspacePath = flow(
+      Struct.get<(typeof moduleGraphs)[number], "workspacePath">("workspacePath"),
+      strictEqual(workspacePath)
+    )
 
     const fanOut = pipe(
       moduleGraphs,

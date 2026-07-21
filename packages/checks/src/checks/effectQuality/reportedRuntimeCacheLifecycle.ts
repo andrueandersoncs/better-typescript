@@ -93,8 +93,7 @@ const cacheMakeLookupFunction =
     return pipe(options, Option.flatMap(lookupExpressionFromCacheOptions))
   }
 
-const ancestorIsLookupExpression = (lookup: ts.Expression) => (ancestor: ts.Node) =>
-  strictEqual(ancestor, lookup)
+const ancestorIsLookupExpression = strictEqual
 
 const nestedInsideCacheLookup = (checker: ts.TypeChecker) => (node: ts.Node) => {
   const visit = (current: ts.Node): boolean => {
@@ -123,9 +122,9 @@ const cacheMakeIsPerRequest = (checker: ts.TypeChecker) => (call: ts.CallExpress
     Option.exists((fn) => {
       const hasParameters = fn.parameters.length > 0
       const moduleScope = isModuleScopeFunction(fn)
-      const nested = strictEqual(moduleScope, false)
+      const nested = strictEqual(false)(moduleScope)
       const insideLookup = nestedInsideCacheLookup(checker)(call)
-      const notLookup = strictEqual(insideLookup, false)
+      const notLookup = strictEqual(false)(insideLookup)
       const hasParametersOrNested = hasParameters || nested
 
       return hasParametersOrNested && notLookup
@@ -163,7 +162,7 @@ export const scopedClientCacheFindings = (
   const nestedInLookup = nestedInsideCacheLookup(context.checker)(node)
   const matchedNestedFlags = Array.make(matches, nestedInLookup)
   const matchedNested = Array.every(matchedNestedFlags, Boolean)
-  const shouldSkip = strictEqual(matchedNested, false)
+  const shouldSkip = strictEqual(false)(matchedNested)
 
   if (shouldSkip) {
     return emptyRuleFindings

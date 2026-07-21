@@ -13,7 +13,7 @@ export type OptionGuardKind = "isSome" | "isNone"
 
 const guardMethodNames = HashSet.make("isSome", "isNone")
 
-const isOptionText = (text: string) => strictEqual(text, "Option")
+const isOptionText = strictEqual("Option")
 
 const isGuardMethodName = (name: string) => HashSet.has(guardMethodNames, name)
 
@@ -21,21 +21,21 @@ const containsDotValue =
   (name: string) =>
   (node: ts.Node): boolean => {
     const childResult = ts.forEachChild(node, containsDotValue(name))
-    const childHasDotValue = strictEqual(childResult, true)
+    const childHasDotValue = strictEqual(true)(childResult)
     const isPropertyAccess = ts.isPropertyAccessExpression(node)
 
     if (!isPropertyAccess) {
       return childHasDotValue
     }
 
-    const hasValueName = strictEqual(node.name.text, "value")
+    const hasValueName = strictEqual("value")(node.name.text)
     const expressionIsIdentifier = ts.isIdentifier(node.expression)
 
     if (!expressionIsIdentifier) {
       return childHasDotValue
     }
 
-    const expressionTextMatches = strictEqual(node.expression.text, name)
+    const expressionTextMatches = strictEqual(name)(node.expression.text)
     const isDotValue = hasValueName && expressionTextMatches
 
     return isDotValue || childHasDotValue
@@ -61,7 +61,7 @@ const optionMatchMatches = (context: CheckContext) => {
         return Tuple.make(methodName as OptionGuardKind, identifier.text)
       }),
       Option.filter(([kind, argumentName]: readonly [OptionGuardKind, string]): boolean => {
-        const isSomeGuard = strictEqual(kind, "isSome")
+        const isSomeGuard = strictEqual("isSome")(kind)
         const branch = isSomeGuard ? conditional.whenTrue : conditional.whenFalse
 
         return containsDotValue(argumentName)(branch)

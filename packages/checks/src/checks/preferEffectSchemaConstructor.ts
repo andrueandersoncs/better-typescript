@@ -1,4 +1,4 @@
-import { Array, Function, HashSet, Option, pipe, Struct } from "effect"
+import { Array, Function, HashSet, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { unwrapTransparentExpression } from "./support/tsNode.js"
 import { isReturnedExpressionNode } from "./support/tsNode.js"
@@ -52,7 +52,7 @@ const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expressi
 
 const hasProperties = (literal: ts.ObjectLiteralExpression) => literal.properties.length > 0
 
-const hasTagText = (identifier: ts.Identifier) => strictEqual(identifier.text, tagPropertyName)
+const hasTagText = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual(tagPropertyName))
 
 const isTagAssignment = (
   property: ts.ObjectLiteralElementLike

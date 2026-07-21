@@ -103,7 +103,7 @@ const duplicateNameListeners = (
         (fileName) => fileName !== candidateFileName
       )
 
-      if (strictEqual(otherFileNames.length, 0)) {
+      if (strictEqual(0)(otherFileNames.length)) {
         return Result.failVoid
       }
 
@@ -112,7 +112,7 @@ const duplicateNameListeners = (
       const taken = Array.take(relativeFileNames, maxListedFileNames)
       const listedFileNames = Array.join(taken, ", ")
       const remainingCount = relativeFileNames.length - maxListedFileNames
-      const isSingleFile = strictEqual(remainingCount, 1)
+      const isSingleFile = strictEqual(1)(remainingCount)
 
       const otherFiles =
         remainingCount > 0

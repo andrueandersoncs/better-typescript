@@ -8,7 +8,7 @@ import { makeDetection } from "@better-typescript/core/engine/check"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 
 const isInstanceofOperator = (expr: ts.BinaryExpression) =>
-  strictEqual(expr.operatorToken.kind, ts.SyntaxKind.InstanceOfKeyword)
+  strictEqual(ts.SyntaxKind.InstanceOfKeyword)(expr.operatorToken.kind)
 
 const isInstanceofExpression = (node: ts.Node): node is ts.BinaryExpression =>
   pipe(Option.liftPredicate(ts.isBinaryExpression)(node), Option.exists(isInstanceofOperator))

@@ -40,9 +40,9 @@ export const sourceHasAdapterRole = (index: EffectQualityIndex) => (sourceFile: 
   pipe(roleForSourceFile(index, sourceFile), Option.exists(isAdapterRole))
 
 const moduleIsEffectHttp = (moduleSpecifier: string) => {
-  const exactUnstable = strictEqual(moduleSpecifier, "effect/unstable/http")
+  const exactUnstable = strictEqual("effect/unstable/http")(moduleSpecifier)
   const nestedUnstable = moduleSpecifier.startsWith("effect/unstable/http/")
-  const platformExact = strictEqual(moduleSpecifier, "@effect/platform")
+  const platformExact = strictEqual("@effect/platform")(moduleSpecifier)
   const platformNested = moduleSpecifier.startsWith("@effect/platform/")
   const effectHttpNested = moduleSpecifier.startsWith("effect/Http")
 
@@ -58,8 +58,8 @@ const moduleIsEffectHttp = (moduleSpecifier: string) => {
 }
 
 const moduleIsEffectSchema = (moduleSpecifier: string) => {
-  const fromBarrel = strictEqual(moduleSpecifier, "effect")
-  const fromSchema = strictEqual(moduleSpecifier, "effect/Schema")
+  const fromBarrel = strictEqual("effect")(moduleSpecifier)
+  const fromSchema = strictEqual("effect/Schema")(moduleSpecifier)
   const fromSchemaNested = moduleSpecifier.startsWith("effect/Schema/")
   const flags = Array.make(fromBarrel, fromSchema, fromSchemaNested)
 
@@ -70,7 +70,7 @@ const segmentIsHttpNamespace = (segment: string) => Array.contains(httpNamespace
 
 const pathMatchesHttpNamespaceApi = (path: ReadonlyArray<string>) => {
   const hasNamespace = Array.some(path, segmentIsHttpNamespace)
-  const singleMemberPath = strictEqual(path.length, 1)
+  const singleMemberPath = strictEqual(1)(path.length)
   const pathFlags = Array.make(hasNamespace, singleMemberPath)
 
   return Array.some(pathFlags, Boolean)
@@ -96,7 +96,7 @@ export const memberIsHttpNamespaceApi =
     const last = memberLastName(member)
     const nameMatches = Array.contains(names, last)
     const fromHttpModule = moduleIsEffectHttp(member.moduleSpecifier)
-    const fromEffectBarrel = strictEqual(member.moduleSpecifier, "effect")
+    const fromEffectBarrel = strictEqual("effect")(member.moduleSpecifier)
     const moduleOkFlags = Array.make(fromHttpModule, fromEffectBarrel)
     const moduleOk = Array.some(moduleOkFlags, Boolean)
     const nonEffectBarrel = member.moduleSpecifier !== "effect"
@@ -116,7 +116,7 @@ const memberIsSchemaDecodeApi = (member: ImportedMember) => {
   const schemaModule = moduleIsEffectSchema(member.moduleSpecifier)
   const last = memberLastName(member)
   const nameMatches = Array.contains(schemaDecodeNames, last)
-  const fromEffectBarrel = strictEqual(member.moduleSpecifier, "effect")
+  const fromEffectBarrel = strictEqual("effect")(member.moduleSpecifier)
   const schemaPathHead = Array.get(member.path, 0)
   const barrelSchemaPath = pipe(schemaPathHead, Option.contains("Schema"))
   const pathOk = fromEffectBarrel ? barrelSchemaPath : true

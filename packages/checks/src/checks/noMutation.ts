@@ -183,7 +183,7 @@ const mutationMatches = (context: CheckContext) => {
   const scopeOf = (target: ts.Expression) => {
     const root = rootReceiver(target)
 
-    if (strictEqual(root.kind, ts.SyntaxKind.ThisKeyword)) {
+    if (strictEqual(ts.SyntaxKind.ThisKeyword)(root.kind)) {
       return "shared-state"
     }
 

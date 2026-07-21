@@ -10,20 +10,20 @@ export const toRelativeFileName = (projectRoot: string) => (fileName: string) =>
 }
 
 export const countDetectionsAtPath = (pathName: string) => (elements: ReadonlyArray<Detection>) => {
-  const matchesPath = (element: Detection) => strictEqual(element.location.path, pathName)
+  const matchesPath = (element: Detection) => strictEqual(pathName)(element.location.path)
   const atPath = Array.filter(elements, matchesPath)
 
   return atPath.length
 }
 
 export const detectionEquals = (a: Detection, b: Detection) => {
-  const samePath = strictEqual(a.location.path, b.location.path)
-  const sameLine = strictEqual(a.location.line, b.location.line)
-  const sameColumn = strictEqual(a.location.column, b.location.column)
-  const sameMessage = strictEqual(a.message, b.message)
-  const sameHint = strictEqual(a.hint, b.hint)
+  const samePath = strictEqual(b.location.path)(a.location.path)
+  const sameLine = strictEqual(b.location.line)(a.location.line)
+  const sameColumn = strictEqual(b.location.column)(a.location.column)
+  const sameMessage = strictEqual(b.message)(a.message)
+  const sameHint = strictEqual(b.hint)(a.hint)
   const bothStructural = Equal.isEqual(a.data) && Equal.isEqual(b.data)
-  const identical = strictEqual(a.data, b.data)
+  const identical = strictEqual(b.data)(a.data)
   const sameData = bothStructural ? Equal.equals(a.data, b.data) : identical
   const conditions = Array.make(samePath, sameLine, sameColumn, sameMessage, sameHint, sameData)
 

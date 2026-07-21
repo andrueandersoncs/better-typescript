@@ -1,4 +1,4 @@
-import { Array, Function, Match, Option, Struct, pipe, Result } from "effect"
+import { Array, Function, Match, Option, Struct, flow, pipe, Result } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import * as ts from "typescript"
 
@@ -34,7 +34,7 @@ const expressionFromConciseBody = (body: ts.ConciseBody) => {
     Option.map(unwrapTransparentExpression)
   )
 
-  const singleStatementBlock = (block: ts.Block) => strictEqual(block.statements.length, 1)
+  const singleStatementBlock = (block: ts.Block) => strictEqual(1)(block.statements.length)
 
   const blockBody = pipe(
     Option.some(body),
@@ -49,7 +49,7 @@ const expressionFromConciseBody = (body: ts.ConciseBody) => {
   return pipe(expressionBody, Option.orElse(Function.constant(blockBody)))
 }
 
-const nestedSingleParamArrow = (arrow: ts.ArrowFunction) => strictEqual(arrow.parameters.length, 1)
+const nestedSingleParamArrow = (arrow: ts.ArrowFunction) => strictEqual(1)(arrow.parameters.length)
 
 const finalCompositionCall = (arrow: ts.ArrowFunction): Option.Option<ts.CallExpression> =>
   pipe(
@@ -178,11 +178,11 @@ const compositionForwarderElements =
 
     const element = makeDetection(context)
 
-    const entryInSourceFile = (entry: ExportedFunctionEntry) => {
-      const entrySourceFile = entry.nameNode.getSourceFile()
-
-      return strictEqual(entrySourceFile, context.sourceFile)
-    }
+    const entryInSourceFile = flow(
+      Struct.get<ExportedFunctionEntry, "nameNode">("nameNode"),
+      (nameNode) => nameNode.getSourceFile(),
+      strictEqual(context.sourceFile)
+    )
 
     const detectionForEntry = (entry: ExportedFunctionEntry) =>
       pipe(

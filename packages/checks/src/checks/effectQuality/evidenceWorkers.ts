@@ -51,7 +51,7 @@ const loggingCallNode = (current: ts.Node) => {
     const receiver = unwrapTransparentExpression(expression.expression)
     const receiverName = ts.isIdentifier(receiver) ? receiver.text : ""
     const method = expression.name.text
-    const consoleLog = strictEqual(receiverName, "console")
+    const consoleLog = strictEqual("console")(receiverName)
     const loggerMethod = Array.contains(loggerMethodNames, method)
     const consoleParts = Array.make(consoleLog, loggerMethod)
     const consoleLogger = Array.every(consoleParts, Boolean)
@@ -206,7 +206,7 @@ export const keyedStreamWork =
       return emptyAdviceFindings
     }
 
-    const isSetName = strictEqual(expression.name.text, "set")
+    const isSetName = strictEqual("set")(expression.name.text)
 
     if (!isSetName) {
       return emptyAdviceFindings
