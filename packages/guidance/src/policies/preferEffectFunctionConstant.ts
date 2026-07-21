@@ -1,10 +1,10 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   preferEffectFunctionConstantMatcher,
   type PreferEffectFunctionConstantFact
 } from "@better-typescript/matchers/builtins/preferEffectFunctionConstant"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const message = "Avoid a handwritten constant thunk."
 
@@ -12,7 +12,7 @@ const preferEffectFunctionConstantGuidance: Guidance<PreferEffectFunctionConstan
   () => (match) => {
     const { expressionText } = match.fact
 
-    return oneFinding(
+    return makeFindings(
       match.target,
       message,
       `Use Function.constant(${expressionText}) from Effect when a zero-argument function only returns a stable value. ` +
@@ -21,7 +21,7 @@ const preferEffectFunctionConstantGuidance: Guidance<PreferEffectFunctionConstan
     )
   }
 
-export const preferEffectFunctionConstant = defineBuiltinPolicy(
+export const preferEffectFunctionConstant = makeBuiltinPolicy(
   "prefer-effect-function-constant",
   preferEffectFunctionConstantMatcher,
   preferEffectFunctionConstantGuidance

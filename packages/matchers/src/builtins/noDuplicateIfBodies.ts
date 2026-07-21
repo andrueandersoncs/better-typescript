@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { alwaysExitsScope, unwrapSingleStatementBlock } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -127,7 +127,7 @@ const duplicateIfBodiesMatches = (context: MatchContext) => {
         combinedCondition
       })
 
-    const matchWithFact = (fact: NoDuplicateIfBodiesFact) => nodeMatch(ifStatement, fact)
+    const matchWithFact = (fact: NoDuplicateIfBodiesFact) => makeNodeMatch(ifStatement, fact)
 
     return pipe(bodyMatch, Option.map(factForCondition), Option.map(matchWithFact), Option.toArray)
   }

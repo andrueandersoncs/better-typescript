@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { isCallLikeExpression } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoPrimitiveArrayConstructorsFact is empty payload because guidance and matchers share identity.
 export const NoPrimitiveArrayConstructorsFact = Schema.Struct({})
@@ -18,7 +18,7 @@ export const emptyNoPrimitiveArrayConstructorsFact = NoPrimitiveArrayConstructor
 const isArrayIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Array"))
 
 const matchArrayLiteral = (node: ts.ArrayLiteralExpression) =>
-  nodeMatch(node, emptyNoPrimitiveArrayConstructorsFact)
+  makeNodeMatch(node, emptyNoPrimitiveArrayConstructorsFact)
 
 const arrayLiteralMatches = () => flow(matchArrayLiteral, Array.of)
 
@@ -32,7 +32,7 @@ const arrayConstructorMatches = () => (node: ts.CallExpression | ts.NewExpressio
     return Array.empty()
   }
 
-  const match = nodeMatch(node, emptyNoPrimitiveArrayConstructorsFact)
+  const match = makeNodeMatch(node, emptyNoPrimitiveArrayConstructorsFact)
 
   return Array.of(match)
 }

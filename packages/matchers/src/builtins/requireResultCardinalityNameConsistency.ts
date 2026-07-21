@@ -1,6 +1,6 @@
 import { Array, flow, Function, HashSet, Match, Option, pipe, Schema } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match as NodeMatch } from "../matcher/data.js"
+import { makeNodeMatch, type Match as NodeMatch } from "../matcher/data.js"
 import {
   callableSemantics,
   callableExpectedResultWords,
@@ -248,7 +248,7 @@ const pluralForOneFinding = (semantics: CallableSemantics, claimed: string) => {
         cardinality
       })
 
-      return nodeMatch(semantics.node, fact)
+      return makeNodeMatch(semantics.node, fact)
     })
   )
 }
@@ -273,7 +273,7 @@ const singularForManyFinding = (semantics: CallableSemantics, claimed: string) =
         cardinality
       })
 
-      return nodeMatch(semantics.node, fact)
+      return makeNodeMatch(semantics.node, fact)
     })
   )
 }

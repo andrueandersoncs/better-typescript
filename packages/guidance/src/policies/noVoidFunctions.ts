@@ -1,5 +1,5 @@
 import { noVoidFunctionsMatcher } from "@better-typescript/matchers/builtins/noVoidFunctions"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid functions that return void."
@@ -11,7 +11,7 @@ const hint =
   "run. When a third-party API requires a void callback, annotate the value with that " +
   "API's callback type so the void contract is the consumer's, not yours."
 
-export const noVoidFunctions = defineBuiltinPolicy(
+export const noVoidFunctions = makeBuiltinPolicy(
   "no-void-functions",
   noVoidFunctionsMatcher,
   factGuidance(message, hint)

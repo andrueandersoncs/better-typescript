@@ -1,5 +1,5 @@
 import { singleAdapterSeams as singleAdapterSeamsMatcher } from "@better-typescript/matchers/builtins/singleAdapterSeams"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "One adapter is a hypothetical seam. Architecture Explore recommends removing the port until behaviour actually varies across production and test adapters."
 
-export const singleAdapterSeams = defineSilentBuiltinPolicy(
+export const singleAdapterSeams = makeSilentBuiltinPolicy(
   "single-adapter-seams",
   singleAdapterSeamsMatcher,
   factGuidance(message, hint)

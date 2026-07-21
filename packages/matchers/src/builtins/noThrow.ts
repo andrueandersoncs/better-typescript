@@ -1,7 +1,7 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoThrowFact is empty payload because guidance and matchers share identity.
 export const NoThrowFact = Schema.Struct({})
@@ -14,7 +14,7 @@ export const emptyNoThrowFact = NoThrowFact.make({})
 const throwStatementKinds = Array.of(ts.SyntaxKind.ThrowStatement)
 
 const matchThrowNode = (node: ts.ThrowStatement) =>
-  pipe(nodeMatch(node, emptyNoThrowFact), Array.of)
+  pipe(makeNodeMatch(node, emptyNoThrowFact), Array.of)
 
 const noThrowMatches = Function.constant(matchThrowNode)
 

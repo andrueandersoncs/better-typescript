@@ -1,7 +1,7 @@
 import { Array, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoArraySpreadFact is empty payload because guidance and matchers share identity.
 export const NoArraySpreadFact = Schema.Struct({})
@@ -18,7 +18,7 @@ const noArraySpreadMatches = () => (node: ts.SpreadElement) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(node, emptyNoArraySpreadFact)
+  const match = makeNodeMatch(node, emptyNoArraySpreadFact)
 
   return Array.of(match)
 }

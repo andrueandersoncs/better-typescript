@@ -1,7 +1,7 @@
 import { Array, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -29,7 +29,7 @@ const pipeFunctionMatches = (context: MatchContext) => {
 
   const matchPipeCallExpression = (callExpression: ts.CallExpression) => {
     const matchAccessName = (access: ts.PropertyAccessExpression) =>
-      nodeMatch(access.name, emptyPreferPipeFunctionFact)
+      makeNodeMatch(access.name, emptyPreferPipeFunctionFact)
 
     return pipe(
       Option.liftPredicate(ts.isPropertyAccessExpression)(callExpression.expression),

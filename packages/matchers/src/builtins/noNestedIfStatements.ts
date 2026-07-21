@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import { strictEqual } from "../equivalence.js"
 
 // NoNestedIfStatementsFact is empty payload because guidance and matchers share identity.
@@ -60,7 +60,7 @@ const matchNestedIfStatement = (ifStatement: ts.IfStatement) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(ifStatement, emptyNoNestedIfStatementsFact)
+  const match = makeNodeMatch(ifStatement, emptyNoNestedIfStatementsFact)
 
   return Array.of(match)
 }

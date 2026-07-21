@@ -6,7 +6,7 @@ import { Array, Effect, Function, Option, Order, Result, Schema, pipe } from "ef
 import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive"
-import { runPolicies } from "@better-typescript/core/engine/policy"
+import { toPolicies } from "@better-typescript/core/engine/policy"
 import { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { makeContext } from "@better-typescript/matchers/sources"
 import { runMatchers } from "@better-typescript/matchers/matcher"
@@ -66,7 +66,7 @@ const runWorkspacePolicies = async (
         workspaceRoot: workspace.rootPath
       })
 
-      const projectDetections = runPolicies(executablePolicies)(includeEverySourceFile)(context)
+      const projectDetections = toPolicies(executablePolicies)(includeEverySourceFile)(context)
 
       return Array.map(current, (detections, checkIndex) =>
         Array.appendAll(detections, projectDetections[checkIndex] ?? Array.empty())

@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import {
   functionInitializer,
   hasParameters,
@@ -168,7 +168,7 @@ const effectFnMatches = (context: MatchContext) => {
         thisTypeText
       })
 
-      return nodeMatch(declaration.name, fact)
+      return makeNodeMatch(declaration.name, fact)
     }
 
     return pipe(

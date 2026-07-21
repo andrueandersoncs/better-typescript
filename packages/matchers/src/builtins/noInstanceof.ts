@@ -1,7 +1,7 @@
 import { Array, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isFirstPartySymbol } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -37,7 +37,7 @@ const instanceofMatches = (context: MatchContext) => {
       })
     }
 
-    const matchWithFact = (fact: NoInstanceofFact) => nodeMatch(expression, fact)
+    const matchWithFact = (fact: NoInstanceofFact) => makeNodeMatch(expression, fact)
 
     return pipe(
       symbol,

@@ -1,7 +1,7 @@
 import { Array, Function, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import { unwrapExpression } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -46,7 +46,7 @@ const matchConditionalArraySpread = (spread: ts.SpreadElement) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(spread, emptyPreferEffectArrayAppendAllFact)
+  const match = makeNodeMatch(spread, emptyPreferEffectArrayAppendAllFact)
 
   return Array.of(match)
 }

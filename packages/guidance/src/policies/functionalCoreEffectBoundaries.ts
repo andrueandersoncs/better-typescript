@@ -1,6 +1,6 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import { makeFunctionalCoreEffect } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffect"
 import {
   FunctionalCoreBoundaryData,
@@ -10,7 +10,7 @@ import {
   defaultFunctionalCoreEffectPolicy,
   type FunctionalCoreEffectPolicy
 } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const messageByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
   "dependency-direction": "This dependency points outward across the functional-core architecture.",
@@ -57,16 +57,21 @@ const hintByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
     "Use Ref.make or the appropriate Queue/PubSub constructor while building a Layer.effect service and keep the handle out of the port surface."
 }
 
-const functionalCoreEffectBoundariesFindings = (match: Match<FunctionalCoreBoundaryData>) =>
-  oneFinding(match.target, messageByKind[match.fact.kind], hintByKind[match.fact.kind], match.fact)
+const makeFunctionalCoreEffectBoundariesFindings = (match: Match<FunctionalCoreBoundaryData>) =>
+  makeFindings(
+    match.target,
+    messageByKind[match.fact.kind],
+    hintByKind[match.fact.kind],
+    match.fact
+  )
 
 export const makeFunctionalCoreEffectBoundaries = (policy: FunctionalCoreEffectPolicy) => {
   const matcher = makeFunctionalCoreEffect(policy)
 
-  return defineBuiltinPolicy(
+  return makeBuiltinPolicy(
     "functional-core-effect-boundaries",
     matcher,
-    Function.constant(functionalCoreEffectBoundariesFindings)
+    Function.constant(makeFunctionalCoreEffectBoundariesFindings)
   )
 }
 

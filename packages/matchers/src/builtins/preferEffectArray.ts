@@ -1,7 +1,7 @@
 import { Array, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isArrayLikeType } from "../support/tsType.js"
 
 // ArrayPrototypeMethod is a local syntax union because matchers need one narrowed node shape.
@@ -125,7 +125,7 @@ const preferEffectArrayMatches = (context: MatchContext) => {
       methodCall,
       Option.map((method) => {
         const fact = PreferEffectArrayFact.make({ method })
-        return nodeMatch(callExpression, fact)
+        return makeNodeMatch(callExpression, fact)
       }),
       Option.toArray
     )

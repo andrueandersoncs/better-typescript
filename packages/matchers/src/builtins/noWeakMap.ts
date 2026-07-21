@@ -1,7 +1,7 @@
 import { Array, Option, pipe, Predicate, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isFirstPartySymbol } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -24,7 +24,7 @@ const weakMapMatches = (context: MatchContext) => {
   const checker = context.checker
 
   const matchWeakMapIdentifier = (identifier: ts.Identifier) => {
-    const match = nodeMatch(identifier, emptyNoWeakMapFact)
+    const match = makeNodeMatch(identifier, emptyNoWeakMapFact)
 
     return pipe(
       checker.getSymbolAtLocation(identifier),

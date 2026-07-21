@@ -92,15 +92,6 @@ export const makeDirectoryMatch = <Fact>(target: DirectoryTarget, fact: Fact) =>
 export const makeWorkspaceMatch = <Fact>(target: WorkspaceTarget, fact: Fact) =>
   new Match({ target, fact })
 
-export const nodeTarget = makeNodeTarget
-export const fileTarget = makeFileTarget
-export const positionTarget = makePositionTarget
-export const nodeMatch = makeNodeMatch
-export const fileMatch = makeFileMatch
-export const positionMatch = makePositionMatch
-export const directoryMatch = makeDirectoryMatch
-export const workspaceMatch = makeWorkspaceMatch
-
 type NodeHandler = (context: MatchContext) => (node: ts.Node) => ReadonlyArray<Match<unknown>>
 
 type FileHandler = (context: MatchContext) => ReadonlyArray<Match<unknown>>

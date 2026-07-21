@@ -1,7 +1,7 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeFindings } from "@better-typescript/core/engine/policy"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   noInstanceofMatcher,
   type NoInstanceofFact
@@ -12,16 +12,16 @@ const hint =
   "structurally defined Schema such as Schema.Struct. Schema.is on Schema.Class retains " +
   "constructor semantics, so it does not make a class check structural or cross-realm safe."
 
-const noInstanceofFindings = (match: Match<NoInstanceofFact>) =>
-  oneFinding(
+const makeNoInstanceofFindings = (match: Match<NoInstanceofFact>) =>
+  makeFindings(
     match.target,
     `Avoid instanceof for the first-party class "${match.fact.className}".`,
     hint,
     undefined
   )
 
-export const noInstanceof = defineBuiltinPolicy(
+export const noInstanceof = makeBuiltinPolicy(
   "no-instanceof",
   noInstanceofMatcher,
-  Function.constant(noInstanceofFindings)
+  Function.constant(makeNoInstanceofFindings)
 )

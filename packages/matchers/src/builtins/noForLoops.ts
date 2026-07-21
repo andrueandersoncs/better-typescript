@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoForLoopsFact is empty payload because guidance and matchers share identity.
 export const NoForLoopsFact = Schema.Struct({})
@@ -24,7 +24,7 @@ const matchForLoopNode = (node: ts.ForStatement) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(node, emptyNoForLoopsFact)
+  const match = makeNodeMatch(node, emptyNoForLoopsFact)
 
   return Array.of(match)
 }

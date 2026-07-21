@@ -1,7 +1,7 @@
 import { Array, flow, HashSet, Match, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
@@ -184,7 +184,7 @@ const matches = (context: MatchContext) => {
         expected
       })
 
-      return nodeMatch(semantics.node, fact)
+      return makeNodeMatch(semantics.node, fact)
     })
 
   const matchFunctionDefinition = (definition: FunctionDefinition) =>

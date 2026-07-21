@@ -5,7 +5,7 @@ import { test } from "node:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
 import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
-import { runPolicies } from "@better-typescript/core/engine/policy"
+import { toPolicies } from "@better-typescript/core/engine/policy"
 import { makeContext } from "@better-typescript/matchers/sources"
 import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
@@ -55,7 +55,7 @@ const runPoliciesOnFixture = async (
   assert.ok(project !== undefined)
 
   const context = makeContext(project.rootPath)(project.program)
-  return runPolicies(policies)(includeEverySourceFile)(context)
+  return toPolicies(policies)(includeEverySourceFile)(context)
 }
 
 const dataAs = <A>(

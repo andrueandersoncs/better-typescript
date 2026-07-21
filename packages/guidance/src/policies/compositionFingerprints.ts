@@ -1,5 +1,5 @@
 import { compositionFingerprints as compositionFingerprintsMatcher } from "@better-typescript/matchers/builtins/compositionFingerprints"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Advice compares fingerprints across Modules because the same orchestration in two places is a missing operation."
 
-export const compositionFingerprints = defineSilentBuiltinPolicy(
+export const compositionFingerprints = makeSilentBuiltinPolicy(
   "composition-fingerprints",
   compositionFingerprintsMatcher,
   factGuidance(message, hint)

@@ -10,6 +10,7 @@ import { preferEtaReduction } from "../policies/preferEtaReduction.js"
 import { preferFunctionFlip } from "../policies/preferFunctionFlip.js"
 import { preferImplicitReturn } from "../policies/preferImplicitReturn.js"
 import { noReexports } from "../policies/noReexports.js"
+import { noExportAliases } from "../policies/noExportAliases.js"
 
 // Member order is pinned because concatenated categories define the public report block order.
 export const conceptAndCompositionPolicies: ReadonlyArray<Policy> = Array.make(
@@ -22,5 +23,6 @@ export const conceptAndCompositionPolicies: ReadonlyArray<Policy> = Array.make(
   preferEtaReduction,
   preferFunctionFlip,
   preferImplicitReturn,
-  noReexports
+  noReexports,
+  noExportAliases
 )

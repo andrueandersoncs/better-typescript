@@ -1,7 +1,7 @@
 import { Array, Function, Option, Tuple, pipe, Predicate, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
 import { isFunctionInitializer, unwrapTransparentExpression } from "../support/tsNode.js"
 import { unaryAdapter } from "../support/unaryAdapter.js"
 import { foldAst } from "../sources/sources.js"
@@ -235,7 +235,7 @@ const matches = (context: MatchContext) => {
         yield* Option.liftPredicate((value: boolean) => value)(threaded)
 
         const fact = PreferFunctionCompositionFact.make({ kind: "block" })
-        return nodeMatch(body, fact)
+        return makeNodeMatch(body, fact)
       })
 
     const blockMatches = pipe(
@@ -269,7 +269,7 @@ const matches = (context: MatchContext) => {
                   partialText
                 })
 
-                return nodeMatch(arrowFunction, fact)
+                return makeNodeMatch(arrowFunction, fact)
               })
             )
           }),

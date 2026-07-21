@@ -1,7 +1,7 @@
 import { Array, Function, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoForOfLoopsFact records await style because remediation differs for async iterables.
 export const NoForOfLoopsFact = Schema.Struct({
@@ -14,7 +14,7 @@ const matchForOfLoopNode = (node: ts.ForOfStatement) => {
   const awaitModifier = Option.fromNullishOr(node.awaitModifier)
   const isAsync = Option.isSome(awaitModifier)
   const fact = NoForOfLoopsFact.make({ isAsync })
-  const match = nodeMatch(node, fact)
+  const match = makeNodeMatch(node, fact)
 
   return Array.of(match)
 }

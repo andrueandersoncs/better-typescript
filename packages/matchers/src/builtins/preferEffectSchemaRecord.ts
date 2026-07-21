@@ -13,7 +13,7 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { outermostTransparentWrapper } from "../support/tsNode.js"
 import { isObjectType } from "../support/tsType.js"
 import { foldAst, isProjectSourceFile, type AstFold } from "../sources/sources.js"
@@ -335,7 +335,7 @@ const objectTypeDeclarationMatches =
             kindLabel
           })
 
-          return nodeMatch(declaration.name, fact)
+          return makeNodeMatch(declaration.name, fact)
         }),
         Option.toArray
       )
@@ -387,7 +387,7 @@ const tupleTypeDeclarationMatches = (_context: MatchContext) => {
       typeName
     })
 
-    const match = nodeMatch(declaration.name, fact)
+    const match = makeNodeMatch(declaration.name, fact)
 
     return Array.of(match)
   }

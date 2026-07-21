@@ -21,7 +21,11 @@ import { hasCallSignature } from "../support/tsType.js"
 import { isTestSourceFile } from "./architectureExplore/paths.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
 
@@ -380,7 +384,7 @@ const singleAdapterElements =
               testAdapterCount
             })
 
-            const reported = nodeMatch(currentDeclaration.name, data)
+            const reported = makeNodeMatch(currentDeclaration.name, data)
 
             return reported
           }),
@@ -392,6 +396,4 @@ const singleAdapterElements =
 
 const singleAdapterSubscriptions = Function.compose(singleAdapterElements, fileSubscriptions)
 
-const singleAdapterSeamCheck = withProgramMatcherIndex(buildIndex)(singleAdapterSubscriptions)
-
-export const singleAdapterSeams = singleAdapterSeamCheck
+export const singleAdapterSeams = withProgramMatcherIndex(buildIndex)(singleAdapterSubscriptions)

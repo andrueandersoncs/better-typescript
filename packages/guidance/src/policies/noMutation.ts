@@ -1,5 +1,5 @@
 import { noMutationMatcher } from "@better-typescript/matchers/builtins/noMutation"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid mutating first-party data."
@@ -19,7 +19,7 @@ const hint =
   "globals). Mutating a third-party structure whose API contract requires assignment " +
   "(process.exitCode, a WebSocket handler slot, a React ref cell) is permitted."
 
-export const noMutation = defineBuiltinPolicy(
+export const noMutation = makeBuiltinPolicy(
   "no-mutation",
   noMutationMatcher,
   factGuidance(message, hint)

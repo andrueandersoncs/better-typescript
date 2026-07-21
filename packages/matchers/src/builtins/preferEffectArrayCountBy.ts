@@ -2,7 +2,7 @@ import * as path from "node:path"
 import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import {
   resolvedSymbolAt,
   unwrapCallee,
@@ -126,7 +126,7 @@ const effectArrayFilterLengthMatches = (context: MatchContext) => {
       Option.filter(ts.isCallExpression),
       Option.filter(isFilteredArray),
       Option.map(() => {
-        const match = nodeMatch(access, emptyPreferEffectArrayCountByFact)
+        const match = makeNodeMatch(access, emptyPreferEffectArrayCountByFact)
 
         return match
       }),

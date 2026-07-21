@@ -1,7 +1,7 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoAsyncFunctionsFact is empty payload because guidance and matchers share identity.
 export const NoAsyncFunctionsFact = Schema.Struct({})
@@ -31,7 +31,7 @@ const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
 const asyncKeywordKinds = Array.of(ts.SyntaxKind.AsyncKeyword)
 
 const matchAsyncFunctionNode = (node: ts.Node) =>
-  pipe(nodeMatch(node, emptyNoAsyncFunctionsFact), Array.of)
+  pipe(makeNodeMatch(node, emptyNoAsyncFunctionsFact), Array.of)
 
 const noAsyncFunctionsMatches = Function.constant(matchAsyncFunctionNode)
 

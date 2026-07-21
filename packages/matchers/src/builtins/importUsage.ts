@@ -7,7 +7,7 @@ import { ImportUsageData, ImportedNameUsage } from "./architectureExploreData.js
 import { isTestSourceFile, toWorkspacePath } from "./architectureExplore/paths.js"
 import { fileMatcher } from "@better-typescript/matchers/matcher"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as MatcherMatch,
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
@@ -249,10 +249,8 @@ const importUsageElements = (
       names
     })
 
-    return nodeMatch(record.declaration, data)
+    return makeNodeMatch(record.declaration, data)
   })
 }
 
-const importUsageCheck = fileMatcher(importUsageElements)
-
-export const importUsage = importUsageCheck
+export const importUsage = fileMatcher(importUsageElements)

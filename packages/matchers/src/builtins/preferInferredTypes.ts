@@ -25,7 +25,7 @@ import {
 import type { FunctionInitializer } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 import { fileSubscriptions, makeMatcherFromSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch, type Match, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
 
 const generatedNamePrefix = "__betterTypescriptInference"
 const emptyFunctionInitializers = Array.empty<FunctionInitializer>()
@@ -857,7 +857,7 @@ const matchesInSource = (
       const matchFinding = (finding: InferenceProbe) => {
         const fact = PreferInferredTypesFact.make({ kind: finding.kind })
 
-        return nodeMatch(finding.detectionNode, fact)
+        return makeNodeMatch(finding.detectionNode, fact)
       }
 
       return Array.map(findings, matchFinding)

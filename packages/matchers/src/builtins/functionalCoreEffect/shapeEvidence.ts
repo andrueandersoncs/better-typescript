@@ -2,7 +2,7 @@ import { Array, Function, Match, Option, Schema, Tuple, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as FactMatch,
   type MatchContext,
   type Subscription
@@ -397,7 +397,7 @@ const callIsEffectOrchestrator = (context: MatchContext, node: ts.CallExpression
 }
 
 const shapeDetection = (_context: MatchContext, node: ts.Node, data: FunctionalCoreShapeData) =>
-  nodeMatch(node, data)
+  makeNodeMatch(node, data)
 
 const orchestratorElements =
   (index: FunctionalCoreEffectIndex) =>

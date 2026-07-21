@@ -11,7 +11,7 @@ import {
 import { conciseArrowBody, unwrapTransparentExpression } from "../support/tsNode.js"
 import { fileSubscriptions } from "@better-typescript/matchers/matcher"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as MatcherMatch,
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
@@ -340,7 +340,7 @@ const compositionFingerprintElements =
           exportName: entry.nameNode.text
         })
 
-        const reported = nodeMatch(entry.nameNode, data)
+        const reported = makeNodeMatch(entry.nameNode, data)
 
         return Result.succeed(reported)
       })
@@ -352,8 +352,6 @@ const compositionFingerprintSubscriptions = Function.compose(
   fileSubscriptions
 )
 
-const compositionFingerprintCheck = evidenceMatcher(exportReferenceIndex)(
+export const compositionFingerprints = evidenceMatcher(exportReferenceIndex)(
   compositionFingerprintSubscriptions
 )
-
-export const compositionFingerprints = compositionFingerprintCheck

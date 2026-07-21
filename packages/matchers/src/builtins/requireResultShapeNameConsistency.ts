@@ -1,6 +1,6 @@
 import { Array, flow, Function, HashSet, Match, Option, pipe, Schema, Struct } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
@@ -162,7 +162,7 @@ const findingForSemantics = (semantics: CallableSemantics) =>
       label: expectation.label
     })
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const matchesDefinition =

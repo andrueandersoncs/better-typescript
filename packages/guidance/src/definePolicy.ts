@@ -3,10 +3,10 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import type { Matcher, WorkspaceMatcher } from "@better-typescript/matchers/matcher/data"
 import {
-  definePolicy,
-  defineSilentPolicy,
-  defineSilentWorkspacePolicy,
-  defineWorkspacePolicy
+  makePolicy,
+  makeSilentPolicy,
+  makeSilentWorkspacePolicy,
+  makeWorkspacePolicy
 } from "@better-typescript/core/engine/policy"
 import {
   type Guidance,
@@ -24,21 +24,19 @@ const packageExamplesRoot = path.resolve(moduleDirectory, "..", "examples")
 // Package examples remain inert descriptors because report rendering owns their effectful loading.
 const packageExampleDirectory = (name: string) => path.join(packageExamplesRoot, name)
 
-export const makePackageExamples: (name: string) => RefactorExampleSource = flow(
+export const packageExamples: (name: string) => RefactorExampleSource = flow(
   packageExampleDirectory,
   makeDirectoryRefactorExamples
 )
 
-export const packageExamples = makePackageExamples
-
-export const defineBuiltinPolicy = <Fact>(
+export const makeBuiltinPolicy = <Fact>(
   name: string,
   matcher: Matcher,
   guidance: Guidance<Fact>
 ): Policy => {
-  const examples = makePackageExamples(name)
+  const examples = packageExamples(name)
 
-  return definePolicy<
+  return makePolicy<
     Fact,
     {
       readonly name: string
@@ -54,14 +52,14 @@ export const defineBuiltinPolicy = <Fact>(
   })
 }
 
-export const defineSilentBuiltinPolicy = <Fact>(
+export const makeSilentBuiltinPolicy = <Fact>(
   name: string,
   matcher: Matcher,
   guidance: Guidance<Fact>
 ): Policy => {
-  const examples = makePackageExamples(name)
+  const examples = packageExamples(name)
 
-  return defineSilentPolicy<
+  return makeSilentPolicy<
     Fact,
     {
       readonly name: string
@@ -77,14 +75,14 @@ export const defineSilentBuiltinPolicy = <Fact>(
   })
 }
 
-export const defineBuiltinWorkspacePolicy = <Fact>(
+export const makeBuiltinWorkspacePolicy = <Fact>(
   name: string,
   matcher: WorkspaceMatcher,
   guidance: WorkspaceGuidance<Fact>
 ): WorkspacePolicy => {
-  const examples = makePackageExamples(name)
+  const examples = packageExamples(name)
 
-  return defineWorkspacePolicy<
+  return makeWorkspacePolicy<
     Fact,
     {
       readonly name: string
@@ -100,14 +98,14 @@ export const defineBuiltinWorkspacePolicy = <Fact>(
   })
 }
 
-export const defineSilentBuiltinWorkspacePolicy = <Fact>(
+export const makeSilentBuiltinWorkspacePolicy = <Fact>(
   name: string,
   matcher: WorkspaceMatcher,
   guidance: WorkspaceGuidance<Fact>
 ): WorkspacePolicy => {
-  const examples = makePackageExamples(name)
+  const examples = packageExamples(name)
 
-  return defineSilentWorkspacePolicy<
+  return makeSilentWorkspacePolicy<
     Fact,
     {
       readonly name: string

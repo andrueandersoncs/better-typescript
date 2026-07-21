@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, pipe, Result, Tuple, Schema } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
@@ -121,7 +121,7 @@ const optionalClaimFinding = (semantics: CallableSemantics) =>
     const claimLabel = formatClaims(optionalClaims)
     const fact = makeOptionalClaimFact(semantics.name.text, claimLabel)
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const totalClaimFinding = (semantics: CallableSemantics) =>
@@ -135,7 +135,7 @@ const totalClaimFinding = (semantics: CallableSemantics) =>
     const claimLabel = formatClaims(totalClaims)
     const fact = makeTotalClaimFact(semantics.name.text, claimLabel)
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const matchesForSemantics = (semantics: CallableSemantics) => {

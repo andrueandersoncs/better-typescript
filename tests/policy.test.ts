@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { Array, Effect } from "effect"
 import * as ts from "typescript"
-import { definePolicy, oneFinding, runPolicies } from "@better-typescript/core/engine/policy"
-import { nodeMatch } from "@better-typescript/matchers/matcher/data"
+import { makePolicy, makeFindings, toPolicies } from "@better-typescript/core/engine/policy"
+import { makeNodeMatch } from "@better-typescript/matchers/matcher/data"
 import { nodeMatcher } from "@better-typescript/matchers/matcher"
 import { makeContext } from "@better-typescript/matchers/sources"
 import { loadProject } from "@better-typescript/core/project/loadProject"
@@ -29,14 +29,14 @@ const isUndefinedIdentifierFact = (data: unknown): data is UndefinedIdentifierFa
   data.kind === "undefined-identifier"
 
 const undefinedMatcher = nodeMatcher(Array.of(ts.SyntaxKind.Identifier))(undefinedIdentifier)(
-  () => (node) => Array.of(nodeMatch(node, undefinedIdentifierFact))
+  () => (node) => Array.of(makeNodeMatch(node, undefinedIdentifierFact))
 )
 
-const undefinedPolicy = definePolicy({
+const undefinedPolicy = makePolicy({
   name: "undefined-identifier",
   matcher: undefinedMatcher,
   guidance: () => (match) =>
-    oneFinding(
+    makeFindings(
       match.target,
       "Undefined identifier.",
       "Model absence explicitly with Option.",
@@ -56,7 +56,7 @@ test("policy guidance renders matcher facts without prose in the matcher", async
   }
 
   const context = makeContext(project.rootPath)(project.program)
-  const detections = runPolicies(Array.of(undefinedPolicy))(() => true)(context)
+  const detections = toPolicies(Array.of(undefinedPolicy))(() => true)(context)
   const firstPolicyDetections = detections[0] ?? Array.empty()
 
   assert.equal(firstPolicyDetections.length > 0, true)

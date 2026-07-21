@@ -1,5 +1,5 @@
 import { compositionForwarders as compositionForwardersMatcher } from "@better-typescript/matchers/builtins/compositionForwarders"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Use caller count in Architecture Explore Advice: delete low-leverage indirection, but keep operations whose behaviour or naming would otherwise reappear across callers."
 
-export const compositionForwarders = defineSilentBuiltinPolicy(
+export const compositionForwarders = makeSilentBuiltinPolicy(
   "composition-forwarders",
   compositionForwardersMatcher,
   factGuidance(message, hint)

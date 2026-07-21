@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Result, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { unwrapExpression, unwrapSingleStatementBlock } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -103,7 +103,7 @@ const matches = (context: MatchContext) => {
 
           const fact = PreferConditionalReturnFact.make({ returnText })
 
-          return nodeMatch(ifStatement, fact)
+          return makeNodeMatch(ifStatement, fact)
         })
 
       return pipe(

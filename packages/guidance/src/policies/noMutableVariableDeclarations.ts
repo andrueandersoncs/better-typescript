@@ -1,7 +1,7 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeFindings } from "@better-typescript/core/engine/policy"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   noMutableVariableDeclarationsMatcher,
   type NoMutableVariableDeclarationsFact
@@ -13,16 +13,18 @@ const hint =
   "genuinely evolve over time (a module-level counter, a cell shared across " +
   "closures), hold it in a Ref inside the Effect runtime instead of a let binding."
 
-const noMutableVariableDeclarationsFindings = (match: Match<NoMutableVariableDeclarationsFact>) =>
-  oneFinding(
+const makeNoMutableVariableDeclarationsFindings = (
+  match: Match<NoMutableVariableDeclarationsFact>
+) =>
+  makeFindings(
     match.target,
     `Avoid declaring mutable variables with ${match.fact.kind}.`,
     hint,
     undefined
   )
 
-export const noMutableVariableDeclarations = defineBuiltinPolicy(
+export const noMutableVariableDeclarations = makeBuiltinPolicy(
   "no-mutable-variable-declarations",
   noMutableVariableDeclarationsMatcher,
-  Function.constant(noMutableVariableDeclarationsFindings)
+  Function.constant(makeNoMutableVariableDeclarationsFindings)
 )

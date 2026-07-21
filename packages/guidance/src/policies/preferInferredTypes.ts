@@ -1,12 +1,12 @@
 import { Function, Schema } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import {
   preferInferredTypesMatcher,
   type PreferInferredTypesFact,
   type PreferInferredTypesKind
 } from "@better-typescript/matchers/builtins/preferInferredTypes"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const InferredTypeCopy = Schema.Struct({
   message: Schema.String,
@@ -37,14 +37,14 @@ const copies: Record<PreferInferredTypesKind, InferredTypeCopy> = {
   contextual: contextualCopy
 }
 
-const preferInferredTypesFindings = (match: Match<PreferInferredTypesFact>) => {
+const makePreferInferredTypesFindings = (match: Match<PreferInferredTypesFact>) => {
   const copy = copies[match.fact.kind]
 
-  return oneFinding(match.target, copy.message, copy.hint, match.fact)
+  return makeFindings(match.target, copy.message, copy.hint, match.fact)
 }
 
-export const preferInferredTypes = defineBuiltinPolicy(
+export const preferInferredTypes = makeBuiltinPolicy(
   "prefer-inferred-types",
   preferInferredTypesMatcher,
-  Function.constant(preferInferredTypesFindings)
+  Function.constant(makePreferInferredTypesFindings)
 )

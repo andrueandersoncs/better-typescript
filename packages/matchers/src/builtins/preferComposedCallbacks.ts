@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { unwrapCarrier } from "../support/tsNode.js"
 import { foldAst } from "../sources/sources.js"
 import { strictEqual } from "../equivalence.js"
@@ -107,7 +107,7 @@ const preferComposedCallbacksMatches = (context: MatchContext) => {
         yield* Option.liftPredicate((value: boolean) => !value)(directForward)
         yield* Option.liftPredicate((value: boolean) => value)(parameterBearingCall)
 
-        return nodeMatch(arrowFunction, emptyPreferComposedCallbacksFact)
+        return makeNodeMatch(arrowFunction, emptyPreferComposedCallbacksFact)
       }),
       Option.toArray
     )

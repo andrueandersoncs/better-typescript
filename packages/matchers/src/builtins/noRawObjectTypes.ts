@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match } from "../matcher/data.js"
+import { makeNodeMatch, type Match } from "../matcher/data.js"
 import {
   isReturnTypeDeclaration,
   namedDetectionTarget,
@@ -83,14 +83,14 @@ const rawObjectTargetKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const matchRawObjectType = (node: RawObjectTarget): ReadonlyArray<Match<NoRawObjectTypesFact>> => {
   if (ts.isParameter(node)) {
     const parameterFact = NoRawObjectTypesFact.make({ kind: "parameter" })
-    const parameterMatch = nodeMatch(node, parameterFact)
+    const parameterMatch = makeNodeMatch(node, parameterFact)
 
     return Array.of(parameterMatch)
   }
 
   const reportNode = namedDetectionTarget(node)
   const returnFact = NoRawObjectTypesFact.make({ kind: "return" })
-  const returnMatch = nodeMatch(reportNode, returnFact)
+  const returnMatch = makeNodeMatch(reportNode, returnFact)
 
   return Array.of(returnMatch)
 }

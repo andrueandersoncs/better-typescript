@@ -1,10 +1,10 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   noForOfLoopsMatcher,
   type NoForOfLoopsFact
 } from "@better-typescript/matchers/builtins/noForOfLoops"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const synchronousHint =
   "Use Effect's Array module, such as Array.map(), Array.reduce(), " +
@@ -15,14 +15,14 @@ const asynchronousHint =
   "Stream/Effect combinator instead; Array combinators do not consume AsyncIterable values."
 
 const noForOfLoopsGuidance: Guidance<NoForOfLoopsFact> = () => (match) =>
-  oneFinding(
+  makeFindings(
     match.target,
     "Avoid imperative logic in for..of loops.",
     match.fact.isAsync ? asynchronousHint : synchronousHint,
     match.fact
   )
 
-export const noForOfLoops = defineBuiltinPolicy(
+export const noForOfLoops = makeBuiltinPolicy(
   "no-for-of-loops",
   noForOfLoopsMatcher,
   noForOfLoopsGuidance

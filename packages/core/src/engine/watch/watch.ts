@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { makeRefactorExampleResolver, type ResolveRefactorExamples } from "../example/example.js"
 import { batchReportBlocks, initialReportEvents } from "../report/report.js"
 import type { WiringConfig } from "../wiring/data.js"
-import { workspaceSignalsForProjects } from "../wiring/wiring.js"
+import { workspaceSignalsForProjects } from "../wiring/collect.js"
 import { WorkspaceUpdate } from "./data.js"
 
 const resolveExamples = Effect.fn("Watch.resolveExamples")(makeRefactorExampleResolver)

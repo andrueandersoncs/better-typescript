@@ -2,7 +2,7 @@ import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoFunctionKeywordFact is empty payload because guidance and matchers share identity.
 export const NoFunctionKeywordFact = Schema.Struct({})
@@ -75,7 +75,7 @@ const functionKeywordMatches = (context: MatchContext) => {
       Option.getOrElse(Function.constant(node))
     )
 
-    const match = nodeMatch(keywordToken, emptyNoFunctionKeywordFact)
+    const match = makeNodeMatch(keywordToken, emptyNoFunctionKeywordFact)
 
     return Array.of(match)
   }

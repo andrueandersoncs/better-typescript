@@ -1,7 +1,7 @@
 import { Function, Match as EffectMatch, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeFindings } from "@better-typescript/core/engine/policy"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   noRawObjectTypesMatcher,
   type NoRawObjectTypesFact
@@ -24,22 +24,22 @@ const returnHint =
   "Name the type after what the data represents, not its structural role " +
   "(avoid names like FooResult or BarResponse)."
 
-const noRawObjectTypesFindings = (match: Match<NoRawObjectTypesFact>) => {
-  const parameterFindings = () =>
-    oneFinding(match.target, parameterMessage, parameterHint, undefined)
+const makeNoRawObjectTypesFindings = (match: Match<NoRawObjectTypesFact>) => {
+  const makeParameterFindings = () =>
+    makeFindings(match.target, parameterMessage, parameterHint, undefined)
 
-  const returnFindings = () => oneFinding(match.target, returnMessage, returnHint, undefined)
+  const makeReturnFindings = () => makeFindings(match.target, returnMessage, returnHint, undefined)
 
   return pipe(
     EffectMatch.value(match.fact),
-    EffectMatch.when({ kind: "parameter" }, parameterFindings),
-    EffectMatch.when({ kind: "return" }, returnFindings),
+    EffectMatch.when({ kind: "parameter" }, makeParameterFindings),
+    EffectMatch.when({ kind: "return" }, makeReturnFindings),
     EffectMatch.exhaustive
   )
 }
 
-export const noRawObjectTypes = defineBuiltinPolicy(
+export const noRawObjectTypes = makeBuiltinPolicy(
   "no-raw-object-types",
   noRawObjectTypesMatcher,
-  Function.constant(noRawObjectTypesFindings)
+  Function.constant(makeNoRawObjectTypesFindings)
 )

@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Result, Schema } from "effect"
 import type * as ts from "typescript"
 import { fileMatcher, withCompilerOptions } from "../matcher/matcher.js"
-import { positionMatch, type MatchContext } from "../matcher/data.js"
+import { makePositionMatch, type MatchContext } from "../matcher/data.js"
 
 // NoUnusedFact is empty payload because guidance and matchers share identity.
 export const NoUnusedFact = Schema.Struct({})
@@ -22,10 +22,10 @@ const compilerOptions: ts.CompilerOptions = {
 const isUnusedDiagnostic = (diagnostic: ts.Diagnostic) =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
 
-const unusedPositionMatch = (file: ts.SourceFile, start: number) => {
+const makeUnusedPositionMatch = (file: ts.SourceFile, start: number) => {
   const position = file.getLineAndCharacterOfPosition(start)
 
-  return positionMatch(file, position.line + 1, position.character + 1, emptyNoUnusedFact)
+  return makePositionMatch(file, position.line + 1, position.character + 1, emptyNoUnusedFact)
 }
 
 const unusedMatches = (context: MatchContext) => {
@@ -41,7 +41,7 @@ const unusedMatches = (context: MatchContext) => {
         file: fileOption,
         start: startOption
       }),
-      Option.map(({ file, start }) => unusedPositionMatch(file, start)),
+      Option.map(({ file, start }) => makeUnusedPositionMatch(file, start)),
       Result.fromOption(Function.constVoid)
     )
   })

@@ -13,13 +13,13 @@ import {
   RefactorExample
 } from "@better-typescript/core/engine/example/data"
 import { defineConfig, makeWiring, makeMergedWiring } from "@better-typescript/core/engine/wiring"
-import { definePolicy, oneFinding } from "@better-typescript/core/engine/policy"
+import { makePolicy, makeFindings } from "@better-typescript/core/engine/policy"
 import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/report"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import { functionalCoreEffectWiring } from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
 import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { nodeMatch } from "@better-typescript/matchers/matcher/data"
+import { makeNodeMatch } from "@better-typescript/matchers/matcher/data"
 
 // This example is documentation. Copy it to a consumer project's
 // better-typescript.config.ts to load it. It stays under examples/ so this
@@ -36,7 +36,7 @@ const isConsoleLogCall = (node: ts.CallExpression): boolean => {
 }
 
 const noConsoleLogMatcher = nodeMatcher([ts.SyntaxKind.CallExpression])(ts.isCallExpression)(
-  () => (node) => (isConsoleLogCall(node) ? [nodeMatch(node, null)] : [])
+  () => (node) => (isConsoleLogCall(node) ? [makeNodeMatch(node, null)] : [])
 )
 
 const countAtPath = (path: string, detections: ReadonlyArray<Detection>): number =>
@@ -73,11 +73,11 @@ const consoleLogExamples = [
   })
 ] as const
 
-const consoleLogPolicy = definePolicy({
+const consoleLogPolicy = makePolicy({
   name: "acme/no-console-log",
   matcher: noConsoleLogMatcher,
   guidance: () => (match) =>
-    oneFinding(
+    makeFindings(
       match.target,
       "Avoid console.log in runtime code.",
       "Return data to the caller or use this project's structured logger at the boundary.",

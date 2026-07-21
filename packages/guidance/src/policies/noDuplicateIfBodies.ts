@@ -1,7 +1,7 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeFindings } from "@better-typescript/core/engine/policy"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   noDuplicateIfBodiesMatcher,
   type NoDuplicateIfBodiesFact
@@ -9,8 +9,8 @@ import {
 
 const message = "Avoid if branches that repeat the body of the branch before them."
 
-const noDuplicateIfBodiesFindings = (match: Match<NoDuplicateIfBodiesFact>) =>
-  oneFinding(
+const makeNoDuplicateIfBodiesFindings = (match: Match<NoDuplicateIfBodiesFact>) =>
+  makeFindings(
     match.target,
     message,
     "These branches are pseudo-duplicates: the bodies are identical and only the " +
@@ -19,8 +19,8 @@ const noDuplicateIfBodiesFindings = (match: Match<NoDuplicateIfBodiesFact>) =>
     undefined
   )
 
-export const noDuplicateIfBodies = defineBuiltinPolicy(
+export const noDuplicateIfBodies = makeBuiltinPolicy(
   "no-duplicate-if-bodies",
   noDuplicateIfBodiesMatcher,
-  Function.constant(noDuplicateIfBodiesFindings)
+  Function.constant(makeNoDuplicateIfBodiesFindings)
 )

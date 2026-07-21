@@ -1,5 +1,5 @@
 import { contextTagSeams as contextTagSeamsMatcher } from "@better-typescript/matchers/builtins/contextTagSeams"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Architecture Explore uses adapter and consumer counts to judge whether an Effect seam earns its keep; counts alone are not a defect."
 
-export const contextTagSeams = defineSilentBuiltinPolicy(
+export const contextTagSeams = makeSilentBuiltinPolicy(
   "context-tag-seams",
   contextTagSeamsMatcher,
   factGuidance(message, hint)

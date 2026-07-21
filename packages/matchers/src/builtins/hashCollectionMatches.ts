@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
 import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch, type Match as MatcherMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match as MatcherMatch, type MatchContext } from "../matcher/data.js"
 import {
   constructionEscapesExternally,
   typeReferenceEscapesExternally
@@ -43,7 +43,7 @@ export const constructorMatches =
     }
 
     const constructorFact = makeConstructorFact()
-    const constructorMatchValue = nodeMatch(node, constructorFact)
+    const constructorMatchValue = makeNodeMatch(node, constructorFact)
 
     return Array.of(constructorMatchValue)
   }
@@ -70,7 +70,7 @@ export const typeRefMatches =
     )
 
     const typeRefFact = makeTypeRefFact(name)
-    const typeRefMatchValue = nodeMatch(node, typeRefFact)
+    const typeRefMatchValue = makeNodeMatch(node, typeRefFact)
 
     return Array.of(typeRefMatchValue)
   }
@@ -150,9 +150,9 @@ const mutableImportMatches =
     )
 
     const mutableFact = makeMutableFact()
-    const toMutableMatch = (node: ts.Node) => nodeMatch(node, mutableFact)
+    const makeMutableMatch = (node: ts.Node) => makeNodeMatch(node, mutableFact)
 
-    return Array.map(importNodes, toMutableMatch)
+    return Array.map(importNodes, makeMutableMatch)
   }
 
 const isMutableNamespaceAccess =
@@ -205,7 +205,7 @@ const mutableNamespaceMatches =
     }
 
     const mutableAccessFact = makeMutableFact()
-    const mutableAccessMatch = nodeMatch(access.name, mutableAccessFact)
+    const mutableAccessMatch = makeNodeMatch(access.name, mutableAccessFact)
 
     return Array.of(mutableAccessMatch)
   }

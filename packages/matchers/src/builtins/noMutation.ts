@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Match, Option, pipe, Predicate, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { binaryAssignmentTarget, isProjectFile, unwrapExpression } from "../support/tsNode.js"
 import { isUnseenType, type SeenTypes } from "../support/tsType.js"
 import { strictEqual } from "../equivalence.js"
@@ -239,7 +239,7 @@ const mutationMatches = (context: MatchContext) => {
     const targetScope = scopeOf(target)
     const fact = NoMutationFact.make({ target: targetScope })
 
-    return nodeMatch(target, fact)
+    return makeNodeMatch(target, fact)
   }
 
   const matchMutationNode = (node: MutationNode) =>

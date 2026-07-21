@@ -4,7 +4,7 @@ import { WorkspaceSourceFile } from "@better-typescript/matchers/matcher/data"
 import { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { TsSourceFile } from "@better-typescript/matchers/tsSchema"
 import type { Detection } from "../location/data.js"
-import { runPolicies } from "../policy/policy.js"
+import { toPolicies } from "../policy/policy.js"
 import type { Policy } from "../policy/data.js"
 import { ProgramPolicySlot, isProgramPolicy, type WiringPolicy } from "./data.js"
 import type { WiringEntry } from "./data.js"
@@ -206,7 +206,7 @@ export const runProgramPoliciesForContext =
     context: ProgramContext
   ) => {
     const includesSourceFile = includesSourceFileForSlots(programSlots, matchesByFileName)
-    const configuredPolicies = runPolicies(programPolicies)(includesSourceFile)
+    const configuredPolicies = toPolicies(programPolicies)(includesSourceFile)
 
     return configuredPolicies(context)
   }

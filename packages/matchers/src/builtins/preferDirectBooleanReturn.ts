@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, Struct, flow, pipe, Result, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match as MatcherMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match as MatcherMatch, type MatchContext } from "../matcher/data.js"
 import {
   returnStatementExpression,
   unwrapExpression,
@@ -91,7 +91,7 @@ const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 const matches = (context: MatchContext) => {
   const sourceFile = context.sourceFile
 
-  const literalBranchMatch = (
+  const makeLiteralBranchMatch = (
     node: ts.Node,
     condition: ts.Expression,
     literalValue: boolean
@@ -104,13 +104,13 @@ const matches = (context: MatchContext) => {
       conditionText
     })
 
-    return nodeMatch(node, fact)
+    return makeNodeMatch(node, fact)
   }
 
-  const andFalseMatch = (node: ts.Node): MatcherMatch<PreferDirectBooleanReturnFact> => {
+  const makeAndFalseMatch = (node: ts.Node): MatcherMatch<PreferDirectBooleanReturnFact> => {
     const fact = PreferDirectBooleanReturnFact.make({ kind: "and-false" })
 
-    return nodeMatch(node, fact)
+    return makeNodeMatch(node, fact)
   }
 
   const matchBooleanReturnTarget = (
@@ -129,10 +129,10 @@ const matches = (context: MatchContext) => {
 
         yield* Option.liftPredicate((value: boolean) => !value)(literalsMatch)
 
-        return literalBranchMatch(node, node.condition, whenTrueLiteral)
+        return makeLiteralBranchMatch(node, node.condition, whenTrueLiteral)
       })
 
-      const falseElseDetection = andFalseMatch(node)
+      const falseElseDetection = makeAndFalseMatch(node)
       const whenTrueIsNonBooleanLiteral = () => isNonBooleanLiteral(whenTrue)
       const whenFalseIsNonBooleanLiteral = () => isNonBooleanLiteral(whenFalse)
 
@@ -143,7 +143,7 @@ const matches = (context: MatchContext) => {
         Option.as(falseElseDetection)
       )
 
-      const falseThenDetection = andFalseMatch(node)
+      const falseThenDetection = makeAndFalseMatch(node)
 
       const falseThenArm = pipe(
         Option.some(whenTrue),
@@ -159,7 +159,7 @@ const matches = (context: MatchContext) => {
 
     if (ts.isIfStatement(node)) {
       const matchLiteralBranch = (literalValue: boolean) =>
-        literalBranchMatch(node, node.expression, literalValue)
+        makeLiteralBranchMatch(node, node.expression, literalValue)
 
       return pipe(
         Option.gen(function* () {
@@ -213,7 +213,7 @@ const matches = (context: MatchContext) => {
           yield* pipe(thenBranchExpr, Option.filter(isNonBooleanLiteral))
           yield* Option.filter(nextStatement, isFalseLiteralReturn)
 
-          return andFalseMatch(ifStatement)
+          return makeAndFalseMatch(ifStatement)
         })
 
       return pipe(

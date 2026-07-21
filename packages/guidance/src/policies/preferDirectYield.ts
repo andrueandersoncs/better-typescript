@@ -1,5 +1,5 @@
 import { preferDirectYieldMatcher } from "@better-typescript/matchers/builtins/preferDirectYield"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid binding an Effect only to yield* it."
@@ -10,7 +10,7 @@ const hint =
   "extracting nested call arguments into their own consts so no-nested-calls " +
   "stays satisfied."
 
-export const preferDirectYield = defineBuiltinPolicy(
+export const preferDirectYield = makeBuiltinPolicy(
   "prefer-direct-yield",
   preferDirectYieldMatcher,
   factGuidance(message, hint)

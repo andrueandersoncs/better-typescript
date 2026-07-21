@@ -1,5 +1,5 @@
 import { exportSurface as exportSurfaceMatcher } from "@better-typescript/matchers/builtins/exportSurface"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Reference and call counts exclude the declaring file so deletion tests can weigh external consumers only."
 
-export const exportSurface = defineSilentBuiltinPolicy(
+export const exportSurface = makeSilentBuiltinPolicy(
   "export-surface",
   exportSurfaceMatcher,
   factGuidance(message, hint)

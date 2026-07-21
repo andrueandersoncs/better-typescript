@@ -1,10 +1,10 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   preferEffectArrayMatcher,
   type PreferEffectArrayFact
 } from "@better-typescript/matchers/builtins/preferEffectArray"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const hint =
   "Prefer Effect's Array module — define the array as a const and call " +
@@ -13,9 +13,9 @@ const hint =
   "directly on array values."
 
 const preferEffectArrayGuidance: Guidance<PreferEffectArrayFact> = () => (match) =>
-  oneFinding(match.target, `Avoid Array.prototype.${match.fact.method}().`, hint, match.fact)
+  makeFindings(match.target, `Avoid Array.prototype.${match.fact.method}().`, hint, match.fact)
 
-export const preferEffectArray = defineBuiltinPolicy(
+export const preferEffectArray = makeBuiltinPolicy(
   "prefer-effect-array",
   preferEffectArrayMatcher,
   preferEffectArrayGuidance

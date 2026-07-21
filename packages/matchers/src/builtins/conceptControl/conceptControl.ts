@@ -14,7 +14,11 @@ import {
 } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 import {
   fileSubscriptions,
   makeMatcherFromSubscriptions
@@ -105,7 +109,7 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     }
 
     const append = (node: ts.Node, data: ConceptSignalData) => {
-      const element = nodeMatch(node, data)
+      const element = makeNodeMatch(node, data)
 
       MutableList.append(found, element)
 

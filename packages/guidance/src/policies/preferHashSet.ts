@@ -1,7 +1,7 @@
 import { Function, Match as EffectMatch, Option, pipe } from "effect"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   preferHashSetMatcher,
   type PreferHashSetFact
@@ -33,30 +33,30 @@ const mutableHashSetHint =
 const emptyTypeName = ""
 const emptyTypeNameFallback = Function.constant(emptyTypeName)
 
-const preferHashSetFindings = (match: Match<PreferHashSetFact>) => {
-  const constructorFindings = () =>
-    oneFinding(match.target, constructorMessage, constructorHint, undefined)
+const makePreferHashSetFindings = (match: Match<PreferHashSetFact>) => {
+  const makeConstructorFindings = () =>
+    makeFindings(match.target, constructorMessage, constructorHint, undefined)
 
-  const mutableFindings = () =>
-    oneFinding(match.target, mutableHashSetMessage, mutableHashSetHint, undefined)
+  const makeMutableFindings = () =>
+    makeFindings(match.target, mutableHashSetMessage, mutableHashSetHint, undefined)
 
-  const typeRefFindings = (fact: PreferHashSetFact) => {
+  const makeTypeRefFindings = (fact: PreferHashSetFact) => {
     const name = pipe(Option.fromNullishOr(fact.typeName), Option.getOrElse(emptyTypeNameFallback))
 
-    return oneFinding(match.target, `Avoid the built-in ${name} type.`, typeRefHint, undefined)
+    return makeFindings(match.target, `Avoid the built-in ${name} type.`, typeRefHint, undefined)
   }
 
   return pipe(
     EffectMatch.value(match.fact),
-    EffectMatch.when({ kind: "constructor" }, constructorFindings),
-    EffectMatch.when({ kind: "mutable" }, mutableFindings),
-    EffectMatch.when({ kind: "type-ref" }, typeRefFindings),
+    EffectMatch.when({ kind: "constructor" }, makeConstructorFindings),
+    EffectMatch.when({ kind: "mutable" }, makeMutableFindings),
+    EffectMatch.when({ kind: "type-ref" }, makeTypeRefFindings),
     EffectMatch.exhaustive
   )
 }
 
-export const preferHashSet = defineBuiltinPolicy(
+export const preferHashSet = makeBuiltinPolicy(
   "prefer-hash-set",
   preferHashSetMatcher,
-  Function.constant(preferHashSetFindings)
+  Function.constant(makePreferHashSetFindings)
 )

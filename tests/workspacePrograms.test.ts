@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import { Effect, pipe } from "effect"
 import * as ts from "typescript"
 import { noUnused } from "@better-typescript/guidance/policies/noUnused"
-import { compilerOptionsForPolicies, runPolicies } from "@better-typescript/core/engine/policy"
+import { compilerOptionsForPolicies, toPolicies } from "@better-typescript/core/engine/policy"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
 import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
@@ -140,7 +140,7 @@ test("workspacePrograms preserves no-unused fixture diagnostics with primary pro
   assert.equal(options.noUnusedParameters, true)
   assert.equal(options.noEmit, true)
 
-  const detections = runPolicies([noUnused])(includeEverySourceFile)(context)[0] ?? []
+  const detections = toPolicies([noUnused])(includeEverySourceFile)(context)[0] ?? []
   const identities = sortIdentities(detections.map(detectionIdentity))
 
   assert.deepEqual(identities, [
@@ -167,8 +167,8 @@ test("loadProject and workspacePrograms agree on no-unused detections", async ()
   const loadedContext = makeContext(loaded.projects[0]!.rootPath)(loaded.projects[0]!.program)
   const oneShotContext = oneShot.contexts[0]!
 
-  const loadedDetections = runPolicies([noUnused])(includeEverySourceFile)(loadedContext)[0] ?? []
-  const oneShotDetections = runPolicies([noUnused])(includeEverySourceFile)(oneShotContext)[0] ?? []
+  const loadedDetections = toPolicies([noUnused])(includeEverySourceFile)(loadedContext)[0] ?? []
+  const oneShotDetections = toPolicies([noUnused])(includeEverySourceFile)(oneShotContext)[0] ?? []
 
   assert.deepEqual(
     sortIdentities(loadedDetections.map(detectionIdentity)),

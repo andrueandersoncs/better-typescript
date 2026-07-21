@@ -21,7 +21,7 @@ import { ModuleIdentityData } from "./architectureExploreData.js"
 import { toWorkspacePath } from "./architectureExplore/paths.js"
 import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as MatcherMatch,
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
@@ -257,7 +257,7 @@ const moduleIdentityElements =
             aliases
           })
 
-          const identityElement = nodeMatch(node, data)
+          const identityElement = makeNodeMatch(node, data)
 
           return Array.of(identityElement)
         }
@@ -266,6 +266,4 @@ const moduleIdentityElements =
 
 const moduleIdentitySubscriptions = Function.compose(moduleIdentityElements, fileSubscriptions)
 
-const moduleIdentityCheck = withProgramMatcherIndex(buildAliasIndex)(moduleIdentitySubscriptions)
-
-export const moduleIdentity = moduleIdentityCheck
+export const moduleIdentity = withProgramMatcherIndex(buildAliasIndex)(moduleIdentitySubscriptions)

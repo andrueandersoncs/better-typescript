@@ -7,7 +7,7 @@ import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { makeContext } from "@better-typescript/matchers/sources"
-import { runPolicies } from "@better-typescript/core/engine/policy"
+import { toPolicies } from "@better-typescript/core/engine/policy"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { compositionForwarders } from "@better-typescript/guidance/policies/compositionForwarders"
 import { moduleScopeEffects } from "@better-typescript/guidance/policies/moduleScopeEffects"
@@ -47,7 +47,7 @@ const runWorkspaceChecks = async (
         workspaceRoot: workspace.rootPath
       })
 
-      const projectDetections = runPolicies(executablePolicies)(includeEverySourceFile)(context)
+      const projectDetections = toPolicies(executablePolicies)(includeEverySourceFile)(context)
       const toWorkspacePath = workspacePathFor(workspace.rootPath, project.rootPath)
 
       return Array.map(current, (paths, checkIndex) => {

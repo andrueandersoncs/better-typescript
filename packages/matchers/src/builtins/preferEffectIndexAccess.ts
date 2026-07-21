@@ -1,7 +1,7 @@
 import { Array, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isArrayLikeType } from "../support/tsType.js"
 
 // PreferEffectIndexAccessFact is empty payload because guidance and matchers share identity.
@@ -24,7 +24,7 @@ const directIndexAccessMatches = (context: MatchContext) => {
       return Array.empty()
     }
 
-    const match = nodeMatch(node, emptyPreferEffectIndexAccessFact)
+    const match = makeNodeMatch(node, emptyPreferEffectIndexAccessFact)
 
     return Array.of(match)
   }

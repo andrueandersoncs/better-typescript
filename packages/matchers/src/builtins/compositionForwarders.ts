@@ -15,7 +15,7 @@ import {
 import { isExpressionBody, unwrapTransparentExpression } from "../support/tsNode.js"
 import { fileSubscriptions } from "@better-typescript/matchers/matcher"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as MatcherMatch,
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
@@ -198,7 +198,7 @@ const compositionForwarderElements =
             hasNonCallReference: usage.hasProductionNonCallReference
           })
 
-          return nodeMatch(entry.nameNode, data)
+          return makeNodeMatch(entry.nameNode, data)
         }),
         Result.fromOption(Function.constVoid)
       )
@@ -211,8 +211,6 @@ const compositionForwarderSubscriptions = Function.compose(
   fileSubscriptions
 )
 
-const compositionForwarderCheck = evidenceMatcher(exportReferenceIndex)(
+export const compositionForwarders = evidenceMatcher(exportReferenceIndex)(
   compositionForwarderSubscriptions
 )
-
-export const compositionForwarders = compositionForwarderCheck

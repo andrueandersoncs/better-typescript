@@ -1,11 +1,11 @@
 import { Function, Option, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import {
   preferEffectSchemaConstructorMatcher,
   type PreferEffectSchemaConstructorFact
 } from "@better-typescript/matchers/builtins/preferEffectSchemaConstructor"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const taggedMessage = (tag: string) => `Avoid returning a raw "${tag}" object literal.`
 
@@ -28,7 +28,9 @@ const untaggedHint =
 const untaggedMessageFallback = Function.constant(untaggedMessage)
 const untaggedHintFallback = Function.constant(untaggedHint)
 
-const preferEffectSchemaConstructorFindings = (match: Match<PreferEffectSchemaConstructorFact>) => {
+const makePreferEffectSchemaConstructorFindings = (
+  match: Match<PreferEffectSchemaConstructorFact>
+) => {
   const tag = Option.fromNullishOr(match.fact.tag)
 
   const message = pipe(
@@ -47,11 +49,11 @@ const preferEffectSchemaConstructorFindings = (match: Match<PreferEffectSchemaCo
     })
   )
 
-  return oneFinding(match.target, message, hint, match.fact)
+  return makeFindings(match.target, message, hint, match.fact)
 }
 
-export const preferEffectSchemaConstructor = defineBuiltinPolicy(
+export const preferEffectSchemaConstructor = makeBuiltinPolicy(
   "prefer-effect-schema-constructor",
   preferEffectSchemaConstructorMatcher,
-  Function.constant(preferEffectSchemaConstructorFindings)
+  Function.constant(makePreferEffectSchemaConstructorFindings)
 )

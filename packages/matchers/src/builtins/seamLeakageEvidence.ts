@@ -6,7 +6,7 @@ import { SeamLeakageData } from "./architectureExploreData.js"
 import { isTestSourceFile } from "./architectureExplore/paths.js"
 import { importElements } from "./architectureExplore/importElements.js"
 import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import { makeNodeMatch, type MatchContext } from "@better-typescript/matchers/matcher/data"
 
 const leakageKind =
   (context: MatchContext) =>
@@ -62,7 +62,7 @@ const seamLeakageElement = (context: MatchContext) => {
           fromTest
         })
 
-        return nodeMatch(node, data)
+        return makeNodeMatch(node, data)
       })
     )
   }
@@ -74,8 +74,6 @@ const seamLeakageElements = importElements(seamLeakageElement)
 
 const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
 
-const seamLeakageCheck = nodeMatcher(importDeclarationKinds)(ts.isImportDeclaration)(
+export const seamLeakageEvidence = nodeMatcher(importDeclarationKinds)(ts.isImportDeclaration)(
   seamLeakageElements
 )
-
-export const seamLeakageEvidence = seamLeakageCheck

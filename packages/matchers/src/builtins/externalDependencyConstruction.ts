@@ -5,7 +5,11 @@ import { ExternalDependencyConstructionData } from "./architectureExploreData.js
 import { unwrapExpression } from "../support/tsNode.js"
 import { isCompositionRoot } from "../support/compositionRoot.js"
 import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const collaboratorSuffixes = Array.make(
   "Client",
@@ -131,7 +135,7 @@ const constructionElements = (context: MatchContext) => {
           importedPath
         })
 
-        const reported = nodeMatch(node, data)
+        const reported = makeNodeMatch(node, data)
 
         return reported
       }),
@@ -144,8 +148,6 @@ const constructionElements = (context: MatchContext) => {
 
 const newExpressionKinds = Array.of(ts.SyntaxKind.NewExpression)
 
-const externalDependencyConstructionCheck = nodeMatcher(newExpressionKinds)(ts.isNewExpression)(
+export const externalDependencyConstruction = nodeMatcher(newExpressionKinds)(ts.isNewExpression)(
   constructionElements
 )
-
-export const externalDependencyConstruction = externalDependencyConstructionCheck

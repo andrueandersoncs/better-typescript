@@ -1,6 +1,6 @@
 import { Array, Function, Schema } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import {
   hasAnyReturnType,
   isReturnTypeDeclaration,
@@ -23,7 +23,7 @@ const matchExplicitAnyReturnNode = (node: ReturnTypeDeclaration) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(node, emptyNoExplicitAnyReturnFact)
+  const match = makeNodeMatch(node, emptyNoExplicitAnyReturnFact)
 
   return Array.of(match)
 }

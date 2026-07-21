@@ -1,5 +1,5 @@
 import { requireBlankLinesAroundMultilineDeclarationsMatcher } from "@better-typescript/matchers/builtins/requireBlankLinesAroundMultilineDeclarations"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Multi-line declarations must have a blank line above and below."
@@ -10,7 +10,7 @@ const hint =
   "not need surrounding blank lines; the first and last statements in a block are " +
   "exempt on the outer sides."
 
-export const requireBlankLinesAroundMultilineDeclarations = defineBuiltinPolicy(
+export const requireBlankLinesAroundMultilineDeclarations = makeBuiltinPolicy(
   "require-blank-lines-around-multiline-declarations",
   requireBlankLinesAroundMultilineDeclarationsMatcher,
   factGuidance(message, hint)

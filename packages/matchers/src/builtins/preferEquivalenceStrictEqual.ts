@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // PreferEquivalenceStrictEqualFact is empty payload because guidance and matchers share identity.
 export const PreferEquivalenceStrictEqualFact = Schema.Struct({})
@@ -22,7 +22,7 @@ const isStrictEqualityExpression = (node: ts.Node): node is ts.BinaryExpression 
   pipe(Option.liftPredicate(ts.isBinaryExpression)(node), Option.exists(hasStrictEqualityOperator))
 
 const matchStrictEqualityExpression = (expression: ts.BinaryExpression) =>
-  pipe(nodeMatch(expression, emptyPreferEquivalenceStrictEqualFact), Array.of)
+  pipe(makeNodeMatch(expression, emptyPreferEquivalenceStrictEqualFact), Array.of)
 
 const strictEqualityMatches = Function.constant(matchStrictEqualityExpression)
 

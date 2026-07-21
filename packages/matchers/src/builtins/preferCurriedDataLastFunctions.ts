@@ -1,7 +1,7 @@
 import { Array, Function, HashMap, HashSet, Option, Struct, pipe, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch, type Match, type MatchContext, type Subscription } from "../matcher/data.js"
+import { makeNodeMatch, type Match, type MatchContext, type Subscription } from "../matcher/data.js"
 import { foldAst, isProjectSourceFile } from "../sources/sources.js"
 import {
   conciseArrowBody,
@@ -16,7 +16,6 @@ import {
 } from "../support/tsNode.js"
 import {
   callArguments,
-  isSameNode,
   resolvedCallSignature,
   signatureIsExternal
 } from "../support/tsSignature.js"
@@ -302,7 +301,7 @@ const buildSymbolUses = (context: ProgramContext) => {
 
         const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
         const args = pipe(parentCall, Option.map(callArguments), Option.getOrElse(Array.empty))
-        const index = Array.findFirstIndex(args, isSameNode(expression))
+        const index = Array.findFirstIndex(args, strictEqual(expression))
         const expressionContextualType = contextualType(checker)(expression)
 
         const signatureType = pipe(
@@ -422,7 +421,7 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
         Option.getOrElse(fallbackNode)
       )
 
-      const match = nodeMatch(node, emptyFact)
+      const match = makeNodeMatch(node, emptyFact)
 
       return Array.of(match)
     }

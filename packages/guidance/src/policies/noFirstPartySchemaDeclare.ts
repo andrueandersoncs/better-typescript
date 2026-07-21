@@ -1,7 +1,7 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeFindings } from "@better-typescript/core/engine/policy"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   noFirstPartySchemaDeclareMatcher,
   type NoFirstPartySchemaDeclareFact
@@ -14,16 +14,16 @@ const schemaDeclareHint =
   "export interface MyType extends Schema.Schema.Type<typeof MyType> {} — which gives you " +
   "validation, encoding, and decoding for free."
 
-const noFirstPartySchemaDeclareFindings = (match: Match<NoFirstPartySchemaDeclareFact>) =>
-  oneFinding(
+const makeNoFirstPartySchemaDeclareFindings = (match: Match<NoFirstPartySchemaDeclareFact>) =>
+  makeFindings(
     match.target,
     `Avoid Schema.declare for the first-party structural type "${match.fact.typeName}".`,
     schemaDeclareHint,
     undefined
   )
 
-export const noFirstPartySchemaDeclare = defineBuiltinPolicy(
+export const noFirstPartySchemaDeclare = makeBuiltinPolicy(
   "no-first-party-schema-declare",
   noFirstPartySchemaDeclareMatcher,
-  Function.constant(noFirstPartySchemaDeclareFindings)
+  Function.constant(makeNoFirstPartySchemaDeclareFindings)
 )

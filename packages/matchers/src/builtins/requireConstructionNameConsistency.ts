@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
 import {
   callableSemantics,
   callableExpectedResultWords,
@@ -146,7 +146,7 @@ const factoryMasqueradeMatch = (semantics: CallableSemantics) =>
       operation
     })
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const unnamedConstructionMatch = (semantics: CallableSemantics) =>
@@ -163,7 +163,7 @@ const unnamedConstructionMatch = (semantics: CallableSemantics) =>
       nameText: semantics.name.text
     })
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const matchesForSemantics = (semantics: CallableSemantics) => {

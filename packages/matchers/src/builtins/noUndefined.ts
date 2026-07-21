@@ -9,7 +9,7 @@ import {
 } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // UndefinedTypeDeclaration is a local syntax union because matchers need one narrowed node shape.
 export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
@@ -126,7 +126,7 @@ const isUndefinedTypeDeclaration = (node: ts.Node): node is UndefinedTypeDeclara
 const undefinedUsageMatches = (kind: UndefinedUsageKind) => {
   const matchUndefinedUsage = (node: ts.Node) => {
     const fact = NoUndefinedFact.make({ kind })
-    const match = nodeMatch(node, fact)
+    const match = makeNodeMatch(node, fact)
 
     return Array.of(match)
   }

@@ -1,11 +1,11 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   noUndefinedMatcher,
   type NoUndefinedFact,
   type UndefinedUsageKind
 } from "@better-typescript/matchers/builtins/noUndefined"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const optionHint =
   "Use Effect's Option module to model optional values, and convert nullable boundaries " +
@@ -23,9 +23,9 @@ const undefinedMessages: Record<UndefinedUsageKind, string> = {
 }
 
 const noUndefinedGuidance: Guidance<NoUndefinedFact> = () => (match) =>
-  oneFinding(match.target, undefinedMessages[match.fact.kind], optionHint, match.fact)
+  makeFindings(match.target, undefinedMessages[match.fact.kind], optionHint, match.fact)
 
-export const noUndefined = defineBuiltinPolicy(
+export const noUndefined = makeBuiltinPolicy(
   "no-undefined",
   noUndefinedMatcher,
   noUndefinedGuidance

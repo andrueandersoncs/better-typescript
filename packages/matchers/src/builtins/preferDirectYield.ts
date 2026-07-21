@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { foldAst } from "../sources/sources.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { strictEqual } from "../equivalence.js"
@@ -180,7 +180,7 @@ const matches = (context: MatchContext) => {
         const onlyReference = yield* Array.head(references)
         yield* Option.liftPredicate(isYieldStarOfIdentifier)(onlyReference)
 
-        return nodeMatch(name, emptyPreferDirectYieldFact)
+        return makeNodeMatch(name, emptyPreferDirectYieldFact)
       }),
       Option.toArray
     )

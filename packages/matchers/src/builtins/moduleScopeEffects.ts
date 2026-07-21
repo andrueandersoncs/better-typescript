@@ -9,7 +9,7 @@ import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
 import { nodeMatcher } from "@better-typescript/matchers/matcher"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as MatcherMatch,
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
@@ -265,7 +265,7 @@ const moduleScopeEffectElements = (context: MatchContext) => {
       const calleeText = node.expression.getText(context.sourceFile)
       const data = ModuleScopeEffectData.make({ calleeText, kind })
 
-      return nodeMatch(node, data)
+      return makeNodeMatch(node, data)
     }
 
     return pipe(classifyEffectKind(node), Option.map(detectionForKind), Option.toArray)
@@ -276,8 +276,6 @@ const moduleScopeEffectElements = (context: MatchContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-const moduleScopeEffectCheck = nodeMatcher(callExpressionKinds)(ts.isCallExpression)(
+export const moduleScopeEffects = nodeMatcher(callExpressionKinds)(ts.isCallExpression)(
   moduleScopeEffectElements
 )
-
-export const moduleScopeEffects = moduleScopeEffectCheck

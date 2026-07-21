@@ -2,7 +2,7 @@ import * as path from "node:path"
 import { Match as EffectMatch, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   preferEffectSchemaRecordMatcher,
@@ -10,7 +10,7 @@ import {
   type PreferEffectSchemaRecordObjectFact,
   type PreferEffectSchemaRecordTupleFact
 } from "@better-typescript/matchers/builtins/preferEffectSchemaRecord"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const toRelativeFileName = (projectRoot: string) => (fileName: string) => {
   const relative = path.relative(projectRoot, fileName)
@@ -27,19 +27,19 @@ const tupleTypeHint =
 
 const preferEffectSchemaRecordGuidance: Guidance<PreferEffectSchemaRecordFact> =
   (context: ProgramContext) => (match: Match<PreferEffectSchemaRecordFact>) => {
-    const tupleFindings = (fact: PreferEffectSchemaRecordTupleFact) =>
-      oneFinding(
+    const makeTupleFindings = (fact: PreferEffectSchemaRecordTupleFact) =>
+      makeFindings(
         match.target,
         `Avoid declaring ${fact.typeName} as a tuple type alias.`,
         tupleTypeHint,
         match.fact
       )
 
-    const objectFindings = (fact: PreferEffectSchemaRecordObjectFact) => {
+    const makeObjectFindings = (fact: PreferEffectSchemaRecordObjectFact) => {
       const toExampleFile = toRelativeFileName(context.projectRoot)
       const exampleFile = toExampleFile(fact.constructionFileName)
 
-      return oneFinding(
+      return makeFindings(
         match.target,
         `Avoid declaring ${fact.typeName} as ${fact.kindLabel} when this project constructs ` +
           "its values.",
@@ -57,13 +57,13 @@ const preferEffectSchemaRecordGuidance: Guidance<PreferEffectSchemaRecordFact> =
 
     return pipe(
       EffectMatch.value(match.fact),
-      EffectMatch.when({ kind: "tuple" }, tupleFindings),
-      EffectMatch.when({ kind: "object" }, objectFindings),
+      EffectMatch.when({ kind: "tuple" }, makeTupleFindings),
+      EffectMatch.when({ kind: "object" }, makeObjectFindings),
       EffectMatch.exhaustive
     )
   }
 
-export const preferEffectSchemaRecord = defineBuiltinPolicy(
+export const preferEffectSchemaRecord = makeBuiltinPolicy(
   "prefer-effect-schema-record",
   preferEffectSchemaRecordMatcher,
   preferEffectSchemaRecordGuidance

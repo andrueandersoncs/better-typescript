@@ -5,7 +5,8 @@ import { createJiti } from "jiti"
 import type { WiringConfig } from "../../engine/wiring/data.js"
 import { configFileName } from "./data.js"
 import type { ProjectWiringConfigError } from "./data.js"
-import { decodeWiringConfig, formatCause, makeProjectWiringConfigError } from "./decode.js"
+import { decodeWiringConfig } from "./decode.js"
+import { formatCause, makeProjectWiringConfigError } from "./decodeExport.js"
 
 const loadExistingWiringConfig = Effect.fn("WiringConfig.loadExisting")(function* (
   configPath: string

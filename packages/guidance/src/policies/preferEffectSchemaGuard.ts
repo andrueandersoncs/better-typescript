@@ -1,15 +1,15 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   preferEffectSchemaGuardMatcher,
   type PreferEffectSchemaGuardFact
 } from "@better-typescript/matchers/builtins/preferEffectSchemaGuard"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const preferEffectSchemaGuardGuidance: Guidance<PreferEffectSchemaGuardFact> = () => (match) => {
   const { propertyName, objectText } = match.fact
 
-  return oneFinding(
+  return makeFindings(
     match.target,
     `Avoid using ${propertyName} in ${objectText} as a type guard.`,
     `Define an Effect Schema for this value and replace the check with Schema.is($schema)(${objectText}).`,
@@ -17,7 +17,7 @@ const preferEffectSchemaGuardGuidance: Guidance<PreferEffectSchemaGuardFact> = (
   )
 }
 
-export const preferEffectSchemaGuard = defineBuiltinPolicy(
+export const preferEffectSchemaGuard = makeBuiltinPolicy(
   "prefer-effect-schema-guard",
   preferEffectSchemaGuardMatcher,
   preferEffectSchemaGuardGuidance

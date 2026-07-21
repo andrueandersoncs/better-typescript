@@ -1,5 +1,5 @@
 import { noMultiLineCommentsMatcher } from "@better-typescript/matchers/builtins/noMultiLineComments"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid multi-line comments."
@@ -12,7 +12,7 @@ const hint =
   "that require longer explanation, create an Architectural Decision Record (ADR) as a " +
   "markdown file in the adrs/ directory instead."
 
-export const noMultiLineComments = defineBuiltinPolicy(
+export const noMultiLineComments = makeBuiltinPolicy(
   "no-multi-line-comments",
   noMultiLineCommentsMatcher,
   factGuidance(message, hint)

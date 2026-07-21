@@ -1,7 +1,7 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoForInLoopsFact is empty payload because guidance and matchers share identity.
 export const NoForInLoopsFact = Schema.Struct({})
@@ -14,7 +14,7 @@ export const emptyNoForInLoopsFact = NoForInLoopsFact.make({})
 const forInStatementKinds = Array.of(ts.SyntaxKind.ForInStatement)
 
 const matchForInLoopNode = (node: ts.ForInStatement) =>
-  pipe(nodeMatch(node, emptyNoForInLoopsFact), Array.of)
+  pipe(makeNodeMatch(node, emptyNoForInLoopsFact), Array.of)
 
 const noForInLoopsMatches = Function.constant(matchForInLoopNode)
 

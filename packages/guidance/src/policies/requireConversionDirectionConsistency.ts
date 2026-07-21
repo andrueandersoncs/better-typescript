@@ -1,13 +1,13 @@
 import { Function, Match as EffectMatch, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import {
   requireConversionDirectionConsistencyMatcher,
   type RequireConversionDirectionConsistencyFact
 } from "@better-typescript/matchers/builtins/requireConversionDirectionConsistency"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
-const requireConversionDirectionConsistencyFindings = (
+const makeRequireConversionDirectionConsistencyFindings = (
   match: Match<RequireConversionDirectionConsistencyFact>
 ) => {
   const { axis, nameText, claimed, expected } = match.fact
@@ -38,11 +38,11 @@ const requireConversionDirectionConsistencyFindings = (
     EffectMatch.exhaustive
   )
 
-  return oneFinding(match.target, message, hint, match.fact)
+  return makeFindings(match.target, message, hint, match.fact)
 }
 
-export const requireConversionDirectionConsistency = defineBuiltinPolicy(
+export const requireConversionDirectionConsistency = makeBuiltinPolicy(
   "require-conversion-direction-consistency",
   requireConversionDirectionConsistencyMatcher,
-  Function.constant(requireConversionDirectionConsistencyFindings)
+  Function.constant(makeRequireConversionDirectionConsistencyFindings)
 )

@@ -1,5 +1,5 @@
 import { moduleScopeEffects as moduleScopeEffectsMatcher } from "@better-typescript/matchers/builtins/moduleScopeEffects"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Architecture Explore classifies concentrated evidence before recommending a real seam with production and test adapters."
 
-export const moduleScopeEffects = defineSilentBuiltinPolicy(
+export const moduleScopeEffects = makeSilentBuiltinPolicy(
   "module-scope-effects",
   moduleScopeEffectsMatcher,
   factGuidance(message, hint)

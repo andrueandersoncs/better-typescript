@@ -11,12 +11,8 @@ import {
   isProgramPolicy,
   type WiringConfig
 } from "./data.js"
-import { compileGlobPattern, isFileGlob as fileGlobPredicate } from "./globs.js"
+import { compileGlobPattern, isFileGlob } from "./globs.js"
 import { validatePolicyNames } from "./names.js"
-import { workspaceSignalsForProjects as collectWorkspaceSignalsForProjects } from "./collect.js"
-
-export const isFileGlob = fileGlobPredicate
-export const workspaceSignalsForProjects = collectWorkspaceSignalsForProjects
 
 const programPoliciesFromEntry = (entry: WiringEntry) =>
   Array.filter(entry.wiring.policies, isProgramPolicy)

@@ -1,5 +1,5 @@
 import { noCallbacksMatcher } from "@better-typescript/matchers/builtins/noCallbacks"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid callback-style functions that accept a function argument and return void."
@@ -9,7 +9,7 @@ const hint =
   "own API as an Effect-returning function from the start. Ambient declarations " +
   "(declare statements) describing a third-party API are permitted."
 
-export const noCallbacks = defineBuiltinPolicy(
+export const noCallbacks = makeBuiltinPolicy(
   "no-callbacks",
   noCallbacksMatcher,
   factGuidance(message, hint)

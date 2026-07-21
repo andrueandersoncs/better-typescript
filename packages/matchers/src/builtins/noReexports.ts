@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { fileMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { strictEqual } from "../equivalence.js"
 
 // NoReexportsFact is empty payload because guidance and matchers share identity.
@@ -137,7 +137,7 @@ const isImportedExportAssignment =
     )
   }
 
-const reexportMatch = (node: ts.Node) => nodeMatch(node, emptyNoReexportsFact)
+const makeReexportMatch = (node: ts.Node) => makeNodeMatch(node, emptyNoReexportsFact)
 
 const matches = (context: MatchContext) => {
   const sourceFile = context.sourceFile
@@ -155,7 +155,7 @@ const matches = (context: MatchContext) => {
     Array.appendAll(exportedAssignments)
   )
 
-  return Array.map(declarations, reexportMatch)
+  return Array.map(declarations, makeReexportMatch)
 }
 
 export const noReexportsMatcher = fileMatcher(matches)

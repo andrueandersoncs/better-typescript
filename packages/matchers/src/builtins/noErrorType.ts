@@ -2,7 +2,7 @@ import { Array, Option, Struct, flow, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoErrorTypeFact is empty payload because guidance and matchers share identity.
 export const NoErrorTypeFact = Schema.Struct({})
@@ -38,7 +38,7 @@ const errorTypeMatches = (context: MatchContext) => {
 
   const matchErrorTypeReference = (typeReference: ts.TypeReferenceNode) => {
     const typeName = errorTypeName(typeReference.typeName)
-    const match = nodeMatch(typeName, emptyNoErrorTypeFact)
+    const match = makeNodeMatch(typeName, emptyNoErrorTypeFact)
 
     return pipe(
       checker.getSymbolAtLocation(typeName),

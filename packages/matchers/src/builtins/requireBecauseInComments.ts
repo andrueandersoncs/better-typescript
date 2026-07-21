@@ -1,7 +1,7 @@
 import { Array, Schema } from "effect"
 import { commentText } from "../sources/comments.js"
 import { fileMatcher } from "../matcher/matcher.js"
-import { positionMatch, type MatchContext } from "../matcher/data.js"
+import { makePositionMatch, type MatchContext } from "../matcher/data.js"
 
 // RequireBecauseInCommentsFact is empty payload because guidance and matchers share identity.
 export const RequireBecauseInCommentsFact = Schema.Struct({})
@@ -31,7 +31,7 @@ const becauseInCommentsMatches = (context: MatchContext) => {
   const matchMissingBecause = (comment: (typeof comments)[number]) => {
     const position = sourceFile.getLineAndCharacterOfPosition(comment.pos)
 
-    return positionMatch(
+    return makePositionMatch(
       sourceFile,
       position.line + 1,
       position.character + 1,

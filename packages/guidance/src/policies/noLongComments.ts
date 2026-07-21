@@ -1,5 +1,5 @@
 import { noLongCommentsMatcher } from "@better-typescript/matchers/builtins/noLongComments"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Comments must be at most 100 characters."
@@ -9,7 +9,7 @@ const hint =
   "annotations. State the single load-bearing reason; move longer explanations into an " +
   "Architectural Decision Record (ADR) in the adrs/ directory instead."
 
-export const noLongComments = defineBuiltinPolicy(
+export const noLongComments = makeBuiltinPolicy(
   "no-long-comments",
   noLongCommentsMatcher,
   factGuidance(message, hint)

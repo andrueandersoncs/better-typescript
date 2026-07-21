@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isReturnedExpressionNode, unwrapTransparentExpression } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -100,7 +100,7 @@ const objectLiteralReturnMatches = (_context: MatchContext) => {
         )
 
         const fact = PreferEffectSchemaConstructorFact.make({ tag })
-        return nodeMatch(literal, fact)
+        return makeNodeMatch(literal, fact)
       })
     })
   }

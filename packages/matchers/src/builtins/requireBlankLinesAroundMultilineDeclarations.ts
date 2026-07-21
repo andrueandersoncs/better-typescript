@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { isDeclarationStatement, isStatementContainer } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // RequireBlankLinesAroundMultilineDeclarationsFact is empty because matchers share identity.
 export const RequireBlankLinesAroundMultilineDeclarationsFact = Schema.Struct({})
@@ -105,7 +105,7 @@ const matches = (context: MatchContext) => {
       return Array.empty()
     }
 
-    const match = nodeMatch(node, emptyRequireBlankLinesAroundMultilineDeclarationsFact)
+    const match = makeNodeMatch(node, emptyRequireBlankLinesAroundMultilineDeclarationsFact)
 
     return Array.of(match)
   }

@@ -3,14 +3,14 @@ import { test } from "node:test"
 import { Array } from "effect"
 import * as ts from "typescript"
 import {
-  defineWorkspacePolicy,
-  oneFinding,
-  runWorkspacePolicies
+  makeWorkspacePolicy,
+  makeFindings,
+  toWorkspacePolicies
 } from "@better-typescript/core/engine/policy"
 import {
   WorkspaceContext,
   WorkspaceSourceFile,
-  directoryMatch
+  makeDirectoryMatch
 } from "@better-typescript/matchers/matcher/data"
 import { directoryMatcher } from "@better-typescript/matchers/matcher"
 
@@ -34,14 +34,14 @@ const sourceDirectoryMatcher = directoryMatcher((target) => {
     return Array.empty()
   }
 
-  return Array.of(directoryMatch(target, directoryFact(target.sourceFiles.length)))
+  return Array.of(makeDirectoryMatch(target, directoryFact(target.sourceFiles.length)))
 })
 
-const sourceDirectoryPolicy = defineWorkspacePolicy({
+const sourceDirectoryPolicy = makeWorkspacePolicy({
   name: "source-directory",
   matcher: sourceDirectoryMatcher,
   guidance: () => (match) =>
-    oneFinding(
+    makeFindings(
       match.target,
       "Source directory.",
       "Keep source files together intentionally.",
@@ -52,7 +52,7 @@ const sourceDirectoryPolicy = defineWorkspacePolicy({
 
 test("directory policies run after workspace paths are collected", () => {
   const context = new WorkspaceContext({ workspaceRoot: "/workspace", sourceFiles })
-  const detections = runWorkspacePolicies(Array.of(sourceDirectoryPolicy))(context)
+  const detections = toWorkspacePolicies(Array.of(sourceDirectoryPolicy))(context)
   const directoryDetections = detections[0] ?? Array.empty()
 
   assert.equal(directoryDetections.length, 1)

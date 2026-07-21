@@ -1,6 +1,6 @@
 import { Array, HashMap, MutableList, Option, Result, Tuple, pipe } from "effect"
 import { WorkspaceContext } from "@better-typescript/matchers/matcher/data"
-import { runWorkspacePolicies } from "../policy/policy.js"
+import { toWorkspacePolicies } from "../policy/policy.js"
 import type { WorkspacePolicy } from "../policy/data.js"
 import { Signal, WiringSignals } from "../signal/data.js"
 import { isWorkspacePolicy, type WiringPolicy } from "./data.js"
@@ -54,7 +54,7 @@ export const collectWorkspacePolicyDetections = (
     const sourceFiles = Array.fromIterable(workspaceFileValues)
     const workspaceContext = new WorkspaceContext({ workspaceRoot, sourceFiles })
     const workspacePolicies = Array.map(workspaceSlots, Tuple.get(1))
-    const detectionsByWorkspacePolicy = runWorkspacePolicies(workspacePolicies)(workspaceContext)
+    const detectionsByWorkspacePolicy = toWorkspacePolicies(workspacePolicies)(workspaceContext)
 
     Array.forEach(detectionsByWorkspacePolicy, (detections, workspacePolicyIndex) => {
       const maybeSlot = Array.get(workspaceSlots, workspacePolicyIndex)

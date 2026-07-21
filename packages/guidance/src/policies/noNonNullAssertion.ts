@@ -1,5 +1,5 @@
 import { noNonNullAssertionMatcher } from "@better-typescript/matchers/builtins/noNonNullAssertion"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid non-null assertions."
@@ -10,7 +10,7 @@ const hint =
   "with Option.fromNullishOr and handle both branches (Option.match, " +
   "Option.getOrElse), or narrow it with a type guard the checker verifies."
 
-export const noNonNullAssertion = defineBuiltinPolicy(
+export const noNonNullAssertion = makeBuiltinPolicy(
   "no-non-null-assertion",
   noNonNullAssertionMatcher,
   factGuidance(message, hint)

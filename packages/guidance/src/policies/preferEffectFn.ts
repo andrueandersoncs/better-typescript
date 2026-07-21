@@ -1,11 +1,11 @@
 import { Function, Option, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import {
   preferEffectFnMatcher,
   type PreferEffectFnFact
 } from "@better-typescript/matchers/builtins/preferEffectFn"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const ordinaryHint = (functionName: string) =>
   `Rewrite it as const ${functionName} = Effect.fn("${functionName}")(function* (...) ` +
@@ -20,7 +20,7 @@ const selfBoundHint = (functionName: string, selfBinding: string, thisType: stri
 const defaultThisType = "..."
 const defaultThisTypeFallback = Function.constant(defaultThisType)
 
-const preferEffectFnFindings = (match: Match<PreferEffectFnFact>) => {
+const makePreferEffectFnFindings = (match: Match<PreferEffectFnFact>) => {
   const { functionName } = match.fact
   const selfBinding = Option.fromNullishOr(match.fact.selfBindingText)
 
@@ -42,7 +42,7 @@ const preferEffectFnFindings = (match: Match<PreferEffectFnFact>) => {
     })
   )
 
-  return oneFinding(
+  return makeFindings(
     match.target,
     `Avoid wrapping the body of ${functionName} in Effect.gen; use Effect.fn.`,
     hint,
@@ -50,8 +50,8 @@ const preferEffectFnFindings = (match: Match<PreferEffectFnFact>) => {
   )
 }
 
-export const preferEffectFn = defineBuiltinPolicy(
+export const preferEffectFn = makeBuiltinPolicy(
   "prefer-effect-fn",
   preferEffectFnMatcher,
-  Function.constant(preferEffectFnFindings)
+  Function.constant(makePreferEffectFnFindings)
 )

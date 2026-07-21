@@ -1,5 +1,5 @@
 import { noInlineClosuresMatcher } from "@better-typescript/matchers/builtins/noInlineClosures"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -12,7 +12,7 @@ const hint =
   "expression sequences several steps, prefer a generator (Option.gen or Effect.gen) " +
   "over nesting functions."
 
-export const noInlineClosures = defineBuiltinPolicy(
+export const noInlineClosures = makeBuiltinPolicy(
   "no-inline-closures",
   noInlineClosuresMatcher,
   factGuidance(message, hint)

@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Predicate, Struct, Tuple, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { conciseArrowBody, unwrapCarrier } from "../support/tsNode.js"
 import { foldAst } from "../sources/sources.js"
 import { strictEqual } from "../equivalence.js"
@@ -187,7 +187,7 @@ const matches = (context: MatchContext) => {
         const style = isSingleStep ? "eta" : "flow"
         const fact = PreferEtaReductionFact.make({ style })
 
-        return nodeMatch(arrowFunction, fact)
+        return makeNodeMatch(arrowFunction, fact)
       }),
       Option.toArray
     )

@@ -9,7 +9,11 @@ import {
   symbolUsageFor
 } from "./architectureExplore/programSymbols.js"
 import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
-import { fileMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeFileMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const exportSurfaceElements =
   (index: ExportSymbolIndex) =>
@@ -58,14 +62,12 @@ const exportSurfaceElements =
     const projectPath = relative(context.sourceFile.fileName)
     const workspacePath = workspaceRelative(projectPath)
     const fact = ExportSurfaceData.make({ workspacePath, symbols })
-    const reported = fileMatch(context.sourceFile, fact)
+    const reported = makeFileMatch(context.sourceFile, fact)
     return Array.of(reported)
   }
 
 const exportSurfaceSubscriptions = Function.compose(exportSurfaceElements, fileSubscriptions)
 
-const exportSurfaceCheck = withProgramMatcherIndex(buildExportSymbolIndex)(
+export const exportSurface = withProgramMatcherIndex(buildExportSymbolIndex)(
   exportSurfaceSubscriptions
 )
-
-export const exportSurface = exportSurfaceCheck

@@ -1586,7 +1586,7 @@ const shapeGroups = (
   )
 }
 
-const structuralRoleStem = (name: string) => {
+export const functionDerivedStem = (name: string) => {
   const stemWithoutSuffix = (suffix: string) => name.slice(0, -suffix.length)
 
   return pipe(
@@ -1596,8 +1596,6 @@ const structuralRoleStem = (name: string) => {
     Option.filter((stem) => stem.length > 0)
   )
 }
-
-export const functionDerivedStem = structuralRoleStem
 
 export const buildConceptIndex = (context: ProgramContext) => {
   const checker = context.checker

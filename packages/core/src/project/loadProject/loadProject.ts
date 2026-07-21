@@ -4,7 +4,7 @@ import * as ts from "typescript"
 import type { Policy } from "../../engine/policy/data.js"
 import type { Detection } from "../../engine/location/data.js"
 import { makeContext } from "@better-typescript/matchers/sources"
-import { compilerOptionsForPolicies, runPolicies } from "../../engine/policy/policy.js"
+import { compilerOptionsForPolicies, toPolicies } from "../../engine/policy/policy.js"
 import { strictEqual } from "../../engine/equivalence.js"
 import {
   CircularProjectReferenceError,
@@ -104,7 +104,7 @@ export const runPolicyOnProject =
       const program = programForPolicies(policies)(project.program)
       const createContext = makeContext(project.rootPath)
       const context = createContext(program)
-      const policiesInEveryFile = runPolicies(policies)(includeEverySourceFile)
+      const policiesInEveryFile = toPolicies(policies)(includeEverySourceFile)
       const detections = policiesInEveryFile(context)
 
       return pipe(detections, Array.head, Option.getOrElse(noDetections))

@@ -1,7 +1,7 @@
 import { Array, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { hasExportModifier, unwrapTransparentExpression } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -115,7 +115,7 @@ const monomorphicStructGetMatches = (context: MatchContext) => {
         yield* Option.liftPredicate(typeNodeIsNonGenericCallable)(typeNode)
         yield* Option.liftPredicate(initializerIsStructGet)(initializer)
 
-        return nodeMatch(typeNode, emptyNoMonomorphicStructGetFact)
+        return makeNodeMatch(typeNode, emptyNoMonomorphicStructGetFact)
       }),
       Option.toArray
     )

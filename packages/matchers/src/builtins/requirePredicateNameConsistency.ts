@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type Match, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
@@ -162,7 +162,7 @@ const nonBooleanPredicateFinding = (semantics: CallableSemantics) =>
       shape: semantics.result.shape
     })
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const booleanIncompatibleFinding = (semantics: CallableSemantics) =>
@@ -181,7 +181,7 @@ const booleanIncompatibleFinding = (semantics: CallableSemantics) =>
       operation
     })
 
-    return nodeMatch(semantics.node, fact)
+    return makeNodeMatch(semantics.node, fact)
   })
 
 const matchesForSemantics = (semantics: CallableSemantics) => {

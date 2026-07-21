@@ -19,9 +19,9 @@ import type { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { reportEvents, watchWorkspace } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
-import { definePolicy, oneFinding } from "@better-typescript/core/engine/policy"
+import { makePolicy, makeFindings } from "@better-typescript/core/engine/policy"
 import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { nodeMatch } from "@better-typescript/matchers/matcher/data"
+import { makeNodeMatch } from "@better-typescript/matchers/matcher/data"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
 
@@ -40,12 +40,12 @@ const probeExamples = makeInlineRefactorExamples([
   )
 ])
 
-const throwProbePolicy = definePolicy({
+const throwProbePolicy = makePolicy({
   name: probeName,
   matcher: nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(() => (node) => [
-    nodeMatch(node, null)
+    makeNodeMatch(node, null)
   ]),
-  guidance: () => (match) => oneFinding(match.target, probeMessage, probeHint, null),
+  guidance: () => (match) => makeFindings(match.target, probeMessage, probeHint, null),
   examples: probeExamples
 })
 

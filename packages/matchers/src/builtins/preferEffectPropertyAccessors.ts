@@ -1,7 +1,7 @@
 import { Array, Function, Option, Tuple, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import {
   isFunctionDefinition,
   unwrapTransparentExpression,
@@ -128,7 +128,7 @@ const propertyAccessorMatches = (context: MatchContext) => {
       propertyKey
     })
 
-    return nodeMatch(access, fact)
+    return makeNodeMatch(access, fact)
   }
 
   const matches = (node: ts.Node) =>

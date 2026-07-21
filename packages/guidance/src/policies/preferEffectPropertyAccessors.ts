@@ -1,17 +1,17 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   preferEffectPropertyAccessorsMatcher,
   type PreferEffectPropertyAccessorsFact
 } from "@better-typescript/matchers/builtins/preferEffectPropertyAccessors"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const preferEffectPropertyAccessorsGuidance: Guidance<PreferEffectPropertyAccessorsFact> =
   () => (match) => {
     const { name, accessedText, moduleName, propertyKey } = match.fact
     const suggestion = `${moduleName}.get(${propertyKey})`
 
-    return oneFinding(
+    return makeFindings(
       match.target,
       `Avoid defining ${name} only to read ${accessedText}.`,
       `Replace this property-access-only function with ${suggestion} from Effect. ` +
@@ -20,7 +20,7 @@ const preferEffectPropertyAccessorsGuidance: Guidance<PreferEffectPropertyAccess
     )
   }
 
-export const preferEffectPropertyAccessors = defineBuiltinPolicy(
+export const preferEffectPropertyAccessors = makeBuiltinPolicy(
   "prefer-effect-property-accessors",
   preferEffectPropertyAccessorsMatcher,
   preferEffectPropertyAccessorsGuidance

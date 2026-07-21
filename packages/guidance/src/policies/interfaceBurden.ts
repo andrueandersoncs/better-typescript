@@ -1,5 +1,5 @@
 import { interfaceBurden as interfaceBurdenMatcher } from "@better-typescript/matchers/builtins/interfaceBurden"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Interface size is evidence, not a depth verdict. Architecture Explore combines it with low-leverage forwarding before recommending a smaller, deeper interface."
 
-export const interfaceBurden = defineSilentBuiltinPolicy(
+export const interfaceBurden = makeSilentBuiltinPolicy(
   "interface-burden",
   interfaceBurdenMatcher,
   factGuidance(message, hint)

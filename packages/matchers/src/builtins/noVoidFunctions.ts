@@ -8,7 +8,7 @@ import {
 } from "../support/tsNode.js"
 import { isVoidType, permitsVoid } from "../support/tsType.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoVoidFunctionsFact is empty payload because guidance and matchers share identity.
 export const NoVoidFunctionsFact = Schema.Struct({})
@@ -87,7 +87,7 @@ const voidFunctionsMatches = (context: MatchContext) => {
     }
 
     const node = namedDetectionTarget(declaration)
-    const match = nodeMatch(node, emptyNoVoidFunctionsFact)
+    const match = makeNodeMatch(node, emptyNoVoidFunctionsFact)
 
     return Array.of(match)
   }

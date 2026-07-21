@@ -4,7 +4,7 @@ import { onlyBlankBetween } from "../sources/comments.js"
 import type { SourceComment } from "../sources/commentsData.js"
 import { strictEqual } from "../equivalence.js"
 import { fileMatcher } from "../matcher/matcher.js"
-import { positionMatch, type MatchContext } from "../matcher/data.js"
+import { makePositionMatch, type MatchContext } from "../matcher/data.js"
 
 // NoMultiLineCommentsFact is empty payload because guidance and matchers share identity.
 export const NoMultiLineCommentsFact = Schema.Struct({})
@@ -50,7 +50,7 @@ const multiLineCommentsMatches = (context: MatchContext) => {
   const matchCommentPosition = (pos: number) => {
     const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(pos)
 
-    return positionMatch(
+    return makePositionMatch(
       sourceFile,
       lineAndCharacter.line + 1,
       lineAndCharacter.character + 1,

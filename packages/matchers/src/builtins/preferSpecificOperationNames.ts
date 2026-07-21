@@ -11,7 +11,7 @@ import {
   Schema
 } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
@@ -276,7 +276,7 @@ const matches = (context: MatchContext) => {
         renamed
       })
 
-      return nodeMatch(semantics.node, fact)
+      return makeNodeMatch(semantics.node, fact)
     })
 
   const matchFunctionDefinition = (definition: FunctionDefinition) =>

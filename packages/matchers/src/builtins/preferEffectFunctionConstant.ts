@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import {
   conciseArrowBody,
   declarationListIsConst,
@@ -198,7 +198,7 @@ const functionConstantMatches = (context: MatchContext) => {
         const expressionText = expression.getText(context.sourceFile)
         const fact = PreferEffectFunctionConstantFact.make({ expressionText })
 
-        return nodeMatch(node, fact)
+        return makeNodeMatch(node, fact)
       }),
       Option.toArray
     )

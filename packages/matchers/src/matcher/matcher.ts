@@ -286,8 +286,6 @@ export const makeWorkspaceMatcher = (
   match: (context: WorkspaceContext) => ReadonlyArray<Match<unknown>>
 ) => new WorkspaceMatcher({ match })
 
-export const workspaceMatcher = makeWorkspaceMatcher
-
 export const runWorkspaceMatchers =
   (matchers: ReadonlyArray<WorkspaceMatcher>) =>
   (context: WorkspaceContext): ReadonlyArray<ReadonlyArray<Match<unknown>>> =>

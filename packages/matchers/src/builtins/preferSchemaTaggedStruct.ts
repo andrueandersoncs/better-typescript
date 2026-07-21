@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { namedDetectionTarget } from "../support/tsNode.js"
 import { dataTaggedClassHeritage, typeIsWireSafe } from "../support/taggedClassPortability.js"
 import { strictEqual } from "../equivalence.js"
@@ -49,7 +49,7 @@ const portableDataTaggedClassMatches = (context: MatchContext) => {
       Option.filter(fieldsAreWireSafe(checker)),
       Option.map(() => {
         const target = namedDetectionTarget(declaration)
-        const match = nodeMatch(target, emptyPreferSchemaTaggedStructFact)
+        const match = makeNodeMatch(target, emptyPreferSchemaTaggedStructFact)
 
         return match
       }),

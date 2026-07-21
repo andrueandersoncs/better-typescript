@@ -1,17 +1,17 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeFindings } from "@better-typescript/core/engine/policy"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import {
   noDuplicateFunctionNamesMatcher,
   type NoDuplicateFunctionNamesFact
 } from "@better-typescript/matchers/builtins/noDuplicateFunctionNames"
 
-const noDuplicateFunctionNamesFindings = (match: Match<NoDuplicateFunctionNamesFact>) => {
+const makeNoDuplicateFunctionNamesFindings = (match: Match<NoDuplicateFunctionNamesFact>) => {
   const functionName = match.fact.functionName
   const otherFiles = match.fact.otherFiles
 
-  return oneFinding(
+  return makeFindings(
     match.target,
     `Avoid declaring the top-level function ${functionName} with an identical signature in multiple files.`,
     `${functionName} is declared with the same signature in ${otherFiles}, which makes ` +
@@ -24,8 +24,8 @@ const noDuplicateFunctionNamesFindings = (match: Match<NoDuplicateFunctionNamesF
   )
 }
 
-export const noDuplicateFunctionNames = defineBuiltinPolicy(
+export const noDuplicateFunctionNames = makeBuiltinPolicy(
   "no-duplicate-function-names",
   noDuplicateFunctionNamesMatcher,
-  Function.constant(noDuplicateFunctionNamesFindings)
+  Function.constant(makeNoDuplicateFunctionNamesFindings)
 )

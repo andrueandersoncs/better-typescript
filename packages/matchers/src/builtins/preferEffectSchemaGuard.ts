@@ -1,7 +1,7 @@
 import { Array, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { unwrapExpression } from "../support/tsNode.js"
 import { astChildren } from "../sources/sources.js"
 import { strictEqual } from "../equivalence.js"
@@ -52,7 +52,7 @@ const inOperatorGuardMatches = (context: MatchContext) => {
         const objectText = expression.right.getText(sourceFile)
         const fact = PreferEffectSchemaGuardFact.make({ propertyName, objectText })
 
-        return nodeMatch(expression, fact)
+        return makeNodeMatch(expression, fact)
       })
     )
 

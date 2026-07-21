@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { isDeclarationStatement, isStatementContainer } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoBlankLinesBetweenSingleLineDeclarationsFact is empty because matchers share identity.
 export const NoBlankLinesBetweenSingleLineDeclarationsFact = Schema.Struct({})
@@ -136,7 +136,7 @@ const blankLinesBetweenSingleLineDeclarationsMatches = (context: MatchContext) =
       return Array.empty()
     }
 
-    const match = nodeMatch(node, emptyNoBlankLinesBetweenSingleLineDeclarationsFact)
+    const match = makeNodeMatch(node, emptyNoBlankLinesBetweenSingleLineDeclarationsFact)
 
     return Array.of(match)
   }

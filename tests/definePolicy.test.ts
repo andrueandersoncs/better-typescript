@@ -5,15 +5,15 @@ import type { Subscription } from "@better-typescript/matchers/matcher/data"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import { defineSilentPolicy } from "@better-typescript/core/engine/policy"
+import { makeSilentPolicy } from "@better-typescript/core/engine/policy"
 import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher"
-import { defineSilentBuiltinPolicy } from "@better-typescript/guidance/definePolicy"
+import { makeSilentBuiltinPolicy } from "@better-typescript/guidance/definePolicy"
 
 const emptyPlan = (_context: ProgramContext): ReadonlyArray<Subscription> => Array.empty()
 const emptyGuidance = () => () => Array.empty()
 
-test("defineSilentBuiltinPolicy owns policy identity, examples, and report policy", async () => {
-  const policy = defineSilentBuiltinPolicy(
+test("makeSilentBuiltinPolicy owns policy identity, examples, and report policy", async () => {
+  const policy = makeSilentBuiltinPolicy(
     "prefer-curried-data-last-functions",
     makeMatcherFromSubscriptions(emptyPlan),
     emptyGuidance
@@ -26,9 +26,9 @@ test("defineSilentBuiltinPolicy owns policy identity, examples, and report polic
   assert.equal(examples.length > 0, true)
 })
 
-test("defineSilentPolicy owns an existing matcher's identity and report policy", async () => {
+test("makeSilentPolicy owns an existing matcher's identity and report policy", async () => {
   const matcher = makeMatcherFromSubscriptions(emptyPlan)
-  const named = defineSilentPolicy({
+  const named = makeSilentPolicy({
     name: "architecture-evidence",
     matcher,
     guidance: emptyGuidance,

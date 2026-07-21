@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { transparentWrapperKinds } from "../support/tsNode.js"
 import { isExternalPackageArgument } from "../support/tsSignature.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoInlineClosuresFact is empty payload because guidance and matchers share identity.
 export const NoInlineClosuresFact = Schema.Struct({})
@@ -36,7 +36,7 @@ const inlineClosuresMatches = (context: MatchContext) => {
       return Array.empty()
     }
 
-    const match = nodeMatch(arrowFunction.equalsGreaterThanToken, emptyNoInlineClosuresFact)
+    const match = makeNodeMatch(arrowFunction.equalsGreaterThanToken, emptyNoInlineClosuresFact)
 
     return Array.of(match)
   }

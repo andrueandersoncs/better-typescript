@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import { alwaysExitsScope } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -98,15 +98,15 @@ const isLongEnough = Function.flow(chainLengthFrom, (length) => length >= minimu
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-const toManualTypeDispatchMatch = (node: ts.IfStatement) =>
-  nodeMatch(node, emptyNoManualTypeDispatchFact)
+const makeManualTypeDispatchMatch = (node: ts.IfStatement) =>
+  makeNodeMatch(node, emptyNoManualTypeDispatchFact)
 
 const matchManualTypeDispatch = (ifStatement: ts.IfStatement) =>
   pipe(
     Option.liftPredicate(isDispatchGuard)(ifStatement),
     Option.filter(isChainHead),
     Option.filter(isLongEnough),
-    Option.map(toManualTypeDispatchMatch),
+    Option.map(makeManualTypeDispatchMatch),
     Option.toArray
   )
 

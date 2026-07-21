@@ -1,5 +1,5 @@
 import { requireBecauseInCommentsMatcher } from "@better-typescript/matchers/builtins/requireBecauseInComments"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = 'Comments must include the word "because".'
@@ -9,7 +9,7 @@ const hint =
   'code or approach is necessary using the word "because". Every comment carries this ' +
   "obligation; there are no exempt comment forms."
 
-export const requireBecauseInComments = defineBuiltinPolicy(
+export const requireBecauseInComments = makeBuiltinPolicy(
   "require-because-in-comments",
   requireBecauseInCommentsMatcher,
   factGuidance(message, hint)

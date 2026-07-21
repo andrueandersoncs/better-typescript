@@ -25,7 +25,11 @@ import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { isTestSourceFile } from "./architectureExplore/paths.js"
 import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
 import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const emptySeamCounts = (): readonly [number, number, number] => Tuple.make(0, 0, 0)
 
@@ -432,13 +436,11 @@ const contextTagSeamElements =
           consumerCount
         })
 
-        return nodeMatch(detectionNode, data)
+        return makeNodeMatch(detectionNode, data)
       })
     )
   }
 
 const contextTagSeamSubscriptions = Function.compose(contextTagSeamElements, fileSubscriptions)
 
-const contextTagSeamCheck = withProgramMatcherIndex(buildIndex)(contextTagSeamSubscriptions)
-
-export const contextTagSeams = contextTagSeamCheck
+export const contextTagSeams = withProgramMatcherIndex(buildIndex)(contextTagSeamSubscriptions)

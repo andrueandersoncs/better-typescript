@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import { unwrapExpression } from "../support/tsNode.js"
 
 // NoInlineBooleanExpressionsFact is empty payload because guidance and matchers share identity.
@@ -33,7 +33,7 @@ const matchInlineBooleanExpression = (ifStatement: ts.IfStatement) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(expression, emptyNoInlineBooleanExpressionsFact)
+  const match = makeNodeMatch(expression, emptyNoInlineBooleanExpressionsFact)
 
   return Array.of(match)
 }

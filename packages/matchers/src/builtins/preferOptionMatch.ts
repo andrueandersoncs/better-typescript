@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Tuple, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import { unwrapTransparentExpression } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -80,7 +80,7 @@ const matchOptionGuardConditional = (conditional: ts.ConditionalExpression) =>
         argumentName
       })
 
-      return nodeMatch(conditional, fact)
+      return makeNodeMatch(conditional, fact)
     }),
     Option.toArray
   )

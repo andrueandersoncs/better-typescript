@@ -2,7 +2,7 @@ import { Array, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeSubscriptions } from "@better-typescript/matchers/matcher"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match,
   type MatchContext,
   type Subscription
@@ -55,7 +55,7 @@ const detectionFromFinding =
       subject: finding.subject
     })
 
-    return nodeMatch(finding.node, data)
+    return makeNodeMatch(finding.node, data)
   }
 
 const ruleElements =

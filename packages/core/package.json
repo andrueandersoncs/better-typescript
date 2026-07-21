@@ -17,6 +17,7 @@
     "./engine/report": "./dist/engine/report/report.js",
     "./engine/report/data": "./dist/engine/report/data.js",
     "./engine/wiring": "./dist/engine/wiring/wiring.js",
+    "./engine/wiring/collect": "./dist/engine/wiring/collect.js",
     "./engine/wiring/data": "./dist/engine/wiring/data.js",
     "./engine/signal": "./dist/engine/signal/signal.js",
     "./engine/signal/data": "./dist/engine/signal/data.js",

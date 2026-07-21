@@ -1,19 +1,17 @@
 import { Array, Effect, Option, Predicate, pipe } from "effect"
 import { Wiring, WiringEntry, type WiringConfig } from "../../engine/wiring/data.js"
-import { defineConfig, isFileGlob } from "../../engine/wiring/wiring.js"
+import { isFileGlob } from "../../engine/wiring/globs.js"
+import { defineConfig } from "../../engine/wiring/wiring.js"
 import {
   failConfig,
-  formatCause as formatCauseImpl,
+  formatCause,
   isFunctionType,
   isRecord,
-  makeProjectWiringConfigError as makeProjectWiringConfigErrorImpl,
+  makeProjectWiringConfigError,
   resolvedExport
 } from "./decodeExport.js"
 import { validatePolicies } from "./decodePolicy.js"
 import type { ProjectWiringConfigError } from "./data.js"
-
-export const formatCause = formatCauseImpl
-export const makeProjectWiringConfigError = makeProjectWiringConfigErrorImpl
 
 const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(function* (
   configPath: string,

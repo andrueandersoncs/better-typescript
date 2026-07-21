@@ -9,7 +9,11 @@ import {
   exportReferenceIndex
 } from "./architectureExplore/architectureEvidence.js"
 import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const sourceBelongsToProject = (context: MatchContext) => {
   const sourcePath = path.resolve(context.projectRoot, context.sourceFile.fileName)
@@ -61,7 +65,7 @@ const testOnlyExportElements =
           testCallCount: usage.testCallCount
         })
 
-        const reported = nodeMatch(entry.nameNode, data)
+        const reported = makeNodeMatch(entry.nameNode, data)
 
         return Result.succeed(reported)
       })
@@ -70,6 +74,4 @@ const testOnlyExportElements =
 
 const testOnlyExportSubscriptions = Function.compose(testOnlyExportElements, fileSubscriptions)
 
-const testOnlyExportCheck = evidenceMatcher(exportReferenceIndex)(testOnlyExportSubscriptions)
-
-export const testOnlyExports = testOnlyExportCheck
+export const testOnlyExports = evidenceMatcher(exportReferenceIndex)(testOnlyExportSubscriptions)

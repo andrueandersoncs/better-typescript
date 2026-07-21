@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isFirstPartySymbol, symbolDeclarations } from "../support/tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -141,7 +141,7 @@ const firstPartySchemaDeclareMatches = (context: MatchContext) => {
         typeName: name
       })
 
-      return nodeMatch(call, fact)
+      return makeNodeMatch(call, fact)
     }
 
     const declareMatch = isDeclareOnSchema

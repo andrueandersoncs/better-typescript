@@ -2,7 +2,7 @@ import { Array, Function, Match, Option, Record as EffectRecord, Struct, pipe, f
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import {
-  nodeMatch,
+  makeNodeMatch,
   type Match as FactMatch,
   type MatchContext,
   type Subscription
@@ -86,7 +86,7 @@ const boundaryDetection = (
     targetRole: resolvedTargetRole
   })
 
-  return nodeMatch(node, data)
+  return makeNodeMatch(node, data)
 }
 
 const allowedTargetRoles: Readonly<

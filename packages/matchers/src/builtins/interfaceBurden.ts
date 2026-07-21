@@ -5,7 +5,11 @@ import { toWorkspacePath } from "./architectureExplore/paths.js"
 import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
 import { toRelativeFileName } from "../support/paths.js"
 import { fileMatcher } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const minimumOperations = 4
 
@@ -223,11 +227,9 @@ const interfaceBurdenElements = (
     workspacePath
   })
 
-  const reported = nodeMatch(node, data)
+  const reported = makeNodeMatch(node, data)
 
   return Array.of(reported)
 }
 
-const interfaceBurdenCheck = fileMatcher(interfaceBurdenElements)
-
-export const interfaceBurden = interfaceBurdenCheck
+export const interfaceBurden = fileMatcher(interfaceBurdenElements)

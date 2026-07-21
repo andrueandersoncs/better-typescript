@@ -7,7 +7,11 @@ import { ModuleEdge } from "./architectureExplore/moduleEdges.js"
 import { evidenceMatcher, moduleEdges } from "./architectureExplore/architectureEvidence.js"
 import { toRelativeFileName } from "../support/paths.js"
 import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const buildIndex = (context: ProgramContext): readonly [ReadonlyArray<ModuleEdge>, string] => {
   const edges = moduleEdges(context)
@@ -53,13 +57,11 @@ const moduleGraphElements =
       importedWorkspacePaths
     })
 
-    const reported = nodeMatch(node, data)
+    const reported = makeNodeMatch(node, data)
 
     return Array.of(reported)
   }
 
 const moduleGraphSubscriptions = Function.compose(moduleGraphElements, fileSubscriptions)
 
-const moduleGraphCheck = evidenceMatcher(buildIndex)(moduleGraphSubscriptions)
-
-export const moduleGraph = moduleGraphCheck
+export const moduleGraph = evidenceMatcher(buildIndex)(moduleGraphSubscriptions)

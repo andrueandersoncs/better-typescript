@@ -4,7 +4,7 @@ import { isInAmbientContext } from "../support/tsNode.js"
 import { hasCallSignature, isVoidType } from "../support/tsType.js"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoCallbacksFact is empty payload because guidance and matchers share identity.
 export const NoCallbacksFact = Schema.Struct({})
@@ -122,7 +122,7 @@ const callbacksMatches = (context: MatchContext) => {
       return Array.empty()
     }
 
-    const match = nodeMatch(declaration, emptyNoCallbacksFact)
+    const match = makeNodeMatch(declaration, emptyNoCallbacksFact)
 
     return Array.of(match)
   }

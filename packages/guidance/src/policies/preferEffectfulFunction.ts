@@ -1,15 +1,15 @@
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import type { Guidance } from "@better-typescript/core/engine/policy/data"
 import {
   preferEffectfulFunctionMatcher,
   type PreferEffectfulFunctionFact
 } from "@better-typescript/matchers/builtins/preferEffectfulFunction"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const preferEffectfulFunctionGuidance: Guidance<PreferEffectfulFunctionFact> = () => (match) => {
   const { functionName } = match.fact
 
-  return oneFinding(
+  return makeFindings(
     match.target,
     `Avoid synchronously unwrapping an Effect in ${functionName}.`,
     `Return the Effect from ${functionName} and compose callers with yield* or ` +
@@ -18,7 +18,7 @@ const preferEffectfulFunctionGuidance: Guidance<PreferEffectfulFunctionFact> = (
   )
 }
 
-export const preferEffectfulFunction = defineBuiltinPolicy(
+export const preferEffectfulFunction = makeBuiltinPolicy(
   "prefer-effectful-function",
   preferEffectfulFunctionMatcher,
   preferEffectfulFunctionGuidance

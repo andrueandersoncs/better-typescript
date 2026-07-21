@@ -17,7 +17,11 @@ import {
 } from "./architectureExplore/architectureEvidence.js"
 import { isExpressionBody, unwrapExpression } from "../support/tsNode.js"
 import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import { nodeMatch, type Match, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import {
+  makeNodeMatch,
+  type Match,
+  type MatchContext
+} from "@better-typescript/matchers/matcher/data"
 
 const headStatement = (block: ts.Block) => Array.head(block.statements)
 
@@ -207,7 +211,7 @@ const passThroughElements =
         hasNonCallReference: usage.hasProductionNonCallReference
       })
 
-      return nodeMatch(entry.nameNode, data)
+      return makeNodeMatch(entry.nameNode, data)
     }
 
     const isEntryInSourceFile = flow(
@@ -249,7 +253,7 @@ const passThroughElements =
           hasNonCallReference: false
         })
 
-        return nodeMatch(node, data)
+        return makeNodeMatch(node, data)
       }),
       Option.toArray
     )
@@ -268,6 +272,4 @@ const buildIndex = (
 
 const passThroughSubscriptions = Function.compose(passThroughElements, fileSubscriptions)
 
-const passThroughWrapperCheck = evidenceMatcher(buildIndex)(passThroughSubscriptions)
-
-export const passThroughWrappers = passThroughWrapperCheck
+export const passThroughWrappers = evidenceMatcher(buildIndex)(passThroughSubscriptions)

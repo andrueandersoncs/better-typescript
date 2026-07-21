@@ -1,7 +1,7 @@
 import { Array, Function, HashMap, Option, pipe, Result, Schema } from "effect"
 import * as ts from "typescript"
 import { makeMatcherFromSubscriptions, fileSubscriptions } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { functionDeclarationName, functionInitializer } from "../support/tsNode.js"
 import { isProjectSourceFile } from "../sources/sources.js"
 import type { ProgramContext } from "../sources/data.js"
@@ -128,7 +128,7 @@ const duplicateNameListeners = (index: HashMap.HashMap<string, ReadonlyArray<ts.
         otherFiles
       })
 
-      const match = nodeMatch(candidate, fact)
+      const match = makeNodeMatch(candidate, fact)
 
       return Result.succeed(match)
     }

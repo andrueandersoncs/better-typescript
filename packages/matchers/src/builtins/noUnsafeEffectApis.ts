@@ -13,7 +13,7 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { resolvedSymbolAt } from "../support/tsNode.js"
 import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
 import { astNodesIn } from "../sources/sources.js"
@@ -147,7 +147,7 @@ const unsafeEffectApiMatches = (context: MatchContext) => {
       Option.filter(nameContainsUnsafe),
       Option.filter(symbolDeclaredInEffectPackage),
       Option.map(() => {
-        const match = nodeMatch(reference, emptyNoUnsafeEffectApisFact)
+        const match = makeNodeMatch(reference, emptyNoUnsafeEffectApisFact)
 
         return match
       }),

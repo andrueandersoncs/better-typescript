@@ -1,7 +1,7 @@
 import { Array, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isArrayLikeType } from "../support/tsType.js"
 
 const mutableArrayMethodNames = Array.make<
@@ -57,7 +57,7 @@ const mutableArrayMethodsMatches = (context: MatchContext) => {
         methodName: name
       })
 
-    const matchWithFact = (fact: NoMutableArrayMethodsFact) => nodeMatch(callExpression, fact)
+    const matchWithFact = (fact: NoMutableArrayMethodsFact) => makeNodeMatch(callExpression, fact)
 
     return pipe(methodCall, Option.map(factForMethod), Option.map(matchWithFact), Option.toArray)
   }

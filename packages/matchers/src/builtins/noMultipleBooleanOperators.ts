@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import { unwrapExpression } from "../support/tsNode.js"
 import { astChildren } from "../sources/sources.js"
 import { strictEqual } from "../equivalence.js"
@@ -116,7 +116,7 @@ const matchMultipleBooleanOperators = (expression: BooleanOperatorExpression) =>
     return Array.empty()
   }
 
-  const match = nodeMatch(expression, emptyNoMultipleBooleanOperatorsFact)
+  const match = makeNodeMatch(expression, emptyNoMultipleBooleanOperatorsFact)
 
   return Array.of(match)
 }

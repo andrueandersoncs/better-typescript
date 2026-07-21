@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { isCompositionRoot } from "../support/compositionRoot.js"
 import {
   functionInitializer,
@@ -108,7 +108,7 @@ const effectfulFunctionMatches = (context: MatchContext) => {
         Option.filter(runSyncResult),
         Option.map(() => {
           const fact = PreferEffectfulFunctionFact.make({ functionName })
-          return nodeMatch(functionNameNode, fact)
+          return makeNodeMatch(functionNameNode, fact)
         })
       )
     })

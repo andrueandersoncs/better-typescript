@@ -1,27 +1,27 @@
 import { Function, Match as EffectMatch, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import {
   requireConstructionNameConsistencyMatcher,
   type RequireConstructionFactoryMasqueradeFact,
   type RequireConstructionNameConsistencyFact,
   type RequireConstructionUnnamedConstructionFact
 } from "@better-typescript/matchers/builtins/requireConstructionNameConsistency"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
-const requireConstructionNameConsistencyFindings = (
+const makeRequireConstructionNameConsistencyFindings = (
   match: Match<RequireConstructionNameConsistencyFact>
 ) => {
-  const factoryMasqueradeFindings = (fact: RequireConstructionFactoryMasqueradeFact) =>
-    oneFinding(
+  const makeFactoryMasqueradeFindings = (fact: RequireConstructionFactoryMasqueradeFact) =>
+    makeFindings(
       match.target,
       `${fact.nameText} claims factory construction via ${fact.operation}, but looks up or projects existing data.`,
       "Rename with lookup or projection vocabulary, or return a freshly constructed value.",
       match.fact
     )
 
-  const unnamedConstructionFindings = (fact: RequireConstructionUnnamedConstructionFact) =>
-    oneFinding(
+  const makeUnnamedConstructionFindings = (fact: RequireConstructionUnnamedConstructionFact) =>
+    makeFindings(
       match.target,
       `${fact.nameText} constructs a value, but does not use construction vocabulary.`,
       "Rename with make/create/build/construct (for example makeUser), or use a recognized " +
@@ -31,14 +31,14 @@ const requireConstructionNameConsistencyFindings = (
 
   return pipe(
     EffectMatch.value(match.fact),
-    EffectMatch.when({ kind: "factory-masquerade" }, factoryMasqueradeFindings),
-    EffectMatch.when({ kind: "unnamed-construction" }, unnamedConstructionFindings),
+    EffectMatch.when({ kind: "factory-masquerade" }, makeFactoryMasqueradeFindings),
+    EffectMatch.when({ kind: "unnamed-construction" }, makeUnnamedConstructionFindings),
     EffectMatch.exhaustive
   )
 }
 
-export const requireConstructionNameConsistency = defineBuiltinPolicy(
+export const requireConstructionNameConsistency = makeBuiltinPolicy(
   "require-construction-name-consistency",
   requireConstructionNameConsistencyMatcher,
-  Function.constant(requireConstructionNameConsistencyFindings)
+  Function.constant(makeRequireConstructionNameConsistencyFindings)
 )

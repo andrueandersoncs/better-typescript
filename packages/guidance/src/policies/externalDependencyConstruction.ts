@@ -1,5 +1,5 @@
 import { externalDependencyConstruction as externalDependencyConstructionMatcher } from "@better-typescript/matchers/builtins/externalDependencyConstruction"
-import { defineSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message =
@@ -8,7 +8,7 @@ const message =
 const hint =
   "Architecture Explore classifies concentrated evidence before recommending a real seam with production and test adapters."
 
-export const externalDependencyConstruction = defineSilentBuiltinPolicy(
+export const externalDependencyConstruction = makeSilentBuiltinPolicy(
   "external-dependency-construction",
   externalDependencyConstructionMatcher,
   factGuidance(message, hint)

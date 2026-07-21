@@ -5,7 +5,7 @@ import { isCallLikeExpression } from "../support/tsNode.js"
 import { hasCallSignature } from "../support/tsType.js"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 // NoNestedCallsFact pairs callee labels because guidance names both call sites.
 export const NoNestedCallsFact = Schema.Struct({
@@ -52,7 +52,7 @@ const nestedCallsMatches = (context: MatchContext) => {
         const callText = callLabel(call)
         const consumerText = callLabel(consumer)
         const fact = NoNestedCallsFact.make({ callText, consumerText })
-        const match = nodeMatch(call, fact)
+        const match = makeNodeMatch(call, fact)
 
         return Option.some(match)
       }),

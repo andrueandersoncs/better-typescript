@@ -1,5 +1,5 @@
 import { preferSchemaTaggedStructMatcher } from "@better-typescript/matchers/builtins/preferSchemaTaggedStruct"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Prefer Schema.TaggedStruct when every field has a portable wire representation."
@@ -12,7 +12,7 @@ const hint =
   "Data.TaggedEnum for internal workflow decisions or state. Use Schema.TaggedErrorClass only " +
   "for typed errors."
 
-export const preferSchemaTaggedStruct = defineBuiltinPolicy(
+export const preferSchemaTaggedStruct = makeBuiltinPolicy(
   "prefer-schema-tagged-struct",
   preferSchemaTaggedStructMatcher,
   factGuidance(message, hint)

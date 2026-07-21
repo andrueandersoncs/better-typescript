@@ -1,7 +1,7 @@
 import { Tuple, Array, HashMap, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 
 const mutableVariableDeclarationKinds = Array.make<["let", "var"]>("let", "var")
 
@@ -35,7 +35,7 @@ const mutableVariableDeclarationsMatches = (context: MatchContext) => {
   const matchDeclarationList = (declarationList: ts.VariableDeclarationList) => {
     const matchWithKind = (kind: MutableVariableDeclarationKind) => {
       const fact = NoMutableVariableDeclarationsFact.make({ kind })
-      return nodeMatch(declarationList, fact)
+      return makeNodeMatch(declarationList, fact)
     }
 
     return pipe(

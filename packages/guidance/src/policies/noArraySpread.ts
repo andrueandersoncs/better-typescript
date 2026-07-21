@@ -1,5 +1,5 @@
 import { noArraySpreadMatcher } from "@better-typescript/matchers/builtins/noArraySpread"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const message = "Avoid the array-spread operator when constructing arrays."
@@ -9,7 +9,7 @@ const hint =
   "single element, Array.appendAll or Array.prependAll to combine two arrays, " +
   "and Array.fromIterable to materialize an iterable."
 
-export const noArraySpread = defineBuiltinPolicy(
+export const noArraySpread = makeBuiltinPolicy(
   "no-array-spread",
   noArraySpreadMatcher,
   factGuidance(message, hint)

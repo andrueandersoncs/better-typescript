@@ -1,5 +1,5 @@
 import { preferEffectIndexAccessMatcher } from "@better-typescript/matchers/builtins/preferEffectIndexAccess"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 
 const hint =
@@ -9,7 +9,7 @@ const hint =
 
 const message = "Avoid direct array and tuple index access."
 
-export const preferEffectIndexAccess = defineBuiltinPolicy(
+export const preferEffectIndexAccess = makeBuiltinPolicy(
   "prefer-effect-index-access",
   preferEffectIndexAccessMatcher,
   factGuidance(message, hint)

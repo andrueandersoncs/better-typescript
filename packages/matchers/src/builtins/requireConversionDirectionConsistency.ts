@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Match, Option, pipe, Tuple, Schema } from "effect"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 import {
   callableSemantics,
   functionDefinitionKinds,
@@ -103,7 +103,7 @@ const matches = (context: MatchContext) => {
         expected
       })
 
-      return nodeMatch(semantics.node, fact)
+      return makeNodeMatch(semantics.node, fact)
     }
 
     const resultDisagreement = (claimed: Option.Option<string>) =>

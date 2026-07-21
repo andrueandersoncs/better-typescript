@@ -57,10 +57,8 @@ const hasNonWhitespace = (pattern: string) => pattern.trim().length > 0
 // One glob predicate is canonical here because config loading and defineConfig must not drift.
 export const isFileGlob = Predicate.and(Predicate.isString, hasNonWhitespace)
 
-export const makeGlobPattern = (pattern: string) => {
+export const compileGlobPattern = (pattern: string) => {
   makeRe(pattern, globOptions)
 
   return pattern
 }
-
-export const compileGlobPattern = makeGlobPattern

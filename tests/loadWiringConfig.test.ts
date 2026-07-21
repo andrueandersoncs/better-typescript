@@ -6,11 +6,11 @@ import { fileURLToPath } from "node:url"
 import { Effect, Function, Schema } from "effect"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
-import { workspaceSignalsForProjects } from "@better-typescript/core/engine/wiring"
+import { workspaceSignalsForProjects } from "@better-typescript/core/engine/wiring/collect"
 import { makeContext } from "@better-typescript/matchers/sources"
-import { definePolicy, defineSilentPolicy, oneFinding } from "@better-typescript/core/engine/policy"
+import { makePolicy, makeSilentPolicy, makeFindings } from "@better-typescript/core/engine/policy"
 import { makeMatcherFromSubscriptions, fileMatcher } from "@better-typescript/matchers/matcher"
-import { fileMatch } from "@better-typescript/matchers/matcher/data"
+import { makeFileMatch } from "@better-typescript/matchers/matcher/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
@@ -35,13 +35,13 @@ const emptyGuidance = () => () => []
 
 const makeEmptyPolicy = (name: string, reported = true) =>
   reported
-    ? definePolicy({
+    ? makePolicy({
         name,
         matcher: emptyMatcher,
         guidance: emptyGuidance,
         examples: emptyRefactorExampleSource
       })
-    : defineSilentPolicy({
+    : makeSilentPolicy({
         name,
         matcher: emptyMatcher,
         guidance: emptyGuidance,
@@ -51,18 +51,18 @@ const makeEmptyPolicy = (name: string, reported = true) =>
 const emptyPolicy = makeEmptyPolicy("empty-policy")
 
 const emptyPolicyConfigPreamble = [
-  'import { definePolicy, defineSilentPolicy } from "@better-typescript/core/engine/policy"',
+  'import { makePolicy, makeSilentPolicy } from "@better-typescript/core/engine/policy"',
   'import { makeMatcherFromSubscriptions, fileMatcher } from "@better-typescript/matchers/matcher"',
-  'import { fileMatch } from "@better-typescript/matchers/matcher/data"',
+  'import { makeFileMatch } from "@better-typescript/matchers/matcher/data"',
   'import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"',
-  'import { oneFinding } from "@better-typescript/core/engine/policy"',
+  'import { makeFindings } from "@better-typescript/core/engine/policy"',
   "",
   "const emptyMatcher = makeMatcherFromSubscriptions(() => [])",
   "const emptyGuidance = () => () => []",
   "const makeEmptyPolicy = (name, reported = true) =>",
   "  reported",
-  "    ? definePolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
-  "    : defineSilentPolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
+  "    ? makePolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
+  "    : makeSilentPolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
   ""
 ]
 
@@ -197,11 +197,11 @@ test("decodeWiringConfig accepts a default zero-argument config factory", async 
 
 test("decoded glob config drives workspace signals end to end", async () => {
   await runInTempProject(async (projectDirectory) => {
-    const configuredPolicy = definePolicy({
+    const configuredPolicy = makePolicy({
       name: "config-extra-check",
-      matcher: fileMatcher((context) => [fileMatch(context.sourceFile, null)]),
+      matcher: fileMatcher((context) => [makeFileMatch(context.sourceFile, null)]),
       guidance: () => (match) =>
-        oneFinding(match.target, "configured detection", "loaded from project config", null),
+        makeFindings(match.target, "configured detection", "loaded from project config", null),
       examples: emptyRefactorExampleSource
     })
 
@@ -362,7 +362,7 @@ test("decodeWiringConfig accepts inline RefactorExampleSource policy examples", 
         files: ["src/**/*.ts"],
         wiring: {
           policies: [
-            definePolicy({
+            makePolicy({
               name: "inline-examples",
               matcher: emptyMatcher,
               guidance: emptyGuidance,

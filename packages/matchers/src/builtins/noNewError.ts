@@ -2,7 +2,7 @@ import { Array, Option, Struct, flow, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch } from "../matcher/data.js"
+import { makeNodeMatch } from "../matcher/data.js"
 
 // NoNewErrorFact is empty payload because guidance and matchers share identity.
 export const NoNewErrorFact = Schema.Struct({})
@@ -26,7 +26,7 @@ const noNewErrorMatches = () => (node: ts.NewExpression) => {
     return Array.empty()
   }
 
-  const match = nodeMatch(node, emptyNoNewErrorFact)
+  const match = makeNodeMatch(node, emptyNoNewErrorFact)
 
   return Array.of(match)
 }

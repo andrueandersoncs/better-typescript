@@ -9,8 +9,6 @@ import {
 } from "./tsNode.js"
 import { strictEqual } from "../equivalence.js"
 
-export const isSameNode = strictEqual
-
 export const callArguments = (call: CallLikeExpression): ReadonlyArray<ts.Expression> =>
   call.arguments ?? Array.empty()
 
@@ -47,7 +45,7 @@ export const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> 
     return Option.liftPredicate((call: CallLikeExpression) => {
       const args = callArguments(call)
 
-      return Array.some(args, isSameNode(node))
+      return Array.some(args, strictEqual(node))
     })(parent)
   }
 
@@ -102,7 +100,7 @@ export const argumentConsumingCall = (node: ts.Node): Option.Option<CallLikeExpr
 
   if (isCallLikeExpression(parent)) {
     const args = callArguments(parent)
-    const isArgument = Array.some(args, isSameNode(node))
+    const isArgument = Array.some(args, strictEqual(node))
 
     return isArgument ? Option.some(parent) : Option.none()
   }

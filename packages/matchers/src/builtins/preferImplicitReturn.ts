@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
-import { nodeMatch, type MatchContext } from "../matcher/data.js"
+import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferImplicitReturnFact is empty payload because guidance and matchers share identity.
@@ -38,7 +38,7 @@ const matches = (_context: MatchContext) => (arrowFunction: ts.ArrowFunction) =>
     return Array.empty()
   }
 
-  const match = nodeMatch(arrowFunction.body, emptyPreferImplicitReturnFact)
+  const match = makeNodeMatch(arrowFunction.body, emptyPreferImplicitReturnFact)
 
   return Array.of(match)
 }

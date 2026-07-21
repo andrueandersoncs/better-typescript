@@ -1,6 +1,6 @@
 import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/data"
-import { oneFinding } from "@better-typescript/core/engine/policy"
+import { makeFindings } from "@better-typescript/core/engine/policy"
 import { makeEffectQualityRulesMatcher } from "@better-typescript/matchers/builtins/effectQuality/effectQuality"
 import {
   EffectQualityRuleData,
@@ -10,7 +10,7 @@ import {
   defaultEffectQualityPolicy,
   type EffectQualityPolicy
 } from "@better-typescript/matchers/builtins/effectQuality/policy"
-import { defineBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../definePolicy.js"
 
 const ruleMessages: Readonly<Record<EffectQualityRuleKind, string>> = {
   "unsafe-casts": "Avoid unchecked `as any` assertions in Effect code.",
@@ -89,16 +89,16 @@ const ruleHints: Readonly<Record<EffectQualityRuleKind, string>> = {
   "effect-test-style": "Effect-aware tests provide the correct runtime and deterministic services."
 }
 
-const effectQualityRulesFindings = (match: Match<EffectQualityRuleData>) =>
-  oneFinding(match.target, ruleMessages[match.fact.kind], ruleHints[match.fact.kind], match.fact)
+const makeEffectQualityRulesFindings = (match: Match<EffectQualityRuleData>) =>
+  makeFindings(match.target, ruleMessages[match.fact.kind], ruleHints[match.fact.kind], match.fact)
 
 export const makeEffectQualityRules = (policy: EffectQualityPolicy) => {
   const matcher = makeEffectQualityRulesMatcher(policy)
 
-  return defineBuiltinPolicy(
+  return makeBuiltinPolicy(
     "effect-quality-rules",
     matcher,
-    Function.constant(effectQualityRulesFindings)
+    Function.constant(makeEffectQualityRulesFindings)
   )
 }
 

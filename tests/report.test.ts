@@ -10,10 +10,10 @@ import type { Policy, WorkspacePolicy } from "@better-typescript/core/engine/pol
 import type { Wiring, WiringConfig, WiringPolicy } from "@better-typescript/core/engine/wiring/data"
 import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
 import {
-  definePolicy,
-  defineSilentPolicy,
-  defineWorkspacePolicy,
-  oneFinding
+  makePolicy,
+  makeSilentPolicy,
+  makeWorkspacePolicy,
+  makeFindings
 } from "@better-typescript/core/engine/policy"
 import { signalOf } from "@better-typescript/core/engine/signal"
 import {
@@ -46,10 +46,10 @@ import {
   nodeMatcher
 } from "@better-typescript/matchers/matcher"
 import {
-  directoryMatch,
-  fileMatch,
-  nodeMatch,
-  positionTarget
+  makeDirectoryMatch,
+  makeFileMatch,
+  makeNodeMatch,
+  makePositionTarget
 } from "@better-typescript/matchers/matcher/data"
 import type {
   LoadedProject,
@@ -133,13 +133,13 @@ const collectAstSignatures = (project: LoadedProject): ReadonlyArray<string> => 
 }
 
 const throwProbeMatcher = nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
-  () => (node) => [nodeMatch(node, unit)]
+  () => (node) => [makeNodeMatch(node, unit)]
 )
 
-const throwProbePolicy: Policy = definePolicy({
+const throwProbePolicy: Policy = makePolicy({
   name: "probe throw statements",
   matcher: throwProbeMatcher,
-  guidance: () => (match) => oneFinding(match.target, probeMessage, probeHint, unit),
+  guidance: () => (match) => makeFindings(match.target, probeMessage, probeHint, unit),
   examples: probeExamples
 })
 
@@ -152,17 +152,17 @@ const syntheticSourceFile = (context: { readonly projectRoot: string }, relative
     ts.ScriptKind.TS
   )
 
-const silentProbeNamedPolicy: Policy = defineSilentPolicy({
+const silentProbeNamedPolicy: Policy = makeSilentPolicy({
   name: "silent-only probe",
   matcher: fileMatcher((context) => {
     const projectFiles = context.program
       .getSourceFiles()
       .filter((file) => !file.isDeclarationFile && !file.fileName.includes("node_modules"))
-    return projectFiles[0] === context.sourceFile ? [fileMatch(context.sourceFile, unit)] : []
+    return projectFiles[0] === context.sourceFile ? [makeFileMatch(context.sourceFile, unit)] : []
   }),
   guidance: (context) => () =>
-    oneFinding(
-      positionTarget(syntheticSourceFile(context, "src/silent-observation.ts"), 1, 1),
+    makeFindings(
+      makePositionTarget(syntheticSourceFile(context, "src/silent-observation.ts"), 1, 1),
       "silent observation",
       "silent observations only feed advice",
       unit
@@ -243,15 +243,15 @@ const fixedDetectionPolicy = (
       .getSourceFiles()
       .filter((file) => !file.isDeclarationFile && !file.fileName.includes("node_modules"))
     return projectFiles[0] === context.sourceFile
-      ? Array.of(fileMatch(context.sourceFile, elements))
+      ? Array.of(makeFileMatch(context.sourceFile, elements))
       : []
   })
   const guidance =
     (context: { readonly projectRoot: string }) =>
     (match: { readonly fact: ReadonlyArray<Detection> }) =>
       match.fact.flatMap((element) =>
-        oneFinding(
-          positionTarget(
+        makeFindings(
+          makePositionTarget(
             syntheticSourceFile(context, element.location.path),
             element.location.line ?? 1,
             element.location.column ?? 1
@@ -262,15 +262,15 @@ const fixedDetectionPolicy = (
         )
       )
   return reported
-    ? definePolicy({ name, matcher, guidance: guidance as any, examples })
-    : defineSilentPolicy({ name, matcher, guidance: guidance as any, examples })
+    ? makePolicy({ name, matcher, guidance: guidance as any, examples })
+    : makeSilentPolicy({ name, matcher, guidance: guidance as any, examples })
 }
 
 const fileVisitPolicy = (name: string, message: string, hint: string): Policy =>
-  definePolicy({
+  makePolicy({
     name,
-    matcher: fileMatcher((context) => [fileMatch(context.sourceFile, unit)]),
-    guidance: () => (match) => oneFinding(match.target, message, hint, unit),
+    matcher: fileMatcher((context) => [makeFileMatch(context.sourceFile, unit)]),
+    guidance: () => (match) => makeFindings(match.target, message, hint, unit),
     examples: probeExamples
   })
 
@@ -288,7 +288,7 @@ const emptyMatcher = makeMatcherFromSubscriptions(() => [])
 const emptyGuidance = () => () => []
 
 const namedNoOpPolicy = (name: string): Policy =>
-  definePolicy({
+  makePolicy({
     name,
     matcher: emptyMatcher,
     guidance: emptyGuidance,
@@ -296,7 +296,7 @@ const namedNoOpPolicy = (name: string): Policy =>
   })
 
 const silentNoOpPolicy = (name: string): Policy =>
-  defineSilentPolicy({
+  makeSilentPolicy({
     name,
     matcher: emptyMatcher,
     guidance: emptyGuidance,
@@ -456,13 +456,13 @@ test("each glob wiring derives from only its matching files", async () => {
 })
 
 test("workspace directory policies use scoped canonical paths and deduplicate projects", async () => {
-  const directoryPolicy: WorkspacePolicy = defineWorkspacePolicy({
+  const directoryPolicy: WorkspacePolicy = makeWorkspacePolicy({
     name: "scoped source directory",
     matcher: directoryMatcher((target) =>
-      Array.of(directoryMatch(target, target.sourceFiles.length))
+      Array.of(makeDirectoryMatch(target, target.sourceFiles.length))
     ),
     guidance: () => (match) =>
-      oneFinding(
+      makeFindings(
         match.target,
         "scoped source directory",
         "collect canonical workspace-relative paths before directory matching",
@@ -517,7 +517,7 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
 })
 
 test("an unmatched glob wiring invokes neither policies nor derive", async () => {
-  const mustNotRun = definePolicy({
+  const mustNotRun = makePolicy({
     name: "absent files",
     matcher: makeMatcherFromSubscriptions(() => {
       throw new Error("policy ran")
@@ -537,7 +537,7 @@ test("an unmatched glob wiring invokes neither policies nor derive", async () =>
 
 test("reportEvents does not load examples for a policy without detections", async () => {
   const missingExamples = makeDirectoryRefactorExamples(fixturePath("missing-report-examples"))
-  const noOutputPolicy = definePolicy({
+  const noOutputPolicy = makePolicy({
     name: "no output",
     matcher: emptyMatcher,
     guidance: emptyGuidance,
@@ -588,17 +588,22 @@ test("reportEvents collapses duplicate workspace detections by policy and locati
 })
 
 test("reportEvents preserves two distinct detections emitted at the same AST location", async () => {
-  const doubleDetectionPolicy = definePolicy({
+  const doubleDetectionPolicy = makePolicy({
     name: "two messages on one node",
     matcher: nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(() => (node) => [
-      nodeMatch(node, "first"),
-      nodeMatch(node, "second")
+      makeNodeMatch(node, "first"),
+      makeNodeMatch(node, "second")
     ]),
     guidance: () => (match) => {
       const which = match.fact as string
       return which === "first"
-        ? oneFinding(match.target, "first interpretation", "handle the first interpretation", unit)
-        : oneFinding(
+        ? makeFindings(
+            match.target,
+            "first interpretation",
+            "handle the first interpretation",
+            unit
+          )
+        : makeFindings(
             match.target,
             "second interpretation",
             "handle the second interpretation",
