@@ -229,19 +229,24 @@ These are principle-level constraints for repository-owned, non-generated TypeSc
     ```
 
 18. **Resource.** A stateful system or source of effects that an operation does not own as an ordinary
-    input value and accesses through an injected capability.
+    input value and reaches through an injected capability.
 
     ```ts
-    const users = new Map<UserId, User>()
+    export class UserStore extends Context.Service<
+      UserStore,
+      { readonly users: ReadonlyMap<UserId, User> }
+    >()("UserStore") {}
 
-    const read = (id: UserId): Effect.Effect<User, UserNotFound> => {
-      const user = users.get(id)
-      return user === undefined
-        ? Effect.fail(new UserNotFound({ id }))
-        : Effect.succeed(user)
-    }
+    const read = (id: UserId): Effect.Effect<User, UserNotFound, UserStore> =>
+      Effect.gen(function* () {
+        const store = yield* UserStore
+        const user = store.users.get(id)
+        return user === undefined
+          ? yield* Effect.fail(new UserNotFound({ id }))
+          : user
+      })
 
-    // The caller supplies only id; `read` accesses the separately owned users resource.
+    // `read` reaches the separately owned map through the injected UserStore capability.
     const user = yield* read(userId)
     ```
 
@@ -525,7 +530,9 @@ These are principle-level constraints for repository-owned, non-generated TypeSc
     const id: UserId = user.id // UserId is reachable through User's declared field.
     ```
 
-37. **Producer.** A companion that creates, decodes, reads, or transforms a domain value.
+37. **Producer.** A companion whose successful output is the primary data structure, whether it
+    constructs, decodes, reads, or transforms input. A serializer, encoder, or companion whose output
+    is another representation is not a producer.
 
     ```ts
     export const decode = (input: unknown): Effect.Effect<User, UserDecodeError> =>
