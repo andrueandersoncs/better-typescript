@@ -14,12 +14,12 @@ import type { Policy } from "@better-typescript/core/engine/policy/data"
 // Category concatenation order is pinned because report block order is a public contract.
 const defaultPolicies: ReadonlyArray<Policy> = pipe(
   effectIdiomPolicies,
+  Array.appendAll(commentAndDeclarationPolicies),
   Array.appendAll(conceptAndCompositionPolicies),
+  Array.appendAll(controlFlowPolicies),
   Array.appendAll(semanticNamingPolicies),
   Array.appendAll(errorHygienePolicies),
-  Array.appendAll(commentAndDeclarationPolicies),
   Array.appendAll(expressionAndMutationPolicies),
-  Array.appendAll(controlFlowPolicies),
   Array.appendAll(dispatchAndCollectionPolicies)
 )
 
