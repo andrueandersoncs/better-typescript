@@ -28,6 +28,7 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Use one `### <Term>` entry per term so it has a stable Markdown anchor.
 - Order entries so an entry appears before any prose use of that term in a later entry or constraint.
 - A definition MUST use only already-defined terms or ordinary language, and MUST identify observable boundaries rather than rely on identifier names, directory names, or presumed intent.
+- A definition MUST state the observable inputs and deterministic membership criterion needed to decide whether a concrete artifact or relationship satisfies it. When a definition narrows another term with a qualifier such as “permitted,” “public,” “production,” or “cross-boundary,” define that qualifier as a separate term or express its criterion directly through a declared field, value, or resolution procedure; never leave a qualifier such as “permitted import location” implicit.
 - In all prose after an entry’s heading—including later definitions and every constraint subsection—render each use of that defined term as an inline Markdown link to its definition.
 - Do not link definition headings or code examples.
 - When a definition’s concept can be demonstrated in TypeScript source, include a specific, complete TypeScript example immediately after that definition; use the example to validate that the concept exists and that the definition describes its observable behavior.
