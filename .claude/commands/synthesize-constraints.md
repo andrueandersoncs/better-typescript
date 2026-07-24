@@ -32,6 +32,7 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Do not link definition headings or code examples.
 - When a definition’s concept can be demonstrated in TypeScript source, include a specific, complete TypeScript example immediately after that definition; use the example to validate that the concept exists and that the definition describes its observable behavior.
 - Each such example MUST use valid TypeScript syntax and real public APIs or language constructs; include necessary imports when they clarify the API.
+- When a definition presents two or more alternatives, examples, choices, categories, or other distinct items—including an informal list joined by “or” or “and”—immediately follow it with one explicit, specific TypeScript example for each item. Do not use one example to imply coverage of multiple items.
 - Omit an example only when TypeScript source cannot demonstrate the concept.
 - When a definition names a contrary, inverse, excluded, or “not this” case—including with “rather than,” “not,” or “except”—its immediately following example MUST show both cases under explicit `**This:**` and `**Not this:**` labels.
 - The `**Not this:**` case MUST establish the named contrary in the source relationship itself; for example, a definition that excludes an HTTP protocol or database driver as a direct input MUST include a code example **demonstrating** what **not to do**, clearly labeled, not merely name it in prose.
