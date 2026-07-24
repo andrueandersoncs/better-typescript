@@ -31,9 +31,10 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - In all prose after an entry’s heading—including later definitions and every constraint subsection—render each use of that defined term as an inline Markdown link to its definition.
 - Do not link definition headings or code examples.
 - When a definition’s concept can be demonstrated in TypeScript source, include a specific, complete TypeScript example immediately after that definition; use the example to validate that the concept exists and that the definition describes its observable behavior.
-- Each such example MUST use valid TypeScript syntax and real public APIs or language constructs; include necessary imports when they clarify the API.
-- When a definition presents two or more alternatives, examples, choices, categories, or other distinct items—including an informal list joined by “or” or “and”—immediately follow it with one explicit, specific TypeScript example for each item. Do not use one example to imply coverage of multiple items.
-- Omit an example only when TypeScript source cannot demonstrate the concept.
+- Every example MUST use source comments to identify the exact declarations, expressions, values, or relationships that exemplify the defined term. Put each comment immediately adjacent to what it identifies; do not make the reader infer the mapping from surrounding code.
+- When a definition presents two or more alternatives, examples, choices, categories, or other distinct items—including an informal list joined by “or” or “and”—immediately follow it with one explicit, specific TypeScript example for each item. If one example demonstrates multiple items, use a separate adjacent source comment for each item.
+- When a definition is directly represented as machine-readable input rather than TypeScript source, include a specific, complete minimal example in that input format immediately after the definition. Use a valid comment-capable variant of the format when annotations are necessary, and apply the same adjacent-comment rule.
+- Omit an example only when neither TypeScript source nor machine-readable input can demonstrate the concept.
 - When a definition names a contrary, inverse, excluded, or “not this” case—including with “rather than,” “not,” or “except”—its immediately following example MUST show both cases under explicit `**This:**` and `**Not this:**` labels.
 - The `**Not this:**` case MUST establish the named contrary in the source relationship itself; for example, a definition that excludes an HTTP protocol or database driver as a direct input MUST include a code example **demonstrating** what **not to do**, clearly labeled, not merely name it in prose.
 
@@ -60,5 +61,5 @@ Return exactly these sections:
 ## Constraints
 
 ```
-Each definition MUST be a separate `### <Term>` entry. Use the entry heading as the link target for every subsequent prose use of that term. Directly after every definition whose concept can be demonstrated in TypeScript source, include a specific minimal TypeScript code example; omit one only when source cannot demonstrate the concept. The `## Definitions` section has no maximum number of entries.
+Each definition MUST be a separate `### <Term>` entry. Use the entry heading as the link target for every subsequent prose use of that term. Directly after every definition whose concept can be demonstrated in TypeScript source or machine-readable input, include a specific minimal example in the applicable format. In every example, use an adjacent source or data comment to identify the exact artifact that exemplifies the definition; when it illustrates multiple listed parts, annotate each part separately. The `## Definitions` section has no maximum number of entries.
 Under `## Constraints`, number each rule and include its rationale, failure mode, scope, exceptions, required mechanical verification, and minimal allowed and violating code examples beside the normative statement.
