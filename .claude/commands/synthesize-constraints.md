@@ -41,14 +41,42 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Omit an example only when neither TypeScript source nor machine-readable input can demonstrate the concept.
 - When a definition names a contrary, inverse, exclusion, prohibition, or “not this” case—including with “rather than,” “not,” “does not,” or “except”—its immediately following example MUST show both cases under explicit `**This:**` and `**Not this:**` labels. A list of excluded items is a list of contrary cases: the `**Not this:**` example set MUST demonstrate and separately label every listed item.
 - The `**Not this:**` case MUST establish the named contrary in the source relationship itself; for example, a definition that excludes an HTTP protocol or database driver as a direct input MUST include a code example **demonstrating** what **not to do**, clearly labeled, not merely name it in prose.
-3. **Synthesize constraints.** For each defining property of the concept, derive the smallest independent constraint that prevents a concrete failure mode. Write one constraint per rule using RFC 2119 language: use `MUST` when violating the rule prevents the concept from being true, `SHOULD` only for a real trade-off, and `MAY` only for permitted alternatives. State the subject, scope, required or prohibited condition, any necessary ordering or ownership fact, and the mechanical verification the constraint requires.
 
-- 4. **Demonstrate each constraint.** Give each constraint a close, complete, coherent, independently type-checkable allowed code example and a close, complete, coherent, independently type-checkable violating code example that clarify or prove its boundary. State exceptions only when they preserve a distinct required property; make them local, narrow, and testable. Do not create catch-all exceptions, compatibility shims, or escape hatches.
+3. **Synthesize a complete constraint set.**
+- First enumerate the defining properties that must all hold for the stated concept, then enumerate the distinct observable ways each property can be violated.
+- Derive the smallest independent constraint that prevents each violation class; do not use a familiar or representative ruleset as a completeness bound.
+- For every rule, use RFC 2119 language: use `MUST` when violating the rule prevents the concept from being true, `SHOULD` only for a real trade-off, and `MAY` only for permitted alternatives.
+- State the subject, required or prohibited condition, any necessary ordering or ownership fact, and the mechanical verification the constraint requires.
+- Before writing, audit coverage in both directions: every defining property and violation class MUST be prevented by at least one constraint, and every constraint MUST be necessary for at least one defining property.
 
-5. **Specify mechanical verification.** For every constraint, design a concrete way to verify it. State the required inputs, deterministic procedure, success criterion, and failure finding. Use static analysis, compilation, tests, executable models, property testing, runtime instrumentation, generated evidence, or another mechanism appropriate to the rule. When existing tooling cannot verify a constraint, propose the tooling, instrumentation, or proof obligation needed to do so; do not replace mechanical verification with human review or omit a necessary constraint because verification is difficult.
+4. **Demonstrate each constraint.**
+- Give each constraint a close, complete, coherent, independently type-checkable allowed code example and a close, complete, coherent, independently type-checkable violating code example that clarify or prove its boundary.
+- Do not include `Failure mode`, `Scope`, or `Exceptions` subsections; the rule itself MUST state its subject and applicability, and a constraint with no permitted alternatives needs no exceptions section.
+- Do not create catch-all exceptions, compatibility shims, or escape hatches.
 
-6. **Keep the constraints coherent.** Ensure every constraint is necessary for the stated concept, prevents a named failure mode, is distinct from every other constraint, and preserves necessary domain distinctions. Prefer deletion or merging over a larger ruleset.
-- 7. **Audit terminology and example coverage before writing the document.** Audit the candidate document, not merely the planned definitions and constraints, as a reader without repository context. Add a definition for every technical term, category, classification, action, state, boundary, or relationship that remains undefined; add or correct every required inline definition link; and remove no definitions merely to keep the glossary short. For each definition, enumerate every item in its prose—including observable inputs, membership requirements, alternatives, categories, facilities, and exclusions—and verify that its immediately following example set has a complete, coherent, independently type-checkable example and adjacent label for every item. Separately verify that every example declares or imports all referenced symbols and that its names, types, and described behavior agree. For each library-specific example, verify that its API is idiomatic against the inspected source examples. Revise until both audits have no omissions; only then write the document.
+5. **Specify mechanical verification.**
+- For every constraint, design a concrete way to verify it.
+- State the required inputs, deterministic procedure, success criterion, and failure finding.
+- Immediately follow that prose with a `**Verification implementation:**` TypeScript code snippet that implements the verifier's essential control flow: inputs, traversal, classification, test, and finding.
+- The snippet MUST be complete, coherent, and independently type-checkable against its stated imports; do not use pseudocode.
+- Use static analysis, compilation, tests, executable models, property testing, runtime instrumentation, generated evidence, or another mechanism appropriate to the rule.
+- When existing tooling cannot verify a constraint, propose the tooling, instrumentation, or proof obligation needed to do so; do not replace mechanical verification with human review or omit a necessary constraint because verification is difficult.
+
+6. **Keep the constraints coherent and complete.**
+- Ensure every constraint is necessary for the stated concept, distinct from every other constraint, and preserves necessary domain distinctions.
+- Reconcile overlapping rules by deleting or merging them only after confirming that their union still covers every defining property and violation class.
+- Test collective sufficiency by constructing a concrete counterexample for each defining property: if code can violate that property while satisfying every drafted constraint, add or strengthen the smallest constraint that rejects it.
+- Repeat until no such counterexample remains.
+
+7. **Audit terminology, completeness, and example coverage before writing the document.**
+- Audit the candidate document, not merely the planned definitions and constraints, as a reader without repository context.
+- Add a definition for every technical term, category, classification, action, state, boundary, or relationship that remains undefined; add or correct every required inline definition link; and remove no definitions merely to keep the glossary short.
+- For each definition, enumerate every item in its prose—including observable inputs, membership requirements, alternatives, categories, facilities, and exclusions—and verify that its immediately following example set has a complete, coherent, independently type-checkable example and adjacent label for every item.
+- Separately prove the constraint set is complete: enumerate every defining property and violation class again, map each to one or more rules, and construct a counterexample that would satisfy the candidate rules if coverage were absent.
+- Add or strengthen rules until every such counterexample is rejected.
+- Separately verify that every example declares or imports all referenced symbols and that its names, types, and described behavior agree.
+- For each library-specific example, verify that its API is idiomatic against the inspected source examples.
+- Revise until all three audits have no omissions; only then write the document.
 
 ## Required output
 
@@ -64,5 +92,6 @@ Return exactly these sections:
 ## Constraints
 
 ```
+
 Each definition MUST be a separate `### <Term>` entry. Use the entry heading as the link target for every subsequent prose use of that term. Directly after every definition whose concept can be demonstrated in TypeScript source or machine-readable input, include a specific minimal example in the applicable format. In every example, use an adjacent source or data comment to identify the exact artifact that exemplifies the definition; when it illustrates multiple listed parts, annotate each part separately. The `## Definitions` section has no maximum number of entries.
-Under `## Constraints`, number each rule and include its rationale, failure mode, scope, exceptions, required mechanical verification, and minimal allowed and violating code examples beside the normative statement.
+Under `## Constraints`, number each rule and include its normative statement, rationale, required mechanical verification, a `**Verification implementation:**` TypeScript snippet, and minimal allowed and violating code examples beside the normative statement.
