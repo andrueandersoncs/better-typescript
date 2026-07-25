@@ -21,7 +21,7 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 
 1. **Reason from first principles.** Identify the properties that make the stated TypeScript project quality or architectural concept true. Derive constraints directly from those properties rather than from existing repository practice or documents.
 
-2. **Define and demonstrate necessary terms.**
+2. **Define, demonstrate, and predicate necessary terms.**
 - Before drafting constraints, inventory every technical term, category, classification, action, state, boundary, and relationship that the planned normative statements rely on.
 - A term is necessary when omitting its definition would leave a reader unable to determine whether a constraint applies; this includes precisely-qualified verbs and states such as “defer,” “execute,” “expose,” “own,” or “escape.”
 - Define every necessary term clearly and precisely in `## Definitions`; there is no numerical limit.
@@ -29,6 +29,8 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Order entries so an entry appears before any prose use of that term in a later entry or constraint.
 - A definition MUST use only already-defined terms or ordinary language, and MUST identify observable boundaries rather than rely on identifier names, directory names, or presumed intent.
 - A definition MUST state the observable inputs and deterministic membership criterion needed to decide whether a concrete artifact or relationship satisfies it. When a definition narrows another term with a qualifier such as “permitted,” “public,” “production,” or “cross-boundary,” define that qualifier as a separate term or express its criterion directly through a declared field, value, or resolution procedure; never leave a qualifier such as “permitted import location” implicit.
+- Every definition MUST immediately state a `**Mechanical predicate:**` with its required inputs, deterministic procedure, and Boolean membership result for a concrete artifact or relationship. This predicate is the classifier that every later constraint verification uses; it MUST decide the definition without human judgment.
+- Immediately follow each `**Mechanical predicate:**` with a `**Predicate implementation:**` TypeScript snippet that implements its essential inputs, traversal or resolution, classification, and Boolean result. The snippet MUST be complete, coherent, and independently type-checkable against its stated imports; do not use pseudocode.
 - Every classification used by a definition or constraint MUST be inferred deterministically from the artifact it classifies: source text or AST, compiler-resolved symbols or types, the resolved module graph, filename or directory conventions, or existing project configuration that defines compiler or build inputs. A classification MUST NOT depend on maintainer-declared intent or a user-maintained mapping.
 - MUST NOT invent or require a manifest, registry, allowlist, or other configuration that assigns roles, kinds, categories, or permissions to individual source modules, exports, dependencies, globals, or other project artifacts. When a proposed category cannot be inferred deterministically, reformulate the constraint around observable implementation behavior; inability to classify is not grounds to introduce a manual mapping.
 - In all prose after an entry’s heading—including later definitions and every constraint subsection—render each use of that defined term as an inline Markdown link to its definition.
@@ -72,6 +74,7 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Audit the candidate document, not merely the planned definitions and constraints, as a reader without repository context.
 - Add a definition for every technical term, category, classification, action, state, boundary, or relationship that remains undefined; add or correct every required inline definition link; and remove no definitions merely to keep the glossary short.
 - For each definition, enumerate every item in its prose—including observable inputs, membership requirements, alternatives, categories, facilities, and exclusions—and verify that its immediately following example set has a complete, coherent, independently type-checkable example and adjacent label for every item.
+- For each definition, verify that its `**Mechanical predicate:**` identifies its concrete input and returns a Boolean membership result, and that its `**Predicate implementation:**` implements that predicate using the declared observable inputs without human judgment.
 - Separately prove the constraint set is complete: enumerate every defining property and violation class again, map each to one or more rules, and construct a counterexample that would satisfy the candidate rules if coverage were absent.
 - Add or strengthen rules until every such counterexample is rejected.
 - Separately verify that every example declares or imports all referenced symbols and that its names, types, and described behavior agree.
@@ -94,4 +97,5 @@ Return exactly these sections:
 ```
 
 Each definition MUST be a separate `### <Term>` entry. Use the entry heading as the link target for every subsequent prose use of that term. Directly after every definition whose concept can be demonstrated in TypeScript source or machine-readable input, include a specific minimal example in the applicable format. In every example, use an adjacent source or data comment to identify the exact artifact that exemplifies the definition; when it illustrates multiple listed parts, annotate each part separately. The `## Definitions` section has no maximum number of entries.
+Each definition MUST also include a `**Mechanical predicate:**` and immediately following `**Predicate implementation:**` TypeScript snippet before its example set. The predicate decides the definition's membership for concrete inputs and is reused by every constraint verification that relies on the definition.
 Under `## Constraints`, number each rule and include its normative statement, rationale, required mechanical verification, a `**Verification implementation:**` TypeScript snippet, and minimal allowed and violating code examples beside the normative statement.
