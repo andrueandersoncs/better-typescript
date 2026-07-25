@@ -12,9 +12,13 @@ maintainer explicitly requests it. Do not read any existing documentation. Your 
 
 ## Objective
 
-Turn the stated TypeScript project quality, architectural concept, or goal into constraints that a maintainer can apply consistently.
-A **constraint** is a **falsifiable**, **mechanically-verifiable** rule that narrows acceptable designs; it is not a restatement of the
-goal, an aesthetic preference, an implementation suggestion, or an unqualified example. Some constraints will require thinking 'outside the box' in order to identify a method of mechanical verification and that's okay! Don't be scared to consider and suggest extreme or unusual methods, the goal is verification by any means necessary. Do **not** omit a constraint just because it would be hard (or impossible!) to verify.
+- Turn the stated TypeScript project quality, architectural concept, or goal into constraints that a maintainer can apply consistently.
+- A **constraint** is a **falsifiable**, **mechanically-verifiable** rule that narrows acceptable designs; it is not a restatement of the goal, an aesthetic preference, an implementation suggestion, or an unqualified example.
+- Some constraints will require thinking 'outside the box' in order to identify a method of mechanical verification and that's okay!
+- Don't be scared to consider and suggest extreme or unusual methods, the goal is verification by any means necessary.
+- Do **not** omit a constraint just because it would be hard (or impossible!) to verify.
+- Before the formal glossary, write an informal top-level definition of the requested concept that gives a technically literate reader an orienting mental model: what property the project has when the concept is true, what it excludes, and how the later constraints collectively establish it.
+- This explanation guides the document but MUST NOT replace falsifiable constraints or formal definitions.
 
 
 ## Method
@@ -32,6 +36,12 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Order entries so an entry appears before any prose use of that term in a later entry or constraint.
 - A definition MUST use only already-defined terms or ordinary language, and MUST identify observable boundaries rather than rely on identifier names, directory names, or presumed intent.
 - A definition MUST state the observable inputs and deterministic membership criterion needed to decide whether a concrete artifact or relationship satisfies it. When a definition narrows another term with a qualifier such as “permitted,” “public,” “production,” or “cross-boundary,” define that qualifier as a separate term or express its criterion directly through a declared field, value, or resolution procedure; never leave a qualifier such as “permitted import location” implicit.
+- When a definition has one or more close synonyms, near-synonyms, or easily-confused neighboring concepts, add a `#### Related terms` comparison table immediately after its prose definition and before its mechanical predicate. 
+- Use the columns `Term`, `Relation`, `Deciding distinction`, and `Why it is not interchangeable here`.
+- Include each materially plausible alternative, identify the observable distinction, and explain why the defined term—not the alternative—is required where a later constraint relies on it.
+- Do not invent distinctions where no plausible related concept exists.
+- Immediately after that table, give a complete, independently type-checkable comparison example set.
+- Use adjacent comments to identify the defined term and every related term, and make the differing observable behavior, type, dependency, lifecycle, or boundary explicit.
 - Every definition MUST immediately state a `**Mechanical predicate:**` with its required inputs, deterministic procedure, and Boolean membership result for a concrete artifact or relationship. This predicate is the classifier that every later constraint verification uses; it MUST decide the definition without human judgment.
 - Immediately follow each `**Mechanical predicate:**` with a `**Predicate implementation:**` TypeScript snippet that implements its essential inputs, traversal or resolution, classification, and Boolean result. The snippet MUST be complete, coherent, and independently type-checkable against its stated imports; do not use pseudocode.
 - Every classification used by a definition or constraint MUST be inferred deterministically from the artifact it classifies: source text or AST, compiler-resolved symbols or types, the resolved module graph, filename or directory conventions, or existing project configuration that defines compiler or build inputs. A classification MUST NOT depend on maintainer-declared intent or a user-maintained mapping.
@@ -48,7 +58,8 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - The `**Not this:**` case MUST establish the named contrary in the source relationship itself; for example, a definition that excludes an HTTP protocol or database driver as a direct input MUST include a code example **demonstrating** what **not to do**, clearly labeled, not merely name it in prose.
 
 3. **Synthesize a complete constraint set.**
-- Do not write a standalone “defining properties” preface or use an initial property inventory as a completeness boundary. Explore the target quality from every mechanically distinguishable dimension, enumerate all observable ways the quality can fail, and derive the smallest independent constraint that prevents each violation class.
+- Apart from the required `## Informal definition`, do not write a standalone “defining properties” preface or use an initial property inventory as a completeness boundary.
+- The informal definition orients the reader; explore the target quality from every mechanically distinguishable dimension, enumerate all observable ways the quality can fail, and derive the smallest independent constraint that prevents each violation class.
 - Treat structural modularity as a separate dimension whenever the requested quality concerns TypeScript code, modules, architecture, boundaries, or composition.
 - Derive rules for every applicable physical and public-interface choice: repository-root and directory placement, file basename and suffix, module specifier form, permitted imports and dependency direction, module role inferred from physical location and source behavior, declaration order, permitted top-level contents, and permitted exports.
 - State exact deterministic path, filename, AST, graph, or compiler-resolution criteria rather than relying on a module's intended role.
@@ -62,8 +73,12 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 
 4. **Demonstrate and justify each constraint.**
 - Give each constraint a close, complete, coherent, independently type-checkable allowed code example and a close, complete, coherent, independently type-checkable violating code example that clarify or prove its boundary.
-- Immediately after each normative statement, add a `#### Rationale` subsection. Explicitly explain why the rule is necessary for the requested quality and how enforcing its exact condition prevents the relevant violation class or produces that quality; do not merely restate the rule.
-- Do not include `Failure mode`, `Scope`, or `Exceptions` subsections; the rule itself MUST state its subject and applicability, and a constraint with no permitted alternatives needs no exceptions section.
+- Immediately after each normative statement, add a `#### Property protected` subsection.
+- Name the exact requested-quality property the rule establishes and every observable problem or violation class it remediates; distinguish related problems when the rule prevents more than one.
+- Follow it with a `#### Rationale` subsection.
+- Explicitly explain why the rule's exact condition is necessary for that property and how it prevents each named violation class or produces that quality; do not merely restate the rule.
+- When the rule relies on a definition that has related terms, explain why that definition is required rather than its non-interchangeable alternatives.
+- Do not include `Failure mode`, `Scope`, or `Exceptions` subsections; `#### Property protected` is the required location for failure modes, the rule itself MUST state its subject and applicability, and a constraint with no permitted alternatives needs no exceptions section.
 - Do not create catch-all exceptions, compatibility shims, or escape hatches.
 
 5. **Specify mechanical verification.**
@@ -100,6 +115,8 @@ Return exactly these sections:
 ```text
 # <Concept> constraints
 
+## Informal definition
+
 ## Definitions
 
 ### <Term>
@@ -108,6 +125,15 @@ Return exactly these sections:
 
 ```
 
-Each definition MUST be a separate `### <Term>` entry. Use the entry heading as the link target for every subsequent prose use of that term. Directly after every definition whose concept can be demonstrated in TypeScript source or machine-readable input, include a specific minimal example in the applicable format. In every example, use an adjacent source or data comment to identify the exact artifact that exemplifies the definition; when it illustrates multiple listed parts, annotate each part separately. The `## Definitions` section has no maximum number of entries.
-Each definition MUST also include a `**Mechanical predicate:**` and immediately following `**Predicate implementation:**` TypeScript snippet before its example set. The predicate decides the definition's membership for concrete inputs and is reused by every constraint verification that relies on the definition.
-Under `## Constraints`, number each rule and include its normative statement, a dedicated `#### Rationale` subsection explaining why the rule is necessary for and how it produces the target quality, required mechanical verification, a `**Verification implementation:**` TypeScript snippet, and minimal allowed and violating code examples beside the normative statement.
+- `## Informal definition` MUST appear directly after the title and before `## Definitions`.
+- It MUST define the requested concept in ordinary technical language, state the property that collective adherence establishes, and name the primary exclusions or failure modes the constraints will prevent.
+- It MUST NOT introduce undefined formal terminology, normative requirements, mechanical predicates, or code examples.
+- Each definition MUST be a separate `### <Term>` entry.
+- Use the entry heading as the link target for every subsequent prose use of that term.
+- Directly after every definition whose concept can be demonstrated in TypeScript source or machine-readable input, include a specific minimal example in the applicable format.
+- In every example, use an adjacent source or data comment to identify the exact artifact that exemplifies the definition; when it illustrates multiple listed parts, annotate each part separately.
+- The `## Definitions` section has no maximum number of entries.
+- When a definition has plausible synonyms or easily-confused related concepts, it MUST include the required `#### Related terms` comparison table and comparison examples before its predicate; the table must explain why the defined term is not interchangeable with each alternative in constraints that use it.
+- Each definition MUST also include a `**Mechanical predicate:**` and immediately following `**Predicate implementation:**` TypeScript snippet before its example set.
+- The predicate decides the definition's membership for concrete inputs and is reused by every constraint verification that relies on the definition.
+- Under `## Constraints`, number each rule and include its normative statement; a dedicated `#### Property protected` subsection naming the exact property and every remediated problem or violation class; a `#### Rationale` subsection explaining why the exact rule establishes that property and why any related definition terms are non-interchangeable; required mechanical verification; a `**Verification implementation:**` TypeScript snippet; and minimal allowed and violating code examples beside the normative statement.
