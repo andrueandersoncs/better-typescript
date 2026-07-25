@@ -20,6 +20,9 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 ## Method
 
 1. **Reason from first principles.** Identify the properties that make the stated TypeScript project quality or architectural concept true. Derive constraints directly from those properties rather than from existing repository practice or documents.
+- Before deriving terms or rules, inventory every technology explicitly named by the request.
+- For each technology, inspect its current idioms and enumerate every facility, type-system feature, configuration surface, lifecycle, boundary, and composition mechanism that can affect the requested quality or concept.
+- This inventory is an internal coverage obligation, not a preface or an output-section limit: derive a constraint for every applicable observable violation class, however many rules that requires.
 
 2. **Define, demonstrate, and predicate necessary terms.**
 - Before drafting constraints, inventory every technical term, category, classification, action, state, boundary, and relationship that the planned normative statements rely on.
@@ -46,9 +49,16 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 
 3. **Synthesize a complete constraint set.**
 - Do not write a standalone “defining properties” preface or use an initial property inventory as a completeness boundary. Explore the target quality from every mechanically distinguishable dimension, enumerate all observable ways the quality can fail, and derive the smallest independent constraint that prevents each violation class.
+- Treat structural modularity as a separate dimension whenever the requested quality concerns TypeScript code, modules, architecture, boundaries, or composition.
+- Derive rules for every applicable physical and public-interface choice: repository-root and directory placement, file basename and suffix, module specifier form, permitted imports and dependency direction, module role inferred from physical location and source behavior, declaration order, permitted top-level contents, and permitted exports.
+- State exact deterministic path, filename, AST, graph, or compiler-resolution criteria rather than relying on a module's intended role.
+- Do not omit a structural rule merely because it is convention-oriented; make its convention mechanically falsifiable without a manifest, registry, allowlist, or maintainer-maintained role mapping.
+- Do not use a small, fixed, or aesthetically tidy constraint count as a stopping condition. The number of constraints MUST be determined by the full set of independently observable violation classes across the requested concept and every applicable named technology.
 - For every rule, use RFC 2119 language: use `MUST` when violating the rule prevents the concept from being true, `SHOULD` only for a real trade-off, and `MAY` only for permitted alternatives.
 - State the subject, required or prohibited condition, any necessary ordering or ownership fact, and the mechanical verification the constraint requires.
 - Before writing, audit coverage in both directions: every observable violation class MUST be prevented by at least one constraint, and every constraint MUST be necessary for at least one violation class.
+- For the coverage audit, test each applicable technology independently and then test their interaction.
+- A rule set that covers only selected APIs or one layer of a named technology is incomplete when an unaddressed facility can violate the requested quality.
 
 4. **Demonstrate and justify each constraint.**
 - Give each constraint a close, complete, coherent, independently type-checkable allowed code example and a close, complete, coherent, independently type-checkable violating code example that clarify or prove its boundary.
@@ -76,6 +86,8 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - For each definition, enumerate every item in its prose—including observable inputs, membership requirements, alternatives, categories, facilities, and exclusions—and verify that its immediately following example set has a complete, coherent, independently type-checkable example and adjacent label for every item.
 - For each definition, verify that its `**Mechanical predicate:**` identifies its concrete input and returns a Boolean membership result, and that its `**Predicate implementation:**` implements that predicate using the declared observable inputs without human judgment.
 - Separately prove the constraint set is complete: enumerate every observable violation class again across all relevant dimensions, map each to one or more rules, and construct a counterexample that would satisfy the candidate rules if coverage were absent.
+- Repeat the audit specifically for structural modularity: construct counterexamples involving misplaced files, impermissible filenames or suffixes, invalid module specifiers, reversed dependency direction, disallowed module contents, declaration ordering, and excessive or misplaced exports whenever those choices can affect the requested quality.
+- Add the smallest rule that rejects each applicable counterexample.
 - Add or strengthen rules until every such counterexample is rejected.
 - Separately verify that every example declares or imports all referenced symbols and that its names, types, and described behavior agree.
 - For each library-specific example, verify that its API is idiomatic against the inspected source examples.
