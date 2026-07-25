@@ -45,14 +45,14 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - The `**Not this:**` case MUST establish the named contrary in the source relationship itself; for example, a definition that excludes an HTTP protocol or database driver as a direct input MUST include a code example **demonstrating** what **not to do**, clearly labeled, not merely name it in prose.
 
 3. **Synthesize a complete constraint set.**
-- First enumerate the defining properties that must all hold for the stated concept, then enumerate the distinct observable ways each property can be violated.
-- Derive the smallest independent constraint that prevents each violation class; do not use a familiar or representative ruleset as a completeness bound.
+- Do not write a standalone “defining properties” preface or use an initial property inventory as a completeness boundary. Explore the target quality from every mechanically distinguishable dimension, enumerate all observable ways the quality can fail, and derive the smallest independent constraint that prevents each violation class.
 - For every rule, use RFC 2119 language: use `MUST` when violating the rule prevents the concept from being true, `SHOULD` only for a real trade-off, and `MAY` only for permitted alternatives.
 - State the subject, required or prohibited condition, any necessary ordering or ownership fact, and the mechanical verification the constraint requires.
-- Before writing, audit coverage in both directions: every defining property and violation class MUST be prevented by at least one constraint, and every constraint MUST be necessary for at least one defining property.
+- Before writing, audit coverage in both directions: every observable violation class MUST be prevented by at least one constraint, and every constraint MUST be necessary for at least one violation class.
 
-4. **Demonstrate each constraint.**
+4. **Demonstrate and justify each constraint.**
 - Give each constraint a close, complete, coherent, independently type-checkable allowed code example and a close, complete, coherent, independently type-checkable violating code example that clarify or prove its boundary.
+- Immediately after each normative statement, add a `#### Rationale` subsection. Explicitly explain why the rule is necessary for the requested quality and how enforcing its exact condition prevents the relevant violation class or produces that quality; do not merely restate the rule.
 - Do not include `Failure mode`, `Scope`, or `Exceptions` subsections; the rule itself MUST state its subject and applicability, and a constraint with no permitted alternatives needs no exceptions section.
 - Do not create catch-all exceptions, compatibility shims, or escape hatches.
 
@@ -75,7 +75,7 @@ goal, an aesthetic preference, an implementation suggestion, or an unqualified e
 - Add a definition for every technical term, category, classification, action, state, boundary, or relationship that remains undefined; add or correct every required inline definition link; and remove no definitions merely to keep the glossary short.
 - For each definition, enumerate every item in its prose—including observable inputs, membership requirements, alternatives, categories, facilities, and exclusions—and verify that its immediately following example set has a complete, coherent, independently type-checkable example and adjacent label for every item.
 - For each definition, verify that its `**Mechanical predicate:**` identifies its concrete input and returns a Boolean membership result, and that its `**Predicate implementation:**` implements that predicate using the declared observable inputs without human judgment.
-- Separately prove the constraint set is complete: enumerate every defining property and violation class again, map each to one or more rules, and construct a counterexample that would satisfy the candidate rules if coverage were absent.
+- Separately prove the constraint set is complete: enumerate every observable violation class again across all relevant dimensions, map each to one or more rules, and construct a counterexample that would satisfy the candidate rules if coverage were absent.
 - Add or strengthen rules until every such counterexample is rejected.
 - Separately verify that every example declares or imports all referenced symbols and that its names, types, and described behavior agree.
 - For each library-specific example, verify that its API is idiomatic against the inspected source examples.
@@ -98,4 +98,4 @@ Return exactly these sections:
 
 Each definition MUST be a separate `### <Term>` entry. Use the entry heading as the link target for every subsequent prose use of that term. Directly after every definition whose concept can be demonstrated in TypeScript source or machine-readable input, include a specific minimal example in the applicable format. In every example, use an adjacent source or data comment to identify the exact artifact that exemplifies the definition; when it illustrates multiple listed parts, annotate each part separately. The `## Definitions` section has no maximum number of entries.
 Each definition MUST also include a `**Mechanical predicate:**` and immediately following `**Predicate implementation:**` TypeScript snippet before its example set. The predicate decides the definition's membership for concrete inputs and is reused by every constraint verification that relies on the definition.
-Under `## Constraints`, number each rule and include its normative statement, rationale, required mechanical verification, a `**Verification implementation:**` TypeScript snippet, and minimal allowed and violating code examples beside the normative statement.
+Under `## Constraints`, number each rule and include its normative statement, a dedicated `#### Rationale` subsection explaining why the rule is necessary for and how it produces the target quality, required mechanical verification, a `**Verification implementation:**` TypeScript snippet, and minimal allowed and violating code examples beside the normative statement.
