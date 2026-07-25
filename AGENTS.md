@@ -28,7 +28,7 @@ pass to remain below 100ms.
 Always run the prettier formatter (`npm run format`) after every code change and include the
 formatting in your commit.
 
-Always use @repos/effect/ (vendored effect repository) to find examples of correct Effect code.
+Always use repos/effect/ (vendored effect repository) to find examples of correct Effect code.
 
 Always do the complete work you're asked to do, do _not_ concern yourself with "churn".
 
