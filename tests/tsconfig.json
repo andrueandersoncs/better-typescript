@@ -3,8 +3,9 @@
   "compilerOptions": {
     "noEmit": true,
     "rootDir": "..",
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true
   },
   "include": ["**/*.ts"],
-  "exclude": ["fixtures/**", "../packages/guidance/examples/**"]
+  "exclude": ["fixtures/**", "../packages/guidance/examples/**", "synthesizeConstraints*.ts"]
 }

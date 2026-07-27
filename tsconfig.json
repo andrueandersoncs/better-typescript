@@ -6,6 +6,7 @@
     { "path": "packages/guidance" },
     { "path": "packages/cli" },
     { "path": "tests" },
+    { "path": "scripts" },
     { "path": "tsconfig.selfhost.json" },
     { "path": "bench" },
     { "path": "examples/extend-preset" },

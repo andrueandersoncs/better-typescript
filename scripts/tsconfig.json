@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true,
+    "types": ["node"],
+    "allowImportingTsExtensions": true
+  },
+  // The synthesizeConstraints tests live with the rest of the suite but belong to this project so
+  // no source file is owned by two programs.
+  "include": ["**/*.ts", "../tests/synthesizeConstraints*.ts"]
+}
