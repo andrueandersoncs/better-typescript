@@ -1,3 +1,8 @@
+Always keep your output **extremely simple and concise** regardless of what type of output it is,
+whether it is a direct response, documentation, code changes, or anything else, unless explicitly
+asked to disregard this rule. Brevity and simplicity are more important than anything else unless
+explicitly instructed otherwise.
+
 Always do your work on the main branch unless explicitly instructed to create a branch. If you're
 already on another branch when work begins, do your work on that branch.
 
