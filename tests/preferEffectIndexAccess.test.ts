@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferEffectIndexAccess } from "@better-typescript/guidance/policies/preferEffectIndexAccess"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

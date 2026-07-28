@@ -47,7 +47,7 @@ report/output first. Ask only for the remaining material decision; do not invent
    `tsconfig.json`, and optional `better-typescript.config.ts`. Preserve the relevant emitted
    blocks, including rule/advice name, location, message, hint, remediation, and evidence.
 3. Before a future TypeScript implementation begins, establish the required clean self-hosting
-   baseline with `timeout 10 npm run dev`; its initial report must be `No signals`. If it is not
+   baseline with `timeout 10 bun run dev`; its initial report must be `No signals`. If it is not
    clean, flag that as an implementation blocker rather than silently absorbing unrelated findings.
 
 When a project-specific configuration is relevant, distinguish the built-in preset from that
@@ -131,12 +131,12 @@ List verification in this order:
 1. Focused check or advice test.
 2. Fixture compilation.
 3. Affected default-derive, report, CLI, and watch tests.
-4. `npm test`.
-5. `npm run typecheck`.
-6. `npm run format:check`.
-7. `npm run build`.
-8. `timeout 10 npm run dev`, beginning at `No signals`.
-9. `npm run bench` when the change affects rule performance or the full verification bar is
+4. `bun run test`.
+5. `bun run typecheck`.
+6. `bun run format:check`.
+7. `bun run build`.
+8. `timeout 10 bun run dev`, beginning at `No signals`.
+9. `bun run bench` when the change affects rule performance or the full verification bar is
    requested.
 
 Leave changes uncommitted on the current branch unless the maintainer explicitly requests a commit.

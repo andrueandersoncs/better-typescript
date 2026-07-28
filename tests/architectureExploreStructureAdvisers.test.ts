@@ -1,12 +1,12 @@
 import * as assert from "node:assert/strict"
-import { test } from "node:test"
+import { test } from "bun:test"
 import {
   ExportSurfaceData,
   ImportUsageData,
   ImportedNameUsage,
   InterfaceBurdenData,
   ModuleGraphData
-} from "@better-typescript/matchers/builtins/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExploreData"
 import {
   exportSurfaceName,
   importUsageName,

@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { Array, Effect, HashMap, HashSet, Option } from "effect"
 import { conceptControl } from "@better-typescript/guidance/policies/conceptControl"

@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Array, Effect, Schema } from "effect"
 import { Signal } from "@better-typescript/core/engine/signal/data"
 import {

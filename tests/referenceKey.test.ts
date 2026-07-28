@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import * as path from "node:path"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Effect, Hash, HashMap, HashSet, Option } from "effect"
 import * as ts from "typescript"
 import { referenceKey } from "@better-typescript/matchers/support/referenceKey"

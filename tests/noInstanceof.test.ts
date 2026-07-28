@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noInstanceof } from "@better-typescript/guidance/policies/noInstanceof"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

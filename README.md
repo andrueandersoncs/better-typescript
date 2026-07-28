@@ -90,16 +90,17 @@ consuming project:
 
 ```sh
 # In this repository
-npm link
+bun run build
+bun link
 
 # In the consuming project
-npm link better-typescript
+bun link better-typescript
 better-typescript --pretty
 ```
 
-The first `npm link` runs the repository's `prepare` script and builds the CLI. Run `npm run build`
-after later source changes so the linked binary uses fresh `dist` output. Remove the consumer link
-with `npm unlink better-typescript`.
+The linked binary uses the built `dist` output. Run `bun run build` after source changes. Remove the
+consumer dependency with `bun remove better-typescript`, then unregister the checkout with
+`bun unlink`.
 
 ### Options
 
@@ -110,7 +111,7 @@ with `npm unlink better-typescript`.
 
 ## Packages
 
-This repository is an npm workspaces monorepo:
+This repository is a Bun workspaces monorepo:
 
 - `@better-typescript/core` — analysis kernel (`engine/*`, `project/*`)
 - `@better-typescript/checks` — built-in checks and default preset wiring
@@ -166,7 +167,7 @@ The CLI looks for exactly one config file:
 
 `<project-directory>` is the `--project` value when supplied, otherwise the current working
 directory. The config file is loaded with `jiti`, so normal TypeScript config modules work with the
-published Node bin. There is no parent-directory lookup, `package.json` field, `extends` chain, or
+published Bun bin. There is no parent-directory lookup, `package.json` field, `extends` chain, or
 dynamic plugin discovery.
 
 If no config file exists, the CLI uses `defaultConfig` from
@@ -412,7 +413,7 @@ visible block or one `empty` event.
 
 ### Whole-process performance benchmark
 
-`npm run bench:self` builds once, verifies that all Checks configured for this repository are
+`bun run bench:self` builds once, verifies that all Checks configured for this repository are
 enrolled, then times three fresh built-CLI processes. Its reported minimum, median, and maximum
 exclude build time. `BETTER_TYPESCRIPT_SELF_HOST_RUNS=<n>` changes the repetition count.
 

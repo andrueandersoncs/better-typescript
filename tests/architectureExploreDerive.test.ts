@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import { test } from "node:test"
+import { test } from "bun:test"
 import {
   architectureExplorePolicies,
   architectureExploreWiring
@@ -20,7 +20,7 @@ import {
   SeamLeakageData,
   SingleAdapterSeamData,
   TestOnlyExportData
-} from "@better-typescript/matchers/builtins/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExploreData"
 import { Detection } from "@better-typescript/core/engine/location/data"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"

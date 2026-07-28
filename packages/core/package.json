@@ -7,31 +7,103 @@
     "dist"
   ],
   "exports": {
-    "./engine/equivalence": "./dist/engine/equivalence.js",
-    "./engine/policy": "./dist/engine/policy/policy.js",
-    "./engine/policy/data": "./dist/engine/policy/data.js",
-    "./engine/location": "./dist/engine/location/location.js",
-    "./engine/location/data": "./dist/engine/location/data.js",
-    "./engine/derive": "./dist/engine/derive/derive.js",
-    "./engine/derive/data": "./dist/engine/derive/data.js",
-    "./engine/report": "./dist/engine/report/report.js",
-    "./engine/report/data": "./dist/engine/report/data.js",
-    "./engine/wiring": "./dist/engine/wiring/wiring.js",
-    "./engine/wiring/collect": "./dist/engine/wiring/collect.js",
-    "./engine/wiring/data": "./dist/engine/wiring/data.js",
-    "./engine/signal": "./dist/engine/signal/signal.js",
-    "./engine/signal/data": "./dist/engine/signal/data.js",
-    "./engine/watch": "./dist/engine/watch/watch.js",
-    "./engine/workspacePrograms": "./dist/engine/watch/workspacePrograms.js",
-    "./engine/watch/data": "./dist/engine/watch/data.js",
-    "./engine/example": "./dist/engine/example/example.js",
-    "./engine/example/data": "./dist/engine/example/data.js",
-    "./project/loadProject": "./dist/project/loadProject/loadProject.js",
-    "./project/loadWiringConfig": "./dist/project/loadWiringConfig/loadWiringConfig.js",
+    "./engine/equivalence": {
+      "bun": "./src/engine/equivalence.ts",
+      "default": "./dist/engine/equivalence.js"
+    },
+    "./engine/policy": {
+      "bun": "./src/engine/policy/policy.ts",
+      "default": "./dist/engine/policy/policy.js"
+    },
+    "./engine/policy/data": {
+      "bun": "./src/engine/policy/data.ts",
+      "default": "./dist/engine/policy/data.js"
+    },
+    "./engine/location": {
+      "bun": "./src/engine/location/location.ts",
+      "default": "./dist/engine/location/location.js"
+    },
+    "./engine/location/data": {
+      "bun": "./src/engine/location/data.ts",
+      "default": "./dist/engine/location/data.js"
+    },
+    "./engine/derive": {
+      "bun": "./src/engine/derive/derive.ts",
+      "default": "./dist/engine/derive/derive.js"
+    },
+    "./engine/derive/data": {
+      "bun": "./src/engine/derive/data.ts",
+      "default": "./dist/engine/derive/data.js"
+    },
+    "./engine/report": {
+      "bun": "./src/engine/report/report.ts",
+      "default": "./dist/engine/report/report.js"
+    },
+    "./engine/report/data": {
+      "bun": "./src/engine/report/data.ts",
+      "default": "./dist/engine/report/data.js"
+    },
+    "./engine/wiring": {
+      "bun": "./src/engine/wiring/wiring.ts",
+      "default": "./dist/engine/wiring/wiring.js"
+    },
+    "./engine/wiring/collect": {
+      "bun": "./src/engine/wiring/collect.ts",
+      "default": "./dist/engine/wiring/collect.js"
+    },
+    "./engine/wiring/data": {
+      "bun": "./src/engine/wiring/data.ts",
+      "default": "./dist/engine/wiring/data.js"
+    },
+    "./engine/signal": {
+      "bun": "./src/engine/signal/signal.ts",
+      "default": "./dist/engine/signal/signal.js"
+    },
+    "./engine/signal/data": {
+      "bun": "./src/engine/signal/data.ts",
+      "default": "./dist/engine/signal/data.js"
+    },
+    "./engine/watch": {
+      "bun": "./src/engine/watch/watch.ts",
+      "default": "./dist/engine/watch/watch.js"
+    },
+    "./engine/workspacePrograms": {
+      "bun": "./src/engine/watch/workspacePrograms.ts",
+      "default": "./dist/engine/watch/workspacePrograms.js"
+    },
+    "./engine/watch/data": {
+      "bun": "./src/engine/watch/data.ts",
+      "default": "./dist/engine/watch/data.js"
+    },
+    "./engine/example": {
+      "bun": "./src/engine/example/example.ts",
+      "default": "./dist/engine/example/example.js"
+    },
+    "./engine/example/data": {
+      "bun": "./src/engine/example/data.ts",
+      "default": "./dist/engine/example/data.js"
+    },
+    "./project/loadProject": {
+      "bun": "./src/project/loadProject/loadProject.ts",
+      "default": "./dist/project/loadProject/loadProject.js"
+    },
+    "./project/loadWiringConfig": {
+      "bun": "./src/project/loadWiringConfig/loadWiringConfig.ts",
+      "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
+    },
     "./package.json": "./package.json",
-    "./project/loadProject/data": "./dist/project/loadProject/data.js",
-    "./project/loadWiringConfig/data": "./dist/project/loadWiringConfig/data.js",
-    "./project/loadWiringConfig/decode": "./dist/project/loadWiringConfig/decode.js"
+    "./project/loadProject/data": {
+      "bun": "./src/project/loadProject/data.ts",
+      "default": "./dist/project/loadProject/data.js"
+    },
+    "./project/loadWiringConfig/data": {
+      "bun": "./src/project/loadWiringConfig/data.ts",
+      "default": "./dist/project/loadWiringConfig/data.js"
+    },
+    "./project/loadWiringConfig/decode": {
+      "bun": "./src/project/loadWiringConfig/decode.ts",
+      "default": "./dist/project/loadWiringConfig/decode.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -47,7 +119,7 @@
     "typescript": "^5.0.0 || ^6.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/bun": "^1.3.14",
     "typescript": "^6.0.3"
   }
 }

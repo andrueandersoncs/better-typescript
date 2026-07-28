@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noWeakMap } from "@better-typescript/guidance/policies/noWeakMap"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

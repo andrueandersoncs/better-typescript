@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferEquivalenceStrictEqual } from "@better-typescript/guidance/policies/preferEquivalenceStrictEqual"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"

@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noDuplicateIfBodies } from "@better-typescript/guidance/policies/noDuplicateIfBodies"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noRawObjectTypes } from "@better-typescript/guidance/policies/noRawObjectTypes"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

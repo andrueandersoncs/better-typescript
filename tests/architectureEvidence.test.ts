@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Effect, Option, Schema, pipe, Array } from "effect"
 import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -21,7 +21,7 @@ import {
   SeamLeakageData,
   SingleAdapterSeamData,
   TestOnlyExportData
-} from "@better-typescript/matchers/builtins/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExploreData"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")

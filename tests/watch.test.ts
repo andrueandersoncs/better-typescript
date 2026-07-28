@@ -2,9 +2,9 @@ import * as assert from "node:assert/strict"
 import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
-import { Effect, Fiber, Function, pipe } from "effect"
+import { Deferred, Effect, Fiber, Function, pipe } from "effect"
 import * as ts from "typescript"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
 import {
@@ -175,14 +175,33 @@ test("watchWorkspace waits for a change and closes its file watchers", async () 
   const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "workspace-watcher-"))
   const casesPath = path.join(tempDirectory, "src", "cases.ts")
   const originalWatchDirectory = ts.sys.watchDirectory
+  const originalWatchFile = ts.sys.watchFile
   let closedWatchers = 0
+  const watcherReady = Deferred.makeUnsafe<void>()
 
   if (originalWatchDirectory === undefined) {
     assert.fail("TypeScript system must expose watchDirectory for the watcher smoke test")
   }
+  if (originalWatchFile === undefined) {
+    assert.fail("TypeScript system must expose watchFile for the watcher smoke test")
+  }
 
   ts.sys.watchDirectory = (directoryName, callback, recursive, options) => {
     const watcher = originalWatchDirectory(directoryName, callback, recursive, options)
+
+    return {
+      close: () => {
+        closedWatchers += 1
+        watcher.close()
+      }
+    }
+  }
+  ts.sys.watchFile = (fileName, callback, pollingInterval, options) => {
+    const watcher = originalWatchFile(fileName, callback, pollingInterval, options)
+
+    if (fileName === casesPath) {
+      Effect.runSync(Deferred.succeed(watcherReady, undefined))
+    }
 
     return {
       close: () => {
@@ -208,7 +227,7 @@ test("watchWorkspace waits for a change and closes its file watchers", async () 
         Effect.gen(function* () {
           const fiber = yield* Effect.forkScoped(watchWorkspace(tempDirectory))
 
-          yield* Effect.yieldNow
+          yield* Deferred.await(watcherReady)
           yield* Effect.promise(() =>
             fs.appendFile(casesPath, "\nexport const producerEdit = true\n")
           )
@@ -229,6 +248,7 @@ test("watchWorkspace waits for a change and closes its file watchers", async () 
     )
   } finally {
     ts.sys.watchDirectory = originalWatchDirectory
+    ts.sys.watchFile = originalWatchFile
     await fs.rm(tempDirectory, { recursive: true, force: true })
   }
 })

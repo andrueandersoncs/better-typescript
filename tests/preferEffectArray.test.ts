@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferEffectArray } from "@better-typescript/guidance/policies/preferEffectArray"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

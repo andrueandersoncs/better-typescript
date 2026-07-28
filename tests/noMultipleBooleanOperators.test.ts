@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noMultipleBooleanOperators } from "@better-typescript/guidance/policies/noMultipleBooleanOperators"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

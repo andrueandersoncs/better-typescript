@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferFunctionFlip } from "@better-typescript/guidance/policies/preferFunctionFlip"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

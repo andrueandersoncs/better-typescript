@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { requirePredicateNameConsistency } from "@better-typescript/guidance/policies/requirePredicateNameConsistency"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

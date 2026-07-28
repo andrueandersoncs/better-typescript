@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noNestedIfStatements } from "@better-typescript/guidance/policies/noNestedIfStatements"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

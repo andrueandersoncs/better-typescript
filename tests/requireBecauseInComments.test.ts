@@ -1,5 +1,5 @@
 import * as path from "node:path"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Array } from "effect"
 import { requireBecauseInComments } from "@better-typescript/guidance/policies/requireBecauseInComments"

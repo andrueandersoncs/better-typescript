@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
 import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -11,7 +11,7 @@ import { NamedDetection } from "@better-typescript/core/engine/derive/data"
 import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import { compositionFingerprints } from "@better-typescript/guidance/policies/compositionFingerprints"
 import { duplicatedOrchestration } from "@better-typescript/guidance/architectureExplore/duplicatedOrchestration"
-import { CompositionFingerprintData } from "@better-typescript/matchers/builtins/architectureExplore/data"
+import { CompositionFingerprintData } from "@better-typescript/matchers/builtins/architectureExploreData"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-orchestration")

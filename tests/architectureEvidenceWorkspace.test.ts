@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Array, Effect, Function, Option, Order, Result, Schema, pipe } from "effect"
 import type { Policy } from "@better-typescript/core/engine/policy/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
@@ -19,7 +19,7 @@ import {
   ExportSurfaceData,
   ImportUsageData,
   ModuleIdentityData
-} from "@better-typescript/matchers/builtins/architectureExplore/data"
+} from "@better-typescript/matchers/builtins/architectureExploreData"
 import { workspaceImportEdges } from "@better-typescript/guidance/architectureExplore/evidence"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))

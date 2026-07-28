@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferComposedCallbacks } from "@better-typescript/guidance/policies/preferComposedCallbacks"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

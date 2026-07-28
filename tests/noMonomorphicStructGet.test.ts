@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noMonomorphicStructGet } from "@better-typescript/guidance/policies/noMonomorphicStructGet"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

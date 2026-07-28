@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noDuplicateFunctionNames } from "@better-typescript/guidance/policies/noDuplicateFunctionNames"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

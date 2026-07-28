@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { highSignalDensity } from "@better-typescript/guidance/derive/highSignalDensity"
 import { hotSubsystem } from "@better-typescript/guidance/hotSubsystem/hotSubsystem"
 import { imperativeStateManager } from "@better-typescript/guidance/imperativeStateManager/imperativeStateManager"

@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { requireCallableRoleNameConsistency } from "@better-typescript/guidance/policies/requireCallableRoleNameConsistency"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

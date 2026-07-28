@@ -4,7 +4,7 @@ import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 import type { Readable } from "node:stream"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -26,9 +26,9 @@ interface CloseResult {
 }
 
 const spawnCli = (args: ReadonlyArray<string>): ChildProcessWithoutNullStreams => {
-  const nodeArgs = ["--import", "tsx", "packages/cli/src/index.ts", ...args]
+  const bunArgs = ["packages/cli/src/index.ts", ...args]
 
-  const child = spawn(process.execPath, nodeArgs, {
+  const child = spawn(process.execPath, bunArgs, {
     cwd: repoRoot,
     env: { ...process.env, NO_COLOR: "1" },
     stdio: "pipe"
@@ -301,39 +301,36 @@ test("--pretty one-shot renders the empty report text and exits", async () => {
   }
 })
 
-test("root package npm link exposes the CLI binary", async () => {
+test("root package bun link exposes the CLI binary", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cli-link-"))
   const consumerDir = path.join(tempDir, "consumer")
-  const npmPrefix = path.join(tempDir, "npm-prefix")
-  const npmCache = path.join(tempDir, "npm-cache")
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm"
+  const bunInstall = path.join(tempDir, "bun-install")
+  const bunCache = path.join(tempDir, "bun-cache")
   const linkedCliCommand =
     process.platform === "win32" ? "better-typescript.cmd" : "better-typescript"
 
-  await Promise.all([fs.mkdir(consumerDir), fs.mkdir(npmPrefix)])
+  await fs.mkdir(consumerDir)
   await fs.writeFile(
     path.join(consumerDir, "package.json"),
     JSON.stringify({ name: "linked-consumer", private: true })
   )
 
-  const npmEnv = {
+  const bunEnv = {
     ...process.env,
-    npm_config_audit: "false",
-    npm_config_cache: npmCache,
-    npm_config_fund: "false",
-    npm_config_prefix: npmPrefix
+    BUN_INSTALL: bunInstall,
+    BUN_INSTALL_CACHE_DIR: bunCache
   }
 
   try {
-    execFileSync(npmCommand, ["link", "--ignore-scripts"], {
+    execFileSync(process.execPath, ["link", "--ignore-scripts"], {
       cwd: repoRoot,
-      env: npmEnv,
+      env: bunEnv,
       stdio: "pipe",
       timeout: commandTimeoutMs
     })
-    execFileSync(npmCommand, ["link", "better-typescript", "--ignore-scripts"], {
+    execFileSync(process.execPath, ["link", "better-typescript", "--ignore-scripts"], {
       cwd: consumerDir,
-      env: npmEnv,
+      env: bunEnv,
       stdio: "pipe",
       timeout: commandTimeoutMs
     })

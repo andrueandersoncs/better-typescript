@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import * as path from "node:path"
-import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
-import * as NodeServices from "@effect/platform-node/NodeServices"
+import * as BunRuntime from "@effect/platform-bun/BunRuntime"
+import * as BunServices from "@effect/platform-bun/BunServices"
 import { Console, Effect, Function, Option, Predicate, Struct, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
 import { renderEventText } from "@better-typescript/core/engine/report"
@@ -138,6 +138,6 @@ pipe(
   Command.run(rootCommand, {
     version: "0.0.0"
   }),
-  Effect.provide(NodeServices.layer),
-  NodeRuntime.runMain
+  Effect.provide(BunServices.layer),
+  BunRuntime.runMain
 )

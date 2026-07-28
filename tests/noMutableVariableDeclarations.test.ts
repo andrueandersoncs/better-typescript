@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noMutableVariableDeclarations } from "@better-typescript/guidance/policies/noMutableVariableDeclarations"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

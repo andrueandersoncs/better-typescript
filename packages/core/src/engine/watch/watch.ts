@@ -1,4 +1,5 @@
-import { Effect, Function, pipe } from "effect"
+import { Array, Effect, Function, Predicate, pipe } from "effect"
+import * as path from "node:path"
 import * as ts from "typescript"
 import { makeRefactorExampleResolver, type ResolveRefactorExamples } from "../example/example.js"
 import { batchReportBlocks, initialReportEvents } from "../report/report.js"
@@ -19,25 +20,68 @@ const reportEventsForResolver = (config: WiringConfig) => (update: WorkspaceUpda
     return initialReportEvents(update.rootPath)(blocks)
   })
 
-// One callback wait owns one native watcher because every change reruns a complete report.
+const resolveDirectoryPath = (rootPath: string) => (directoryName: string) =>
+  path.join(rootPath, directoryName)
+
+const watchDirectories = (rootPath: string): ReadonlyArray<string> =>
+  pipe(
+    ts.sys.getDirectories(rootPath),
+    Array.map(resolveDirectoryPath(rootPath)),
+    Array.flatMap(watchDirectories),
+    Array.prepend(rootPath)
+  )
+
+const releaseWatcher: (watcher: ts.FileWatcher) => void = (watcher) => watcher.close()
+
+const watchDirectoryPath =
+  (
+    watchDirectory: NonNullable<typeof ts.sys.watchDirectory>,
+    publishChange: ts.DirectoryWatcherCallback
+  ) =>
+  (directoryPath: string) =>
+    watchDirectory(directoryPath, publishChange, false)
+
+const filePollingIntervalMs = 250
+
+const watchFilePath =
+  (watchFile: NonNullable<typeof ts.sys.watchFile>, publishChange: ts.DirectoryWatcherCallback) =>
+  (filePath: string) =>
+    watchFile(filePath, publishChange, filePollingIntervalMs, {
+      watchFile: ts.WatchFileKind.FixedPollingInterval
+    })
+
+// Watch files separately because Bun's recursive directory events can omit nested edits.
 const publishRootPathWatch = (rootPath: string): Effect.Effect<void> =>
   Effect.callback<void, never, never>((resume) => {
     const watchDirectory = ts.sys.watchDirectory
+    const watchFile = ts.sys.watchFile
 
-    if (!watchDirectory) {
+    if (Predicate.isUndefined(watchDirectory)) {
       return
     }
 
-    const watcher = watchDirectory(
-      rootPath,
-      () => {
-        watcher.close()
-        resume(Effect.void)
-      },
-      true
+    if (Predicate.isUndefined(watchFile)) {
+      return Effect.void
+    }
+
+    const publishChange: ts.DirectoryWatcherCallback = () => {
+      pipe(watchers, Array.forEach(releaseWatcher))
+      resume(Effect.void)
+    }
+
+    const directoryWatchers = pipe(
+      watchDirectories(rootPath),
+      Array.map(watchDirectoryPath(watchDirectory, publishChange))
     )
 
-    return Effect.sync(() => watcher.close())
+    const fileWatchers = pipe(
+      ts.sys.readDirectory(rootPath),
+      Array.map(watchFilePath(watchFile, publishChange))
+    )
+
+    const watchers = Array.appendAll(directoryWatchers, fileWatchers)
+
+    return Effect.sync(() => pipe(watchers, Array.forEach(releaseWatcher)))
   })
 
 export const watchWorkspace = Effect.fn("Watch.watchWorkspace")(publishRootPathWatch)

@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferHashMap } from "@better-typescript/guidance/policies/preferHashMap"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

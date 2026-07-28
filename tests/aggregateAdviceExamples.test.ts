@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Effect } from "effect"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/guidance/preset/architectureExploreWiring"

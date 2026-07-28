@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Array, Effect } from "effect"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import { noExportAliases } from "@better-typescript/guidance/policies/noExportAliases"

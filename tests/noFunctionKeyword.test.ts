@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noFunctionKeyword } from "@better-typescript/guidance/policies/noFunctionKeyword"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

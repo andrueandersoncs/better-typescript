@@ -8,8 +8,14 @@
     "examples"
   ],
   "exports": {
-    "./definePolicy": "./dist/definePolicy.js",
-    "./*": "./dist/*.js",
+    "./definePolicy": {
+      "bun": "./src/definePolicy.ts",
+      "default": "./dist/definePolicy.js"
+    },
+    "./*": {
+      "bun": "./src/*.ts",
+      "default": "./dist/*.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -25,7 +31,7 @@
     "typescript": "^5.0.0 || ^6.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/bun": "^1.3.14",
     "typescript": "^6.0.3"
   }
 }

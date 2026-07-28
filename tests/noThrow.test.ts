@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noThrow } from "@better-typescript/guidance/policies/noThrow"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

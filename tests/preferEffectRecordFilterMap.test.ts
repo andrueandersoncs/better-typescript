@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferEffectRecordFilterMap } from "@better-typescript/guidance/policies/preferEffectRecordFilterMap"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

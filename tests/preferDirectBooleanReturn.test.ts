@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferDirectBooleanReturn } from "@better-typescript/guidance/policies/preferDirectBooleanReturn"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

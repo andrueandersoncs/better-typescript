@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noAsyncFunctions } from "@better-typescript/guidance/policies/noAsyncFunctions"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

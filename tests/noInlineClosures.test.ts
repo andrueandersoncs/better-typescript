@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noInlineClosures } from "@better-typescript/guidance/policies/noInlineClosures"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

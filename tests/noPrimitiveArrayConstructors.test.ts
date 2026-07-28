@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noPrimitiveArrayConstructors } from "@better-typescript/guidance/policies/noPrimitiveArrayConstructors"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

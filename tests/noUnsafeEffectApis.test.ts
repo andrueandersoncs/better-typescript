@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noUnsafeEffectApis } from "@better-typescript/guidance/policies/noUnsafeEffectApis"
 import {
   assertPolicyFixtureExpectations,

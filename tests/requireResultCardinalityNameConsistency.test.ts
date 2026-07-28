@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { requireResultCardinalityNameConsistency } from "@better-typescript/guidance/policies/requireResultCardinalityNameConsistency"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

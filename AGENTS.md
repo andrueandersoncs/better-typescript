@@ -11,7 +11,7 @@ already on another branch when work begins, do your work on that branch.
 Always leave your changes uncomitted on the current branch unless explicitly instructed to commit
 them.
 
-Always run the self-hosting Better TypeScript check (`npm run dev`) on the codebase itself after
+Always run the self-hosting Better TypeScript check (`bun run dev`) on the codebase itself after
 making any changes **and fix all violations that are reported**. This includes Advice blocks: follow
 each block's remediation until the report is empty. Architecture advice is not informational output
 — it is a failing gate.
@@ -22,10 +22,10 @@ applies to **all packages in this project** including `checks`, `core`, AND `cli
 intended to be a form of dogfooding where every check, advice, etc, we implement is applied to this
 project such that we're following our own advice and dogfooding our own tooling.
 
-Always run the benchmark (`npm run bench`) after every code change, and require its measured report
+Always run the benchmark (`bun run bench`) after every code change, and require its measured report
 pass to remain below 100ms.
 
-Always run the prettier formatter (`npm run format`) after every code change and include the
+Always run the prettier formatter (`bun run format`) after every code change and include the
 formatting in your commit.
 
 Always use repos/effect/ (vendored effect repository) to find examples of correct Effect code.

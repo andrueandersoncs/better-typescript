@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferImplicitReturn } from "@better-typescript/guidance/policies/preferImplicitReturn"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

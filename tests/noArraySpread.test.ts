@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noArraySpread } from "@better-typescript/guidance/policies/noArraySpread"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

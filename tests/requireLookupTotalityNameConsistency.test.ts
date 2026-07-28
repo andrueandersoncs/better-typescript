@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { requireLookupTotalityNameConsistency } from "@better-typescript/guidance/policies/requireLookupTotalityNameConsistency"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

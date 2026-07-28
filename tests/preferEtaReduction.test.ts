@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferEtaReduction } from "@better-typescript/guidance/policies/preferEtaReduction"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

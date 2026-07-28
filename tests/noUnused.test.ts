@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noUnused } from "@better-typescript/guidance/policies/noUnused"
 import { compilerOptionsForPolicies } from "@better-typescript/core/engine/policy"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"

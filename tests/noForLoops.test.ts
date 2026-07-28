@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noForLoops } from "@better-typescript/guidance/policies/noForLoops"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

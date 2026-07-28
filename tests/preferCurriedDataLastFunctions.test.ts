@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { preferCurriedDataLastFunctions } from "@better-typescript/guidance/policies/preferCurriedDataLastFunctions"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

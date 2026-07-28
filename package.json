@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "bun@1.3.14",
   "bin": {
     "better-typescript": "./packages/cli/dist/index.js"
   },
@@ -10,24 +11,22 @@
     "packages/*"
   ],
   "scripts": {
-    "bench:self": "npm run build && tsx bench/selfHost.ts",
-    "dev": "npm run build -w @better-typescript/matchers && npm run build -w @better-typescript/core && npm run build -w @better-typescript/guidance && tsx packages/cli/src/index.ts --pretty",
-    "start": "npm run build -w @better-typescript/matchers && npm run build -w @better-typescript/core && npm run build -w @better-typescript/guidance && tsx packages/cli/src/index.ts",
-    "watch": "npm run build -w @better-typescript/matchers && npm run build -w @better-typescript/core && npm run build -w @better-typescript/guidance && tsx packages/cli/src/index.ts --pretty --watch",
-    "build": "npm run build -w @better-typescript/matchers && npm run build -w @better-typescript/core && npm run build -w @better-typescript/guidance && npm run build -w @better-typescript/cli",
-    "typecheck": "npm run build && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p scripts/tsconfig.json && tsc --noEmit -p tsconfig.selfhost.json && tsc --noEmit -p examples/extend-preset/tsconfig.json && tsc --noEmit -p examples/architecture-fleets/tsconfig.json && tsc --noEmit -p examples/programmatic/tsconfig.json",
-    "test": "npm run build && node --import tsx --test tests/*.test.ts",
-    "bench": "npm run build && tsx bench/main.ts",
-    "synthesize": "tsx scripts/synthesizeConstraints/main.ts",
-    "prepare": "npm run build",
+    "bench:self": "bun run build && bun bench/selfHost.ts",
+    "dev": "bun packages/cli/src/index.ts --pretty",
+    "start": "bun run build && bun packages/cli/src/index.ts",
+    "watch": "bun run build && bun packages/cli/src/index.ts --pretty --watch",
+    "build": "bun run --filter @better-typescript/matchers build && bun run --filter @better-typescript/core build && bun run --filter @better-typescript/guidance build && bun run --filter @better-typescript/cli build && bun run --filter @better-typescript/workflows build",
+    "typecheck": "bun run build && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p bench/tsconfig.json && tsc --noEmit -p bench/fixtures/tsconfig.json && tsc --noEmit -p tsconfig.selfhost.json && tsc --noEmit -p examples/extend-preset/tsconfig.json && tsc --noEmit -p examples/architecture-fleets/tsconfig.json && tsc --noEmit -p examples/programmatic/tsconfig.json",
+    "test": "bun run build && bun test --timeout 30000 tests/*.test.ts",
+    "bench": "bun run build && bun bench/main.ts",
+    "prepare": "bun run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/bun": "^1.3.14",
     "prettier": "^3.9.1",
     "tinybench": "^6.0.2",
-    "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   }
 }

@@ -7,22 +7,67 @@
     "dist"
   ],
   "exports": {
-    "./matcher": "./dist/matcher/matcher.js",
-    "./matcher/data": "./dist/matcher/data.js",
-    "./sources": "./dist/sources/sources.js",
-    "./sources/data": "./dist/sources/data.js",
-    "./sources/comments": "./dist/sources/comments.js",
-    "./sources/comments/data": "./dist/sources/commentsData.js",
-    "./equivalence": "./dist/equivalence.js",
-    "./tsSchema": "./dist/tsSchema.js",
-    "./*": "./dist/*.js",
+    "./matcher": {
+      "bun": "./src/matcher/matcher.ts",
+      "default": "./dist/matcher/matcher.js"
+    },
+    "./matcher/data": {
+      "bun": "./src/matcher/data.ts",
+      "default": "./dist/matcher/data.js"
+    },
+    "./sources": {
+      "bun": "./src/sources/sources.ts",
+      "default": "./dist/sources/sources.js"
+    },
+    "./sources/data": {
+      "bun": "./src/sources/data.ts",
+      "default": "./dist/sources/data.js"
+    },
+    "./sources/comments": {
+      "bun": "./src/sources/comments.ts",
+      "default": "./dist/sources/comments.js"
+    },
+    "./sources/comments/data": {
+      "bun": "./src/sources/commentsData.ts",
+      "default": "./dist/sources/commentsData.js"
+    },
+    "./equivalence": {
+      "bun": "./src/equivalence.ts",
+      "default": "./dist/equivalence.js"
+    },
+    "./tsSchema": {
+      "bun": "./src/tsSchema.ts",
+      "default": "./dist/tsSchema.js"
+    },
+    "./*": {
+      "bun": "./src/*.ts",
+      "default": "./dist/*.js"
+    },
     "./package.json": "./package.json",
-    "./support/*": "./dist/support/*.js",
-    "./support/*.js": "./dist/support/*.js",
-    "./builtins/*": "./dist/builtins/*.js",
-    "./builtins/*.js": "./dist/builtins/*.js",
-    "./builtins/*/*.js": "./dist/builtins/*/*.js",
-    "./builtins/*/data": "./dist/builtins/*/data.js"
+    "./support/*": {
+      "bun": "./src/support/*.ts",
+      "default": "./dist/support/*.js"
+    },
+    "./support/*.js": {
+      "bun": "./src/support/*.ts",
+      "default": "./dist/support/*.js"
+    },
+    "./builtins/*": {
+      "bun": "./src/builtins/*.ts",
+      "default": "./dist/builtins/*.js"
+    },
+    "./builtins/*.js": {
+      "bun": "./src/builtins/*.ts",
+      "default": "./dist/builtins/*.js"
+    },
+    "./builtins/*/*.js": {
+      "bun": "./src/builtins/*/*.ts",
+      "default": "./dist/builtins/*/*.js"
+    },
+    "./builtins/*/data": {
+      "bun": "./src/builtins/*/data.ts",
+      "default": "./dist/builtins/*/data.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -35,7 +80,7 @@
     "typescript": "^5.0.0 || ^6.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/bun": "^1.3.14",
     "typescript": "^6.0.3"
   }
 }

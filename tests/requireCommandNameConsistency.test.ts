@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { requireCommandNameConsistency } from "@better-typescript/guidance/policies/requireCommandNameConsistency"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

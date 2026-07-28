@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { test } from "bun:test"
 import { noSwitchStatements } from "@better-typescript/guidance/policies/noSwitchStatements"
 import { assertPolicyFixture } from "./ruleTestAssertions.js"
 

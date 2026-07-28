@@ -5,6 +5,7 @@
     { "path": "packages/core" },
     { "path": "packages/guidance" },
     { "path": "packages/cli" },
+    { "path": "packages/workflows" },
     { "path": "tests" },
     { "path": "tsconfig.selfhost.json" },
     { "path": "bench" },

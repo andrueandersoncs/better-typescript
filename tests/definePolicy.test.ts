@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import { test } from "node:test"
+import { test } from "bun:test"
 import { Array, Effect } from "effect"
 import type { Subscription } from "@better-typescript/matchers/matcher/data"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
