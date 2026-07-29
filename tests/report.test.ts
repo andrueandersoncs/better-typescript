@@ -46,10 +46,10 @@ import {
   nodeMatcher
 } from "@better-typescript/matchers/matcher"
 import {
-  makeDirectoryMatch,
   makeFileMatch,
   makeNodeMatch,
-  makePositionTarget
+  Match,
+  PositionTarget
 } from "@better-typescript/matchers/matcher/data"
 import type {
   LoadedProject,
@@ -162,7 +162,11 @@ const silentProbeNamedPolicy: Policy = makeSilentPolicy({
   }),
   guidance: (context) => () =>
     makeFindings(
-      makePositionTarget(syntheticSourceFile(context, "src/silent-observation.ts"), 1, 1),
+      new PositionTarget({
+        sourceFile: syntheticSourceFile(context, "src/silent-observation.ts"),
+        line: 1,
+        column: 1
+      }),
       "silent observation",
       "silent observations only feed advice",
       unit
@@ -251,11 +255,11 @@ const fixedDetectionPolicy = (
     (match: { readonly fact: ReadonlyArray<Detection> }) =>
       match.fact.flatMap((element) =>
         makeFindings(
-          makePositionTarget(
-            syntheticSourceFile(context, element.location.path),
-            element.location.line ?? 1,
-            element.location.column ?? 1
-          ),
+          new PositionTarget({
+            sourceFile: syntheticSourceFile(context, element.location.path),
+            line: element.location.line ?? 1,
+            column: element.location.column ?? 1
+          }),
           element.message,
           element.hint,
           element.data
@@ -459,7 +463,7 @@ test("workspace directory policies use scoped canonical paths and deduplicate pr
   const directoryPolicy: WorkspacePolicy = makeWorkspacePolicy({
     name: "scoped source directory",
     matcher: directoryMatcher((target) =>
-      Array.of(makeDirectoryMatch(target, target.sourceFiles.length))
+      Array.of(new Match({ target, fact: target.sourceFiles.length }))
     ),
     guidance: () => (match) =>
       makeFindings(

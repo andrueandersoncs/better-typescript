@@ -15,7 +15,7 @@ import {
   exportReferenceIndex,
   moduleEdges
 } from "./architectureExplore/architectureEvidence.js"
-import { isExpressionBody, unwrapExpression } from "../support/tsNode.js"
+import { type CallLikeExpression, isExpressionBody, unwrapExpression } from "../support/tsNode.js"
 import { fileSubscriptions } from "@better-typescript/matchers/matcher"
 import {
   makeNodeMatch,
@@ -23,13 +23,16 @@ import {
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
 
+const isForwardingInvocation = (expression: ts.Expression): expression is CallLikeExpression =>
+  ts.isCallExpression(expression) || ts.isNewExpression(expression)
+
 const headStatement = (block: ts.Block) => Array.head(block.statements)
 
-const returnCallExpression = Function.flow(
+const returnInvocationExpression = Function.flow(
   Struct.get<ts.ReturnStatement, "expression">("expression"),
   Option.fromNullishOr,
   Option.map(unwrapExpression),
-  Option.filter(ts.isCallExpression)
+  Option.filter(isForwardingInvocation)
 )
 
 const identifierText = Function.flow(
@@ -41,26 +44,26 @@ const identifierText = Function.flow(
 
 const isPublicStatement = Predicate.not(ts.isImportDeclaration)
 
-const callExpressionBody = (
+const invocationExpressionBody = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ) =>
   pipe(
     Option.fromNullishOr(node.body),
     Option.flatMap((body) => {
-      const expressionCall = pipe(
+      const expressionInvocation = pipe(
         Option.liftPredicate(isExpressionBody)(body),
         Option.map(unwrapExpression),
-        Option.filter(ts.isCallExpression)
+        Option.filter(isForwardingInvocation)
       )
 
-      const blockCall = pipe(
+      const blockInvocation = pipe(
         Option.liftPredicate(ts.isBlock)(body),
         Option.flatMap(headStatement),
         Option.filter(ts.isReturnStatement),
-        Option.flatMap(returnCallExpression)
+        Option.flatMap(returnInvocationExpression)
       )
 
-      return pipe(expressionCall, Option.orElse(Function.constant(blockCall)))
+      return pipe(expressionInvocation, Option.orElse(Function.constant(blockInvocation)))
     })
   )
 
@@ -88,6 +91,72 @@ const parameterIdentifiers = (
     : Option.none()
 }
 
+const propertyForwardingName = (property: ts.ObjectLiteralElementLike) => {
+  const shorthandName = pipe(
+    Option.liftPredicate(ts.isShorthandPropertyAssignment)(property),
+    Option.map(Struct.get("name")),
+    Option.map(Struct.get("text"))
+  )
+
+  const assignmentName = pipe(
+    Option.liftPredicate(ts.isPropertyAssignment)(property),
+    Option.map(Struct.get("initializer")),
+    Option.map(unwrapExpression),
+    Option.filter(ts.isIdentifier),
+    Option.map(Struct.get("text"))
+  )
+
+  return pipe(
+    shorthandName,
+    Option.orElse(Function.constant(assignmentName)),
+    Result.fromOption(Function.constVoid)
+  )
+}
+
+const constructorArgumentNames = (
+  argument: ts.Expression
+): Result.Result<ReadonlyArray<string>, void> => {
+  const expression = unwrapExpression(argument)
+
+  const identifierNames = pipe(
+    Option.liftPredicate(ts.isIdentifier)(expression),
+    Option.map(Struct.get("text")),
+    Option.map(Array.of)
+  )
+
+  const objectNames = pipe(
+    Option.liftPredicate(ts.isObjectLiteralExpression)(expression),
+    Option.flatMap((objectLiteral) => {
+      const names = Array.filterMap(objectLiteral.properties, propertyForwardingName)
+      const everyPropertyForwards = strictEqual(objectLiteral.properties.length)(names.length)
+
+      return everyPropertyForwards ? Option.some(names) : Option.none()
+    })
+  )
+
+  return pipe(
+    identifierNames,
+    Option.orElse(Function.constant(objectNames)),
+    Result.fromOption(Function.constVoid)
+  )
+}
+
+const callArgumentNames = (call: ts.CallExpression): Option.Option<ReadonlyArray<string>> => {
+  const names = Array.filterMap(call.arguments, identifierText)
+  const everyArgumentForwards = strictEqual(call.arguments.length)(names.length)
+
+  return everyArgumentForwards ? Option.some(names) : Option.none()
+}
+
+const newArgumentNames = (expression: ts.NewExpression): Option.Option<ReadonlyArray<string>> => {
+  const argumentsList = expression.arguments ?? Array.empty<ts.Expression>()
+  const namesByArgument = Array.filterMap(argumentsList, constructorArgumentNames)
+  const everyArgumentForwards = strictEqual(argumentsList.length)(namesByArgument.length)
+  const names = Array.flatten(namesByArgument)
+
+  return everyArgumentForwards ? Option.some(names) : Option.none()
+}
+
 const forwardingRootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> => {
   const unwrapped = unwrapExpression(expression)
   const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
@@ -112,34 +181,34 @@ const forwardingRootIdentifier = (expression: ts.Expression): Option.Option<ts.I
 }
 
 const consumedParameterNames = (
-  call: ts.CallExpression,
+  invocation: CallLikeExpression,
   parameters: ReadonlyArray<ts.Identifier>
 ): Option.Option<ReadonlyArray<string>> => {
   const parameterNames = Array.map(parameters, Struct.get("text"))
   const isParameterName = (name: string) => Array.contains(parameterNames, name)
-  const argumentNames = Array.filterMap(call.arguments, identifierText)
 
-  if (argumentNames.length !== call.arguments.length) {
-    return Option.none()
-  }
+  const argumentNames = ts.isCallExpression(invocation)
+    ? callArgumentNames(invocation)
+    : newArgumentNames(invocation)
 
   const receiverName = pipe(
-    forwardingRootIdentifier(call.expression),
+    forwardingRootIdentifier(invocation.expression),
     Option.map(Struct.get("text")),
     Option.filter(isParameterName),
     Option.toArray
   )
 
-  const consumedNames = Array.appendAll(receiverName, argumentNames)
+  const appendReceiverName = (names: ReadonlyArray<string>) => Array.appendAll(receiverName, names)
 
-  return Option.some(consumedNames)
+  return pipe(argumentNames, Option.map(appendReceiverName))
 }
 
 const isExactForwarder = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ) => {
   const consumedByParameters = (parameters: ReadonlyArray<ts.Identifier>) => {
-    const namesConsumedBy = (call: ts.CallExpression) => consumedParameterNames(call, parameters)
+    const namesConsumedBy = (invocation: CallLikeExpression) =>
+      consumedParameterNames(invocation, parameters)
 
     const matchesForwardingShape = (consumedNames: ReadonlyArray<string>) => {
       const parameterNames = Array.map(parameters, Struct.get("text"))
@@ -161,7 +230,7 @@ const isExactForwarder = (
     }
 
     return pipe(
-      callExpressionBody(node),
+      invocationExpressionBody(node),
       Option.flatMap(namesConsumedBy),
       Option.map(matchesForwardingShape)
     )

@@ -56,21 +56,14 @@ export class Match<Fact> extends Data.Class<{
   readonly fact: Fact
 }> {}
 
-export const makeNodeTarget = (node: ts.Node) => new NodeTarget({ node })
-
-export const makeFileTarget = (sourceFile: ts.SourceFile) => new FileTarget({ sourceFile })
-
-export const makePositionTarget = (sourceFile: ts.SourceFile, line: number, column: number) =>
-  new PositionTarget({ sourceFile, line, column })
-
 export const makeNodeMatch = <Fact>(node: ts.Node, fact: Fact) => {
-  const target = makeNodeTarget(node)
+  const target = new NodeTarget({ node })
 
   return new Match({ target, fact })
 }
 
 export const makeFileMatch = <Fact>(sourceFile: ts.SourceFile, fact: Fact) => {
-  const target = makeFileTarget(sourceFile)
+  const target = new FileTarget({ sourceFile })
 
   return new Match({ target, fact })
 }
@@ -81,16 +74,10 @@ export const makePositionMatch = <Fact>(
   column: number,
   fact: Fact
 ) => {
-  const target = makePositionTarget(sourceFile, line, column)
+  const target = new PositionTarget({ sourceFile, line, column })
 
   return new Match({ target, fact })
 }
-
-export const makeDirectoryMatch = <Fact>(target: DirectoryTarget, fact: Fact) =>
-  new Match({ target, fact })
-
-export const makeWorkspaceMatch = <Fact>(target: WorkspaceTarget, fact: Fact) =>
-  new Match({ target, fact })
 
 type NodeHandler = (context: MatchContext) => (node: ts.Node) => ReadonlyArray<Match<unknown>>
 
@@ -122,19 +109,11 @@ export class WorkspaceSourceFile extends Data.Class<{
   readonly sourceFile: ts.SourceFile
 }> {}
 
-export const makeWorkspaceSourceFile = (path: string, sourceFile: ts.SourceFile) =>
-  new WorkspaceSourceFile({ path, sourceFile })
-
 // WorkspaceContext holds path-normalized files because workspace matchers need them first.
 export class WorkspaceContext extends Data.Class<{
   readonly workspaceRoot: string
   readonly sourceFiles: ReadonlyArray<WorkspaceSourceFile>
 }> {}
-
-export const makeWorkspaceContext = (
-  workspaceRoot: string,
-  sourceFiles: ReadonlyArray<WorkspaceSourceFile>
-) => new WorkspaceContext({ workspaceRoot, sourceFiles })
 
 // WorkspaceMatcher runs after collection because program matchers lack path grouping.
 export class WorkspaceMatcher extends Data.Class<{

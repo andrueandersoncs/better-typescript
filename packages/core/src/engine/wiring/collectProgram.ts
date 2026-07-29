@@ -41,9 +41,6 @@ export const emptyWorkspaceFileBuckets = (_entry: WiringEntry) =>
 const makeProgramPolicySlot = (wiringIndex: number, policyIndex: number, policy: Policy) =>
   ProgramPolicySlot.make({ wiringIndex, policyIndex, policy })
 
-const makeWorkspaceSourceFile = (candidatePath: string, sourceFile: ts.SourceFile) =>
-  new WorkspaceSourceFile({ path: candidatePath, sourceFile })
-
 const collectWorkspaceFileForMatch = (
   workspaceFilesByWiring: ReadonlyArray<MutableWorkspaceFiles>,
   matchedWiringIndexes: HashMap.HashMap<number, true>,
@@ -60,7 +57,11 @@ const collectWorkspaceFileForMatch = (
 
     if (isNewCollection) {
       HashMap.set(matchedWiringIndexes, wiringIndex, true)
-      const workspaceSourceFile = makeWorkspaceSourceFile(candidatePath, sourceFile)
+
+      const workspaceSourceFile = new WorkspaceSourceFile({
+        path: candidatePath,
+        sourceFile
+      })
 
       HashMap.set(workspaceFiles, candidatePath, workspaceSourceFile)
     }

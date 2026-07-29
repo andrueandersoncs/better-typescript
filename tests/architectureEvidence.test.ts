@@ -65,6 +65,9 @@ test("pass-through evidence requires exact forwarding and records caller leverag
   assert.equal(sharedData.callerCount, 2)
   assert.equal(byLine.has(13), false)
   assert.equal(byLine.has(15), false)
+  assert.equal(byLine.has(31), true)
+  assert.equal(byLine.has(33), true)
+  assert.equal(byLine.has(39), false)
 
   const reexport = detections.find((item) => item.location.path === "src/publicEntry.ts")
   const reexportData = pipe(

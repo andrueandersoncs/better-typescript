@@ -291,11 +291,12 @@ export const runWorkspaceMatchers =
   (context: WorkspaceContext): ReadonlyArray<ReadonlyArray<Match<unknown>>> =>
     Array.map(matchers, (matcher) => matcher.match(context))
 
-const workspaceFilePath = (file: WorkspaceSourceFile) => Struct.get(file, "path")
-
 const workspaceFileSource = (file: WorkspaceSourceFile) => Struct.get(file, "sourceFile")
 
-const workspaceFileDirectory = flow(workspaceFilePath, path.posix.dirname)
+const workspaceFileDirectory = flow(
+  Struct.get<WorkspaceSourceFile, "path">("path"),
+  path.posix.dirname
+)
 
 const makeDirectoryTarget = (directory: string, files: ReadonlyArray<WorkspaceSourceFile>) => {
   const sourceFiles = Array.map(files, workspaceFileSource)

@@ -8,9 +8,9 @@ import {
   toWorkspacePolicies
 } from "@better-typescript/core/engine/policy"
 import {
+  Match,
   WorkspaceContext,
-  WorkspaceSourceFile,
-  makeDirectoryMatch
+  WorkspaceSourceFile
 } from "@better-typescript/matchers/matcher/data"
 import { directoryMatcher } from "@better-typescript/matchers/matcher"
 
@@ -34,7 +34,7 @@ const sourceDirectoryMatcher = directoryMatcher((target) => {
     return Array.empty()
   }
 
-  return Array.of(makeDirectoryMatch(target, directoryFact(target.sourceFiles.length)))
+  return Array.of(new Match({ target, fact: directoryFact(target.sourceFiles.length) }))
 })
 
 const sourceDirectoryPolicy = makeWorkspacePolicy({
