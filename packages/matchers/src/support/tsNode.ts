@@ -234,14 +234,13 @@ export const unwrapCallee = (expression: ts.Expression): ts.Expression => {
 }
 
 export const outermostTransparentWrapper = (expression: ts.Expression): ts.Expression => {
-  const parent = expression.parent
-  const parentIsTransparent = HashSet.has(transparentWrapperKinds, parent.kind)
+  const parentIsTransparent = HashSet.has(transparentWrapperKinds, expression.parent.kind)
 
   if (!parentIsTransparent) {
     return expression
   }
 
-  const parentExpression = Option.liftPredicate(ts.isExpression)(parent)
+  const parentExpression = Option.liftPredicate(ts.isExpression)(expression.parent)
 
   return Option.match(parentExpression, {
     onNone: Function.constant(expression),
@@ -268,9 +267,8 @@ const exitStatementKinds = HashSet.make(
 
 export const alwaysExitsScope = (statement: ts.Statement): boolean => {
   if (ts.isBlock(statement)) {
-    const statements = statement.statements
-    const lastIndex = statements.length - 1
-    const lastStmt = Option.fromNullishOr(statements[lastIndex])
+    const lastIndex = statement.statements.length - 1
+    const lastStmt = Option.fromNullishOr(statement.statements[lastIndex])
 
     return Option.exists(lastStmt, alwaysExitsScope)
   }

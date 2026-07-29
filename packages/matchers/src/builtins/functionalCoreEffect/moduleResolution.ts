@@ -9,8 +9,6 @@ export const resolvedModuleSourceFile = (
   context: MatchContext,
   declaration: ts.ImportDeclaration | ts.ExportDeclaration
 ) => {
-  const moduleSpecifier = declaration.moduleSpecifier
-
   const findFirstOf = (declarations: ReadonlyArray<ts.Declaration>) =>
     Array.findFirst(declarations, ts.isSourceFile)
 
@@ -22,14 +20,17 @@ export const resolvedModuleSourceFile = (
       Option.flatMap(findFirstOf)
     )
 
-  const checkerSource = pipe(Option.fromNullishOr(moduleSpecifier), Option.flatMap(pipeOf4))
+  const checkerSource = pipe(
+    Option.fromNullishOr(declaration.moduleSpecifier),
+    Option.flatMap(pipeOf4)
+  )
 
   if (Option.isSome(checkerSource)) {
     return checkerSource
   }
 
   const specifier = pipe(
-    Option.fromNullishOr(moduleSpecifier),
+    Option.fromNullishOr(declaration.moduleSpecifier),
     Option.filter(ts.isStringLiteralLike),
     Option.map(Struct.get("text"))
   )

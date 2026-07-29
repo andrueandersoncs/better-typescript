@@ -24,9 +24,6 @@ const isFunctionKeywordToken = flow(
 )
 
 const functionKeywordMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-  const checker = context.checker
-
   const matchFunctionKeywordNode = (node: FunctionKeywordNode) => {
     const asteriskToken = Option.fromNullishOr(node.asteriskToken)
     const isNotGenerator = !Option.isSome(asteriskToken)
@@ -40,7 +37,7 @@ const functionKeywordMatches = (context: MatchContext) => {
       Option.exists(declarationWithBody, (declaration) => {
         const declarations = Option.gen(function* () {
           const name = yield* Option.fromNullishOr(declaration.name)
-          const nameSymbol = checker.getSymbolAtLocation(name)
+          const nameSymbol = context.checker.getSymbolAtLocation(name)
           const symbol = yield* Option.fromNullishOr(nameSymbol)
           const decls = yield* Option.fromNullishOr(symbol.declarations)
 
@@ -68,7 +65,7 @@ const functionKeywordMatches = (context: MatchContext) => {
       return Array.empty()
     }
 
-    const children = node.getChildren(sourceFile)
+    const children = node.getChildren(context.sourceFile)
 
     const keywordToken = pipe(
       Array.findFirst(children, isFunctionKeywordToken),

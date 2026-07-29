@@ -61,12 +61,11 @@ const matchOptionGuardConditional = (conditional: ts.ConditionalExpression) =>
       const object = yield* Option.liftPredicate(ts.isIdentifier)(callee.expression)
 
       yield* Option.liftPredicate(isOptionText)(object.text)
-      const methodName = callee.name.text
-      yield* Option.liftPredicate(isGuardMethodName)(methodName)
+      yield* Option.liftPredicate(isGuardMethodName)(callee.name.text)
       const firstArg = yield* Option.fromNullishOr(call.arguments[0])
       const identifier = yield* Option.liftPredicate(ts.isIdentifier)(firstArg)
 
-      return Tuple.make(methodName as OptionGuardKind, identifier.text)
+      return Tuple.make(callee.name.text as OptionGuardKind, identifier.text)
     }),
     Option.filter(([kind, argumentName]: readonly [OptionGuardKind, string]): boolean => {
       const isSomeGuard = strictEqual("isSome")(kind)

@@ -54,8 +54,7 @@ const propertyItCall =
       Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
       Option.exists((access) => {
         const root = unwrapTransparentExpression(access.expression)
-        const method = access.name.text
-        const isPlainMethod = Array.contains(plainItMethods, method)
+        const isPlainMethod = Array.contains(plainItMethods, access.name.text)
         const rootNamedIt = identifierIsIt(root)
         const vitestIt = isVitestIt(root)
         const flags = Array.make(rootNamedIt, isPlainMethod, vitestIt)

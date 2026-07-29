@@ -1,4 +1,4 @@
-import { Array, Effect, Function, Predicate, pipe } from "effect"
+import { Array, Effect, Function, Option, pipe } from "effect"
 import * as path from "node:path"
 import * as ts from "typescript"
 import { makeRefactorExampleResolver, type ResolveRefactorExamples } from "../example/example.js"
@@ -53,14 +53,14 @@ const watchFilePath =
 // Watch files separately because Bun's recursive directory events can omit nested edits.
 const publishRootPathWatch = (rootPath: string): Effect.Effect<void> =>
   Effect.callback<void, never, never>((resume) => {
-    const watchDirectory = ts.sys.watchDirectory
-    const watchFile = ts.sys.watchFile
+    const maybeWatchDirectory = Option.fromNullishOr(ts.sys.watchDirectory)
+    const maybeWatchFile = Option.fromNullishOr(ts.sys.watchFile)
 
-    if (Predicate.isUndefined(watchDirectory)) {
+    if (Option.isNone(maybeWatchDirectory)) {
       return
     }
 
-    if (Predicate.isUndefined(watchFile)) {
+    if (Option.isNone(maybeWatchFile)) {
       return Effect.void
     }
 
@@ -71,12 +71,12 @@ const publishRootPathWatch = (rootPath: string): Effect.Effect<void> =>
 
     const directoryWatchers = pipe(
       watchDirectories(rootPath),
-      Array.map(watchDirectoryPath(watchDirectory, publishChange))
+      Array.map(watchDirectoryPath(maybeWatchDirectory.value, publishChange))
     )
 
     const fileWatchers = pipe(
       ts.sys.readDirectory(rootPath),
-      Array.map(watchFilePath(watchFile, publishChange))
+      Array.map(watchFilePath(maybeWatchFile.value, publishChange))
     )
 
     const watchers = Array.appendAll(directoryWatchers, fileWatchers)

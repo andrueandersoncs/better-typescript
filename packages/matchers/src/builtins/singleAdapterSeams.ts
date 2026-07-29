@@ -125,10 +125,8 @@ const isVariableDependencyOwner = (
   Array.contains(variableDependencyOwnerKinds, node.kind)
 
 const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration) => {
-  const owner = parameter.parent
-
   const functionExport = pipe(
-    Option.liftPredicate(ts.isFunctionDeclaration)(owner),
+    Option.liftPredicate(ts.isFunctionDeclaration)(parameter.parent),
     Option.map(hasExportModifier)
   )
 
@@ -139,7 +137,7 @@ const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration) => {
     )
 
   const classExport = pipe(
-    Option.liftPredicate(isClassDependencyOwner)(owner),
+    Option.liftPredicate(isClassDependencyOwner)(parameter.parent),
     Option.map(classMemberIsExported)
   )
 
@@ -147,7 +145,7 @@ const isExportedDependencyParameter = (parameter: ts.ParameterDeclaration) => {
     Option.liftPredicate(ts.isVariableDeclaration)(expression.parent)
 
   const variableExport = pipe(
-    Option.liftPredicate(isVariableDependencyOwner)(owner),
+    Option.liftPredicate(isVariableDependencyOwner)(parameter.parent),
     Option.flatMap(variableDeclarationParent),
     Option.flatMap(exportedVariableStatement),
     Option.map(Function.constant(true))

@@ -30,9 +30,8 @@ const effectErrorChannel =
       const isEffectName = strictEqual("Effect")(symbolName)
       const isStreamName = strictEqual("Stream")(symbolName)
       const isEffectFamily = isEffectName || isStreamName
-      const reference = candidate as ts.TypeReference
       const isObject = (candidate.flags & ts.TypeFlags.Object) !== 0
-      const objectFlags = reference.objectFlags ?? 0
+      const objectFlags = (candidate as ts.TypeReference).objectFlags ?? 0
       const isTypeReferenceFlag = (objectFlags & ts.ObjectFlags.Reference) !== 0
       const isInterfaceFlag = (objectFlags & ts.ObjectFlags.Interface) !== 0
       const referenceShapeFlags = Array.make(isTypeReferenceFlag, isInterfaceFlag)
@@ -42,7 +41,7 @@ const effectErrorChannel =
       const isEffectReference = Array.make(isEffectFamily, isTypeReference)
 
       if (Array.every(isEffectReference, Boolean)) {
-        const typeArguments = checker.getTypeArguments(reference)
+        const typeArguments = checker.getTypeArguments(candidate as ts.TypeReference)
 
         return Array.get(typeArguments, 1)
       }
@@ -214,21 +213,20 @@ export const typedErrorRecoveryFindings = (
   _index: EffectQualityIndex,
   node: ts.Node
 ): ReadonlyArray<EffectQualityRuleFinding> => {
-  const checker = context.checker
-  const catchCall = pipe(callExpressionOf(node), Option.filter(isCatchCauseCall(checker)))
-  const fromDirect = pipe(catchCall, Option.flatMap(directCatchCauseFinding(checker)))
+  const catchCall = pipe(callExpressionOf(node), Option.filter(isCatchCauseCall(context.checker)))
+  const fromDirect = pipe(catchCall, Option.flatMap(directCatchCauseFinding(context.checker)))
 
   const fromPipeStage = pipe(
     Option.liftPredicate(isExpressionReferenceNode)(node),
-    Option.filter(isCatchCauseReference(checker)),
-    Option.flatMap(pipeStageCatchCauseFinding(checker))
+    Option.filter(isCatchCauseReference(context.checker)),
+    Option.flatMap(pipeStageCatchCauseFinding(context.checker))
   )
 
   // Data-last catchCause stages need the outer pipe receiver because the call is the stage itself.
   const fromDataLastStage = pipe(
     callExpressionOf(node),
-    Option.filter(isCatchCauseCall(checker)),
-    Option.flatMap(dataLastCatchCauseFinding(checker))
+    Option.filter(isCatchCauseCall(context.checker)),
+    Option.flatMap(dataLastCatchCauseFinding(context.checker))
   )
 
   const findings = Array.make(fromDirect, fromPipeStage, fromDataLastStage)

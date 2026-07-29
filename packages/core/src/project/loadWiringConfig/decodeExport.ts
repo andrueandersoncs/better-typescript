@@ -25,7 +25,7 @@ class ErrorLike {
   constructor(readonly message: string) {}
 }
 
-const isPresentObject = (value: unknown): value is object => {
+export const isRecord = (value: unknown): value is UnknownRecord => {
   const isObject = isObjectType(typeof value)
   const isNonNull = value !== null
   const conditions = Array.make(isObject, isNonNull)
@@ -33,18 +33,11 @@ const isPresentObject = (value: unknown): value is object => {
   return Array.every(conditions, Boolean)
 }
 
-export const isRecord = isPresentObject as (value: unknown) => value is UnknownRecord
-
 export const isCallable = (value: unknown): value is () => unknown => isFunctionType(typeof value)
 
 const errorMessage = Struct.get<ErrorLike, "message">("message")
 
-// MessageBearingCause is Error-like shape because loaders inspect untyped thrown causes.
-class MessageBearingCause {
-  constructor(readonly message: string) {}
-}
-
-const hasMessageProperty = (cause: MessageBearingCause) => {
+const hasMessageProperty = (cause: UnknownRecord): cause is UnknownRecord & ErrorLike => {
   const hasMessage = Predicate.hasProperty(cause, "message")
   const messageValue = hasMessage ? Reflect.get(cause, "message") : null
   const messageIsString = isStringType(typeof messageValue)
@@ -53,11 +46,7 @@ const hasMessageProperty = (cause: MessageBearingCause) => {
 }
 
 const isErrorLike = (cause: unknown): cause is ErrorLike =>
-  pipe(
-    Option.liftPredicate(isPresentObject)(cause),
-    Option.map((value) => value as MessageBearingCause),
-    Option.exists(hasMessageProperty)
-  )
+  pipe(Option.liftPredicate(isRecord)(cause), Option.exists(hasMessageProperty))
 
 const hasText = (value: string) => value.length > 0
 

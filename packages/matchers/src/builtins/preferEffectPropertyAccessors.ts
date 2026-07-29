@@ -92,10 +92,8 @@ const isRecordType =
   }
 
 const propertyAccessorMatches = (context: MatchContext) => {
-  const checker = context.checker
-  const sourceFile = context.sourceFile
-  const isRecord = isRecordType(checker)
-  const propertyNameText = (name: ts.PropertyName) => name.getText(sourceFile)
+  const isRecord = isRecordType(context.checker)
+  const propertyNameText = (name: ts.PropertyName) => name.getText(context.sourceFile)
 
   const factFor = (node: ts.Node) => (access: ts.PropertyAccessExpression) => {
     const definition = Option.liftPredicate(isFunctionDefinition)(node)
@@ -116,8 +114,8 @@ const propertyAccessorMatches = (context: MatchContext) => {
       Option.getOrElse(Function.constant("this function"))
     )
 
-    const accessedText = access.getText(sourceFile)
-    const accessedType = checker.getTypeAtLocation(access.expression)
+    const accessedText = access.getText(context.sourceFile)
+    const accessedType = context.checker.getTypeAtLocation(access.expression)
     const moduleName = isRecord(accessedType) ? ("Record" as const) : ("Struct" as const)
     const propertyKey = JSON.stringify(access.name.text)
 

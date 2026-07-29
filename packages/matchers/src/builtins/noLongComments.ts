@@ -14,23 +14,21 @@ export const emptyNoLongCommentsFact = NoLongCommentsFact.make({})
 const maximumCommentLength = 100
 
 const longCommentsMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-  const text = sourceFile.getFullText()
-  const comments = context.comments
+  const text = context.sourceFile.getFullText()
 
-  const isOverlongComment = (comment: (typeof comments)[number]) => {
+  const isOverlongComment = (comment: (typeof context.comments)[number]) => {
     const length = commentText(text)(comment).length
 
     return length > maximumCommentLength
   }
 
-  const overlong = Array.filter(comments, isOverlongComment)
+  const overlong = Array.filter(context.comments, isOverlongComment)
 
-  const matchOverlongComment = (comment: (typeof comments)[number]) => {
-    const position = sourceFile.getLineAndCharacterOfPosition(comment.pos)
+  const matchOverlongComment = (comment: (typeof context.comments)[number]) => {
+    const position = context.sourceFile.getLineAndCharacterOfPosition(comment.pos)
 
     return makePositionMatch(
-      sourceFile,
+      context.sourceFile,
       position.line + 1,
       position.character + 1,
       emptyNoLongCommentsFact

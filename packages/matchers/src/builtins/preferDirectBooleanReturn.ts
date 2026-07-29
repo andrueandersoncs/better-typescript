@@ -89,14 +89,12 @@ const booleanReturnTargetKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
 )
 
 const matches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-
   const makeLiteralBranchMatch = (
     node: ts.Node,
     condition: ts.Expression,
     literalValue: boolean
   ): MatcherMatch<PreferDirectBooleanReturnFact> => {
-    const conditionText = condition.getText(sourceFile)
+    const conditionText = condition.getText(context.sourceFile)
 
     const fact = PreferDirectBooleanReturnFact.make({
       kind: "literal-branch",
@@ -182,9 +180,8 @@ const matches = (context: MatchContext) => {
       const nextStatement = Option.fromNullishOr(node.statements[index + 1])
 
       const lastReturnExpression = (block: ts.Block) => {
-        const blockStatements = block.statements
-        const lastIndex = blockStatements.length - 1
-        const lastThenStatement = Option.fromNullishOr(blockStatements[lastIndex])
+        const lastIndex = block.statements.length - 1
+        const lastThenStatement = Option.fromNullishOr(block.statements[lastIndex])
 
         return pipe(
           lastThenStatement,
@@ -198,13 +195,12 @@ const matches = (context: MatchContext) => {
           const elseBranch = Option.fromNullishOr(ifStatement.elseStatement)
           yield* Option.liftPredicate(Option.isNone)(elseBranch)
 
-          const thenStatement = ifStatement.thenStatement
-          const thenBlock = Option.liftPredicate(ts.isBlock)(thenStatement)
+          const thenBlock = Option.liftPredicate(ts.isBlock)(ifStatement.thenStatement)
 
           const thenBranchExpr = Option.match(thenBlock, {
             onNone: () =>
               pipe(
-                Option.liftPredicate(ts.isReturnStatement)(thenStatement),
+                Option.liftPredicate(ts.isReturnStatement)(ifStatement.thenStatement),
                 Option.flatMap(returnStatementExpression)
               ),
             onSome: lastReturnExpression

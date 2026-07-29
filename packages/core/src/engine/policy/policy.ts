@@ -39,7 +39,6 @@ const widenWorkspaceGuidance =
     Function.compose(asTypedMatch<Fact>, guidance(context))
 
 const defaultReported = true
-const defaultExamples = emptyRefactorExampleSource
 
 const reportedFromDefinition = (definition: Pick<PolicyDefinition, "reported">) =>
   pipe(
@@ -50,30 +49,36 @@ const reportedFromDefinition = (definition: Pick<PolicyDefinition, "reported">) 
 const examplesFromDefinition = (definition: Pick<PolicyDefinition, "examples">) =>
   pipe(
     Option.fromNullishOr(definition.examples),
-    Option.getOrElse(Function.constant(defaultExamples))
+    Option.getOrElse(Function.constant(emptyRefactorExampleSource))
   )
 
 export const makePolicy = <Fact, Seed extends PolicySeed<Fact> = PolicySeed<Fact>>(
   definition: Seed
 ): Policy => {
-  const name = definition.name
-  const matcher = definition.matcher
-  const guidance = widenGuidance(definition.guidance)
   const reported = reportedFromDefinition(definition)
   const examples = examplesFromDefinition(definition)
 
-  return new Policy({ name, matcher, guidance, reported, examples })
+  return new Policy({
+    name: definition.name,
+    matcher: definition.matcher,
+    guidance: widenGuidance(definition.guidance),
+    reported,
+    examples
+  })
 }
 
 export const makeSilentPolicy = <Fact, Seed extends PolicySeed<Fact> = PolicySeed<Fact>>(
   definition: Seed
 ): Policy => {
-  const name = definition.name
-  const matcher = definition.matcher
-  const guidance = widenGuidance(definition.guidance)
   const examples = examplesFromDefinition(definition)
 
-  return new Policy({ name, matcher, guidance, reported: false, examples })
+  return new Policy({
+    name: definition.name,
+    matcher: definition.matcher,
+    guidance: widenGuidance(definition.guidance),
+    examples,
+    reported: false
+  })
 }
 
 export const makeWorkspacePolicy = <
@@ -82,13 +87,16 @@ export const makeWorkspacePolicy = <
 >(
   definition: Seed
 ): WorkspacePolicy => {
-  const name = definition.name
-  const matcher = definition.matcher
-  const guidance = widenWorkspaceGuidance(definition.guidance)
   const reported = reportedFromDefinition(definition)
   const examples = examplesFromDefinition(definition)
 
-  return new WorkspacePolicy({ name, matcher, guidance, reported, examples })
+  return new WorkspacePolicy({
+    name: definition.name,
+    matcher: definition.matcher,
+    guidance: widenWorkspaceGuidance(definition.guidance),
+    reported,
+    examples
+  })
 }
 
 export const makeSilentWorkspacePolicy = <
@@ -97,12 +105,15 @@ export const makeSilentWorkspacePolicy = <
 >(
   definition: Seed
 ): WorkspacePolicy => {
-  const name = definition.name
-  const matcher = definition.matcher
-  const guidance = widenWorkspaceGuidance(definition.guidance)
   const examples = examplesFromDefinition(definition)
 
-  return new WorkspacePolicy({ name, matcher, guidance, reported: false, examples })
+  return new WorkspacePolicy({
+    name: definition.name,
+    matcher: definition.matcher,
+    guidance: widenWorkspaceGuidance(definition.guidance),
+    examples,
+    reported: false
+  })
 }
 
 export const makeFindings = (
@@ -180,11 +191,11 @@ const detectionsForPolicyMatches =
         return emptyDetections
       }
 
-      const policy = maybePolicy.value
-      const guidance = policy.guidance as PolicyGuidance<Context>
-      const detectionsForPolicy = detectionsForPolicyGuidance(context, toDetection, guidance)
-
-      return detectionsForPolicy(matches)
+      return detectionsForPolicyGuidance(
+        context,
+        toDetection,
+        maybePolicy.value.guidance as PolicyGuidance<Context>
+      )(matches)
     })
 
 export const toPolicies =

@@ -24,12 +24,10 @@ const isSingleLineComment = flow(
 const commentPosition = Struct.get<{ readonly pos: number }, "pos">("pos")
 
 const multiLineCommentsMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-  const text = sourceFile.getFullText()
-  const comments = context.comments
-  const blockComments = Array.filter(comments, Predicate.not(isSingleLineComment))
+  const text = context.sourceFile.getFullText()
+  const blockComments = Array.filter(context.comments, Predicate.not(isSingleLineComment))
   const blockPositions = Array.map(blockComments, commentPosition)
-  const singleLineComments = Array.filter(comments, isSingleLineComment)
+  const singleLineComments = Array.filter(context.comments, isSingleLineComment)
 
   const stackedRunPosition = (current: SourceComment, index: number) => {
     const nextComment = Array.get(singleLineComments, index + 1)
@@ -48,10 +46,10 @@ const multiLineCommentsMatches = (context: MatchContext) => {
   const positions = Array.appendAll(blockPositions, stackedRunPositions)
 
   const matchCommentPosition = (pos: number) => {
-    const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(pos)
+    const lineAndCharacter = context.sourceFile.getLineAndCharacterOfPosition(pos)
 
     return makePositionMatch(
-      sourceFile,
+      context.sourceFile,
       lineAndCharacter.line + 1,
       lineAndCharacter.character + 1,
       emptyNoMultiLineCommentsFact

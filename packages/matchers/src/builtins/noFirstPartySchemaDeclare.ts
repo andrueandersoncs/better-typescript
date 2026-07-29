@@ -104,14 +104,12 @@ const fallbackTypeName: () => string = Function.constant("unknown")
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
 const firstPartySchemaDeclareMatches = (context: MatchContext) => {
-  const { checker } = context
-
   const assertedType = (predicate: ts.Expression) => {
-    const type = checker.getTypeAtLocation(predicate)
+    const type = context.checker.getTypeAtLocation(predicate)
     const signatures = type.getCallSignatures()
 
     const typePredicateOptionFromSignature = (signature: ts.Signature) =>
-      pipe(checker.getTypePredicateOfSignature(signature), Option.fromNullishOr)
+      pipe(context.checker.getTypePredicateOfSignature(signature), Option.fromNullishOr)
 
     const firstSignature = Array.head(signatures)
 
@@ -123,8 +121,7 @@ const firstPartySchemaDeclareMatches = (context: MatchContext) => {
   }
 
   const matchDeclareCall = (call: ts.CallExpression) => {
-    const access = call.expression as ts.PropertyAccessExpression
-    const object = accessExpression(access)
+    const object = accessExpression(call.expression as ts.PropertyAccessExpression)
     if (!ts.isIdentifier(object)) return Array.empty()
     const isOnSchema = strictEqual("Schema")(object.text)
     const isDeclareOnSchema = isOnSchema && call.arguments.length > 0

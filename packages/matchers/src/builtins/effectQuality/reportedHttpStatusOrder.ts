@@ -99,10 +99,9 @@ export const httpStatusDecodeOrderFindings =
       return emptyRuleFindings
     }
 
-    const checker = context.checker
-    const isBodyDecode = isBodyDecodeCall(checker)
-    const precedesStatus = bodyReadPrecedesStatus(checker)
-    const looksHttpRelated = bodyLooksHttpRelated(checker)
+    const isBodyDecode = isBodyDecodeCall(context.checker)
+    const precedesStatus = bodyReadPrecedesStatus(context.checker)
+    const looksHttpRelated = bodyLooksHttpRelated(context.checker)
     const subjectOf = statusDecodeSubject(context)
     const precedesInFunction = bodyReadPrecedesInFunction(precedesStatus)
     // Report only HTTP-looking body reads because raw response.* or HttpClient schema signal HTTP

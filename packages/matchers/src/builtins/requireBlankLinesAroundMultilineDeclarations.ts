@@ -33,23 +33,21 @@ const fallbackTrue = Function.constant(true)
 const fallbackMissingIndex = Function.constant(-1)
 
 const matches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-  const text = sourceFile.getFullText()
+  const text = context.sourceFile.getFullText()
 
   const matchDeclaration = (node: ts.Node) => {
     if (!isDeclarationStatement(node)) {
       return Array.empty()
     }
 
-    const startPosition = node.getStart(sourceFile)
+    const startPosition = node.getStart(context.sourceFile)
     const endPosition = node.getEnd()
-    const start = sourceFile.getLineAndCharacterOfPosition(startPosition)
-    const end = sourceFile.getLineAndCharacterOfPosition(endPosition)
+    const start = context.sourceFile.getLineAndCharacterOfPosition(startPosition)
+    const end = context.sourceFile.getLineAndCharacterOfPosition(endPosition)
     const isMultiLine = end.line > start.line
-    const parent = node.parent
 
     const siblingsOption = pipe(
-      Option.liftPredicate(isStatementContainer)(parent),
+      Option.liftPredicate(isStatementContainer)(node.parent),
       Option.map(Struct.get("statements"))
     )
 
@@ -70,7 +68,7 @@ const matches = (context: MatchContext) => {
           previous,
           Option.map((prev) => {
             const beforeEnd = prev.getEnd()
-            const afterStart = node.getStart(sourceFile)
+            const afterStart = node.getStart(context.sourceFile)
             const between = text.slice(beforeEnd, afterStart)
 
             return blankLinePattern.test(between)
@@ -82,7 +80,7 @@ const matches = (context: MatchContext) => {
           next,
           Option.map((following) => {
             const beforeEnd = node.getEnd()
-            const afterStart = following.getStart(sourceFile)
+            const afterStart = following.getStart(context.sourceFile)
             const between = text.slice(beforeEnd, afterStart)
 
             return blankLinePattern.test(between)

@@ -259,13 +259,12 @@ const matches = (context: MatchContext) => {
               Option.fromNullishOr(parameter.type),
               Option.map((type) => {
                 const typeText = type.getText(context.sourceFile)
-                const propertyName = access.name.text
                 const partialText = partial.getText(context.sourceFile)
 
                 const fact = PreferFunctionCompositionFact.make({
                   kind: "adapter",
                   typeText,
-                  propertyName,
+                  propertyName: access.name.text,
                   partialText
                 })
 

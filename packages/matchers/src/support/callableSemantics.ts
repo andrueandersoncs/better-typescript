@@ -559,13 +559,13 @@ const ownedReturnExpressions = (definition: FunctionDefinition) => {
 }
 
 export const resultExpressions = (definition: FunctionDefinition): ReadonlyArray<ts.Expression> => {
-  const body = definition.body
-
-  if (!body) {
+  if (!definition.body) {
     return emptyExpressions
   }
 
-  return ts.isBlock(body) ? ownedReturnExpressions(definition)(body) : Array.of(body)
+  return ts.isBlock(definition.body)
+    ? ownedReturnExpressions(definition)(definition.body)
+    : Array.of(definition.body)
 }
 
 export const singleResultExpression = (definition: FunctionDefinition) => {
@@ -748,7 +748,7 @@ const typeLayerWords =
           return words
         }
 
-        const carrierMember = namedCarrier
+        const carrierPayloadOption = namedCarrier
           ? pipe(
               payload(current),
               Option.filter((candidate) => candidate !== current)
@@ -756,7 +756,7 @@ const typeLayerWords =
           : noneType
 
         const next = pipe(
-          carrierMember,
+          carrierPayloadOption,
           Option.orElse(() => singleNonNullishMember(current))
         )
 
@@ -777,15 +777,14 @@ const resultShape =
   (returnType: ts.Type) =>
   (payload: ts.Type): ResultShape => {
     const returnWords = typeLayerWords(checker)(returnType)
-    const payloadFlags = payload.flags
-    const isVoid = (payloadFlags & (ts.TypeFlags.Void | ts.TypeFlags.Undefined)) !== 0
-    const isBoolean = (payloadFlags & ts.TypeFlags.BooleanLike) !== 0
-    const isNumber = (payloadFlags & ts.TypeFlags.NumberLike) !== 0
-    const isString = (payloadFlags & ts.TypeFlags.StringLike) !== 0
+    const isVoid = (payload.flags & (ts.TypeFlags.Void | ts.TypeFlags.Undefined)) !== 0
+    const isBoolean = (payload.flags & ts.TypeFlags.BooleanLike) !== 0
+    const isNumber = (payload.flags & ts.TypeFlags.NumberLike) !== 0
+    const isString = (payload.flags & ts.TypeFlags.StringLike) !== 0
     const isCallable = payload.getCallSignatures().length > 0
     const isKeyed = hasWord(returnWords)(keyedWords)
     const isCollection = hasWord(returnWords)(collectionWords)
-    const isObject = (payloadFlags & ts.TypeFlags.Object) !== 0
+    const isObject = (payload.flags & ts.TypeFlags.Object) !== 0
 
     return pipe(
       Match.value(true),

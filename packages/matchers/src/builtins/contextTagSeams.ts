@@ -62,9 +62,8 @@ const accessNamesSeamApi = (access: ts.PropertyAccessExpression) =>
   pipe(
     Option.liftPredicate(ts.isIdentifier)(access.expression),
     Option.exists((root) => {
-      const member = access.name.text
-      const contextSeam = rootIsContextSeam(root, member)
-      const effectSeam = rootIsEffectSeam(root, member)
+      const contextSeam = rootIsContextSeam(root, access.name.text)
+      const effectSeam = rootIsEffectSeam(root, access.name.text)
 
       return contextSeam || effectSeam
     })
@@ -140,12 +139,11 @@ const ancestorMatching =
   (node: ts.Node): Option.Option<ts.Node> => {
     const visit = (current: ts.Node): Option.Option<ts.Node> => {
       const matched = Option.liftPredicate(predicate)(current)
-      const parent = current.parent
-      const atSourceFile = ts.isSourceFile(parent)
+      const atSourceFile = ts.isSourceFile(current.parent)
 
       return pipe(
         matched,
-        Option.orElse(() => (atSourceFile ? Option.none() : visit(parent)))
+        Option.orElse(() => (atSourceFile ? Option.none() : visit(current.parent)))
       )
     }
 
@@ -187,8 +185,7 @@ const argumentEqualsCurrent = (current: ts.Node) => (argument: ts.Expression) =>
 
 const argumentCallExpression = (node: ts.Node) => {
   const visit = (current: ts.Node): Option.Option<ts.CallExpression> => {
-    const parent = current.parent
-    const parenthesizedParent = Option.liftPredicate(ts.isParenthesizedExpression)(parent)
+    const parenthesizedParent = Option.liftPredicate(ts.isParenthesizedExpression)(current.parent)
 
     const expressionIsCurrent = flow(
       Struct.get<ts.ParenthesizedExpression, "expression">("expression"),
@@ -198,10 +195,10 @@ const argumentCallExpression = (node: ts.Node) => {
     const unwrapParenthesis = Option.exists(parenthesizedParent, expressionIsCurrent)
 
     if (unwrapParenthesis) {
-      return visit(parent)
+      return visit(current.parent)
     }
 
-    const callParent = Option.liftPredicate(ts.isCallExpression)(parent)
+    const callParent = Option.liftPredicate(ts.isCallExpression)(current.parent)
     const equalsCurrent = argumentEqualsCurrent(current)
 
     const callHasCurrentArgument = (call: ts.CallExpression) =>

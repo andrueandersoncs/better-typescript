@@ -52,9 +52,8 @@ const requestJsonAccess = (expression: ts.Expression) => {
     return isPropertyAccess
   }
 
-  const method = access.name.text
   const receiver = access.expression.getText()
-  const isJsonMethod = strictEqual("json")(method)
+  const isJsonMethod = strictEqual("json")(access.name.text)
   const looksLikeRequest = /request|req|body|payload|event/i.test(receiver)
   const checks = Array.make(isJsonMethod, looksLikeRequest)
 
@@ -66,11 +65,10 @@ const parentDecodesNode = (checker: ts.TypeChecker) => (parent: ts.Node) => {
     return callIsEffectApi(checker)("Schema")(schemaDecodeNames)(parent)
   }
 
-  const grandparent = parent.parent
-  const grandparentCall = ts.isCallExpression(grandparent)
+  const grandparentCall = ts.isCallExpression(parent.parent)
 
   return grandparentCall
-    ? callIsEffectApi(checker)("Schema")(schemaDecodeNames)(grandparent)
+    ? callIsEffectApi(checker)("Schema")(schemaDecodeNames)(parent.parent)
     : grandparentCall
 }
 

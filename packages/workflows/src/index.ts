@@ -45,12 +45,10 @@ const writeTextDelta = pipe(
 const acquireSubscription = (session: CreateAgentSessionResult["session"]) =>
   Effect.sync(() => session.subscribe(writeTextDelta))
 
-const releaseSubscription = Effect.sync
-
 const subscriptionResource = (session: CreateAgentSessionResult["session"]) => {
   const acquire = acquireSubscription(session)
 
-  return Effect.acquireRelease(acquire, releaseSubscription)
+  return Effect.acquireRelease(acquire, Effect.sync)
 }
 
 const writeNewline = Effect.sync(() => {

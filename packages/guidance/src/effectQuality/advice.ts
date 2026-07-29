@@ -88,16 +88,15 @@ export const effectQualityDerive = (signals: ReadonlyArray<Signal>): ReadonlyArr
         return Result.failVoid
       }
 
-      const data = detection.data
-      const evidenceItem = EvidenceItem.make({ measure: data.subject, count: 1 })
+      const evidenceItem = EvidenceItem.make({ measure: detection.data.subject, count: 1 })
       const evidence = Array.of(evidenceItem)
       const examples = makePackageExamples("effect-quality")
 
       const advice = Advice.make({
         location: detection.location,
         level: "file",
-        title: titles[data.kind],
-        remediation: remediations[data.kind],
+        title: titles[detection.data.kind],
+        remediation: remediations[detection.data.kind],
         evidence,
         examples
       })

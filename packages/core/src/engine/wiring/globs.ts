@@ -23,9 +23,8 @@ const matcherIncludesPath =
   (matcher: GlobMatcher): boolean => {
     const excluded = Tuple.get(matcher, 0)
     const includes = Tuple.get(matcher, 1)
-    const isExcluded = excluded
     const pathMatches = includes(candidatePath)
-    const conditions = Array.make(!isExcluded, pathMatches)
+    const conditions = Array.make(!excluded, pathMatches)
 
     return Array.every(conditions, Boolean)
   }

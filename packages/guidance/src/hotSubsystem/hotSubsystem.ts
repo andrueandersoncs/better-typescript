@@ -17,10 +17,9 @@ export const hotSubsystemExamples = makePackageExamples("hot-subsystem")
 
 const isHotSubsystem = (directory: DirectorySignals) => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
-  const total = elements.length
-  const hasEnoughSignals = total >= 25
+  const hasEnoughSignals = elements.length >= 25
   const hasEnoughFiles = directory.files.length >= 3
-  const hasProjectShare = total * 5 >= directory.projectTotal * 3
+  const hasProjectShare = elements.length * 5 >= directory.projectTotal * 3
   const signalsEvidence = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
 
   return Array.every(signalsEvidence, Boolean)
@@ -45,7 +44,6 @@ const makeSubsystemAdvice = (directory: DirectorySignals) => {
   const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
   const evidence = Array.appendAll(leadingEvidence, policyEvidence)
   const location = Location.make({ path: directory.path })
-  const examples = hotSubsystemExamples
 
   return Advice.make({
     location,
@@ -57,14 +55,13 @@ const makeSubsystemAdvice = (directory: DirectorySignals) => {
       "into Refs and PubSubs behind that Layer, and enter the runtime once at the " +
       "subsystem's edge.",
     evidence,
-    examples
+    examples: hotSubsystemExamples
   })
 }
 
 const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const files = byFile(signals)
   const projectElements = Array.flatMap(files, Struct.get("elements"))
-  const projectTotal = projectElements.length
 
   const directoryEntries = Array.flatMap(files, (file) => {
     const parents = parentDirectories(file.path)
@@ -110,7 +107,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
     return DirectorySignals.make({
       path,
       files: belongingFiles,
-      projectTotal
+      projectTotal: projectElements.length
     })
   })
 

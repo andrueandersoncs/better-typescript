@@ -31,9 +31,8 @@ export const effectFnNameFindings = (
     Option.filter(inspectionNameIsUnqualified),
     Option.map((inspection) => {
       const subject = pipe(inspection.name, Option.getOrElse(Function.constant("(anonymous)")))
-      const evidence = inspection.node as ts.Node
 
-      return makeRuleFinding("effect-fn-name")(subject)(evidence)
+      return makeRuleFinding("effect-fn-name")(subject)(inspection.node as ts.Node)
     }),
     Option.toArray
   )

@@ -43,8 +43,6 @@ const symbolDeclaredInEffectStructModule = (symbol: ts.Symbol) => {
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
 const monomorphicStructGetMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const declarationIsExported = (declaration: ts.VariableDeclaration) =>
     pipe(
       Option.some(declaration.parent.parent),
@@ -53,7 +51,7 @@ const monomorphicStructGetMatches = (context: MatchContext) => {
     )
 
   const typeNodeIsNonGenericCallable = (typeNode: ts.TypeNode) => {
-    const declaredType = checker.getTypeFromTypeNode(typeNode)
+    const declaredType = context.checker.getTypeFromTypeNode(typeNode)
     const signatures = declaredType.getCallSignatures()
     const hasCallSignature = signatures.length > 0
 
@@ -72,12 +70,12 @@ const monomorphicStructGetMatches = (context: MatchContext) => {
     const hasOneArgument = (call: ts.CallExpression) => strictEqual(1)(call.arguments.length)
 
     const symbolAtCalleeName = (callee: ts.PropertyAccessExpression) =>
-      pipe(checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
+      pipe(context.checker.getSymbolAtLocation(callee.name), Option.fromNullishOr)
 
     const resolveAlias = (symbol: ts.Symbol) => {
       const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
-      return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+      return isAlias ? context.checker.getAliasedSymbol(symbol) : symbol
     }
 
     const isGetName = flow(Struct.get<ts.Symbol, "name">("name"), strictEqual("get"))

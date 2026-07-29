@@ -9,8 +9,7 @@ import {
 
 const effectFnNames = Array.of("fn")
 
-const stringSchema = Schema.String
-const optionalNameSchema = Schema.Option(stringSchema)
+const optionalNameSchema = Schema.Option(Schema.String)
 
 const EffectFnNameInspection = Schema.Struct({
   node: Schema.Any,

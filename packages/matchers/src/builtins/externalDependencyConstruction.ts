@@ -89,8 +89,6 @@ const isCollaboratorName = (name: string) => {
 }
 
 const isDirectFactoryResult = (node: ts.NewExpression) => {
-  const parent = node.parent
-
   const statementExpressionIsNode = flow(
     Struct.get<ts.ReturnStatement, "expression">("expression"),
     strictEqual(node)
@@ -99,12 +97,12 @@ const isDirectFactoryResult = (node: ts.NewExpression) => {
   const arrowBodyIsNode = flow(Struct.get<ts.ArrowFunction, "body">("body"), strictEqual(node))
 
   const returned = pipe(
-    Option.liftPredicate(ts.isReturnStatement)(parent),
+    Option.liftPredicate(ts.isReturnStatement)(node.parent),
     Option.exists(statementExpressionIsNode)
   )
 
   const conciseArrow = pipe(
-    Option.liftPredicate(ts.isArrowFunction)(parent),
+    Option.liftPredicate(ts.isArrowFunction)(node.parent),
     Option.exists(arrowBodyIsNode)
   )
 

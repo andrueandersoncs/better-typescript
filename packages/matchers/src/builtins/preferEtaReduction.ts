@@ -22,10 +22,8 @@ const identifierText = Struct.get<ts.Identifier, "text">("text")
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
 const matches = (context: MatchContext) => {
-  const checker = context.checker
-
   const symbolOption = (node: ts.Node) =>
-    pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
+    pipe(context.checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
   const resolvedSymbol = (node: ts.Node) =>
     pipe(
@@ -33,7 +31,7 @@ const matches = (context: MatchContext) => {
       Option.map((symbol) => {
         const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
-        return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+        return isAlias ? context.checker.getAliasedSymbol(symbol) : symbol
       })
     )
 
@@ -66,7 +64,7 @@ const matches = (context: MatchContext) => {
       Option.getOrElse(Function.constant(false))
     )
 
-    const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+    const receiverType = context.checker.getTypeAtLocation(propertyAccess.expression)
     const constructCount = receiverType.getConstructSignatures().length
     const receiverIsConstructor = constructCount > 0
 
@@ -129,8 +127,7 @@ const matches = (context: MatchContext) => {
         Option.gen(function* () {
           const onlyArgument = yield* Option.fromNullishOr(call.arguments[0])
           const argument = unwrapCarrier(onlyArgument)
-          const callee = call.expression
-          const mentionCount = referenceCount(parameterName)(callee)
+          const mentionCount = referenceCount(parameterName)(call.expression)
           const calleeMentionsParameter = mentionCount > 0
 
           yield* Option.liftPredicate((value: boolean) => !value)(calleeMentionsParameter)
@@ -144,12 +141,12 @@ const matches = (context: MatchContext) => {
           )
 
           if (argumentIsParameter) {
-            return Tuple.make(callee)
+            return Tuple.make(call.expression)
           }
 
           const inner = yield* unaryCalleeTower(parameterName)(argument)
 
-          return Array.append(inner, callee)
+          return Array.append(inner, call.expression)
         })
 
       return pipe(callOption, Option.flatMap(calleesFromCall))

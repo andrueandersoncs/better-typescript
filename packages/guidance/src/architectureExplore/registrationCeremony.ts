@@ -37,14 +37,13 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
     const atImporter = Array.filter(usages, isAtImporter)
     const importCount = pipe(atImporter, Array.map(Struct.get("specifier")), Array.dedupe).length
     const names = Array.flatMap(atImporter, Struct.get("names"))
-    const totalNames = names.length
 
-    if (strictEqual(0)(totalNames)) {
+    if (strictEqual(0)(names.length)) {
       return Result.failVoid
     }
 
     const lowRefNames = Array.countBy(names, (name) => name.referenceCount <= 2)
-    const ratio = lowRefNames / totalNames
+    const ratio = lowRefNames / names.length
     const importsBelowMinimum = importCount < minimumImportCount
     const ratioBelowMinimum = ratio < minimumLowRefRatio
     const minimumChecks = Array.make(importsBelowMinimum, ratioBelowMinimum)
@@ -63,7 +62,6 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
 
     const singleUseItem = EvidenceItem.make({ measure: "single-use-imports", count: lowRefNames })
     const evidence = Array.make(importedModulesItem, singleUseItem)
-    const examples = registrationCeremonyExamples
 
     const advice = Advice.make({
       location,
@@ -73,7 +71,7 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
         "A registration ceremony restates every Module once as an import and again as a collected entry. " +
         "Collapse it behind one authoring interface so adding an entry touches one file.",
       evidence,
-      examples
+      examples: registrationCeremonyExamples
     })
 
     return Result.succeed(advice)

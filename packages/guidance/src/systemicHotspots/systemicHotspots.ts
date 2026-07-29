@@ -25,7 +25,6 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   })
 
   const evidence = Array.make(subsystemItem, densityItem)
-  const examples = systemicHotspotsExamples
 
   const advice = Advice.make({
     location,
@@ -37,7 +36,7 @@ const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
       "subsystem's shape first (Ref/Layer inversion, data-last signatures), let that land " +
       "the architectural pattern, then sweep the remaining dense files against it.",
     evidence,
-    examples
+    examples: systemicHotspotsExamples
   })
 
   return isSystemic ? Array.of(advice) : Array.empty()

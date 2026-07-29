@@ -16,23 +16,21 @@ export const emptyRequireBecauseInCommentsFact = RequireBecauseInCommentsFact.ma
 const becauseWord = /(?<![\p{L}\p{M}\p{N}\p{Pc}])because(?![\p{L}\p{M}\p{N}\p{Pc}])/iu
 
 const becauseInCommentsMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-  const text = sourceFile.getFullText()
-  const comments = context.comments
+  const text = context.sourceFile.getFullText()
 
-  const isMissingBecause = (comment: (typeof comments)[number]) => {
+  const isMissingBecause = (comment: (typeof context.comments)[number]) => {
     const textOfComment = commentText(text)(comment)
 
     return !becauseWord.test(textOfComment)
   }
 
-  const missingBecause = Array.filter(comments, isMissingBecause)
+  const missingBecause = Array.filter(context.comments, isMissingBecause)
 
-  const matchMissingBecause = (comment: (typeof comments)[number]) => {
-    const position = sourceFile.getLineAndCharacterOfPosition(comment.pos)
+  const matchMissingBecause = (comment: (typeof context.comments)[number]) => {
+    const position = context.sourceFile.getLineAndCharacterOfPosition(comment.pos)
 
     return makePositionMatch(
-      sourceFile,
+      context.sourceFile,
       position.line + 1,
       position.character + 1,
       emptyRequireBecauseInCommentsFact

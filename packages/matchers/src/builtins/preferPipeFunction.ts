@@ -18,11 +18,9 @@ const isPipeName = (access: ts.PropertyAccessExpression) => strictEqual("pipe")(
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
 const pipeFunctionMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const isEffectPipeAccess = (access: ts.PropertyAccessExpression) =>
     pipe(
-      checker.getSymbolAtLocation(access.name),
+      context.checker.getSymbolAtLocation(access.name),
       Option.fromNullishOr,
       Option.exists(symbolDeclaredInEffectPackage)
     )

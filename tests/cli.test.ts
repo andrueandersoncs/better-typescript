@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url"
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.dirname(testDirectory)
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")
+const noValueAliasesFixturePath = path.join(testDirectory, "fixtures", "no-value-aliases")
 const commandTimeoutMs = 30_000
 const terminationTimeoutMs = 5_000
 
@@ -244,6 +245,24 @@ test("default CLI emits NDJSON initial signal events and exits", async () => {
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }
+})
+
+test("default CLI emits the no-value-aliases public identity", async () => {
+  const result = await runCli(["--project", noValueAliasesFixturePath])
+
+  assert.equal(result.status, 0)
+  assert.equal(result.signal, null)
+  assertAnalyzingStatus(result.stderr, noValueAliasesFixturePath)
+
+  const events = parseNdjson(result.stdout)
+  const aliasEvent = events.find(
+    (event) => typeof event.text === "string" && event.text.includes("no-value-aliases")
+  )
+
+  assert.ok(aliasEvent)
+  assert.match(String(aliasEvent.text), /Do not declare aliases for existing values\./)
+  assert.match(String(aliasEvent.text), /Use the referenced value directly\./)
+  assert.doesNotMatch(String(aliasEvent.text), /no-export-aliases/)
 })
 
 test("default CLI emits one empty NDJSON event and exits for a signal-free project", async () => {

@@ -21,6 +21,7 @@ import { nodeMatcher } from "@better-typescript/matchers/matcher"
 import { makeNodeMatch } from "@better-typescript/matchers/matcher/data"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
 import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
+import { noValueAliases } from "@better-typescript/guidance/policies/noValueAliases"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const noThrowFixturePath = path.join(testDirectory, "fixtures", "no-throw")
@@ -71,6 +72,13 @@ const probeWiring = makeWiring({
 
 const probeConfig = defineConfig([{ files: ["src/cases.ts"], wiring: probeWiring }])
 
+const aliasWiring = makeWiring({
+  policies: [noValueAliases],
+  derive: () => []
+})
+
+const aliasConfig = defineConfig([{ files: ["src/cases.ts"], wiring: aliasWiring }])
+
 const collectEvents = <E>(
   effect: Effect.Effect<ReadonlyArray<ReportEvent>, E>
 ): Promise<ReadonlyArray<ReportEvent>> => Effect.runPromise(effect)
@@ -114,12 +122,26 @@ const syntheticUpdate = (sourceText: string): WorkspaceUpdate =>
 const initialSource = `throw "first"\n`
 const movedSource = `\nthrow "first"\n`
 const clearedSource = `export const value = 1\n`
+const aliasSource = "const source = () => true\nconst alias = source\n"
 
 const unusedCompilerOptions: ts.CompilerOptions = {
   noEmit: true,
   noUnusedLocals: true,
   noUnusedParameters: true
 }
+
+test("reportEvents preserves the no-value-aliases watch identity", async () => {
+  const events = await collectEvents(reportEvents(aliasConfig)(syntheticUpdate(aliasSource)))
+  const event = events[0]
+
+  assert.equal(events.length, 1)
+  assert.ok(event?._tag === "signal")
+  assert.equal(event.key._tag, "rule")
+  assert.equal(event.key.name, "no-value-aliases")
+  assert.match(event.text, /Do not declare aliases for existing values\./)
+  assert.match(event.text, /src\/cases\.ts:2:7/)
+  assert.doesNotMatch(event.text, /no-export-aliases/)
+})
 
 test("reportEvents emits the initial advice and check blocks in report order", async () => {
   const events = await collectEvents(reportEvents(probeConfig)(syntheticUpdate(initialSource)))

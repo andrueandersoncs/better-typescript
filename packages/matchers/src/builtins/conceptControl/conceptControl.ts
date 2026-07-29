@@ -3,6 +3,7 @@ import {
   Function,
   HashMap,
   HashSet,
+  Match,
   MutableList,
   Option,
   Order,
@@ -16,7 +17,7 @@ import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import {
   makeNodeMatch,
-  type Match,
+  type Match as FactMatch,
   type MatchContext
 } from "@better-typescript/matchers/matcher/data"
 import {
@@ -48,9 +49,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     (entry: DataStructureEntry) => `${entry.sourceFile.fileName}:${entry.name}`
   )
 
-  const matches = (context: MatchContext): ReadonlyArray<Match<ConceptSignalData>> => {
-    const checker = context.checker
-    const found = MutableList.make<Match<ConceptSignalData>>()
+  const matches = (context: MatchContext): ReadonlyArray<FactMatch<ConceptSignalData>> => {
+    const found = MutableList.make<FactMatch<ConceptSignalData>>()
 
     const entryInSourceFile = flow(
       Struct.get<DataStructureEntry, "sourceFile">("sourceFile"),
@@ -119,11 +119,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
     const canonicalSymbol = (symbol: ts.Symbol) =>
       strictEqual(0)(symbol.flags & ts.SymbolFlags.Alias)
         ? symbol
-        : checker.getAliasedSymbol(symbol)
+        : context.checker.getAliasedSymbol(symbol)
 
     const modelAt = (node: ts.Node) =>
       pipe(
-        checker.getSymbolAtLocation(node),
+        context.checker.getSymbolAtLocation(node),
         Option.fromNullishOr,
         Option.map(canonicalSymbol),
         Option.flatMap((symbol) => {
@@ -133,10 +133,11 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
         })
       )
 
-    const redundantTarget = (entry: DataStructureEntry): Option.Option<DataStructureEntry> => {
-      const declaration = entry.declaration
+    const noneRedundantTarget: Option.Option<DataStructureEntry> = Option.none()
+    const constantNoneRedundantTarget = Function.constant(noneRedundantTarget)
 
-      if (ts.isInterfaceDeclaration(declaration)) {
+    const redundantTarget = (entry: DataStructureEntry) => {
+      const fromInterface = (declaration: ts.InterfaceDeclaration) => {
         const emptyClauses = Array.empty<ts.HeritageClause>()
         const clauses = declaration.heritageClauses ?? emptyClauses
         const types = Array.flatMap(clauses, Struct.get("types"))
@@ -146,43 +147,48 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
 
         return emptyInterfaceAlias
           ? pipe(Array.head(types), Option.map(Struct.get("expression")), Option.flatMap(modelAt))
-          : Option.none()
+          : noneRedundantTarget
       }
 
-      if (!ts.isTypeAliasDeclaration(declaration)) {
-        return Option.none()
+      const derivedTargetFromReference = (reference: ts.TypeReferenceNode) => {
+        const direct = modelAt(reference.typeName)
+
+        if (Option.isSome(direct)) {
+          return direct
+        }
+
+        const utilityName = reference.typeName.getText()
+        const isDerivedUtility = HashSet.has(derivedAliasUtilities, utilityName)
+        const owners = ownersFor(entry)
+        const isSingleOwner = HashSet.size(owners) <= 1
+        const derivedConditions = Array.make(isDerivedUtility, isSingleOwner)
+        const isRedundantDerived = Array.every(derivedConditions, Boolean)
+
+        if (!isRedundantDerived) {
+          return noneRedundantTarget
+        }
+
+        const emptyTypeArguments = Array.empty<ts.TypeNode>()
+        const typeArguments = reference.typeArguments ?? emptyTypeArguments
+
+        return pipe(typeArguments, Array.head, Option.flatMap(modelAt))
       }
 
-      const type = declaration.type
+      const fromTypeAlias = flow(
+        Struct.get<ts.TypeAliasDeclaration, "type">("type"),
+        Option.liftPredicate(ts.isTypeReferenceNode),
+        Option.flatMap(derivedTargetFromReference)
+      )
 
-      if (!ts.isTypeReferenceNode(type)) {
-        return Option.none()
-      }
-
-      const direct = modelAt(type.typeName)
-
-      if (Option.isSome(direct)) {
-        return direct
-      }
-
-      const utilityName = type.typeName.getText()
-      const isDerivedUtility = HashSet.has(derivedAliasUtilities, utilityName)
-      const owners = ownersFor(entry)
-      const isSingleOwner = HashSet.size(owners) <= 1
-      const derivedConditions = Array.make(isDerivedUtility, isSingleOwner)
-      const isRedundantDerived = Array.every(derivedConditions, Boolean)
-
-      if (!isRedundantDerived) {
-        return Option.none()
-      }
-
-      const emptyTypeArguments = Array.empty<ts.TypeNode>()
-      const typeArguments = type.typeArguments ?? emptyTypeArguments
-
-      return pipe(typeArguments, Array.head, Option.flatMap(modelAt))
+      return pipe(
+        Match.value(entry.declaration),
+        Match.when(ts.isInterfaceDeclaration, fromInterface),
+        Match.when(ts.isTypeAliasDeclaration, fromTypeAlias),
+        Match.orElse(constantNoneRedundantTarget)
+      )
     }
 
-    const closedOwner = (entry: DataStructureEntry): Option.Option<FunctionEntry> => {
+    const closedOwner = (entry: DataStructureEntry) => {
       const roles = rolesFor(entry)
 
       if (HashSet.size(roles) > 0) {
@@ -436,9 +442,8 @@ const conceptControlSubscriptions = (index: ConceptIndex) => {
       )
 
       if (Option.isSome(functionDerivedEmission)) {
-        const emission = functionDerivedEmission.value
-        const owner = Tuple.get(emission, 0)
-        const callers = Tuple.get(emission, 1)
+        const owner = Tuple.get(functionDerivedEmission.value, 0)
+        const callers = Tuple.get(functionDerivedEmission.value, 1)
         const relatedConcepts = Array.of(owner.name)
         const externalCallers = HashSet.size(callers)
 

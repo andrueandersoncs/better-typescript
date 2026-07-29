@@ -102,7 +102,6 @@ const makeClosedAbstractionAdvice = (element: Detection, data: ConceptSignalData
   })
 
   const evidence = Array.make(externalCallers, independentOwners)
-  const examples = closedAbstractionClusterExamples
 
   return Advice.make({
     location: element.location,
@@ -114,7 +113,7 @@ const makeClosedAbstractionAdvice = (element: Detection, data: ConceptSignalData
       "independent seam, invariant, protocol, or multiple consumers. Never evade this by " +
       "replacing the model with an anonymous object type.",
     evidence,
-    examples
+    examples: closedAbstractionClusterExamples
   })
 }
 
@@ -150,7 +149,6 @@ const proliferationAdvice = (
   const withSignals = Array.prepend(counts, signalCount)
   const evidence = Array.prepend(withSignals, conceptCount)
   const location = Location.make({ path: directory })
-  const examples = conceptProliferationExamples
 
   const advice = Advice.make({
     location,
@@ -162,7 +160,7 @@ const proliferationAdvice = (
       "equivalent shapes, collapse pass-through conversions, then deepen the remaining " +
       "Module behind fewer enduring models. File separation does not make these independent concepts.",
     evidence,
-    examples
+    examples: conceptProliferationExamples
   })
 
   return Option.some(advice)

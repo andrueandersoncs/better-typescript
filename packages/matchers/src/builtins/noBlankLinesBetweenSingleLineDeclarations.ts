@@ -68,24 +68,22 @@ const isInsideFunction = (node: ts.Node): boolean =>
   )
 
 const blankLinesBetweenSingleLineDeclarationsMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-  const text = sourceFile.getFullText()
+  const text = context.sourceFile.getFullText()
 
   const matchDeclarationStatement = (node: ts.Statement) => {
     if (!isDeclarationStatement(node)) {
       return Array.empty()
     }
 
-    const startPosition = node.getStart(sourceFile)
+    const startPosition = node.getStart(context.sourceFile)
     const endPosition = node.getEnd()
-    const start = sourceFile.getLineAndCharacterOfPosition(startPosition)
-    const end = sourceFile.getLineAndCharacterOfPosition(endPosition)
+    const start = context.sourceFile.getLineAndCharacterOfPosition(startPosition)
+    const end = context.sourceFile.getLineAndCharacterOfPosition(endPosition)
     const currentIsSingleLine = strictEqual(start.line)(end.line)
     const insideFunction = isInsideFunction(node)
-    const parent = node.parent
 
     const siblingsOption = pipe(
-      Option.liftPredicate(isStatementContainer)(parent),
+      Option.liftPredicate(isStatementContainer)(node.parent),
       Option.map(Struct.get("statements"))
     )
 
@@ -101,13 +99,16 @@ const blankLinesBetweenSingleLineDeclarationsMatches = (context: MatchContext) =
 
       const previousCreatesBlankGap = (prev: ts.Statement) => {
         const previousIsDeclaration = isDeclarationStatement(prev)
-        const previousStartPosition = prev.getStart(sourceFile)
+        const previousStartPosition = prev.getStart(context.sourceFile)
         const previousEndPosition = prev.getEnd()
-        const previousStart = sourceFile.getLineAndCharacterOfPosition(previousStartPosition)
-        const previousEnd = sourceFile.getLineAndCharacterOfPosition(previousEndPosition)
+
+        const previousStart =
+          context.sourceFile.getLineAndCharacterOfPosition(previousStartPosition)
+
+        const previousEnd = context.sourceFile.getLineAndCharacterOfPosition(previousEndPosition)
         const previousIsSingleLine = strictEqual(previousStart.line)(previousEnd.line)
         const beforeEnd = prev.getEnd()
-        const afterStart = node.getStart(sourceFile)
+        const afterStart = node.getStart(context.sourceFile)
         const between = text.slice(beforeEnd, afterStart)
         const hasBlankLine = singleLineBlankLinePattern.test(between)
         const gapConditions = Array.make(previousIsDeclaration, previousIsSingleLine, hasBlankLine)

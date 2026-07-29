@@ -1,8 +1,6 @@
 import * as ts from "typescript"
 
 // ParseForTypeErrors keeps type-bearing JSDoc because Policies do not consume full JSDoc trees.
-export const analysisJsDocParsingMode = ts.JSDocParsingMode.ParseForTypeErrors
-
 export const withAnalysisCompilerOptions = (
   options: ts.CompilerOptions,
   required: ts.CompilerOptions
@@ -15,7 +13,7 @@ export const createAnalysisProgram = (
   const options = withAnalysisCompilerOptions(input.options, requiredOptions)
   const host = ts.createCompilerHost(options)
 
-  host.jsDocParsingMode = analysisJsDocParsingMode
+  host.jsDocParsingMode = ts.JSDocParsingMode.ParseForTypeErrors
 
   return ts.createProgram({ ...input, options, host })
 }

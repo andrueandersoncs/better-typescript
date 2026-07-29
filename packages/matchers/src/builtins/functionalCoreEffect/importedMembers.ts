@@ -59,33 +59,35 @@ const makePathWithMember =
 
 export const expressionPath = (
   expression: ts.Expression
-): Option.Option<readonly [ts.Identifier, ReadonlyArray<string>]> =>
-  pipe(
+): Option.Option<readonly [ts.Identifier, ReadonlyArray<string>]> => {
+  const propertyAccessPath = (access: ts.PropertyAccessExpression) =>
+    pipe(expressionPath(access.expression), Option.map(makePathWithMember(access.name.text)))
+
+  const elementAccessPath = (access: ts.ElementAccessExpression) => {
+    const member = pipe(
+      Option.fromNullishOr(access.argumentExpression),
+      Option.filter(ts.isStringLiteralLike),
+      Option.map(Struct.get("text"))
+    )
+
+    const base = expressionPath(access.expression)
+
+    return pipe(
+      Option.all({ base, member }),
+      Option.map(({ base, member }) => makePathWithMember(member)(base))
+    )
+  }
+
+  return pipe(
     expression,
     unwrapTransparentExpression,
     Match.value,
     Match.when(ts.isIdentifier, flow(identifierEmptyPath, Option.some)),
-    Match.when(ts.isPropertyAccessExpression, (access) => {
-      const memberName = access.name.text
-
-      return pipe(expressionPath(access.expression), Option.map(makePathWithMember(memberName)))
-    }),
-    Match.when(ts.isElementAccessExpression, (access) => {
-      const member = pipe(
-        Option.fromNullishOr(access.argumentExpression),
-        Option.filter(ts.isStringLiteralLike),
-        Option.map(Struct.get("text"))
-      )
-
-      const base = expressionPath(access.expression)
-
-      return pipe(
-        Option.all({ base, member }),
-        Option.map(({ base, member }) => makePathWithMember(member)(base))
-      )
-    }),
+    Match.when(ts.isPropertyAccessExpression, propertyAccessPath),
+    Match.when(ts.isElementAccessExpression, elementAccessPath),
     Match.orElse(() => Option.none())
   )
+}
 
 const identifierEmptyPath2 = (identifier: ts.Identifier) => Tuple.make(identifier, emptyMemberPath)
 

@@ -18,8 +18,6 @@ export const leakedSeamExamples = makePackageExamples("leaked-seam")
 
 const minimumLeaks = 2
 
-const directoryOf: (workspacePath: string) => string = path.posix.dirname
-
 const isProductionPath = Predicate.not(isTestPath)
 
 const directoryEdgesFromData = (
@@ -29,10 +27,10 @@ const directoryEdgesFromData = (
     return Array.empty<readonly [string, string]>()
   }
 
-  const fromDirectory = directoryOf(data.workspacePath)
+  const fromDirectory = path.posix.dirname(data.workspacePath)
 
   const edgeFromImport = (importedPath: string) => {
-    const toDirectory = directoryOf(importedPath)
+    const toDirectory = path.posix.dirname(importedPath)
 
     return Tuple.make(fromDirectory, toDirectory)
   }
@@ -99,7 +97,6 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
 
     const sourceItem = EvidenceItem.make({ measure: "source-path-imports", count: sourceCount })
     const evidence = Array.make(internalItem, sourceItem)
-    const examples = leakedSeamExamples
 
     const advice = Advice.make({
       location,
@@ -109,7 +106,7 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
         "This Module repeatedly bypasses declared interfaces through internal or package-source imports. " +
         "Route dependencies through one public seam so implementation paths remain local and replaceable.",
       evidence,
-      examples
+      examples: leakedSeamExamples
     })
 
     return Result.succeed(advice)
@@ -171,7 +168,6 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
     const location = Location.make({ path: smaller })
     const crossImportsItem = EvidenceItem.make({ measure: "cross-imports", count: crossImports })
     const evidence = Array.of(crossImportsItem)
-    const examples = leakedSeamExamples
 
     return Advice.make({
       location,
@@ -181,7 +177,7 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
         "Two directories import each other, so the seam between them leaks in both directions. " +
         "Give the shared vocabulary one home so the dependency points one way.",
       evidence,
-      examples
+      examples: leakedSeamExamples
     })
   })
 }

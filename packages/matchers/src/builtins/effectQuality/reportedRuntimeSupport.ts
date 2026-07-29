@@ -81,11 +81,9 @@ export const isExpressionReferenceNode = (candidate: ts.Node): candidate is ts.E
   return asIdentifier || asProperty
 }
 
-const stageEqualsExpression = strictEqual
-
 const stagesContainExpression =
   (expression: ts.Expression) => (stages: ReadonlyArray<ts.Expression>) =>
-    Array.some(stages, stageEqualsExpression(expression))
+    Array.some(stages, strictEqual(expression))
 
 const pipeParentContainsStage =
   (checker: ts.TypeChecker) => (expression: ts.Expression) => (parent: ts.Node) =>
@@ -129,8 +127,7 @@ export const callOrPipeStageSubject =
 export const typeSymbolName = (type: ts.Type) => {
   const rawSymbol = type.getSymbol()
   const symbol = Option.fromNullishOr(rawSymbol)
-  const rawAlias = type.aliasSymbol
-  const alias = Option.fromNullishOr(rawAlias)
+  const alias = Option.fromNullishOr(type.aliasSymbol)
 
   return pipe(
     symbol,

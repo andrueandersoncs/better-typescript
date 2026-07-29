@@ -1,4 +1,14 @@
-import { Array, Function, Match, Option, Record as EffectRecord, Struct, pipe, flow } from "effect"
+import {
+  Array,
+  Function,
+  Match,
+  Option,
+  Predicate,
+  Record as EffectRecord,
+  Struct,
+  pipe,
+  flow
+} from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import {
@@ -33,7 +43,7 @@ import { isTopLevelExportedDeclaration } from "./functionScope.js"
 import { callIsPipeRuntimeHandoff } from "./effectRuntimeApis.js"
 import {
   callIsReferenceProvideService,
-  contextServiceLayerProperty,
+  isContextServiceLayerProperty,
   declarationIsContextService,
   effectServiceConfigFromExpression,
   effectServiceConfigObject
@@ -292,9 +302,8 @@ const namespaceBindingSubject = (context: MatchContext, identifier: ts.Identifie
           return Option.none()
         }
 
-        const parent = current.parent
-        const isPropertyRoot = identifierIsPropertyAccessRoot(parent, current)
-        const isQualifiedRoot = identifierIsQualifiedNameRoot(parent, current)
+        const isPropertyRoot = identifierIsPropertyAccessRoot(current.parent, current)
+        const isQualifiedRoot = identifierIsQualifiedNameRoot(current.parent, current)
         const memberAccessRoots = Array.make(isPropertyRoot, isQualifiedRoot)
         const isMemberAccessRoot = Array.some(memberAccessRoots, Boolean)
 
@@ -354,29 +363,30 @@ const forbiddenDomainMemberAt = (
 
 const importBindingIdentifiers = (
   declaration: ts.ImportDeclaration
-): ReadonlyArray<ts.Identifier> => {
-  const importClauseOption = Option.fromNullishOr(declaration.importClause)
+): ReadonlyArray<ts.Identifier> =>
+  pipe(
+    Option.fromNullishOr(declaration.importClause),
+    Option.match({
+      onNone: Function.constant(emptyIdentifiers),
+      onSome: (importClause) => {
+        const defaultBinding = pipe(Option.fromNullishOr(importClause.name), Option.toArray)
 
-  if (Option.isNone(importClauseOption)) {
-    return emptyIdentifiers
-  }
+        return pipe(
+          Option.fromNullishOr(importClause.namedBindings),
+          Option.match({
+            onNone: Function.constant(defaultBinding),
+            onSome: (namedBindings) => {
+              const named = ts.isNamespaceImport(namedBindings)
+                ? Array.of(namedBindings.name)
+                : Array.map(namedBindings.elements, Struct.get("name"))
 
-  const importClause = importClauseOption.value
-  const defaultBinding = pipe(Option.fromNullishOr(importClause.name), Option.toArray)
-  const namedBindingsOption = Option.fromNullishOr(importClause.namedBindings)
-
-  if (Option.isNone(namedBindingsOption)) {
-    return defaultBinding
-  }
-
-  const namedBindings = namedBindingsOption.value
-
-  const named = ts.isNamespaceImport(namedBindings)
-    ? Array.of(namedBindings.name)
-    : Array.map(namedBindings.elements, Struct.get("name"))
-
-  return Array.appendAll(defaultBinding, named)
-}
+              return Array.appendAll(defaultBinding, named)
+            }
+          })
+        )
+      }
+    })
+  )
 
 const firstForbiddenDomainMember = (
   context: MatchContext,
@@ -416,26 +426,24 @@ const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
         return emptyDetections
       }
 
-      const resolvedRole = role.value
-
       const targetRole = pipe(
         resolvedModuleSourceFile(context, node),
         Option.flatMap(roleForResolvedSourceFile)
       )
 
-      const cannotImportRole = (target: ArchitectureRole) => !canImportRole(resolvedRole, target)
+      const cannotImportRole = (target: ArchitectureRole) => !canImportRole(role.value, target)
 
       const directionDetection = pipe(
         targetRole,
         Option.filter(cannotImportRole),
         Option.map((target) => {
-          const subject = `${resolvedRole} -> ${target}`
+          const subject = `${role.value} -> ${target}`
           const targetOption = Option.some(target)
 
           return boundaryDetection(
             context,
             node.moduleSpecifier,
-            resolvedRole,
+            role.value,
             "dependency-direction",
             subject,
             targetOption
@@ -448,12 +456,12 @@ const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
         boundaryDetection(
           context,
           node.moduleSpecifier,
-          resolvedRole,
+          role.value,
           "domain-effect-program",
           subject
         )
 
-      const domainDetection = strictEqual("domain")(resolvedRole)
+      const domainDetection = strictEqual("domain")(role.value)
         ? pipe(
             forbiddenDomainImport(context, node),
             Option.map(domainEffectProgramDetection),
@@ -462,7 +470,7 @@ const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
         : emptyDetections
 
       const importProvidesRuntime = importHasRuntimeValue(node)
-      const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+      const roleForbidsCapability = capabilityForbiddenRoles[role.value]
 
       const moduleCapability = pipe(
         moduleSpecifierText(node),
@@ -487,7 +495,7 @@ const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
         : Option.none()
 
       const directCapabilityDetection = (subject: string) =>
-        boundaryDetection(context, node.moduleSpecifier, resolvedRole, "direct-capability", subject)
+        boundaryDetection(context, node.moduleSpecifier, role.value, "direct-capability", subject)
 
       const capabilityDetection = pipe(
         moduleCapability,
@@ -509,21 +517,20 @@ const architectureImportElements = (index: FunctionalCoreEffectIndex) => {
 
 const exportBindingIdentifiers = (
   declaration: ts.ExportDeclaration
-): ReadonlyArray<ts.Identifier> => {
-  const exportClauseOption = Option.fromNullishOr(declaration.exportClause)
+): ReadonlyArray<ts.Identifier> =>
+  pipe(
+    Option.fromNullishOr(declaration.exportClause),
+    Option.match({
+      onNone: Function.constant(emptyIdentifiers),
+      onSome: (exportClause) => {
+        const names = ts.isNamespaceExport(exportClause)
+          ? Array.of(exportClause.name)
+          : Array.map(exportClause.elements, Struct.get("name"))
 
-  if (Option.isNone(exportClauseOption)) {
-    return emptyIdentifiers
-  }
-
-  const exportClause = exportClauseOption.value
-
-  const names = ts.isNamespaceExport(exportClause)
-    ? Array.of(exportClause.name)
-    : Array.map(exportClause.elements, Struct.get("name"))
-
-  return Array.filter(names, ts.isIdentifier)
-}
+        return Array.filter(names, ts.isIdentifier)
+      }
+    })
+  )
 
 const moduleSpecifierIsForbiddenDomain = (moduleSpecifier: string) =>
   isForbiddenDomainMember(moduleSpecifier, emptyPath)
@@ -587,27 +594,25 @@ const architectureExportElements = (index: FunctionalCoreEffectIndex) => {
         return emptyDetections
       }
 
-      const resolvedRole = exportInputs.value.role
-      const resolvedModuleSpecifier = exportInputs.value.moduleSpecifier
-
       const targetRole = pipe(
         resolvedModuleSourceFile(context, node),
         Option.flatMap(roleForResolvedSourceFile2)
       )
 
-      const cannotImportRole2 = (target: ArchitectureRole) => !canImportRole(resolvedRole, target)
+      const cannotImportRole2 = (target: ArchitectureRole) =>
+        !canImportRole(exportInputs.value.role, target)
 
       const directionDetection = pipe(
         targetRole,
         Option.filter(cannotImportRole2),
         Option.map((target) => {
-          const subject = `${resolvedRole} -> ${target}`
+          const subject = `${exportInputs.value.role} -> ${target}`
           const targetOption = Option.some(target)
 
           return boundaryDetection(
             context,
-            resolvedModuleSpecifier,
-            resolvedRole,
+            exportInputs.value.moduleSpecifier,
+            exportInputs.value.role,
             "dependency-direction",
             subject,
             targetOption
@@ -619,13 +624,13 @@ const architectureExportElements = (index: FunctionalCoreEffectIndex) => {
       const domainEffectProgramDetection2 = (subject: string) =>
         boundaryDetection(
           context,
-          resolvedModuleSpecifier,
-          resolvedRole,
+          exportInputs.value.moduleSpecifier,
+          exportInputs.value.role,
           "domain-effect-program",
           subject
         )
 
-      const domainDetection = strictEqual("domain")(resolvedRole)
+      const domainDetection = strictEqual("domain")(exportInputs.value.role)
         ? pipe(
             forbiddenDomainExport(context, node),
             Option.map(domainEffectProgramDetection2),
@@ -634,7 +639,7 @@ const architectureExportElements = (index: FunctionalCoreEffectIndex) => {
         : emptyDetections
 
       const exportProvidesRuntime = exportHasRuntimeValue(node)
-      const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
+      const roleForbidsCapability = capabilityForbiddenRoles[exportInputs.value.role]
 
       const moduleCapability = pipe(
         moduleSpecifierText(node),
@@ -661,8 +666,8 @@ const architectureExportElements = (index: FunctionalCoreEffectIndex) => {
       const directCapabilityDetection2 = (subject: string) =>
         boundaryDetection(
           context,
-          resolvedModuleSpecifier,
-          resolvedRole,
+          exportInputs.value.moduleSpecifier,
+          exportInputs.value.role,
           "direct-capability",
           subject
         )
@@ -841,19 +846,27 @@ const detectionWhen = (
 ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> =>
   shouldDetect ? Array.of(detectionValue) : emptyDetections
 
+const isTestArchitectureRole = strictEqual("test" as ArchitectureRole)
+const isPortArchitectureRole = strictEqual("port" as ArchitectureRole)
+const isDomainArchitectureRole = strictEqual("domain" as ArchitectureRole)
+const isNonTestArchitectureRole = Predicate.not(isTestArchitectureRole)
+
+const nonTestRoleForSourceFile = (index: FunctionalCoreEffectIndex, sourceFile: ts.SourceFile) =>
+  pipe(roleForSourceFile(index, sourceFile), Option.filter(isNonTestArchitectureRole))
+
+const portRoleForSourceFile = (index: FunctionalCoreEffectIndex, sourceFile: ts.SourceFile) =>
+  pipe(roleForSourceFile(index, sourceFile), Option.filter(isPortArchitectureRole))
+
+const domainRoleForSourceFile = (index: FunctionalCoreEffectIndex, sourceFile: ts.SourceFile) =>
+  pipe(roleForSourceFile(index, sourceFile), Option.filter(isDomainArchitectureRole))
+
 const callExpressionElements =
   (index: FunctionalCoreEffectIndex) =>
   (context: MatchContext) =>
   (node: ts.CallExpression): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
-    const role = roleForSourceFile(index, context.sourceFile)
+    const role = nonTestRoleForSourceFile(index, context.sourceFile)
 
     if (Option.isNone(role)) {
-      return emptyDetections
-    }
-
-    const resolvedRole = role.value
-
-    if (strictEqual("test")(resolvedRole)) {
       return emptyDetections
     }
 
@@ -866,14 +879,14 @@ const callExpressionElements =
       Option.getOrElse(fallbackSubject)
     )
 
-    const notRoot = resolvedRole !== "root"
+    const notRoot = role.value !== "root"
     const isRuntimeExecution = callIsRuntimeExecution(context, node)
     const shouldReportRuntime = notRoot && isRuntimeExecution
 
     const runtimeDetection = boundaryDetection(
       context,
       node.expression,
-      resolvedRole,
+      role.value,
       "runtime-execution",
       subject
     )
@@ -885,20 +898,20 @@ const callExpressionElements =
     const provisioningDetection = boundaryDetection(
       context,
       node.expression,
-      resolvedRole,
+      role.value,
       "dependency-provisioning",
       subject
     )
 
     const provisioning = detectionWhen(shouldReportProvisioning, provisioningDetection)
-    const isPort = strictEqual("port")(resolvedRole)
+    const isPort = strictEqual("port")(role.value)
     const isPortLayerCall = callIsPortLayer(context, node)
     const shouldReportPortLayer = isPort && isPortLayerCall
 
     const portLayerDetection = boundaryDetection(
       context,
       node.expression,
-      resolvedRole,
+      role.value,
       "port-live-implementation",
       subject
     )
@@ -910,7 +923,7 @@ const callExpressionElements =
     const serviceLocatorDetection = boundaryDetection(
       context,
       node.expression,
-      resolvedRole,
+      role.value,
       "service-locator",
       subject
     )
@@ -918,8 +931,8 @@ const callExpressionElements =
     const serviceLocator = detectionWhen(shouldReportServiceLocator, serviceLocatorDetection)
     const importedExpression = importedMemberAt(context.checker, node.expression)
     const expressionNotImported = Option.isNone(importedExpression)
-    const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
-    const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
+    const roleForbidsCapability = capabilityForbiddenRoles[role.value]
+    const adapterOrRoot = isAdapterOrRootRole(role.value)
 
     const ambientCapability = pipe(
       capabilitySubjectAt(context, index.policy, node),
@@ -927,7 +940,7 @@ const callExpressionElements =
     )
 
     const directCapabilityDetection3 = (capability: string) =>
-      boundaryDetection(context, node.expression, resolvedRole, "direct-capability", capability)
+      boundaryDetection(context, node.expression, role.value, "direct-capability", capability)
 
     const directCapability = pipe(
       ambientCapability,
@@ -943,7 +956,7 @@ const callExpressionElements =
       boundaryDetection(
         context,
         node.expression,
-        resolvedRole,
+        role.value,
         "unsuspended-adapter-effect",
         capability
       )
@@ -964,7 +977,7 @@ const callExpressionElements =
     const unscoped = Array.every(unscopedChecks, Boolean)
 
     const unscopedResourceDetection = (resource: string) =>
-      boundaryDetection(context, node.expression, resolvedRole, "unscoped-resource", resource)
+      boundaryDetection(context, node.expression, role.value, "unscoped-resource", resource)
 
     const unscopedResource = pipe(
       resourceSubjectAt(context, index.policy, node),
@@ -987,7 +1000,7 @@ const callExpressionElements =
     const escapingStateDetection = boundaryDetection(
       context,
       node.expression,
-      resolvedRole,
+      role.value,
       "escaping-runtime-state",
       subject
     )
@@ -1012,26 +1025,20 @@ const newExpressionElements =
   (index: FunctionalCoreEffectIndex) =>
   (context: MatchContext) =>
   (node: ts.NewExpression): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
-    const role = roleForSourceFile(index, context.sourceFile)
+    const role = nonTestRoleForSourceFile(index, context.sourceFile)
 
     if (Option.isNone(role)) {
       return emptyDetections
     }
 
-    const resolvedRole = role.value
-
-    if (strictEqual("test")(resolvedRole)) {
-      return emptyDetections
-    }
-
     const capability = capabilitySubjectAt(context, index.policy, node)
-    const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
-    const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
+    const roleForbidsCapability = capabilityForbiddenRoles[role.value]
+    const adapterOrRoot = isAdapterOrRootRole(role.value)
     const hasSuspension = hasSuspensionBoundary(context.checker, node)
     const lacksSuspension = strictEqual(false)(hasSuspension)
 
     const directCapabilityDetection4 = (subject: string) =>
-      boundaryDetection(context, node.expression, resolvedRole, "direct-capability", subject)
+      boundaryDetection(context, node.expression, role.value, "direct-capability", subject)
 
     const directCapability = pipe(
       capability,
@@ -1041,13 +1048,7 @@ const newExpressionElements =
     )
 
     const unsuspendedAdapterEffectDetection2 = (subject: string) =>
-      boundaryDetection(
-        context,
-        node.expression,
-        resolvedRole,
-        "unsuspended-adapter-effect",
-        subject
-      )
+      boundaryDetection(context, node.expression, role.value, "unsuspended-adapter-effect", subject)
 
     const unsuspended = pipe(
       capability,
@@ -1065,7 +1066,7 @@ const newExpressionElements =
     const unscoped = Array.every(unscopedChecks, Boolean)
 
     const unscopedResourceDetection2 = (subject: string) =>
-      boundaryDetection(context, node.expression, resolvedRole, "unscoped-resource", subject)
+      boundaryDetection(context, node.expression, role.value, "unscoped-resource", subject)
 
     const unscopedDetections = pipe(
       resourceSubjectAt(context, index.policy, node),
@@ -1087,26 +1088,21 @@ const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
     const elementsForNode = (
       node: ts.PropertyAccessExpression
     ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
-      const role = roleForSourceFile(index, context.sourceFile)
+      const role = nonTestRoleForSourceFile(index, context.sourceFile)
 
       if (Option.isNone(role)) {
         return emptyDetections
       }
 
-      const resolvedRole = role.value
-
-      if (strictEqual("test")(resolvedRole)) {
-        return emptyDetections
-      }
-
       const ambient = ambientCapabilityPropertySubject(context, node)
-      const roleForbidsCapability = capabilityForbiddenRoles[resolvedRole]
-      const adapterOrRoot = isAdapterOrRootRole(resolvedRole)
+      const roleForbidsCapability = capabilityForbiddenRoles[role.value]
+      const adapterOrRoot = isAdapterOrRootRole(role.value)
       const hasSuspension = hasSuspensionBoundary(context.checker, node)
       const lacksSuspension = strictEqual(false)(hasSuspension)
+      const notRoot = role.value !== "root"
 
       const directCapabilityDetection5 = (subject: string) =>
-        boundaryDetection(context, node, resolvedRole, "direct-capability", subject)
+        boundaryDetection(context, node, role.value, "direct-capability", subject)
 
       const directCapability = pipe(
         ambient,
@@ -1116,7 +1112,7 @@ const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
       )
 
       const unsuspendedAdapterEffectDetection3 = (subject: string) =>
-        boundaryDetection(context, node, resolvedRole, "unsuspended-adapter-effect", subject)
+        boundaryDetection(context, node, role.value, "unsuspended-adapter-effect", subject)
 
       const unsuspended = pipe(
         ambient,
@@ -1153,10 +1149,10 @@ const propertyAccessElements = (index: FunctionalCoreEffectIndex) => {
 
           return Array.findFirst(declarations, declarationIsContextServiceCheck)
         }),
-        Option.filter(Function.constant(resolvedRole !== "root")),
+        Option.filter(Function.constant(notRoot)),
         Option.map(() => {
           const subject = node.getText()
-          return boundaryDetection(context, node, resolvedRole, "dependency-provisioning", subject)
+          return boundaryDetection(context, node, role.value, "dependency-provisioning", subject)
         }),
         Option.toArray
       )
@@ -1175,15 +1171,9 @@ const classDeclarationElements =
   (index: FunctionalCoreEffectIndex) =>
   (context: MatchContext) =>
   (node: ts.ClassDeclaration): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
-    const role = roleForSourceFile(index, context.sourceFile)
+    const role = portRoleForSourceFile(index, context.sourceFile)
 
     if (Option.isNone(role)) {
-      return emptyDetections
-    }
-
-    const resolvedRole = role.value
-
-    if (resolvedRole !== "port") {
       return emptyDetections
     }
 
@@ -1200,7 +1190,7 @@ const classDeclarationElements =
     const liveImplementation = boundaryDetection(
       context,
       target,
-      resolvedRole,
+      role.value,
       "port-live-implementation",
       targetText
     )
@@ -1210,14 +1200,14 @@ const classDeclarationElements =
       return boundaryDetection(
         context,
         propertyName,
-        resolvedRole,
+        role.value,
         "port-live-implementation",
         subject
       )
     }
 
     const embeddedLayer = pipe(
-      contextServiceLayerProperty(node),
+      Array.findFirst(node.members, isContextServiceLayerProperty),
       Option.map(Struct.get("name")),
       Option.flatMap(Option.fromNullishOr),
       Option.map(embeddedLayerDetection),
@@ -1235,15 +1225,9 @@ const variableDeclarationElements = (index: FunctionalCoreEffectIndex) => {
     const elementsForNode = (
       node: ts.VariableDeclaration
     ): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
-      const role = roleForSourceFile(index, context.sourceFile)
+      const role = portRoleForSourceFile(index, context.sourceFile)
 
       if (Option.isNone(role)) {
-        return emptyDetections
-      }
-
-      const resolvedRole = role.value
-
-      if (resolvedRole !== "port") {
         return emptyDetections
       }
 
@@ -1261,7 +1245,7 @@ const variableDeclarationElements = (index: FunctionalCoreEffectIndex) => {
       const liveImplementation = boundaryDetection(
         context,
         node.name,
-        resolvedRole,
+        role.value,
         "port-live-implementation",
         targetText
       )
@@ -1443,9 +1427,8 @@ const typeReferenceElements =
       return emptyDetections
     }
 
-    const resolvedRole = role.value
-    const isTestRole = strictEqual("test")(resolvedRole)
-    const isRootRole = strictEqual("root")(resolvedRole)
+    const isTestRole = strictEqual("test")(role.value)
+    const isRootRole = strictEqual("root")(role.value)
     const skippedRoles = Array.make(isTestRole, isRootRole)
 
     if (Array.some(skippedRoles, Boolean)) {
@@ -1458,18 +1441,18 @@ const typeReferenceElements =
     const serviceLocatorDetection = boundaryDetection(
       context,
       node.typeName,
-      resolvedRole,
+      role.value,
       "service-locator",
       typeNameText
     )
 
     const serviceLocator = detectionWhen(isServiceLocatorType, serviceLocatorDetection)
-    const isPortRole = strictEqual("port")(resolvedRole)
+    const isPortRole = strictEqual("port")(role.value)
     const isTopLevelExport = isTopLevelExportedDeclaration(node)
     const shouldCheckInfrastructure = isPortRole && isTopLevelExport
 
     const infrastructureContractDetection = (subject: string) =>
-      boundaryDetection(context, node.typeName, resolvedRole, "infrastructure-contract", subject)
+      boundaryDetection(context, node.typeName, role.value, "infrastructure-contract", subject)
 
     const infrastructureContract = shouldCheckInfrastructure
       ? pipe(
@@ -1479,14 +1462,14 @@ const typeReferenceElements =
         )
       : emptyDetections
 
-    const isDomainRole = strictEqual("domain")(resolvedRole)
+    const isDomainRole = strictEqual("domain")(role.value)
     const isGlobalPromise = typeReferenceIsGlobalPromise(context, node)
     const shouldCheckDomainPromise = isDomainRole && isGlobalPromise
 
     const domainPromiseDetection = boundaryDetection(
       context,
       node.typeName,
-      resolvedRole,
+      role.value,
       "domain-effect-program",
       "Promise"
     )
@@ -1500,22 +1483,16 @@ const asyncKeywordElements =
   (index: FunctionalCoreEffectIndex) =>
   (context: MatchContext) =>
   (node: ts.Node): ReadonlyArray<FactMatch<FunctionalCoreBoundaryData>> => {
-    const role = roleForSourceFile(index, context.sourceFile)
+    const role = domainRoleForSourceFile(index, context.sourceFile)
 
     if (Option.isNone(role)) {
-      return emptyDetections
-    }
-
-    const resolvedRole = role.value
-
-    if (resolvedRole !== "domain") {
       return emptyDetections
     }
 
     const domainPromise = boundaryDetection(
       context,
       node,
-      resolvedRole,
+      role.value,
       "domain-effect-program",
       "Promise"
     )

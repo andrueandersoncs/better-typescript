@@ -16,15 +16,12 @@ export const NoNestedCallsFact = Schema.Struct({
 export interface NoNestedCallsFact extends Schema.Schema.Type<typeof NoNestedCallsFact> {}
 
 const nestedCallsMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const producesCallable = flow(
-    (call: ts.CallExpression | ts.NewExpression) => checker.getTypeAtLocation(call),
-    hasCallSignature(checker)
+    (call: ts.CallExpression | ts.NewExpression) => context.checker.getTypeAtLocation(call),
+    hasCallSignature(context.checker)
   )
 
-  const sourceFile = context.sourceFile
-  const callLabel = calleeText(sourceFile)
+  const callLabel = calleeText(context.sourceFile)
 
   const matchNestedCall = (call: ts.CallExpression | ts.NewExpression) =>
     pipe(
@@ -34,8 +31,10 @@ const nestedCallsMatches = (context: MatchContext) => {
           return Option.none()
         }
 
-        const callerExpression = consumer.expression
-        const callerName = ts.isIdentifier(callerExpression) ? callerExpression.text : undefined
+        const callerName = ts.isIdentifier(consumer.expression)
+          ? consumer.expression.text
+          : undefined
+
         const isPipeName = strictEqual("pipe")(callerName)
         const isCallConsumer = ts.isCallExpression(consumer)
         const consumerArguments = callArguments(consumer)

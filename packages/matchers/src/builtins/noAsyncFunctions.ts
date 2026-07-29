@@ -12,11 +12,10 @@ export interface NoAsyncFunctionsFact extends Schema.Schema.Type<typeof NoAsyncF
 export const emptyNoAsyncFunctionsFact = NoAsyncFunctionsFact.make({})
 
 const isAsyncFunctionModifier = (node: ts.Node): node is ts.Node => {
-  const parent = node.parent
-  const isFunctionDeclaration = ts.isFunctionDeclaration(parent)
-  const isFunctionExpression = ts.isFunctionExpression(parent)
-  const isArrowFunction = ts.isArrowFunction(parent)
-  const isMethodDeclaration = ts.isMethodDeclaration(parent)
+  const isFunctionDeclaration = ts.isFunctionDeclaration(node.parent)
+  const isFunctionExpression = ts.isFunctionExpression(node.parent)
+  const isArrowFunction = ts.isArrowFunction(node.parent)
+  const isMethodDeclaration = ts.isMethodDeclaration(node.parent)
 
   const conditions = Array.make(
     isFunctionDeclaration,

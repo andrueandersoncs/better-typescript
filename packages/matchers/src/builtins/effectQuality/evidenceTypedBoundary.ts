@@ -83,8 +83,6 @@ export const typedBoundaryError =
       return emptyAdviceFindings
     }
 
-    const handler = handlerOption.value
-
     // Stay quiet when the handler already because mapping is present.
     const mapsTaggedErrorReducer = (found: boolean, current: ts.Node) => {
       const taggedConstruction = pipe(
@@ -102,7 +100,7 @@ export const typedBoundaryError =
       return Array.some(signals, Boolean)
     }
 
-    const mapsTaggedError = foldAst(mapsTaggedErrorReducer)(handler)(false)
+    const mapsTaggedError = foldAst(mapsTaggedErrorReducer)(handlerOption.value)(false)
 
     // Only flag handlers that rethrow or return raw Error because that skips domain mapping.
     const returnsRawErrorReducer = (found: boolean, current: ts.Node) => {
@@ -118,7 +116,7 @@ export const typedBoundaryError =
       return Array.some(signals, Boolean)
     }
 
-    const returnsRawError = foldAst(returnsRawErrorReducer)(handler)(false)
+    const returnsRawError = foldAst(returnsRawErrorReducer)(handlerOption.value)(false)
     const mapsWithoutRawParts = Array.make(mapsTaggedError, !returnsRawError)
     const mapsWithoutRaw = Array.every(mapsWithoutRawParts, Boolean)
     const quiet = Array.make(mapsWithoutRaw, !returnsRawError)

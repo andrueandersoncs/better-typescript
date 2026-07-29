@@ -140,9 +140,8 @@ export const bodyReadPrecedesStatus =
     })
 
     const result = foldAst(step)(body)(initial)
-    const sawBodyRead = result.sawBodyRead
     const noStatusBefore = !result.sawStatusBefore
-    const flags = Array.make(sawBodyRead, noStatusBefore)
+    const flags = Array.make(result.sawBodyRead, noStatusBefore)
 
     return Array.every(flags, Boolean)
   }

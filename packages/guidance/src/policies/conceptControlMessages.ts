@@ -6,28 +6,14 @@ const emptyRelated = Function.constant("")
 const relatedAt = (fact: ConceptSignalData) => (index: number) =>
   pipe(Array.get(fact.relatedConcepts, index), Option.getOrElse(emptyRelated))
 
-const relatedConcept = relatedAt
+const messageForClosed = (closed: ConceptSignalData) =>
+  `${closed.concept} and ${closed.owner} form a closed abstraction with at most one external owner.`
 
-const messageForClosed = (closed: ConceptSignalData) => {
-  const concept = closed.concept
-  const owner = closed.owner
+const messageForRedundantAlias = (alias: ConceptSignalData) =>
+  `${alias.concept} renames ${relatedAt(alias)(0)} without adding independent semantics.`
 
-  return `${concept} and ${owner} form a closed abstraction with at most one external owner.`
-}
-
-const messageForRedundantAlias = (alias: ConceptSignalData) => {
-  const concept = alias.concept
-  const renamed = relatedConcept(alias)(0)
-
-  return `${concept} renames ${renamed} without adding independent semantics.`
-}
-
-const messageForDuplicateShape = (duplicate: ConceptSignalData) => {
-  const concept = duplicate.concept
-  const structure = relatedConcept(duplicate)(0)
-
-  return `${concept} duplicates the concrete structure of ${structure}.`
-}
+const messageForDuplicateShape = (duplicate: ConceptSignalData) =>
+  `${duplicate.concept} duplicates the concrete structure of ${relatedAt(duplicate)(0)}.`
 
 const messageForFunctionDerived = (derived: ConceptSignalData) =>
   `${derived.concept} is named after its sole function role instead of independent semantics.`
@@ -35,30 +21,17 @@ const messageForFunctionDerived = (derived: ConceptSignalData) =>
 const messageForSpeculativeExport = (speculative: ConceptSignalData) =>
   `${speculative.concept} is exported without an independent first-party consumer or established boundary.`
 
-const messageForUnusedField = (unused: ConceptSignalData) => {
-  const concept = unused.concept
-  const field = relatedConcept(unused)(0)
-
-  return `${concept}.${field} is constructed but never independently read.`
-}
+const messageForUnusedField = (unused: ConceptSignalData) =>
+  `${unused.concept}.${relatedAt(unused)(0)} is constructed but never independently read.`
 
 const messageForMissingRationale = (missing: ConceptSignalData) =>
   `${missing.concept} lacks a complete, structurally supported data-structure rationale.`
 
-const messageForParameterBag = (bag: ConceptSignalData) => {
-  const concept = bag.concept
-  const owner = bag.owner
+const messageForParameterBag = (bag: ConceptSignalData) =>
+  `${bag.concept} is constructed only to cross the ${bag.owner} call seam.`
 
-  return `${concept} is constructed only to cross the ${owner} call seam.`
-}
-
-const messageForPassThroughConversion = (conversion: ConceptSignalData) => {
-  const owner = conversion.owner
-  const source = relatedAt(conversion)(0)
-  const target = relatedAt(conversion)(1)
-
-  return `${owner} copies ${source} into ${target} without transformation.`
-}
+const messageForPassThroughConversion = (conversion: ConceptSignalData) =>
+  `${conversion.owner} copies ${relatedAt(conversion)(0)} into ${relatedAt(conversion)(1)} without transformation.`
 
 export const messageFor = (fact: ConceptSignalData) =>
   pipe(

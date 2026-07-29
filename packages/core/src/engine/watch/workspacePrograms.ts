@@ -4,10 +4,7 @@ import { makeContext } from "@better-typescript/matchers/sources"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { WorkspaceUpdate } from "./data.js"
 import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
-import {
-  analysisJsDocParsingMode,
-  withAnalysisCompilerOptions
-} from "../../project/loadProject/analysisCompilerOptions.js"
+import { withAnalysisCompilerOptions } from "../../project/loadProject/analysisCompilerOptions.js"
 
 // WorkspaceServices groups retained compiler resources because one finalizer owns their lifetime.
 class WorkspaceServices {
@@ -52,12 +49,11 @@ const createProjectLanguageService = (
 ) => {
   const options = withAnalysisCompilerOptions(config.parsed.options, compilerOptions)
   const documentRegistry = documentRegistryFor(options)
-  const rootNames = config.parsed.fileNames
   const scriptVersion = "0"
 
   const host: ts.LanguageServiceHost = {
     getCompilationSettings: Function.constant(options),
-    getScriptFileNames: Function.constant(rootNames),
+    getScriptFileNames: Function.constant(config.parsed.fileNames),
     getScriptVersion: Function.constant(scriptVersion),
     getScriptSnapshot: snapshotFor(snapshots),
     getCurrentDirectory: Function.constant(config.rootPath),
@@ -70,7 +66,7 @@ const createProjectLanguageService = (
     directoryExists: ts.sys.directoryExists,
     getDirectories: ts.sys.getDirectories,
     realpath: ts.sys.realpath,
-    jsDocParsingMode: analysisJsDocParsingMode
+    jsDocParsingMode: ts.JSDocParsingMode.ParseForTypeErrors
   }
 
   return ts.createLanguageService(host, documentRegistry)
@@ -92,7 +88,7 @@ const createWorkspaceServices = (
   const keyRegistry = ts.createDocumentRegistry(
     ts.sys.useCaseSensitiveFileNames,
     workspace.rootPath,
-    analysisJsDocParsingMode
+    ts.JSDocParsingMode.ParseForTypeErrors
   )
 
   const emptyRegistries = HashMap.empty<string, ts.DocumentRegistry>()
@@ -110,7 +106,7 @@ const createWorkspaceServices = (
     const documentRegistry = ts.createDocumentRegistry(
       ts.sys.useCaseSensitiveFileNames,
       workspace.rootPath,
-      analysisJsDocParsingMode
+      ts.JSDocParsingMode.ParseForTypeErrors
     )
 
     const latestRegistries = MutableRef.get(registries)

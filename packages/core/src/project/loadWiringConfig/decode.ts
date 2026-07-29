@@ -28,12 +28,8 @@ const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(functi
     return yield* failConfig(configPath, `${fieldPath}.derive must be a function`)
   }
 
-  const derive = value.derive as Wiring["derive"]
-
-  return new Wiring({ policies, derive })
+  return new Wiring({ policies, derive: value.derive as Wiring["derive"] })
 })
-
-const isUnknownArray: (value: unknown) => value is ReadonlyArray<unknown> = Array.isArray
 
 const isStringFileGlob = (value: unknown): value is string => {
   const isString = Predicate.isString(value)
@@ -65,11 +61,9 @@ const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(functi
     return yield* failConfig(configPath, `${fieldPath} must be an object with files and wiring`)
   }
 
-  const record = recordOption.value
-
   const filesOption = pipe(
-    record.files,
-    Option.liftPredicate(isUnknownArray),
+    recordOption.value.files,
+    Option.liftPredicate<unknown, ReadonlyArray<unknown>>(Array.isArray),
     Option.filter(isNonEmptyFileGlobArray)
   )
 
@@ -80,11 +74,10 @@ const validateWiringEntry = Effect.fn("WiringConfig.validateWiringEntry")(functi
     )
   }
 
-  const files = filesOption.value
   const wiringPath = `${fieldPath}.wiring`
-  const wiring = yield* validateWiringShape(configPath, wiringPath, record.wiring)
+  const wiring = yield* validateWiringShape(configPath, wiringPath, recordOption.value.wiring)
 
-  return new WiringEntry({ files, wiring })
+  return new WiringEntry({ files: filesOption.value, wiring })
 })
 
 const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(function* (

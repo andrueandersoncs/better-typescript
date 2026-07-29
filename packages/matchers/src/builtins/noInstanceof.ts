@@ -23,10 +23,8 @@ const className = Struct.get<ts.Symbol, "name">("name")
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
 const instanceofMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const matchInstanceofExpression = (expression: ts.BinaryExpression) => {
-    const symbolAtLocation = checker.getSymbolAtLocation(expression.right)
+    const symbolAtLocation = context.checker.getSymbolAtLocation(expression.right)
     const symbol = Option.fromNullishOr(symbolAtLocation)
 
     const factForSymbol = (resolved: ts.Symbol) => {

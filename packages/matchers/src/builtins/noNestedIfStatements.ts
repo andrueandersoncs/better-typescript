@@ -26,29 +26,24 @@ const nestedScopeBoundaryKinds = HashSet.make(
 
 const containingIfStatementFrom =
   (child: ts.Node) =>
-  (parent: Option.Option<ts.Node>): Option.Option<ts.IfStatement> => {
-    if (Option.isNone(parent)) {
-      return Option.none()
-    }
+  (parent: Option.Option<ts.Node>): Option.Option<ts.IfStatement> =>
+    Option.flatMap(parent, (parentNode) => {
+      if (HashSet.has(nestedScopeBoundaryKinds, parentNode.kind)) {
+        return Option.none()
+      }
 
-    const parentNode = parent.value
+      const grandparent = Option.fromNullishOr(parentNode.parent)
 
-    if (HashSet.has(nestedScopeBoundaryKinds, parentNode.kind)) {
-      return Option.none()
-    }
+      if (!ts.isIfStatement(parentNode)) {
+        return containingIfStatementFrom(parentNode)(grandparent)
+      }
 
-    const grandparent = Option.fromNullishOr(parentNode.parent)
+      const isElseBranch = strictEqual(child)(parentNode.elseStatement)
 
-    if (!ts.isIfStatement(parentNode)) {
-      return containingIfStatementFrom(parentNode)(grandparent)
-    }
-
-    const isElseBranch = strictEqual(child)(parentNode.elseStatement)
-
-    return isElseBranch
-      ? containingIfStatementFrom(parentNode)(grandparent)
-      : Option.some(parentNode)
-  }
+      return isElseBranch
+        ? containingIfStatementFrom(parentNode)(grandparent)
+        : Option.some(parentNode)
+    })
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 

@@ -56,18 +56,14 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
   )
 
   return Array.filterMap(burdens, (burden) => {
-    const workspacePath = burden.workspacePath
-
-    if (!Predicate.isString(workspacePath)) {
+    if (!Predicate.isString(burden.workspacePath)) {
       return Result.failVoid
     }
-
-    const operationCount = burden.operationCount
 
     const fanIn = pipe(
       edges,
       Array.filter((edge) => {
-        const importsWorkspacePath = strictEqual(workspacePath)(edge.importedPath)
+        const importsWorkspacePath = strictEqual(burden.workspacePath)(edge.importedPath)
         const isProductionImport = !edge.fromTest
         const conditions = Array.make(importsWorkspacePath, isProductionImport)
 
@@ -79,7 +75,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
 
     const matchesWorkspacePath = flow(
       Struct.get<(typeof moduleGraphs)[number], "workspacePath">("workspacePath"),
-      strictEqual(workspacePath)
+      strictEqual(burden.workspacePath)
     )
 
     const fanOut = pipe(
@@ -89,7 +85,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
       Option.getOrElse(Function.constant(0))
     )
 
-    const operationsBelowMinimum = operationCount < minimumOperations
+    const operationsBelowMinimum = burden.operationCount < minimumOperations
     const fanInBelowMinimum = fanIn < minimumFanIn
     const fanOutBelowMinimum = fanOut < minimumFanOut
     const minimumChecks = Array.make(operationsBelowMinimum, fanInBelowMinimum, fanOutBelowMinimum)
@@ -99,17 +95,16 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
       return Result.failVoid
     }
 
-    const location = Location.make({ path: workspacePath })
+    const location = Location.make({ path: burden.workspacePath })
 
     const operationsItem = EvidenceItem.make({
       measure: "interface-operations",
-      count: operationCount
+      count: burden.operationCount
     })
 
     const fanInItem = EvidenceItem.make({ measure: "fan-in-modules", count: fanIn })
     const fanOutItem = EvidenceItem.make({ measure: "fan-out-modules", count: fanOut })
     const evidence = Array.make(operationsItem, fanInItem, fanOutItem)
-    const examples = hubModuleExamples
 
     const advice = Advice.make({
       location,
@@ -119,7 +114,7 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
         "A hub Module hides several Modules behind one name. " +
         "Split along its consumer seams so each caller learns one smaller interface.",
       evidence,
-      examples
+      examples: hubModuleExamples
     })
 
     return Result.succeed(advice)

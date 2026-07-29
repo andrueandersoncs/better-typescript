@@ -63,7 +63,6 @@ const duplicatedOrchestrationAdvice = (
       const sitesItem = EvidenceItem.make({ measure: "duplicate-sites", count: paths.length })
       const stepsItem = EvidenceItem.make({ measure: "orchestration-steps", count: stepCount })
       const evidence = Array.make(sitesItem, stepsItem)
-      const examples = duplicatedOrchestrationExamples
 
       const advice = Advice.make({
         location,
@@ -73,7 +72,7 @@ const duplicatedOrchestrationAdvice = (
           "The same call shape is re-plumbed at several sites; name the operation once and let callers " +
           "compose it, because the duplicated derive/concat shape invites drift.",
         evidence,
-        examples
+        examples: duplicatedOrchestrationExamples
       })
 
       return Result.succeed(advice)

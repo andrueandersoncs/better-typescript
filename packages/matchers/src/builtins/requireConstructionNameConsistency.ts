@@ -72,8 +72,7 @@ const isExactSingleWord = (word: string) => (semantics: CallableSemantics) => {
 const isBareMake = isExactSingleWord("make")
 
 const isExactVariantConstructor = (semantics: CallableSemantics) => {
-  const words = semantics.name.words
-  const singleWord = strictEqual(1)(words.length)
+  const singleWord = strictEqual(1)(semantics.name.words.length)
 
   const isKnownVariantWord = (word: string) => {
     const knownVariant = HashSet.has(variantConstructors, word)
@@ -82,7 +81,7 @@ const isExactVariantConstructor = (semantics: CallableSemantics) => {
     return Array.every(conditions, Boolean)
   }
 
-  return pipe(Array.head(words), Option.exists(isKnownVariantWord))
+  return pipe(Array.head(semantics.name.words), Option.exists(isKnownVariantWord))
 }
 
 const isAllowedConstructionName = (semantics: CallableSemantics) => {

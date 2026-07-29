@@ -239,26 +239,23 @@ const exportedSymbolsIn =
     Array.flatMap(sourceFile.statements, exportedSymbolEntriesFor(checker))
 
 const isImportBinding = (node: ts.Identifier) => {
-  const parent = node.parent
-  const isImportSpecifier = ts.isImportSpecifier(parent)
-  const isImportClause = ts.isImportClause(parent)
-  const isNamespaceImport = ts.isNamespaceImport(parent)
-  const isImportEquals = ts.isImportEqualsDeclaration(parent)
+  const isImportSpecifier = ts.isImportSpecifier(node.parent)
+  const isImportClause = ts.isImportClause(node.parent)
+  const isNamespaceImport = ts.isNamespaceImport(node.parent)
+  const isImportEquals = ts.isImportEqualsDeclaration(node.parent)
   const checks = Array.make(isImportSpecifier, isImportClause, isNamespaceImport, isImportEquals)
 
   return Array.some(checks, Boolean)
 }
 
 const isDirectCallReference = (node: ts.Identifier) => {
-  const parent = node.parent
-
   const expressionIsNode = flow(
     Struct.get<ts.CallExpression, "expression">("expression"),
     strictEqual(node)
   )
 
   const directCall = pipe(
-    Option.liftPredicate(ts.isCallExpression)(parent),
+    Option.liftPredicate(ts.isCallExpression)(node.parent),
     Option.exists(expressionIsNode)
   )
 
@@ -277,7 +274,7 @@ const isDirectCallReference = (node: ts.Identifier) => {
   }
 
   const propertyCall = pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(parent),
+    Option.liftPredicate(ts.isPropertyAccessExpression)(node.parent),
     Option.exists(accessInvokesNode)
   )
 
@@ -347,7 +344,6 @@ const buildUsageMap =
     entries: ReadonlyArray<UsageScanEntry>,
     referenceFilter: (declaration: ts.Declaration) => (node: ts.Identifier) => boolean
   ): HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage> => {
-    const checker = context.checker
     const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
     const entryPair = (entry: UsageScanEntry) => {
@@ -398,7 +394,7 @@ const buildUsageMap =
             }
 
             return pipe(
-              resolvedSymbolAt(checker)(currentIdentifier),
+              resolvedSymbolAt(context.checker)(currentIdentifier),
               Option.flatMap(entryForSymbol),
               Option.filter(matchesReferenceFilter),
               Option.map(updatedUsagesFor)
@@ -427,20 +423,17 @@ const buildUsageMap =
   }
 
 export const buildExportReferenceIndex = (context: ProgramContext) => {
-  const checker = context.checker
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-  const entries = Array.flatMap(projectFiles, exportedFunctionsIn(checker))
+  const entries = Array.flatMap(projectFiles, exportedFunctionsIn(context.checker))
   const usages = buildUsageMap(context)(entries, isOutsideDeclaration)
 
   return new ExportReferenceIndex({ entries, usages })
 }
 
 export const buildExportSymbolIndex = (context: ProgramContext) => {
-  const checker = context.checker
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-  const entries = Array.flatMap(projectFiles, exportedSymbolsIn(checker))
+  const entries = Array.flatMap(projectFiles, exportedSymbolsIn(context.checker))
   const usages = buildUsageMap(context)(entries, isOutsideDeclaringFile)
-
   return new ExportSymbolIndex({ entries, usages })
 }
 

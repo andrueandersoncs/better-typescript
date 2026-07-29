@@ -38,7 +38,6 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
       })
 
       const evidence = Array.make(nestedItem, uncurriedItem)
-      const examples = pipelineHostileExamples
 
       return Advice.make({
         location,
@@ -49,7 +48,7 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
           "cannot pipe, so results nest. Fix the signatures first — curry configuration ahead " +
           "of the data argument — and the nested-call signals dissolve at the call sites.",
         evidence,
-        examples
+        examples: pipelineHostileExamples
       })
     })
   )

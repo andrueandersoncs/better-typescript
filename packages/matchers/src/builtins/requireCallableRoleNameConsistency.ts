@@ -103,9 +103,8 @@ const reducerAccumulatorCompatible =
   (checker: ts.TypeChecker) =>
   (semantics: CallableSemantics): boolean => {
     const accumulatorCompatible = (accumulator: ts.Type) => {
-      const returnType = semantics.result.returnType
-      const forward = checker.isTypeAssignableTo(returnType, accumulator)
-      const backward = checker.isTypeAssignableTo(accumulator, returnType)
+      const forward = checker.isTypeAssignableTo(semantics.result.returnType, accumulator)
+      const backward = checker.isTypeAssignableTo(accumulator, semantics.result.returnType)
       const checks = Array.make(forward, backward)
 
       return Array.some(checks, Boolean)
@@ -121,20 +120,17 @@ const roleExpectation =
   (checker: ts.TypeChecker) =>
   (role: RoleWord) =>
   (semantics: CallableSemantics): Option.Option<string> => {
-    const shape = semantics.result.shape
-    const execution = semantics.result.execution
-    const parameters = semantics.definition.parameters.length
-    const hasInput = parameters >= 1
+    const hasInput = semantics.definition.parameters.length >= 1
     const hasProjection = Option.isSome(semantics.projection)
     const isConstruction = HashSet.has(semantics.roles, "construction")
-    const isVoid = strictEqual("void")(shape)
-    const isEffect = strictEqual("effect")(execution)
+    const isVoid = strictEqual("void")(semantics.result.shape)
+    const isEffect = strictEqual("effect")(semantics.result.execution)
     const voidOrEffectFlags = Array.make(isVoid, isEffect)
     const isVoidOrEffect = Array.some(voidOrEffectFlags, Boolean)
     const isCallable = returnsCallable(checker)(semantics.definition)
-    const isBoolean = strictEqual("boolean")(shape)
-    const isNumber = strictEqual("number")(shape)
-    const isNonVoid = shape !== "void"
+    const isBoolean = strictEqual("boolean")(semantics.result.shape)
+    const isNumber = strictEqual("number")(semantics.result.shape)
+    const isNonVoid = semantics.result.shape !== "void"
 
     return pipe(
       Match.value(role),
@@ -147,7 +143,8 @@ const roleExpectation =
           : Option.some("at least one input and a non-void mapped result")
       ),
       Match.when("reducer", () =>
-        parameters >= 2 && reducerAccumulatorCompatible(checker)(semantics)
+        semantics.definition.parameters.length >= 2 &&
+        reducerAccumulatorCompatible(checker)(semantics)
           ? Option.none()
           : Option.some("at least two inputs and a result compatible with its accumulator")
       ),

@@ -39,11 +39,8 @@ import { isTestPath } from "./pathUtils.js"
 const checkedData = <A>(
   guard: (input: unknown) => input is A,
   element: NamedDetection
-): Option.Option<A> => {
-  const data = element.detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
+): Option.Option<A> =>
+  guard(element.detection.data) ? Option.some(element.detection.data) : Option.none()
 
 export const passThroughDataOf = (element: NamedDetection) =>
   checkedData(Schema.is(PassThroughWrapperData), element)

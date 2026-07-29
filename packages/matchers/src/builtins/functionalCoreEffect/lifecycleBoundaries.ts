@@ -27,12 +27,16 @@ const isSuspensionCallbackDeclaration = (
   checker: ts.TypeChecker,
   declaration: ts.FunctionLikeDeclaration
 ) => {
-  const parent = declaration.parent
-
-  if (ts.isCallExpression(parent)) {
+  if (ts.isCallExpression(declaration.parent)) {
     const argumentIsDeclaration = strictEqual(declaration)
-    const isArgument = Array.some(parent.arguments, argumentIsDeclaration)
-    const isSuspension = importedEffectApiAt(checker, parent.expression, "Effect", suspensionNames)
+    const isArgument = Array.some(declaration.parent.arguments, argumentIsDeclaration)
+
+    const isSuspension = importedEffectApiAt(
+      checker,
+      declaration.parent.expression,
+      "Effect",
+      suspensionNames
+    )
 
     return isArgument && isSuspension
   }
@@ -62,7 +66,7 @@ const isSuspensionCallbackDeclaration = (
   )
 
   return pipe(
-    Option.liftPredicate(ts.isPropertyAssignment)(parent),
+    Option.liftPredicate(ts.isPropertyAssignment)(declaration.parent),
     Option.filter(assignmentInitializesDeclaration),
     Option.flatMap(pipeOf7),
     Option.getOrElse(Function.constFalse)

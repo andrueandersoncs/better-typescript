@@ -96,8 +96,9 @@ const referenceText = (reference: EffectApiReference) => {
     return reference.name.text
   }
 
-  const argument = reference.argumentExpression
-  return ts.isStringLiteralLike(argument) ? argument.text : ""
+  return ts.isStringLiteralLike(reference.argumentExpression)
+    ? reference.argumentExpression.text
+    : ""
 }
 
 const unsafeImportedNames = (context: MatchContext) => {

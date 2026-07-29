@@ -36,8 +36,6 @@ const isYieldStarOfIdentifier = (identifier: ts.Identifier) => {
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
 const matches = (context: MatchContext) => {
-  const checker = context.checker
-
   const isEffectPropertyCall = (methodName: string) => (call: ts.CallExpression) => {
     const hasMethodName = (access: ts.PropertyAccessExpression) =>
       strictEqual(methodName)(access.name.text)
@@ -53,7 +51,7 @@ const matches = (context: MatchContext) => {
     }
 
     const symbolAtAccessName = (access: ts.PropertyAccessExpression) =>
-      pipe(checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
+      pipe(context.checker.getSymbolAtLocation(access.name), Option.fromNullishOr)
 
     return pipe(
       Option.some(call.expression),
@@ -90,10 +88,8 @@ const matches = (context: MatchContext) => {
               )
 
               if (Option.isSome(starredGenerator)) {
-                const currentGenerator = starredGenerator.value
-
                 const parentCall = Option.liftPredicate(ts.isCallExpression)(
-                  currentGenerator.parent
+                  starredGenerator.value.parent
                 )
 
                 const isGenArgument = pipe(parentCall, Option.exists(isEffectPropertyCall("gen")))
@@ -108,7 +104,7 @@ const matches = (context: MatchContext) => {
                 const wrapFlags = Array.make(isGenArgument, isFnArgument)
                 const wrapsEffectGenerator = Array.some(wrapFlags, Boolean)
 
-                return wrapsEffectGenerator ? Option.some(currentGenerator) : Option.none()
+                return wrapsEffectGenerator ? Option.some(starredGenerator.value) : Option.none()
               }
 
               const isArrow = ts.isArrowFunction(current)
@@ -139,7 +135,7 @@ const matches = (context: MatchContext) => {
           })
         )
 
-        const symbolCandidate = checker.getSymbolAtLocation(name)
+        const symbolCandidate = context.checker.getSymbolAtLocation(name)
         const symbol = yield* Option.fromNullishOr(symbolCandidate)
         const emptyReferences = Array.empty<ts.Identifier>()
 
@@ -155,7 +151,7 @@ const matches = (context: MatchContext) => {
 
           const matchingIdentifier = (identifier: ts.Identifier) =>
             pipe(
-              checker.getSymbolAtLocation(identifier),
+              context.checker.getSymbolAtLocation(identifier),
               Option.fromNullishOr,
               Option.filter(isSameSymbol),
               Option.as(identifier)

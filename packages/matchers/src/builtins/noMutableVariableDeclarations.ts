@@ -30,8 +30,6 @@ const tokenMutableKind = (firstToken: ts.Node) => HashMap.get(mutableKeywordKind
 const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationList)
 
 const mutableVariableDeclarationsMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-
   const matchDeclarationList = (declarationList: ts.VariableDeclarationList) => {
     const matchWithKind = (kind: MutableVariableDeclarationKind) => {
       const fact = NoMutableVariableDeclarationsFact.make({ kind })
@@ -39,7 +37,7 @@ const mutableVariableDeclarationsMatches = (context: MatchContext) => {
     }
 
     return pipe(
-      declarationList.getFirstToken(sourceFile),
+      declarationList.getFirstToken(context.sourceFile),
       Option.fromNullishOr,
       Option.flatMap(tokenMutableKind),
       Option.map(matchWithKind),

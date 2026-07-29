@@ -90,11 +90,6 @@ const matches = (context: MatchContext) => {
   const semanticsFor = callableSemantics(context)
 
   const matchWithSemantics = (semantics: CallableSemantics) => {
-    const relation = semantics.name.relation
-    const operation = semantics.name.operation
-    const resultWords = semantics.result.words
-    const sourceWords = semantics.sourceWords
-
     const makeFact = (axis: ConversionAxis) => (claimed: string, expected: string) => {
       const fact = RequireConversionDirectionConsistencyFact.make({
         axis,
@@ -109,7 +104,7 @@ const matches = (context: MatchContext) => {
     const resultDisagreement = (claimed: Option.Option<string>) =>
       pipe(
         claimed,
-        Option.flatMap(explicitDisagreement(resultWords)),
+        Option.flatMap(explicitDisagreement(semantics.result.words)),
         Option.map(([claimedWord, expected]) => makeFact("result")(claimedWord, expected)),
         Option.toArray
       )
@@ -117,7 +112,7 @@ const matches = (context: MatchContext) => {
     const sourceDisagreement = (claimed: Option.Option<string>) =>
       pipe(
         claimed,
-        Option.flatMap(explicitDisagreement(sourceWords)),
+        Option.flatMap(explicitDisagreement(semantics.sourceWords)),
         Option.map(([claimedWord, expected]) => makeFact("source")(claimedWord, expected)),
         Option.toArray
       )
@@ -149,20 +144,20 @@ const matches = (context: MatchContext) => {
       completeDirectionDisagreement(semantics.name.object, semantics.name.result)
 
     const fromDetections = pipe(
-      relation,
+      semantics.name.relation,
       Option.filter(isFromRelation),
       Option.map(fromDirectionDetections),
       Option.getOrElse(constantEmptyFacts)
     )
 
     const toDetections = pipe(
-      relation,
+      semantics.name.relation,
       Option.filter(isToRelation),
       Option.map(toDirectionDetections),
       Option.getOrElse(constantEmptyFacts)
     )
 
-    const hasDirectionRelation = pipe(relation, Option.exists(isDirectionRelation))
+    const hasDirectionRelation = pipe(semantics.name.relation, Option.exists(isDirectionRelation))
     const resultObjectDisagreement = () => resultDisagreement(semantics.name.object)
     const sourceObjectDisagreement = () => sourceDisagreement(semantics.name.object)
 
@@ -176,7 +171,7 @@ const matches = (context: MatchContext) => {
 
     const operationObjectDetectionsWhenNoDirection = () =>
       pipe(
-        operation,
+        semantics.name.operation,
         Option.match({
           onNone: constantEmptyFacts,
           onSome: operationObjectDetectionsFor

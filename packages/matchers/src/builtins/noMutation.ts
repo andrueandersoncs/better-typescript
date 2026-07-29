@@ -172,8 +172,6 @@ const isMutationCandidate = (node: ts.Node): node is MutationNode => {
 }
 
 const mutationMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   // Treat module and captured bindings as shared because they outlive the writer.
   const scopeOf = (target: ts.Expression) => {
     const root = rootReceiver(target)
@@ -182,11 +180,11 @@ const mutationMatches = (context: MatchContext) => {
       return "shared-state"
     }
 
-    const rootSymbol = checker.getSymbolAtLocation(root)
+    const rootSymbol = context.checker.getSymbolAtLocation(root)
 
     return pipe(
       Option.fromNullishOr(rootSymbol),
-      Option.map(resolveAlias(checker)),
+      Option.map(resolveAlias(context.checker)),
       Option.map((symbol): MutationScope => {
         const declarations = symbol.getDeclarations() ?? Array.empty()
         const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
@@ -220,17 +218,17 @@ const mutationMatches = (context: MatchContext) => {
 
     // Judge the receiver because property and element assignments write into its data
     if (isAccess) {
-      const receiverType = checker.getTypeAtLocation(unwrapped.expression)
+      const receiverType = context.checker.getTypeAtLocation(unwrapped.expression)
 
       return isUncontrolledTypeWithSeen(emptyTypeSeen)(receiverType)
     }
 
     // Judge the binding declaration because an assignment rebinding x replaces the binding
-    const bindingSymbol = checker.getSymbolAtLocation(unwrapped)
+    const bindingSymbol = context.checker.getSymbolAtLocation(unwrapped)
 
     return pipe(
       Option.fromNullishOr(bindingSymbol),
-      Option.map(resolveAlias(checker)),
+      Option.map(resolveAlias(context.checker)),
       Option.exists(isUncontrolledSymbol)
     )
   }

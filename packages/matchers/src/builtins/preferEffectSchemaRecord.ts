@@ -128,7 +128,6 @@ const buildConstructionIndex = (
   context: ProgramContext
 ): HashMap.HashMap<ReferenceKey<ts.Symbol>, string> => {
   const emptyIndex = HashMap.empty<ReferenceKey<ts.Symbol>, string>()
-  const checker = context.checker
 
   const typeHasProperty = (type: ts.Type) => (name: string) => {
     const declaredProperty = type.getProperty(name)
@@ -165,7 +164,7 @@ const buildConstructionIndex = (
     }
 
   const typeArgumentAt = (parameterPosition: number) => (reference: ts.TypeReference) => {
-    const typeArguments = checker.getTypeArguments(reference)
+    const typeArguments = context.checker.getTypeArguments(reference)
 
     return Array.get(typeArguments, parameterPosition)
   }
@@ -174,7 +173,7 @@ const buildConstructionIndex = (
     (typeParameter: ts.Type) =>
     (contextualMembers: ReadonlyArray<ts.Type>) =>
     (declaredMember: ts.TypeReference): ReadonlyArray<ts.Type> => {
-      const typeArguments = checker.getTypeArguments(declaredMember)
+      const typeArguments = context.checker.getTypeArguments(declaredMember)
       const isTypeParameter = strictEqual(typeParameter)
 
       const parameterPosition = pipe(
@@ -214,7 +213,7 @@ const buildConstructionIndex = (
       )
     }
 
-  const declaredParameterType = (parameter: ts.Symbol) => checker.getTypeOfSymbol(parameter)
+  const declaredParameterType = (parameter: ts.Symbol) => context.checker.getTypeOfSymbol(parameter)
 
   const boxedExtraction =
     (signature: ts.Signature) =>
@@ -258,7 +257,7 @@ const buildConstructionIndex = (
     (
       literal: ts.ObjectLiteralExpression
     ): ReadonlyArray<readonly [ReferenceKey<ts.Symbol>, string]> => {
-      const contextualType = checker.getContextualType(literal)
+      const contextualType = context.checker.getContextualType(literal)
       const directContextualType = Option.fromNullishOr(contextualType)
       const emptyBoxedTypes = Array.empty()
 
@@ -268,9 +267,9 @@ const buildConstructionIndex = (
           const call = yield* Option.liftPredicate(ts.isCallExpression)(argument.parent)
           const isArgument = strictEqual(argument)
           const argumentPosition = yield* Array.findFirstIndex(call.arguments, isArgument)
-          const callContextualType = checker.getContextualType(call)
+          const callContextualType = context.checker.getContextualType(call)
           const contextual = yield* Option.fromNullishOr(callContextualType)
-          const signatures = checker.getTypeAtLocation(call.expression).getCallSignatures()
+          const signatures = context.checker.getTypeAtLocation(call.expression).getCallSignatures()
 
           return Array.flatMap(signatures, signatureBoxedTypes(argumentPosition)(contextual))
         }),
@@ -310,11 +309,9 @@ const buildConstructionIndex = (
 
 const objectTypeDeclarationMatches =
   (index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>) => (context: MatchContext) => {
-    const checker = context.checker
-
     const matches = (declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration) =>
       pipe(
-        checker.getSymbolAtLocation(declaration.name),
+        context.checker.getSymbolAtLocation(declaration.name),
         Option.fromNullishOr,
         Option.flatMap((symbol) => {
           const symbolKey = referenceKey(symbol)
@@ -322,15 +319,13 @@ const objectTypeDeclarationMatches =
           return HashMap.get(index, symbolKey)
         }),
         Option.map((constructionFileName) => {
-          const typeName = declaration.name.text
-
           const kindLabel = ts.isInterfaceDeclaration(declaration)
             ? ("an interface" as const)
             : ("a type alias" as const)
 
           const fact = PreferEffectSchemaRecordFact.make({
             kind: "object",
-            typeName,
+            typeName: declaration.name.text,
             constructionFileName,
             kindLabel
           })
@@ -380,11 +375,9 @@ const isTupleTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclara
 
 const tupleTypeDeclarationMatches = (_context: MatchContext) => {
   const matches = (declaration: ts.TypeAliasDeclaration) => {
-    const typeName = declaration.name.text
-
     const fact = PreferEffectSchemaRecordFact.make({
       kind: "tuple",
-      typeName
+      typeName: declaration.name.text
     })
 
     const match = makeNodeMatch(declaration.name, fact)

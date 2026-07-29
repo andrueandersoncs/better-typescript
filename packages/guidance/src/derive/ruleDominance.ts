@@ -21,7 +21,6 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   const location = Location.make({ path: "project" })
   const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
   const evidence = Array.prepend(dominantEvidence, signalsItem)
-  const examples = ruleDominanceExamples
 
   const advice = Advice.make({
     location,
@@ -32,7 +31,7 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
       "systemic, not local. Plan one mechanical migration — a codemod and a single review " +
       "— instead of fixing occurrences file by file.",
     evidence,
-    examples
+    examples: ruleDominanceExamples
   })
 
   return isDominated ? Array.of(advice) : Array.empty()

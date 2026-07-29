@@ -45,11 +45,10 @@ export const handrolledTtlCacheFindings = (
   )
 
 const typeArgsOfTypeReference = (checker: ts.TypeChecker) => (type: ts.Type) => {
-  const reference = type as ts.TypeReference
-  const objectFlags = reference.objectFlags ?? 0
+  const objectFlags = (type as ts.TypeReference).objectFlags ?? 0
   const isReference = (objectFlags & ts.ObjectFlags.Reference) !== 0
 
-  return isReference ? checker.getTypeArguments(reference) : emptyTypes
+  return isReference ? checker.getTypeArguments(type as ts.TypeReference) : emptyTypes
 }
 
 const typeMentionsConstructor =

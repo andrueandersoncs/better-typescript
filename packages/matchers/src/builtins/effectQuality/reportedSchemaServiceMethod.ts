@@ -115,7 +115,6 @@ const shorthandPropertyMethodFinding =
   (context: MatchContext) =>
   (serviceName: string) =>
   (property: ts.ShorthandPropertyAssignment) => {
-    const methodName = property.name.text
     const returnsEffect = expressionTypeIsEffectReturning(context.checker)(property.name)
     const wrapped = initializerIsNamedEffectFn(context.checker)(property.name)
     const notWrapped = !wrapped
@@ -126,7 +125,7 @@ const shorthandPropertyMethodFinding =
       return Option.none()
     }
 
-    const subject = serviceMethodSubject(serviceName)(methodName)
+    const subject = serviceMethodSubject(serviceName)(property.name.text)
     const finding = serviceMethodFinding(subject)(property.name)
 
     return Option.some(finding)

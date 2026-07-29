@@ -76,20 +76,18 @@ const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceIte
 
 const shapeAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArray<Advice> =>
   Array.filterMap(detections, (element) => {
-    const data = element.data
-
-    if (!Schema.is(FunctionalCoreShapeData)(data)) {
+    if (!Schema.is(FunctionalCoreShapeData)(element.data)) {
       return Result.failVoid
     }
 
-    const evidence = shapeEvidence(data)
-    const examples = shapeAdviceExamples[data.kind]
+    const evidence = shapeEvidence(element.data)
+    const examples = shapeAdviceExamples[element.data.kind]
 
     const advice = Advice.make({
       location: element.location,
       level: "file",
-      title: shapeAdviceTitles[data.kind],
-      remediation: shapeAdviceRemediations[data.kind],
+      title: shapeAdviceTitles[element.data.kind],
+      remediation: shapeAdviceRemediations[element.data.kind],
       evidence,
       examples
     })
@@ -145,7 +143,6 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       })
 
       const location = Location.make({ path: path })
-      const examples = imperativeCoreExamples
 
       const advice = Advice.make({
         location,
@@ -154,7 +151,7 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
         remediation:
           "Several independent boundary violations concentrate in this core Module. Extract a pure decision function, express external needs as domain-owned Context.Service ports, and leave Layer selection plus runtime execution at the composition root.",
         evidence,
-        examples
+        examples: imperativeCoreExamples
       })
 
       return Array.of(advice)

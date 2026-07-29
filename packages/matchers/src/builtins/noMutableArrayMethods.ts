@@ -27,26 +27,25 @@ const mutableArrayMethods = HashSet.fromIterable(mutableArrayMethodNames)
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
 const mutableArrayMethodsMatches = (context: MatchContext) => {
-  const checker = context.checker
-  const isReceiverArrayType = isArrayLikeType(checker)
+  const isReceiverArrayType = isArrayLikeType(context.checker)
 
   const matchMutableArrayMethod = (callExpression: ts.CallExpression) => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return Array.empty()
     }
 
-    const propertyAccess = callExpression.expression
-    const methodText = propertyAccess.name.text
-
-    const methodName = HashSet.has(mutableArrayMethods, methodText as MutableArrayMethod)
-      ? Option.some(methodText as MutableArrayMethod)
+    const methodName = HashSet.has(
+      mutableArrayMethods,
+      callExpression.expression.name.text as MutableArrayMethod
+    )
+      ? Option.some(callExpression.expression.name.text as MutableArrayMethod)
       : Option.none<MutableArrayMethod>()
 
     if (Option.isNone(methodName)) {
       return Array.empty()
     }
 
-    const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+    const receiverType = context.checker.getTypeAtLocation(callExpression.expression.expression)
     const fact = NoMutableArrayMethodsFact.make({ methodName: methodName.value })
 
     const methodFact = isReceiverArrayType(receiverType)

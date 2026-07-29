@@ -45,8 +45,7 @@ const nodeIsValidationCall =
 
 // Parent decode form is valid because Schema.decodeUnknown(response.json()) nests the body read.
 const responseBodyHasNearbyValidation = (checker: ts.TypeChecker) => (call: ts.CallExpression) => {
-  const parent = call.parent
-  const parentCall = callExpressionOf(parent)
+  const parentCall = callExpressionOf(call.parent)
   const validates = isSchemaOrHttpResponseValidation(checker)
   const directParentValidation = Option.exists(parentCall, validates)
 

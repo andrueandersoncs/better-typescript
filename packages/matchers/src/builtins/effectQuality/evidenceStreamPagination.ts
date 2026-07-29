@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from "effect"
+import { Array, Function, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import type { MatchContext } from "@better-typescript/matchers/matcher/data"
 import { foldAst } from "@better-typescript/matchers/sources"
@@ -47,20 +47,25 @@ const isPageTokenLoop = (node: ts.Node) => {
 
 const pageAccumulateMethods = Array.make("push", "concat", "append", "appendAll", "yield")
 
+const propertyAccessNameText = flow(
+  Struct.get<ts.PropertyAccessExpression, "name">("name"),
+  Struct.get("text")
+)
+
+const accumulatesPageMethod = (access: ts.PropertyAccessExpression) => {
+  const method = propertyAccessNameText(access)
+
+  return Array.contains(pageAccumulateMethods, method)
+}
+
 const pageAccumulateNode = (current: ts.Node) => {
   if (!ts.isCallExpression(current)) {
     return ts.isYieldExpression(current)
   }
 
-  const isPropertyCallee = ts.isPropertyAccessExpression(current.expression)
+  const propertyCallee = Option.liftPredicate(ts.isPropertyAccessExpression)(current.expression)
 
-  if (!isPropertyCallee) {
-    return isPropertyCallee
-  }
-
-  const method = current.expression.name.text
-
-  return Array.contains(pageAccumulateMethods, method)
+  return Option.exists(propertyCallee, accumulatesPageMethod)
 }
 
 const loopAccumulatesPages = (node: ts.Node) => {

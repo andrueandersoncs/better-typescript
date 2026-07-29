@@ -191,7 +191,6 @@ const testPastInterfaceAdvice = (
     })
 
     const evidence = Array.make(exportsItem, callsItem, importsItem)
-    const examples = testPastInterfaceExamples
 
     return Advice.make({
       location,
@@ -201,7 +200,7 @@ const testPastInterfaceAdvice = (
         "Tests and production callers must cross the same interface. Exercise observable behaviour through the public Module, " +
         "make test-only helpers private, and replace internal/source imports with the declared seam.",
       evidence,
-      examples
+      examples: testPastInterfaceExamples
     })
   })
 }

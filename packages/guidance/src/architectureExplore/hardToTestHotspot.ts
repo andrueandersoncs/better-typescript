@@ -56,7 +56,6 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
       })
 
       const evidence = Array.make(constructionItem, moduleScopeItem)
-      const examples = hardToTestHotspotExamples
 
       return Advice.make({
         location,
@@ -66,7 +65,7 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
           "External collaborator construction is concentrated inside behaviour. Classify the dependency first, construct production adapters " +
           "at the composition root, and inject a port only when a real test adapter supplies the second implementation.",
         evidence,
-        examples
+        examples: hardToTestHotspotExamples
       })
     })
   )

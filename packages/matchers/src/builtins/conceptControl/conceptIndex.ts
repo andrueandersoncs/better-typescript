@@ -252,8 +252,7 @@ const classDataForExpression = (
   )
 
   if (Option.isSome(extension)) {
-    const access = extension.value
-    const inherited = classDataForExpression(checker, access.expression, visited)
+    const inherited = classDataForExpression(checker, extension.value.expression, visited)
 
     const inheritedSchema = pipe(
       inherited,
@@ -261,7 +260,7 @@ const classDataForExpression = (
     )
 
     const effectExtension = pipe(
-      symbolAt(checker)(access.name),
+      symbolAt(checker)(extension.value.name),
       Option.filter(symbolDeclaredInEffectPackage),
       Option.as(schemaDataClass)
     )
@@ -298,9 +297,8 @@ const interfaceCarriesData = (declaration: ts.InterfaceDeclaration) => {
 }
 
 const aliasCarriesData = (declaration: ts.TypeAliasDeclaration) => {
-  const type = declaration.type
-  const isFunction = ts.isFunctionTypeNode(type)
-  const isConstructor = ts.isConstructorTypeNode(type)
+  const isFunction = ts.isFunctionTypeNode(declaration.type)
+  const isConstructor = ts.isConstructorTypeNode(declaration.type)
   const exclusions = Array.make(isFunction, isConstructor)
 
   return Array.every(exclusions, (excluded) => !excluded)
@@ -662,7 +660,6 @@ const functionEntryForDeclaration = (
       symbolAt(checker)(nameNode),
       Option.map((symbol) => {
         const definition = Option.some(declaration)
-        const name = nameNode.text
         const sourceFile = declaration.getSourceFile()
         const exported = hasExportModifier(declaration)
 
@@ -670,7 +667,7 @@ const functionEntryForDeclaration = (
           symbol,
           definition,
           nameNode,
-          name,
+          name: nameNode.text,
           sourceFile,
           exported
         })
@@ -701,14 +698,13 @@ const functionEntryForVariable = (
       }),
       Option.map((symbol) => {
         const definition = functionInitializer(declaration)
-        const name = nameNode.text
         const sourceFile = declaration.getSourceFile()
 
         return new FunctionEntry({
           symbol,
           definition,
           nameNode,
-          name,
+          name: nameNode.text,
           sourceFile,
           exported
         })
@@ -724,14 +720,13 @@ const functionEntryForMethod = (checker: ts.TypeChecker, declaration: ts.MethodD
       symbolAt(checker)(nameNode),
       Option.map((symbol) => {
         const definition = Option.some(declaration)
-        const name = nameNode.text
         const sourceFile = declaration.getSourceFile()
 
         return new FunctionEntry({
           symbol,
           definition,
           nameNode,
-          name,
+          name: nameNode.text,
           sourceFile,
           exported: false
         })
@@ -750,9 +745,8 @@ const functionEntries = (
   const entriesFromSourceFile = (sourceFile: ts.SourceFile) => {
     const functionEntryFromNode = (node: ts.Node) => {
       const variableEntry = (declaration: ts.VariableDeclaration) => {
-        const statement = declaration.parent.parent
-        const isVariableStatement = ts.isVariableStatement(statement)
-        const exported = isVariableStatement && hasExportModifier(statement)
+        const isVariableStatement = ts.isVariableStatement(declaration.parent.parent)
+        const exported = isVariableStatement && hasExportModifier(declaration.parent.parent)
 
         return functionEntryForVariable(context.checker, declaration, exported, dataBySymbol)
       }
@@ -1598,7 +1592,6 @@ export const functionDerivedStem = (name: string) => {
 }
 
 export const buildConceptIndex = (context: ProgramContext) => {
-  const checker = context.checker
   const dataStructures = dataStructureEntries(context)
   const dataBySymbol = Array.reduce(dataStructures, emptyDataBySymbol, addDataStructureEntry)
   const functions = functionEntries(context, dataBySymbol)
@@ -1628,11 +1621,18 @@ export const buildConceptIndex = (context: ProgramContext) => {
         Option.liftPredicate(ts.isIdentifier)(node),
         Option.flatMap((identifier) => {
           const recordIdentifierSymbol = (symbol: ts.Symbol): true => {
-            const owner = ownerSymbol(checker, functionBySymbol, identifier)
+            const owner = ownerSymbol(context.checker, functionBySymbol, identifier)
             const symbolKey = referenceKey(symbol)
             const data = HashMap.get(dataBySymbol, symbolKey)
             const fn = HashMap.get(functionBySymbol, symbolKey)
-            const references = fieldReferences(checker, dataBySymbol, fields, identifier, symbol)
+
+            const references = fieldReferences(
+              context.checker,
+              dataBySymbol,
+              fields,
+              identifier,
+              symbol
+            )
 
             pipe(
               data,
@@ -1701,7 +1701,7 @@ export const buildConceptIndex = (context: ProgramContext) => {
             return true
           }
 
-          return pipe(symbolAt(checker)(identifier), Option.map(recordIdentifierSymbol))
+          return pipe(symbolAt(context.checker)(identifier), Option.map(recordIdentifierSymbol))
         })
       )
 
@@ -1743,7 +1743,7 @@ export const buildConceptIndex = (context: ProgramContext) => {
           )
 
           const called = pipe(
-            symbolAt(checker)(callee),
+            symbolAt(context.checker)(callee),
             Option.flatMap((symbol) => {
               const symbolKey = referenceKey(symbol)
 
@@ -1755,7 +1755,11 @@ export const buildConceptIndex = (context: ProgramContext) => {
             called,
             Option.map((functionEntry) => {
               Array.forEach(call.arguments, (argument) => {
-                const model = dataStructureEntryFromExpression(checker, dataBySymbol, argument)
+                const model = dataStructureEntryFromExpression(
+                  context.checker,
+                  dataBySymbol,
+                  argument
+                )
 
                 pipe(
                   model,
@@ -1781,7 +1785,7 @@ export const buildConceptIndex = (context: ProgramContext) => {
   const ownersByFunction = HashMap.endMutation(ownersByFunctionBuilder)
 
   const rolesByData = structuralRoles(
-    checker,
+    context.checker,
     dataStructures,
     ownersByData,
     ownersByFunction,
@@ -1789,7 +1793,7 @@ export const buildConceptIndex = (context: ProgramContext) => {
   )
 
   const conversions: ReadonlyArray<PassThroughConversion> = Array.filterMap(functions, (entry) => {
-    const conversion = passThroughConversion(checker, dataBySymbol, entry)
+    const conversion = passThroughConversion(context.checker, dataBySymbol, entry)
 
     return Result.fromOption(conversion, Function.constVoid)
   })

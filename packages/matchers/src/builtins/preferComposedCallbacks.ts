@@ -20,14 +20,13 @@ const arrowIsCallArgument = (arrowFunction: ts.ArrowFunction) =>
   ts.isCallExpression(arrowFunction.parent)
 
 const parameterSymbol = (checker: ts.TypeChecker) => (parameter: ts.ParameterDeclaration) => {
-  const parameterName = parameter.name
-  const isIdentifier = ts.isIdentifier(parameterName)
+  const isIdentifier = ts.isIdentifier(parameter.name)
 
   if (!isIdentifier) {
     return Option.none()
   }
 
-  const symbol = checker.getSymbolAtLocation(parameterName)
+  const symbol = checker.getSymbolAtLocation(parameter.name)
 
   return Option.fromNullishOr(symbol)
 }
@@ -88,8 +87,6 @@ const hasParameterBearingCall = (checker: ts.TypeChecker) => (symbol: ts.Symbol)
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
 const preferComposedCallbacksMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const composedCallbackMatches = (arrowFunction: ts.ArrowFunction) =>
     pipe(
       Option.gen(function* () {
@@ -99,10 +96,10 @@ const preferComposedCallbacksMatches = (context: MatchContext) => {
         yield* Option.liftPredicate((value: boolean) => value)(hasOneParameter)
 
         const parameter = yield* Option.fromNullishOr(arrowFunction.parameters[0])
-        const symbol = yield* parameterSymbol(checker)(parameter)
+        const symbol = yield* parameterSymbol(context.checker)(parameter)
         const body = yield* Option.liftPredicate(ts.isExpression)(arrowFunction.body)
-        const directForward = isDirectForward(checker)(symbol)(body)
-        const parameterBearingCall = hasParameterBearingCall(checker)(symbol)(body)
+        const directForward = isDirectForward(context.checker)(symbol)(body)
+        const parameterBearingCall = hasParameterBearingCall(context.checker)(symbol)(body)
 
         yield* Option.liftPredicate((value: boolean) => !value)(directForward)
         yield* Option.liftPredicate((value: boolean) => value)(parameterBearingCall)

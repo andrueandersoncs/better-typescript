@@ -38,15 +38,14 @@ const valueForwardingKinds = HashSet.make(
 )
 
 export const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
-  const parent = node.parent
-  const isCallLike = isCallLikeExpression(parent)
+  const isCallLike = isCallLikeExpression(node.parent)
 
   if (isCallLike) {
     return Option.liftPredicate((call: CallLikeExpression) => {
       const args = callArguments(call)
 
       return Array.some(args, strictEqual(node))
-    })(parent)
+    })(node.parent)
   }
 
   const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)
@@ -96,18 +95,16 @@ const argumentForwardingKinds = HashSet.make(
 )
 
 export const argumentConsumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
-  const parent = node.parent
-
-  if (isCallLikeExpression(parent)) {
-    const args = callArguments(parent)
+  if (isCallLikeExpression(node.parent)) {
+    const args = callArguments(node.parent)
     const isArgument = Array.some(args, strictEqual(node))
 
-    return isArgument ? Option.some(parent) : Option.none()
+    return isArgument ? Option.some(node.parent) : Option.none()
   }
 
-  const isForwarding = HashSet.has(argumentForwardingKinds, parent.kind)
+  const isForwarding = HashSet.has(argumentForwardingKinds, node.parent.kind)
 
-  return isForwarding ? argumentConsumingCall(parent) : Option.none()
+  return isForwarding ? argumentConsumingCall(node.parent) : Option.none()
 }
 
 // Exclude the default library because only dependency combinators form external callback bounds.
@@ -168,11 +165,10 @@ const nameNodeEscapes =
             })
           )
 
-          const childMatch = isEscapingReference
-            ? true
-            : ts.forEachChild(candidate, candidateMatches)
+          const childMatch = ts.forEachChild(candidate, candidateMatches)
+          const matched = isEscapingReference ? true : childMatch
 
-          return strictEqual(true)(childMatch)
+          return strictEqual(true)(matched)
         }
 
         return candidateMatches(sourceFile)
@@ -207,17 +203,15 @@ const isEscapeCarrierNode = (node: ts.Node): node is EscapeCarrier =>
   ts.isVariableDeclaration(node) || ts.isParameter(node)
 
 const escapeCarrier = (node: ts.Node): Option.Option<EscapeCarrier> => {
-  const parent = node.parent
-
-  if (ts.isSourceFile(parent)) {
+  if (ts.isSourceFile(node.parent)) {
     return Option.none()
   }
 
-  const carrier = Option.liftPredicate(isEscapeCarrierNode)(parent)
+  const carrier = Option.liftPredicate(isEscapeCarrierNode)(node.parent)
 
   return pipe(
     carrier,
-    Option.orElse(() => escapeCarrier(parent))
+    Option.orElse(() => escapeCarrier(node.parent))
   )
 }
 
@@ -228,17 +222,16 @@ export const typeReferenceEscapesExternally =
       escapeCarrier(typeRef),
       Option.exists((carrier) => {
         if (ts.isParameter(carrier)) {
-          const enclosing = carrier.parent
           const sourceFile = carrier.getSourceFile()
-          const isDirectExternalArgument = isExternalArgumentPosition(checker)(enclosing)
+          const isDirectExternalArgument = isExternalArgumentPosition(checker)(carrier.parent)
 
           const variableName = pipe(
-            Option.liftPredicate(ts.isVariableDeclaration)(enclosing.parent),
+            Option.liftPredicate(ts.isVariableDeclaration)(carrier.parent.parent),
             Option.map(Struct.get("name"))
           )
 
           const functionName = pipe(
-            Option.liftPredicate(ts.isFunctionDeclaration)(enclosing),
+            Option.liftPredicate(ts.isFunctionDeclaration)(carrier.parent),
             Option.flatMap(functionDeclarationName)
           )
 

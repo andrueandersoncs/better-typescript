@@ -19,15 +19,13 @@ const identifierText = Struct.get<ts.Identifier, "text">("text")
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
 const preferFunctionFlipMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const symbolOption = (node: ts.Node) =>
-    pipe(checker.getSymbolAtLocation(node), Option.fromNullishOr)
+    pipe(context.checker.getSymbolAtLocation(node), Option.fromNullishOr)
 
   const resolveAliasedSymbol = (symbol: ts.Symbol) => {
     const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
 
-    return isAlias ? checker.getAliasedSymbol(symbol) : symbol
+    return isAlias ? context.checker.getAliasedSymbol(symbol) : symbol
   }
 
   const resolvedSymbol = (node: ts.Node) =>
@@ -63,7 +61,7 @@ const preferFunctionFlipMatches = (context: MatchContext) => {
       Option.getOrElse(Function.constant(false))
     )
 
-    const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+    const receiverType = context.checker.getTypeAtLocation(propertyAccess.expression)
     const constructCount = receiverType.getConstructSignatures().length
     const receiverIsConstructor = constructCount > 0
 
@@ -165,13 +163,12 @@ const preferFunctionFlipMatches = (context: MatchContext) => {
 
         yield* Option.liftPredicate((value: boolean) => value)(argumentIsParameter)
 
-        const innerCallee = innerCall.expression
-        const calleeParameterRefs = referenceCount(parameterName)(innerCallee)
+        const calleeParameterRefs = referenceCount(parameterName)(innerCall.expression)
         const calleeMentionsParameter = calleeParameterRefs > 0
 
         yield* Option.liftPredicate((value: boolean) => !value)(calleeMentionsParameter)
 
-        const needsThis = calleeRequiresThis(innerCallee)
+        const needsThis = calleeRequiresThis(innerCall.expression)
         yield* Option.liftPredicate((value: boolean) => !value)(needsThis)
 
         const bodyMentions = referenceCount(parameterName)(body)

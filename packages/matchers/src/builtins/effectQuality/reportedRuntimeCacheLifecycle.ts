@@ -34,24 +34,20 @@ const cachePerRequestFinding = makeRuleFinding("cache-per-request")
 
 const scopedClientCacheFinding = makeRuleFinding("scoped-client-cache")
 
-const isModuleScopeFunction = (fn: ts.FunctionLikeDeclaration) => {
-  const parent = fn.parent
-
-  return pipe(
-    Match.value(parent),
+const isModuleScopeFunction = (fn: ts.FunctionLikeDeclaration) =>
+  pipe(
+    Match.value(fn.parent),
     Match.when(ts.isSourceFile, Function.constTrue),
     Match.when(ts.isModuleBlock, Function.constTrue),
     Match.when(ts.isVariableDeclaration, (declaration) => {
       const statement = declaration.parent?.parent
       const isVariableStatement = ts.isVariableStatement(statement)
-      const parentOfStatement = statement.parent
-      const isSourceFileParent = ts.isSourceFile(parentOfStatement)
+      const isSourceFileParent = ts.isSourceFile(statement.parent)
 
       return isVariableStatement && isSourceFileParent
     }),
     Match.orElse(Function.constFalse)
   )
-}
 
 const lookupPropertyAssignment = (object: ts.ObjectLiteralExpression) =>
   pipe(propertyAssignmentNamed(object, lookupNames), Option.filter(ts.isPropertyAssignment))
@@ -94,8 +90,6 @@ const cacheMakeLookupFunction =
     return pipe(options, Option.flatMap(lookupExpressionFromCacheOptions))
   }
 
-const ancestorIsLookupExpression = strictEqual
-
 const nestedInsideCacheLookup = (checker: ts.TypeChecker) => (node: ts.Node) => {
   const visit = (current: ts.Node): boolean => {
     if (!ts.isCallExpression(current)) {
@@ -105,8 +99,7 @@ const nestedInsideCacheLookup = (checker: ts.TypeChecker) => (node: ts.Node) => 
     const lookupFunction = cacheMakeLookupFunction(checker)(current)
 
     if (Option.isSome(lookupFunction)) {
-      const lookup = lookupFunction.value
-      const isInsideLookup = hasAncestor(ancestorIsLookupExpression(lookup))
+      const isInsideLookup = hasAncestor(strictEqual(lookupFunction.value))
 
       return isInsideLookup(node)
     }

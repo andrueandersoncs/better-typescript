@@ -110,18 +110,16 @@ const observedForExpectation = (semantics: CallableSemantics) => (expectation: R
   )
 
 const shapeContradicts = (semantics: CallableSemantics) => (expected: string) => {
-  const shape = semantics.result.shape
-  const known = shape !== "unknown"
-  const mismatched = shape !== expected
+  const known = semantics.result.shape !== "unknown"
+  const mismatched = semantics.result.shape !== expected
   const flags = Array.make(known, mismatched)
 
   return Array.every(flags, Boolean)
 }
 
 const cardinalityContradicts = (semantics: CallableSemantics) => (expected: string) => {
-  const cardinality = semantics.result.cardinality
-  const known = cardinality !== "unknown"
-  const mismatched = cardinality !== expected
+  const known = semantics.result.cardinality !== "unknown"
+  const mismatched = semantics.result.cardinality !== expected
   const flags = Array.make(known, mismatched)
 
   return Array.every(flags, Boolean)
@@ -153,11 +151,10 @@ const findingForSemantics = (semantics: CallableSemantics) =>
     yield* Option.liftPredicate(contradicts(semantics))(expectation)
 
     const observed = observedForExpectation(semantics)(expectation)
-    const expected = expectation.expected
 
     const fact = RequireResultShapeNameConsistencyFact.make({
       nameText: semantics.name.text,
-      expected,
+      expected: expectation.expected,
       observed,
       label: expectation.label
     })

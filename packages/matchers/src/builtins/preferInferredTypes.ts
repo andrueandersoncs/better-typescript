@@ -292,30 +292,34 @@ const variableProbe = (checker: ts.TypeChecker) => (declaration: ts.VariableDecl
       return pipe(
         detectionNode,
         Option.map((node) => {
+          const parameterAnnotationEdit = (typeNode: ts.TypeNode) => {
+            const fromParameter = (parameter: ts.ParameterDeclaration) =>
+              annotationEdit(sourceFile, typeNode, parameter.name.end)
+
+            return pipe(
+              Option.liftPredicate(ts.isParameter)(typeNode.parent),
+              Option.flatMap(fromParameter)
+            )
+          }
+
+          const returnAnnotationEdit = (typeNode: ts.TypeNode) => {
+            const fromFunction = (fn: FunctionInitializer) =>
+              annotationEdit(sourceFile, typeNode, fn.parameters.end)
+
+            return pipe(
+              Option.liftPredicate(isFunctionInitializer)(typeNode.parent),
+              Option.flatMap(fromFunction)
+            )
+          }
+
           const parameterEdits = pipe(
             parameterTypes,
-            Array.filterMap((typeNode) => {
-              const parameter = typeNode.parent
-
-              const edit = ts.isParameter(parameter)
-                ? annotationEdit(sourceFile, typeNode, parameter.name.end)
-                : Option.none()
-
-              return optionResult(edit)
-            })
+            Array.filterMap(flow(parameterAnnotationEdit, optionResult))
           )
 
           const returnEdits = pipe(
             returnTypes,
-            Array.filterMap((typeNode) => {
-              const fn = typeNode.parent
-
-              const edit = isFunctionInitializer(fn)
-                ? annotationEdit(sourceFile, typeNode, fn.parameters.end)
-                : Option.none()
-
-              return optionResult(edit)
-            })
+            Array.filterMap(flow(returnAnnotationEdit, optionResult))
           )
 
           const edits = Array.appendAll(parameterEdits, returnEdits)
@@ -338,12 +342,11 @@ const variableProbe = (checker: ts.TypeChecker) => (declaration: ts.VariableDecl
 
           const hasContextualParameters = Array.isReadonlyArrayNonEmpty(parameterTypes)
           const hasOuterType = Option.isSome(outerType)
+          const outerDetails = hasOuterType ? Option.some(constFinding) : Option.none()
 
           const contextualDetails = hasContextualParameters
             ? Option.some(contextualFinding)
             : Option.none()
-
-          const outerDetails = hasOuterType ? Option.some(constFinding) : Option.none()
 
           const kind = pipe(
             contextualDetails,

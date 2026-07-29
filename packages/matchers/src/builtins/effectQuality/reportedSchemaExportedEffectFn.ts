@@ -99,11 +99,16 @@ const variableInitializerNeedsEffectFn =
     return Array.every(reportChecks, Boolean)
   }
 
-const qualityFindingFromVariableDeclaration = (declaration: ts.VariableDeclaration) => {
-  const name = declaration.name as ts.Identifier
+const qualityFindingFromVariableName = (name: ts.Identifier) =>
+  serviceMethodFinding(name.text)(name)
 
-  return serviceMethodFinding(name.text)(name)
-}
+const bindingNameAsIdentifier = (name: ts.BindingName) => name as ts.Identifier
+
+const qualityFindingFromVariableDeclaration = flow(
+  Struct.get<ts.VariableDeclaration, "name">("name"),
+  bindingNameAsIdentifier,
+  qualityFindingFromVariableName
+)
 
 const qualityFromVariableDeclaration =
   (checker: ts.TypeChecker) => (declaration: ts.VariableDeclaration) =>

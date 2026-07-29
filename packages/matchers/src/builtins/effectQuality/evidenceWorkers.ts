@@ -48,9 +48,8 @@ const loggingCallNode = (current: ts.Node) => {
   if (ts.isPropertyAccessExpression(expression)) {
     const receiver = unwrapTransparentExpression(expression.expression)
     const receiverName = ts.isIdentifier(receiver) ? receiver.text : ""
-    const method = expression.name.text
     const consoleLog = strictEqual("console")(receiverName)
-    const loggerMethod = Array.contains(loggerMethodNames, method)
+    const loggerMethod = Array.contains(loggerMethodNames, expression.name.text)
     const consoleParts = Array.make(consoleLog, loggerMethod)
     const consoleLogger = Array.every(consoleParts, Boolean)
     const signals = Array.make(consoleLogger, loggerMethod)
@@ -216,15 +215,14 @@ export const keyedStreamWork =
       return emptyAdviceFindings
     }
 
-    const value = valueOption.value
-    const valueExpression = unwrapTransparentExpression(value)
+    const valueExpression = unwrapTransparentExpression(valueOption.value)
 
     const forksEffect = pipe(
       Option.liftPredicate(ts.isCallExpression)(valueExpression),
       Option.exists(callIsEffectApi(context.checker)("Effect")(forkValueNames))
     )
 
-    const valueText = value.getText()
+    const valueText = valueOption.value.getText()
     const valueMentionsFiber = fiberTypeNamePattern.test(valueText)
     const receiver = unwrapTransparentExpression(expression.expression)
     const receiverName = ts.isIdentifier(receiver) ? receiver.text : receiver.getText()

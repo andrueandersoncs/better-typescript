@@ -84,7 +84,6 @@ const duplicateNameListeners = (index: HashMap.HashMap<string, ReadonlyArray<ts.
   const matchDuplicateName = (context: MatchContext) => {
     const fileFunctions = topLevelFunctions(context.sourceFile)
     const toRelative = toRelativeFileName(context.projectRoot)
-    const candidateFileName = context.sourceFile.fileName
 
     const matchCandidate = (candidate: ts.Identifier) => {
       const declarations = declarationsForName(index)(candidate.text)
@@ -104,14 +103,13 @@ const duplicateNameListeners = (index: HashMap.HashMap<string, ReadonlyArray<ts.
 
       const otherFileNames = Array.filter(
         uniqueFileNames,
-        (fileName) => fileName !== candidateFileName
+        (fileName) => fileName !== context.sourceFile.fileName
       )
 
       if (strictEqual(0)(otherFileNames.length)) {
         return Result.failVoid
       }
 
-      const functionName = candidate.text
       const relativeFileNames = Array.map(otherFileNames, toRelative)
       const taken = Array.take(relativeFileNames, maxListedFileNames)
       const listedFileNames = Array.join(taken, ", ")
@@ -124,7 +122,7 @@ const duplicateNameListeners = (index: HashMap.HashMap<string, ReadonlyArray<ts.
           : listedFileNames
 
       const fact = NoDuplicateFunctionNamesFact.make({
-        functionName,
+        functionName: candidate.text,
         otherFiles
       })
 

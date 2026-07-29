@@ -56,7 +56,6 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     const callersItem = EvidenceItem.make({ measure: "production-callers", count: callerCount })
     const evidence = Array.make(forwardersItem, callersItem)
     const location = Location.make({ path: filePath })
-    const examples = deletionTestShallownessExamples
 
     return Advice.make({
       location,
@@ -67,7 +66,7 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
         "Inline the one-use operation or collapse the re-export into the intended public interface; keep a Module " +
         "when behaviour would reappear across multiple callers.",
       evidence,
-      examples
+      examples: deletionTestShallownessExamples
     })
   })
 }

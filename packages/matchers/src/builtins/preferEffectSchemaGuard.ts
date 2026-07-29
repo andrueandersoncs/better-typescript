@@ -41,15 +41,13 @@ const isStringKeyInExpression = (expression: ts.Expression): expression is ts.Bi
   )
 
 const inOperatorGuardMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-
   const matches = (ifStatement: ts.IfStatement) =>
     pipe(
       conditionExpressions(ifStatement.expression),
       Array.filter(isStringKeyInExpression),
       Array.map((expression) => {
-        const propertyName = unwrapExpression(expression.left).getText(sourceFile)
-        const objectText = expression.right.getText(sourceFile)
+        const propertyName = unwrapExpression(expression.left).getText(context.sourceFile)
+        const objectText = expression.right.getText(context.sourceFile)
         const fact = PreferEffectSchemaGuardFact.make({ propertyName, objectText })
 
         return makeNodeMatch(expression, fact)

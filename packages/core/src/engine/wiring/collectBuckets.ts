@@ -1,4 +1,4 @@
-import { Array, Equal, Function, HashMap, MutableList, Option, pipe } from "effect"
+import { Array, Equal, Function, HashMap, MutableList, Option, flow, pipe } from "effect"
 import type { Detection } from "../location/data.js"
 import type { WiringEntry } from "./data.js"
 import { matchesFile, type GlobMatcher } from "./globs.js"
@@ -31,19 +31,16 @@ export const relativeWorkspacePath = (
   return path.relative(workspaceRoot, absoluteCandidatePath).replaceAll(path.sep, "/")
 }
 
-const detectionDedupeKey = (element: Detection) => {
-  const location = element.location
-
-  const dedupeKeyParts = Array.make(
-    location.path,
-    location.line,
-    location.column,
+const detectionDedupeParts = (element: Detection) =>
+  Array.make(
+    element.location.path,
+    element.location.line,
+    element.location.column,
     element.message,
     element.hint
   )
 
-  return JSON.stringify(dedupeKeyParts)
-}
+const detectionDedupeKey = flow(detectionDedupeParts, JSON.stringify)
 
 export const appendDetection =
   (

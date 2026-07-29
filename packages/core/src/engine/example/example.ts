@@ -52,9 +52,6 @@ const formatRefactorExampleUncached = (example: RefactorExample) => {
 
 export const formatRefactorExample = Function.memoize(formatRefactorExampleUncached)
 
-const byPath = Order.String
-const byPairName = Order.String
-
 const collectDirectoryEntries = (
   directory: string
 ): Effect.Effect<ReadonlyArray<fs.Dirent>, ExampleLoadError> =>
@@ -98,7 +95,7 @@ const collectTypeScriptFiles: (
 
   const flattened = Array.flatten(nested)
 
-  return Array.sort(flattened, byPath)
+  return Array.sort(flattened, Order.String)
 })
 
 const readExampleTree: (
@@ -173,7 +170,7 @@ const loadRefactorExamplesAt: (
     return complete ? Array.of(entry.name) : Array.empty()
   })
 
-  const pairNames = Array.sort(names, byPairName)
+  const pairNames = Array.sort(names, Order.String)
 
   const loadPairExample = Effect.fn("Example.loadPairExample")(function* (pairName: string) {
     const pairRoot = path.join(exampleRoot, pairName)

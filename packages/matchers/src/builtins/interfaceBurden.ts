@@ -199,10 +199,8 @@ const statementSurface = (statement: ts.Statement) => {
 const interfaceBurdenElements = (
   context: MatchContext
 ): ReadonlyArray<Match<InterfaceBurdenData>> => {
-  const statements = context.sourceFile.statements
-
   const surface = pipe(
-    statements,
+    context.sourceFile.statements,
     Array.map(statementSurface),
     Array.reduce(emptySurface, combineSurface)
   )
@@ -212,7 +210,7 @@ const interfaceBurdenElements = (
   }
 
   const node = pipe(
-    Option.fromNullishOr(statements[0]),
+    Option.fromNullishOr(context.sourceFile.statements[0]),
     Option.getOrElse(Function.constant(context.sourceFile))
   )
 

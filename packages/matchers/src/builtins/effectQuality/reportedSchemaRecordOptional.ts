@@ -98,17 +98,17 @@ const declarationHasSchemaStructInitializer =
 
 const declarationLacksSchemaRecordInterface =
   (sourceFile: ts.SourceFile) => (declaration: ts.VariableDeclaration) => {
-    const name = (declaration.name as ts.Identifier).text
-    const hasInterface = sourceFileHasSchemaRecordInterface(name)(sourceFile)
+    const hasInterface = sourceFileHasSchemaRecordInterface(
+      (declaration.name as ts.Identifier).text
+    )(sourceFile)
 
     return !hasInterface
   }
 
-const schemaRecordInterfaceFindingFromDeclaration = (declaration: ts.VariableDeclaration) => {
-  const name = declaration.name as ts.Identifier
-
-  return makeRuleFinding("schema-record-interface")(name.text)(name)
-}
+const schemaRecordInterfaceFindingFromDeclaration = (declaration: ts.VariableDeclaration) =>
+  makeRuleFinding("schema-record-interface")((declaration.name as ts.Identifier).text)(
+    declaration.name as ts.Identifier
+  )
 
 export const schemaRecordInterfaceFindings = (
   context: MatchContext,
@@ -148,13 +148,11 @@ const typeNodeIncludesUndefined = (typeNode: ts.TypeNode): boolean => {
 const propertyNameTextFromNode = (name: ts.Node) =>
   ts.isPropertyName(name) ? propertyNameText(name) : Option.none()
 
-const propertyNameEqualsField = strictEqual
-
 const propertySignatureNameMatches = (fieldName: string) => (member: ts.PropertySignature) =>
   pipe(
     Option.fromNullishOr(member.name),
     Option.flatMap(propertyNameTextFromNode),
-    Option.exists(propertyNameEqualsField(fieldName))
+    Option.exists(strictEqual(fieldName))
   )
 
 const propertySignatureIsUndefinedFreeOptional = (fieldName: string) => (member: ts.TypeElement) =>

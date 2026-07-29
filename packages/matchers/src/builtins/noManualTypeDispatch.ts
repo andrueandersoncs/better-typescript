@@ -44,22 +44,21 @@ const discriminants = (ifStatement: ts.IfStatement) =>
 
 const siblingDispatchGuard =
   (offset: number) =>
-  (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> => {
-    const block = ifStatement.parent
-    if (!ts.isBlock(block)) {
-      return Option.none()
-    }
+  (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> =>
+    pipe(
+      Option.liftPredicate(ts.isBlock)(ifStatement.parent),
+      Option.flatMap((block) => {
+        const isCurrentIfStatement = strictEqual(ifStatement)
+        const statementAtOffset = (index: number) => Option.fromNullishOr(block.statements[index])
 
-    const isCurrentIfStatement = strictEqual(ifStatement)
-    const statementAtOffset = (index: number) => Option.fromNullishOr(block.statements[index])
-
-    return pipe(
-      Array.findFirstIndex(block.statements, isCurrentIfStatement),
-      Option.map((index) => index + offset),
-      Option.flatMap(statementAtOffset),
-      Option.filter(isDispatchGuard)
+        return pipe(
+          Array.findFirstIndex(block.statements, isCurrentIfStatement),
+          Option.map((index) => index + offset),
+          Option.flatMap(statementAtOffset),
+          Option.filter(isDispatchGuard)
+        )
+      })
     )
-  }
 
 const continuesChain = (offset: number) => (ifStatement: ts.IfStatement) => {
   const sharesDiscriminant = (sibling: ts.IfStatement) => {

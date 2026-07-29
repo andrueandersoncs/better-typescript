@@ -176,10 +176,9 @@ const appendActiveNodeMatch =
       return Array.empty<Match<unknown>>()
     }
 
-    const active = maybeActive.value
-    const found = active.handle(node)
+    const found = maybeActive.value.handle(node)
 
-    MutableList.appendAll(active.matches, found)
+    MutableList.appendAll(maybeActive.value.matches, found)
 
     return found
   }
@@ -191,14 +190,13 @@ const drainActiveMatches =
       return Array.empty<Match<unknown>>()
     }
 
-    const value = active.value
-    const maybeMatches = Array.get(matchesByMatcher, value.matcherIndex)
+    const maybeMatches = Array.get(matchesByMatcher, active.value.matcherIndex)
 
     if (Option.isNone(maybeMatches)) {
       return Array.empty<Match<unknown>>()
     }
 
-    const found = MutableList.toArray(value.matches)
+    const found = MutableList.toArray(active.value.matches)
 
     MutableList.appendAll(maybeMatches.value, found)
 

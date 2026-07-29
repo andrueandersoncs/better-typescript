@@ -56,14 +56,13 @@ const locateDirectory = (target: DirectoryTarget) => Location.make({ path: targe
 const locateWorkspace = (target: WorkspaceTarget) => Location.make({ path: target.workspaceRoot })
 
 export const locateTarget = (context: ProgramContext) => (target: Target) => {
-  const projectRoot = context.projectRoot
   const fallback = Location.make({ path: context.workspaceRoot })
 
   return pipe(
     Match.value(target),
-    Match.tag("NodeTarget", locateNodeAt(projectRoot)),
-    Match.tag("FileTarget", locateFileAt(projectRoot)),
-    Match.tag("PositionTarget", locatePositionAt(projectRoot)),
+    Match.tag("NodeTarget", locateNodeAt(context.projectRoot)),
+    Match.tag("FileTarget", locateFileAt(context.projectRoot)),
+    Match.tag("PositionTarget", locatePositionAt(context.projectRoot)),
     Match.tag("DirectoryTarget", locateDirectory),
     Match.tag("WorkspaceTarget", locateWorkspace),
     Match.orElse(Function.constant(fallback))
@@ -71,16 +70,15 @@ export const locateTarget = (context: ProgramContext) => (target: Target) => {
 }
 
 export const locateWorkspaceTarget = (context: WorkspaceContext) => (target: Target) => {
-  const workspaceRoot = context.workspaceRoot
-  const fallback = Location.make({ path: workspaceRoot })
+  const fallback = Location.make({ path: context.workspaceRoot })
 
   return pipe(
     Match.value(target),
     Match.tag("DirectoryTarget", locateDirectory),
     Match.tag("WorkspaceTarget", locateWorkspace),
-    Match.tag("FileTarget", locateFileAt(workspaceRoot)),
-    Match.tag("PositionTarget", locatePositionAt(workspaceRoot)),
-    Match.tag("NodeTarget", locateNodeAt(workspaceRoot)),
+    Match.tag("FileTarget", locateFileAt(context.workspaceRoot)),
+    Match.tag("PositionTarget", locatePositionAt(context.workspaceRoot)),
+    Match.tag("NodeTarget", locateNodeAt(context.workspaceRoot)),
     Match.orElse(Function.constant(fallback))
   )
 }

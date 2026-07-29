@@ -159,7 +159,6 @@ export const commentText = (text: string) => (comment: SourceComment) =>
 export const onlyBlankBetween = (text: string) => (a: SourceComment) => (b: SourceComment) => {
   const between = text.slice(a.end, b.pos)
   const trimmed = between.trim()
-  const gapLength = trimmed.length
 
-  return strictEqual(0)(gapLength)
+  return strictEqual(0)(trimmed.length)
 }

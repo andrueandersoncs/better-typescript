@@ -21,13 +21,11 @@ const weakMapIdentifier = (node: ts.Node): node is ts.Identifier =>
 const identifierKinds = Array.of(ts.SyntaxKind.Identifier)
 
 const weakMapMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const matchWeakMapIdentifier = (identifier: ts.Identifier) => {
     const match = makeNodeMatch(identifier, emptyNoWeakMapFact)
 
     return pipe(
-      checker.getSymbolAtLocation(identifier),
+      context.checker.getSymbolAtLocation(identifier),
       Option.fromNullishOr,
       Option.filter(Predicate.not(isFirstPartySymbol)),
       Option.as(match),

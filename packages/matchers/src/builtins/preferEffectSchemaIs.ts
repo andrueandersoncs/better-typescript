@@ -68,8 +68,6 @@ const constituentIsFirstParty = (type: ts.Type) => {
 }
 
 const schemaIsMatches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-
   const matchSchemaTagComparison = (expression: ts.BinaryExpression) => {
     const leftAccess = tagPropertyAccess(expression.left)
     const rightAccess = tagPropertyAccess(expression.right)
@@ -89,11 +87,11 @@ const schemaIsMatches = (context: MatchContext) => {
 
     const valueText = pipe(
       tagAccess,
-      Option.map((access) => access.expression.getText(sourceFile)),
+      Option.map((access) => access.expression.getText(context.sourceFile)),
       Option.getOrElse(Function.constant("the value"))
     )
 
-    const operatorText = expression.operatorToken.getText(sourceFile)
+    const operatorText = expression.operatorToken.getText(context.sourceFile)
     const leftLiteral = stringLiteralExpression(expression.left)
     const rightLiteral = stringLiteralExpression(expression.right)
     const literalOptions = Array.make(leftLiteral, rightLiteral)

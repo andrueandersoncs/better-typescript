@@ -1,12 +1,8 @@
 import { Array } from "effect"
 import * as ts from "typescript"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { type Detection, Location } from "@better-typescript/core/engine/location/data"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import {
   ExampleSnippet,
   InlineRefactorExamples,
@@ -49,12 +45,14 @@ const consoleLogBoundaryAdvice = (detections: ReadonlyArray<Detection>): Readonl
   deriveSignals((elements: ReadonlyArray<Detection>) =>
     detectionPaths(elements).map((path) =>
       Advice.make({
-        location: makeAdviceLocation(path),
+        location: Location.make({ path }),
         level: "file",
         title: "console logging in runtime code",
         remediation:
           "Replace console.log with the project's structured logger or return data to the caller.",
-        evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
+        evidence: [
+          EvidenceItem.make({ measure: "console.log calls", count: countAtPath(path, elements) })
+        ]
       })
     )
   )(detections)
@@ -95,11 +93,13 @@ const localWiring = makeWiring({
     const fallbackAdvice = deriveSignals((elements: ReadonlyArray<Detection>) =>
       detectionPaths(elements).map((path) =>
         Advice.make({
-          location: makeAdviceLocation(path),
+          location: Location.make({ path }),
           level: "file",
           title: "logging policy review",
           remediation: "Adopt the structured logger before this file grows more console output.",
-          evidence: [makeEvidenceItem("console.log calls", countAtPath(path, elements))]
+          evidence: [
+            EvidenceItem.make({ measure: "console.log calls", count: countAtPath(path, elements) })
+          ]
         })
       )
     )(elementsOf("acme/no-console-log"))

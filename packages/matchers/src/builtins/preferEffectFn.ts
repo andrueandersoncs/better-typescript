@@ -31,16 +31,14 @@ const isGenPropertyName = (access: ts.PropertyAccessExpression) =>
   strictEqual("gen")(access.name.text)
 
 const returnedExpression = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
-  const body = initializer.body
-
   const blockResult = pipe(
-    Option.liftPredicate(ts.isBlock)(body),
+    Option.liftPredicate(ts.isBlock)(initializer.body),
     Option.flatMap(singleBlockStatement),
     Option.filter(ts.isReturnStatement),
     Option.flatMap(returnStatementExpression)
   )
 
-  const conciseResult = ts.isBlock(body) ? Option.none() : Option.some(body)
+  const conciseResult = ts.isBlock(initializer.body) ? Option.none() : Option.some(initializer.body)
 
   return Option.orElse(blockResult, Function.constant(conciseResult))
 }
@@ -128,12 +126,10 @@ const generatorThisTypeText = (sourceFile: ts.SourceFile) => (call: ts.CallExpre
   )
 
 const effectFnMatches = (context: MatchContext) => {
-  const checker = context.checker
-  const sourceFile = context.sourceFile
-  const genCall = effectGenCall(checker)
+  const genCall = effectGenCall(context.checker)
 
   const signatureReturnsEffect = (signature: ts.Signature) => {
-    const returnType = checker.getReturnTypeOfSignature(signature)
+    const returnType = context.checker.getReturnTypeOfSignature(signature)
     const typeSymbol = returnType.getSymbol()
     const symbol = Option.fromNullishOr(typeSymbol)
 
@@ -141,7 +137,7 @@ const effectFnMatches = (context: MatchContext) => {
   }
 
   const initializerReturnsEffect = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
-    const declaredSignature = checker.getSignatureFromDeclaration(initializer)
+    const declaredSignature = context.checker.getSignatureFromDeclaration(initializer)
     const signature = Option.fromNullishOr(declaredSignature)
 
     return Option.exists(signature, signatureReturnsEffect)
@@ -149,17 +145,17 @@ const effectFnMatches = (context: MatchContext) => {
 
   const matches = (declaration: ts.VariableDeclaration) => {
     const detectionForGenCall = (call: ts.CallExpression) => {
-      const functionName = declaration.name.getText(sourceFile)
+      const functionName = declaration.name.getText(context.sourceFile)
 
       const selfBinding = pipe(
         selfBindingLiteral(call),
-        Option.map((literal) => literal.getText(sourceFile))
+        Option.map((literal) => literal.getText(context.sourceFile))
       )
 
       const selfBindingText = Option.getOrUndefined(selfBinding)
 
       const thisTypeText = Option.isSome(selfBinding)
-        ? generatorThisTypeText(sourceFile)(call)
+        ? generatorThisTypeText(context.sourceFile)(call)
         : undefined
 
       const fact = PreferEffectFnFact.make({

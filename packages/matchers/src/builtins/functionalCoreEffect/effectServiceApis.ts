@@ -25,9 +25,6 @@ const effectServiceMakerObject = (
 
 const contextServiceNames = Array.of("Service")
 
-const makerObjectFromHeritage = (heritage: ts.ExpressionWithTypeArguments) =>
-  effectServiceMakerObject(heritage.expression)
-
 export const effectServiceConfigObject = (
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
@@ -44,7 +41,12 @@ export const effectServiceConfigObject = (
     declaration.heritageClauses ?? emptyHeritageClauses,
     Array.flatMap(heritageTypesOf),
     Array.findFirst(flow(unwrapHeritageCallee, importedEffectApiAtOf)),
-    Option.flatMap(makerObjectFromHeritage)
+    Option.flatMap(
+      flow(
+        Struct.get<ts.ExpressionWithTypeArguments, "expression">("expression"),
+        effectServiceMakerObject
+      )
+    )
   )
 }
 
@@ -67,13 +69,8 @@ const hasLayerStaticProperty = (declaration: ts.PropertyDeclaration) =>
   hasStaticModifier(declaration) &&
   pipe(propertyNameText(declaration.name), Option.exists(nameIsLayerProperty))
 
-const isLayerPropertyDeclaration = (member: ts.ClassElement) =>
+export const isContextServiceLayerProperty = (member: ts.ClassElement) =>
   ts.isPropertyDeclaration(member) && hasLayerStaticProperty(member)
-
-export const contextServiceLayerProperty = (declaration: ts.ClassDeclaration) => {
-  const members = declaration.members
-  return Array.findFirst(members, isLayerPropertyDeclaration)
-}
 
 const contextReferenceNames = Array.of("Reference")
 

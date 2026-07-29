@@ -26,10 +26,8 @@ const isErrorTypeReference = (node: ts.Node): node is ts.TypeReferenceNode =>
   pipe(Option.liftPredicate(ts.isTypeReferenceNode)(node), Option.exists(isErrorNamedTypeReference))
 
 const errorTypeMatches = (context: MatchContext) => {
-  const checker = context.checker
-
   const globalErrorSymbol = pipe(
-    checker.resolveName("Error", undefined, ts.SymbolFlags.Type, false),
+    context.checker.resolveName("Error", undefined, ts.SymbolFlags.Type, false),
     Option.fromNullishOr
   )
 
@@ -41,7 +39,7 @@ const errorTypeMatches = (context: MatchContext) => {
     const match = makeNodeMatch(typeName, emptyNoErrorTypeFact)
 
     return pipe(
-      checker.getSymbolAtLocation(typeName),
+      context.checker.getSymbolAtLocation(typeName),
       Option.fromNullishOr,
       Option.filter(isGlobalErrorSymbol),
       Option.as(match),

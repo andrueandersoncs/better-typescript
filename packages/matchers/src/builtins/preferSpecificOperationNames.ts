@@ -234,10 +234,9 @@ const suggestedName =
   }
 
 const isConventionalEntry = (semantics: CallableSemantics) => {
-  const words = semantics.name.words
-  const hasRoleNoun = Array.some(words, isConventionalRoleNoun)
-  const isSingleWord = strictEqual(1)(words.length)
-  const isRuntimeEntryWord = pipe(Array.head(words), Option.exists(isRuntimeEntry))
+  const hasRoleNoun = Array.some(semantics.name.words, isConventionalRoleNoun)
+  const isSingleWord = strictEqual(1)(semantics.name.words.length)
+  const isRuntimeEntryWord = pipe(Array.head(semantics.name.words), Option.exists(isRuntimeEntry))
   const bareRuntimeEntryFlags = Array.make(isSingleWord, isRuntimeEntryWord)
   const bareRuntimeEntry = Array.every(bareRuntimeEntryFlags, Boolean)
   const vagueOperation = claimedVagueOperation(semantics)

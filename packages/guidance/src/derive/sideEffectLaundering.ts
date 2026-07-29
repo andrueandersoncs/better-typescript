@@ -16,7 +16,6 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
 
     if (hasEnoughCollisions) {
       const location = Location.make({ path: file.path })
-      const examples = sideEffectLaunderingExamples
 
       const advice = Advice.make({
         location,
@@ -28,7 +27,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
           "split the expression, or annotate the value with the consuming library's own " +
           "callback type so the contract is the consumer's.",
         evidence,
-        examples
+        examples: sideEffectLaunderingExamples
       })
 
       return Array.of(advice)

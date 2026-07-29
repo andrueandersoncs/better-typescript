@@ -94,28 +94,25 @@ const arrayPrototypeMethods = HashSet.make(
 )
 
 const preferEffectArrayMatches = (context: MatchContext) => {
-  const checker = context.checker
-  const isReceiverArrayType = isArrayLikeType(checker)
+  const isReceiverArrayType = isArrayLikeType(context.checker)
 
   const matches = (callExpression: ts.CallExpression) => {
     if (!ts.isPropertyAccessExpression(callExpression.expression)) {
       return Array.empty()
     }
 
-    const propertyAccess = callExpression.expression
-
     const methodName: Option.Option<ArrayPrototypeMethod> = HashSet.has(
       arrayPrototypeMethods,
-      propertyAccess.name.text as ArrayPrototypeMethod
+      callExpression.expression.name.text as ArrayPrototypeMethod
     )
-      ? Option.some(propertyAccess.name.text as ArrayPrototypeMethod)
+      ? Option.some(callExpression.expression.name.text as ArrayPrototypeMethod)
       : Option.none()
 
     if (Option.isNone(methodName)) {
       return Array.empty()
     }
 
-    const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+    const receiverType = context.checker.getTypeAtLocation(callExpression.expression.expression)
 
     const methodCall: Option.Option<ArrayPrototypeMethod> = isReceiverArrayType(receiverType)
       ? methodName

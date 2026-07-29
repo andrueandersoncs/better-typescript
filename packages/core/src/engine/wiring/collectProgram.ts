@@ -104,8 +104,7 @@ export const collectProgramPolicyDetections = (
       return
     }
 
-    const slot = maybeSlot.value
-    const maybeMatchers = Array.get(matchersByWiring, slot.wiringIndex)
+    const maybeMatchers = Array.get(matchersByWiring, maybeSlot.value.wiringIndex)
 
     if (Option.isNone(maybeMatchers)) {
       return
@@ -114,8 +113,8 @@ export const collectProgramPolicyDetections = (
     const maybeStorage = storageForSlot(
       seenByWiring,
       elementsByWiring,
-      slot.wiringIndex,
-      slot.policyIndex
+      maybeSlot.value.wiringIndex,
+      maybeSlot.value.policyIndex
     )
 
     if (Option.isNone(maybeStorage)) {
@@ -151,33 +150,25 @@ export const collectSourceMatch = (
   matchedWiringIndexes: HashMap.HashMap<number, true>
 ) => {
   const collectMatch = (sourceMatch: SourceMatch) => {
-    const sourceFile = sourceMatch.sourceFile
-    const candidatePath = sourceMatch.candidatePath
-    const matches = sourceMatch.matches
-
-    Array.forEach(matches, (matched, wiringIndex) => {
+    Array.forEach(sourceMatch.matches, (matched, wiringIndex) => {
       collectWorkspaceFileForMatch(
         workspaceFilesByWiring,
         matchedWiringIndexes,
-        sourceFile,
-        candidatePath,
+        sourceMatch.sourceFile,
+        sourceMatch.candidatePath,
         matched,
         wiringIndex
       )
     })
 
-    return matches.length
+    return sourceMatch.matches.length
   }
 
   return collectMatch
 }
 
-export const fileMatchFromSourceMatch = (sourceMatch: SourceMatch) => {
-  const sourceFile = sourceMatch.sourceFile
-  const matches = sourceMatch.matches
-
-  return Tuple.make(sourceFile.fileName, matches)
-}
+export const fileMatchFromSourceMatch = (sourceMatch: SourceMatch) =>
+  Tuple.make(sourceMatch.sourceFile.fileName, sourceMatch.matches)
 
 export const includesSourceFileForSlots =
   (

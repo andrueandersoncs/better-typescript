@@ -88,7 +88,6 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
         : Array.of(seamItem)
 
     const remediation = deadCount > 0 ? baseRemediation + deadRemediation : baseRemediation
-    const examples = hypotheticalSeamExamples
 
     return Advice.make({
       location,
@@ -96,7 +95,7 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
       title: "hypothetical seam",
       remediation,
       evidence,
-      examples
+      examples: hypotheticalSeamExamples
     })
   })
 }

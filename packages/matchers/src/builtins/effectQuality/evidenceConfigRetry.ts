@@ -72,9 +72,8 @@ const scheduleHasJitter = (checker: ts.TypeChecker) =>
   expressionTreeHasEffectApi(checker)("Schedule")(jitterScheduleNames)
 
 const retryScheduleArgument = (node: ts.CallExpression) => {
-  const arity = node.arguments.length
-  const hasScheduleSlot = arity >= 2
-  const hasSingleArgument = strictEqual(1)(arity)
+  const hasScheduleSlot = node.arguments.length >= 2
+  const hasSingleArgument = strictEqual(1)(node.arguments.length)
 
   if (hasScheduleSlot) {
     return Option.fromNullishOr(node.arguments[1])

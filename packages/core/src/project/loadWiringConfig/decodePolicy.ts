@@ -3,13 +3,12 @@ import { isProgramPolicy, isWorkspacePolicy, type WiringPolicy } from "../../eng
 import { strictEqual } from "../../engine/equivalence.js"
 import {
   failConfig,
-  isFunctionType as functionTypePredicate,
+  isFunctionType,
   isRecord,
   isStringType,
   type UnknownRecord
 } from "./decodeExport.js"
 
-const isFunctionType = functionTypePredicate
 const isBooleanType = strictEqual("boolean")
 const isInlineTag = strictEqual("inline")
 const isDirectoryTag = strictEqual("directory")
@@ -155,8 +154,7 @@ export const validatePolicies = Effect.fn("WiringConfig.validatePolicies")(funct
     return yield* failConfig(configPath, `${fieldPath} must be an array of ${policyShapeReason}`)
   }
 
-  const policies = value as ReadonlyArray<unknown>
-  const invalidIndexOption = Array.findFirstIndex(policies, invalidPolicy)
+  const invalidIndexOption = Array.findFirstIndex(value as ReadonlyArray<unknown>, invalidPolicy)
 
   if (Option.isSome(invalidIndexOption)) {
     return yield* failConfig(
@@ -165,7 +163,10 @@ export const validatePolicies = Effect.fn("WiringConfig.validatePolicies")(funct
     )
   }
 
-  const nonInstanceIndexOption = Array.findFirstIndex(policies, isNonWiringPolicyInstance)
+  const nonInstanceIndexOption = Array.findFirstIndex(
+    value as ReadonlyArray<unknown>,
+    isNonWiringPolicyInstance
+  )
 
   if (Option.isSome(nonInstanceIndexOption)) {
     return yield* failConfig(
@@ -174,5 +175,5 @@ export const validatePolicies = Effect.fn("WiringConfig.validatePolicies")(funct
     )
   }
 
-  return policies as ReadonlyArray<WiringPolicy>
+  return value as ReadonlyArray<WiringPolicy>
 })

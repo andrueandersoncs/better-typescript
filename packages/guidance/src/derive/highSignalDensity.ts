@@ -18,7 +18,6 @@ const makeDensityAdvice = (file: FileDetections) => {
   const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
   const evidence = Array.prepend(policyEvidence, signalsItem)
   const location = Location.make({ path: file.path })
-  const examples = highSignalDensityExamples
 
   return Advice.make({
     location,
@@ -30,7 +29,7 @@ const makeDensityAdvice = (file: FileDetections) => {
       "PubSub; wiring in Layer; one runtime entry at the boundary) instead of fixing " +
       "signals one at a time — the inversion dissolves most of them.",
     evidence,
-    examples
+    examples: highSignalDensityExamples
   })
 }
 

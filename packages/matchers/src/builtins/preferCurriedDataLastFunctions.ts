@@ -60,12 +60,11 @@ const markOtherReference = (use: SymbolUse) =>
   })
 
 const isContextualOnlyUse = (use: SymbolUse) => {
-  const isContextualReference = use.hasContextualReference
   const hasNoDirectCall = !use.hasDirectCall
   const hasNoOtherReference = !use.hasOtherReference
 
   const referenceConditions = Array.make(
-    isContextualReference,
+    use.hasContextualReference,
     hasNoDirectCall,
     hasNoOtherReference
   )
@@ -206,7 +205,6 @@ const declarationHasName = (identifier: ts.Identifier) =>
   flow(Struct.get<NameDeclaration, "name">("name"), strictEqual(identifier))
 
 const buildSymbolUses = (context: ProgramContext) => {
-  const checker = context.checker
   const programSourceFiles = context.program.getSourceFiles()
   const sourceFiles = Array.filter(programSourceFiles, isProjectSourceFile)
 
@@ -220,7 +218,7 @@ const buildSymbolUses = (context: ProgramContext) => {
         Option.filter((declaration) => {
           const hasDisallowedParameters = hasDisallowedParameterList(declaration)
           const hasCurriedBody = hasCurriedArrowBody(declaration)
-          const isContextual = isContextuallyTypedFunction(checker)(declaration)
+          const isContextual = isContextuallyTypedFunction(context.checker)(declaration)
 
           const reportableCurryChecks = Array.make(
             hasDisallowedParameters,
@@ -230,7 +228,7 @@ const buildSymbolUses = (context: ProgramContext) => {
 
           return Array.every(reportableCurryChecks, Boolean)
         }),
-        Option.flatMap(symbolForDeclaration(checker)),
+        Option.flatMap(symbolForDeclaration(context.checker)),
         Option.map((symbol) => {
           const symbolKey = referenceKey(symbol)
 
@@ -251,27 +249,25 @@ const buildSymbolUses = (context: ProgramContext) => {
     }
 
     return pipe(
-      symbolAtLocation(checker)(node),
+      symbolAtLocation(context.checker)(node),
       Option.filter((symbol) => {
         const symbolKey = referenceKey(symbol)
 
         return HashSet.has(trackedSymbols, symbolKey)
       }),
       Option.map((symbol) => {
-        const identifierParent = node.parent
-
         const isVariableName = pipe(
-          Option.liftPredicate(ts.isVariableDeclaration)(identifierParent),
+          Option.liftPredicate(ts.isVariableDeclaration)(node.parent),
           Option.exists(declarationHasName(node))
         )
 
         const isFunctionName = pipe(
-          Option.liftPredicate(ts.isFunctionDeclaration)(identifierParent),
+          Option.liftPredicate(ts.isFunctionDeclaration)(node.parent),
           Option.exists(declarationHasName(node))
         )
 
         const isMethodName = pipe(
-          Option.liftPredicate(ts.isMethodDeclaration)(identifierParent),
+          Option.liftPredicate(ts.isMethodDeclaration)(node.parent),
           Option.exists(declarationHasName(node))
         )
 
@@ -283,7 +279,6 @@ const buildSymbolUses = (context: ProgramContext) => {
         }
 
         const expression = outermostTransparentWrapper(node)
-        const expressionParent = expression.parent
 
         const callUsesExpression = flow(
           Struct.get<ts.CallExpression, "expression">("expression"),
@@ -291,7 +286,7 @@ const buildSymbolUses = (context: ProgramContext) => {
         )
 
         const isDirectCall = pipe(
-          Option.liftPredicate(ts.isCallExpression)(expressionParent),
+          Option.liftPredicate(ts.isCallExpression)(expression.parent),
           Option.exists(callUsesExpression)
         )
 
@@ -302,16 +297,16 @@ const buildSymbolUses = (context: ProgramContext) => {
         const parentCall = Option.liftPredicate(ts.isCallExpression)(expression.parent)
         const args = pipe(parentCall, Option.map(callArguments), Option.getOrElse(Array.empty))
         const index = Array.findFirstIndex(args, strictEqual(expression))
-        const expressionContextualType = contextualType(checker)(expression)
+        const expressionContextualType = contextualType(context.checker)(expression)
 
         const signatureType = pipe(
           parentCall,
           Option.flatMap((call) => {
             const typeOfCallParameter = (parameter: ts.Symbol) =>
-              checker.getTypeOfSymbolAtLocation(parameter, call)
+              context.checker.getTypeOfSymbolAtLocation(parameter, call)
 
             const parameterTypeAt = (position: number) => {
-              const signature = resolvedCallSignature(checker)(call)
+              const signature = resolvedCallSignature(context.checker)(call)
 
               const parameters = pipe(
                 signature,
@@ -329,13 +324,13 @@ const buildSymbolUses = (context: ProgramContext) => {
         )
 
         const optionHasCallableType = (type: Option.Option<ts.Type>) =>
-          Option.exists(type, hasCallSignature(checker))
+          Option.exists(type, hasCallSignature(context.checker))
 
         const contextualTypes = Array.make(expressionContextualType, signatureType)
         const hasCallableContext = Array.some(contextualTypes, optionHasCallableType)
 
         const callHasExternalCallbackBoundary = (call: ts.CallExpression) =>
-          pipe(resolvedCallSignature(checker)(call), Option.exists(signatureIsExternal))
+          pipe(resolvedCallSignature(context.checker)(call), Option.exists(signatureIsExternal))
 
         const hasExternalCallbackBoundary = pipe(
           parentCall,

@@ -81,7 +81,6 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
     const hasPositiveCount = (item: EvidenceItem) => item.count > 0
     const nonZero = Array.filter(observations, hasPositiveCount)
     const evidence = Array.prepend(nonZero, sharedItem)
-    const examples = imperativeStateManagerExamples
 
     return Advice.make({
       location,
@@ -93,7 +92,7 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
         "subscribers with PubSub, assemble the manager as a Layer, and enter the Effect " +
         "runtime once at the boundary.",
       evidence,
-      examples
+      examples: imperativeStateManagerExamples
     })
   }
 

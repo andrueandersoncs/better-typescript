@@ -20,12 +20,11 @@ const failDuplicatePolicyNames = (names: ReadonlyArray<string>) => {
 }
 
 const addDuplicateName = (state: DuplicateNameState, policy: WiringPolicy) => {
-  const name = policy.name
-  const alreadySeen = HashSet.has(state.seen, name)
-  const alreadyCollision = HashSet.has(state.collisions, name)
+  const alreadySeen = HashSet.has(state.seen, policy.name)
+  const alreadyCollision = HashSet.has(state.collisions, policy.name)
 
   if (!alreadySeen) {
-    const seen = HashSet.add(state.seen, name)
+    const seen = HashSet.add(state.seen, policy.name)
 
     return new DuplicateNameState({
       seen,
@@ -38,8 +37,8 @@ const addDuplicateName = (state: DuplicateNameState, policy: WiringPolicy) => {
     return state
   }
 
-  const collisions = HashSet.add(state.collisions, name)
-  const names = Array.append(state.names, name)
+  const collisions = HashSet.add(state.collisions, policy.name)
+  const names = Array.append(state.names, policy.name)
 
   return new DuplicateNameState({
     seen: state.seen,

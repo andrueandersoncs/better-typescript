@@ -150,15 +150,13 @@ const indexCounter = (
   countersByName: HashMap.HashMap<string, ReadonlyArray<BindingCounter>>,
   counter: BindingCounter
 ): HashMap.HashMap<string, ReadonlyArray<BindingCounter>> => {
-  const name = counter.binding.text
-
   const counters = pipe(
-    HashMap.get(countersByName, name),
+    HashMap.get(countersByName, counter.binding.text),
     Option.getOrElse(Array.empty),
     Array.append(counter)
   )
 
-  return HashMap.set(countersByName, name, counters)
+  return HashMap.set(countersByName, counter.binding.text, counters)
 }
 
 const indexRecord = (
@@ -240,10 +238,9 @@ const importUsageElements = (
 
   return Array.map(records, (record) => {
     const names = Array.map(record.counters, makeImportedNameUsage)
-    const specifier = record.moduleSpecifier
 
     const data = ImportUsageData.make({
-      specifier,
+      specifier: record.moduleSpecifier,
       importerWorkspacePath,
       fromTest,
       names

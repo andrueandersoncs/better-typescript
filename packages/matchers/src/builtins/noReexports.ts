@@ -140,18 +140,16 @@ const isImportedExportAssignment =
 const makeReexportMatch = (node: ts.Node) => makeNodeMatch(node, emptyNoReexportsFact)
 
 const matches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-
   const exportedAssignments = pipe(
-    sourceFile.statements,
+    context.sourceFile.statements,
     Array.filter(ts.isExportAssignment),
-    Array.filter(isImportedExportAssignment(sourceFile))
+    Array.filter(isImportedExportAssignment(context.sourceFile))
   )
 
   const declarations = pipe(
-    sourceFile.statements,
+    context.sourceFile.statements,
     Array.filter(ts.isExportDeclaration),
-    Array.flatMap(reexportDeclarationNodes(sourceFile)),
+    Array.flatMap(reexportDeclarationNodes(context.sourceFile)),
     Array.appendAll(exportedAssignments)
   )
 

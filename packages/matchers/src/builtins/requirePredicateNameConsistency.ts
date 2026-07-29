@@ -112,26 +112,24 @@ const hasWithDirectionPredicate = (words: ReadonlyArray<string>) => {
 }
 
 const claimsPredicate = (semantics: CallableSemantics) => {
-  const words = semantics.name.words
-  const first = pipe(words, Array.head, Option.getOrElse(Function.constant("")))
+  const first = pipe(semantics.name.words, Array.head, Option.getOrElse(Function.constant("")))
   const predicatePrefix = HashSet.has(predicateOperations, first)
-  const singleWord = strictEqual(1)(words.length)
+  const singleWord = strictEqual(1)(semantics.name.words.length)
   const isAmbiguousStandalone = HashSet.has(ambiguousStandalonePredicates, first)
   const standaloneAmbiguousChecks = Array.make(singleWord, isAmbiguousStandalone)
   const standaloneAmbiguous = Array.every(standaloneAmbiguousChecks, Boolean)
   const nonAmbiguousPrefix = !standaloneAmbiguous
   const prefixClaimChecks = Array.make(predicatePrefix, nonAmbiguousPrefix)
   const prefixClaim = Array.every(prefixClaimChecks, Boolean)
-  const hasWithDirection = hasWithDirectionPredicate(words)
+  const hasWithDirection = hasWithDirectionPredicate(semantics.name.words)
   const claims = Array.make(prefixClaim, hasWithDirection)
 
   return Array.some(claims, Boolean)
 }
 
 const isBareVariantConstructor = (semantics: CallableSemantics) => {
-  const words = semantics.name.words
-  const singleWord = strictEqual(1)(words.length)
-  const headWord = Array.head(words)
+  const singleWord = strictEqual(1)(semantics.name.words.length)
+  const headWord = Array.head(semantics.name.words)
   const isBareVariantWord = (word: string) => HashSet.has(bareVariantConstructors, word)
   const isVariant = Option.exists(headWord, isBareVariantWord)
   const checks = Array.make(singleWord, isVariant)

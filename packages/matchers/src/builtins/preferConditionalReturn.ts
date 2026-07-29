@@ -48,10 +48,8 @@ const ternaryText =
 const blockKinds = Array.of(ts.SyntaxKind.Block)
 
 const matches = (context: MatchContext) => {
-  const sourceFile = context.sourceFile
-
   const isEligibleReturnExpression = (expression: ts.Expression) => {
-    const text = expression.getText(sourceFile)
+    const text = expression.getText(context.sourceFile)
     const isSingleLine = !text.includes("\n")
     const isShort = text.length <= maximumReturnExpressionLength
     const hasYieldExpression = containsYieldExpression(expression)
@@ -96,9 +94,11 @@ const matches = (context: MatchContext) => {
 
           const returnText = Option.match(negatedCondition, {
             onNone: () =>
-              ternaryText(sourceFile)(ifStatement.expression)(thenExpression)(fallbackExpression),
+              ternaryText(context.sourceFile)(ifStatement.expression)(thenExpression)(
+                fallbackExpression
+              ),
             onSome: (operand) =>
-              ternaryText(sourceFile)(operand)(fallbackExpression)(thenExpression)
+              ternaryText(context.sourceFile)(operand)(fallbackExpression)(thenExpression)
           })
 
           const fact = PreferConditionalReturnFact.make({ returnText })

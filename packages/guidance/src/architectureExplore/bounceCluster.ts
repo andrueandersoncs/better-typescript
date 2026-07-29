@@ -119,11 +119,10 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
   const graphElements = Array.filter(elements, isModuleGraphElement)
 
   const edges = Array.flatMap(graphElements, (element) => {
-    const from = element.detection.location.path
-    const pairWithFrom = (to: string) => Tuple.make(from, to)
+    const pairWithFrom = (to: string) => Tuple.make(element.detection.location.path, to)
 
     const isShallowTarget = (to: string) => {
-      const fromIsShallow = Array.contains(shallowPaths, from)
+      const fromIsShallow = Array.contains(shallowPaths, element.detection.location.path)
       const toIsShallow = Array.contains(shallowPaths, to)
 
       return fromIsShallow && toIsShallow
@@ -173,7 +172,6 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     const thinModulesItem = EvidenceItem.make({ measure: "thin-modules", count: component.length })
     const moduleEdgesItem = EvidenceItem.make({ measure: "module-edges", count: edgeCount })
     const evidence = Array.make(thinModulesItem, moduleEdgesItem)
-    const examples = bounceClusterExamples
 
     return Advice.make({
       location,
@@ -183,7 +181,7 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
         "Understanding one flow requires traversing connected low-leverage forwarding Modules. " +
         "Collapse this import path behind one deeper interface so policy and verification become local.",
       evidence,
-      examples
+      examples: bounceClusterExamples
     })
   })
 }

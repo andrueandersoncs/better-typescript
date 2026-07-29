@@ -45,7 +45,6 @@ export class WorkspacePolicy extends Data.Class<{
 
 const matcherSchema = Schema.instanceOf(Matcher)
 const workspaceMatcherSchema = Schema.instanceOf(WorkspaceMatcher)
-const guidanceSchema = Schema.Any
 const optionalReported = Schema.optionalKey(Schema.Boolean)
 const optionalExamples = Schema.optionalKey(refactorExampleSourceSchema)
 
@@ -53,7 +52,7 @@ const optionalExamples = Schema.optionalKey(refactorExampleSourceSchema)
 export const PolicyDefinition = Schema.Struct({
   name: Schema.String,
   matcher: matcherSchema,
-  guidance: guidanceSchema,
+  guidance: Schema.Any,
   reported: optionalReported,
   examples: optionalExamples
 })
@@ -64,7 +63,7 @@ export interface PolicyDefinition extends Schema.Schema.Type<typeof PolicyDefini
 export const WorkspacePolicyDefinition = Schema.Struct({
   name: Schema.String,
   matcher: workspaceMatcherSchema,
-  guidance: guidanceSchema,
+  guidance: Schema.Any,
   reported: optionalReported,
   examples: optionalExamples
 })

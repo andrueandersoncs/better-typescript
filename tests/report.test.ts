@@ -28,6 +28,7 @@ import {
 } from "@better-typescript/core/engine/example/data"
 import { makeRefactorExample } from "./exampleHelpers.js"
 import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
+import { noValueAliases } from "@better-typescript/guidance/policies/noValueAliases"
 import {
   astNodesIn,
   makeContext,
@@ -318,6 +319,20 @@ const thrownMessage = (run: () => unknown): string => {
 
   assert.fail("expected an Error to be thrown")
 }
+
+test("report preserves the no-value-aliases public identity", async () => {
+  const workspace = await loadFixtureWorkspace("no-value-aliases")
+  const blocks = await collectEffect(reportFromTestWiring(testWiring([noValueAliases]))(workspace))
+  const block = blocks[0]
+
+  assert.equal(blocks.length, 1)
+  assert.ok(block)
+  assert.match(block, /^no-value-aliases/)
+  assert.match(block, /Do not declare aliases for existing values\./)
+  assert.match(block, /Use the referenced value directly\./)
+  assert.match(block, /src\/cases\.ts:4:7/)
+  assert.doesNotMatch(block, /no-export-aliases/)
+})
 
 test("astNodesIn emits fixture AST elements in stable traversal order", async () => {
   const project = await loadFixtureProject("no-throw")

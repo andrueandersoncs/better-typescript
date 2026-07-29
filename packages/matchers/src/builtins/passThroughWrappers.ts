@@ -246,10 +246,9 @@ const reexportOnlyStatements = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Exp
 const passThroughElements =
   (index: readonly [ExportReferenceIndex, ReadonlyArray<ModuleEdge>, string]) =>
   (context: MatchContext): ReadonlyArray<Match<PassThroughWrapperData>> => {
-    const sourceFile = context.sourceFile
     const [references, edges, projectRoot] = index
     const relative = toRelativeFileName(projectRoot)
-    const filePath = relative(sourceFile.fileName)
+    const filePath = relative(context.sourceFile.fileName)
 
     const entryIsExactForwarder = (entry: ExportedFunctionEntry) =>
       isExactForwarder(entry.functionNode)
@@ -271,7 +270,7 @@ const passThroughElements =
     const isEntryInSourceFile = flow(
       Struct.get<(typeof references.entries)[number], "nameNode">("nameNode"),
       (nameNode) => nameNode.getSourceFile(),
-      strictEqual(sourceFile)
+      strictEqual(context.sourceFile)
     )
 
     const forwarding = pipe(
@@ -281,7 +280,7 @@ const passThroughElements =
       Array.map(detectionForEntry)
     )
 
-    const reexports = reexportOnlyStatements(sourceFile)
+    const reexports = reexportOnlyStatements(context.sourceFile)
 
     const importsFilePath = flow(
       Struct.get<(typeof edges)[number], "importedPath">("importedPath"),

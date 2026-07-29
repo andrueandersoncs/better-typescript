@@ -40,14 +40,13 @@ const exportSurfaceElements =
       Array.map((entry) => {
         const usage = usageOf(entry)
         const referencingFileCount = usage.productionPaths.length + usage.testPaths.length
-        const referencingTestFileCount = usage.testPaths.length
         const callCount = usage.productionCallCount + usage.testCallCount
 
         return ExportedSymbolUsage.make({
           name: entry.nameNode.text,
           kind: entry.kind,
           referencingFileCount,
-          referencingTestFileCount,
+          referencingTestFileCount: usage.testPaths.length,
           callCount
         })
       })

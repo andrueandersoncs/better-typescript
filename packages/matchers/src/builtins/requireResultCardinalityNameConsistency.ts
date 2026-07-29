@@ -228,8 +228,7 @@ const expectsPluralCardinality = (cardinality: ResultCardinality) =>
   Array.contains(pluralCardinalityValues, cardinality)
 
 const pluralForOneFinding = (semantics: CallableSemantics, claimed: string) => {
-  const cardinality = semantics.result.cardinality
-  const expectsSingular = expectsSingularCardinality(cardinality)
+  const expectsSingular = expectsSingularCardinality(semantics.result.cardinality)
   const pluralClaim = isConfidentlyPlural(claimed)
   const namedObject = isObjectShape(semantics.result.shape)
   const mismatch = Array.make(expectsSingular, pluralClaim, !namedObject)
@@ -245,7 +244,7 @@ const pluralForOneFinding = (semantics: CallableSemantics, claimed: string) => {
         nameText: semantics.name.text,
         claimed,
         singular,
-        cardinality
+        cardinality: semantics.result.cardinality
       })
 
       return makeNodeMatch(semantics.node, fact)
@@ -254,8 +253,7 @@ const pluralForOneFinding = (semantics: CallableSemantics, claimed: string) => {
 }
 
 const singularForManyFinding = (semantics: CallableSemantics, claimed: string) => {
-  const cardinality = semantics.result.cardinality
-  const expectsPlural = expectsPluralCardinality(cardinality)
+  const expectsPlural = expectsPluralCardinality(semantics.result.cardinality)
   const singularClaim = isConfidentlySingular(claimed)
   const mismatch = Array.make(expectsPlural, singularClaim)
   const shouldReport = Array.every(mismatch, Boolean)
@@ -270,7 +268,7 @@ const singularForManyFinding = (semantics: CallableSemantics, claimed: string) =
         nameText: semantics.name.text,
         claimed,
         plural,
-        cardinality
+        cardinality: semantics.result.cardinality
       })
 
       return makeNodeMatch(semantics.node, fact)
