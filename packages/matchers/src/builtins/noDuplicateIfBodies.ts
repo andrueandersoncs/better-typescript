@@ -59,33 +59,35 @@ const duplicateIfBodiesMatches = (context: MatchContext) => {
     return strictEqual(secondFingerprint)(firstFingerprint)
   }
 
-  const combineConditions = (firstIfStatement: ts.IfStatement) => (ifStatement: ts.IfStatement) => {
-    const firstCondition = conditionText(firstIfStatement)
-    const secondCondition = conditionText(ifStatement)
-    const conditionTexts = Array.make(firstCondition, secondCondition)
+  const makeCombinedConditionFact =
+    (firstIfStatement: ts.IfStatement) => (ifStatement: ts.IfStatement) => {
+      const firstCondition = conditionText(firstIfStatement)
+      const secondCondition = conditionText(ifStatement)
+      const conditionTexts = Array.make(firstCondition, secondCondition)
+      const combinedCondition = Array.join(conditionTexts, " || ")
 
-    return Array.join(conditionTexts, " || ")
-  }
+      return NoDuplicateIfBodiesFact.make({ combinedCondition })
+    }
 
   const guardDup =
     (ifStatement: ts.IfStatement) =>
-    (previousIfStatement: ts.IfStatement): Option.Option<string> => {
+    (previousIfStatement: ts.IfStatement): Option.Option<NoDuplicateIfBodiesFact> => {
       const hasDuplicateBody = sameBody(previousIfStatement)(ifStatement)
       const bodyExitsScope = alwaysExitsScope(ifStatement.thenStatement)
       const mergeableDuplicateConditions = Array.make(hasDuplicateBody, bodyExitsScope)
       const isMergeableDuplicate = Array.every(mergeableDuplicateConditions, Boolean)
-      const combinedCondition = combineConditions(previousIfStatement)(ifStatement)
+      const fact = makeCombinedConditionFact(previousIfStatement)(ifStatement)
 
-      return isMergeableDuplicate ? Option.some(combinedCondition) : Option.none()
+      return isMergeableDuplicate ? Option.some(fact) : Option.none()
     }
 
   const parentDup =
     (ifStatement: ts.IfStatement) =>
-    (parentIfStatement: ts.IfStatement): Option.Option<string> => {
+    (parentIfStatement: ts.IfStatement): Option.Option<NoDuplicateIfBodiesFact> => {
       const hasDuplicateBody = sameBody(parentIfStatement)(ifStatement)
-      const combinedCondition = combineConditions(parentIfStatement)(ifStatement)
+      const fact = makeCombinedConditionFact(parentIfStatement)(ifStatement)
 
-      return hasDuplicateBody ? Option.some(combinedCondition) : Option.none()
+      return hasDuplicateBody ? Option.some(fact) : Option.none()
     }
 
   const matchIfStatement = (ifStatement: ts.IfStatement) => {
@@ -122,14 +124,8 @@ const duplicateIfBodiesMatches = (context: MatchContext) => {
           Option.flatMap(parentDup(ifStatement))
         )
 
-    const factForCondition = (combinedCondition: string) =>
-      NoDuplicateIfBodiesFact.make({
-        combinedCondition
-      })
-
     const matchWithFact = (fact: NoDuplicateIfBodiesFact) => makeNodeMatch(ifStatement, fact)
-
-    return pipe(bodyMatch, Option.map(factForCondition), Option.map(matchWithFact), Option.toArray)
+    return pipe(bodyMatch, Option.map(matchWithFact), Option.toArray)
   }
 
   return matchIfStatement

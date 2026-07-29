@@ -1,16 +1,13 @@
 import { Array, pipe, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { externalDependencyConstructionName, moduleScopeEffectsName } from "./names.js"
 
-export const hardToTestHotspotExamples = packageExamples("hard-to-test-hotspot")
+export const hardToTestHotspotExamples = makePackageExamples("hard-to-test-hotspot")
 
 const minimumConstructions = 2
 const constructionNames = Array.make(externalDependencyConstructionName, moduleScopeEffectsName)
@@ -46,14 +43,18 @@ const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArra
 
       const constructorCount = Array.countBy(atPath, isExternalDependencyConstruction)
       const moduleScopeCount = Array.countBy(atPath, isModuleScopeEffects)
-      const location = makeAdviceLocation(filePath)
+      const location = Location.make({ path: filePath })
 
-      const constructionItem = makeEvidenceItem(
-        "external-dependency-construction",
-        constructorCount
-      )
+      const constructionItem = EvidenceItem.make({
+        measure: "external-dependency-construction",
+        count: constructorCount
+      })
 
-      const moduleScopeItem = makeEvidenceItem("module-scope-effects", moduleScopeCount)
+      const moduleScopeItem = EvidenceItem.make({
+        measure: "module-scope-effects",
+        count: moduleScopeCount
+      })
+
       const evidence = Array.make(constructionItem, moduleScopeItem)
       const examples = hardToTestHotspotExamples
 

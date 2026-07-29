@@ -1,17 +1,14 @@
 import { Array, Function, Option, Record, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { commonDirectory, compositionFingerprintDataOf } from "./evidence.js"
 import { compositionFingerprintsName } from "./names.js"
 
-export const duplicatedOrchestrationExamples = packageExamples("duplicated-orchestration")
+export const duplicatedOrchestrationExamples = makePackageExamples("duplicated-orchestration")
 
 const minimumDuplicateSites = 2
 
@@ -62,9 +59,9 @@ const duplicatedOrchestrationAdvice = (
       )
 
       const directory = commonDirectory(paths)
-      const location = makeAdviceLocation(directory)
-      const sitesItem = makeEvidenceItem("duplicate-sites", paths.length)
-      const stepsItem = makeEvidenceItem("orchestration-steps", stepCount)
+      const location = Location.make({ path: directory })
+      const sitesItem = EvidenceItem.make({ measure: "duplicate-sites", count: paths.length })
+      const stepsItem = EvidenceItem.make({ measure: "orchestration-steps", count: stepCount })
       const evidence = Array.make(sitesItem, stepsItem)
       const examples = duplicatedOrchestrationExamples
 

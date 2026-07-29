@@ -1,15 +1,11 @@
 import { Array } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  byFile,
-  collidingLines,
-  deriveSignals
-} from "@better-typescript/core/engine/derive"
+import { byFile, collidingLines, deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 
-export const sideEffectLaunderingExamples = packageExamples("side-effect-laundering")
+export const sideEffectLaunderingExamples = makePackageExamples("side-effect-laundering")
 
 const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const files = byFile(signals)
@@ -19,7 +15,7 @@ const collidingFileAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyAr
     const hasEnoughCollisions = evidence.length >= 2
 
     if (hasEnoughCollisions) {
-      const location = makeAdviceLocation(file.path)
+      const location = Location.make({ path: file.path })
       const examples = sideEffectLaunderingExamples
 
       const advice = Advice.make({

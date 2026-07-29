@@ -13,7 +13,6 @@ import {
 } from "effect"
 import { formatRefactorExample } from "../example/example.js"
 import type { RefactorExample } from "../example/data.js"
-import { Location } from "../location/data.js"
 import type { Detection } from "../location/data.js"
 import { strictEqual } from "../equivalence.js"
 import { CountSummary, Advice, EvidenceItem, FileDetections, NamedDetection } from "./data.js"
@@ -106,16 +105,11 @@ const byMeasure: Order.Order<EvidenceItem> = Order.mapInput(Order.String, Struct
 
 export const evidenceOrder = Order.combine(byCountDescending, byMeasure)
 
-export const makeEvidenceItem = (measure: string, count: number) =>
-  EvidenceItem.make({ measure, count })
-
-export const makeAdviceLocation = (path: string) => Location.make({ path })
-
 const makeCountEntryEvidence = (entry: readonly [string, number]) => {
   const measure = Tuple.get(entry, 0)
   const count = Tuple.get(entry, 1)
 
-  return makeEvidenceItem(measure, count)
+  return EvidenceItem.make({ measure: measure, count: count })
 }
 
 export const evidenceFromCounts = (
@@ -145,7 +139,7 @@ const makeCollisionEvidence = (entry: readonly [string, ReadonlyArray<NamedDetec
   const sortedNames = Array.sort(nameList, Order.String)
   const measure = `line ${line}: ${Array.join(sortedNames, " + ")}`
 
-  return makeEvidenceItem(measure, elements.length)
+  return EvidenceItem.make({ measure: measure, count: elements.length })
 }
 
 export const collidingLines = (

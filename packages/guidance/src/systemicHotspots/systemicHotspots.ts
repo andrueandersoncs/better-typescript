@@ -1,19 +1,29 @@
 import { Array, Function } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
-import { SystemicSignals } from "./data.js"
-import { packageExamples } from "../definePolicy.js"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { Location } from "@better-typescript/core/engine/location/data"
 
-export const systemicHotspotsExamples = packageExamples("systemic-hotspots")
+import { SystemicSignals } from "./data.js"
+import { makePackageExamples } from "../definePolicy.js"
+
+export const systemicHotspotsExamples = makePackageExamples("systemic-hotspots")
 
 const systemicAdvice = (signals: SystemicSignals): ReadonlyArray<Advice> => {
   const hasHotSubsystem = signals.hotSubsystem.length >= 1
   const hasDenseFiles = signals.highSignalDensity.length >= 2
   const hotSubsystemEvidence = Array.make(hasHotSubsystem, hasDenseFiles)
   const isSystemic = Array.every(hotSubsystemEvidence, Boolean)
-  const location = makeAdviceLocation("project")
-  const subsystemItem = makeEvidenceItem("hot-subsystem", signals.hotSubsystem.length)
-  const densityItem = makeEvidenceItem("high-signal-density", signals.highSignalDensity.length)
+  const location = Location.make({ path: "project" })
+
+  const subsystemItem = EvidenceItem.make({
+    measure: "hot-subsystem",
+    count: signals.hotSubsystem.length
+  })
+
+  const densityItem = EvidenceItem.make({
+    measure: "high-signal-density",
+    count: signals.highSignalDensity.length
+  })
+
   const evidence = Array.make(subsystemItem, densityItem)
   const examples = systemicHotspotsExamples
 

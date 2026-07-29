@@ -7,11 +7,10 @@ import {
   formatCause,
   isFunctionType,
   isRecord,
-  makeProjectWiringConfigError,
   resolvedExport
 } from "./decodeExport.js"
 import { validatePolicies } from "./decodePolicy.js"
-import type { ProjectWiringConfigError } from "./data.js"
+import { ProjectWiringConfigError } from "./data.js"
 
 const validateWiringShape = Effect.fn("WiringConfig.validateWiringShape")(function* (
   configPath: string,
@@ -112,7 +111,7 @@ const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(func
     catch: (cause) => {
       const reason = formatCause(cause)
 
-      return makeProjectWiringConfigError(configPath, reason)
+      return new ProjectWiringConfigError({ configPath, reason })
     }
   })
 })

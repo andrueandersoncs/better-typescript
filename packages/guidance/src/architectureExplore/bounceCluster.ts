@@ -1,13 +1,10 @@
 import { Array, Option, Struct, Tuple, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import {
   commonDirectory,
   isDeletableShallowness,
@@ -17,7 +14,7 @@ import {
 import type { ModuleGraphData } from "@better-typescript/matchers/builtins/architectureExploreData"
 import { moduleGraphName } from "./names.js"
 
-export const bounceClusterExamples = packageExamples("bounce-cluster")
+export const bounceClusterExamples = makePackageExamples("bounce-cluster")
 
 const minimumThinFiles = 3
 
@@ -172,9 +169,9 @@ const bounceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Ad
     })
 
     const directory = commonDirectory(component)
-    const location = makeAdviceLocation(directory)
-    const thinModulesItem = makeEvidenceItem("thin-modules", component.length)
-    const moduleEdgesItem = makeEvidenceItem("module-edges", edgeCount)
+    const location = Location.make({ path: directory })
+    const thinModulesItem = EvidenceItem.make({ measure: "thin-modules", count: component.length })
+    const moduleEdgesItem = EvidenceItem.make({ measure: "module-edges", count: edgeCount })
     const evidence = Array.make(thinModulesItem, moduleEdgesItem)
     const examples = bounceClusterExamples
 

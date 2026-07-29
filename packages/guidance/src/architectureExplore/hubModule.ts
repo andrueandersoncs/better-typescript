@@ -1,19 +1,16 @@
 import { Array, Function, Option, Predicate, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { interfaceBurdenDataOf, moduleGraphDataOf, workspaceImportEdges } from "./evidence.js"
 import type { InterfaceBurdenData } from "@better-typescript/matchers/builtins/architectureExploreData"
 import { interfaceBurdenName, moduleGraphName } from "./names.js"
 import { isTestPath } from "./pathUtils.js"
 
-export const hubModuleExamples = packageExamples("hub-module")
+export const hubModuleExamples = makePackageExamples("hub-module")
 
 const minimumOperations = 12
 const minimumFanIn = 3
@@ -102,10 +99,15 @@ const hubAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advic
       return Result.failVoid
     }
 
-    const location = makeAdviceLocation(workspacePath)
-    const operationsItem = makeEvidenceItem("interface-operations", operationCount)
-    const fanInItem = makeEvidenceItem("fan-in-modules", fanIn)
-    const fanOutItem = makeEvidenceItem("fan-out-modules", fanOut)
+    const location = Location.make({ path: workspacePath })
+
+    const operationsItem = EvidenceItem.make({
+      measure: "interface-operations",
+      count: operationCount
+    })
+
+    const fanInItem = EvidenceItem.make({ measure: "fan-in-modules", count: fanIn })
+    const fanOutItem = EvidenceItem.make({ measure: "fan-out-modules", count: fanOut })
     const evidence = Array.make(operationsItem, fanInItem, fanOutItem)
     const examples = hubModuleExamples
 

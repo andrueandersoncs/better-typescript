@@ -7,11 +7,8 @@ import { fileURLToPath } from "node:url"
 import { Deferred, Effect, Fiber, Function, pipe } from "effect"
 import * as ts from "typescript"
 import type { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeExampleSnippet,
-  makeInlineRefactorExamples,
-  makeRefactorExample
-} from "./exampleHelpers.js"
+import { ExampleSnippet, InlineRefactorExamples } from "@better-typescript/core/engine/example/data"
+import { makeRefactorExample } from "./exampleHelpers.js"
 import { Location } from "@better-typescript/core/engine/location/data"
 import type { ReportEvent } from "@better-typescript/core/engine/report/data"
 import { makeContext } from "@better-typescript/matchers/sources"
@@ -33,12 +30,14 @@ const probeName = "probe throw statements"
 const probeMessage = "throw statement"
 const probeHint = "yield typed errors instead of throwing"
 
-const probeExamples = makeInlineRefactorExamples([
-  makeRefactorExample(
-    makeExampleSnippet("src/cases.ts", `throw new Error("boom")`),
-    makeExampleSnippet("src/cases.ts", "yield* new BoomError()")
-  )
-])
+const probeExamples = InlineRefactorExamples.make({
+  examples: [
+    makeRefactorExample(
+      ExampleSnippet.make({ filePath: "src/cases.ts", code: `throw new Error("boom")` }),
+      ExampleSnippet.make({ filePath: "src/cases.ts", code: "yield* new BoomError()" })
+    )
+  ]
+})
 
 const throwProbePolicy = makePolicy({
   name: probeName,

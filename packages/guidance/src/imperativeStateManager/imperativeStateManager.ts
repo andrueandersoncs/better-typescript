@@ -1,13 +1,13 @@
 import { Array, Function, Option, Schema, pipe, Struct, flow } from "effect"
-import { Advice, type EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { Detection } from "@better-typescript/core/engine/location/data"
-import { packageExamples } from "../definePolicy.js"
+import { Detection, Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { ImperativeStateSignals, MutationElementData } from "./data.js"
 
-export const imperativeStateManagerExamples = packageExamples("imperative-state-manager")
+export const imperativeStateManagerExamples = makePackageExamples("imperative-state-manager")
 
 const isSharedStateMutation = (element: Detection) => {
   const data = Option.fromNullishOr(element.data)
@@ -43,23 +43,32 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
     sharedMutationCountAt(path)(signals.noMutation) >= 8
 
   const adviceForPath = (path: string) => {
-    const location = makeAdviceLocation(path)
+    const location = Location.make({ path: path })
     const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
     const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
     const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
     const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
     const arrayCount = countDetectionsAtPath(path)(signals.noMutableArrayMethods)
     const declarationCount = countDetectionsAtPath(path)(signals.noMutableVariableDeclarations)
-    const sharedItem = makeEvidenceItem("no-mutation/shared-state", sharedCount)
-    const mutationEvidence = makeEvidenceItem("no-mutation", mutationCount)
-    const hashMapEvidence = makeEvidenceItem("prefer-hash-map", hashMapCount)
-    const hashSetEvidence = makeEvidenceItem("prefer-hash-set", hashSetCount)
-    const mutableArrayEvidence = makeEvidenceItem("no-mutable-array-methods", arrayCount)
 
-    const mutableDeclarationEvidence = makeEvidenceItem(
-      "no-mutable-variable-declarations",
-      declarationCount
-    )
+    const sharedItem = EvidenceItem.make({
+      measure: "no-mutation/shared-state",
+      count: sharedCount
+    })
+
+    const mutationEvidence = EvidenceItem.make({ measure: "no-mutation", count: mutationCount })
+    const hashMapEvidence = EvidenceItem.make({ measure: "prefer-hash-map", count: hashMapCount })
+    const hashSetEvidence = EvidenceItem.make({ measure: "prefer-hash-set", count: hashSetCount })
+
+    const mutableArrayEvidence = EvidenceItem.make({
+      measure: "no-mutable-array-methods",
+      count: arrayCount
+    })
+
+    const mutableDeclarationEvidence = EvidenceItem.make({
+      measure: "no-mutable-variable-declarations",
+      count: declarationCount
+    })
 
     const observations = Array.make(
       mutationEvidence,

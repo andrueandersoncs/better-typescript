@@ -11,10 +11,8 @@ import {
 } from "./packageExamples.js"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import type { Policy } from "@better-typescript/core/engine/policy/data"
-import {
-  makeDirectoryRefactorExamples,
-  makeRefactorExampleResolver
-} from "@better-typescript/core/engine/example"
+import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
+import { DirectoryRefactorExamples } from "@better-typescript/core/engine/example/data"
 import { runPolicyOnProject, loadProject } from "@better-typescript/core/project/loadProject"
 import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
 
@@ -94,7 +92,7 @@ test("example resolver retries failures and caches successful directory loads", 
   const exampleRoot = fs.mkdtempSync(path.join(os.tmpdir(), "better-typescript-examples-"))
 
   try {
-    const source = makeDirectoryRefactorExamples(exampleRoot)
+    const source = DirectoryRefactorExamples.make({ root: exampleRoot })
     const resolve = await Effect.runPromise(makeRefactorExampleResolver())
 
     await assert.rejects(Effect.runPromise(resolve(source)))

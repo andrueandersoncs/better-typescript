@@ -46,9 +46,6 @@ export const makeMergedWiring = (wirings: ReadonlyArray<Wiring>) => {
   return makeWiring({ policies, derive })
 }
 
-const makeWiringFilesInput = (files: Array.NonEmptyReadonlyArray<string>) =>
-  new WiringFilesInput({ files })
-
 const makeWiringEntryInput = (entry: Pick<WiringEntryInput, "files" | "wiring">) =>
   new WiringEntryInput({ files: entry.files, wiring: entry.wiring })
 
@@ -71,7 +68,7 @@ const compileEntryGlobs = (entry: WiringEntryInput) => {
 }
 
 const invalidConfigIndex = (entry: WiringEntryInput, index: number) => {
-  const filesInput = makeWiringFilesInput(entry.files)
+  const filesInput = new WiringFilesInput({ files: entry.files })
   const isValid = isValidWiringFilesInput(filesInput)
 
   return isValid ? Result.failVoid : Result.succeed(index)

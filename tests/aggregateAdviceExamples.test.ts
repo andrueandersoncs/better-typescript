@@ -7,10 +7,10 @@ import { architectureExploreWiring } from "@better-typescript/guidance/preset/ar
 import { functionalCoreEffectWiring } from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
 import { packageExampleRoot } from "./packageExamples.js"
 import {
-  makeDirectoryRefactorExamples,
   formatRefactorExample,
   makeRefactorExampleResolver
 } from "@better-typescript/core/engine/example"
+import { DirectoryRefactorExamples } from "@better-typescript/core/engine/example/data"
 import type { SignalEvent } from "@better-typescript/core/engine/report/data"
 import { reportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
@@ -204,7 +204,8 @@ for (const exampleCase of adviceExampleCases) {
     const badAdvice = blocksWithTitle(badBlocks, exampleCase.title)
     const goodAdvice = blocksWithTitle(goodBlocks, exampleCase.title)
     const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-    const examples = await Effect.runPromise(resolve(makeDirectoryRefactorExamples(exampleRoot)))
+    const source = DirectoryRefactorExamples.make({ root: exampleRoot })
+    const examples = await Effect.runPromise(resolve(source))
     const expectedExample = formatRefactorExample(examples[0])
 
     assert.equal(examples.length, 1, `${exampleCase.title} should declare exactly one fixture pair`)

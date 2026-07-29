@@ -21,8 +21,6 @@ const relativePathOrAbsolute = (root: string, fileName: string) => {
 const makeFileStartLocation = (fileName: string) =>
   Location.make({ path: fileName, line: 1, column: 1 })
 
-const makePathLocation = (fileName: string) => Location.make({ path: fileName })
-
 const nodeStartPosition = (node: NodeTarget) => {
   const sourceFile = node.node.getSourceFile()
   const start = node.node.getStart(sourceFile)
@@ -53,13 +51,13 @@ const locatePositionAt = (root: string) => (target: PositionTarget) => {
   return Location.make({ path: fileName, line: target.line, column: target.column })
 }
 
-const locateDirectory = (target: DirectoryTarget) => makePathLocation(target.path)
+const locateDirectory = (target: DirectoryTarget) => Location.make({ path: target.path })
 
-const locateWorkspace = (target: WorkspaceTarget) => makePathLocation(target.workspaceRoot)
+const locateWorkspace = (target: WorkspaceTarget) => Location.make({ path: target.workspaceRoot })
 
 export const locateTarget = (context: ProgramContext) => (target: Target) => {
   const projectRoot = context.projectRoot
-  const fallback = makePathLocation(context.workspaceRoot)
+  const fallback = Location.make({ path: context.workspaceRoot })
 
   return pipe(
     Match.value(target),
@@ -74,7 +72,7 @@ export const locateTarget = (context: ProgramContext) => (target: Target) => {
 
 export const locateWorkspaceTarget = (context: WorkspaceContext) => (target: Target) => {
   const workspaceRoot = context.workspaceRoot
-  const fallback = makePathLocation(workspaceRoot)
+  const fallback = Location.make({ path: workspaceRoot })
 
   return pipe(
     Match.value(target),

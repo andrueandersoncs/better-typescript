@@ -1,16 +1,15 @@
 import { Array } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { Location } from "@better-typescript/core/engine/location/data"
 import {
-  makeAdviceLocation,
   makeCountSummary,
   deriveSignals,
-  dominantPolicyEvidence,
-  makeEvidenceItem
+  dominantPolicyEvidence
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { makePackageExamples } from "../definePolicy.js"
 
-export const ruleDominanceExamples = packageExamples("rule-dominance")
+export const ruleDominanceExamples = makePackageExamples("rule-dominance")
 
 const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
   const summary = makeCountSummary(elements)
@@ -19,8 +18,8 @@ const dominanceAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
   const hasDominantPolicy = dominantEvidence.length > 0
   const signalsEvidence = Array.make(hasEnoughSignals, hasDominantPolicy)
   const isDominated = Array.every(signalsEvidence, Boolean)
-  const location = makeAdviceLocation("project")
-  const signalsItem = makeEvidenceItem("signals", summary.total)
+  const location = Location.make({ path: "project" })
+  const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
   const evidence = Array.prepend(dominantEvidence, signalsItem)
   const examples = ruleDominanceExamples
 

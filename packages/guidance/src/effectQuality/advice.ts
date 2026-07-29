@@ -1,9 +1,9 @@
 import { Array, Option, Result, Schema, Struct, pipe, flow } from "effect"
-import { makeEvidenceItem } from "@better-typescript/core/engine/derive"
-import { Advice } from "@better-typescript/core/engine/derive/data"
+
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
 import type { Detection } from "@better-typescript/core/engine/location/data"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
-import { packageExamples } from "../definePolicy.js"
+import { makePackageExamples } from "../definePolicy.js"
 import {
   EffectQualityAdviceData,
   type EffectQualityAdviceKind
@@ -89,9 +89,9 @@ export const effectQualityDerive = (signals: ReadonlyArray<Signal>): ReadonlyArr
       }
 
       const data = detection.data
-      const evidenceItem = makeEvidenceItem(data.subject, 1)
+      const evidenceItem = EvidenceItem.make({ measure: data.subject, count: 1 })
       const evidence = Array.of(evidenceItem)
-      const examples = packageExamples("effect-quality")
+      const examples = makePackageExamples("effect-quality")
 
       const advice = Advice.make({
         location: detection.location,

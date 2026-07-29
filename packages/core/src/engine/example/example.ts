@@ -15,7 +15,7 @@ import {
   pipe
 } from "effect"
 import {
-  DirectoryRefactorExamples,
+  type DirectoryRefactorExamples,
   ExampleLoadError,
   ExampleSnippet,
   InlineRefactorExamples,
@@ -23,19 +23,11 @@ import {
   RefactorExample
 } from "./data.js"
 
-const makeExampleSnippet = (filePath: string, code: string) =>
-  ExampleSnippet.make({ filePath, code })
-
-const makeInlineRefactorExamples = (examples: ReadonlyArray<RefactorExample>) =>
-  InlineRefactorExamples.make({ examples })
-
-export const makeDirectoryRefactorExamples = (root: string) =>
-  DirectoryRefactorExamples.make({ root })
-
 const emptyExamples = Array.empty<RefactorExample>()
 
-export const emptyRefactorExampleSource: RefactorExampleSource =
-  makeInlineRefactorExamples(emptyExamples)
+export const emptyRefactorExampleSource: RefactorExampleSource = InlineRefactorExamples.make({
+  examples: emptyExamples
+})
 
 const formatExampleFiles =
   (label: string) =>
@@ -133,7 +125,7 @@ const readExampleTree: (
     const segments = relative.split(path.sep)
     const filePath = Array.join(segments, "/")
 
-    return makeExampleSnippet(filePath, code)
+    return ExampleSnippet.make({ filePath, code })
   })
 
   const snippets = yield* Effect.forEach(absoluteFiles, readSnippet)

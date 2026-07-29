@@ -1,20 +1,19 @@
 import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { Advice, FileDetections } from "@better-typescript/core/engine/derive/data"
+import { Advice, EvidenceItem, FileDetections } from "@better-typescript/core/engine/derive/data"
 import {
-  makeAdviceLocation,
   byFile,
   makeCountSummary,
   deriveSignals,
   evidenceFromCounts,
-  makeEvidenceItem,
   parentDirectories
 } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { DirectorySignals } from "./data.js"
 
-export const hotSubsystemExamples = packageExamples("hot-subsystem")
+export const hotSubsystemExamples = makePackageExamples("hot-subsystem")
 
 const isHotSubsystem = (directory: DirectorySignals) => {
   const elements = Array.flatMap(directory.files, Struct.get("elements"))
@@ -35,12 +34,17 @@ const makeSubsystemAdvice = (directory: DirectorySignals) => {
   const sharePercent =
     directory.projectTotal > 0 ? Math.floor((summary.total * 100) / directory.projectTotal) : 0
 
-  const signalsItem = makeEvidenceItem("signals", summary.total)
-  const filesItem = makeEvidenceItem("files-with-signals", directory.files.length)
-  const shareItem = makeEvidenceItem("share(signals)", sharePercent)
+  const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
+
+  const filesItem = EvidenceItem.make({
+    measure: "files-with-signals",
+    count: directory.files.length
+  })
+
+  const shareItem = EvidenceItem.make({ measure: "share(signals)", count: sharePercent })
   const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
   const evidence = Array.appendAll(leadingEvidence, policyEvidence)
-  const location = makeAdviceLocation(directory.path)
+  const location = Location.make({ path: directory.path })
   const examples = hotSubsystemExamples
 
   return Advice.make({

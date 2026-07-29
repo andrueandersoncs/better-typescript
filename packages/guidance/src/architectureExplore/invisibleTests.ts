@@ -1,12 +1,9 @@
 import { Array, Function, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
+import { Location } from "@better-typescript/core/engine/location/data"
 import { exportSurfaceDataOf, importUsageDataOf, moduleGraphDataOf } from "./evidence.js"
 import { exportSurfaceName, importUsageName, moduleGraphName } from "./names.js"
 import { isTestPath } from "./pathUtils.js"
@@ -72,8 +69,8 @@ const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray
     return Array.empty()
   }
 
-  const location = makeAdviceLocation(".")
-  const analyzedItem = makeEvidenceItem("analyzed-modules", paths.length)
+  const location = Location.make({ path: "." })
+  const analyzedItem = EvidenceItem.make({ measure: "analyzed-modules", count: paths.length })
   const evidence = Array.of(analyzedItem)
 
   const advice = Advice.make({

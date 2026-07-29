@@ -1,13 +1,10 @@
 import { Array, Function, Option, Result, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import type {
   ExportSurfaceData,
   ExportedSymbolUsage,
@@ -22,7 +19,7 @@ import {
 import type { WorkspaceImportEdge } from "./evidence.js"
 import { exportSurfaceName, seamLeakageEvidenceName, testOnlyExportsName } from "./names.js"
 
-export const testPastInterfaceExamples = packageExamples("test-past-interface")
+export const testPastInterfaceExamples = makePackageExamples("test-past-interface")
 
 const edgesForSymbol = (
   edges: ReadonlyArray<WorkspaceImportEdge>,
@@ -179,15 +176,20 @@ const testPastInterfaceAdvice = (
     const workspaceSymbolCount = Tuple.get(workspaceEvidence, 0)
     const workspaceTestCallCount = Tuple.get(workspaceEvidence, 1)
     const testCallCount = exportTestCallCount + workspaceTestCallCount
-    const location = makeAdviceLocation(filePath)
+    const location = Location.make({ path: filePath })
 
-    const exportsItem = makeEvidenceItem(
-      "test-only-exports",
-      exportsAtPath.length + workspaceSymbolCount
-    )
+    const exportsItem = EvidenceItem.make({
+      measure: "test-only-exports",
+      count: exportsAtPath.length + workspaceSymbolCount
+    })
 
-    const callsItem = makeEvidenceItem("test-helper-calls", testCallCount)
-    const importsItem = makeEvidenceItem("test-deep-imports", importsAtPath.length)
+    const callsItem = EvidenceItem.make({ measure: "test-helper-calls", count: testCallCount })
+
+    const importsItem = EvidenceItem.make({
+      measure: "test-deep-imports",
+      count: importsAtPath.length
+    })
+
     const evidence = Array.make(exportsItem, callsItem, importsItem)
     const examples = testPastInterfaceExamples
 

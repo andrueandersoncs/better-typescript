@@ -8,15 +8,13 @@ const isFunctionType = strictEqual("function")
 const isObjectType = strictEqual("object")
 const isStringType = strictEqual("string")
 
-// The loader shell reuses this constructor because both paths must fail with one error shape.
-export const makeProjectWiringConfigError = (configPath: string, reason: string) =>
-  new ProjectWiringConfigError({ configPath, reason })
-
 export const failConfig = Effect.fn("WiringConfig.failConfig")(function* (
   configPath: string,
   reason: string
 ) {
-  return yield* pipe(makeProjectWiringConfigError(configPath, reason), Effect.fail)
+  const error = new ProjectWiringConfigError({ configPath, reason })
+
+  return yield* Effect.fail(error)
 })
 
 // UnknownRecord is decoded module shape because config loading inspects plain exports.
@@ -151,7 +149,7 @@ const callFactory = Effect.fn("WiringConfig.callFactory")(function* (
       const causeMessage = formatCause(cause)
       const reason = `${exportName} export factory failed: ${causeMessage}`
 
-      return makeProjectWiringConfigError(configPath, reason)
+      return new ProjectWiringConfigError({ configPath, reason })
     }
   })
 })

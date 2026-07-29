@@ -1,13 +1,10 @@
 import { Array, Function, Option, Struct, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import {
   compositionForwarderDataOf,
   isDeletableShallowness,
@@ -15,7 +12,7 @@ import {
   passThroughDataOf
 } from "./evidence.js"
 
-export const deletionTestShallownessExamples = packageExamples("deletion-test-shallowness")
+export const deletionTestShallownessExamples = makePackageExamples("deletion-test-shallowness")
 
 const callerCountOf = (element: NamedDetection) =>
   pipe(
@@ -51,10 +48,14 @@ const deletionAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
       Array.reduce(0, (total, count) => total + count)
     )
 
-    const forwardersItem = makeEvidenceItem("deletable-forwarders", atPath.length)
-    const callersItem = makeEvidenceItem("production-callers", callerCount)
+    const forwardersItem = EvidenceItem.make({
+      measure: "deletable-forwarders",
+      count: atPath.length
+    })
+
+    const callersItem = EvidenceItem.make({ measure: "production-callers", count: callerCount })
     const evidence = Array.make(forwardersItem, callersItem)
-    const location = makeAdviceLocation(filePath)
+    const location = Location.make({ path: filePath })
     const examples = deletionTestShallownessExamples
 
     return Advice.make({

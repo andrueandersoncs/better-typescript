@@ -12,7 +12,7 @@ import {
   WorkspaceContext,
   WorkspaceSourceFile
 } from "@better-typescript/matchers/matcher/data"
-import { directoryMatcher } from "@better-typescript/matchers/matcher"
+import { makeDirectoryMatcher } from "@better-typescript/matchers/matcher"
 
 interface DirectoryFact {
   readonly fileCount: number
@@ -29,7 +29,7 @@ const sourceFiles = Array.make(
   new WorkspaceSourceFile({ path: "test/one.test.ts", sourceFile: sourceFile("one.test.ts") })
 )
 
-const sourceDirectoryMatcher = directoryMatcher((target) => {
+const sourceDirectoryMatcher = makeDirectoryMatcher((target) => {
   if (target.path !== "src") {
     return Array.empty()
   }

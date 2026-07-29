@@ -1,4 +1,4 @@
-import { Array, HashSet, Option, pipe, Schema } from "effect"
+import { Array, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { nodeMatcher } from "../matcher/matcher.js"
 import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
@@ -47,19 +47,14 @@ const mutableArrayMethodsMatches = (context: MatchContext) => {
     }
 
     const receiverType = checker.getTypeAtLocation(propertyAccess.expression)
+    const fact = NoMutableArrayMethodsFact.make({ methodName: methodName.value })
 
-    const methodCall = isReceiverArrayType(receiverType)
-      ? methodName
-      : Option.none<MutableArrayMethod>()
-
-    const factForMethod = (name: MutableArrayMethod) =>
-      NoMutableArrayMethodsFact.make({
-        methodName: name
-      })
+    const methodFact = isReceiverArrayType(receiverType)
+      ? Option.some(fact)
+      : Option.none<NoMutableArrayMethodsFact>()
 
     const matchWithFact = (fact: NoMutableArrayMethodsFact) => makeNodeMatch(callExpression, fact)
-
-    return pipe(methodCall, Option.map(factForMethod), Option.map(matchWithFact), Option.toArray)
+    return pipe(methodFact, Option.map(matchWithFact), Option.toArray)
   }
 
   return matchMutableArrayMethod

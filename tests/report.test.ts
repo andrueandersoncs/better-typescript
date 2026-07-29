@@ -20,15 +20,13 @@ import {
   filterFallbackAdviceForUncoveredFiles,
   withFallbackAdvice
 } from "@better-typescript/core/engine/report"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
 import {
-  makeDirectoryRefactorExamples,
-  emptyRefactorExampleSource
-} from "@better-typescript/core/engine/example"
-import {
-  makeExampleSnippet,
-  makeInlineRefactorExamples,
-  makeRefactorExample
-} from "./exampleHelpers.js"
+  DirectoryRefactorExamples,
+  ExampleSnippet,
+  InlineRefactorExamples
+} from "@better-typescript/core/engine/example/data"
+import { makeRefactorExample } from "./exampleHelpers.js"
 import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
 import {
   astNodesIn,
@@ -40,7 +38,7 @@ import { reportEvents } from "@better-typescript/core/engine/watch"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
 import {
-  directoryMatcher,
+  makeDirectoryMatcher,
   fileMatcher,
   makeMatcherFromSubscriptions,
   nodeMatcher
@@ -56,12 +54,14 @@ import type {
   LoadedWorkspace
 } from "@better-typescript/core/project/loadProject/data"
 
-const probeExamples = makeInlineRefactorExamples([
-  makeRefactorExample(
-    makeExampleSnippet("src/cases.ts", `throw new Error("boom")`),
-    makeExampleSnippet("src/cases.ts", `yield* new BoomError()`)
-  )
-])
+const probeExamples = InlineRefactorExamples.make({
+  examples: [
+    makeRefactorExample(
+      ExampleSnippet.make({ filePath: "src/cases.ts", code: `throw new Error("boom")` }),
+      ExampleSnippet.make({ filePath: "src/cases.ts", code: `yield* new BoomError()` })
+    )
+  ]
+})
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = (name: string): string => path.join(testDirectory, "fixtures", name)
@@ -462,7 +462,7 @@ test("each glob wiring derives from only its matching files", async () => {
 test("workspace directory policies use scoped canonical paths and deduplicate projects", async () => {
   const directoryPolicy: WorkspacePolicy = makeWorkspacePolicy({
     name: "scoped source directory",
-    matcher: directoryMatcher((target) =>
+    matcher: makeDirectoryMatcher((target) =>
       Array.of(new Match({ target, fact: target.sourceFiles.length }))
     ),
     guidance: () => (match) =>
@@ -540,7 +540,9 @@ test("an unmatched glob wiring invokes neither policies nor derive", async () =>
 })
 
 test("reportEvents does not load examples for a policy without detections", async () => {
-  const missingExamples = makeDirectoryRefactorExamples(fixturePath("missing-report-examples"))
+  const missingExamples = DirectoryRefactorExamples.make({
+    root: fixturePath("missing-report-examples")
+  })
   const noOutputPolicy = makePolicy({
     name: "no output",
     matcher: emptyMatcher,

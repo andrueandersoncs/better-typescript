@@ -282,10 +282,6 @@ export const runMatchers =
     return Array.map(matchesByMatcher, MutableList.toArray)
   }
 
-export const makeWorkspaceMatcher = (
-  match: (context: WorkspaceContext) => ReadonlyArray<Match<unknown>>
-) => new WorkspaceMatcher({ match })
-
 export const runWorkspaceMatchers =
   (matchers: ReadonlyArray<WorkspaceMatcher>) =>
   (context: WorkspaceContext): ReadonlyArray<ReadonlyArray<Match<unknown>>> =>
@@ -324,4 +320,10 @@ const directoryMatchesForContext =
     )
   }
 
-export const directoryMatcher = flow(directoryMatchesForContext, makeWorkspaceMatcher)
+export const makeDirectoryMatcher = (
+  match: (target: DirectoryTarget) => ReadonlyArray<Match<unknown>>
+) => {
+  const workspaceMatch = directoryMatchesForContext(match)
+
+  return new WorkspaceMatcher({ match: workspaceMatch })
+}

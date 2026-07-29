@@ -1,17 +1,14 @@
 import { Array, Function, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { importUsageDataOf } from "./evidence.js"
 import { importUsageName } from "./names.js"
 
-export const registrationCeremonyExamples = packageExamples("registration-ceremony")
+export const registrationCeremonyExamples = makePackageExamples("registration-ceremony")
 
 const minimumImportCount = 15
 const minimumLowRefRatio = 0.8
@@ -57,9 +54,14 @@ const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyAr
       return Result.failVoid
     }
 
-    const location = makeAdviceLocation(importerPath)
-    const importedModulesItem = makeEvidenceItem("imported-modules", importCount)
-    const singleUseItem = makeEvidenceItem("single-use-imports", lowRefNames)
+    const location = Location.make({ path: importerPath })
+
+    const importedModulesItem = EvidenceItem.make({
+      measure: "imported-modules",
+      count: importCount
+    })
+
+    const singleUseItem = EvidenceItem.make({ measure: "single-use-imports", count: lowRefNames })
     const evidence = Array.make(importedModulesItem, singleUseItem)
     const examples = registrationCeremonyExamples
 

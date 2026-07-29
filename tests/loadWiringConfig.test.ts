@@ -16,7 +16,6 @@ import { loadProject } from "@better-typescript/core/project/loadProject"
 import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
-import { makeInlineRefactorExamples } from "./exampleHelpers.js"
 import { InlineRefactorExamples } from "@better-typescript/core/engine/example/data"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -355,7 +354,7 @@ test("decodeWiringConfig rejects legacy thunk-valued policy examples", async () 
 })
 
 test("decodeWiringConfig accepts inline RefactorExampleSource policy examples", async () => {
-  const examples = makeInlineRefactorExamples([])
+  const examples = InlineRefactorExamples.make({ examples: [] })
   const config = await Effect.runPromise(
     decodeWiringConfig(virtualConfigPath, [
       {

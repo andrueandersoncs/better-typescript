@@ -12,23 +12,18 @@ import {
   Result
 } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  evidenceFromCounts,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { packageExamples } from "../definePolicy.js"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals, evidenceFromCounts } from "@better-typescript/core/engine/derive"
+import { Location, type Detection } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import {
   ConceptSignalData,
   type ConceptSignalKind
 } from "@better-typescript/matchers/builtins/conceptControl/data"
 
-export const closedAbstractionClusterExamples = packageExamples("concept-control")
+export const closedAbstractionClusterExamples = makePackageExamples("concept-control")
 
-export const conceptProliferationExamples = packageExamples("concept-proliferation")
+export const conceptProliferationExamples = makePackageExamples("concept-proliferation")
 
 const proliferationKinds = HashSet.make<ConceptSignalKind[]>(
   "duplicate-shape",
@@ -96,8 +91,16 @@ const proliferationAdviceFromDirectory = (entry: readonly [string, ReadonlyArray
 }
 
 const makeClosedAbstractionAdvice = (element: Detection, data: ConceptSignalData) => {
-  const externalCallers = makeEvidenceItem("external callers", data.externalCallers)
-  const independentOwners = makeEvidenceItem("independent model owners", data.independentOwners)
+  const externalCallers = EvidenceItem.make({
+    measure: "external callers",
+    count: data.externalCallers
+  })
+
+  const independentOwners = EvidenceItem.make({
+    measure: "independent model owners",
+    count: data.independentOwners
+  })
+
   const evidence = Array.make(externalCallers, independentOwners)
   const examples = closedAbstractionClusterExamples
 
@@ -137,11 +140,16 @@ const proliferationAdvice = (
   const kindCounts = Array.reduce(data, emptyKindCounts, signalKindCount)
   const counts = evidenceFromCounts(kindCounts)
   const distinctConceptCount = HashSet.size(concepts)
-  const conceptCount = makeEvidenceItem("distinct concepts", distinctConceptCount)
-  const signalCount = makeEvidenceItem("concept-control signals", data.length)
+
+  const conceptCount = EvidenceItem.make({
+    measure: "distinct concepts",
+    count: distinctConceptCount
+  })
+
+  const signalCount = EvidenceItem.make({ measure: "concept-control signals", count: data.length })
   const withSignals = Array.prepend(counts, signalCount)
   const evidence = Array.prepend(withSignals, conceptCount)
-  const location = makeAdviceLocation(directory)
+  const location = Location.make({ path: directory })
   const examples = conceptProliferationExamples
 
   const advice = Advice.make({

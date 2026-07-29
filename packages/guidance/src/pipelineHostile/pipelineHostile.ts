@@ -1,11 +1,12 @@
 import { Array, Function, pipe } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { Location } from "@better-typescript/core/engine/location/data"
+
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
-import { packageExamples } from "../definePolicy.js"
+import { makePackageExamples } from "../definePolicy.js"
 import { PipelineSignals } from "./data.js"
 
-export const pipelineHostileExamples = packageExamples("pipeline-hostile")
+export const pipelineHostileExamples = makePackageExamples("pipeline-hostile")
 
 const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advice> => {
   const isPipelineHostile = (path: string) => {
@@ -26,11 +27,16 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
     uniquePaths,
     Array.filter(isPipelineHostile),
     Array.map((path) => {
-      const location = makeAdviceLocation(path)
+      const location = Location.make({ path: path })
       const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
       const uncurriedCount = countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions)
-      const nestedItem = makeEvidenceItem("no-nested-calls", nestedCount)
-      const uncurriedItem = makeEvidenceItem("prefer-curried-data-last-functions", uncurriedCount)
+      const nestedItem = EvidenceItem.make({ measure: "no-nested-calls", count: nestedCount })
+
+      const uncurriedItem = EvidenceItem.make({
+        measure: "prefer-curried-data-last-functions",
+        count: uncurriedCount
+      })
+
       const evidence = Array.make(nestedItem, uncurriedItem)
       const examples = pipelineHostileExamples
 

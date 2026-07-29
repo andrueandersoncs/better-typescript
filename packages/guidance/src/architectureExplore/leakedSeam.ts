@@ -1,14 +1,11 @@
 import * as path from "node:path"
 import { Array, Function, Option, Predicate, Result, Tuple, pipe, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { moduleGraphDataOf, seamLeakageDataOf } from "./evidence.js"
 import type {
   ModuleGraphData,
@@ -17,7 +14,7 @@ import type {
 import { moduleGraphName, seamLeakageEvidenceName } from "./names.js"
 import { isTestPath } from "./pathUtils.js"
 
-export const leakedSeamExamples = packageExamples("leaked-seam")
+export const leakedSeamExamples = makePackageExamples("leaked-seam")
 
 const minimumLeaks = 2
 
@@ -93,9 +90,14 @@ const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<
     )
 
     const sourceCount = atPath.length - internalCount
-    const location = makeAdviceLocation(filePath)
-    const internalItem = makeEvidenceItem("internal-path-imports", internalCount)
-    const sourceItem = makeEvidenceItem("source-path-imports", sourceCount)
+    const location = Location.make({ path: filePath })
+
+    const internalItem = EvidenceItem.make({
+      measure: "internal-path-imports",
+      count: internalCount
+    })
+
+    const sourceItem = EvidenceItem.make({ measure: "source-path-imports", count: sourceCount })
     const evidence = Array.make(internalItem, sourceItem)
     const examples = leakedSeamExamples
 
@@ -166,8 +168,8 @@ const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyA
 
   return Array.map(pairs, ([left, right, crossImports]) => {
     const smaller = left < right ? left : right
-    const location = makeAdviceLocation(smaller)
-    const crossImportsItem = makeEvidenceItem("cross-imports", crossImports)
+    const location = Location.make({ path: smaller })
+    const crossImportsItem = EvidenceItem.make({ measure: "cross-imports", count: crossImports })
     const evidence = Array.of(crossImportsItem)
     const examples = leakedSeamExamples
 

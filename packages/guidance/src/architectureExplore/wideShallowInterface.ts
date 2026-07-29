@@ -1,17 +1,14 @@
 import { Array, Option, pipe, Result, Function, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { interfaceBurdenDataOf, isDeletableShallowness, isShallownessName } from "./evidence.js"
 import { interfaceBurdenName } from "./names.js"
 
-export const wideShallowInterfaceExamples = packageExamples("wide-shallow-interface")
+export const wideShallowInterfaceExamples = makePackageExamples("wide-shallow-interface")
 
 const minimumForwarders = 3
 
@@ -46,10 +43,23 @@ const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArr
       interfaceBurdenDataOf(burdenElement),
       Option.filter((data) => forwarders.length * 2 > data.operationCount),
       Option.map((data) => {
-        const location = makeAdviceLocation(filePath)
-        const operationsItem = makeEvidenceItem("interface-operations", data.operationCount)
-        const parametersItem = makeEvidenceItem("required-parameters", data.requiredParameterCount)
-        const forwardersItem = makeEvidenceItem("deletable-forwarders", forwarders.length)
+        const location = Location.make({ path: filePath })
+
+        const operationsItem = EvidenceItem.make({
+          measure: "interface-operations",
+          count: data.operationCount
+        })
+
+        const parametersItem = EvidenceItem.make({
+          measure: "required-parameters",
+          count: data.requiredParameterCount
+        })
+
+        const forwardersItem = EvidenceItem.make({
+          measure: "deletable-forwarders",
+          count: forwarders.length
+        })
+
         const evidence = Array.make(operationsItem, parametersItem, forwardersItem)
         const examples = wideShallowInterfaceExamples
 

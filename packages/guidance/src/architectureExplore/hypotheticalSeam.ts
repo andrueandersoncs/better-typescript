@@ -1,18 +1,15 @@
 import { Array, Function, Option, Result, pipe, Struct, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import {
-  makeAdviceLocation,
-  deriveSignals,
-  makeEvidenceItem
-} from "@better-typescript/core/engine/derive"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { deriveSignals } from "@better-typescript/core/engine/derive"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { Location } from "@better-typescript/core/engine/location/data"
+import { makePackageExamples } from "../definePolicy.js"
 import { contextTagSeamDataOf } from "./evidence.js"
 import type { ContextTagSeamData } from "@better-typescript/matchers/builtins/architectureExploreData"
 import { contextTagSeamsName, singleAdapterSeamsName } from "./names.js"
 
-export const hypotheticalSeamExamples = packageExamples("hypothetical-seam")
+export const hypotheticalSeamExamples = makePackageExamples("hypothetical-seam")
 
 const baseRemediation =
   "These injected behavioural interfaces have one production adapter and no test adapter. " +
@@ -78,12 +75,16 @@ const hypotheticalSeamAdvice = (elements: ReadonlyArray<NamedDetection>): Readon
       Array.countBy(hasNoConsumers)
     )
 
-    const location = makeAdviceLocation(filePath)
-    const seamItem = makeEvidenceItem("single-adapter-seams", atPath.length)
+    const location = Location.make({ path: filePath })
+    const seamItem = EvidenceItem.make({ measure: "single-adapter-seams", count: atPath.length })
 
     const evidence =
       deadCount > 0
-        ? pipe(makeEvidenceItem("dead-seams", deadCount), Array.of, Array.prepend(seamItem))
+        ? pipe(
+            EvidenceItem.make({ measure: "dead-seams", count: deadCount }),
+            Array.of,
+            Array.prepend(seamItem)
+          )
         : Array.of(seamItem)
 
     const remediation = deadCount > 0 ? baseRemediation + deadRemediation : baseRemediation

@@ -1,12 +1,11 @@
 import { Array, Option, Record, Result, Schema, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { makeAdviceLocation, makeEvidenceItem } from "@better-typescript/core/engine/derive"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import type { EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
+
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { Location, type Detection } from "@better-typescript/core/engine/location/data"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 import type { RefactorExampleSource } from "@better-typescript/core/engine/example/data"
-import { packageExamples } from "../definePolicy.js"
+import { makePackageExamples } from "../definePolicy.js"
 import {
   FunctionalCoreBoundaryData,
   FunctionalCoreShapeData,
@@ -25,13 +24,13 @@ const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
 }
 
 const shapeAdviceExamples: Readonly<Record<FunctionalCoreShapeKind, RefactorExampleSource>> = {
-  "effect-orchestrator": packageExamples("effect-orchestrator"),
-  "adapter-business-logic": packageExamples("adapter-business-logic"),
-  "thick-composition-root": packageExamples("thick-composition-root"),
-  "pure-service": packageExamples("pure-service")
+  "effect-orchestrator": makePackageExamples("effect-orchestrator"),
+  "adapter-business-logic": makePackageExamples("adapter-business-logic"),
+  "thick-composition-root": makePackageExamples("thick-composition-root"),
+  "pure-service": makePackageExamples("pure-service")
 }
 
-export const imperativeCoreExamples = packageExamples("imperative-core")
+export const imperativeCoreExamples = makePackageExamples("imperative-core")
 
 const shapeAdviceRemediations: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "effect-orchestrator":
@@ -71,7 +70,7 @@ const shapeEvidence = (data: FunctionalCoreShapeData): ReadonlyArray<EvidenceIte
   return pipe(
     measurements,
     Array.filter(measurementHasCount),
-    Array.map(([measure, count]) => makeEvidenceItem(measure, count))
+    Array.map(([measure, count]) => EvidenceItem.make({ measure: measure, count: count }))
   )
 }
 
@@ -142,10 +141,10 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
       const evidence = Array.map(kinds, (kind) => {
         const count = Array.countBy(elements, ([, data]) => strictEqual(kind)(data.kind))
 
-        return makeEvidenceItem(kind, count)
+        return EvidenceItem.make({ measure: kind, count: count })
       })
 
-      const location = makeAdviceLocation(path)
+      const location = Location.make({ path: path })
       const examples = imperativeCoreExamples
 
       const advice = Advice.make({

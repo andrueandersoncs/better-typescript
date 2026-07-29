@@ -38,9 +38,6 @@ export const matchersForEntry = (entry: WiringEntry) => Array.map(entry.files, c
 export const emptyWorkspaceFileBuckets = (_entry: WiringEntry) =>
   pipe(HashMap.empty<string, WorkspaceSourceFile>(), HashMap.beginMutation)
 
-const makeProgramPolicySlot = (wiringIndex: number, policyIndex: number, policy: Policy) =>
-  ProgramPolicySlot.make({ wiringIndex, policyIndex, policy })
-
 const collectWorkspaceFileForMatch = (
   workspaceFilesByWiring: ReadonlyArray<MutableWorkspaceFiles>,
   matchedWiringIndexes: HashMap.HashMap<number, true>,
@@ -144,7 +141,7 @@ export const programPolicySlotFromEntry =
       return Result.failVoid
     }
 
-    const slot = makeProgramPolicySlot(wiringIndex, policyIndex, policy)
+    const slot = ProgramPolicySlot.make({ wiringIndex, policyIndex, policy })
 
     return Result.succeed(slot)
   }

@@ -1,24 +1,23 @@
 import { Array, pipe } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
+import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
+import { Location } from "@better-typescript/core/engine/location/data"
 import {
-  makeAdviceLocation,
   byFile,
   makeCountSummary,
   deriveSignals,
-  evidenceFromCounts,
-  makeEvidenceItem
+  evidenceFromCounts
 } from "@better-typescript/core/engine/derive"
 import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { packageExamples } from "../definePolicy.js"
+import { makePackageExamples } from "../definePolicy.js"
 
-export const highSignalDensityExamples = packageExamples("high-signal-density")
+export const highSignalDensityExamples = makePackageExamples("high-signal-density")
 
 const makeDensityAdvice = (file: FileDetections) => {
   const summary = makeCountSummary(file.elements)
   const policyEvidence = evidenceFromCounts(summary.countsByPolicy)
-  const signalsItem = makeEvidenceItem("signals", summary.total)
+  const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
   const evidence = Array.prepend(policyEvidence, signalsItem)
-  const location = makeAdviceLocation(file.path)
+  const location = Location.make({ path: file.path })
   const examples = highSignalDensityExamples
 
   return Advice.make({
