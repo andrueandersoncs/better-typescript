@@ -20,15 +20,17 @@ applies to **all packages in this project** including `checks`, `core`, AND `cli
 intended to be a form of dogfooding where every check, advice, etc, we implement is applied to this
 project such that we're following our own advice and dogfooding our own tooling.
 
-Always run the benchmark (`bun run bench`) after every code change, and require its measured report
-pass to remain below 100ms.
+Always run the benchmark (`bun run bench`) after every code change (.ts or .tsx files only), and require its measured report pass to remain below 100ms.
 
-Always run the prettier formatter (`bun run format`) after every code change and include the
-formatting in your commit.
+Always run the prettier formatter (`bun run format`) after every code change (.ts or .tsx files only) and include the formatting in your commit.
+
+You **do not** need to run `bun run bench`, `bun run dev`, or `bun run format:check` for non-code changes.
 
 Always use repos/effect/ (vendored effect repository) to find examples of correct Effect code.
 
 Always do the complete work you're asked to do, do _not_ concern yourself with "churn".
+
+Always implement the **correct solution** to a problem regardless of how long you think it might take. Your estimate of time and complexity is significantly skewed by your training data and you tend to **over-estimate** how long something will take and you tend to **under-estimate** your own capabilities.
 
 Always do **exactly** the work you're asked to do. If the magnitude of the work is large, decompose
 it into independent tasks and delegate to subagents.
@@ -45,3 +47,18 @@ justification.
 
 Always write tests (in @tests) to verify the behavior of any code you write. These tests will be
 used in future changes to ensure no regressions are introduced.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked as local Markdown under `.scratch/`. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five canonical triage role names unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use the single-context domain layout. See `docs/agents/domain.md`.
