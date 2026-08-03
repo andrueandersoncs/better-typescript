@@ -24,6 +24,10 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
 
 ## Decisions so far
 
+- [Normalize Code Entity identity](issues/01-normalize-code-entity-identity.md) — Code Entities are
+  Program-scoped movable declaration families with source-anchor identities, explicit overload,
+  binding, merge, namespace, default-export, alias, and exclusion rules.
+
 ## Not yet specified
 
 - Special TypeScript relationships or declaration forms exposed by the membership prototype that
