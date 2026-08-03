@@ -47,6 +47,10 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   — A versioned immutable Program snapshot carries the complete canonical audit record; pure queries
   return exact membership and forest-derived proofs without rescanning TypeScript.
 
+- [Place the Semantic Module inference seam](issues/06-place-inference-seam.md) — One
+  Wiring-scoped matcher builds a plan-local snapshot and sends exact tagged mismatch evidence
+  through one Architecture Explore Policy, Signal, and adviser without a core evidence registry.
+
 ## Not yet specified
 
 - None.
