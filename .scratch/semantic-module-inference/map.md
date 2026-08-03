@@ -51,6 +51,10 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   Wiring-scoped matcher builds a plan-local snapshot and sends exact tagged mismatch evidence
   through one Architecture Explore Policy, Signal, and adviser without a core evidence registry.
 
+- [Prototype Physical Module mismatch Advice](issues/07-prototype-mismatch-advice.md) — Silent tagged
+  mismatch projections drive exact file-level mixed and canonically anchored split Advice, with
+  complete ordered membership and no implied destination or move direction.
+
 ## Not yet specified
 
 - None.

@@ -13,6 +13,12 @@ meaning npm package)
 together and therefore belong in the same Physical Module, regardless of their current placement.
 Singletons are valid. _Avoid_: cluster, group
 
+**Split Semantic Module**: A Semantic Module whose Code Entities currently occupy more than one
+Physical Module. Its canonical first member is only a reporting anchor, never a destination.
+
+**Mixed Physical Module**: A Physical Module that currently contains Code Entities from more than
+one Semantic Module.
+
 **Semantic Module Snapshot**: One versioned, immutable, Program-scoped evidence artifact containing
 normalized Code Entities, their Semantic Module partition and proof forest, bonds, and exclusions.
 It is the reusable interface for membership and Membership Proof queries.
