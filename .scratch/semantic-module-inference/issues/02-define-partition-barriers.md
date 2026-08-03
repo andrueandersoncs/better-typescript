@@ -1,6 +1,6 @@
 # Define Semantic Module partition barriers
 
-Type: grilling Status: open
+Type: grilling Status: claimed
 
 ## Question
 
