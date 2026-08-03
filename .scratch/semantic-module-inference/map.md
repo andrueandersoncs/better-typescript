@@ -36,6 +36,10 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   canonical checker-symbol ownership is the only neutral Hard Bond; references and cycles remain
   dependencies, so cross-file bonds require explicit paradigm policy.
 
+- [Specify the partition and explanation algorithm](issues/04-specify-partition-algorithm.md) —
+  Canonically sorted accepted Hard Bonds form connected components and a deterministic spanning
+  forest whose unique paths prove membership; barrier-crossing bonds remain suppressed evidence.
+
 ## Not yet specified
 
 - None.

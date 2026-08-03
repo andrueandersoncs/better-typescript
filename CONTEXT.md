@@ -23,3 +23,7 @@ Entities to share a Semantic Module. Dependencies, including cycles, are not Har
 **Partition Barrier**: An absolute prohibition against joining two otherwise eligible Code Entities.
 Inference rejects and records a candidate bond that crosses one before membership closure. Source
 exclusion is not a Partition Barrier: an excluded declaration never becomes a Code Entity.
+
+**Membership Proof**: The deterministic ordered Hard-Bond chain explaining why two Code Entities
+share one Semantic Module. Self-membership has an empty proof; entities in different Semantic
+Modules have none.
