@@ -20,6 +20,10 @@ imports and exports describe Physical Module edges. _Avoid_: node, statement
 **Hard Bond**: An explainable semantic relation sufficient by itself to require two eligible Code
 Entities to share a Semantic Module. Dependencies, including cycles, are not Hard Bonds.
 
+**Paradigm Hard Bond Rule**: A named coding-model-specific law that emits Hard Bonds from
+TypeChecker-resolved Program facts. Every emitted pair must be semantically necessary under that
+paradigm and carry replayable evidence. _Avoid_: heuristic, convention
+
 **Partition Barrier**: An absolute prohibition against joining two otherwise eligible Code Entities.
 Inference rejects and records a candidate bond that crosses one before membership closure. Source
 exclusion is not a Partition Barrier: an excluded declaration never becomes a Code Entity.

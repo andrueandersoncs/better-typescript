@@ -40,6 +40,9 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   Canonically sorted accepted Hard Bonds form connected components and a deterministic spanning
   forest whose unique paths prove membership; barrier-crossing bonds remain suppressed evidence.
 
+- [Define paradigm-specific Hard Bond policy](issues/09-define-paradigm-hard-bonds.md) — The initial
+  catalog is empty; future preset-owned rules require semantic necessity and replayable evidence.
+
 ## Not yet specified
 
 - None.
