@@ -28,11 +28,17 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   Program-scoped movable declaration families with source-anchor identities, explicit overload,
   binding, merge, namespace, default-export, alias, and exclusion rules.
 
+- [Define Semantic Module partition barriers](issues/02-define-partition-barriers.md) — Programs are
+  independent and production/test is the only eligible-entity stratum; ambient and explicitly
+  glob-excluded sources do not participate, while package and composition-root roles add no barrier.
+
+- [Prototype hard Semantic Module bonds](issues/03-prototype-hard-membership-bonds.md) — Shared
+  canonical checker-symbol ownership is the only neutral Hard Bond; references and cycles remain
+  dependencies, so cross-file bonds require explicit paradigm policy.
+
 ## Not yet specified
 
-- Special TypeScript relationships or declaration forms exposed by the membership prototype that
-  require distinct policy decisions.
-- Any paradigm-specific grouping policy exposed by the neutral evidence and integration design.
+- None.
 
 ## Out of scope
 

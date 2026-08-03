@@ -1,6 +1,6 @@
 # Design the Semantic Module evidence interface
 
-Type: grilling Status: open Blocked by: 04
+Type: grilling Status: open Blocked by: 04, 09
 
 ## Question
 

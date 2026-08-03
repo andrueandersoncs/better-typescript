@@ -16,3 +16,10 @@ Singletons are valid. _Avoid_: cluster, group
 **Code Entity**: The smallest independently movable, symbol-bearing family of top-level
 declarations. Nested declarations and expressions are evidence about their owning Code Entity;
 imports and exports describe Physical Module edges. _Avoid_: node, statement
+
+**Hard Bond**: An explainable semantic relation sufficient by itself to require two eligible Code
+Entities to share a Semantic Module. Dependencies, including cycles, are not Hard Bonds.
+
+**Partition Barrier**: An absolute prohibition against joining two otherwise eligible Code Entities.
+Inference rejects and records a candidate bond that crosses one before membership closure. Source
+exclusion is not a Partition Barrier: an excluded declaration never becomes a Code Entity.
