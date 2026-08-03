@@ -43,6 +43,10 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
 - [Define paradigm-specific Hard Bond policy](issues/09-define-paradigm-hard-bonds.md) — The initial
   catalog is empty; future preset-owned rules require semantic necessity and replayable evidence.
 
+- [Design the Semantic Module evidence interface](issues/05-design-semantic-module-evidence-interface.md)
+  — A versioned immutable Program snapshot carries the complete canonical audit record; pure queries
+  return exact membership and forest-derived proofs without rescanning TypeScript.
+
 ## Not yet specified
 
 - None.

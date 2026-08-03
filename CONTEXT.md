@@ -13,6 +13,10 @@ meaning npm package)
 together and therefore belong in the same Physical Module, regardless of their current placement.
 Singletons are valid. _Avoid_: cluster, group
 
+**Semantic Module Snapshot**: One versioned, immutable, Program-scoped evidence artifact containing
+normalized Code Entities, their Semantic Module partition and proof forest, bonds, and exclusions.
+It is the reusable interface for membership and Membership Proof queries.
+
 **Code Entity**: The smallest independently movable, symbol-bearing family of top-level
 declarations. Nested declarations and expressions are evidence about their owning Code Entity;
 imports and exports describe Physical Module edges. _Avoid_: node, statement
