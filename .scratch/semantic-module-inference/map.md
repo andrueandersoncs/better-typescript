@@ -55,6 +55,10 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   mismatch projections drive exact file-level mixed and canonically anchored split Advice, with
   complete ordered membership and no implied destination or move direction.
 
+- [Specify the validation oracle](issues/08-specify-validation-oracle.md) — Layered typed fixtures,
+  exact mismatch outputs, metamorphic invariants, clean self-hosting, and the existing sub-100ms
+  benchmark form the complete proof.
+
 ## Not yet specified
 
 - None.
