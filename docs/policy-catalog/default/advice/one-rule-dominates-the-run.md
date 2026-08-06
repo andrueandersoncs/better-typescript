@@ -1,7 +1,7 @@
-# rule-dominance
+# one-rule-dominates-the-run
 
 ## Classification
-Derived project-level default advice outcome; rendered title is `one rule dominates the run`.
+Derived project-level default advice outcome.
 
 ## Active wiring
 `defaultDerive` runs `ruleDominance` over all reported named detections and emits it before systemic advice.
@@ -28,7 +28,7 @@ All reported named findings, counts by policy, and distinct files by policy.
 Threshold/share/spread positive coverage in `tests/advice.test.ts`; pair in `packages/guidance/examples/rule-dominance/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-rule-dominance`; workspace/project scope; requires complete normalized reported findings; dominance fleet, post-rule aggregation phase; deterministic candidate generation can reproduce total/share/spread qualification exactly.
+Proposed `lint-rule-one-rule-dominates-the-run`; workspace/project scope; requires complete normalized reported findings; dominance fleet, post-rule aggregation phase; deterministic candidate generation can reproduce total/share/spread qualification exactly.
 
 ## Open questions
-The outcome name differs from its rendered title; the canonical migrated skill/output name needs confirmation.
+None identified.

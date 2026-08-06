@@ -28,7 +28,7 @@ Whole-program AST fold, resolved symbols/reference keys, contextual/call paramet
 `tests/preferCurriedDataLastFunctions.test.ts`; `tests/fixtures/prefer-curried-data-last-functions/`; `packages/guidance/examples/prefer-curried-data-last-functions/`.
 
 ## Skill migration
-Proposed `lint-rule-prefer-curried-data-last-functions`; workspace cross-file scope; requires symbol/reference usage indexing plus contextual/external callback signatures; dispatch/collections fleet, workspace-index phase; deterministic candidate generation should reuse the two-pass tracker. Keep findings available to derived advice even if direct output remains silent.
+Proposed `lint-evidence-prefer-curried-data-last-functions` as shared runner infrastructure, not a user-facing rule skill; workspace cross-file scope; requires symbol/reference usage indexing plus contextual/external callback signatures; pipeline evidence phase; deterministic candidate generation should reuse the two-pass tracker.
 
 ## Open questions
 Whether the migrated skill should remain evidence-only or become user-visible is not specified.

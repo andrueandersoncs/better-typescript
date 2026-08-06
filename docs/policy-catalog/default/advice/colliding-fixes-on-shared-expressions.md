@@ -1,7 +1,7 @@
-# side-effect-laundering
+# colliding-fixes-on-shared-expressions
 
 ## Classification
-Derived file-level default advice outcome; rendered title is `colliding fixes on shared expressions`.
+Derived file-level default advice outcome.
 
 ## Active wiring
 `defaultSpecificAdvice` invokes `sideEffectLaundering` over all reported named detections; silent signals are excluded by `defaultNamedElements`.
@@ -28,7 +28,7 @@ All reported named detections with file and line locations; `byFile` and `collid
 Positive/negative unit coverage in `tests/advice.test.ts`; pair in `packages/guidance/examples/side-effect-laundering/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-side-effect-laundering`; file aggregate scope; requires normalized reported findings and exact line locations; collision fleet, post-rule aggregation phase; deterministic candidate generation should calculate colliding files/lines and provide their rule evidence.
+Proposed `lint-rule-colliding-fixes-on-shared-expressions`; file aggregate scope; requires normalized reported findings and exact line locations; collision fleet, post-rule aggregation phase; deterministic candidate generation should calculate colliding files/lines and provide their rule evidence.
 
 ## Open questions
-The outcome name differs from its rendered title; the canonical migrated skill/output name needs confirmation.
+None identified.

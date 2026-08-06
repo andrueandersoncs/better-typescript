@@ -28,7 +28,7 @@ Workspace `concept-control` index and complete findings with kind, concept, rela
 End-to-end pair in `packages/guidance/examples/concept-proliferation/`; runner assertion in `tests/aggregateAdviceExamples.test.ts`. No direct threshold unit test was identified.
 
 ## Skill migration
-Proposed `lint-advice-concept-proliferation`; directory aggregate scope with workspace semantic input; requires normalized `ConceptSignalData` and concept relations; concept-control fleet, post-concept-rule aggregation phase; deterministic candidate generation can filter/group/count exactly before skill interpretation.
+Proposed `lint-rule-concept-proliferation`; directory aggregate scope with workspace semantic input; requires normalized `ConceptSignalData` and concept relations; concept-control fleet, post-concept-rule aggregation phase; deterministic candidate generation can filter/group/count exactly before skill interpretation.
 
 ## Open questions
 Direct unit coverage for the directory threshold/eligible-kind filter was not identified.

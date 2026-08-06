@@ -28,7 +28,7 @@ Final hot-subsystem advice and fallback-suppressed high-signal-density advice; t
 Positive/negative second-order coverage in `tests/advice.test.ts`; suppression-order coverage in `tests/defaultDerive.test.ts`; pair in `packages/guidance/examples/systemic-hotspots/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-systemic-hotspots`; workspace/project scope; requires finalized upstream advice after suppression; systemic fleet, final aggregate phase; deterministic candidate generation should enforce upstream ordering and the 1+2 thresholds before invocation.
+Proposed `lint-rule-systemic-hotspots`; workspace/project scope; requires finalized upstream advice after suppression; systemic fleet, final aggregate phase; deterministic candidate generation should enforce upstream ordering and the 1+2 thresholds before invocation.
 
 ## Open questions
 None identified.

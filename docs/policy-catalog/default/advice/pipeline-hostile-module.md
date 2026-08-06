@@ -1,4 +1,4 @@
-# pipeline-hostile
+# pipeline-hostile-module
 
 ## Classification
 Derived file-level default advice outcome.
@@ -28,7 +28,7 @@ Complete `no-nested-calls` findings plus evidence-only `prefer-curried-data-last
 Threshold/unit coverage in `tests/advice.test.ts`; pair in `packages/guidance/examples/pipeline-hostile/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-pipeline-hostile`; file aggregate scope backed by workspace semantic rules; requires normalized counts from both inputs; pipeline fleet, post-rule aggregation phase; deterministic candidate generation can group and threshold exactly before invoking remediation reasoning.
+Proposed `lint-rule-pipeline-hostile-module`; file aggregate scope backed by workspace semantic rules; requires normalized counts from both inputs; pipeline fleet, post-rule aggregation phase; deterministic candidate generation can group and threshold exactly before invoking remediation reasoning.
 
 ## Open questions
 None identified.

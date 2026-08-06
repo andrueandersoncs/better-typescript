@@ -28,7 +28,7 @@ All reported named findings, count summarization, and complete specific advice f
 Count/evidence unit coverage in `tests/advice.test.ts`; reported-only and suppression ordering in `tests/defaultDerive.test.ts`; pair in `packages/guidance/examples/high-signal-density/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-high-signal-density`; file aggregate scope; requires normalized reported findings and prior specific-advice coverage; density fleet, fallback aggregation phase after specific advice; deterministic candidate generation should apply threshold and suppression before invoking the skill.
+Proposed `lint-rule-high-signal-density`; file aggregate scope; requires normalized reported findings and prior specific-advice coverage; density fleet, fallback aggregation phase after specific advice; deterministic candidate generation should apply threshold and suppression before invoking the skill.
 
 ## Open questions
 None identified.

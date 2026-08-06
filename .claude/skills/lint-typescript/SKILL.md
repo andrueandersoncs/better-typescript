@@ -70,7 +70,7 @@ Report the scope, rules run, findings fixed, remaining findings, and verificatio
 Require every future rule skill to:
 
 - use the name `lint-rule-<stable-rule-name>`;
-- own one policy, its detection procedure, exemptions, and concrete remediation guidance;
+- own one independently actionable rule or advice kind, its detection procedure, exemptions, and concrete remediation guidance;
 - inspect only the supplied TypeScript scope and remain read-only;
 - emit only the detection output contract above; and
 - include enough positive and negative examples to distinguish the rule boundary.

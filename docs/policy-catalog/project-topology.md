@@ -3,10 +3,10 @@
 ## Execution path
 
 1. `packages/cli` discovers a workspace and loads `better-typescript.config.ts`.
-2. `packages/core/project` materializes TypeScript Programs and validates wiring.
+2. `packages/core/src/project` materializes TypeScript Programs and validates wiring.
 3. `packages/matchers` converts syntax, type, Program, or workspace facts into typed matches.
 4. `packages/guidance` couples matches to messages, hints, examples, and derived Advice.
-5. `packages/core/engine` locates findings, materializes Signals, derives Advice, and renders events.
+5. `packages/core/src/engine` locates findings, materializes Signals, derives Advice, and renders events.
 
 ## Package classification
 

@@ -28,7 +28,7 @@ Complete normalized findings from `no-mutation`, `prefer-hash-map`, `prefer-hash
 Threshold/unit coverage in `tests/advice.test.ts`; end-to-end pair in `packages/guidance/examples/imperative-state-manager/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-imperative-state-manager`; file aggregate scope; requires normalized rule IDs, locations, and `no-mutation.target`; derived-state fleet, post-rule aggregation phase; deterministic candidate generation can reproduce threshold/grouping exactly and hand only qualifying files to the skill.
+Proposed `lint-rule-imperative-state-manager`; file aggregate scope; requires normalized rule IDs, locations, and `no-mutation.target`; derived-state fleet, post-rule aggregation phase; deterministic candidate generation can reproduce threshold/grouping exactly and hand only qualifying files to the skill.
 
 ## Open questions
 None identified.

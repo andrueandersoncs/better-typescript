@@ -28,7 +28,7 @@ All reported named findings, file grouping, normalized parent directories, proje
 Deepest-directory unit coverage in `tests/advice.test.ts`; pair in `packages/guidance/examples/hot-subsystem/`; runner coverage in `tests/aggregateAdviceExamples.test.ts`.
 
 ## Skill migration
-Proposed `lint-advice-hot-subsystem`; workspace-derived directory scope; requires the complete reported finding set and path hierarchy; hotspot fleet, post-rule aggregation phase; deterministic candidate generation can calculate thresholds/share/deepest selection exactly.
+Proposed `lint-rule-hot-subsystem`; workspace-derived directory scope; requires the complete reported finding set and path hierarchy; hotspot fleet, post-rule aggregation phase; deterministic candidate generation can calculate thresholds/share/deepest selection exactly.
 
 ## Open questions
 None identified.
