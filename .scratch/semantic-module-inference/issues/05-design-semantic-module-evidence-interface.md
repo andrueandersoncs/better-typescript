@@ -42,12 +42,12 @@ rule id, and evidence key. Every bond carries schema-validated tagged evidence o
 by its rule. Evidence contains resolved witnesses and every closed-world premise needed for replay;
 human prose is rendered from it and is never stored as evidence.
 
-The JSON contains no `ts.Program`, `ts.Node`, `ts.Symbol`, maps, sets, absolute paths, object-identity
-references, caches, or implementation representatives. All nested anchors, endpoints, witnesses,
-premises, bond references, and proof steps use their canonical orders. A proof step references one
-accepted forest bond; traversal direction comes from the requested left-to-right path while the
-stored bond endpoints remain canonical.
+The JSON contains no `ts.Program`, `ts.Node`, `ts.Symbol`, maps, sets, absolute paths,
+object-identity references, caches, or implementation representatives. All nested anchors,
+endpoints, witnesses, premises, bond references, and proof steps use their canonical orders. A proof
+step references one accepted forest bond; traversal direction comes from the requested left-to-right
+path while the stored bond endpoints remain canonical.
 
-Construction owns the only Program and TypeChecker traversal needed for this evidence. Query
-helpers read only the snapshot and may build no hidden mutable proof cache. The later seam-placement
+Construction owns the only Program and TypeChecker traversal needed for this evidence. Query helpers
+read only the snapshot and may build no hidden mutable proof cache. The later seam-placement
 decision owns snapshot lifetime and Wiring integration, not this data contract.

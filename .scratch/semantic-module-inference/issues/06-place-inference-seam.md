@@ -28,8 +28,8 @@ and instantiates exactly one Policy. The neutral, OOP, and FP catalogs are all e
 global registration or Semantic Module field is added to Wiring.
 
 The matcher constructs one immutable snapshot when its plan is created for a Program and Wiring
-scope, closes its subscriptions over that snapshot, emits every placement mismatch, and releases
-the snapshot after matching. There is no mutable cache or engine evidence registry. One Policy and
+scope, closes its subscriptions over that snapshot, emits every placement mismatch, and releases the
+snapshot after matching. There is no mutable cache or engine evidence registry. One Policy and
 duplicate Policy-name validation guarantee one construction per configured scope.
 
 The matcher emits tagged mismatch projections through the existing pipeline:
@@ -39,8 +39,8 @@ The matcher emits tagged mismatch projections through the existing pipeline:
 Each projection carries the exact entity keys, relevant sorted membership, Physical Module paths,
 and referenced proof or bond evidence needed to audit that mismatch. The complete Program snapshot
 does not cross the Signal seam, and aggregate counts are not a substitute for evidence. “Prototype
-Physical Module mismatch Advice” owns the exact projection tags, locations, messages,
-deduplication, raw-Detection reporting choice, and rendered Advice.
+Physical Module mismatch Advice” owns the exact projection tags, locations, messages, deduplication,
+raw-Detection reporting choice, and rendered Advice.
 
 All Architecture Explore presets include this Policy and adviser. Existing self-host
 `architectureExploreWiring` scope therefore enables the full path for the config, every package

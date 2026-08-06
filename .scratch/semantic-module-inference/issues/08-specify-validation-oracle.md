@@ -25,20 +25,20 @@ Matcher-side tests prove:
 - `ambient-declaration` and `missing-symbol` exclusions, with the latter exercised by an isolated
   parser-recovery Program outside the diagnostic-clean fixture set;
 - singleton membership, same-symbol bonds, duplicate coalescing, a redundant-bond triangle and its
-  canonical forest, production/test suppression, excluded-source absence, Program isolation, and
-  the non-bonding of ordinary dependencies and reference cycles;
+  canonical forest, production/test suppression, excluded-source absence, Program isolation, and the
+  non-bonding of ordinary dependencies and reference cycles;
 - exact `SemanticModuleSnapshotV1` JSON for focused contract cases, including keys, anchors, strata,
   collections, evidence, exclusions, and every canonical order;
-- `moduleFor` and `peersFor` completeness, plus self, forward, reverse, cross-module, and unknown-key
-  `proofBetween` results.
+- `moduleFor` and `peersFor` completeness, plus self, forward, reverse, cross-module, and
+  unknown-key `proofBetween` results.
 
-Guidance-side tests prove clean, split-only, mixed-only, overlapping split-and-mixed, multiple splits
-sharing one anchor, canonical ordering, and exact deduplication. For each mismatch, assert the full
-typed Detection projection: tag, location, message, hint, complete ordered membership, Physical
-Module paths, forest bonds, evidence keys, and count. Assert the full structured Advice, including
-title, location, explanation, evidence counts, entity rows, grouping, and mixed-before-split order.
-One composite test runs Program through matcher, silent Signal, adviser, and normalized renderer;
-its exact report contains no raw `semantic-module-placement` block.
+Guidance-side tests prove clean, split-only, mixed-only, overlapping split-and-mixed, multiple
+splits sharing one anchor, canonical ordering, and exact deduplication. For each mismatch, assert
+the full typed Detection projection: tag, location, message, hint, complete ordered membership,
+Physical Module paths, forest bonds, evidence keys, and count. Assert the full structured Advice,
+including title, location, explanation, evidence counts, entity rows, grouping, and
+mixed-before-split order. One composite test runs Program through matcher, silent Signal, adviser,
+and normalized renderer; its exact report contains no raw `semantic-module-placement` block.
 
 Metamorphic tests have two classes:
 

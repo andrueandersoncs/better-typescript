@@ -17,9 +17,10 @@ Compute it once per Program as deterministic connected components:
    including entities with no bonds.
 2. Canonicalize each candidate bond as `(lowerEntityKey, higherEntityKey, ruleId, evidenceKey)`.
    Rules emit a set keyed by that tuple; exact duplicate emissions coalesce.
-3. Before closure, classify every candidate. A bond is accepted only when both endpoints are eligible
-   entities in the same Program and production/test stratum. Otherwise retain it as suppressed-bond
-   evidence with its barrier reason. Sort accepted and suppressed bonds by the canonical tuple.
+3. Before closure, classify every candidate. A bond is accepted only when both endpoints are
+   eligible entities in the same Program and production/test stratum. Otherwise retain it as
+   suppressed-bond evidence with its barrier reason. Sort accepted and suppressed bonds by the
+   canonical tuple.
 4. Visit accepted bonds in that order with a disjoint-set structure. Union their endpoint
    components. Retain a bond in the explanation forest exactly when that union joins two previously
    distinct components; discard accepted bonds that are redundant after earlier unions.

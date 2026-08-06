@@ -21,14 +21,14 @@ projections:
 Each projection embeds only the relevant portable snapshot slice, never the Program snapshot:
 complete sorted entity records for every included Semantic Module, their sorted Physical Module
 paths, and the module's canonical explanation-forest bond records with replayable evidence. Modules
-are ordered by first member key; members, paths, and bonds retain snapshot order. The first member is
-a grouping and reporting anchor, not a serialized module id.
+are ordered by first member key; members, paths, and bonds retain snapshot order. The first member
+is a grouping and reporting anchor, not a serialized module id.
 
 The split Detection message is `This Semantic Module spans multiple Physical Modules.` Its hint is
-`Keep every listed Code Entity in one Physical Module; the reporting anchor does not imply a
-destination or move direction.` The mixed Detection message is `This Physical Module contains Code
-Entities from multiple Semantic Modules.` Its hint is `Separate the listed Semantic Modules without
-splitting their complete membership; no destination or move direction is inferred.`
+`Keep every listed Code Entity in one Physical Module; the reporting anchor does not imply a destination or move direction.`
+The mixed Detection message is
+`This Physical Module contains Code Entities from multiple Semantic Modules.` Its hint is
+`Separate the listed Semantic Modules without splitting their complete membership; no destination or move direction is inferred.`
 
 The Signal is silent because raw Detection rendering cannot show its typed data and would duplicate
 the complete Advice. One Architecture Explore adviser produces:
@@ -40,13 +40,13 @@ the complete Advice. One Architecture Explore adviser produces:
   split Semantic Module anchored there; evidence counts `code-entities`, distinct
   `physical-modules`, and `split-semantic-modules`.
 
-Advice entity rows render display name, declaration kind, and `path:line:column`. Complete EntityKeys
-and bond evidence remain in Detection data for audit and machine consumers. Advice modules, members,
-and paths use the same canonical ordering as the projections. The matcher coalesces exact candidate
-duplicates before emission; the adviser groups split projections by anchor path. A split and mixed
-mismatch are independent and both render when they overlap. No aggregate suppresses another
-mismatch.
-Advice blocks sort by file path; at the same path, `mixed Physical Module` precedes
-`split Semantic Modules`, matching the representative output.
+Advice entity rows render display name, declaration kind, and `path:line:column`. Complete
+EntityKeys and bond evidence remain in Detection data for audit and machine consumers. Advice
+modules, members, and paths use the same canonical ordering as the projections. The matcher
+coalesces exact candidate duplicates before emission; the adviser groups split projections by anchor
+path. A split and mixed mismatch are independent and both render when they overlap. No aggregate
+suppresses another mismatch. Advice blocks sort by file path; at the same path,
+`mixed Physical Module` precedes `split Semantic Modules`, matching the representative output.
 
-Representative output: [Physical Module mismatch Advice prototype](../assets/07-recommended-rendered-output.md).
+Representative output:
+[Physical Module mismatch Advice prototype](../assets/07-recommended-rendered-output.md).

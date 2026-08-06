@@ -1,6 +1,7 @@
 # Physical Module mismatch Advice prototype
 
-Representative current report-format output for a fixture where one Semantic Module spans two files and `src/orders/parse.ts` contains members of two Semantic Modules.
+Representative current report-format output for a fixture where one Semantic Module spans two files
+and `src/orders/parse.ts` contains members of two Semantic Modules.
 
 ```text
 src/orders/parse.ts [file] — mixed Physical Module
@@ -34,4 +35,6 @@ src/orders/parse.ts [file] — split Semantic Modules
   evidence: split-semantic-modules: 1
 ```
 
-The underlying `semantic-module-placement` Signal is silent. It carries one tagged Detection per split Semantic Module and one per mixed Physical Module; the adviser deduplicates and renders the complete membership once in each applicable Advice block.
+The underlying `semantic-module-placement` Signal is silent. It carries one tagged Detection per
+split Semantic Module and one per mixed Physical Module; the adviser deduplicates and renders the
+complete membership once in each applicable Advice block.

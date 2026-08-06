@@ -47,13 +47,13 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   — A versioned immutable Program snapshot carries the complete canonical audit record; pure queries
   return exact membership and forest-derived proofs without rescanning TypeScript.
 
-- [Place the Semantic Module inference seam](issues/06-place-inference-seam.md) — One
-  Wiring-scoped matcher builds a plan-local snapshot and sends exact tagged mismatch evidence
-  through one Architecture Explore Policy, Signal, and adviser without a core evidence registry.
+- [Place the Semantic Module inference seam](issues/06-place-inference-seam.md) — One Wiring-scoped
+  matcher builds a plan-local snapshot and sends exact tagged mismatch evidence through one
+  Architecture Explore Policy, Signal, and adviser without a core evidence registry.
 
-- [Prototype Physical Module mismatch Advice](issues/07-prototype-mismatch-advice.md) — Silent tagged
-  mismatch projections drive exact file-level mixed and canonically anchored split Advice, with
-  complete ordered membership and no implied destination or move direction.
+- [Prototype Physical Module mismatch Advice](issues/07-prototype-mismatch-advice.md) — Silent
+  tagged mismatch projections drive exact file-level mixed and canonically anchored split Advice,
+  with complete ordered membership and no implied destination or move direction.
 
 - [Specify the validation oracle](issues/08-specify-validation-oracle.md) — Layered typed fixtures,
   exact mismatch outputs, metamorphic invariants, clean self-hosting, and the existing sub-100ms
