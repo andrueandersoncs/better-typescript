@@ -14,24 +14,80 @@ import {
 } from "@better-typescript/matchers/builtins/architectureExplore/semanticModules.js"
 import { ProgramMatchContext } from "@better-typescript/matchers/matcher/data"
 import { isProjectSourceFile, makeContext } from "@better-typescript/matchers/sources"
+import { normalizationManifest } from "./fixtures/semantic-modules-normalization/manifest.js"
 import { singletonManifest } from "./fixtures/semantic-modules/manifest.js"
 import { resolveSemanticModuleFixtureManifest } from "./semanticModuleFixtures.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "semantic-modules")
+const normalizationFixturePath = path.join(
+  testDirectory,
+  "fixtures",
+  "semantic-modules-normalization"
+)
 
-const fixtureSnapshot = async (reverseSourceFiles = false) => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
+const fixtureSnapshotAt = async (
+  projectPath: string,
+  reverseSourceFiles = false,
+  includeSourceFile: (sourceFile: ts.SourceFile) => boolean = () => true
+) => {
+  const workspace = await Effect.runPromise(loadProject(projectPath))
   const project = workspace.projects[0]
 
   assert.ok(project !== undefined)
 
   const context = makeContext(project.rootPath)(project.program)
-  const sourceFiles = Array.filter(project.program.getSourceFiles(), isProjectSourceFile)
-  const orderedSourceFiles = reverseSourceFiles ? Array.reverse(sourceFiles) : sourceFiles
-  const planningContext = ProgramMatchContext.make({ ...context, sourceFiles: orderedSourceFiles })
+  const projectSourceFiles = Array.filter(project.program.getSourceFiles(), isProjectSourceFile)
+  const includedSourceFiles = Array.filter(projectSourceFiles, includeSourceFile)
+  const sourceFiles = reverseSourceFiles ? Array.reverse(includedSourceFiles) : includedSourceFiles
+  const planningContext = ProgramMatchContext.make({ ...context, sourceFiles })
 
   return buildSemanticModuleSnapshot(planningContext)
+}
+
+const fixtureSnapshot = (reverseSourceFiles = false) =>
+  fixtureSnapshotAt(fixturePath, reverseSourceFiles)
+
+const parserRecoverySnapshot = () => {
+  const sourceText = "function () {}\n"
+  const projectRoot = path.join(testDirectory, "parser-recovery")
+  const fileName = path.join(projectRoot, "broken.ts")
+  const compilerOptions: ts.CompilerOptions = {
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    target: ts.ScriptTarget.ES2022,
+    strict: true,
+    noEmit: true
+  }
+  const baseHost = ts.createCompilerHost(compilerOptions)
+  const host: ts.CompilerHost = {
+    ...baseHost,
+    fileExists: (requestedFileName) =>
+      requestedFileName === fileName || baseHost.fileExists(requestedFileName),
+    readFile: (requestedFileName) =>
+      requestedFileName === fileName ? sourceText : baseHost.readFile(requestedFileName),
+    getSourceFile: (requestedFileName, languageVersion, onError, shouldCreateNewSourceFile) =>
+      requestedFileName === fileName
+        ? ts.createSourceFile(requestedFileName, sourceText, languageVersion, true)
+        : baseHost.getSourceFile(
+            requestedFileName,
+            languageVersion,
+            onError,
+            shouldCreateNewSourceFile
+          )
+  }
+  const program = ts.createProgram([fileName], compilerOptions, host)
+  const sourceFile = program.getSourceFile(fileName)
+
+  assert.ok(sourceFile !== undefined)
+
+  const context = makeContext(projectRoot)(program)
+  const planningContext = ProgramMatchContext.make({ ...context, sourceFiles: [sourceFile] })
+
+  return {
+    diagnostics: program.getSyntacticDiagnostics(sourceFile),
+    snapshot: buildSemanticModuleSnapshot(planningContext)
+  }
 }
 
 const expectedKeys: ReadonlyArray<SemanticModuleEntityKey> = [
@@ -166,4 +222,113 @@ test("queries singleton membership without compiler state", async () => {
   assert.equal(Option.isNone(peersFor(unknownKey)(snapshot)), true)
   assert.equal(Option.isNone(proofBetween(firstKey, unknownKey)(snapshot)), true)
   assert.equal(Option.isNone(proofBetween(unknownKey, unknownKey)(snapshot)), true)
+})
+
+test("normalizes every declaration family and excludes ambient candidates", async () => {
+  const snapshot = await fixtureSnapshotAt(normalizationFixturePath)
+  const resolvedManifest = resolveSemanticModuleFixtureManifest(normalizationManifest, snapshot)
+  const observedModules = Array.map(snapshot.modules, (module) => module.members)
+
+  assert.deepEqual(observedModules, resolvedManifest.modules)
+  assert.equal(snapshot.entities.length, 14)
+  assert.equal(snapshot.modules.length, 14)
+  assert.deepEqual(snapshot.acceptedBonds, [])
+  assert.deepEqual(snapshot.suppressedBonds, [])
+
+  const parseEntity = Option.getOrThrow(
+    Array.findFirst(
+      snapshot.entities,
+      (entity) => entity.declarationKind === "FunctionDeclaration" && entity.displayName === "parse"
+    )
+  )
+
+  assert.equal(parseEntity.declarationAnchors.length, 3)
+  assert.deepEqual(parseEntity.key, parseEntity.declarationAnchors[0])
+
+  const variables = Array.filter(
+    snapshot.entities,
+    (entity) => entity.key.path === "src/variables.ts"
+  )
+
+  assert.deepEqual(
+    Array.map(variables, (entity) => entity.displayName),
+    ["single", "renamed, first, rest"]
+  )
+  assert.equal(
+    Array.every(variables, (entity) => entity.key.syntaxKind === ts.SyntaxKind.VariableDeclaration),
+    true
+  )
+
+  const namespaceDisplays = Array.map(
+    Array.filter(snapshot.entities, (entity) => entity.declarationKind === "ModuleDeclaration"),
+    (entity) => entity.displayName
+  )
+
+  assert.deepEqual(namespaceDisplays, ["Service", "Repeat", "Repeat", "Dotted.Inner"])
+  assert.deepEqual(
+    Array.map(snapshot.exclusions, (exclusion) => exclusion.reason),
+    Array.replicate("ambient-declaration" as const, 7)
+  )
+  assert.deepEqual(
+    Array.map(snapshot.exclusions, (exclusion) => exclusion.anchor.syntaxKind),
+    [
+      ts.SyntaxKind.FunctionDeclaration,
+      ts.SyntaxKind.ClassDeclaration,
+      ts.SyntaxKind.InterfaceDeclaration,
+      ts.SyntaxKind.TypeAliasDeclaration,
+      ts.SyntaxKind.EnumDeclaration,
+      ts.SyntaxKind.VariableDeclaration,
+      ts.SyntaxKind.ModuleDeclaration
+    ]
+  )
+
+  const edgeOnlyPaths = ["src/aliases.ts", "src/defaultExpression.ts", "src/exportAssignment.cts"]
+  const observedPaths = Array.appendAll(
+    Array.map(snapshot.entities, (entity) => entity.key.path),
+    Array.map(snapshot.exclusions, (exclusion) => exclusion.anchor.path)
+  )
+
+  assert.equal(
+    Array.some(edgeOnlyPaths, (edgePath) => Array.contains(observedPaths, edgePath)),
+    false
+  )
+  assert.equal(Object.isFrozen(snapshot.exclusions), true)
+  assert.equal(Array.every(snapshot.exclusions, Object.isFrozen), true)
+
+  const reversedSnapshot = await fixtureSnapshotAt(normalizationFixturePath, true)
+
+  assert.equal(JSON.stringify(reversedSnapshot), JSON.stringify(snapshot))
+})
+
+test("leaves sources outside matcher scope absent", async () => {
+  const snapshot = await fixtureSnapshotAt(
+    normalizationFixturePath,
+    false,
+    (sourceFile) => !sourceFile.fileName.endsWith("/variables.ts")
+  )
+  const observedPaths = Array.appendAll(
+    Array.map(snapshot.entities, (entity) => entity.key.path),
+    Array.map(snapshot.exclusions, (exclusion) => exclusion.anchor.path)
+  )
+
+  assert.equal(Array.contains(observedPaths, "src/variables.ts"), false)
+})
+
+test("excludes parser-recovery declarations without synthetic identity", () => {
+  const { diagnostics, snapshot } = parserRecoverySnapshot()
+
+  assert.equal(diagnostics.length > 0, true)
+  assert.deepEqual(snapshot.entities, [])
+  assert.deepEqual(snapshot.modules, [])
+  assert.deepEqual(snapshot.exclusions, [
+    {
+      anchor: {
+        path: "broken.ts",
+        start: 0,
+        end: 14,
+        syntaxKind: ts.SyntaxKind.FunctionDeclaration
+      },
+      reason: "missing-symbol"
+    }
+  ])
 })
