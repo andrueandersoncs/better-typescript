@@ -1,10 +1,11 @@
 import { Data, Schema } from "effect"
 import type * as ts from "typescript"
-import type { ProgramContext } from "../sources/data.js"
+import { ProgramContext } from "../sources/data.js"
 import { SourceComment } from "../sources/commentsData.js"
 import { TsProgram, TsSourceFile, TsTypeChecker } from "../tsSchema.js"
 
 const sourceCommentsSchema = Schema.Array(SourceComment)
+const programSourceFilesSchema = Schema.Array(TsSourceFile)
 
 // MatchContext carries checkers and comments because matchers share one per-file view.
 export const MatchContext = Schema.Struct({
@@ -17,6 +18,14 @@ export const MatchContext = Schema.Struct({
 })
 
 export interface MatchContext extends Schema.Schema.Type<typeof MatchContext> {}
+
+// ProgramMatchContext is separate because MatchContext expresses only one source file.
+export const ProgramMatchContext = Schema.Struct({
+  ...ProgramContext.fields,
+  sourceFiles: programSourceFilesSchema
+})
+
+export interface ProgramMatchContext extends Schema.Schema.Type<typeof ProgramMatchContext> {}
 
 // NodeTarget pins a fact to one AST node because node-local policies cannot use file spans alone.
 export class NodeTarget extends Data.TaggedClass("NodeTarget")<{
@@ -99,7 +108,7 @@ export type Subscription = NodeSubscription | FileSubscription
 
 // Matcher is a program-stage recognition plan because reporting and guidance stay outside matching.
 export class Matcher extends Data.Class<{
-  readonly plan: (context: ProgramContext) => ReadonlyArray<Subscription>
+  readonly plan: (context: ProgramMatchContext) => ReadonlyArray<Subscription>
   readonly compilerOptions: ts.CompilerOptions
 }> {}
 

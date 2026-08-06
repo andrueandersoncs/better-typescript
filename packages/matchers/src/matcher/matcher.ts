@@ -16,6 +16,7 @@ import * as ts from "typescript"
 import type { ProgramContext } from "../sources/data.js"
 import { astNodesIn, isProjectSourceFile } from "../sources/sources.js"
 import { sourceComments } from "../sources/comments.js"
+import { strictEqual } from "../equivalence.js"
 import {
   DirectoryTarget,
   FileSubscription,
@@ -23,6 +24,7 @@ import {
   MatchContext,
   Matcher,
   NodeSubscription,
+  ProgramMatchContext,
   WorkspaceContext,
   WorkspaceMatcher,
   WorkspaceSourceFile,
@@ -45,14 +47,15 @@ const isFileSubscription = (subscription: Subscription): subscription is FileSub
   !isNodeSubscription(subscription)
 
 const emptyCompilerOptions: ts.CompilerOptions = {}
+const isZero = strictEqual(0)
 
 export const makeMatcherFromSubscriptions = (
-  plan: (context: ProgramContext) => ReadonlyArray<Subscription>
+  plan: (context: ProgramMatchContext) => ReadonlyArray<Subscription>
 ) => new Matcher({ plan, compilerOptions: emptyCompilerOptions })
 
 // Program-indexed matching shares one index because each plan reads the same precomputed view.
 export const withProgramMatcherIndex =
-  <Index>(build: (context: ProgramContext) => Index) =>
+  <Index>(build: (context: ProgramMatchContext) => Index) =>
   (subscriptions: (index: Index) => ReadonlyArray<Subscription>): Matcher =>
     makeMatcherFromSubscriptions(flow(build, subscriptions))
 
@@ -215,9 +218,20 @@ export const runMatchers =
       const sourceFileIsActive = (sourceFile: ts.SourceFile) =>
         includesSourceFile(matcherIndex, sourceFile)
 
-      return Array.some(sourceFiles, sourceFileIsActive)
-        ? matcher.plan(context)
-        : Array.empty<Subscription>()
+      const includedSourceFiles = Array.filter(sourceFiles, sourceFileIsActive)
+      if (isZero(includedSourceFiles.length)) {
+        return Array.empty<Subscription>()
+      }
+
+      const planContext = ProgramMatchContext.make({
+        program: context.program,
+        checker: context.checker,
+        projectRoot: context.projectRoot,
+        workspaceRoot: context.workspaceRoot,
+        sourceFiles: includedSourceFiles
+      })
+
+      return matcher.plan(planContext)
     })
 
     const plannedNodeSubscriptions = Array.flatMap(plans, planNodeSubscriptionsForMatcher)
