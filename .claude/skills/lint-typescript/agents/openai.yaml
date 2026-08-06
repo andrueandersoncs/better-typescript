@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lint TypeScript"
+  short_description: "Run all repository TypeScript lint skills"
+  default_prompt: "Use $lint-typescript to lint the TypeScript changes in this task."
