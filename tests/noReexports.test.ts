@@ -3,9 +3,10 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
 import { Array, Effect } from "effect"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { noReexports } from "@better-typescript/guidance/policies/noReexports"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
+import { type Detection } from "@better-typescript/core/engine/location/detectionData"
+import { noReexports } from "@better-typescript/guidance/preset/defaultWiring"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")

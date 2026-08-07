@@ -1,125 +1,46 @@
 import {
   Array,
-  flow,
   Function,
   HashMap,
   Iterable,
   MutableRef,
   Option,
   Order,
-  pipe,
   Predicate,
-  Result,
   Struct,
   Tuple,
-  Schema
+  flow,
+  pipe
 } from "effect"
 import * as ts from "typescript"
-import { astNodesIn } from "../sources/sources.js"
+import { astNodesIn } from "../sources/astNodesIn.js"
 import type { ProgramContext } from "../sources/data.js"
-import {
-  isFunctionInitializer,
-  isInAmbientContext,
-  variableDeclarationInitializer
-} from "../support/tsNode.js"
-import type { FunctionInitializer } from "../support/tsNode.js"
+import { isInAmbientContext } from "../support/isDeclareKeyword.js"
+import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
+import type { FunctionInitializer } from "../support/functionInitializer.js"
 import { strictEqual } from "../equivalence.js"
-import { fileSubscriptions, makeMatcherFromSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
+import { fileSubscriptions } from "../matcher/fileSubscriptions.js"
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { annotationEdit } from "./annotationEdit.js"
+import { applyEdits } from "./applyEdits.js"
+import { expectedName } from "./expectedName.js"
+import { declarationRecurses } from "./functionBodyRecursion.js"
+import { functionInitializersIn } from "./functionInitializersIn.js"
+import { generatedNamePrefix } from "./generatedNamePrefix.js"
+import { InferenceProbe } from "./inferenceProbe.js"
+import { optionResult } from "./optionResult.js"
+import { PreferInferredTypesFact } from "./preferInferredTypesFact.js"
+import type { PreferInferredTypesKind } from "./preferInferredTypesKind.js"
+import { returnFinding } from "./returnFinding.js"
+import { typesEquivalent } from "./typesEquivalent.js"
 
-const generatedNamePrefix = "__betterTypescriptInference"
 const emptyFunctionInitializers = Array.empty<FunctionInitializer>()
-const emptyDeclarations = Array.empty<ts.Declaration>()
-
-const preferInferredTypesKinds = Array.make<["const", "return", "contextual"]>(
-  "const",
-  "return",
-  "contextual"
-)
-
-// PreferInferredTypesKind classifies inference sites because annotation advice differs.
-export const PreferInferredTypesKind = Schema.Literals(preferInferredTypesKinds)
-
-export type PreferInferredTypesKind = typeof PreferInferredTypesKind.Type
-
-// PreferInferredTypesFact classifies inference site because const, return, and contextual advice d.
-export const PreferInferredTypesFact = Schema.Struct({
-  kind: PreferInferredTypesKind
-})
-
-export interface PreferInferredTypesFact extends Schema.Schema.Type<
-  typeof PreferInferredTypesFact
-> {}
 
 const constFinding: PreferInferredTypesKind = "const"
-const returnFinding: PreferInferredTypesKind = "return"
 const contextualFinding: PreferInferredTypesKind = "contextual"
-
-// InferenceProbe pairs source syntax with shadow declarations because both identify one finding.
-class InferenceProbe {
-  constructor(
-    readonly detectionNode: ts.Node,
-    readonly insertionPosition: number,
-    readonly snippet: string,
-    readonly kind: PreferInferredTypesKind
-  ) {}
-}
-
-const optionResult = <A>(option: Option.Option<A>) => Result.fromOption(option, Function.constVoid)
-
-const editStart = (edit: readonly [number, number, string]) => Tuple.get(edit, 0)
-
-const editOrder = Order.mapInput(Order.flip(Order.Number), editStart)
-
-const applyEdits = (
-  text: string,
-  offset: number,
-  edits: ReadonlyArray<readonly [number, number, string]>
-) =>
-  pipe(
-    edits,
-    Array.sort(editOrder),
-    Array.reduce(text, (current, edit) => {
-      const start = Tuple.get(edit, 0)
-      const end = Tuple.get(edit, 1)
-      const replacement = Tuple.get(edit, 2)
-
-      return current.slice(0, start - offset) + replacement + current.slice(end - offset)
-    })
-  )
-
-const annotationEdit = (sourceFile: ts.SourceFile, typeNode: ts.TypeNode, anchorEnd: number) => {
-  const typeStart = typeNode.getStart(sourceFile)
-  const colon = sourceFile.text.lastIndexOf(":", typeStart - 1)
-  const validColon = colon >= anchorEnd
-  const edit = Tuple.make(colon, typeNode.end, "")
-
-  return validColon ? Option.some(edit) : Option.none()
-}
-
-const hasFunctionInitializerAncestor = (root: ts.Node, node: ts.Node): boolean => {
-  const notRoot = node !== root
-
-  const parentIsFunctionInitializerAncestor = (parent: ts.Node) =>
-    isFunctionInitializer(parent) || hasFunctionInitializerAncestor(root, parent)
-
-  return (
-    notRoot &&
-    pipe(Option.fromNullishOr(node.parent), Option.exists(parentIsFunctionInitializerAncestor))
-  )
-}
-
-const functionInitializersIn = (root: ts.Node) => {
-  const isTopLevelFunctionInitializer = (fn: FunctionInitializer) =>
-    !hasFunctionInitializerAncestor(root, fn)
-
-  return pipe(
-    astNodesIn(root),
-    Iterable.filter(isFunctionInitializer),
-    Iterable.filter(isTopLevelFunctionInitializer),
-    Array.fromIterable
-  )
-}
 
 const typePredicate = (fn: FunctionInitializer) =>
   pipe(Option.fromNullishOr(fn.type), Option.exists(ts.isTypePredicateNode))
@@ -154,83 +75,6 @@ const contextualParameterTypes = (checker: ts.TypeChecker) => (fn: FunctionIniti
 
 const removableReturnType = (fn: FunctionInitializer) =>
   pipe(Option.fromNullishOr(fn.type), Option.filter(Predicate.not(ts.isTypePredicateNode)))
-
-const functionDeclarationBody = (fn: ts.FunctionDeclaration) => Option.fromNullishOr(fn.body)
-
-const functionBodyInDeclaration = (declaration: ts.Declaration) => {
-  const variableBody = pipe(
-    Option.liftPredicate(ts.isVariableDeclaration)(declaration),
-    Option.flatMap(variableDeclarationInitializer),
-    Option.filter(isFunctionInitializer),
-    Option.map(Struct.get("body"))
-  )
-
-  const declaredBody = pipe(
-    Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
-    Option.flatMap(functionDeclarationBody)
-  )
-
-  return pipe(variableBody, Option.orElse(Function.constant(declaredBody)))
-}
-
-const symbolOptionAt = (checker: ts.TypeChecker) =>
-  flow(checker.getSymbolAtLocation, Option.fromNullishOr)
-
-const functionBodyForSymbol = (symbol: ts.Symbol) =>
-  pipe(
-    symbol.declarations ?? emptyDeclarations,
-    Array.filterMap(flow(functionBodyInDeclaration, optionResult)),
-    Array.head
-  )
-
-const symbolOccursThroughFunctions = (
-  checker: ts.TypeChecker,
-  target: ts.Symbol,
-  root: ts.Node,
-  seen: ReadonlyArray<ts.Symbol>
-): boolean => {
-  const nodeReachesTarget = (node: ts.Node) => {
-    const symbolReachesTarget = (symbol: ts.Symbol) => {
-      const targetMatch = strictEqual(target)(symbol)
-      const isUnseenSymbol = strictEqual(symbol)
-      const unseen = !Array.some(seen, isUnseenSymbol)
-      const body = functionBodyForSymbol(symbol)
-      const unseenBody = pipe(body, Option.filter(Function.constant(unseen)))
-      const nextSeen = Array.append(seen, symbol)
-
-      const dependencyBodyReachesTarget = (dependencyBody: ts.Node) =>
-        symbolOccursThroughFunctions(checker, target, dependencyBody, nextSeen)
-
-      const dependencyMatch = Option.exists(unseenBody, dependencyBodyReachesTarget)
-      const matches = Array.make(targetMatch, dependencyMatch)
-
-      return Array.some(matches, Boolean)
-    }
-
-    return pipe(
-      Option.liftPredicate(ts.isIdentifier)(node),
-      Option.flatMap(symbolOptionAt(checker)),
-      Option.exists(symbolReachesTarget)
-    )
-  }
-
-  return pipe(astNodesIn(root), Iterable.some(nodeReachesTarget))
-}
-
-const declarationRecurses =
-  (checker: ts.TypeChecker) =>
-  (identifier: ts.Identifier, root: ts.Node): boolean => {
-    const targetOccursThroughRoot = (target: ts.Symbol) => {
-      const seen = Array.of(target)
-
-      return symbolOccursThroughFunctions(checker, target, root, seen)
-    }
-
-    return pipe(identifier, symbolOptionAt(checker), Option.exists(targetOccursThroughRoot))
-  }
-
-const expectedName = (probe: InferenceProbe) =>
-  `${generatedNamePrefix}Expected${probe.detectionNode.getStart()}`
 
 const probeName = (probe: InferenceProbe) =>
   `${generatedNamePrefix}Probe${probe.detectionNode.getStart()}`
@@ -626,89 +470,6 @@ const nodeType = (
   const getTypeAtLocation = checker.getTypeAtLocation.bind(checker)
 
   return pipe(declarationName(declaration), Option.map(getTypeAtLocation))
-}
-
-const sensitiveTypeFlags = ts.TypeFlags.Any | ts.TypeFlags.Never | ts.TypeFlags.Unknown
-
-const sameSensitiveFlags = (left: ts.Type, right: ts.Type) =>
-  strictEqual(right.flags & sensitiveTypeFlags)(left.flags & sensitiveTypeFlags)
-
-const mutuallyAssignable = (checker: ts.TypeChecker, left: ts.Type, right: ts.Type) =>
-  checker.isTypeAssignableTo(left, right) && checker.isTypeAssignableTo(right, left)
-
-const signaturesEquivalent = (
-  checker: ts.TypeChecker,
-  leftNode: ts.Node,
-  rightNode: ts.Node,
-  left: ts.Signature,
-  right: ts.Signature
-) => {
-  const leftParameters = left.getParameters()
-  const rightParameters = right.getParameters()
-  const parameterPairs = Array.zip(leftParameters, rightParameters)
-
-  const parametersMatch = Array.every(parameterPairs, ([leftParameter, rightParameter]) => {
-    const leftType = checker.getTypeOfSymbolAtLocation(leftParameter, leftNode)
-    const rightType = checker.getTypeOfSymbolAtLocation(rightParameter, rightNode)
-    const sameFlags = sameSensitiveFlags(leftType, rightType)
-    const assignable = mutuallyAssignable(checker, leftType, rightType)
-    const parameterFlags = Array.make(sameFlags, assignable)
-
-    return Array.every(parameterFlags, Boolean)
-  })
-
-  const leftReturn = checker.getReturnTypeOfSignature(left)
-  const rightReturn = checker.getReturnTypeOfSignature(right)
-  const sameReturnFlags = sameSensitiveFlags(leftReturn, rightReturn)
-  const assignableReturns = mutuallyAssignable(checker, leftReturn, rightReturn)
-  const returnFlags = Array.make(sameReturnFlags, assignableReturns)
-  const returnsMatch = Array.every(returnFlags, Boolean)
-  const sameParameterCount = strictEqual(rightParameters.length)(leftParameters.length)
-  const signatureFlags = Array.make(sameParameterCount, parametersMatch, returnsMatch)
-
-  return Array.every(signatureFlags, Boolean)
-}
-
-const typeText = (checker: ts.TypeChecker, type: ts.Type, node: ts.Node) =>
-  checker.typeToString(
-    type,
-    node,
-    ts.TypeFormatFlags.NoTruncation |
-      ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope |
-      ts.TypeFormatFlags.WriteArrowStyleSignature
-  )
-
-const typesEquivalent = (
-  checker: ts.TypeChecker,
-  leftNode: ts.Node,
-  rightNode: ts.Node,
-  left: ts.Type,
-  right: ts.Type
-) => {
-  const leftSignatures = left.getCallSignatures()
-  const rightSignatures = right.getCallSignatures()
-  const signaturePairs = Array.zip(leftSignatures, rightSignatures)
-
-  const signaturesMatch = Array.every(signaturePairs, ([leftSignature, rightSignature]) =>
-    signaturesEquivalent(checker, leftNode, rightNode, leftSignature, rightSignature)
-  )
-
-  const leftText = typeText(checker, left, leftNode)
-  const rightText = typeText(checker, right, rightNode)
-  const sameFlags = sameSensitiveFlags(left, right)
-  const assignable = mutuallyAssignable(checker, left, right)
-  const sameSignatureCount = strictEqual(rightSignatures.length)(leftSignatures.length)
-  const sameText = strictEqual(rightText)(leftText)
-
-  const equivalenceFlags = Array.make(
-    sameFlags,
-    assignable,
-    sameSignatureCount,
-    signaturesMatch,
-    sameText
-  )
-
-  return Array.every(equivalenceFlags, Boolean)
 }
 
 const declarationInitializer = (declaration: ts.VariableDeclaration | ts.FunctionDeclaration) =>

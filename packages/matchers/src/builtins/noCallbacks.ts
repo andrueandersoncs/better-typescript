@@ -1,10 +1,13 @@
 import { Array, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { isInAmbientContext } from "../support/tsNode.js"
-import { hasCallSignature, isVoidType } from "../support/tsType.js"
+import { isInAmbientContext } from "../support/isDeclareKeyword.js"
+import { hasCallSignature } from "../support/hasCallSignature.js"
+import { isVoidType } from "../support/isVoidType.js"
 import { strictEqual } from "../equivalence.js"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import type { CallbackStyleDeclaration } from "./callbackStyleDeclaration.js"
 
 // NoCallbacksFact is empty payload because guidance and matchers share identity.
 export const NoCallbacksFact = Schema.Struct({})
@@ -13,16 +16,6 @@ export interface NoCallbacksFact extends Schema.Schema.Type<typeof NoCallbacksFa
 
 // emptyNoCallbacksFact is the shared empty fact because guidance and matchers share identity.
 export const emptyNoCallbacksFact = NoCallbacksFact.make({})
-
-// CallbackStyleDeclaration is a local syntax union because matchers need one narrowed node shape.
-export type CallbackStyleDeclaration =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration
-  | ts.MethodSignature
-  | ts.CallSignatureDeclaration
-  | ts.FunctionTypeNode
 
 const transparentTypeNodeKinds = HashSet.make(
   ts.SyntaxKind.ParenthesizedType,

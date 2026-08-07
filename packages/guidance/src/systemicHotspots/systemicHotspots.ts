@@ -1,9 +1,10 @@
 import { Array, Function } from "effect"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { Location } from "@better-typescript/core/engine/location/data"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { Location } from "@better-typescript/core/engine/location/locationData"
 
 import { SystemicSignals } from "./data.js"
-import { makePackageExamples } from "../definePolicy.js"
+import { makePackageExamples } from "../makePackageExamples.js"
 
 export const systemicHotspotsExamples = makePackageExamples("systemic-hotspots")
 

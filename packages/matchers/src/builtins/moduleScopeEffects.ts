@@ -1,18 +1,18 @@
-import { Array, Function, HashSet, Match, Option, Struct, pipe, flow } from "effect"
+import { Array, Function, HashSet, Option, Struct, flow, pipe, Match as EffectMatch } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { ModuleScopeEffectData } from "./architectureExploreData.js"
-import { importDeclarationAncestor } from "./externalDependencyConstruction.js"
 import { isCompositionRoot } from "../support/compositionRoot.js"
-import { isTestSourceFile } from "./architectureExplore/paths.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
-import { unwrapTransparentExpression } from "../support/tsNode.js"
-import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match as MatcherMatch,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { rawSymbolAt } from "../support/rawSymbolAt.js"
+import { rootIdentifier } from "./rootIdentifier.js"
+import { importedModuleSpecifier } from "./importedModuleSpecifier.js"
+import { ModuleScopeEffectData } from "./moduleScopeEffectData.js"
 
 const effectfulBuiltinModules = HashSet.make(
   "node:fs",
@@ -55,9 +55,6 @@ const isFunctionLikeAncestorKind = (kind: ts.SyntaxKind) =>
 const isScopeContainerAncestorKind = (kind: ts.SyntaxKind) =>
   HashSet.has(scopeContainerAncestorKinds, kind)
 
-const symbolAtIdentifier = (checker: ts.TypeChecker) => (identifier: ts.Identifier) =>
-  pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-
 const isEffectfulBuiltinModule = (specifier: string) =>
   HashSet.has(effectfulBuiltinModules, specifier)
 
@@ -71,71 +68,27 @@ const isModuleScopeCall = (current: ts.Node): boolean =>
       onNone: Function.constFalse,
       onSome: (ancestor) =>
         pipe(
-          Match.value(ancestor.kind),
-          Match.when(isFunctionLikeAncestorKind, Function.constFalse),
-          Match.when(isScopeContainerAncestorKind, Function.constFalse),
-          Match.when(ts.SyntaxKind.SourceFile, () => {
+          EffectMatch.value(ancestor.kind),
+          EffectMatch.when(isFunctionLikeAncestorKind, Function.constFalse),
+          EffectMatch.when(isScopeContainerAncestorKind, Function.constFalse),
+          EffectMatch.when(ts.SyntaxKind.SourceFile, () => {
             const expressionStatement = ts.isExpressionStatement(current)
             const variableStatement = ts.isVariableStatement(current)
             const moduleScopeStatements = Array.make(expressionStatement, variableStatement)
 
             return Array.some(moduleScopeStatements, Boolean)
           }),
-          Match.orElse(() => isModuleScopeCall(ancestor))
+          EffectMatch.orElse(() => isModuleScopeCall(ancestor))
         )
     })
-  )
-
-const rootIdentifier = (expression: ts.Expression): Option.Option<ts.Identifier> => {
-  const unwrapped = unwrapTransparentExpression(expression)
-  const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
-
-  const propertyRoot = pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(unwrapped),
-    Option.map(Struct.get("expression")),
-    Option.flatMap(rootIdentifier)
-  )
-
-  const elementRoot = pipe(
-    Option.liftPredicate(ts.isElementAccessExpression)(unwrapped),
-    Option.map(Struct.get("expression")),
-    Option.flatMap(rootIdentifier)
-  )
-
-  const callRoot = pipe(
-    Option.liftPredicate(ts.isCallExpression)(unwrapped),
-    Option.map(Struct.get("expression")),
-    Option.flatMap(rootIdentifier)
-  )
-
-  return pipe(
-    identifier,
-    Option.orElse(Function.constant(propertyRoot)),
-    Option.orElse(Function.constant(elementRoot)),
-    Option.orElse(Function.constant(callRoot))
-  )
-}
-
-const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
-
-const importedModuleSpecifier = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(
-    rootIdentifier(expression),
-    Option.flatMap(symbolAtIdentifier(checker)),
-    Option.map((symbol) => symbol.declarations ?? Array.empty()),
-    Option.flatMap(Array.findFirst(hasImportDeclarationAncestor)),
-    Option.flatMap(importDeclarationAncestor),
-    Option.map(Struct.get("moduleSpecifier")),
-    Option.filter(ts.isStringLiteralLike),
-    Option.map(Struct.get("text"))
   )
 
 const isTsSysRooted = (expression: ts.Expression): boolean =>
   pipe(
     expression,
     unwrapTransparentExpression,
-    Match.value,
-    Match.when(ts.isPropertyAccessExpression, (access) => {
+    EffectMatch.value,
+    EffectMatch.when(ts.isPropertyAccessExpression, (access) => {
       const receiver = unwrapTransparentExpression(access.expression)
       const receiverIdentifier = Option.liftPredicate(ts.isIdentifier)(receiver)
       const identifierTextIsTs = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("ts"))
@@ -145,12 +98,12 @@ const isTsSysRooted = (expression: ts.Expression): boolean =>
       const rootedHere = Array.every(rootChecks, Boolean)
 
       return pipe(
-        Match.value(rootedHere),
-        Match.when(true, Function.constTrue),
-        Match.orElse(() => isTsSysRooted(access.expression))
+        EffectMatch.value(rootedHere),
+        EffectMatch.when(true, Function.constTrue),
+        EffectMatch.orElse(() => isTsSysRooted(access.expression))
       )
     }),
-    Match.orElse(Function.constFalse)
+    EffectMatch.orElse(Function.constFalse)
   )
 
 const isProcessMemberCall = (call: ts.CallExpression) => {
@@ -182,7 +135,7 @@ const isBuiltinEffectfulCall = (checker: ts.TypeChecker, call: ts.CallExpression
 }
 
 const effectPackageRootSymbol = (checker: ts.TypeChecker, expression: ts.Expression) =>
-  pipe(rootIdentifier(expression), Option.flatMap(symbolAtIdentifier(checker)))
+  pipe(rootIdentifier(expression), Option.flatMap(rawSymbolAt(checker)))
 
 const isEffectPackageSpecifier = (specifier: string) => {
   const exactPackage = strictEqual("effect")(specifier)

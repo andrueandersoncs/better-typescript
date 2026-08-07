@@ -1,20 +1,17 @@
-import { Array, Function, Option, Order, pipe } from "effect"
+import { recordSeparator } from "./recordSeparator.js"
 import type * as ts from "typescript"
-import { symbolDeclarations } from "./tsNode.js"
+import { fieldSeparator } from "./fieldSeparator.js"
+import type { ReferenceKey } from "./referenceKeyType.js"
+import { symbolDeclarations } from "./symbolDeclarations.js"
+import { Array, Function, Option, Order, pipe } from "effect"
 
-const fieldSeparator = "\u0000"
-const recordSeparator = "\u0001"
-
-// ReferenceKey uses compiler declarations because raw TypeScript objects have no stable equality.
-export type ReferenceKey<_Symbol extends ts.Symbol = ts.Symbol> = string
-
-const declarationKey = (declaration: ts.Declaration) => {
+export const declarationKey = (declaration: ts.Declaration) => {
   const sourceFile = declaration.getSourceFile()
 
   return `${sourceFile.fileName.replaceAll("\\", "/")}${fieldSeparator}${declaration.pos}${fieldSeparator}${declaration.end}${fieldSeparator}${declaration.kind}`
 }
 
-const declarationKeys = Function.flow(
+export const declarationKeys = Function.flow(
   symbolDeclarations,
   Option.fromNullishOr,
   Option.getOrElse(Array.empty),
@@ -28,9 +25,3 @@ export const referenceKey = (symbol: ts.Symbol): ReferenceKey =>
     Array.prepend(`${symbol.name}${fieldSeparator}${symbol.flags}`),
     Array.join(recordSeparator)
   )
-
-const declarationSourceFileName = (declaration: string) =>
-  pipe(declaration.split(fieldSeparator), Array.head)
-
-export const referenceKeySourceFileName = (key: ReferenceKey) =>
-  pipe(key.split(recordSeparator), Array.get(1), Option.flatMap(declarationSourceFileName))

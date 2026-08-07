@@ -3,32 +3,37 @@ import {
   Array,
   Function,
   HashMap,
-  Match,
   Option,
   Predicate,
   Record,
   Result,
   Schema,
   Tuple,
-  pipe
+  pipe,
+  Match as EffectMatch
 } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { isProjectSourceFile } from "@better-typescript/matchers/sources"
+import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
 import { toRelativeFileName } from "../support/paths.js"
-import { ModuleIdentityData } from "./architectureExploreData.js"
-import { toWorkspacePath } from "./architectureExplore/paths.js"
-import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match as MatcherMatch,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { toWorkspacePath } from "./architectureExplore/toWorkspacePath.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 
-const aliasListSchema = Schema.Array(Schema.String)
-const aliasesByFileSchema = Schema.HashMap(Schema.String, aliasListSchema)
-const unknownRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
+import { stringArray } from "./architectureExplore/stringArraySchema.js"
+import { AliasIndex } from "./aliasIndex.js"
+import { decodeUnknownRecord } from "./unknownRecordSchema.js"
+import { programIndexedFileMatcher } from "./programIndexedFileMatcher.js"
+
+// ModuleIdentityData lists published aliases because specifier joins need file identity.
+export const ModuleIdentityData = Schema.Struct({
+  workspacePath: Schema.String,
+  aliases: stringArray
+})
+
+export interface ModuleIdentityData extends Schema.Schema.Type<typeof ModuleIdentityData> {}
 
 const PackageExports = Schema.Struct({
   name: Schema.NonEmptyString,
@@ -38,16 +43,8 @@ const PackageExports = Schema.Struct({
 // Decoded package identity because alias matching must reject malformed manifests.
 interface PackageExports extends Schema.Schema.Type<typeof PackageExports> {}
 
-const AliasIndex = Schema.Struct({
-  aliasesByFile: aliasesByFileSchema
-})
-
-// AliasIndex is the program-wide alias lookup because subscriptions share one immutable contract.
-interface AliasIndex extends Schema.Schema.Type<typeof AliasIndex> {}
-
 const packageExportsJson = Schema.fromJsonString(PackageExports)
 const decodePackageExports = Schema.decodeUnknownOption(packageExportsJson)
-const decodeUnknownRecord = Schema.decodeUnknownOption(unknownRecordSchema)
 
 const readPackageExports = (projectRoot: string) => {
   const packagePath = path.join(projectRoot, "package.json")
@@ -81,9 +78,9 @@ const firstStringFromUnknownRecord = Function.flow(
 
 const firstStringValue = (value: unknown) =>
   pipe(
-    Match.value(value),
-    Match.when(Predicate.isString, Option.some<string>),
-    Match.orElse(firstStringFromUnknownRecord)
+    EffectMatch.value(value),
+    EffectMatch.when(Predicate.isString, Option.some<string>),
+    EffectMatch.orElse(firstStringFromUnknownRecord)
   )
 
 const exportEntriesFromRecord = (
@@ -115,9 +112,9 @@ const exportEntriesFromUnknown = Function.flow(
 
 const exportEntries = (exportsField: unknown): ReadonlyArray<readonly [string, string]> =>
   pipe(
-    Match.value(exportsField),
-    Match.when(Predicate.isString, rootExportEntry),
-    Match.orElse(exportEntriesFromUnknown)
+    EffectMatch.value(exportsField),
+    EffectMatch.when(Predicate.isString, rootExportEntry),
+    EffectMatch.orElse(exportEntriesFromUnknown)
   )
 
 const toEmittedPath = (rootDir: string, outDir: string) => (fileName: string) => {
@@ -164,8 +161,8 @@ const aliasesForEmittedPath =
       const isWildcard = Array.every(wildcardConditions, Boolean)
 
       return pipe(
-        Match.value(isWildcard),
-        Match.when(true, () =>
+        EffectMatch.value(isWildcard),
+        EffectMatch.when(true, () =>
           pipe(
             matchWildcard(resolvedTarget, emittedPath),
             Option.map((capture) => {
@@ -176,7 +173,7 @@ const aliasesForEmittedPath =
             Result.fromOption(Function.constVoid)
           )
         ),
-        Match.orElse(() => {
+        EffectMatch.orElse(() => {
           const alias = aliasFromSubpath(packageName, subpath)
           const matchesTarget = strictEqual(emittedPath)(resolvedTarget)
 
@@ -264,6 +261,4 @@ const moduleIdentityElements =
       })
     )
 
-const moduleIdentitySubscriptions = Function.compose(moduleIdentityElements, fileSubscriptions)
-
-export const moduleIdentity = withProgramMatcherIndex(buildAliasIndex)(moduleIdentitySubscriptions)
+export const moduleIdentity = programIndexedFileMatcher(buildAliasIndex)(moduleIdentityElements)

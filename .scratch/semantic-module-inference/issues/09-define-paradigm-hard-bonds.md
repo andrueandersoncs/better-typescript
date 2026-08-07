@@ -34,3 +34,9 @@ A future paradigm rule may be admitted only under this contract:
 
 Candidate ordering, barrier classification, closure, and Membership Proof construction remain those
 settled by [Specify the partition and explanation algorithm](04-specify-partition-algorithm.md).
+
+## Comments
+
+The empty initial catalog is superseded by
+[Define the initial paradigm Hard Bond catalog](18-define-initial-hard-bond-catalog.md), which
+admits two neutral rules under this evidence contract.

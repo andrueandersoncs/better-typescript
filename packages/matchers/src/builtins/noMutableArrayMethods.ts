@@ -1,17 +1,14 @@
 import { Array, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { isArrayLikeType } from "../support/tsType.js"
-
-const mutableArrayMethodNames = Array.make<
-  ["copyWithin", "fill", "pop", "push", "reverse", "shift", "sort", "splice", "unshift"]
->("copyWithin", "fill", "pop", "push", "reverse", "shift", "sort", "splice", "unshift")
-
-// MutableArrayMethod names mutating Array methods because remediation quotes the method.
-export const MutableArrayMethod = Schema.Literals(mutableArrayMethodNames)
-
-export type MutableArrayMethod = typeof MutableArrayMethod.Type
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isArrayLikeType } from "../support/isArrayLikeType.js"
+import {
+  MutableArrayMethod,
+  type MutableArrayMethod as MutableArrayMethodT
+} from "./mutableArrayMethod.js"
+import { mutableArrayMethodNames } from "./mutableArrayMethodNames.js"
 
 // NoMutableArrayMethodsFact names the mutating method because guidance cites the call site.
 export const NoMutableArrayMethodsFact = Schema.Struct({
@@ -36,10 +33,10 @@ const mutableArrayMethodsMatches = (context: MatchContext) => {
 
     const methodName = HashSet.has(
       mutableArrayMethods,
-      callExpression.expression.name.text as MutableArrayMethod
+      callExpression.expression.name.text as MutableArrayMethodT
     )
-      ? Option.some(callExpression.expression.name.text as MutableArrayMethod)
-      : Option.none<MutableArrayMethod>()
+      ? Option.some(callExpression.expression.name.text as MutableArrayMethodT)
+      : Option.none<MutableArrayMethodT>()
 
     if (Option.isNone(methodName)) {
       return Array.empty()

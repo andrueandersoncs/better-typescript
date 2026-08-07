@@ -4,17 +4,16 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "bun:test"
 import { Array, Effect } from "effect"
-import {
-  packageExamplePairRoots,
-  packageExampleRoot,
-  packageExamplesRoot
-} from "./packageExamples.js"
+import { packageExamplePairRoots } from "./packageExamplePairRoots.js"
+import { packageExampleRoot } from "./packageExampleRoot.js"
+import { packageExamplesRoot } from "./packageExamplesRoot.js"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
-import { DirectoryRefactorExamples } from "@better-typescript/core/engine/example/data"
-import { runPolicyOnProject, loadProject } from "@better-typescript/core/project/loadProject"
-import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
+import { type Policy } from "@better-typescript/core/engine/policy/policyClass"
+import { makeRefactorExampleResolver } from "@better-typescript/core/engine/reportPipeline"
+import { DirectoryRefactorExamples } from "@better-typescript/core/engine/example/directoryRefactorExamples"
+import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { isProgramPolicy } from "@better-typescript/core/engine/wiring/isProgramPolicy"
 
 const runSide = async (policy: Policy, sideRoot: string) => {
   const workspace = await Effect.runPromise(loadProject(sideRoot))

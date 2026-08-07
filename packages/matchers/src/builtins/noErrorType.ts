@@ -1,8 +1,10 @@
 import { Array, Option, Struct, flow, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { errorTypeName } from "./errorTypeName.js"
 
 // NoErrorTypeFact is empty payload because guidance and matchers share identity.
 export const NoErrorTypeFact = Schema.Struct({})
@@ -11,9 +13,6 @@ export interface NoErrorTypeFact extends Schema.Schema.Type<typeof NoErrorTypeFa
 
 // emptyNoErrorTypeFact is the shared empty fact because guidance and matchers share identity.
 export const emptyNoErrorTypeFact = NoErrorTypeFact.make({})
-
-const errorTypeName = (typeName: ts.EntityName) =>
-  ts.isIdentifier(typeName) ? typeName : typeName.right
 
 const isErrorNamedTypeReference = flow(
   Struct.get<ts.TypeReferenceNode, "typeName">("typeName"),

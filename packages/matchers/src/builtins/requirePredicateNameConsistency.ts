@@ -1,70 +1,14 @@
-import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  type CallableSemantics
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { Array, Function, HashSet, Option, pipe } from "effect"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
-
-const nonBooleanPredicateKind = Schema.Literal("non-boolean-predicate")
-const booleanIncompatibleKind = Schema.Literal("boolean-incompatible")
-
-// RequirePredicateNonBooleanFact is non-boolean predicate evidence because name and shape pair.
-export const RequirePredicateNonBooleanFact = Schema.Struct({
-  kind: nonBooleanPredicateKind,
-  nameText: Schema.String,
-  shape: Schema.String
-})
-
-export interface RequirePredicateNonBooleanFact extends Schema.Schema.Type<
-  typeof RequirePredicateNonBooleanFact
-> {}
-
-// RequirePredicateBooleanIncompatibleFact is incompatible evidence because verbs must match.
-export const RequirePredicateBooleanIncompatibleFact = Schema.Struct({
-  kind: booleanIncompatibleKind,
-  nameText: Schema.String,
-  operation: Schema.String
-})
-
-export interface RequirePredicateBooleanIncompatibleFact extends Schema.Schema.Type<
-  typeof RequirePredicateBooleanIncompatibleFact
-> {}
-
-const predicateFactMembers = Array.make(
-  RequirePredicateNonBooleanFact,
-  RequirePredicateBooleanIncompatibleFact
-)
-
-// RequirePredicateNameConsistencyFact unions claims because non-boolean and incompatible differ.
-export const RequirePredicateNameConsistencyFact = Schema.Union(predicateFactMembers)
-
-export type RequirePredicateNameConsistencyFact = Schema.Schema.Type<
-  typeof RequirePredicateNameConsistencyFact
->
-
-const predicateOperations = HashSet.make(
-  "can",
-  "contain",
-  "contains",
-  "does",
-  "equal",
-  "equals",
-  "every",
-  "exist",
-  "exists",
-  "has",
-  "include",
-  "includes",
-  "is",
-  "should",
-  "some"
-)
-
-const withDirectionOperations = HashSet.make("ends", "starts")
+import { RequirePredicateNameConsistencyFact } from "./requirePredicateNameConsistencyFact.js"
+import { claimsPredicate } from "./predicateOperations.js"
 
 const incompatibleOperations = HashSet.make(
   "build",
@@ -96,36 +40,9 @@ const incompatibleOperations = HashSet.make(
 )
 
 const bareVariantConstructors = HashSet.make("none", "some")
-const ambiguousStandalonePredicates = HashSet.make("every", "match", "matches", "some")
 
 const emptyFacts: ReadonlyArray<Match<RequirePredicateNameConsistencyFact>> = Array.empty()
 const constantEmptyFacts = Function.constant(emptyFacts)
-
-const hasWithDirectionPredicate = (words: ReadonlyArray<string>) => {
-  const first = pipe(words, Array.head, Option.getOrElse(Function.constant("")))
-  const second = Array.get(words, 1)
-  const isDirection = HashSet.has(withDirectionOperations, first)
-  const isWith = Option.contains(second, "with")
-  const checks = Array.make(isDirection, isWith)
-
-  return Array.every(checks, Boolean)
-}
-
-const claimsPredicate = (semantics: CallableSemantics) => {
-  const first = pipe(semantics.name.words, Array.head, Option.getOrElse(Function.constant("")))
-  const predicatePrefix = HashSet.has(predicateOperations, first)
-  const singleWord = strictEqual(1)(semantics.name.words.length)
-  const isAmbiguousStandalone = HashSet.has(ambiguousStandalonePredicates, first)
-  const standaloneAmbiguousChecks = Array.make(singleWord, isAmbiguousStandalone)
-  const standaloneAmbiguous = Array.every(standaloneAmbiguousChecks, Boolean)
-  const nonAmbiguousPrefix = !standaloneAmbiguous
-  const prefixClaimChecks = Array.make(predicatePrefix, nonAmbiguousPrefix)
-  const prefixClaim = Array.every(prefixClaimChecks, Boolean)
-  const hasWithDirection = hasWithDirectionPredicate(semantics.name.words)
-  const claims = Array.make(prefixClaim, hasWithDirection)
-
-  return Array.some(claims, Boolean)
-}
 
 const isBareVariantConstructor = (semantics: CallableSemantics) => {
   const singleWord = strictEqual(1)(semantics.name.words.length)
@@ -206,5 +123,4 @@ const matches = (context: MatchContext) => {
   return matchesDefinition
 }
 
-export const requirePredicateNameConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requirePredicateNameConsistencyMatcher = functionDefinitionMatcher(matches)

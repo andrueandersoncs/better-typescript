@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { noErrorType } from "@better-typescript/guidance/policies/noErrorType"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { noErrorType } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("no-error-type reports built-in Error types and permits allowed fixture items", () =>
   assertPolicyFixture(noErrorType))

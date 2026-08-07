@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { preferHashSet } from "@better-typescript/guidance/policies/preferHashSet"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { preferHashSet } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("prefer-hash-set reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(preferHashSet))

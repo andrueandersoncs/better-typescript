@@ -4,46 +4,39 @@ import {
   HashMap,
   HashSet,
   Option,
+  Result,
+  Schema,
   Struct,
   Tuple,
-  pipe,
-  Result,
-  flow
+  flow,
+  pipe
 } from "effect"
+import { emptyAdapterCount } from "./emptyAdapterCount.js"
+import { typeSymbol } from "./singleAdapterTypeSymbol.js"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { SingleAdapterSeamData } from "./architectureExploreData.js"
-import { foldAst, isProjectSourceFile } from "@better-typescript/matchers/sources"
-import { hasExportModifier } from "../support/tsNode.js"
-import { resolvedSymbolAt } from "../support/tsNode.js"
-import { hasCallSignature } from "../support/tsType.js"
-import { isTestSourceFile } from "./architectureExplore/paths.js"
-import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
-import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { foldAst } from "../sources/foldAst.js"
+import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
+import { hasExportModifier } from "../support/hasExportModifier.js"
+import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
+import { hasCallSignature } from "../support/hasCallSignature.js"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import { referenceKey } from "../support/referenceKey.js"
+import type { ReferenceKey } from "../support/referenceKeyType.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { programIndexedFileMatcher } from "./programIndexedFileMatcher.js"
 
-const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
+// SingleAdapterSeamData compares adapter counts because seam judgment needs both sides.
+export const SingleAdapterSeamData = Schema.Struct({
+  interfaceName: Schema.String,
+  productionAdapterCount: Schema.Number,
+  testAdapterCount: Schema.Number
+})
 
-const typeSymbol = (checker: ts.TypeChecker) => (type: ts.Type) => {
-  const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
-  const symbol = type.getSymbol()
-  const directSymbol = Option.fromNullishOr(symbol)
-
-  return pipe(
-    aliasSymbol,
-    Option.orElse(Function.constant(directSymbol)),
-    Option.map((symbol) => {
-      const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-
-      return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-    })
-  )
-}
+export interface SingleAdapterSeamData extends Schema.Schema.Type<typeof SingleAdapterSeamData> {}
 
 const behaviouralSignatureKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.MethodSignature,
@@ -392,6 +385,4 @@ const singleAdapterElements =
     )
   }
 
-const singleAdapterSubscriptions = Function.compose(singleAdapterElements, fileSubscriptions)
-
-export const singleAdapterSeams = withProgramMatcherIndex(buildIndex)(singleAdapterSubscriptions)
+export const singleAdapterSeams = programIndexedFileMatcher(buildIndex)(singleAdapterElements)

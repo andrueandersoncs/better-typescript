@@ -1,49 +1,12 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
 import { Array, Effect } from "effect"
-import * as ts from "typescript"
-import { makePolicy, makeFindings, toPolicies } from "@better-typescript/core/engine/policy"
-import { makeNodeMatch } from "@better-typescript/matchers/matcher/data"
-import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { makeContext } from "@better-typescript/matchers/sources"
+import { toPolicies } from "@better-typescript/core/engine/policy/locateTarget"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "no-undefined")
-
-const undefinedIdentifier = (node: ts.Node): node is ts.Identifier =>
-  ts.isIdentifier(node) && node.text === "undefined"
-
-interface UndefinedIdentifierFact {
-  readonly kind: "undefined-identifier"
-}
-
-const undefinedIdentifierFact: UndefinedIdentifierFact = { kind: "undefined-identifier" }
-
-const isUndefinedIdentifierFact = (data: unknown): data is UndefinedIdentifierFact =>
-  typeof data === "object" &&
-  data !== null &&
-  "kind" in data &&
-  data.kind === "undefined-identifier"
-
-const undefinedMatcher = nodeMatcher(Array.of(ts.SyntaxKind.Identifier))(undefinedIdentifier)(
-  () => (node) => Array.of(makeNodeMatch(node, undefinedIdentifierFact))
-)
-
-const undefinedPolicy = makePolicy({
-  name: "undefined-identifier",
-  matcher: undefinedMatcher,
-  guidance: () => (match) =>
-    makeFindings(
-      match.target,
-      "Undefined identifier.",
-      "Model absence explicitly with Option.",
-      match.fact
-    ),
-  examples: { _tag: "inline", examples: Array.empty() }
-})
+import { isUndefinedIdentifierFact } from "./isUndefinedIdentifierFact.js"
+import { fixturePath } from "./policyTestFixturePath.js"
+import { undefinedPolicy } from "./undefinedIdentifierPolicy.js"
 
 test("policy guidance renders matcher facts without prose in the matcher", async () => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))

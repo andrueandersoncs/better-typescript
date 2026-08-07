@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { noAsyncFunctions } from "@better-typescript/guidance/policies/noAsyncFunctions"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { noAsyncFunctions } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("no-async-functions reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(noAsyncFunctions))

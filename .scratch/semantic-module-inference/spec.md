@@ -50,8 +50,9 @@ complete file-level Advice without choosing a destination or move direction.
     exports remain edges rather than Code Entities.
 14. As a tooling maintainer, I want candidates without coherent checker symbols excluded with typed
     evidence, so that parser recovery does not invent semantic identity.
-15. As an architecture reviewer, I want only semantically necessary relationships treated as Hard
-    Bonds, so that dependencies and cycles do not over-group Code Entities.
+15. As an architecture reviewer, I want dependencies alone excluded from Hard Bonds while proven
+    semantic-reference cycles and exclusive ownership remain expressible, so that graph structure
+    never becomes heuristic grouping.
 16. As an architecture reviewer, I want barrier-crossing candidate bonds retained as suppressed
     evidence, so that rejected relationships remain auditable.
 17. As a tooling consumer, I want complete ordered Semantic Module membership for any known Code
@@ -78,8 +79,8 @@ complete file-level Advice without choosing a destination or move direction.
     does not imply a move direction.
 28. As a preset author, I want paradigm-specific Hard Bond catalogs passed explicitly, so that
     source code never selects a coding paradigm implicitly.
-29. As a preset author, I want future Hard Bond rules to carry replayable evidence, so that
-    additions remain deterministic and auditable.
+29. As a preset author, I want every Hard Bond rule to carry replayable evidence, so that additions
+    remain deterministic and auditable.
 30. As a Better TypeScript maintainer, I want one snapshot construction per configured Program
     scope, so that evidence is reused without global mutable state.
 31. As a Better TypeScript maintainer, I want the complete feature enabled in every Architecture
@@ -129,18 +130,35 @@ complete file-level Advice without choosing a destination or move direction.
 - The only built-in neutral Hard Bond is ownership of the same canonical, non-alias TypeChecker
   symbol. Every symbol with multiple distinct eligible owners emits deterministic pairwise
   candidates. Exact duplicate candidates coalesce.
-- Calls, construction, type use, inheritance, implementation, decorators, initializers, ordinary
-  references, and reference cycles are dependencies, not Hard Bonds.
-- Initial neutral, object-oriented, and functional paradigm Hard Bond catalogs are empty. Each
-  Architecture Explore preset passes an explicit immutable catalog and instantiates exactly one
-  placement Policy. Combined presets use the union of their constituent catalogs.
+- Build one directed Semantic Reference Graph per Program stratum. Nodes are eligible Code Entities.
+  An edge `A → B` records any TypeChecker-resolved reference in `A`'s declaration family to a symbol
+  owned by `B`, including calls, values, types, construction, inheritance, decorators, and
+  initializers. Alias symbols resolve to declaration owners; self and declaration-name references do
+  not contribute.
+- References outside every Code Entity are canonical unowned consumers. Export syntax, entity names,
+  paths, current co-location, and consumers outside the Program do not affect the graph. The Program
+  is the closed-world ownership scope.
+- The neutral catalog contains `semantic-reference-cycle`. Every canonical strongly connected
+  component with more than one Code Entity is atomic, including an ownerless root cycle. The rule
+  emits canonical pairwise candidates between sorted members.
+- The neutral catalog also contains `exclusive-consumer-ownership`. Condense the graph into its
+  canonical SCC DAG. A target component with exactly one distinct incoming consumer component and no
+  unowned consumer belongs to that consumer; emit the canonical resolved witness pair joining them.
+  Zero-consumer roots and components with fan-in from multiple consumers emit no ownership bond.
+- Ownership chains become one Semantic Module through ordinary Hard-Bond closure. Reference graphs
+  are built independently for production and test, so one stratum cannot alter another's SCCs,
+  consumer cardinality, or membership.
+- Object-oriented and functional catalogs remain explicitly empty. Every Architecture Explore preset
+  passes an explicit immutable catalog, and combined presets use the union of their constituent
+  catalogs while instantiating one placement Policy.
+- Every paradigm rule owns a tagged versioned evidence schema. Cycle evidence contains the complete
+  sorted SCC and canonical internal reference witnesses. Ownership evidence contains source and
+  target components, the complete incoming consumer set, absence of unowned consumers, and the
+  selected canonical reference witness. Evidence keys derive only from this portable evidence.
 - A future paradigm rule is admissible only when separation is necessarily defective under that
   paradigm. It may use normalized entities, current-Program TypeChecker facts, and deterministic
-  closed-world premises. It may not use other rules' results, inferred modules, names or paths as
-  predicates, scores, confidence, thresholds, or arbitrary hubs.
-- Every future rule emits independently proven pairs with a stable rule id, canonical endpoints,
-  resolved witnesses, all closed-world premises, and a canonical evidence key. Human explanations
-  are rendered from tagged, schema-validated evidence rather than stored as assertions.
+  closed-world premises. It may not consume another rule's results or inferred modules, or use
+  names, paths, scores, confidence, thresholds, or arbitrary hubs as predicates.
 - Semantic Module membership is the least equivalence relation containing accepted Hard Bonds.
   Eligible entities and canonical candidate tuples are sorted before a disjoint-set traversal. A
   forest bond is retained only when it joins previously distinct components.
@@ -222,7 +240,10 @@ complete file-level Advice without choosing a destination or move direction.
   `missing-symbol` uses an isolated Program outside diagnostic-clean fixtures.
 - Matcher tests cover singleton membership, same-symbol bonds, duplicate coalescing, a redundant
   triangle and canonical forest, production/test suppression, excluded-source absence, Program
-  isolation, and non-bonding dependencies and cycles.
+  isolation, and ordinary non-bonding dependencies.
+- Semantic Reference Graph tests cover exclusive chains, shared fan-in, zero-consumer roots, unowned
+  top-level references, every reference kind, aliases, root and owned SCCs, Program isolation, and
+  independent production/test graphs.
 - Focused contract tests assert exact `SemanticModuleSnapshotV1` JSON: keys, anchors, strata, all
   collections, tagged evidence, exclusions, and canonical nested ordering.
 - Query tests assert complete module and peer results plus self, forward, reverse, cross-module, and
@@ -242,9 +263,10 @@ complete file-level Advice without choosing a destination or move direction.
   declarations within one stratum. Membership and proof rule/evidence structure remain equivalent
   after label remapping; only anchors, keys, paths, induced ordering, and placement mismatches may
   change.
-- Controlled-change tests prove exact deltas: crossing the production/test barrier suppresses the
-  bond and splits membership; changing only Physical Module placement changes only placement
-  projections; adding one-way or cyclic references does not change membership.
+- Controlled-change tests prove exact deltas: crossing the production/test barrier suppresses a
+  same-symbol bond and splits membership; changing only Physical Module placement changes only
+  placement projections; adding a non-exclusive reference removes only its ownership bond; forming
+  or breaking an SCC adds or removes only its cycle bonds.
 - Follow existing prior art from project fixture policy tests, reusable architecture evidence tests,
   Architecture Explore adviser tests, silent report-pipeline tests, workspace test classification
   tests, and self-host benchmark enrollment tests.
@@ -258,18 +280,20 @@ complete file-level Advice without choosing a destination or move direction.
 
 - Choosing filenames, destination paths, or move direction for a Semantic Module.
 - Automatically moving Code Entities or applying refactors.
-- Heuristic grouping from names, comments, paths, co-change history, ownership, runtime traces,
-  scores, confidence, or thresholds.
-- Shipping non-empty paradigm-specific Hard Bond catalogs.
+- Heuristic grouping from names, comments, paths, co-change history, repository ownership metadata,
+  runtime traces, scores, confidence, or thresholds.
+- Shipping non-empty object-oriented or functional Hard Bond catalogs.
+- Semantic simplification, inlining, or reducing the number of Code Entities.
 - Persisting snapshots across runs or adding a global evidence registry.
 - Enabling the Policy in baseline default Wiring.
 
 ## Further Notes
 
-- The resolved wayfinder map and its nine linked decision tickets are the source of truth for
+- The resolved wayfinder map and its ten linked decision tickets are the source of truth for
   detailed rationale.
-- The domain glossary already defines Physical Module, Semantic Module, Split Semantic Module, Mixed
-  Physical Module, Semantic Module Snapshot, Code Entity, Hard Bond, Paradigm Hard Bond Rule,
-  Partition Barrier, and Membership Proof.
+- The domain glossary defines Physical Module, Semantic Module, Split Semantic Module, Mixed
+  Physical Module, Semantic Module Snapshot, Code Entity, Semantic Reference Graph, Hard Bond,
+  Exclusive Consumer Ownership, Semantic Reference Cycle, Paradigm Hard Bond Rule, Partition
+  Barrier, and Membership Proof.
 - The seam is already settled by the resolved seam-placement decision: one deep matcher module plus
   the existing Signal-to-Advice pipeline. No additional public seam is required.

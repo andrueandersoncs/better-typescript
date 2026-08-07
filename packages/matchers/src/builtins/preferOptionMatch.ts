@@ -1,16 +1,11 @@
-import { Array, Function, HashSet, Option, pipe, Tuple, Schema } from "effect"
+import { Array, Function, HashSet, Option, Schema, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import { unwrapTransparentExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { strictEqual } from "../equivalence.js"
 
-const optionGuardKinds = Array.make<["isSome", "isNone"]>("isSome", "isNone")
-
-// OptionGuardKind classifies Option guards because isSome and isNone advice differ.
-export const OptionGuardKind = Schema.Literals(optionGuardKinds)
-
-export type OptionGuardKind = typeof OptionGuardKind.Type
+import { OptionGuardKind } from "./optionGuardKind.js"
 
 // PreferOptionMatchFact pairs the Option guard and b because guidance rewrites to Option.match.
 export const PreferOptionMatchFact = Schema.Struct({

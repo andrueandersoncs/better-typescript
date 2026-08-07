@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { requireResultCardinalityNameConsistency } from "@better-typescript/guidance/policies/requireResultCardinalityNameConsistency"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { requireResultCardinalityNameConsistency } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("require-result-cardinality-name-consistency reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(requireResultCardinalityNameConsistency))

@@ -1,8 +1,9 @@
-import { Array, Function, Option, pipe, Struct, Schema } from "effect"
+import { Array, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
-import { fileMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { strictEqual } from "../equivalence.js"
+import { fileMatcher } from "../matcher/fileMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isImportedName } from "./isImportedName.js"
 
 // NoReexportsFact is empty payload because guidance and matchers share identity.
 export const NoReexportsFact = Schema.Struct({})
@@ -11,72 +12,6 @@ export interface NoReexportsFact extends Schema.Schema.Type<typeof NoReexportsFa
 
 // emptyNoReexportsFact is the shared empty fact because guidance and matchers share identity.
 export const emptyNoReexportsFact = NoReexportsFact.make({})
-
-const namedBindingsDeclareName = (bindings: ts.NamedImportBindings, name: string) => {
-  const isNameText = strictEqual(name)
-
-  const namespaceMatches = pipe(
-    bindings,
-    Option.liftPredicate(ts.isNamespaceImport),
-    Option.map(Function.flow(Struct.get("name"), Struct.get("text"))),
-    Option.exists(isNameText)
-  )
-
-  const elementHasName = (element: ts.ImportSpecifier) => strictEqual(name)(element.name.text)
-
-  const namedImportsDeclareName = (namedImports: ts.NamedImports) =>
-    Array.some(namedImports.elements, elementHasName)
-
-  const namedImportMatches = pipe(
-    bindings,
-    Option.liftPredicate(ts.isNamedImports),
-    Option.exists(namedImportsDeclareName)
-  )
-
-  const importMatches = Array.make(namespaceMatches, namedImportMatches)
-
-  return Array.some(importMatches, Boolean)
-}
-
-const importClause = Function.flow(
-  Struct.get<ts.ImportDeclaration, "importClause">("importClause"),
-  Option.fromNullishOr
-)
-
-const importDeclaresName = (statement: ts.Statement, name: string) => {
-  const isNameText = strictEqual(name)
-
-  const bindingsDeclareName = (bindings: ts.NamedImportBindings) =>
-    namedBindingsDeclareName(bindings, name)
-
-  return pipe(
-    statement,
-    Option.liftPredicate(ts.isImportDeclaration),
-    Option.flatMap(importClause),
-    Option.exists((clause) => {
-      const defaultImportMatches = pipe(
-        clause.name,
-        Option.fromNullishOr,
-        Option.map(Struct.get("text")),
-        Option.exists(isNameText)
-      )
-
-      const namedImportMatches = pipe(
-        clause.namedBindings,
-        Option.fromNullishOr,
-        Option.exists(bindingsDeclareName)
-      )
-
-      return defaultImportMatches || namedImportMatches
-    })
-  )
-}
-
-const isImportedName = (sourceFile: ts.SourceFile, name: string) => {
-  const statementDeclaresName = (statement: ts.Statement) => importDeclaresName(statement, name)
-
-  return Array.some(sourceFile.statements, statementDeclaresName)
-}
 
 const localNameOf = (specifier: ts.ExportSpecifier) =>
   (specifier.propertyName ?? specifier.name).text

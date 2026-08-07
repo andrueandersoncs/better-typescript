@@ -1,7 +1,7 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 
 // NoTryCatchFact is empty payload because guidance and matchers share identity.
 export const NoTryCatchFact = Schema.Struct({})

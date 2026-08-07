@@ -27,8 +27,20 @@ It is the reusable interface for membership and Membership Proof queries.
 declarations. Nested declarations and expressions are evidence about their owning Code Entity;
 imports and exports describe Physical Module edges. _Avoid_: node, statement
 
+**Semantic Reference Graph**: One Program- and stratum-scoped directed graph whose Code Entity edges
+are TypeChecker-resolved references of any kind. It is placement-independent evidence: export
+syntax, names, paths, and consumers outside the Program do not affect it.
+
 **Hard Bond**: An explainable semantic relation sufficient by itself to require two eligible Code
-Entities to share a Semantic Module. Dependencies, including cycles, are not Hard Bonds.
+Entities to share a Semantic Module. A dependency alone is not a Hard Bond; a named law must prove
+atomicity or ownership.
+
+**Exclusive Consumer Ownership**: The neutral law that a Semantic Reference Graph component with
+exactly one consumer component and no unowned consumer belongs with that consumer. Multiple
+consumers mean shared dependency, not ownership.
+
+**Semantic Reference Cycle**: A strongly connected Semantic Reference Graph component with more than
+one Code Entity. The neutral cycle law treats it as atomic, including an ownerless root cycle.
 
 **Paradigm Hard Bond Rule**: A named coding-model-specific law that emits Hard Bonds from
 TypeChecker-resolved Program facts. Every emitted pair must be semantically necessary under that

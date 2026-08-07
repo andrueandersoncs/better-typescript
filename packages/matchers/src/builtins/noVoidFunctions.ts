@@ -1,14 +1,21 @@
-import { Array, Option, pipe, Schema } from "effect"
+import { Array, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  namedDetectionTarget,
-  isFunctionDefinition,
-  isFunctionInitializer,
-  type FunctionDefinition
-} from "../support/tsNode.js"
-import { isVoidType, permitsVoid } from "../support/tsType.js"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
+import { isFunctionDefinition } from "../support/isFunctionDefinition.js"
+import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
+import { namedDetectionTarget } from "../support/namedDetectionTarget.js"
+import { isVoidType } from "../support/isVoidType.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+
+// Contextual any or unknown permits void because consumers accept void-returning implementations.
+const voidCompatibleFlags = ts.TypeFlags.Void | ts.TypeFlags.Any | ts.TypeFlags.Unknown
+
+const isVoidCompatibleType = (type: ts.Type) => (type.flags & voidCompatibleFlags) !== 0
+
+const permitsVoid = (type: ts.Type) =>
+  type.isUnion() ? Array.some(type.types, isVoidCompatibleType) : isVoidCompatibleType(type)
 
 // NoVoidFunctionsFact is empty payload because guidance and matchers share identity.
 export const NoVoidFunctionsFact = Schema.Struct({})

@@ -1,80 +1,24 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { toPolicies } from "@better-typescript/core/engine/policy"
-import { makeContext } from "@better-typescript/matchers/sources"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import {
-  exportReferenceIndex,
-  moduleEdges
-} from "@better-typescript/matchers/builtins/architectureExplore/architectureEvidence"
-import { importUsage } from "@better-typescript/guidance/policies/importUsage"
-import { moduleGraph } from "@better-typescript/guidance/policies/moduleGraph"
-import { passThroughWrappers } from "@better-typescript/guidance/policies/passThroughWrappers"
-import { testOnlyExports } from "@better-typescript/guidance/policies/testOnlyExports"
-import { compositionForwarders } from "@better-typescript/guidance/policies/compositionForwarders"
-import {
-  ImportUsageData,
-  ModuleGraphData,
-  PassThroughWrapperData,
-  TestOnlyExportData
-} from "@better-typescript/matchers/builtins/architectureExploreData"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const evidenceFixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")
-const importUsageFixturePath = path.join(
-  testDirectory,
-  "fixtures",
-  "architecture-evidence-import-usage"
-)
-
-const includeEverySourceFile = (): boolean => true
-
-const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(loadProject(evidenceFixturePath))
-  const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
-  )
-
-  return projectDetections.flat()
-}
-
-const runPoliciesOnFixture = async (
-  fixturePath: string,
-  policies: ReadonlyArray<Policy>
-): Promise<ReadonlyArray<ReadonlyArray<Detection>>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const project = workspace.projects[0]
-
-  assert.ok(project !== undefined)
-
-  const context = makeContext(project.rootPath)(project.program)
-  return toPolicies(policies)(includeEverySourceFile)(context)
-}
-
-const dataAs = <A>(
-  guard: (input: unknown) => input is A,
-  detection: Detection
-): Option.Option<A> => {
-  const data = detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
-
-const detectionSnapshot = (detection: Detection) => ({
-  path: detection.location.path,
-  line: detection.location.line,
-  column: detection.location.column,
-  message: detection.message,
-  hint: detection.hint,
-  data: detection.data
-})
+import { architectureEvidence } from "@better-typescript/matchers/builtins/architectureExplore/architectureEvidence"
+import { importUsage } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { moduleGraph } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { passThroughWrappers } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { testOnlyExports } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { compositionForwarders } from "@better-typescript/guidance/preset/compositionForwarders"
+import { ImportUsageData } from "@better-typescript/matchers/builtins/importUsage"
+import { ModuleGraphData } from "@better-typescript/matchers/builtins/moduleGraph"
+import { PassThroughWrapperData } from "@better-typescript/matchers/builtins/passThroughWrappers"
+import { TestOnlyExportData } from "@better-typescript/matchers/builtins/testOnlyExports"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { evidenceFixturePath } from "./architectureEvidenceReuseEvidenceFixturePath.js"
+import { importUsageFixturePath } from "./architectureEvidenceReuseImportUsageFixturePath.js"
+import { runPoliciesOnFixture } from "./architectureEvidenceReusePoliciesOnFixture.js"
+import { runFixture } from "./architectureEvidenceReuseRunFixture.js"
+import { dataAs } from "./architectureEvidenceReuseDataAs.js"
+import { detectionSnapshot } from "./architectureEvidenceReuseDetectionSnapshot.js"
 
 test("architecture evidence reuses facets within one Program and rebuilds for a new Program", async () => {
   const workspace = await Effect.runPromise(loadProject(evidenceFixturePath))
@@ -83,10 +27,10 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
 
   const firstContext = makeContext(firstProject.rootPath)(firstProject.program)
 
-  const firstExportIndex = exportReferenceIndex(firstContext)
-  const secondExportIndex = exportReferenceIndex(firstContext)
-  const firstEdges = moduleEdges(firstContext)
-  const secondEdges = moduleEdges(firstContext)
+  const firstExportIndex = architectureEvidence(firstContext).exportReferenceIndex
+  const secondExportIndex = architectureEvidence(firstContext).exportReferenceIndex
+  const firstEdges = architectureEvidence(firstContext).moduleEdges
+  const secondEdges = architectureEvidence(firstContext).moduleEdges
 
   assert.equal(firstExportIndex, secondExportIndex)
   assert.equal(firstEdges, secondEdges)
@@ -96,8 +40,8 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
   assert.ok(secondProject !== undefined)
   const secondContext = makeContext(secondProject.rootPath)(secondProject.program)
 
-  const rebuiltExportIndex = exportReferenceIndex(secondContext)
-  const rebuiltEdges = moduleEdges(secondContext)
+  const rebuiltExportIndex = architectureEvidence(secondContext).exportReferenceIndex
+  const rebuiltEdges = architectureEvidence(secondContext).moduleEdges
 
   assert.notEqual(rebuiltExportIndex, firstExportIndex)
   assert.notEqual(rebuiltEdges, firstEdges)

@@ -1,15 +1,23 @@
-import { Array, Function, HashSet, Option, Struct, pipe, flow } from "effect"
+import { Array, Function, HashSet, Option, Schema, Struct, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { ExternalDependencyConstructionData } from "./architectureExploreData.js"
-import { unwrapExpression } from "../support/tsNode.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
 import { isCompositionRoot } from "../support/compositionRoot.js"
-import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { importDeclarationAncestor } from "./importDeclarationAncestor.js"
+
+// ExternalDependencyConstructionData pairs name and path because advice needs one fact.
+export const ExternalDependencyConstructionData = Schema.Struct({
+  collaboratorName: Schema.String,
+  importedPath: Schema.String
+})
+
+export interface ExternalDependencyConstructionData extends Schema.Schema.Type<
+  typeof ExternalDependencyConstructionData
+> {}
 
 const collaboratorSuffixes = Array.make(
   "Client",
@@ -56,11 +64,6 @@ const constructionRootIdentifier = (expression: ts.Expression): Option.Option<ts
     Option.flatMap(Function.flow(Struct.get("expression"), constructionRootIdentifier))
   )
 }
-
-export const importDeclarationAncestor = (node: ts.Node): Option.Option<ts.ImportDeclaration> =>
-  ts.isImportDeclaration(node)
-    ? Option.some(node)
-    : pipe(Option.fromNullishOr(node.parent), Option.flatMap(importDeclarationAncestor))
 
 const hasImportDeclarationAncestor = Function.compose(importDeclarationAncestor, Option.isSome)
 

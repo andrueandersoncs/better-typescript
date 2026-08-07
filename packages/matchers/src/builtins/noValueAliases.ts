@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 
 // NoValueAliasesFact is empty because the alias declaration identifies the finding.
 export const NoValueAliasesFact = Schema.Struct({})

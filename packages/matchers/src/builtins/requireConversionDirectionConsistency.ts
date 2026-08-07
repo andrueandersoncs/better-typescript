@@ -1,23 +1,14 @@
-import { Array, Function, HashSet, Match, Option, pipe, Tuple, Schema } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  isNonBooleanResult,
-  wordsMatch,
-  type CallableSemantics
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { Array, Function, HashSet, Match, Option, Schema, Tuple, pipe } from "effect"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import { wordsMatch } from "../support/hasEsPluralSuffix.js"
+import { isNonBooleanResult } from "../support/isNonBooleanResult.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
-import type { MatchContext } from "../matcher/data.js"
-
-const conversionAxes = Array.make<["result", "source"]>("result", "source")
-
-// ConversionAxis classifies conversion direction because axis advice differs.
-export const ConversionAxis = Schema.Literals(conversionAxes)
-
-export type ConversionAxis = typeof ConversionAxis.Type
+import type { MatchContext } from "../matcher/matchContext.js"
+import { ConversionAxis } from "./conversionAxis.js"
 
 // RequireConversionDirectionConsistencyFact pairs direction words because naming advice needs both.
 export const RequireConversionDirectionConsistencyFact = Schema.Struct({
@@ -203,5 +194,4 @@ const matches = (context: MatchContext) => {
   return matchFunctionDefinition
 }
 
-export const requireConversionDirectionConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requireConversionDirectionConsistencyMatcher = functionDefinitionMatcher(matches)

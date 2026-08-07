@@ -1,19 +1,20 @@
 import { Array, Function, Match, Option, pipe } from "effect"
 import * as ts from "typescript"
-import type { MatchContext } from "@better-typescript/matchers/matcher/data"
-import { foldAst } from "@better-typescript/matchers/sources"
-import type { ArchitectureRole } from "../../support/architectureRole.js"
-import { propertyNameText, unwrapTransparentExpression } from "../../support/tsNode.js"
-import { isTestRole } from "./architectureRoles.js"
-import { emptyAdviceFindings, makeAdviceFinding } from "./makeFindings.js"
-import type { EffectQualityAdviceFinding } from "./findings.js"
-import {
-  cacheMakeNames,
-  callIsEffectApi,
-  isProductionRole,
-  newMapBindingName
-} from "./evidenceSupport.js"
+import type { MatchContext } from "../../matcher/matchContext.js"
+import { foldAst } from "../../sources/foldAst.js"
+import type { ArchitectureRole } from "../../support/architectureRoleType.js"
+import { propertyNameText } from "../../support/propertyNameText.js"
+import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
+import { isTestRole } from "./isTestRole.js"
+import { emptyAdviceFindings } from "./emptyAdviceFindings.js"
+import { makeAdviceFinding } from "./makeAdviceFinding.js"
+import type { EffectQualityAdviceFinding } from "./effectQualityAdviceFinding.js"
+import { callIsEffectApi } from "./callIsEffectApi.js"
+import { isProductionRole } from "./productionRoles.js"
+import { newMapBindingName } from "./newMapBindingName.js"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
+
+const cacheMakeNames = Array.make("make", "makeWith")
 
 const cacheNamePattern = /cache/i
 

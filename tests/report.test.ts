@@ -1,328 +1,81 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "bun:test"
-import { fileURLToPath } from "node:url"
 import { Array, Effect, pipe } from "effect"
 import * as ts from "typescript"
-import { Detection, Location } from "@better-typescript/core/engine/location/data"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
-import type { Policy, WorkspacePolicy } from "@better-typescript/core/engine/policy/data"
-import type { Wiring, WiringConfig, WiringPolicy } from "@better-typescript/core/engine/wiring/data"
-import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
-import {
-  makePolicy,
-  makeSilentPolicy,
-  makeWorkspacePolicy,
-  makeFindings
-} from "@better-typescript/core/engine/policy"
-import { signalOf } from "@better-typescript/core/engine/signal"
+import { Detection } from "@better-typescript/core/engine/location/detectionData"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { type Advice } from "@better-typescript/core/engine/derive/advice"
+import { type Policy } from "@better-typescript/core/engine/policy/policyClass"
+import { type WorkspacePolicy } from "@better-typescript/core/engine/policy/workspacePolicyClass"
+import type { Wiring } from "@better-typescript/core/engine/wiring/wiringClass"
+import type { WiringConfig } from "@better-typescript/core/engine/wiring/wiringConfig"
+import type { WiringPolicy } from "@better-typescript/core/engine/wiring/wiringPolicy"
+import { defineConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
+import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"
+import { makeSilentPolicy } from "@better-typescript/core/engine/policy/makeSilentPolicy"
+import { makeWorkspacePolicy } from "@better-typescript/core/engine/policy/makeWorkspacePolicy"
+import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
+import { signalOf } from "@better-typescript/core/engine/signal/signal"
 import {
   filterFallbackAdviceForUncoveredFiles,
   withFallbackAdvice
-} from "@better-typescript/core/engine/report"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import {
-  DirectoryRefactorExamples,
-  ExampleSnippet,
-  InlineRefactorExamples
-} from "@better-typescript/core/engine/example/data"
-import { makeRefactorExample } from "./exampleHelpers.js"
-import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
-import { noValueAliases } from "@better-typescript/guidance/policies/noValueAliases"
-import {
-  astNodesIn,
-  makeContext,
-  foldAst,
-  isProjectSourceFile
-} from "@better-typescript/matchers/sources"
-import { reportEvents } from "@better-typescript/core/engine/watch"
+} from "@better-typescript/core/engine/fileLevelAdvice"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
+import { DirectoryRefactorExamples } from "@better-typescript/core/engine/example/directoryRefactorExamples"
+import { ExampleSnippet } from "@better-typescript/core/engine/example/exampleSnippet"
+import { InlineRefactorExamples } from "@better-typescript/core/engine/example/inlineRefactorExamples"
+import { defaultConfig, noValueAliases } from "@better-typescript/guidance/preset/defaultWiring"
+import { astNodesIn } from "@better-typescript/matchers/sources/astNodesIn"
+import { foldAst } from "@better-typescript/matchers/sources/foldAst"
+import { isProjectSourceFile } from "@better-typescript/matchers/sources/isProjectSourceFile"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
+import { reportEvents } from "@better-typescript/core/engine/reportPipeline"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import {
-  makeDirectoryMatcher,
-  fileMatcher,
-  makeMatcherFromSubscriptions,
-  nodeMatcher
-} from "@better-typescript/matchers/matcher"
-import {
-  makeFileMatch,
-  makeNodeMatch,
-  Match,
-  PositionTarget
-} from "@better-typescript/matchers/matcher/data"
-import type {
-  LoadedProject,
-  LoadedWorkspace
-} from "@better-typescript/core/project/loadProject/data"
-
-const probeExamples = InlineRefactorExamples.make({
-  examples: [
-    makeRefactorExample(
-      ExampleSnippet.make({ filePath: "src/cases.ts", code: `throw new Error("boom")` }),
-      ExampleSnippet.make({ filePath: "src/cases.ts", code: `yield* new BoomError()` })
-    )
-  ]
-})
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = (name: string): string => path.join(testDirectory, "fixtures", name)
-const noThrowFixturePath = fixturePath("no-throw")
-const probeMessage = "throw statement"
-const probeHint = "yield typed errors instead of throwing"
-const unit = null
-
-const loadFixtureWorkspace = (name: string): Promise<LoadedWorkspace> =>
-  Effect.runPromise(loadProject(fixturePath(name)))
-
-const loadFixtureProject = async (name: string): Promise<LoadedProject> => {
-  const workspace = await loadFixtureWorkspace(name)
-  const [project] = workspace.projects
-
-  assert.ok(project, `expected ${name} fixture to load one TypeScript project`)
-
-  return project
-}
-
-const collectEffect = <A, E>(
-  effect: Effect.Effect<ReadonlyArray<A>, E>
-): Promise<ReadonlyArray<A>> => Effect.runPromise(effect)
-
-const workspaceUpdateOf = (workspace: LoadedWorkspace): WorkspaceUpdate =>
-  new WorkspaceUpdate({
-    rootPath: workspace.rootPath,
-    contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
-  })
-
-const reportTexts = (config: WiringConfig) => (workspace: LoadedWorkspace) =>
-  pipe(
-    reportEvents(config)(workspaceUpdateOf(workspace)),
-    Effect.map((events) => events.flatMap((event) => (event._tag === "signal" ? [event.text] : [])))
-  )
-
-const relativeFileName = (project: LoadedProject, sourceFile: ts.SourceFile): string =>
-  path.relative(project.rootPath, sourceFile.fileName).replaceAll(path.sep, "/")
-
-const nodeSignature =
-  (project: LoadedProject) =>
-  ({
-    sourceFile,
-    node
-  }: {
-    readonly sourceFile: ts.SourceFile
-    readonly node: ts.Node
-  }): string => {
-    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-
-    return [
-      relativeFileName(project, sourceFile),
-      ts.SyntaxKind[node.kind],
-      position.line + 1,
-      position.character + 1
-    ].join(":")
-  }
-
-const collectAstSignatures = (project: LoadedProject): ReadonlyArray<string> => {
-  const sourceFiles = pipe(project.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-  const signature = nodeSignature(project)
-
-  return Array.flatMap(sourceFiles, (sourceFile) =>
-    pipe(
-      Array.fromIterable(astNodesIn(sourceFile)),
-      Array.map((node) => signature({ sourceFile, node }))
-    )
-  )
-}
-
-const throwProbeMatcher = nodeMatcher([ts.SyntaxKind.ThrowStatement])(ts.isThrowStatement)(
-  () => (node) => [makeNodeMatch(node, unit)]
-)
-
-const throwProbePolicy: Policy = makePolicy({
-  name: "probe throw statements",
-  matcher: throwProbeMatcher,
-  guidance: () => (match) => makeFindings(match.target, probeMessage, probeHint, unit),
-  examples: probeExamples
-})
-
-const syntheticSourceFile = (context: { readonly projectRoot: string }, relativePath: string) =>
-  ts.createSourceFile(
-    path.join(context.projectRoot, relativePath),
-    "",
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS
-  )
-
-const silentProbeNamedPolicy: Policy = makeSilentPolicy({
-  name: "silent-only probe",
-  matcher: fileMatcher((context) => {
-    const projectFiles = context.program
-      .getSourceFiles()
-      .filter((file) => !file.isDeclarationFile && !file.fileName.includes("node_modules"))
-    return projectFiles[0] === context.sourceFile ? [makeFileMatch(context.sourceFile, unit)] : []
-  }),
-  guidance: (context) => () =>
-    makeFindings(
-      new PositionTarget({
-        sourceFile: syntheticSourceFile(context, "src/silent-observation.ts"),
-        line: 1,
-        column: 1
-      }),
-      "silent observation",
-      "silent observations only feed advice",
-      unit
-    ),
-  examples: emptyRefactorExampleSource
-})
-
-const detectionRecord = (element: Detection) => ({
-  path: element.location.path,
-  line: element.location.line,
-  column: element.location.column,
-  message: element.message,
-  hint: element.hint
-})
-
-const expectedThrowProbeElements = [
-  {
-    path: "src/cases.ts",
-    line: 4,
-    column: 3,
-    message: probeMessage,
-    hint: probeHint
-  },
-  {
-    path: "src/cases.ts",
-    line: 9,
-    column: 5,
-    message: probeMessage,
-    hint: probeHint
-  },
-  {
-    path: "src/cases.ts",
-    line: 19,
-    column: 5,
-    message: probeMessage,
-    hint: probeHint
-  },
-  {
-    path: "src/cases.ts",
-    line: 26,
-    column: 3,
-    message: probeMessage,
-    hint: probeHint
-  }
-]
-
-const location = (filePath: string, line: number, column: number): Location =>
-  Location.make({ path: filePath, line, column })
-
-const advice = (
-  level: Advice["level"],
-  filePath: string,
-  title: string,
-  remediation = `fix ${title}`
-): Advice => ({
-  location: location(filePath, 1, 1),
-  level,
-  title,
-  remediation,
-  evidence: [{ measure: `${title} evidence`, count: 1 }],
-  examples: probeExamples
-})
-
-const firstLines = (blocks: ReadonlyArray<string>): ReadonlyArray<string> =>
-  blocks.map((block) => block.split("\n")[0])
-
-const noDerive: Wiring["derive"] = () => []
-
-const fixedDetectionPolicy = (
-  name: string,
-  elements: ReadonlyArray<Detection>,
-  examples = probeExamples,
-  reported = true
-): Policy => {
-  const matcher = fileMatcher((context) => {
-    if (elements.length === 0) return []
-    const projectFiles = context.program
-      .getSourceFiles()
-      .filter((file) => !file.isDeclarationFile && !file.fileName.includes("node_modules"))
-    return projectFiles[0] === context.sourceFile
-      ? Array.of(makeFileMatch(context.sourceFile, elements))
-      : []
-  })
-  const guidance =
-    (context: { readonly projectRoot: string }) =>
-    (match: { readonly fact: ReadonlyArray<Detection> }) =>
-      match.fact.flatMap((element) =>
-        makeFindings(
-          new PositionTarget({
-            sourceFile: syntheticSourceFile(context, element.location.path),
-            line: element.location.line ?? 1,
-            column: element.location.column ?? 1
-          }),
-          element.message,
-          element.hint,
-          element.data
-        )
-      )
-  return reported
-    ? makePolicy({ name, matcher, guidance: guidance as any, examples })
-    : makeSilentPolicy({ name, matcher, guidance: guidance as any, examples })
-}
-
-const fileVisitPolicy = (name: string, message: string, hint: string): Policy =>
-  makePolicy({
-    name,
-    matcher: fileMatcher((context) => [makeFileMatch(context.sourceFile, unit)]),
-    guidance: () => (match) => makeFindings(match.target, message, hint, unit),
-    examples: probeExamples
-  })
-
-const testWiring = (
-  policies: ReadonlyArray<WiringPolicy>,
-  derive: Wiring["derive"] = noDerive
-): Wiring => makeWiring({ policies, derive })
-
-const configFor = (wiring: Wiring, files: WiringConfig[number]["files"] = ["**/*"]): WiringConfig =>
-  defineConfig([{ files, wiring }])
-
-const reportFromTestWiring = (wiring: Wiring) => reportTexts(configFor(wiring))
-
-const emptyMatcher = makeMatcherFromSubscriptions(() => [])
-const emptyGuidance = () => () => []
-
-const namedNoOpPolicy = (name: string): Policy =>
-  makePolicy({
-    name,
-    matcher: emptyMatcher,
-    guidance: emptyGuidance,
-    examples: probeExamples
-  })
-
-const silentNoOpPolicy = (name: string): Policy =>
-  makeSilentPolicy({
-    name,
-    matcher: emptyMatcher,
-    guidance: emptyGuidance,
-    examples: emptyRefactorExampleSource
-  })
-
-const thrownMessage = (run: () => unknown): string => {
-  try {
-    run()
-  } catch (error) {
-    assert.ok(error instanceof Error, "expected an Error to be thrown")
-
-    return error.message
-  }
-
-  assert.fail("expected an Error to be thrown")
-}
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
+import { Match } from "@better-typescript/matchers/matcher/match"
+import { PositionTarget } from "@better-typescript/matchers/matcher/positionTarget"
+import { makeNodeMatch } from "@better-typescript/matchers/matcher/makeNodeMatch"
+import { makeDirectoryMatcher } from "@better-typescript/matchers/matcher/makeDirectoryMatcher"
+import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher/makeMatcherFromSubscriptions"
+import { nodeMatcher } from "@better-typescript/matchers/matcher/nodeMatcher"
+import { makeFileMatch } from "@better-typescript/matchers/builtins/exportSurface"
+import type { LoadedProject } from "@better-typescript/core/project/loadProject/loadedProject"
+import type { LoadedWorkspace } from "@better-typescript/core/project/loadProject"
+import { advice } from "./reportAdvice.js"
+import { collectAstSignatures } from "./reportCollectAstSignatures.js"
+import { configFor } from "./reportConfigFor.js"
+import { detectionRecord } from "./reportDetectionRecord.js"
+import { emptyGuidance } from "./reportEmptyGuidance.js"
+import { emptyMatcher } from "./reportEmptyMatcher.js"
+import { expectedThrowProbeElements } from "./reportExpectedThrowProbeElements.js"
+import { fileVisitPolicy } from "./reportFileVisitPolicy.js"
+import { firstLines } from "./reportFirstLines.js"
+import { fixedDetectionPolicy } from "./reportFixedDetectionPolicy.js"
+import { loadFixtureProject } from "./reportLoadFixtureProject.js"
+import { loadFixtureWorkspace } from "./reportLoadFixtureWorkspace.js"
+import { namedNoOpPolicy } from "./reportNamedNoOpPolicy.js"
+import { noThrowFixturePath } from "./reportNoThrowFixturePath.js"
+import { probeExamples } from "./reportProbeExamples.js"
+import { probeHint } from "./reportProbeHint.js"
+import { probeMessage } from "./reportProbeMessage.js"
+import { reportFromTestWiring } from "./reportFromTestWiring.js"
+import { silentNoOpPolicy } from "./reportSilentNoOpPolicy.js"
+import { silentProbeNamedPolicy } from "./reportSilentProbeNamedPolicy.js"
+import { fixturePath } from "./reportTestFixturePath.js"
+import { testWiring } from "./reportTestWiring.js"
+import { reportTexts } from "./reportTexts.js"
+import { thrownMessage } from "./reportThrownMessage.js"
+import { throwProbePolicy } from "./reportThrowProbePolicy.js"
+import { unit } from "./reportUnit.js"
 
 test("report preserves the no-value-aliases public identity", async () => {
   const workspace = await loadFixtureWorkspace("no-value-aliases")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([noValueAliases]))(workspace))
+  const blocks = await Effect.runPromise(
+    reportFromTestWiring(testWiring([noValueAliases]))(workspace)
+  )
   const block = blocks[0]
 
   assert.equal(blocks.length, 1)
@@ -402,7 +155,7 @@ test("glob config runs every wiring whose file patterns match", async () => {
     }
   ])
   const workspace = await loadFixtureWorkspace("glob-wirings")
-  const blocks = await collectEffect(reportTexts(config)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(config)(workspace))
 
   assert.deepEqual(firstLines(blocks), ["alpha files", "beta file", "all package files"])
   assert.deepEqual(
@@ -426,7 +179,7 @@ test("glob config excludes negated patterns from a positive scope", async () => 
     }
   ])
   const workspace = await loadFixtureWorkspace("glob-wirings")
-  const blocks = await collectEffect(reportTexts(config)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(config)(workspace))
 
   assert.deepEqual(
     blocks.map((block) => block.split("\n").filter((line) => line.endsWith(":1:1"))),
@@ -464,7 +217,7 @@ test("each glob wiring derives from only its matching files", async () => {
     { files: ["packages/beta/**/*.ts"], wiring: betaWiring }
   ])
   const workspace = await loadFixtureWorkspace("glob-wirings")
-  const blocks = await collectEffect(reportTexts(config)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(config)(workspace))
 
   assert.deepEqual(firstLines(blocks), [
     "packages/alpha [directory] — alpha detections 1",
@@ -500,7 +253,7 @@ test("workspace directory policies use scoped canonical paths and deduplicate pr
     ...workspace,
     projects: [...workspace.projects, ...workspace.projects]
   }
-  const blocks = await collectEffect(reportTexts(config)(duplicatedWorkspace))
+  const blocks = await Effect.runPromise(reportTexts(config)(duplicatedWorkspace))
 
   assert.equal(workspace.projects.length, 2)
   assert.equal(blocks.length, 1)
@@ -519,7 +272,7 @@ test("reportEvents analyzes referenced projects sequentially", async () => {
     rootPath: workspace.rootPath,
     contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
   })
-  const blocks = await collectEffect(
+  const blocks = await Effect.runPromise(
     pipe(
       reportEvents(configFor(testWiring([policy])))(update),
       Effect.map((events) =>
@@ -549,7 +302,7 @@ test("an unmatched glob wiring invokes neither policies nor derive", async () =>
   })
   const config = configFor(wiring, ["missing/**/*.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportTexts(config)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(config)(workspace))
 
   assert.deepEqual(blocks, [])
 })
@@ -565,21 +318,23 @@ test("reportEvents does not load examples for a policy without detections", asyn
     examples: missingExamples
   })
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([noOutputPolicy]))(workspace))
+  const blocks = await Effect.runPromise(
+    reportFromTestWiring(testWiring([noOutputPolicy]))(workspace)
+  )
 
   assert.deepEqual(blocks, [])
 })
 
 test("glob wiring drops detections outside its matched files", async () => {
   const outsideDetection = Detection.make({
-    location: location("src/allowed.ts", 1, 1),
+    location: Location.make({ path: "src/allowed.ts", line: 1, column: 1 }),
     message: "outside configured glob",
     hint: "drop this detection"
   })
   const policy = fixedDetectionPolicy("outside detection", [outsideDetection])
   const config = configFor(testWiring([policy]), ["src/cases.ts"])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportTexts(config)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(config)(workspace))
 
   assert.deepEqual(blocks, [])
 })
@@ -594,7 +349,7 @@ test("reportEvents collapses duplicate workspace detections by policy and locati
     ...workspace,
     projects: [project, project]
   }
-  const blocks = await collectEffect(
+  const blocks = await Effect.runPromise(
     reportFromTestWiring(testWiring([throwProbePolicy]))(duplicatedWorkspace)
   )
 
@@ -634,7 +389,7 @@ test("reportEvents preserves two distinct detections emitted at the same AST loc
     examples: probeExamples
   })
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(
+  const blocks = await Effect.runPromise(
     reportFromTestWiring(testWiring([doubleDetectionPolicy]))(workspace)
   )
 
@@ -655,7 +410,7 @@ test("reportEvents preserves two distinct detections emitted at the same AST loc
 
 test("reportEvents renders advice remediation examples before evidence", async () => {
   const fixedAdvice = {
-    location: location("src/cases.ts", 4, 3),
+    location: Location.make({ path: "src/cases.ts", line: 4, column: 3 }),
     level: "file" as const,
     title: "high signal density",
     remediation: "split the module before changing individual checks",
@@ -666,7 +421,7 @@ test("reportEvents renders advice remediation examples before evidence", async (
     examples: probeExamples
   }
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(
+  const blocks = await Effect.runPromise(
     reportFromTestWiring(testWiring([], () => [fixedAdvice]))(workspace)
   )
 
@@ -687,18 +442,20 @@ test("reportEvents renders advice remediation examples before evidence", async (
 test("reportEvents groups locations under the policy prose name, message, and hint", async () => {
   const groupedPolicy = fixedDetectionPolicy("probe throw statements", [
     Detection.make({
-      location: location("src/cases.ts", 4, 3),
+      location: Location.make({ path: "src/cases.ts", line: 4, column: 3 }),
       message: probeMessage,
       hint: probeHint
     }),
     Detection.make({
-      location: location("src/cases.ts", 9, 5),
+      location: Location.make({ path: "src/cases.ts", line: 9, column: 5 }),
       message: probeMessage,
       hint: probeHint
     })
   ])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([groupedPolicy]))(workspace))
+  const blocks = await Effect.runPromise(
+    reportFromTestWiring(testWiring([groupedPolicy]))(workspace)
+  )
 
   assert.deepEqual(blocks, [
     [
@@ -718,28 +475,28 @@ test("reportEvents groups locations under the policy prose name, message, and hi
 test("reportEvents splits one policy into distinct message and hint groups", async () => {
   const splitPolicy = fixedDetectionPolicy("probe throw statements", [
     Detection.make({
-      location: location("src/cases.ts", 4, 3),
+      location: Location.make({ path: "src/cases.ts", line: 4, column: 3 }),
       message: "throw statement",
       hint: "yield typed errors instead of throwing"
     }),
     Detection.make({
-      location: location("src/cases.ts", 9, 5),
+      location: Location.make({ path: "src/cases.ts", line: 9, column: 5 }),
       message: "throw statement",
       hint: "yield typed errors instead of throwing"
     }),
     Detection.make({
-      location: location("src/cases.ts", 19, 5),
+      location: Location.make({ path: "src/cases.ts", line: 19, column: 5 }),
       message: "throw expression",
       hint: "yield typed errors instead of throwing"
     }),
     Detection.make({
-      location: location("src/cases.ts", 26, 3),
+      location: Location.make({ path: "src/cases.ts", line: 26, column: 3 }),
       message: "throw statement",
       hint: "return error values instead"
     })
   ])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(testWiring([splitPolicy]))(workspace))
+  const blocks = await Effect.runPromise(reportFromTestWiring(testWiring([splitPolicy]))(workspace))
 
   assert.deepEqual(blocks, [
     [
@@ -785,13 +542,13 @@ test("reportEvents orders advice before policy blocks and sorts advice by level 
   ]
   const groupedPolicy = fixedDetectionPolicy("probe throw statements", [
     Detection.make({
-      location: location("src/cases.ts", 4, 3),
+      location: Location.make({ path: "src/cases.ts", line: 4, column: 3 }),
       message: probeMessage,
       hint: probeHint
     })
   ])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(
+  const blocks = await Effect.runPromise(
     reportFromTestWiring(testWiring([groupedPolicy], () => fixedAdvice))(workspace)
   )
 
@@ -821,13 +578,13 @@ test("reportEvents orders advice before policy blocks and sorts advice by level 
 test("reportEvents renders multiple advice items in report order", async () => {
   const multiAdvicePolicy = fixedDetectionPolicy("probe throw statements", [
     Detection.make({
-      location: location("src/cases.ts", 4, 3),
+      location: Location.make({ path: "src/cases.ts", line: 4, column: 3 }),
       message: probeMessage,
       hint: probeHint
     })
   ])
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(
+  const blocks = await Effect.runPromise(
     reportFromTestWiring(
       testWiring([multiAdvicePolicy], () => [
         advice("file", "src/z.ts", "file z advice"),
@@ -845,7 +602,7 @@ test("reportEvents renders multiple advice items in report order", async () => {
 
 test("reportEvents emits policy blocks and omits silent policies", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportTexts(defaultConfig)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(defaultConfig)(workspace))
   const headers = firstLines(blocks)
 
   assert.ok(headers.includes("no-throw"), "expected the no-throw policy to emit a report block")
@@ -863,7 +620,7 @@ test("reportEvents lets silent policies influence advice without rendering local
     silentDetections.length > 0
       ? [
           {
-            location: location("project", 1, 1),
+            location: Location.make({ path: "project", line: 1, column: 1 }),
             level: "project",
             title: "silent-influenced advice",
             remediation: "act on silent-derived evidence",
@@ -882,7 +639,7 @@ test("reportEvents lets silent policies influence advice without rendering local
     derive: (signals) => silentInfluencedAdvice(signalOf(signals)(silentProbeNamedPolicy.name))
   })
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportFromTestWiring(silentInfluencedWiring)(workspace))
+  const blocks = await Effect.runPromise(reportFromTestWiring(silentInfluencedWiring)(workspace))
   const headers = firstLines(blocks)
 
   assert.ok(
@@ -902,7 +659,7 @@ test("reportEvents lets silent policies influence advice without rendering local
 
 test("report collects the exported report events for a loaded workspace", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
-  const blocks = await collectEffect(reportTexts(defaultConfig)(workspace))
+  const blocks = await Effect.runPromise(reportTexts(defaultConfig)(workspace))
 
   assert.equal(
     blocks.some((block) => block.length === 0),
@@ -917,7 +674,7 @@ test("withFallbackAdvice emits specific advice before applicable fallback and ru
   const fallbackB = advice("file", "src/b.ts", "density fallback b")
   let specificEffects = 0
   const collectInvocation = (): Promise<ReadonlyArray<Advice>> =>
-    collectEffect(
+    Effect.runPromise(
       withFallbackAdvice(
         Effect.sync(() => {
           specificEffects += 1

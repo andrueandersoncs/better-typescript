@@ -1,7 +1,7 @@
-import { Array, Function, pipe, Schema } from "effect"
+import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 
 // NoNonNullAssertionFact is empty payload because guidance and matchers share identity.
 export const NoNonNullAssertionFact = Schema.Struct({})

@@ -1,28 +1,42 @@
-import { Array, Data, Match, HashMap, MutableRef, Option, Result, Struct, pipe, flow } from "effect"
+import {
+  Array,
+  HashMap,
+  MutableRef,
+  Option,
+  Result,
+  Schema,
+  Struct,
+  flow,
+  pipe,
+  Match as EffectMatch
+} from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { foldAst } from "@better-typescript/matchers/sources"
+import { foldAst } from "../sources/foldAst.js"
 import { toRelativeFileName } from "../support/paths.js"
-import { ImportUsageData, ImportedNameUsage } from "./architectureExploreData.js"
-import { isTestSourceFile, toWorkspacePath } from "./architectureExplore/paths.js"
-import { fileMatcher } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match as MatcherMatch,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import { toWorkspacePath } from "./architectureExplore/toWorkspacePath.js"
+import { fileMatcher } from "../matcher/fileMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 
-const isNamedCallReference = (node: ts.Identifier) => {
-  const callExpressionIsNode = flow(
-    Struct.get<ts.CallExpression, "expression">("expression"),
-    strictEqual(node)
-  )
+import { ImportedNameUsage } from "./architectureExplore/importedNameUsage.js"
+import { BindingCounter } from "./bindingCounter.js"
+import { ImportRecord } from "./importRecord.js"
+import { isNamedCallReference } from "./isNamedCallReference.js"
 
-  return pipe(
-    Option.liftPredicate(ts.isCallExpression)(node.parent),
-    Option.exists(callExpressionIsNode)
-  )
-}
+const importedNameUsageArray = Schema.Array(ImportedNameUsage)
+
+// ImportUsageData records one import declaration because cross-package joins need raw specifiers.
+export const ImportUsageData = Schema.Struct({
+  specifier: Schema.String,
+  importerWorkspacePath: Schema.String,
+  fromTest: Schema.Boolean,
+  names: importedNameUsageArray
+})
+
+export interface ImportUsageData extends Schema.Schema.Type<typeof ImportUsageData> {}
 
 const isNamespaceCallReference = (node: ts.Identifier) => {
   const namedCall = isNamedCallReference(node)
@@ -70,38 +84,16 @@ const importBindings = (node: ts.ImportDeclaration): ReadonlyArray<ts.Identifier
         Array.map(namedImports.elements, Struct.get("name"))
 
       return pipe(
-        Match.value(bindings),
-        Match.when(ts.isNamespaceImport, namespaceImportNames),
-        Match.when(ts.isNamedImports, namedImportNames),
-        Match.exhaustive
+        EffectMatch.value(bindings),
+        EffectMatch.when(ts.isNamespaceImport, namespaceImportNames),
+        EffectMatch.when(ts.isNamedImports, namedImportNames),
+        EffectMatch.exhaustive
       )
     }),
     Option.getOrElse(Array.empty)
   )
 
   return Array.appendAll(defaultBinding, namedBindings)
-}
-
-// BindingCounter uses explicit mutable cells because one hot AST pass updates every imported name.
-class BindingCounter extends Data.Class<{
-  readonly binding: ts.Identifier
-  readonly importStart: number
-  readonly importEnd: number
-  readonly isNamespace: boolean
-  readonly referenceCount: MutableRef.MutableRef<number>
-  readonly callCount: MutableRef.MutableRef<number>
-}> {}
-
-// ImportRecord preserves declaration order because emitted evidence must match source order.
-class ImportRecord extends Data.Class<{
-  readonly declaration: ts.ImportDeclaration
-  readonly specifier: string
-  readonly counters: ReadonlyArray<BindingCounter>
-}> {
-  // Specifier text is evidence identity because ImportUsageData joins on the raw module path.
-  get moduleSpecifier(): string {
-    return this.specifier
-  }
 }
 
 const collectImportRecords = (sourceFile: ts.SourceFile): ReadonlyArray<ImportRecord> =>

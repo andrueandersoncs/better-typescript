@@ -1,15 +1,15 @@
-import { Array, Function, HashSet, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, HashSet, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import {
-  conciseArrowBody,
-  declarationListIsConst,
-  isFunctionInitializer,
-  unwrapExpression,
-  variableDeclarationNameIsIdentifier
-} from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { conciseArrowBody } from "../support/conciseArrowBody.js"
+import { declarationListIsConst } from "../support/declarationListIsConst.js"
+import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { variableDeclarationNameIsIdentifier } from "../support/variableDeclarationNameIsIdentifier.js"
 import { strictEqual } from "../equivalence.js"
+import { hasSingleElement } from "./hasSingleElement.js"
 
 // PreferEffectFunctionConstantFact records thunk text because guidance quotes the body.
 export const PreferEffectFunctionConstantFact = Schema.Struct({
@@ -42,11 +42,6 @@ const modifierIsAsync = flow(
 )
 
 const hasElements = (items: ReadonlyArray<unknown>) => items.length > 0
-
-const hasSingleElement = flow(
-  Struct.get<ReadonlyArray<unknown>, "length">("length"),
-  strictEqual(1)
-)
 
 const isEligibleFunction = (node: ts.Node) =>
   pipe(

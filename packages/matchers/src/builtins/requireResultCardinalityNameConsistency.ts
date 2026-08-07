@@ -1,82 +1,28 @@
-import { Array, flow, Function, HashSet, Match, Option, pipe, Schema } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match as NodeMatch } from "../matcher/data.js"
-import {
-  callableSemantics,
-  callableExpectedResultWords,
-  functionDefinitionKinds,
-  wordsMatch,
-  type CallableSemantics,
-  type ResultCardinality
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { Array, Function, HashSet, Option, flow, pipe, Match as EffectMatch } from "effect"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as NodeMatch } from "../matcher/match.js"
+import { callableExpectedResultWords } from "../support/callableExpectedResultWords.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import { wordsMatch } from "../support/hasEsPluralSuffix.js"
+import type { ResultCardinality } from "../support/resultCardinality.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
-
-const pluralForOneKind = Schema.Literal("plural-for-one")
-const singularForManyKind = Schema.Literal("singular-for-many")
-
-const cardinalityValues = Array.make<["keyed", "many", "one", "optional-one", "unknown"]>(
-  "keyed",
-  "many",
-  "one",
-  "optional-one",
-  "unknown"
-)
-
-// ResultCardinalityLiteral enumerates result cardinality because facts quote the observed class.
-const ResultCardinalityLiteral = Schema.Literals(cardinalityValues)
-
-// RequireResultCardinalityPluralForOneFact is plural-for-one evidence because nouns must match.
-export const RequireResultCardinalityPluralForOneFact = Schema.Struct({
-  kind: pluralForOneKind,
-  nameText: Schema.String,
-  claimed: Schema.String,
-  singular: Schema.String,
-  cardinality: ResultCardinalityLiteral
-})
-
-export interface RequireResultCardinalityPluralForOneFact extends Schema.Schema.Type<
-  typeof RequireResultCardinalityPluralForOneFact
-> {}
-
-// RequireResultCardinalitySingularForManyFact is singular-for-many evidence because nouns match.
-export const RequireResultCardinalitySingularForManyFact = Schema.Struct({
-  kind: singularForManyKind,
-  nameText: Schema.String,
-  claimed: Schema.String,
-  plural: Schema.String,
-  cardinality: ResultCardinalityLiteral
-})
-
-export interface RequireResultCardinalitySingularForManyFact extends Schema.Schema.Type<
-  typeof RequireResultCardinalitySingularForManyFact
-> {}
-
-const cardinalityFactMembers = Array.make(
-  RequireResultCardinalityPluralForOneFact,
-  RequireResultCardinalitySingularForManyFact
-)
-
-// RequireResultCardinalityNameConsistencyFact unions claims because plural and singular differ.
-export const RequireResultCardinalityNameConsistencyFact = Schema.Union(cardinalityFactMembers)
-
-export type RequireResultCardinalityNameConsistencyFact = Schema.Schema.Type<
-  typeof RequireResultCardinalityNameConsistencyFact
->
-
-const neutralCardinalityWords = HashSet.make(
-  "advice",
-  "config",
-  "data",
-  "evidence",
-  "metadata",
-  "news",
-  "series",
-  "species",
-  "status"
-)
-
-const irregularPluralWords = HashSet.make("children", "people")
+import { dropOne } from "./dropOne.js"
+import { dropSuffix } from "./dropSuffix.js"
+import { endsWithSuffix } from "./endsWithSuffix.js"
+import { isConfidentlyPlural } from "./esPluralSuffix.js"
+import { hasPluralSuffix } from "./hasPluralSuffix.js"
+import { hasAmbiguousEnding } from "./hasAmbiguousEnding.js"
+import { iesPluralSuffix } from "./iesPluralSuffix.js"
+import { irregularPluralWords } from "./irregularPluralWords.js"
+import { neutralCardinalityWords } from "./neutralCardinalityWords.js"
+import {
+  RequireResultCardinalityNameConsistencyFact,
+  type RequireResultCardinalityNameConsistencyFact as RequireResultCardinalityNameConsistencyFactType
+} from "./requireResultCardinalityNameConsistencyFact.js"
+import { sPluralSuffix } from "./sPluralSuffix.js"
 
 const oneCardinality: ResultCardinality = "one"
 const optionalOneCardinality: ResultCardinality = "optional-one"
@@ -102,53 +48,11 @@ const agreesWithResultConcept = (claimed: string) => (semantics: CallableSemanti
   return Array.some(expectedWords, matchesClaimed)
 }
 
-const ambiguousEndingSuffixes = Array.make("ss", "us", "is", "ics")
 const esStemSuffixes = Array.make("ses", "xes", "zes", "ches", "shes")
 const esPluralEndings = Array.make("s", "x", "z", "ch", "sh")
 const yVowels = Array.make("a", "e", "i", "o", "u")
 
-const endsWithSuffix = (word: string) => (suffix: string) => word.endsWith(suffix)
-
-const hasAmbiguousEnding = (word: string) =>
-  Array.some(ambiguousEndingSuffixes, endsWithSuffix(word))
-
-const longerThan = (minimum: number) => (word: string) => word.length > minimum
-
-const hasPluralSuffix = (suffix: string, minimumLength: number) => (word: string) => {
-  const endingMatches = endsWithSuffix(word)(suffix)
-  const lengthMatches = longerThan(minimumLength)(word)
-  const checks = Array.make(endingMatches, lengthMatches)
-
-  return Array.every(checks, Boolean)
-}
-
-const iesPluralSuffix = hasPluralSuffix("ies", 3)
-const esPluralSuffix = hasPluralSuffix("es", 2)
-const sPluralSuffix = hasPluralSuffix("s", 1)
 const ySuffix = hasPluralSuffix("y", 1)
-
-const isRegularPlural = (word: string) => {
-  const ambiguous = hasAmbiguousEnding(word)
-  const iesPlural = iesPluralSuffix(word)
-  const esPlural = esPluralSuffix(word)
-  const sPlural = sPluralSuffix(word)
-  const suffixSignals = Array.make(iesPlural, esPlural, sPlural)
-  const suffixPlural = Array.some(suffixSignals, Boolean)
-  const checks = Array.make(!ambiguous, suffixPlural)
-
-  return Array.every(checks, Boolean)
-}
-
-const isConfidentlyPlural = (word: string) => {
-  const neutral = HashSet.has(neutralCardinalityWords, word)
-  const irregular = HashSet.has(irregularPluralWords, word)
-  const regular = isRegularPlural(word)
-  const pluralSignals = Array.make(irregular, regular)
-  const plural = Array.some(pluralSignals, Boolean)
-  const checks = Array.make(!neutral, plural)
-
-  return Array.every(checks, Boolean)
-}
 
 const isConfidentlySingular = (word: string) => {
   const neutral = HashSet.has(neutralCardinalityWords, word)
@@ -165,10 +69,8 @@ const isPeople = strictEqual("people")
 const isChild = strictEqual("child")
 const isPerson = strictEqual("person")
 
-const dropSuffix = (count: number) => (word: string) => word.slice(0, -count)
 const dropThree = dropSuffix(3)
 const dropTwo = dropSuffix(2)
-const dropOne = dropSuffix(1)
 
 const hasEsStemSuffix = (word: string) => Array.some(esStemSuffixes, endsWithSuffix(word))
 
@@ -178,13 +80,13 @@ const keepWord = (word: string) => word
 
 const singularize = (word: string) => {
   const matched = pipe(
-    Match.value(word),
-    Match.when(isChildren, Function.constant("child")),
-    Match.when(isPeople, Function.constant("person")),
-    Match.when(iesPluralSuffix, iesToY),
-    Match.when(hasEsStemSuffix, dropTwo),
-    Match.when(sPluralSuffix, dropOne),
-    Match.orElse(keepWord)
+    EffectMatch.value(word),
+    EffectMatch.when(isChildren, Function.constant("child")),
+    EffectMatch.when(isPeople, Function.constant("person")),
+    EffectMatch.when(iesPluralSuffix, iesToY),
+    EffectMatch.when(hasEsStemSuffix, dropTwo),
+    EffectMatch.when(sPluralSuffix, dropOne),
+    EffectMatch.orElse(keepWord)
   )
 
   return matched
@@ -208,12 +110,12 @@ const appendS = (word: string) => `${word}s`
 
 const pluralize = (word: string) => {
   const matched = pipe(
-    Match.value(word),
-    Match.when(isChild, Function.constant("children")),
-    Match.when(isPerson, Function.constant("people")),
-    Match.when(ySuffix, pluralizeYEnding),
-    Match.when(needsEsPlural, appendEs),
-    Match.orElse(appendS)
+    EffectMatch.value(word),
+    EffectMatch.when(isChild, Function.constant("children")),
+    EffectMatch.when(isPerson, Function.constant("people")),
+    EffectMatch.when(ySuffix, pluralizeYEnding),
+    EffectMatch.when(needsEsPlural, appendEs),
+    EffectMatch.orElse(appendS)
   )
 
   return matched
@@ -296,10 +198,9 @@ const matchesDefinition =
   (semanticsFor: (definition: FunctionDefinition) => Option.Option<CallableSemantics>) =>
   (
     definition: FunctionDefinition
-  ): ReadonlyArray<NodeMatch<RequireResultCardinalityNameConsistencyFact>> =>
+  ): ReadonlyArray<NodeMatch<RequireResultCardinalityNameConsistencyFactType>> =>
     pipe(semanticsFor(definition), Option.flatMap(findingForSemantics), Option.toArray)
 
 const matches = flow(callableSemantics, matchesDefinition)
 
-export const requireResultCardinalityNameConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requireResultCardinalityNameConsistencyMatcher = functionDefinitionMatcher(matches)

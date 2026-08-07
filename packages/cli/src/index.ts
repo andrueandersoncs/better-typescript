@@ -2,16 +2,18 @@
 import * as path from "node:path"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as BunServices from "@effect/platform-bun/BunServices"
-import { Console, Effect, Function, Option, Predicate, Struct, pipe } from "effect"
+import { Console, Effect, Function, Option, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { renderEventText } from "@better-typescript/core/engine/report"
-import type { ReportEvent } from "@better-typescript/core/engine/report/data"
-import { reportEvents, watchWorkspace } from "@better-typescript/core/engine/watch"
-import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
+import { renderEventText } from "@better-typescript/core/engine/report/renderEventText"
+import { type ReportEvent } from "@better-typescript/core/engine/report/reportEvent"
+import { reportEvents } from "@better-typescript/core/engine/reportPipeline"
+import { watchWorkspace } from "@better-typescript/core/engine/watch/watch"
+import { workspacePrograms } from "@better-typescript/core/engine/watch/workspacePrograms"
 import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
-import { compilerOptionsForConfig } from "@better-typescript/core/engine/wiring"
+import { compilerOptionsForConfig } from "@better-typescript/core/engine/wiring/compilerOptionsForConfig"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { discoverWorkspace } from "@better-typescript/core/project/loadProject"
+import { reportError } from "./reportError.js"
 
 const workingDirectory = process.cwd()
 
@@ -26,37 +28,6 @@ const watch = pipe(
   Flag.boolean("watch"),
   Flag.withDescription("Continue rerunning the complete report after project changes.")
 )
-
-const setErrorExitCode = () => {
-  process.exitCode = 2
-
-  return process.exitCode
-}
-
-// Failures narrow structurally because this untyped boundary must not name the built-in type.
-const isMessageCarrier = (cause: unknown): cause is { readonly message: string } =>
-  Predicate.hasProperty(cause, "message") && Predicate.isString(cause.message)
-
-const hasText = (value: string) => value.length > 0
-
-// Render unknown failures ourselves because config wiring reports errors with an unknown type.
-const errorText = (error: unknown) => {
-  const fallbackText = String(error)
-
-  return pipe(
-    Option.liftPredicate(isMessageCarrier)(error),
-    Option.map(Struct.get("message")),
-    Option.filter(hasText),
-    Option.getOrElse(Function.constant(fallbackText))
-  )
-}
-
-const reportError = Effect.fn("Cli.reportError")(function* (error: unknown) {
-  const text = errorText(error)
-
-  yield* Console.error(`Error: ${text}`)
-  yield* Effect.sync(setErrorExitCode)
-})
 
 const printJsonEvent = (event: ReportEvent): Effect.Effect<void> =>
   pipe(JSON.stringify(event), Console.log)

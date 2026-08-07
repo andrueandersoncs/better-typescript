@@ -1,74 +1,32 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import {
-  architectureExplorePolicies,
-  architectureExploreWiring
-} from "@better-typescript/guidance/preset/architectureExploreWiring"
-import {
-  CompositionForwarderData,
-  ContextTagSeamData,
-  ExportSurfaceData,
-  ExportedSymbolUsage,
-  ExternalDependencyConstructionData,
-  ImportUsageData,
-  ImportedNameUsage,
-  InterfaceBurdenData,
-  ModuleGraphData,
-  ModuleIdentityData,
-  ModuleScopeEffectData,
-  PassThroughWrapperData,
-  SeamLeakageData,
-  SingleAdapterSeamData,
-  TestOnlyExportData
-} from "@better-typescript/matchers/builtins/architectureExploreData"
-import { Detection } from "@better-typescript/core/engine/location/data"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import { Location } from "@better-typescript/core/engine/location/data"
-import { Signal } from "@better-typescript/core/engine/signal/data"
-import { makeWiring } from "@better-typescript/core/engine/wiring"
-
-const detectionAt = (path: string, line: number, data?: unknown): Detection =>
-  Detection.make({
-    location: Location.make({ path, line, column: 1 }),
-    message: "message",
-    hint: "hint",
-    ...(data === undefined ? {} : { data })
-  })
-
-const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
-  new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
-
-const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
-  advice.filter((item) => item.title === title)
-
-const wrapperData = (callerCount: number, hasNonCallReference = false): PassThroughWrapperData =>
-  PassThroughWrapperData.make({
-    kind: "forwarding-call",
-    exportCount: 1,
-    callerCount,
-    callerPaths: callerCount === 0 ? [] : ["src/caller.ts"],
-    hasNonCallReference
-  })
-
-const compositionData = (
-  callerCount: number,
-  hasNonCallReference = false
-): CompositionForwarderData =>
-  CompositionForwarderData.make({
-    exportName: "forward",
-    stepCount: 2,
-    callerCount,
-    callerPaths: callerCount === 0 ? [] : ["src/caller.ts"],
-    hasNonCallReference
-  })
-
-const graphData = (workspacePath: string, importedPaths: ReadonlyArray<string>): ModuleGraphData =>
-  ModuleGraphData.make({
-    importedPaths: [...importedPaths],
-    workspacePath,
-    importedWorkspacePaths: [...importedPaths]
-  })
+import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
+import { architectureExplorePolicies } from "@better-typescript/guidance/architectureExplore/architectureExplorePolicies"
+import { architectureExploreOopWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreOopWiring"
+import { architectureExploreFpWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreFpWiring"
+import { architectureExploreNeutralHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreNeutralHardBondRuleCatalog"
+import { architectureExploreOopHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreOopHardBondRuleCatalog"
+import { architectureExploreFpHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreFpHardBondRuleCatalog"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import { ContextTagSeamData } from "@better-typescript/matchers/builtins/contextTagSeams"
+import { ExportSurfaceData } from "@better-typescript/matchers/builtins/exportSurface"
+import { ExportedSymbolUsage } from "@better-typescript/matchers/builtins/architectureExplore/exportedSymbolUsage"
+import { ExternalDependencyConstructionData } from "@better-typescript/matchers/builtins/externalDependencyConstruction"
+import { ImportUsageData } from "@better-typescript/matchers/builtins/importUsage"
+import { ImportedNameUsage } from "@better-typescript/matchers/builtins/architectureExplore/importedNameUsage"
+import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurdenData"
+import { ModuleIdentityData } from "@better-typescript/matchers/builtins/moduleIdentity"
+import { ModuleScopeEffectData } from "@better-typescript/matchers/builtins/moduleScopeEffectData"
+import { SeamLeakageData } from "@better-typescript/matchers/builtins/seamLeakageEvidence"
+import { SingleAdapterSeamData } from "@better-typescript/matchers/builtins/singleAdapterSeams"
+import { TestOnlyExportData } from "@better-typescript/matchers/builtins/testOnlyExports"
+import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
+import { detectionAt } from "./architectureExploreDeriveDetectionAt.js"
+import { silentSignal } from "./architectureExploreDeriveSilentSignal.js"
+import { adviceWithTitle } from "./architectureExploreDeriveAdviceWithTitle.js"
+import { wrapperData } from "./architectureExploreDeriveWrapperData.js"
+import { compositionData } from "./architectureExploreDeriveCompositionData.js"
+import { graphData } from "./architectureExploreDeriveGraphData.js"
 
 test("architectureExploreWiring contains only relational silent evidence checks", () => {
   const names = architectureExplorePolicies.map((check) => check.name)
@@ -87,14 +45,50 @@ test("architectureExploreWiring contains only relational silent evidence checks"
     "composition-forwarders",
     "module-scope-effects",
     "context-tag-seams",
-    "composition-fingerprints"
+    "composition-fingerprints",
+    "semantic-module-placement"
   ])
   assert.equal(new Set(names).size, names.length)
   assert.equal(
     architectureExplorePolicies.every((check) => !check.reported),
     true
   )
-  assert.equal(makeWiring(architectureExploreWiring).policies.length, 14)
+  assert.equal(makeWiring(architectureExploreWiring).policies.length, 15)
+  assert.equal(
+    architectureExplorePolicies.filter((check) => check.name === "semantic-module-placement")
+      .length,
+    1
+  )
+})
+
+test("Architecture Explore paradigm catalogs own the settled immutable Hard Bond sets", () => {
+  assert.deepEqual(
+    architectureExploreNeutralHardBondRuleCatalog.map((rule) => rule.id),
+    ["semantic-reference-cycle", "exclusive-consumer-ownership"]
+  )
+  assert.deepEqual(architectureExploreOopHardBondRuleCatalog, [])
+  assert.deepEqual(architectureExploreFpHardBondRuleCatalog, [])
+  assert.ok(Object.isFrozen(architectureExploreNeutralHardBondRuleCatalog))
+  assert.ok(Object.isFrozen(architectureExploreOopHardBondRuleCatalog))
+  assert.ok(Object.isFrozen(architectureExploreFpHardBondRuleCatalog))
+})
+
+test("each Architecture Explore Wiring owns exactly one semantic-module-placement Policy", () => {
+  const placementCount = (wiring: ReturnType<typeof makeWiring>) =>
+    wiring.policies.filter((check) => check.name === "semantic-module-placement").length
+
+  assert.equal(placementCount(makeWiring(architectureExploreWiring)), 1)
+  assert.equal(placementCount(makeWiring(architectureExploreOopWiring)), 1)
+  assert.equal(placementCount(makeWiring(architectureExploreFpWiring)), 1)
+  assert.equal(makeWiring(architectureExploreOopWiring).policies.length, 11)
+  assert.equal(makeWiring(architectureExploreFpWiring).policies.length, 13)
+})
+
+test("baseline default Wiring does not enroll semantic-module-placement", () => {
+  assert.equal(
+    defaultWiring.policies.some((check) => check.name === "semantic-module-placement"),
+    false
+  )
 })
 
 test("deletion test removes low-leverage exact forwarders", () => {

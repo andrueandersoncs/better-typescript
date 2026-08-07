@@ -1,9 +1,10 @@
-import { Array, Function, flow, Schema } from "effect"
+import { Array, Function, Schema, flow } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import { unwrapExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
 import { strictEqual } from "../equivalence.js"
+import { arrayLiteralElementCount } from "./arrayLiteralElementCount.js"
 
 // PreferEffectArrayAppendAllFact is empty payload because guidance and matchers share identity.
 export const PreferEffectArrayAppendAllFact = Schema.Struct({})
@@ -14,12 +15,6 @@ export interface PreferEffectArrayAppendAllFact extends Schema.Schema.Type<
 
 // emptyPreferEffectArrayAppendAllFact is empty because guidance and matchers share identity.
 export const emptyPreferEffectArrayAppendAllFact = PreferEffectArrayAppendAllFact.make({})
-
-const arrayLiteralElementCount = (expression: ts.Expression) => {
-  const unwrapped = unwrapExpression(expression)
-
-  return ts.isArrayLiteralExpression(unwrapped) ? unwrapped.elements.length : -1
-}
 
 const isEmptyArrayLiteral = flow(arrayLiteralElementCount, strictEqual(0))
 

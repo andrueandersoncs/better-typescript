@@ -1,9 +1,10 @@
-import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
+import { Array, Function, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import { alwaysExitsScope } from "../support/tsNode.js"
-import { strictEqual } from "../equivalence.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { isDispatchGuard } from "./isDispatchGuard.js"
+import { siblingDispatchGuard } from "./siblingDispatchGuard.js"
+import { continuesChain } from "./continuesChain.js"
 
 // NoManualTypeDispatchFact is empty payload because guidance and matchers share identity.
 export const NoManualTypeDispatchFact = Schema.Struct({})
@@ -17,60 +18,6 @@ export const emptyNoManualTypeDispatchFact = NoManualTypeDispatchFact.make({})
 
 // Require this many branches because shorter chains look like early-return guards, not a match.
 const minimumChainLength = 3
-
-// Treat branchless exiting ifs as guards because successive guards form a flat dispatch ladder.
-const isDispatchGuard = (statement: ts.Statement): statement is ts.IfStatement =>
-  pipe(
-    Option.liftPredicate(ts.isIfStatement)(statement),
-    Option.exists((ifStatement) => {
-      const elseBranch = Option.fromNullishOr(ifStatement.elseStatement)
-      const isBranchless = Option.isNone(elseBranch)
-
-      return isBranchless && alwaysExitsScope(ifStatement.thenStatement)
-    })
-  )
-
-const identifierNames = (node: ts.Node): ReadonlyArray<string> => {
-  const ownNames = ts.isIdentifier(node) ? Array.of(node.text) : Array.empty()
-  const children = node.getChildren()
-  const childNames = Array.flatMap(children, identifierNames)
-
-  return Array.appendAll(ownNames, childNames)
-}
-
-// Compare guard discriminants because a dispatch ladder must inspect the same subject.
-const discriminants = (ifStatement: ts.IfStatement) =>
-  pipe(identifierNames(ifStatement.expression), HashSet.fromIterable)
-
-const siblingDispatchGuard =
-  (offset: number) =>
-  (ifStatement: ts.IfStatement): Option.Option<ts.IfStatement> =>
-    pipe(
-      Option.liftPredicate(ts.isBlock)(ifStatement.parent),
-      Option.flatMap((block) => {
-        const isCurrentIfStatement = strictEqual(ifStatement)
-        const statementAtOffset = (index: number) => Option.fromNullishOr(block.statements[index])
-
-        return pipe(
-          Array.findFirstIndex(block.statements, isCurrentIfStatement),
-          Option.map((index) => index + offset),
-          Option.flatMap(statementAtOffset),
-          Option.filter(isDispatchGuard)
-        )
-      })
-    )
-
-const continuesChain = (offset: number) => (ifStatement: ts.IfStatement) => {
-  const sharesDiscriminant = (sibling: ts.IfStatement) => {
-    const firstDiscriminants = discriminants(ifStatement)
-    const secondDiscriminants = discriminants(sibling)
-    const secondHasName = (name: string) => HashSet.has(secondDiscriminants, name)
-
-    return HashSet.some(firstDiscriminants, secondHasName)
-  }
-
-  return pipe(siblingDispatchGuard(offset)(ifStatement), Option.exists(sharesDiscriminant))
-}
 
 // Report only the chain head because it shares a subject with the next guard but not a prior guard.
 const isChainHead = (ifStatement: ts.IfStatement) => {

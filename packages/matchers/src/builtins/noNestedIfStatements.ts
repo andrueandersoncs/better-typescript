@@ -1,7 +1,7 @@
 import { Array, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import { strictEqual } from "../equivalence.js"
 
 // NoNestedIfStatementsFact is empty payload because guidance and matchers share identity.

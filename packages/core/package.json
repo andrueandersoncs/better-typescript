@@ -8,52 +8,8 @@
   ],
   "exports": {
     "./engine/equivalence": {
-      "bun": "./src/engine/equivalence.ts",
-      "default": "./dist/engine/equivalence.js"
-    },
-    "./engine/policy": {
-      "bun": "./src/engine/policy/policy.ts",
-      "default": "./dist/engine/policy/policy.js"
-    },
-    "./engine/policy/data": {
-      "bun": "./src/engine/policy/data.ts",
-      "default": "./dist/engine/policy/data.js"
-    },
-    "./engine/location": {
-      "bun": "./src/engine/location/location.ts",
-      "default": "./dist/engine/location/location.js"
-    },
-    "./engine/location/data": {
-      "bun": "./src/engine/location/data.ts",
-      "default": "./dist/engine/location/data.js"
-    },
-    "./engine/derive": {
-      "bun": "./src/engine/derive/derive.ts",
-      "default": "./dist/engine/derive/derive.js"
-    },
-    "./engine/derive/data": {
-      "bun": "./src/engine/derive/data.ts",
-      "default": "./dist/engine/derive/data.js"
-    },
-    "./engine/report": {
-      "bun": "./src/engine/report/report.ts",
-      "default": "./dist/engine/report/report.js"
-    },
-    "./engine/report/data": {
-      "bun": "./src/engine/report/data.ts",
-      "default": "./dist/engine/report/data.js"
-    },
-    "./engine/wiring": {
-      "bun": "./src/engine/wiring/wiring.ts",
-      "default": "./dist/engine/wiring/wiring.js"
-    },
-    "./engine/wiring/collect": {
-      "bun": "./src/engine/wiring/collect.ts",
-      "default": "./dist/engine/wiring/collect.js"
-    },
-    "./engine/wiring/data": {
-      "bun": "./src/engine/wiring/data.ts",
-      "default": "./dist/engine/wiring/data.js"
+      "bun": "./src/engine/equivalence/strictEqual.ts",
+      "default": "./dist/engine/equivalence/strictEqual.js"
     },
     "./engine/signal": {
       "bun": "./src/engine/signal/signal.ts",
@@ -75,34 +31,490 @@
       "bun": "./src/engine/watch/data.ts",
       "default": "./dist/engine/watch/data.js"
     },
-    "./engine/example": {
-      "bun": "./src/engine/example/example.ts",
-      "default": "./dist/engine/example/example.js"
+    "./package.json": "./package.json",
+    "./engine/derive/advice": {
+      "bun": "./src/engine/derive/advice.ts",
+      "default": "./dist/engine/derive/advice.js"
     },
-    "./engine/example/data": {
-      "bun": "./src/engine/example/data.ts",
-      "default": "./dist/engine/example/data.js"
+    "./engine/derive/adviceLevel": {
+      "bun": "./src/engine/derive/adviceLevel.ts",
+      "default": "./dist/engine/derive/adviceLevel.js"
+    },
+    "./engine/derive/advicePath": {
+      "bun": "./src/engine/derive/advicePath.ts",
+      "default": "./dist/engine/derive/advicePath.js"
+    },
+    "./engine/derive/byFile": {
+      "bun": "./src/engine/derive/byFile.ts",
+      "default": "./dist/engine/derive/byFile.js"
+    },
+    "./engine/derive/collidingLines": {
+      "bun": "./src/engine/derive/collidingLines.ts",
+      "default": "./dist/engine/derive/collidingLines.js"
+    },
+    "./engine/derive/countSummary": {
+      "bun": "./src/engine/derive/countSummary.ts",
+      "default": "./dist/engine/derive/countSummary.js"
+    },
+    "./engine/derive/deriveSignals": {
+      "bun": "./src/engine/derive/deriveSignals.ts",
+      "default": "./dist/engine/derive/deriveSignals.js"
+    },
+    "./engine/derive/dominantPolicyEvidence": {
+      "bun": "./src/engine/derive/dominantPolicyEvidence.ts",
+      "default": "./dist/engine/derive/dominantPolicyEvidence.js"
+    },
+    "./engine/derive/evidenceFromCounts": {
+      "bun": "./src/engine/derive/evidenceFromCounts.ts",
+      "default": "./dist/engine/derive/evidenceFromCounts.js"
+    },
+    "./engine/derive/evidenceItem": {
+      "bun": "./src/engine/derive/evidenceItem.ts",
+      "default": "./dist/engine/derive/evidenceItem.js"
+    },
+    "./engine/derive/evidenceOrder": {
+      "bun": "./src/engine/derive/evidenceOrder.ts",
+      "default": "./dist/engine/derive/evidenceOrder.js"
+    },
+    "./engine/derive/fileDetections": {
+      "bun": "./src/engine/derive/fileDetections.ts",
+      "default": "./dist/engine/derive/fileDetections.js"
+    },
+    "./engine/derive/makeNamedDetection": {
+      "bun": "./src/engine/derive/makeNamedDetection.ts",
+      "default": "./dist/engine/derive/makeNamedDetection.js"
+    },
+    "./engine/derive/namedDetection": {
+      "bun": "./src/engine/derive/namedDetection.ts",
+      "default": "./dist/engine/derive/namedDetection.js"
+    },
+    "./engine/derive/parentDirectories": {
+      "bun": "./src/engine/derive/parentDirectories.ts",
+      "default": "./dist/engine/derive/parentDirectories.js"
+    },
+    "./engine/example/directoryRefactorExamples": {
+      "bun": "./src/engine/example/directoryRefactorExamples.ts",
+      "default": "./dist/engine/example/directoryRefactorExamples.js"
+    },
+    "./engine/example/exampleLoadError": {
+      "bun": "./src/engine/example/exampleLoadError.ts",
+      "default": "./dist/engine/example/exampleLoadError.js"
+    },
+    "./engine/example/exampleSnippet": {
+      "bun": "./src/engine/example/exampleSnippet.ts",
+      "default": "./dist/engine/example/exampleSnippet.js"
+    },
+    "./engine/example/examplesFromDefinition": {
+      "bun": "./src/engine/example/examplesFromDefinition.ts",
+      "default": "./dist/engine/example/examplesFromDefinition.js"
+    },
+    "./engine/example/formatRefactorExample": {
+      "bun": "./src/engine/example/formatRefactorExample.ts",
+      "default": "./dist/engine/example/formatRefactorExample.js"
+    },
+    "./engine/example/inlineRefactorExamples": {
+      "bun": "./src/engine/example/inlineRefactorExamples.ts",
+      "default": "./dist/engine/example/inlineRefactorExamples.js"
+    },
+    "./engine/example/refactorExample": {
+      "bun": "./src/engine/example/refactorExample.ts",
+      "default": "./dist/engine/example/refactorExample.js"
+    },
+    "./engine/example/refactorExampleSource": {
+      "bun": "./src/engine/example/refactorExampleSource.ts",
+      "default": "./dist/engine/example/refactorExampleSource.js"
+    },
+    "./engine/example/refactorExampleSourceSchema": {
+      "bun": "./src/engine/example/refactorExampleSourceSchema.ts",
+      "default": "./dist/engine/example/refactorExampleSourceSchema.js"
+    },
+    "./engine/example/resolveRefactorExamples": {
+      "bun": "./src/engine/example/resolveRefactorExamples.ts",
+      "default": "./dist/engine/example/resolveRefactorExamples.js"
+    },
+    "./engine/fileLevelAdvice": {
+      "bun": "./src/engine/fileLevelAdvice.ts",
+      "default": "./dist/engine/fileLevelAdvice.js"
+    },
+    "./engine/location/countDetectionsAtPath": {
+      "bun": "./src/engine/location/countDetectionsAtPath.ts",
+      "default": "./dist/engine/location/countDetectionsAtPath.js"
+    },
+    "./engine/location/detectionData": {
+      "bun": "./src/engine/location/detectionData.ts",
+      "default": "./dist/engine/location/detectionData.js"
+    },
+    "./engine/location/locationData": {
+      "bun": "./src/engine/location/locationData.ts",
+      "default": "./dist/engine/location/locationData.js"
+    },
+    "./engine/location/toRelativeFileName": {
+      "bun": "./src/engine/location/toRelativeFileName.ts",
+      "default": "./dist/engine/location/toRelativeFileName.js"
+    },
+    "./engine/policy/asTypedMatch": {
+      "bun": "./src/engine/policy/asTypedMatch.ts",
+      "default": "./dist/engine/policy/asTypedMatch.js"
+    },
+    "./engine/policy/compilerOptionsForPolicies": {
+      "bun": "./src/engine/policy/compilerOptionsForPolicies.ts",
+      "default": "./dist/engine/policy/compilerOptionsForPolicies.js"
+    },
+    "./engine/policy/detectionsForPolicyMatches": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/findingSource": {
+      "bun": "./src/engine/policy/findingSource.ts",
+      "default": "./dist/engine/policy/findingSource.js"
+    },
+    "./engine/policy/guidance": {
+      "bun": "./src/engine/policy/guidance.ts",
+      "default": "./dist/engine/policy/guidance.js"
+    },
+    "./engine/policy/locateTarget": {
+      "bun": "./src/engine/policy/locateTarget.ts",
+      "default": "./dist/engine/policy/locateTarget.js"
+    },
+    "./engine/policy/makeFindings": {
+      "bun": "./src/engine/policy/makeFindings.ts",
+      "default": "./dist/engine/policy/makeFindings.js"
+    },
+    "./engine/policy/makePolicy": {
+      "bun": "./src/engine/policy/makePolicy.ts",
+      "default": "./dist/engine/policy/makePolicy.js"
+    },
+    "./engine/policy/makeSilentPolicy": {
+      "bun": "./src/engine/policy/makeSilentPolicy.ts",
+      "default": "./dist/engine/policy/makeSilentPolicy.js"
+    },
+    "./engine/policy/makeSilentWorkspacePolicy": {
+      "bun": "./src/engine/policy/makeSilentWorkspacePolicy.ts",
+      "default": "./dist/engine/policy/makeSilentWorkspacePolicy.js"
+    },
+    "./engine/policy/makeWorkspacePolicy": {
+      "bun": "./src/engine/policy/makeWorkspacePolicy.ts",
+      "default": "./dist/engine/policy/makeWorkspacePolicy.js"
+    },
+    "./engine/policy/optionalExamples": {
+      "bun": "./src/engine/policy/optionalExamples.ts",
+      "default": "./dist/engine/policy/optionalExamples.js"
+    },
+    "./engine/policy/optionalReported": {
+      "bun": "./src/engine/policy/optionalReported.ts",
+      "default": "./dist/engine/policy/optionalReported.js"
+    },
+    "./engine/policy/policyClass": {
+      "bun": "./src/engine/policy/policyClass.ts",
+      "default": "./dist/engine/policy/policyClass.js"
+    },
+    "./engine/policy/policyDefinition": {
+      "bun": "./src/engine/policy/policyDefinition.ts",
+      "default": "./dist/engine/policy/policyDefinition.js"
+    },
+    "./engine/policy/policyMatcher": {
+      "bun": "./src/engine/policy/policyMatcher.ts",
+      "default": "./dist/engine/policy/policyMatcher.js"
+    },
+    "./engine/policy/policySeed": {
+      "bun": "./src/engine/policy/policySeed.ts",
+      "default": "./dist/engine/policy/policySeed.js"
+    },
+    "./engine/policy/relativePathOrAbsolute": {
+      "bun": "./src/engine/policy/relativePathOrAbsolute.ts",
+      "default": "./dist/engine/policy/relativePathOrAbsolute.js"
+    },
+    "./engine/policy/reportedFromDefinition": {
+      "bun": "./src/engine/policy/reportedFromDefinition.ts",
+      "default": "./dist/engine/policy/reportedFromDefinition.js"
+    },
+    "./engine/policy/widenGuidance": {
+      "bun": "./src/engine/policy/widenGuidance.ts",
+      "default": "./dist/engine/policy/widenGuidance.js"
+    },
+    "./engine/policy/widenWorkspaceGuidance": {
+      "bun": "./src/engine/policy/widenWorkspaceGuidance.ts",
+      "default": "./dist/engine/policy/widenWorkspaceGuidance.js"
+    },
+    "./engine/policy/workspaceGuidance": {
+      "bun": "./src/engine/policy/workspaceGuidance.ts",
+      "default": "./dist/engine/policy/workspaceGuidance.js"
+    },
+    "./engine/policy/workspacePolicyClass": {
+      "bun": "./src/engine/policy/workspacePolicyClass.ts",
+      "default": "./dist/engine/policy/workspacePolicyClass.js"
+    },
+    "./engine/policy/workspacePolicyDefinition": {
+      "bun": "./src/engine/policy/workspacePolicyDefinition.ts",
+      "default": "./dist/engine/policy/workspacePolicyDefinition.js"
+    },
+    "./engine/report/adviceReportKey": {
+      "bun": "./src/engine/report/adviceReportKey.ts",
+      "default": "./dist/engine/report/adviceReportKey.js"
+    },
+    "./engine/report/emptyReportEvent": {
+      "bun": "./src/engine/report/emptyReportEvent.ts",
+      "default": "./dist/engine/report/emptyReportEvent.js"
+    },
+    "./engine/report/renderEventText": {
+      "bun": "./src/engine/report/renderEventText.ts",
+      "default": "./dist/engine/report/renderEventText.js"
+    },
+    "./engine/report/reportBlock": {
+      "bun": "./src/engine/report/reportBlock.ts",
+      "default": "./dist/engine/report/reportBlock.js"
+    },
+    "./engine/report/reportEvent": {
+      "bun": "./src/engine/report/reportEvent.ts",
+      "default": "./dist/engine/report/reportEvent.js"
+    },
+    "./engine/report/reportKey": {
+      "bun": "./src/engine/report/reportKey.ts",
+      "default": "./dist/engine/report/reportKey.js"
+    },
+    "./engine/report/reportKeySchema": {
+      "bun": "./src/engine/report/reportKeySchema.ts",
+      "default": "./dist/engine/report/reportKeySchema.js"
+    },
+    "./engine/report/ruleReportKey": {
+      "bun": "./src/engine/report/ruleReportKey.ts",
+      "default": "./dist/engine/report/ruleReportKey.js"
+    },
+    "./engine/report/signalEvent": {
+      "bun": "./src/engine/report/signalEvent.ts",
+      "default": "./dist/engine/report/signalEvent.js"
+    },
+    "./engine/reportPipeline": {
+      "bun": "./src/engine/reportPipeline.ts",
+      "default": "./dist/engine/reportPipeline.js"
+    },
+    "./engine/signal/detectionEquals": {
+      "bun": "./src/engine/signal/detectionEquals.ts",
+      "default": "./dist/engine/signal/detectionEquals.js"
+    },
+    "./engine/signal/signal": {
+      "bun": "./src/engine/signal/signal.ts",
+      "default": "./dist/engine/signal/signal.js"
+    },
+    "./engine/watch/watch": {
+      "bun": "./src/engine/watch/watch.ts",
+      "default": "./dist/engine/watch/watch.js"
+    },
+    "./engine/watch/workspacePrograms": {
+      "bun": "./src/engine/watch/workspacePrograms.ts",
+      "default": "./dist/engine/watch/workspacePrograms.js"
     },
     "./project/loadProject": {
       "bun": "./src/project/loadProject/loadProject.ts",
       "default": "./dist/project/loadProject/loadProject.js"
     },
+    "./project/loadProject/runPolicyOnProject": {
+      "bun": "./src/project/loadProject/runPolicyOnProject.ts",
+      "default": "./dist/project/loadProject/runPolicyOnProject.js"
+    },
+    "./project/loadProject/loadedProject": {
+      "bun": "./src/project/loadProject/loadedProject.ts",
+      "default": "./dist/project/loadProject/loadedProject.js"
+    },
+    "./project/loadProject/projectConfig": {
+      "bun": "./src/project/loadProject/projectConfig.ts",
+      "default": "./dist/project/loadProject/projectConfig.js"
+    },
+    "./project/loadProject/workspaceConfigs": {
+      "bun": "./src/project/loadProject/workspaceConfigs.ts",
+      "default": "./dist/project/loadProject/workspaceConfigs.js"
+    },
+    "./project/loadProject/invalidTsconfigError": {
+      "bun": "./src/project/loadProject/invalidTsconfigError.ts",
+      "default": "./dist/project/loadProject/invalidTsconfigError.js"
+    },
+    "./project/loadProject/circularProjectReferenceError": {
+      "bun": "./src/project/loadProject/circularProjectReferenceError.ts",
+      "default": "./dist/project/loadProject/circularProjectReferenceError.js"
+    },
+    "./project/loadProject/withAnalysisCompilerOptions": {
+      "bun": "./src/project/loadProject/withAnalysisCompilerOptions.ts",
+      "default": "./dist/project/loadProject/withAnalysisCompilerOptions.js"
+    },
+    "./project/loadProject/createAnalysisProgram": {
+      "bun": "./src/project/loadProject/createAnalysisProgram.ts",
+      "default": "./dist/project/loadProject/createAnalysisProgram.js"
+    },
     "./project/loadWiringConfig": {
       "bun": "./src/project/loadWiringConfig/loadWiringConfig.ts",
       "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
     },
-    "./package.json": "./package.json",
-    "./project/loadProject/data": {
-      "bun": "./src/project/loadProject/data.ts",
-      "default": "./dist/project/loadProject/data.js"
+    "./project/loadWiringConfig/configFileName": {
+      "bun": "./src/project/loadWiringConfig/configFileName.ts",
+      "default": "./dist/project/loadWiringConfig/configFileName.js"
     },
-    "./project/loadWiringConfig/data": {
-      "bun": "./src/project/loadWiringConfig/data.ts",
-      "default": "./dist/project/loadWiringConfig/data.js"
+    "./project/loadWiringConfig/projectWiringConfigError": {
+      "bun": "./src/project/loadWiringConfig/projectWiringConfigError.ts",
+      "default": "./dist/project/loadWiringConfig/projectWiringConfigError.js"
     },
-    "./project/loadWiringConfig/decode": {
-      "bun": "./src/project/loadWiringConfig/decode.ts",
-      "default": "./dist/project/loadWiringConfig/decode.js"
+    "./project/loadWiringConfig/configExport": {
+      "bun": "./src/project/loadWiringConfig/configExport.ts",
+      "default": "./dist/project/loadWiringConfig/configExport.js"
+    },
+    "./project/loadWiringConfig/configExportName": {
+      "bun": "./src/project/loadWiringConfig/configExportName.ts",
+      "default": "./dist/project/loadWiringConfig/configExportName.js"
+    },
+    "./engine/wiring/wiringPolicy": {
+      "bun": "./src/engine/wiring/wiringPolicy.ts",
+      "default": "./dist/engine/wiring/wiringPolicy.js"
+    },
+    "./engine/wiring/wiringClass": {
+      "bun": "./src/engine/wiring/wiringClass.ts",
+      "default": "./dist/engine/wiring/wiringClass.js"
+    },
+    "./engine/wiring/wiringEntry": {
+      "bun": "./src/engine/wiring/wiringEntry.ts",
+      "default": "./dist/engine/wiring/wiringEntry.js"
+    },
+    "./engine/wiring/wiringConfig": {
+      "bun": "./src/engine/wiring/wiringConfig.ts",
+      "default": "./dist/engine/wiring/wiringConfig.js"
+    },
+    "./engine/wiring/wiringFilesInput": {
+      "bun": "./src/engine/wiring/wiringFilesInput.ts",
+      "default": "./dist/engine/wiring/wiringFilesInput.js"
+    },
+    "./engine/wiring/wiringEntryInput": {
+      "bun": "./src/engine/wiring/wiringEntryInput.ts",
+      "default": "./dist/engine/wiring/wiringEntryInput.js"
+    },
+    "./engine/wiring/duplicateNameState": {
+      "bun": "./src/engine/wiring/duplicateNameState.ts",
+      "default": "./dist/engine/wiring/duplicateNameState.js"
+    },
+    "./engine/wiring/duplicatePolicyNames": {
+      "bun": "./src/engine/wiring/duplicatePolicyNames.ts",
+      "default": "./dist/engine/wiring/duplicatePolicyNames.js"
+    },
+    "./engine/wiring/policyInstanceSchema": {
+      "bun": "./src/engine/wiring/policyInstanceSchema.ts",
+      "default": "./dist/engine/wiring/policyInstanceSchema.js"
+    },
+    "./engine/wiring/workspacePolicyInstance": {
+      "bun": "./src/engine/wiring/workspacePolicyInstance.ts",
+      "default": "./dist/engine/wiring/workspacePolicyInstance.js"
+    },
+    "./engine/wiring/programPolicySlot": {
+      "bun": "./src/engine/wiring/programPolicySlot.ts",
+      "default": "./dist/engine/wiring/programPolicySlot.js"
+    },
+    "./engine/wiring/isProgramPolicy": {
+      "bun": "./src/engine/wiring/isProgramPolicy.ts",
+      "default": "./dist/engine/wiring/isProgramPolicy.js"
+    },
+    "./engine/wiring/compileGlobMatcher": {
+      "bun": "./src/engine/wiring/compileGlobMatcher.ts",
+      "default": "./dist/engine/wiring/compileGlobMatcher.js"
+    },
+    "./engine/wiring/globMatcher": {
+      "bun": "./src/engine/wiring/globMatcher.ts",
+      "default": "./dist/engine/wiring/globMatcher.js"
+    },
+    "./engine/wiring/matchesFile": {
+      "bun": "./src/engine/wiring/matchesFile.ts",
+      "default": "./dist/engine/wiring/matchesFile.js"
+    },
+    "./engine/wiring/isFileGlob": {
+      "bun": "./src/engine/wiring/isFileGlob.ts",
+      "default": "./dist/engine/wiring/isFileGlob.js"
+    },
+    "./engine/wiring/compilerOptionsForConfig": {
+      "bun": "./src/engine/wiring/compilerOptionsForConfig.ts",
+      "default": "./dist/engine/wiring/compilerOptionsForConfig.js"
+    },
+    "./engine/wiring/makeWiring": {
+      "bun": "./src/engine/wiring/makeWiring.ts",
+      "default": "./dist/engine/wiring/makeWiring.js"
+    },
+    "./engine/wiring/makeMergedWiring": {
+      "bun": "./src/engine/wiring/makeMergedWiring.ts",
+      "default": "./dist/engine/wiring/makeMergedWiring.js"
+    },
+    "./engine/signal/wiringSignals": {
+      "bun": "./src/engine/signal/wiringSignals.ts",
+      "default": "./dist/engine/signal/wiringSignals.js"
+    },
+    "./engine/watch/workspaceServices": {
+      "bun": "./src/engine/watch/workspaceServices.ts",
+      "default": "./dist/engine/watch/workspaceServices.js"
+    },
+    "./engine/report/mutableSeenBuckets": {
+      "bun": "./src/engine/report/mutableSeenBuckets.ts",
+      "default": "./dist/engine/report/mutableSeenBuckets.js"
+    },
+    "./engine/report/mutableElementBuckets": {
+      "bun": "./src/engine/report/mutableElementBuckets.ts",
+      "default": "./dist/engine/report/mutableElementBuckets.js"
+    },
+    "./engine/report/mutableWorkspaceFiles": {
+      "bun": "./src/engine/report/mutableWorkspaceFiles.ts",
+      "default": "./dist/engine/report/mutableWorkspaceFiles.js"
+    },
+    "./engine/report/emptyDetectionsBucket": {
+      "bun": "./src/engine/report/emptyDetectionsBucket.ts",
+      "default": "./dist/engine/report/emptyDetectionsBucket.js"
+    },
+    "./engine/report/relativeWorkspacePath": {
+      "bun": "./src/engine/report/relativeWorkspacePath.ts",
+      "default": "./dist/engine/report/relativeWorkspacePath.js"
+    },
+    "./engine/report/appendDetection": {
+      "bun": "./src/engine/report/appendDetection.ts",
+      "default": "./dist/engine/report/appendDetection.js"
+    },
+    "./engine/report/storageForSlot": {
+      "bun": "./src/engine/report/storageForSlot.ts",
+      "default": "./dist/engine/report/storageForSlot.js"
+    },
+    "./engine/report/sourceMatch": {
+      "bun": "./src/engine/report/sourceMatch.ts",
+      "default": "./dist/engine/report/sourceMatch.js"
+    },
+    "./engine/policy/locateDirectory": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/locateFile": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/locateNode": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/locatePosition": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/locateWorkspace": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/equivalence/strictEqual": {
+      "bun": "./src/engine/equivalence/strictEqual.ts",
+      "default": "./dist/engine/equivalence/strictEqual.js"
+    },
+    "./engine/policy/locateTargetAt": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/detectionFromLocatedSource": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/locatedPolicyDetections": {
+      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
+      "default": "./dist/engine/policy/locatedPolicyDetections.js"
+    },
+    "./engine/policy/toWorkspacePolicies": {
+      "bun": "./src/engine/reportPipeline.ts",
+      "default": "./dist/engine/reportPipeline.js"
     }
   },
   "scripts": {

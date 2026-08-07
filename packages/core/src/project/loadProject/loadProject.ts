@@ -1,21 +1,35 @@
 import * as path from "node:path"
-import { Array, Effect, Equal, Function, HashSet, Option, pipe } from "effect"
+import { Array, Effect, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import type { Policy } from "../../engine/policy/data.js"
-import type { Detection } from "../../engine/location/data.js"
-import { makeContext } from "@better-typescript/matchers/sources"
-import { compilerOptionsForPolicies, toPolicies } from "../../engine/policy/policy.js"
-import { strictEqual } from "../../engine/equivalence.js"
-import {
-  CircularProjectReferenceError,
-  InvalidTsconfigError,
-  LoadedProject,
-  LoadedWorkspace,
-  MissingTsconfigError,
-  ProjectConfig,
-  WorkspaceConfigs
-} from "./data.js"
-import { createAnalysisProgram } from "./analysisCompilerOptions.js"
+import { strictEqual } from "../../engine/equivalence/strictEqual.js"
+import { CircularProjectReferenceError } from "./circularProjectReferenceError.js"
+import { InvalidTsconfigError } from "./invalidTsconfigError.js"
+import { LoadedProject } from "./loadedProject.js"
+import { ProjectConfig } from "./projectConfig.js"
+import { WorkspaceConfigs } from "./workspaceConfigs.js"
+import { createAnalysisProgram } from "./createAnalysisProgram.js"
+
+const loadedProjectsSchema = Schema.Array(LoadedProject)
+
+// LoadedWorkspace is shared root/projects contract because owners need one term.
+export const LoadedWorkspace = Schema.Struct({
+  rootPath: Schema.String,
+  projects: loadedProjectsSchema
+})
+
+export interface LoadedWorkspace extends Schema.Schema.Type<typeof LoadedWorkspace> {}
+
+// MissingTsconfigError names syntax protocol because discoverWorkspace agrees.
+export class MissingTsconfigError extends Schema.TaggedErrorClass<MissingTsconfigError>()(
+  "MissingTsconfigError",
+  {
+    rootPath: Schema.String
+  }
+) {
+  get message(): string {
+    return `Could not find tsconfig.json from ${this.rootPath}`
+  }
+}
 
 export const discoverWorkspace: (
   projectPath: string
@@ -59,56 +73,6 @@ const loadProjectConfig = (config: ProjectConfig, compilerOptions: ts.CompilerOp
     program
   })
 }
-
-const emptyDetections: ReadonlyArray<Detection> = Array.empty()
-const noDetections = Function.constant(emptyDetections)
-const includeEverySourceFile = Function.constant(true)
-
-// programForPolicies owns compiler requirements because callers should not know Policy internals.
-const programForPolicies =
-  (policies: ReadonlyArray<Policy>) =>
-  (program: ts.Program): ts.Program => {
-    const compilerOptions = compilerOptionsForPolicies(policies)
-    const currentOptions = program.getCompilerOptions()
-
-    const optionMatches = ([name, value]: [string, unknown]) => {
-      const currentValue = Reflect.get(currentOptions, name)
-
-      return Equal.equals(currentValue, value)
-    }
-
-    const compilerOptionEntries = Object.entries(compilerOptions)
-    const alreadyConfigured = pipe(compilerOptionEntries, Array.every(optionMatches))
-
-    if (alreadyConfigured) {
-      return program
-    }
-
-    const rootNames = program.getRootFileNames()
-    const projectReferences = program.getProjectReferences()
-
-    return createAnalysisProgram(
-      {
-        rootNames,
-        options: currentOptions,
-        projectReferences
-      },
-      compilerOptions
-    )
-  }
-
-export const runPolicyOnProject =
-  (policies: ReadonlyArray<Policy>) =>
-  (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
-    Effect.sync(() => {
-      const program = programForPolicies(policies)(project.program)
-      const createContext = makeContext(project.rootPath)
-      const context = createContext(program)
-      const policiesInEveryFile = toPolicies(policies)(includeEverySourceFile)
-      const detections = policiesInEveryFile(context)
-
-      return pipe(detections, Array.head, Option.getOrElse(noDetections))
-    })
 
 export const loadProject = Effect.fn("LoadProject.load")(function* (
   projectPath: string,

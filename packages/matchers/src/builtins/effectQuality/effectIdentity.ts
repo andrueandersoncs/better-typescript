@@ -1,6 +1,6 @@
 import { Array } from "effect"
 import * as ts from "typescript"
-import { unwrapTransparentExpression } from "../../support/tsNode.js"
+import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
 
 const responseJsonNames = Array.of("json")
 

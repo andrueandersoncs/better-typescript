@@ -1,26 +1,6 @@
-import { Array, Schema } from "effect"
+import { Array } from "effect"
 import { makeHashCollectionPreferMatcher } from "./hashCollectionMatches.js"
-
-const preferHashMapKinds = Array.make<["constructor", "type-ref", "mutable"]>(
-  "constructor",
-  "type-ref",
-  "mutable"
-)
-
-// PreferHashMapKind classifies Map misuse because constructor, type, and mutable advice differ.
-export const PreferHashMapKind = Schema.Literals(preferHashMapKinds)
-
-export type PreferHashMapKind = typeof PreferHashMapKind.Type
-
-const optionalTypeName = Schema.optionalKey(Schema.String)
-
-// PreferHashMapFact classifies Map misuse because constructor, type, and mutable advice differ.
-export const PreferHashMapFact = Schema.Struct({
-  kind: PreferHashMapKind,
-  typeName: optionalTypeName
-})
-
-export interface PreferHashMapFact extends Schema.Schema.Type<typeof PreferHashMapFact> {}
+import { PreferHashMapFact } from "./preferHashMapFact.js"
 
 const mapTypeNames: ReadonlyArray<string> = Array.make("Map", "ReadonlyMap")
 

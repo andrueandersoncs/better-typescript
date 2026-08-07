@@ -1,20 +1,18 @@
 import { Option, pipe } from "effect"
-import { defineConfig, makeWiring, makeMergedWiring } from "@better-typescript/core/engine/wiring"
+import { defineConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
+import { makeMergedWiring } from "@better-typescript/core/engine/wiring/makeMergedWiring"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import {
-  architectureExplorePolicies,
-  architectureExploreWiring
-} from "@better-typescript/guidance/preset/architectureExploreWiring"
-import {
-  ArchitectureRolePath,
-  conventionalArchitectureRoleOf,
-  roleByPrefixes
-} from "@better-typescript/guidance/architectureRole"
+import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
+import { architectureExplorePolicies } from "@better-typescript/guidance/architectureExplore/architectureExplorePolicies"
+import { ArchitectureRolePath } from "@better-typescript/guidance/architectureRolePath"
+import { conventionalArchitectureRoleOf } from "@better-typescript/guidance/conventionalArchitectureRoleOf"
+import { roleByPrefixes } from "@better-typescript/guidance/roleByPrefixes"
 import {
   defaultFunctionalCoreEffectPolicy,
   FunctionalCoreEffectPolicy
 } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
-import { makeFunctionalCoreEffectWiring } from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
+import { makeFunctionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
 
 // This example is documentation for the opt-in architecture fleets. Copy it to
 // a consumer project's better-typescript.config.ts to load it. It stays under

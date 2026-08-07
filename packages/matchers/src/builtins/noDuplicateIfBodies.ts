@@ -1,8 +1,10 @@
-import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { alwaysExitsScope, unwrapSingleStatementBlock } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { alwaysExitsScope } from "../support/alwaysExitsScope.js"
+import { unwrapSingleStatementBlock } from "../support/unwrapSingleStatementBlock.js"
 import { strictEqual } from "../equivalence.js"
 
 // NoDuplicateIfBodiesFact carries the merged condition because guidance quotes the combined branch.

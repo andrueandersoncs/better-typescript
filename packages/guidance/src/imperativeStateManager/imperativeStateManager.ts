@@ -1,11 +1,19 @@
 import { Array, Function, Option, Schema, pipe, Struct, flow } from "effect"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-
-import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { countDetectionsAtPath } from "@better-typescript/core/engine/location/countDetectionsAtPath"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { Detection, Location } from "@better-typescript/core/engine/location/data"
-import { makePackageExamples } from "../definePolicy.js"
-import { ImperativeStateSignals, MutationElementData } from "./data.js"
+import { Detection } from "@better-typescript/core/engine/location/detectionData"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { makePackageExamples } from "../makePackageExamples.js"
+import { ImperativeStateSignals } from "./data.js"
+
+// Shared mutation-target evidence because detectors and advice decode one record.
+export const MutationElementData = Schema.Struct({
+  target: Schema.String
+})
+
+export interface MutationElementData extends Schema.Schema.Type<typeof MutationElementData> {}
 
 export const imperativeStateManagerExamples = makePackageExamples("imperative-state-manager")
 

@@ -1,16 +1,13 @@
-import { Array, Function, Option, pipe, Struct, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match } from "../matcher/data.js"
-import {
-  isReturnTypeDeclaration,
-  namedDetectionTarget,
-  type ReturnTypeDeclaration
-} from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import { isReturnTypeDeclaration } from "../support/isReturnTypeDeclaration.js"
+import { namedDetectionTarget } from "../support/namedDetectionTarget.js"
+import type { ReturnTypeDeclaration } from "../support/returnTypeDeclaration.js"
 import { strictEqual } from "../equivalence.js"
-
-// RawObjectTarget is a local syntax union because matchers need one narrowed node shape.
-export type RawObjectTarget = ts.ParameterDeclaration | ReturnTypeDeclaration
+import type { RawObjectTarget } from "./rawObjectTarget.js"
 
 const rawObjectKinds = Array.make<["parameter", "return"]>("parameter", "return")
 const rawObjectKindSchema = Schema.Literals(rawObjectKinds)

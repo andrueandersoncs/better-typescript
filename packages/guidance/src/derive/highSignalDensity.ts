@@ -1,14 +1,13 @@
 import { Array, pipe } from "effect"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { Location } from "@better-typescript/core/engine/location/data"
-import {
-  byFile,
-  makeCountSummary,
-  deriveSignals,
-  evidenceFromCounts
-} from "@better-typescript/core/engine/derive"
-import type { FileDetections, NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { makePackageExamples } from "../definePolicy.js"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { byFile, makeCountSummary } from "@better-typescript/core/engine/derive/byFile"
+import { deriveSignals } from "@better-typescript/core/engine/derive/deriveSignals"
+import { evidenceFromCounts } from "@better-typescript/core/engine/derive/evidenceFromCounts"
+import { type FileDetections } from "@better-typescript/core/engine/derive/fileDetections"
+import { type NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
+import { makePackageExamples } from "../makePackageExamples.js"
 
 export const highSignalDensityExamples = makePackageExamples("high-signal-density")
 

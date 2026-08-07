@@ -14,7 +14,7 @@ test("self-host benchmark runs the built CLI with every enrolled Policy", async 
   const target = await selfHostBenchmarkTarget(repoRoot)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
-  assert.equal(target.checkNames.length, 101)
+  assert.equal(target.checkNames.length, 102)
   assert.ok(target.checkNames.includes("no-unused"))
   assert.ok(target.checkNames.includes("no-value-aliases"))
   assert.ok(target.checkNames.includes("prefer-effectful-function"))
@@ -31,6 +31,7 @@ test("self-host benchmark runs the built CLI with every enrolled Policy", async 
   assert.ok(target.checkNames.includes("prefer-specific-operation-names"))
   assert.ok(target.checkNames.includes("functional-core-effect-boundaries"))
   assert.ok(target.checkNames.includes("composition-fingerprints"))
+  assert.ok(target.checkNames.includes("semantic-module-placement"))
   assert.ok(target.checkNames.includes("prefer-composed-callbacks"))
 })
 

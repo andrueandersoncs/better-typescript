@@ -1,64 +1,20 @@
-import {
-  Array,
-  Function,
-  HashMap,
-  Match,
-  Option,
-  pipe,
-  Result,
-  Struct,
-  Tuple,
-  flow,
-  Schema
-} from "effect"
+import { Array, Function, HashMap, Match, Option, Result, Struct, Tuple, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { outermostTransparentWrapper } from "../support/tsNode.js"
-import { isObjectType } from "../support/tsType.js"
-import { foldAst, isProjectSourceFile, type AstFold } from "../sources/sources.js"
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { nodeSubscriptions } from "../matcher/nodeSubscriptions.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { outermostTransparentWrapper } from "../support/outermostTransparentWrapper.js"
+import { isObjectType } from "../support/isObjectType.js"
+import type { AstFold } from "../sources/astFold.js"
+import { foldAst } from "../sources/foldAst.js"
+import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
 import type { ProgramContext } from "../sources/data.js"
-import type { Subscription } from "../matcher/data.js"
-import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
+import type { Subscription } from "../matcher/subscription.js"
+import { referenceKey } from "../support/referenceKey.js"
+import type { ReferenceKey } from "../support/referenceKeyType.js"
 import { strictEqual } from "../equivalence.js"
-
-const objectFactKind = Schema.Literal("object")
-const tupleFactKind = Schema.Literal("tuple")
-const kindLabelValues = Array.make<["an interface", "a type alias"]>("an interface", "a type alias")
-
-const kindLabelSchema = Schema.Literals(kindLabelValues)
-
-// PreferEffectSchemaRecordObjectFact is object evidence because construction sites drive advice.
-export const PreferEffectSchemaRecordObjectFact = Schema.Struct({
-  kind: objectFactKind,
-  typeName: Schema.String,
-  constructionFileName: Schema.String,
-  kindLabel: kindLabelSchema
-})
-
-export interface PreferEffectSchemaRecordObjectFact extends Schema.Schema.Type<
-  typeof PreferEffectSchemaRecordObjectFact
-> {}
-
-// PreferEffectSchemaRecordTupleFact is tuple evidence because tuple aliases need records.
-export const PreferEffectSchemaRecordTupleFact = Schema.Struct({
-  kind: tupleFactKind,
-  typeName: Schema.String
-})
-
-export interface PreferEffectSchemaRecordTupleFact extends Schema.Schema.Type<
-  typeof PreferEffectSchemaRecordTupleFact
-> {}
-
-const schemaRecordFactMembers = Array.make(
-  PreferEffectSchemaRecordObjectFact,
-  PreferEffectSchemaRecordTupleFact
-)
-
-// PreferEffectSchemaRecordFact unions object and tuple claims because remediation differs.
-export const PreferEffectSchemaRecordFact = Schema.Union(schemaRecordFactMembers)
-
-export type PreferEffectSchemaRecordFact = Schema.Schema.Type<typeof PreferEffectSchemaRecordFact>
+import { PreferEffectSchemaRecordFact } from "./preferEffectSchemaRecordFact.js"
 
 const schemaPropertyNameText = (name: ts.PropertyName) =>
   pipe(Option.liftPredicate(ts.isIdentifier)(name), Option.map(Struct.get("text")))
@@ -330,7 +286,7 @@ const objectTypeDeclarationMatches =
             kindLabel
           })
 
-          return makeNodeMatch(declaration.name, fact)
+          return makeNodeMatch<PreferEffectSchemaRecordFact>(declaration.name, fact)
         }),
         Option.toArray
       )
@@ -380,7 +336,7 @@ const tupleTypeDeclarationMatches = (_context: MatchContext) => {
       typeName: declaration.name.text
     })
 
-    const match = makeNodeMatch(declaration.name, fact)
+    const match = makeNodeMatch<PreferEffectSchemaRecordFact>(declaration.name, fact)
 
     return Array.of(match)
   }
@@ -393,7 +349,7 @@ const isObjectTypeAliasDeclaration = (node: ts.Node): node is ts.TypeAliasDeclar
 
 const schemaRecordListeners = (
   index: HashMap.HashMap<ReferenceKey<ts.Symbol>, string>
-): ReadonlyArray<Subscription> => {
+): ReadonlyArray<Subscription<PreferEffectSchemaRecordFact>> => {
   const interfaceDeclarationKinds = Array.of(ts.SyntaxKind.InterfaceDeclaration)
 
   const interfaceListeners = nodeSubscriptions(interfaceDeclarationKinds)(

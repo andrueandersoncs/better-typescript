@@ -12,12 +12,16 @@ import {
   Schema
 } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { resolvedSymbolAt } from "../support/tsNode.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
-import { astNodesIn } from "../sources/sources.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
+import { astNodesIn } from "../sources/astNodesIn.js"
 import { strictEqual } from "../equivalence.js"
+import type { EffectApiReference } from "./effectApiReference.js"
+import { textContainsUnsafe } from "./textContainsUnsafe.js"
+import { nameContainsUnsafe } from "./nameContainsUnsafe.js"
 
 // NoUnsafeEffectApisFact is empty payload because guidance and matchers share identity.
 export const NoUnsafeEffectApisFact = Schema.Struct({})
@@ -26,9 +30,6 @@ export interface NoUnsafeEffectApisFact extends Schema.Schema.Type<typeof NoUnsa
 
 // emptyNoUnsafeEffectApisFact is empty payload because guidance and matchers share identity.
 export const emptyNoUnsafeEffectApisFact = NoUnsafeEffectApisFact.make({})
-
-// EffectApiReference is a local syntax union because matchers need one narrowed node shape.
-type EffectApiReference = ts.Identifier | ts.PropertyAccessExpression | ts.ElementAccessExpression
 
 const importOrExportNameKinds = HashSet.make(
   ts.SyntaxKind.ImportSpecifier,
@@ -74,12 +75,6 @@ const isEffectApiReference = (node: ts.Node): node is EffectApiReference =>
     Match.when(ts.isIdentifier, identifierMayReferenceRuntimeValue),
     Match.orElse(Function.constFalse)
   )
-
-const symbolName = Struct.get<ts.Symbol, "name">("name")
-
-const textContainsUnsafe = (name: string) => name.toLowerCase().includes("unsafe")
-
-const nameContainsUnsafe = Function.flow(symbolName, textContainsUnsafe)
 
 const propertyAccessName = Struct.get<ts.PropertyAccessExpression, "name">("name")
 

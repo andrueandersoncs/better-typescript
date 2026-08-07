@@ -4,24 +4,27 @@ import {
   HashMap,
   HashSet,
   Option,
-  pipe,
-  Tuple,
+  Schema,
   Struct,
+  Tuple,
   flow,
-  Schema
+  pipe
 } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  semanticRole,
-  type CallableSemantics,
-  type SemanticRole
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import type { SemanticRole } from "../support/semanticRole.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
-import type { MatchContext } from "../matcher/data.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { aggregationRole } from "./preferSpecificAggregationRole.js"
+import { commandRole } from "./preferSpecificCommandRole.js"
+import { constructionRole } from "./preferSpecificConstructionRole.js"
+import { conversionRole } from "./preferSpecificConversionRole.js"
+import { lookupRole } from "./preferSpecificLookupRole.js"
+import { projectionRole } from "./preferSpecificProjectionRole.js"
+import { claimedVagueOperation } from "./vagueOperations.js"
 
 // PreferSpecificOperationNamesFact carries rename gu because role-specific words need all fields.
 export const PreferSpecificOperationNamesFact = Schema.Struct({
@@ -35,13 +38,6 @@ export interface PreferSpecificOperationNamesFact extends Schema.Schema.Type<
   typeof PreferSpecificOperationNamesFact
 > {}
 
-const aggregationRole = semanticRole("aggregation")
-const commandRole = semanticRole("command")
-const constructionRole = semanticRole("construction")
-const conversionRole = semanticRole("conversion")
-const lookupRole = semanticRole("lookup")
-const projectionRole = semanticRole("projection")
-
 const strongerRoles = HashSet.make(
   aggregationRole,
   commandRole,
@@ -50,8 +46,6 @@ const strongerRoles = HashSet.make(
   lookupRole,
   projectionRole
 )
-
-const vagueOperations = HashSet.make("do", "execute", "handle", "manage", "process", "run")
 
 const constructionOperations = HashSet.make("build", "construct", "create", "make", "new", "of")
 
@@ -176,7 +170,6 @@ const fallbackOperation =
   }
 
 const isStrongerRole = (role: SemanticRole) => HashSet.has(strongerRoles, role)
-const isVagueOperation = (word: string) => HashSet.has(vagueOperations, word)
 const isConventionalRoleNoun = (word: string) => HashSet.has(conventionalRoleNouns, word)
 const isRuntimeEntry = (word: string) => HashSet.has(runtimeEntries, word)
 const isConventionalEventObject = (object: string) => HashSet.has(conventionalEventObjects, object)
@@ -195,9 +188,6 @@ const uniqueStrongerRole = (semantics: CallableSemantics) => {
     Option.flatMap(Array.head)
   )
 }
-
-const claimedVagueOperation = (semantics: CallableSemantics) =>
-  Array.findFirst(semantics.name.words, isVagueOperation)
 
 const preferredRoleOperation =
   (semantics: CallableSemantics) =>
@@ -284,5 +274,4 @@ const matches = (context: MatchContext) => {
   return matchFunctionDefinition
 }
 
-export const preferSpecificOperationNamesMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const preferSpecificOperationNamesMatcher = functionDefinitionMatcher(matches)

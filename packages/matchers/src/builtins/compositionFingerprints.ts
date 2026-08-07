@@ -1,56 +1,43 @@
-import { Array, Function, Match, Option, pipe, Result, Struct, flow } from "effect"
+import {
+  Array,
+  Function,
+  Option,
+  Result,
+  Schema,
+  Struct,
+  flow,
+  pipe,
+  Match as EffectMatch
+} from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { CompositionFingerprintData } from "./architectureExploreData.js"
-import { isTestSourceFile } from "./architectureExplore/paths.js"
-import { ExportReferenceIndex } from "./architectureExplore/programSymbols.js"
-import {
-  evidenceMatcher,
-  exportReferenceIndex
-} from "./architectureExplore/architectureEvidence.js"
-import { conciseArrowBody, unwrapTransparentExpression } from "../support/tsNode.js"
-import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match as MatcherMatch,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import type { ExportReferenceIndex } from "./architectureExplore/exportReferenceIndex.js"
+import { conciseArrowBody } from "../support/conciseArrowBody.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
+import { calleeName } from "./compositionCalleeName.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { exportReferenceFileMatcher } from "./exportReferenceFileMatcher.js"
+
+// CompositionFingerprintData hashes one orchestration shape because duplication spans files.
+export const CompositionFingerprintData = Schema.Struct({
+  projectPath: Schema.String,
+  fingerprint: Schema.String,
+  stepCount: Schema.Number,
+  exportName: Schema.String
+})
+
+export interface CompositionFingerprintData extends Schema.Schema.Type<
+  typeof CompositionFingerprintData
+> {}
 
 const minimumSteps = 3
 
 const emptyFingerprintNames: ReadonlyArray<string> = Array.empty()
 
 const emptyFingerprintNamesFallback = Function.constant(emptyFingerprintNames)
-
-const isAbsentQuestionDotToken = (access: ts.PropertyAccessExpression) =>
-  pipe(access.questionDotToken, Option.fromNullishOr, Option.isNone)
-
-const isNonOptionalPropertyAccess = (
-  expression: ts.Expression
-): expression is ts.PropertyAccessExpression =>
-  pipe(
-    expression,
-    Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.exists(isAbsentQuestionDotToken)
-  )
-
-const identifierText = (identifier: ts.Identifier) => Option.some(identifier.text)
-
-const joinCalleeWithAccessName = (access: ts.PropertyAccessExpression) => (left: string) =>
-  `${left}.${access.name.text}`
-
-const propertyAccessCalleeName = (access: ts.PropertyAccessExpression) =>
-  pipe(calleeName(access.expression), Option.map(joinCalleeWithAccessName(access)))
-
-const calleeName = (expression: ts.Expression): Option.Option<string> =>
-  pipe(
-    expression,
-    unwrapTransparentExpression,
-    Match.value,
-    Match.when(ts.isIdentifier, identifierText),
-    Match.when(isNonOptionalPropertyAccess, propertyAccessCalleeName),
-    Match.orElse((): Option.Option<string> => Option.none())
-  )
 
 const walkArrowBody = (arrow: ts.ArrowFunction) => walkConciseBody(arrow.body)
 
@@ -65,10 +52,10 @@ const walkSpreadExpression = (spread: ts.SpreadElement | ts.SpreadAssignment) =>
 
 const walkArrayElement = (element: ts.Expression | ts.SpreadElement): ReadonlyArray<string> =>
   pipe(
-    Match.value(element),
-    Match.when(ts.isSpreadElement, walkSpreadExpression),
-    Match.when(ts.isExpression, walkExpression),
-    Match.orElse(emptyFingerprintNamesFallback)
+    EffectMatch.value(element),
+    EffectMatch.when(ts.isSpreadElement, walkSpreadExpression),
+    EffectMatch.when(ts.isExpression, walkExpression),
+    EffectMatch.orElse(emptyFingerprintNamesFallback)
   )
 
 const walkArrayLiteralElements = (arrayLiteral: ts.ArrayLiteralExpression) =>
@@ -99,25 +86,25 @@ const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
   pipe(
     expression,
     unwrapTransparentExpression,
-    Match.value,
-    Match.when(ts.isCallExpression, walkCallExpression),
-    Match.when(ts.isArrowFunction, walkArrowBody),
-    Match.when(ts.isFunctionExpression, walkFunctionExpressionBody),
-    Match.when(ts.isBinaryExpression, (binary) => {
+    EffectMatch.value,
+    EffectMatch.when(ts.isCallExpression, walkCallExpression),
+    EffectMatch.when(ts.isArrowFunction, walkArrowBody),
+    EffectMatch.when(ts.isFunctionExpression, walkFunctionExpressionBody),
+    EffectMatch.when(ts.isBinaryExpression, (binary) => {
       const leftNames = walkExpression(binary.left)
       const rightNames = walkExpression(binary.right)
 
       return Array.appendAll(leftNames, rightNames)
     }),
-    Match.when(ts.isConditionalExpression, (conditional) => {
+    EffectMatch.when(ts.isConditionalExpression, (conditional) => {
       const conditionNames = walkExpression(conditional.condition)
       const whenTrueNames = walkExpression(conditional.whenTrue)
       const whenFalseNames = walkExpression(conditional.whenFalse)
 
       return pipe(conditionNames, Array.appendAll(whenTrueNames), Array.appendAll(whenFalseNames))
     }),
-    Match.when(ts.isPropertyAccessExpression, walkPropertyAccessExpression),
-    Match.when(ts.isElementAccessExpression, (access) => {
+    EffectMatch.when(ts.isPropertyAccessExpression, walkPropertyAccessExpression),
+    EffectMatch.when(ts.isElementAccessExpression, (access) => {
       const objectNames = walkExpression(access.expression)
 
       const argumentNames = pipe(
@@ -128,7 +115,7 @@ const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
 
       return Array.appendAll(objectNames, argumentNames)
     }),
-    Match.when(ts.isNewExpression, (newExpression) => {
+    EffectMatch.when(ts.isNewExpression, (newExpression) => {
       const expressionNames = pipe(
         Option.fromNullishOr(newExpression.expression),
         Option.map(walkExpression),
@@ -143,14 +130,14 @@ const walkExpression = (expression: ts.Expression): ReadonlyArray<string> =>
 
       return Array.appendAll(expressionNames, argumentNames)
     }),
-    Match.when(ts.isArrayLiteralExpression, walkArrayLiteralElements),
-    Match.when(ts.isObjectLiteralExpression, walkObjectLiteralProperties),
-    Match.when(ts.isTemplateExpression, walkTemplateSpans),
-    Match.when(ts.isPrefixUnaryExpression, walkPrefixOperand),
-    Match.when(ts.isPostfixUnaryExpression, walkPostfixOperand),
-    Match.when(ts.isAwaitExpression, walkAwaitOperand),
-    Match.when(ts.isTypeOfExpression, walkTypeOfOperand),
-    Match.orElse(emptyFingerprintNamesFallback)
+    EffectMatch.when(ts.isArrayLiteralExpression, walkArrayLiteralElements),
+    EffectMatch.when(ts.isObjectLiteralExpression, walkObjectLiteralProperties),
+    EffectMatch.when(ts.isTemplateExpression, walkTemplateSpans),
+    EffectMatch.when(ts.isPrefixUnaryExpression, walkPrefixOperand),
+    EffectMatch.when(ts.isPostfixUnaryExpression, walkPostfixOperand),
+    EffectMatch.when(ts.isAwaitExpression, walkAwaitOperand),
+    EffectMatch.when(ts.isTypeOfExpression, walkTypeOfOperand),
+    EffectMatch.orElse(emptyFingerprintNamesFallback)
   )
 
 const walkPropertyAssignment = (assignment: ts.PropertyAssignment) =>
@@ -172,12 +159,12 @@ const walkMethodDeclarationBody = (method: ts.MethodDeclaration) =>
 
 const walkObjectProperty = (property: ts.ObjectLiteralElementLike): ReadonlyArray<string> =>
   pipe(
-    Match.value(property),
-    Match.when(ts.isPropertyAssignment, walkPropertyAssignment),
-    Match.when(ts.isShorthandPropertyAssignment, walkShorthandPropertyAssignment),
-    Match.when(ts.isSpreadAssignment, walkSpreadExpression),
-    Match.when(ts.isMethodDeclaration, walkMethodDeclarationBody),
-    Match.orElse(emptyFingerprintNamesFallback)
+    EffectMatch.value(property),
+    EffectMatch.when(ts.isPropertyAssignment, walkPropertyAssignment),
+    EffectMatch.when(ts.isShorthandPropertyAssignment, walkShorthandPropertyAssignment),
+    EffectMatch.when(ts.isSpreadAssignment, walkSpreadExpression),
+    EffectMatch.when(ts.isMethodDeclaration, walkMethodDeclarationBody),
+    EffectMatch.orElse(emptyFingerprintNamesFallback)
   )
 
 // Point-free stages are bare identifier or property chains because calls fingerprint themselves.
@@ -263,11 +250,11 @@ const walkThrowStatementExpression = (throwStatement: ts.ThrowStatement) =>
 
 const walkStatement = (statement: ts.Statement): ReadonlyArray<string> =>
   pipe(
-    Match.value(statement),
-    Match.when(ts.isExpressionStatement, walkExpressionStatement),
-    Match.when(ts.isReturnStatement, walkReturnStatementExpression),
-    Match.when(ts.isVariableStatement, walkVariableStatementDeclarations),
-    Match.when(ts.isIfStatement, (ifStatement) => {
+    EffectMatch.value(statement),
+    EffectMatch.when(ts.isExpressionStatement, walkExpressionStatement),
+    EffectMatch.when(ts.isReturnStatement, walkReturnStatementExpression),
+    EffectMatch.when(ts.isVariableStatement, walkVariableStatementDeclarations),
+    EffectMatch.when(ts.isIfStatement, (ifStatement) => {
       const conditionNames = walkExpression(ifStatement.expression)
       const thenNames = walkStatement(ifStatement.thenStatement)
 
@@ -279,16 +266,20 @@ const walkStatement = (statement: ts.Statement): ReadonlyArray<string> =>
 
       return pipe(conditionNames, Array.appendAll(thenNames), Array.appendAll(elseNames))
     }),
-    Match.when(ts.isBlock, walkBlock),
-    Match.when(ts.isThrowStatement, walkThrowStatementExpression),
-    Match.orElse(emptyFingerprintNamesFallback)
+    EffectMatch.when(ts.isBlock, walkBlock),
+    EffectMatch.when(ts.isThrowStatement, walkThrowStatementExpression),
+    EffectMatch.orElse(emptyFingerprintNamesFallback)
   )
 
 const walkBlock = (block: ts.Block): ReadonlyArray<string> =>
   Array.flatMap(block.statements, walkStatement)
 
 const walkConciseBody = (body: ts.ConciseBody): ReadonlyArray<string> =>
-  pipe(Match.value(body), Match.when(ts.isBlock, walkBlock), Match.orElse(walkExpression))
+  pipe(
+    EffectMatch.value(body),
+    EffectMatch.when(ts.isBlock, walkBlock),
+    EffectMatch.orElse(walkExpression)
+  )
 
 const unwrappedCurriedDefinition = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
@@ -347,11 +338,4 @@ const compositionFingerprintElements =
     )
   }
 
-const compositionFingerprintSubscriptions = Function.compose(
-  compositionFingerprintElements,
-  fileSubscriptions
-)
-
-export const compositionFingerprints = evidenceMatcher(exportReferenceIndex)(
-  compositionFingerprintSubscriptions
-)
+export const compositionFingerprints = exportReferenceFileMatcher(compositionFingerprintElements)

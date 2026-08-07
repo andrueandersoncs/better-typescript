@@ -1,24 +1,6 @@
-import { Array, Effect, Function, Option, pipe } from "effect"
+import { Array, Effect, Option, pipe } from "effect"
 import * as path from "node:path"
 import * as ts from "typescript"
-import { makeRefactorExampleResolver, type ResolveRefactorExamples } from "../example/example.js"
-import { batchReportBlocks, initialReportEvents } from "../report/report.js"
-import type { WiringConfig } from "../wiring/data.js"
-import { workspaceSignalsForProjects } from "../wiring/collect.js"
-import { WorkspaceUpdate } from "./data.js"
-
-const resolveExamples = Effect.fn("Watch.resolveExamples")(makeRefactorExampleResolver)
-
-const reportEventsForResolver = (config: WiringConfig) => (update: WorkspaceUpdate) =>
-  Effect.fn("Watch.reportEventsForResolver")(function* (resolve: ResolveRefactorExamples) {
-    const signals = yield* workspaceSignalsForProjects(config)(update.rootPath)(update.contexts)(
-      Function.identity
-    )
-
-    const blocks = yield* batchReportBlocks(config)(resolve)(signals)
-
-    return initialReportEvents(update.rootPath)(blocks)
-  })
 
 const resolveDirectoryPath = (rootPath: string) => (directoryName: string) =>
   path.join(rootPath, directoryName)
@@ -85,9 +67,3 @@ const publishRootPathWatch = (rootPath: string): Effect.Effect<void> =>
   })
 
 export const watchWorkspace = Effect.fn("Watch.watchWorkspace")(publishRootPathWatch)
-
-// One update is complete because watch rebuilds a whole snapshot.
-export const reportEvents = (config: WiringConfig) =>
-  Effect.fn("Watch.reportEvents")(function* (update: WorkspaceUpdate) {
-    return yield* pipe(resolveExamples(), Effect.flatMap(reportEventsForResolver(config)(update)))
-  })

@@ -1,54 +1,10 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { Array } from "effect"
-import * as ts from "typescript"
-import {
-  makeWorkspacePolicy,
-  makeFindings,
-  toWorkspacePolicies
-} from "@better-typescript/core/engine/policy"
-import {
-  Match,
-  WorkspaceContext,
-  WorkspaceSourceFile
-} from "@better-typescript/matchers/matcher/data"
-import { makeDirectoryMatcher } from "@better-typescript/matchers/matcher"
-
-interface DirectoryFact {
-  readonly fileCount: number
-}
-
-const directoryFact = (fileCount: number): DirectoryFact => ({ fileCount })
-
-const sourceFile = (fileName: string) =>
-  ts.createSourceFile(fileName, "export const value = 1", ts.ScriptTarget.ES2022)
-
-const sourceFiles = Array.make(
-  new WorkspaceSourceFile({ path: "src/one.ts", sourceFile: sourceFile("one.ts") }),
-  new WorkspaceSourceFile({ path: "src/two.ts", sourceFile: sourceFile("two.ts") }),
-  new WorkspaceSourceFile({ path: "test/one.test.ts", sourceFile: sourceFile("one.test.ts") })
-)
-
-const sourceDirectoryMatcher = makeDirectoryMatcher((target) => {
-  if (target.path !== "src") {
-    return Array.empty()
-  }
-
-  return Array.of(new Match({ target, fact: directoryFact(target.sourceFiles.length) }))
-})
-
-const sourceDirectoryPolicy = makeWorkspacePolicy({
-  name: "source-directory",
-  matcher: sourceDirectoryMatcher,
-  guidance: () => (match) =>
-    makeFindings(
-      match.target,
-      "Source directory.",
-      "Keep source files together intentionally.",
-      match.fact
-    ),
-  examples: { _tag: "inline", examples: Array.empty() }
-})
+import { toWorkspacePolicies } from "@better-typescript/core/engine/reportPipeline"
+import { WorkspaceContext } from "@better-typescript/matchers/matcher/workspaceContext"
+import { sourceDirectoryPolicy } from "./workspacePolicySourceDirectory.js"
+import { sourceFiles } from "./workspacePolicySourceFiles.js"
 
 test("directory policies run after workspace paths are collected", () => {
   const context = new WorkspaceContext({ workspaceRoot: "/workspace", sourceFiles })

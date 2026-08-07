@@ -1,10 +1,12 @@
-import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { foldAst } from "../sources/sources.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { foldAst } from "../sources/foldAst.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
 import { strictEqual } from "../equivalence.js"
+import { hasAsteriskToken } from "./hasAsteriskToken.js"
 
 // PreferDirectYieldFact is empty payload because guidance and matchers share identity.
 export const PreferDirectYieldFact = Schema.Struct({})
@@ -13,9 +15,6 @@ export interface PreferDirectYieldFact extends Schema.Schema.Type<typeof PreferD
 
 // emptyPreferDirectYieldFact is the shared empty fact because guidance and matchers share identity.
 export const emptyPreferDirectYieldFact = PreferDirectYieldFact.make({})
-
-const hasAsteriskToken = (node: ts.FunctionExpression | ts.YieldExpression) =>
-  pipe(node.asteriskToken, Option.fromNullishOr, Option.isSome)
 
 const lacksAsteriskToken = (node: ts.FunctionExpression | ts.YieldExpression) =>
   pipe(node.asteriskToken, Option.fromNullishOr, Option.isNone)

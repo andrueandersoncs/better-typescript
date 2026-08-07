@@ -1,20 +1,28 @@
-import { Array, Function, Option, Struct, Tuple, pipe, flow } from "effect"
+import { Array, Function, Option, Schema, Struct, Tuple, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { ModuleGraphData } from "./architectureExploreData.js"
-import { toWorkspacePath } from "./architectureExplore/paths.js"
-import { ModuleEdge } from "./architectureExplore/moduleEdges.js"
-import { evidenceMatcher, moduleEdges } from "./architectureExplore/architectureEvidence.js"
+import { toWorkspacePath } from "./architectureExplore/toWorkspacePath.js"
+import { ModuleEdge } from "./architectureExplore/moduleEdge.js"
+import { architectureEvidence } from "./architectureExplore/architectureEvidence.js"
 import { toRelativeFileName } from "../support/paths.js"
-import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+
+import { stringArray } from "./architectureExplore/stringArraySchema.js"
+import { evidenceFileMatcher } from "./evidenceFileMatcher.js"
+
+// ModuleGraphData carries project and workspace edges because advice joins graphs across packages.
+export const ModuleGraphData = Schema.Struct({
+  importedPaths: stringArray,
+  workspacePath: Schema.String,
+  importedWorkspacePaths: stringArray
+})
+
+export interface ModuleGraphData extends Schema.Schema.Type<typeof ModuleGraphData> {}
 
 const buildIndex = (context: ProgramContext): readonly [ReadonlyArray<ModuleEdge>, string] => {
-  const edges = moduleEdges(context)
+  const edges = architectureEvidence(context).moduleEdges
 
   return Tuple.make(edges, context.projectRoot)
 }
@@ -62,6 +70,4 @@ const moduleGraphElements =
     return Array.of(reported)
   }
 
-const moduleGraphSubscriptions = Function.compose(moduleGraphElements, fileSubscriptions)
-
-export const moduleGraph = evidenceMatcher(buildIndex)(moduleGraphSubscriptions)
+export const moduleGraph = evidenceFileMatcher(buildIndex)(moduleGraphElements)

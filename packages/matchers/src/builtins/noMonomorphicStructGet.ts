@@ -1,8 +1,10 @@
-import { Array, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { hasExportModifier, unwrapTransparentExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { hasExportModifier } from "../support/hasExportModifier.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { strictEqual } from "../equivalence.js"
 
 // NoMonomorphicStructGetFact is empty payload because guidance and matchers share identity.

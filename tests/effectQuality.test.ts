@@ -1,62 +1,11 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Array, Effect, Schema } from "effect"
-import { Signal } from "@better-typescript/core/engine/signal/data"
-import {
-  EffectQualityAdviceData,
-  EffectQualityRuleData,
-  type EffectQualityAdviceKind,
-  type EffectQualityRuleKind
-} from "@better-typescript/matchers/builtins/effectQuality/data"
-import { effectQualityWiring } from "@better-typescript/guidance/preset/effectQualityWiring"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "effect-quality")
-
-const runSignals = async (): Promise<ReadonlyArray<Signal>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-
-  return Promise.all(
-    effectQualityWiring.policies.filter(isProgramPolicy).map(async (named) => {
-      const detections = await Promise.all(
-        workspace.projects.map((project) =>
-          Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-        )
-      )
-
-      return new Signal({
-        name: named.name,
-        reported: named.reported,
-        detections: detections.flat(),
-        examples: named.examples
-      })
-    })
-  )
-}
-
-const ruleKinds = (signals: ReadonlyArray<Signal>): ReadonlySet<EffectQualityRuleKind> =>
-  new Set(
-    signals
-      .filter((signal) => signal.reported)
-      .flatMap((signal) => signal.detections)
-      .flatMap((detection) =>
-        Schema.is(EffectQualityRuleData)(detection.data) ? [detection.data.kind] : []
-      )
-  )
-
-const adviceKinds = (signals: ReadonlyArray<Signal>): ReadonlySet<EffectQualityAdviceKind> =>
-  new Set(
-    signals
-      .filter((signal) => !signal.reported)
-      .flatMap((signal) => signal.detections)
-      .flatMap((detection) =>
-        Schema.is(EffectQualityAdviceData)(detection.data) ? [detection.data.kind] : []
-      )
-  )
+import type { EffectQualityAdviceKind } from "@better-typescript/matchers/builtins/effectQuality/effectQualityAdviceKind"
+import type { EffectQualityRuleKind } from "@better-typescript/matchers/builtins/effectQuality/effectQualityRuleKind"
+import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
+import { runSignals } from "./effectQualityRunSignals.js"
+import { ruleKinds } from "./effectQualityRuleKinds.js"
+import { adviceKinds } from "./effectQualityAdviceKinds.js"
 
 test("Effect-quality wiring reports every supported local rule", async () => {
   const actual = ruleKinds(await runSignals())

@@ -1,7 +1,6 @@
 import { test } from "bun:test"
-import { preferInferredTypes } from "@better-typescript/guidance/policies/preferInferredTypes"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { preferInferredTypes } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("prefer-inferred-types reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(preferInferredTypes))
 

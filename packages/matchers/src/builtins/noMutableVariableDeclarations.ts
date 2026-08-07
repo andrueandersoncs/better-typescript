@@ -1,14 +1,12 @@
-import { Tuple, Array, HashMap, Option, pipe, Schema } from "effect"
+import { Array, HashMap, Option, Schema, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-
-const mutableVariableDeclarationKinds = Array.make<["let", "var"]>("let", "var")
-
-// MutableVariableDeclarationKind classifies let/var because declaration advice differs.
-export const MutableVariableDeclarationKind = Schema.Literals(mutableVariableDeclarationKinds)
-
-export type MutableVariableDeclarationKind = typeof MutableVariableDeclarationKind.Type
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import {
+  MutableVariableDeclarationKind,
+  type MutableVariableDeclarationKind as MutableVariableDeclarationKindT
+} from "./mutableVariableDeclarationKind.js"
 
 // NoMutableVariableDeclarationsFact names the keyword because guidance distinguishes let and var.
 export const NoMutableVariableDeclarationsFact = Schema.Struct({
@@ -31,7 +29,7 @@ const variableDeclarationListKinds = Array.of(ts.SyntaxKind.VariableDeclarationL
 
 const mutableVariableDeclarationsMatches = (context: MatchContext) => {
   const matchDeclarationList = (declarationList: ts.VariableDeclarationList) => {
-    const matchWithKind = (kind: MutableVariableDeclarationKind) => {
+    const matchWithKind = (kind: MutableVariableDeclarationKindT) => {
       const fact = NoMutableVariableDeclarationsFact.make({ kind })
       return makeNodeMatch(declarationList, fact)
     }

@@ -1,9 +1,14 @@
-import { Array, Function, Option, pipe, Schema } from "effect"
+import { Array, Function, Match, Option, Result, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { namedDetectionTarget } from "../support/tsNode.js"
-import { dataTaggedClassHeritage, typeIsWireSafe } from "../support/taggedClassPortability.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { namedDetectionTarget } from "../support/namedDetectionTarget.js"
+import { taggedClassHeritage } from "../support/taggedClassHeritage.js"
+import { typeHasAnyFlags } from "../support/typeHasAnyFlags.js"
+import { typeIsWirePrimitive } from "../support/typeIsWirePrimitive.js"
+import { differentBaseConstraint } from "../support/differentBaseConstraint.js"
+import type { SeenTypes } from "../support/seenTypes.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferSchemaTaggedStructFact is empty payload because guidance and matchers share identity.
@@ -15,6 +20,212 @@ export interface PreferSchemaTaggedStructFact extends Schema.Schema.Type<
 
 // emptyPreferSchemaTaggedStructFact is empty payload because guidance and matchers share identity.
 export const emptyPreferSchemaTaggedStructFact = PreferSchemaTaggedStructFact.make({})
+
+const effectDataModuleSuffixes = Array.make("/effect/dist/Data.d.ts", "/effect/src/Data.ts")
+
+const dataTaggedClassHeritage = taggedClassHeritage(effectDataModuleSuffixes)
+
+const rejectedWireTypeFlags =
+  ts.TypeFlags.Any |
+  ts.TypeFlags.Unknown |
+  ts.TypeFlags.Undefined |
+  ts.TypeFlags.Void |
+  ts.TypeFlags.ESSymbolLike |
+  ts.TypeFlags.BigIntLike |
+  ts.TypeFlags.NonPrimitive
+
+const typeIsObject = (type: ts.Type): type is ts.ObjectType =>
+  (type.flags & ts.TypeFlags.Object) !== 0
+
+const typeIsUnion = (type: ts.Type): type is ts.UnionType => type.isUnion()
+
+const typeIsIntersection = (type: ts.Type): type is ts.IntersectionType => type.isIntersection()
+
+const typeIsRejectedWireValue = typeHasAnyFlags(rejectedWireTypeFlags)
+
+const typeWasSeen =
+  (seen: SeenTypes) =>
+  (type: ts.Type): boolean => {
+    const isSameType = strictEqual(type)
+
+    return Array.some(seen, isSameType)
+  }
+
+const memberIsDefined = (member: ts.Type) => strictEqual(0)(member.flags & ts.TypeFlags.Undefined)
+
+const definedUnionMembers = (type: ts.UnionType): ReadonlyArray<ts.Type> =>
+  Array.filter(type.types, memberIsDefined)
+
+const propertyHasCompilerName = (property: ts.Symbol) => property.getName().startsWith("__@")
+
+const propertyTypeIsWireSafe =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (seen: SeenTypes) =>
+  (property: ts.Symbol): boolean =>
+    pipe(
+      Match.value(property),
+      Match.when(propertyHasCompilerName, Function.constFalse),
+      Match.orElse((namedProperty) => {
+        const propertyLocation = pipe(
+          namedProperty.getDeclarations(),
+          Option.fromNullishOr,
+          Option.flatMap(Array.head),
+          Option.getOrElse(Function.constant(location))
+        )
+
+        const propertyType = checker.getTypeOfSymbolAtLocation(namedProperty, propertyLocation)
+        const isOptional = (namedProperty.flags & ts.SymbolFlags.Optional) !== 0
+        const optionalUnion = isOptional && propertyType.isUnion()
+        const members = optionalUnion ? definedUnionMembers(propertyType) : Array.of(propertyType)
+        const checkType = typeIsWireSafeWithSeen(checker)(location)(seen)
+        const hasDefinedMember = members.length > 0
+        const everyMemberIsWireSafe = Array.every(members, checkType)
+        const conditions = Array.make(hasDefinedMember, everyMemberIsWireSafe)
+
+        return Array.every(conditions, Boolean)
+      })
+    )
+
+const intersectionTypeIsWireSafe =
+  (checkType: (type: ts.Type) => boolean) => (type: ts.IntersectionType) =>
+    pipe(
+      Array.findFirst(type.types, typeIsWirePrimitive),
+      Option.match({
+        onNone: () => Array.every(type.types, checkType),
+        onSome: Function.constTrue
+      })
+    )
+
+const objectTypeHasSignatures = (type: ts.ObjectType) => {
+  const callSignatureCount = type.getCallSignatures().length
+  const constructSignatureCount = type.getConstructSignatures().length
+  const signatureCounts = Array.make(callSignatureCount, constructSignatureCount)
+
+  return Array.some(signatureCounts, (count) => count > 0)
+}
+
+const objectTypeIsCollection = (checker: ts.TypeChecker) => (type: ts.ObjectType) => {
+  const isArray = checker.isArrayType(type)
+  const isTuple = checker.isTupleType(type)
+  const collectionChecks = Array.make(isArray, isTuple)
+
+  return Array.some(collectionChecks, Boolean)
+}
+
+const collectionTypeIsWireSafe =
+  (checker: ts.TypeChecker) => (checkType: (type: ts.Type) => boolean) => (type: ts.ObjectType) =>
+    pipe(
+      checker.getIndexTypeOfType(type, ts.IndexKind.Number),
+      Option.fromNullishOr,
+      Option.exists(checkType)
+    )
+
+const objectTypeIsClass = (type: ts.ObjectType) => (type.objectFlags & ts.ObjectFlags.Class) !== 0
+
+const structuralObjectTypeIsWireSafe =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (seen: SeenTypes) =>
+  (checkType: (type: ts.Type) => boolean) =>
+  (type: ts.ObjectType) => {
+    const stringIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.String)
+    const numberIndexType = checker.getIndexTypeOfType(type, ts.IndexKind.Number)
+    const possibleIndexTypes = Array.make(stringIndexType, numberIndexType)
+    const indexTypes = Array.filterMap(possibleIndexTypes, Result.fromNullishOr(Function.constVoid))
+    const indexTypesAreWireSafe = Array.every(indexTypes, checkType)
+    const properties = checker.getPropertiesOfType(type)
+    const hasStructuralMembers = properties.length + indexTypes.length > 0
+    const checkProperty = propertyTypeIsWireSafe(checker)(location)(seen)
+    const propertiesAreWireSafe = Array.every(properties, checkProperty)
+
+    const structuralChecks = Array.make(
+      indexTypesAreWireSafe,
+      hasStructuralMembers,
+      propertiesAreWireSafe
+    )
+
+    return Array.every(structuralChecks, Boolean)
+  }
+
+const objectTypeIsWireSafe =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (seen: SeenTypes) =>
+  (checkType: (type: ts.Type) => boolean) =>
+  (type: ts.ObjectType) =>
+    pipe(
+      Match.value(type),
+      Match.when(objectTypeHasSignatures, Function.constFalse),
+      Match.when(objectTypeIsCollection(checker), collectionTypeIsWireSafe(checker)(checkType)),
+      Match.when(objectTypeIsClass, Function.constFalse),
+      Match.orElse(structuralObjectTypeIsWireSafe(checker)(location)(seen)(checkType))
+    )
+
+const unconstrainedTypeIsWireSafe =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (seen: SeenTypes) =>
+  (checkType: (type: ts.Type) => boolean) =>
+  (type: ts.Type) =>
+    pipe(
+      Match.value(type),
+      Match.when(typeIsObject, objectTypeIsWireSafe(checker)(location)(seen)(checkType)),
+      Match.orElse(Function.constFalse)
+    )
+
+const constrainedOrStructuralTypeIsWireSafe =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (seen: SeenTypes) =>
+  (checkType: (type: ts.Type) => boolean) =>
+  (type: ts.Type) => {
+    const baseConstraint = differentBaseConstraint(checker)(type)
+    const checkUnconstrained = unconstrainedTypeIsWireSafe(checker)(location)(seen)(checkType)
+
+    return pipe(
+      baseConstraint,
+      Option.match({
+        onNone: () => checkUnconstrained(type),
+        onSome: checkType
+      })
+    )
+  }
+
+const typeIsWireSafeWithSeen =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (seen: SeenTypes) =>
+  (type: ts.Type): boolean => {
+    const nextSeen = Array.append(seen, type)
+    const checkType = typeIsWireSafeWithSeen(checker)(location)(nextSeen)
+
+    const checkConstrainedOrStructural =
+      constrainedOrStructuralTypeIsWireSafe(checker)(location)(nextSeen)(checkType)
+
+    const unionMembersAreWireSafe = (union: ts.UnionType) => Array.every(union.types, checkType)
+
+    return pipe(
+      Match.value(type),
+      Match.when(typeIsWirePrimitive, Function.constTrue),
+      Match.when(typeIsRejectedWireValue, Function.constFalse),
+      Match.when(typeWasSeen(seen), Function.constTrue),
+      Match.when(typeIsUnion, unionMembersAreWireSafe),
+      Match.when(typeIsIntersection, intersectionTypeIsWireSafe(checkType)),
+      Match.orElse(checkConstrainedOrStructural)
+    )
+  }
+
+// Wire-safe means every reachable value encodes portably because opaque identities are rejected.
+const typeIsWireSafe =
+  (checker: ts.TypeChecker) =>
+  (location: ts.Node) =>
+  (type: ts.Type): boolean => {
+    const seen = Array.empty<ts.Type>()
+    const checkType = typeIsWireSafeWithSeen(checker)(location)(seen)
+
+    return checkType(type)
+  }
 
 const fieldsAreWireSafe = (checker: ts.TypeChecker) => (heritage: ts.ExpressionWithTypeArguments) =>
   pipe(

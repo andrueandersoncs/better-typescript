@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
 
 const adviceArray = Schema.Array(Advice)
 

@@ -1,79 +1,20 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Effect, Option, Schema, Array } from "effect"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { Signal } from "@better-typescript/core/engine/signal/data"
-import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
-import {
-  ArchitectureRolePath,
-  conventionalArchitectureRoleOf,
-  roleByPrefixes
-} from "@better-typescript/guidance/architectureRole"
-import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
+import { ArchitectureRolePath } from "@better-typescript/guidance/architectureRolePath"
+import { conventionalArchitectureRoleOf } from "@better-typescript/guidance/conventionalArchitectureRoleOf"
+import { roleByPrefixes } from "@better-typescript/guidance/roleByPrefixes"
+import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
 import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring
-} from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
-import {
-  FunctionalCoreBoundaryData,
-  FunctionalCoreShapeData
-} from "@better-typescript/matchers/builtins/functionalCoreEffect/data"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "functional-core-effect")
-
-const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-
-  return Promise.all(
-    functionalCoreEffectWiring.policies.filter(isProgramPolicy).map(async (named) => {
-      const detections = await Promise.all(
-        workspace.projects.map((project) =>
-          Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-        )
-      )
-
-      return new Signal({
-        name: named.name,
-        reported: named.reported,
-        detections: detections.flat(),
-        examples: named.examples
-      })
-    })
-  )
-}
-
-const signalNamed = (signals: ReadonlyArray<Signal>, name: string): Signal => {
-  const signal = signals.find((candidate) => candidate.name === name)
-  assert.ok(signal)
-  return signal
-}
-
-const collectAdvice = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> =>
-  functionalCoreEffectWiring.derive(signals)
-
-const boundaryDataOf = (detection: Detection): FunctionalCoreBoundaryData => {
-  assert.ok(Schema.is(FunctionalCoreBoundaryData)(detection.data))
-  return detection.data
-}
-
-const boundarySummary = (detection: Detection): string => {
-  const data = boundaryDataOf(detection)
-
-  return `${detection.location.path}:${detection.location.line}:${data.kind}:${data.subject}`
-}
-
-const shapeSummary = (detection: Detection): string => {
-  assert.ok(Schema.is(FunctionalCoreShapeData)(detection.data))
-  const data = detection.data
-
-  return `${detection.location.path}:${detection.location.line}:${data.kind}:${data.branchCount}:${data.functionCount}:${data.serviceCount}:${data.effectfulMemberCount}:${data.transformationCount}`
-}
+} from "@better-typescript/guidance/functionalCoreEffect/advice"
+import { makeRefactorExampleResolver } from "@better-typescript/core/engine/reportPipeline"
+import { Effect, Option } from "effect"
+import { runFixtureSignals } from "./functionalCoreEffectRunFixtureSignals.js"
+import { signalNamed } from "./functionalCoreEffectSignalNamed.js"
+import { boundaryDataOf } from "./functionalCoreEffectBoundaryDataOf.js"
+import { boundarySummary } from "./functionalCoreEffectBoundarySummary.js"
+import { shapeSummary } from "./functionalCoreEffectShapeSummary.js"
 
 test("conventional and explicit role classifiers are deterministic", () => {
   assert.deepEqual(
@@ -265,7 +206,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/ports/badPort.ts:14:pure-service:0:1:1:0:0"
   ])
 
-  const advice = collectAdvice(signals)
+  const advice = functionalCoreEffectWiring.derive(signals)
   const actualAdvice = advice.map((item) => `${item.location.path}:${item.title}`).sort()
 
   assert.deepEqual(actualAdvice, [

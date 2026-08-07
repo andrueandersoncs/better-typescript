@@ -1,4 +1,4 @@
-import type { SemanticModuleFixtureManifest } from "../../semanticModuleFixtures.js"
+import type { SemanticModuleFixtureManifest } from "../../semanticModuleFixtureManifest.js"
 
 export const normalizationManifest = {
   entities: [
@@ -134,12 +134,9 @@ export const normalizationManifest = {
     ["anonymous-function"],
     ["named-class"],
     ["named-function"],
-    ["combined-left"],
-    ["combined-right"],
-    ["service-class"],
-    ["service-namespace"],
-    ["repeat-first"],
-    ["repeat-second"],
+    ["combined-left", "combined-right"],
+    ["service-class", "service-namespace"],
+    ["repeat-first", "repeat-second"],
     ["dotted"],
     ["parse-overload"],
     ["single-variable"],

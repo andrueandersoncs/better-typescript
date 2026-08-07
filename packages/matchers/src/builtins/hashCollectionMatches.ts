@@ -1,17 +1,91 @@
-import { Array, Function, Match, Option, pipe, Struct, flow } from "effect"
+import { Array, Function, Option, Struct, flow, pipe, Match as EffectMatch } from "effect"
 import * as ts from "typescript"
-import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match as MatcherMatch, type MatchContext } from "../matcher/data.js"
-import {
-  constructionEscapesExternally,
-  typeReferenceEscapesExternally
-} from "../support/tsSignature.js"
-import { isInAmbientContext, type NewOrTypeReferenceNode } from "../support/tsNode.js"
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { nodeSubscriptions } from "../matcher/nodeSubscriptions.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { outermostTransparentWrapper } from "../support/outermostTransparentWrapper.js"
+import { nameNodeEscapes } from "../support/nameNodeEscapes.js"
+import { isExternalArgumentPosition } from "../support/isExternalArgumentPosition.js"
+import { functionDeclarationName } from "../support/functionDeclarationName.js"
+import type { EscapeCarrier } from "../support/escapeCarrierType.js"
+import { isInAmbientContext } from "../support/isDeclareKeyword.js"
+import type { NewOrTypeReferenceNode } from "../support/newOrTypeReferenceNode.js"
 import { strictEqual } from "../equivalence.js"
+import { effectModuleName } from "./effectModuleName.js"
+import type { HashCollectionNames } from "./hashCollectionNames.js"
+
+// A construction escapes because an external signature receives it directly or through a variable.
+const constructionEscapesExternally = (checker: ts.TypeChecker) => (expression: ts.Expression) => {
+  const outermost = outermostTransparentWrapper(expression)
+  const isDirectExternalArgument = isExternalArgumentPosition(checker)(outermost)
+  const sourceFile = expression.getSourceFile()
+
+  const escapesThroughVariable = pipe(
+    Option.liftPredicate(ts.isVariableDeclaration)(outermost.parent),
+    Option.filter((declaration) => {
+      const initializerIsOutermost = strictEqual(outermost)(declaration.initializer)
+
+      return initializerIsOutermost
+    }),
+    Option.map(Struct.get("name")),
+    Option.exists(nameNodeEscapes(checker)(sourceFile))
+  )
+
+  return isDirectExternalArgument || escapesThroughVariable
+}
+
+const isEscapeCarrierNode = (node: ts.Node): node is EscapeCarrier =>
+  ts.isVariableDeclaration(node) || ts.isParameter(node)
+
+const escapeCarrier = (node: ts.Node): Option.Option<EscapeCarrier> => {
+  if (ts.isSourceFile(node.parent)) {
+    return Option.none()
+  }
+
+  const carrier = Option.liftPredicate(isEscapeCarrierNode)(node.parent)
+
+  return pipe(
+    carrier,
+    Option.orElse(() => escapeCarrier(node.parent))
+  )
+}
+
+// A written Map or Set type escapes because its carrier crosses an external boundary.
+const typeReferenceEscapesExternally =
+  (checker: ts.TypeChecker) => (typeRef: ts.TypeReferenceNode) =>
+    pipe(
+      escapeCarrier(typeRef),
+      Option.exists((carrier) => {
+        if (ts.isParameter(carrier)) {
+          const sourceFile = carrier.getSourceFile()
+          const isDirectExternalArgument = isExternalArgumentPosition(checker)(carrier.parent)
+
+          const variableName = pipe(
+            Option.liftPredicate(ts.isVariableDeclaration)(carrier.parent.parent),
+            Option.map(Struct.get("name"))
+          )
+
+          const functionName = pipe(
+            Option.liftPredicate(ts.isFunctionDeclaration)(carrier.parent),
+            Option.flatMap(functionDeclarationName)
+          )
+
+          const nameNode = pipe(variableName, Option.orElse(Function.constant(functionName)))
+          const escapesThroughName = Option.exists(nameNode, nameNodeEscapes(checker)(sourceFile))
+
+          return isDirectExternalArgument || escapesThroughName
+        }
+
+        const sourceFile = carrier.getSourceFile()
+
+        return nameNodeEscapes(checker)(sourceFile)(carrier.name)
+      })
+    )
 
 const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 const emptyNodes: ReadonlyArray<ts.Node> = Array.empty()
-const effectModuleName = "effect"
 
 const typeNameIdentifier = Function.flow(
   Struct.get<ts.TypeReferenceNode, "typeName">("typeName"),
@@ -75,14 +149,6 @@ export const typeRefMatches =
     return Array.of(typeRefMatchValue)
   }
 
-// HashCollectionNames parameterizes Map/Set identity because both share one orchestration.
-export interface HashCollectionNames {
-  readonly collectionName: string
-  readonly typeNames: ReadonlyArray<string>
-  readonly mutableModuleName: string
-  readonly mutableName: string
-}
-
 const isCollectionRuleNode =
   (isTypeName: (id: ts.Identifier) => boolean) =>
   (node: ts.Node): node is NewOrTypeReferenceNode =>
@@ -137,10 +203,10 @@ const mutableImportMatches =
 
     const nodesForModuleSpecifier = (moduleSpecifier: ts.StringLiteralLike) =>
       pipe(
-        Match.value(moduleSpecifier.text),
-        Match.when(isMutableModule, () => Array.of<ts.Node>(moduleSpecifier)),
-        Match.when(isEffectModule, effectNamedImportNodes),
-        Match.orElse(Function.constant(emptyNodes))
+        EffectMatch.value(moduleSpecifier.text),
+        EffectMatch.when(isMutableModule, () => Array.of<ts.Node>(moduleSpecifier)),
+        EffectMatch.when(isEffectModule, effectNamedImportNodes),
+        EffectMatch.orElse(Function.constant(emptyNodes))
       )
 
     const importNodes = pipe(

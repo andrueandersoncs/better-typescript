@@ -1,9 +1,12 @@
 import { Array, Function, Option, Schema, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { type CallLikeExpression, unwrapExpression } from "../support/tsNode.js"
-import { invocationExpressionBody, isExactForwarder } from "./passThroughWrappers.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import type { CallLikeExpression } from "../support/callLikeExpression.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { invocationExpressionBody } from "./invocationExpressionBody.js"
+import { isExactForwarder } from "./isExactForwarder.js"
 
 // NoPassThroughObjectWrappersFact is empty because the forwarding shape is the finding.
 export const NoPassThroughObjectWrappersFact = Schema.Struct({})

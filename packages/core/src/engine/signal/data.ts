@@ -1,6 +1,6 @@
 import { Data } from "effect"
-import type { RefactorExampleSource } from "../example/data.js"
-import type { Detection } from "../location/data.js"
+import type { RefactorExampleSource } from "../example/refactorExampleSource.js"
+import type { Detection } from "../location/detectionData.js"
 
 // Signal is one named policy result because rendering and advice share it.
 export class Signal extends Data.Class<{
@@ -8,10 +8,4 @@ export class Signal extends Data.Class<{
   readonly reported: boolean
   readonly detections: ReadonlyArray<Detection>
   readonly examples: RefactorExampleSource
-}> {}
-
-// WiringSignals records match state and signals because unmatched is not empty.
-export class WiringSignals extends Data.Class<{
-  readonly matched: boolean
-  readonly signals: ReadonlyArray<Signal>
 }> {}

@@ -1,7 +1,9 @@
-import { Array, Function, HashSet, Option, pipe, Result, Schema } from "effect"
+import { Array, Function, HashSet, Option, Result, Schema, pipe } from "effect"
 import type * as ts from "typescript"
-import { fileMatcher, withCompilerOptions } from "../matcher/matcher.js"
-import { makePositionMatch, type MatchContext } from "../matcher/data.js"
+import { fileMatcher } from "../matcher/fileMatcher.js"
+import { makePositionMatch } from "../matcher/makePositionMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { Matcher } from "../matcher/matcherData.js"
 
 // NoUnusedFact is empty payload because guidance and matchers share identity.
 export const NoUnusedFact = Schema.Struct({})
@@ -10,6 +12,14 @@ export interface NoUnusedFact extends Schema.Schema.Type<typeof NoUnusedFact> {}
 
 // emptyNoUnusedFact is the shared empty fact because guidance and matchers share identity.
 export const emptyNoUnusedFact = NoUnusedFact.make({})
+
+const withCompilerOptions =
+  (compilerOptions: ts.CompilerOptions) =>
+  (matcher: Matcher): Matcher =>
+    new Matcher({
+      plan: matcher.plan,
+      compilerOptions: { ...matcher.compilerOptions, ...compilerOptions }
+    })
 
 const unusedDiagnosticCodes = HashSet.make(6133, 6192, 6196, 6138, 6198, 6199, 6205)
 

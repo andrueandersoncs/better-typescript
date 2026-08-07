@@ -1,5 +1,5 @@
-import { Data, Schema } from "effect"
-import { Detection } from "@better-typescript/core/engine/location/data"
+import { Schema } from "effect"
+import { Detection } from "@better-typescript/core/engine/location/detectionData"
 
 const detectionArray = Schema.Array(Detection)
 
@@ -10,9 +10,3 @@ export const PipelineSignals = Schema.Struct({
 })
 
 export interface PipelineSignals extends Schema.Schema.Type<typeof PipelineSignals> {}
-
-// Complete nested-call detection pair because advisers consume one finished batch.
-export class PipelineHostileInput extends Data.Class<{
-  readonly noNestedCalls: ReadonlyArray<Detection>
-  readonly preferCurriedDataLastFunctions: ReadonlyArray<Detection>
-}> {}

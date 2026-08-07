@@ -1,37 +1,11 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import { Detection } from "@better-typescript/core/engine/location/data"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import { Location } from "@better-typescript/core/engine/location/data"
-import { Signal } from "@better-typescript/core/engine/signal/data"
-
-const range = (count: number): ReadonlyArray<number> =>
-  Array.from({ length: count }, (_, index) => index + 1)
-
-const detectionAt = (path: string, line: number, data?: unknown): Detection =>
-  Detection.make({
-    location: Location.make({ path, line, column: 1 }),
-    message: "message",
-    hint: "hint",
-    ...(data === undefined ? {} : { data })
-  })
-
-const detectionsAt = (path: string, count: number, data?: unknown): ReadonlyArray<Detection> =>
-  range(count).map((line) => detectionAt(path, line, data))
-
-const reportedSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
-  new Signal({ name, reported: true, detections, examples: emptyRefactorExampleSource })
-
-const silentSignal = (name: string, detections: ReadonlyArray<Detection>): Signal =>
-  new Signal({ name, reported: false, detections, examples: emptyRefactorExampleSource })
-
-const adviceWithTitle = (advice: ReadonlyArray<Advice>, title: string): ReadonlyArray<Advice> =>
-  advice.filter((item) => item.title === title)
-
-const adviceCount = (advice: ReadonlyArray<Advice>, title: string): number =>
-  adviceWithTitle(advice, title).length
+import { detectionsAt } from "./defaultDeriveDetections.js"
+import { reportedSignal } from "./defaultDeriveReportedSignal.js"
+import { silentSignal } from "./defaultDeriveSilentSignal.js"
+import { adviceWithTitle } from "./defaultDeriveAdviceWithTitle.js"
+import { adviceCount } from "./defaultDeriveAdviceCount.js"
 
 test("defaultDerive excludes silent signals from reported aggregate advice", () => {
   const advice = defaultWiring.derive([silentSignal("no-throw", detectionsAt("src/silent.ts", 10))])

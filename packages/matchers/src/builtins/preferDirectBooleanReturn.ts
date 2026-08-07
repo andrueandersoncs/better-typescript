@@ -1,13 +1,16 @@
-import { Array, Function, Match, Option, Struct, flow, pipe, Result, Schema } from "effect"
+import { Array, Function, Option, Result, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match as MatcherMatch, type MatchContext } from "../matcher/data.js"
-import {
-  returnStatementExpression,
-  unwrapExpression,
-  unwrapSingleStatementBlock
-} from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { returnStatementExpression } from "../support/returnStatementExpression.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { unwrapSingleStatementBlock } from "../support/unwrapSingleStatementBlock.js"
 import { strictEqual } from "../equivalence.js"
+import type { BooleanReturnTarget } from "./booleanReturnTarget.js"
+import { booleanLiteralValue } from "./booleanLiteralValue.js"
+import { isFalseKeyword } from "./isFalseKeyword.js"
 
 const literalBranchKind = Schema.Literal("literal-branch")
 const andFalseKind = Schema.Literal("and-false")
@@ -42,28 +45,8 @@ export const PreferDirectBooleanReturnFact = Schema.Union(directBooleanReturnMem
 
 export type PreferDirectBooleanReturnFact = Schema.Schema.Type<typeof PreferDirectBooleanReturnFact>
 
-// BooleanReturnTarget is a local syntax union because matchers need one narrowed node shape.
-export type BooleanReturnTarget = ts.IfStatement | ts.Block | ts.ConditionalExpression
-
-const booleanLiteralValue = (expression: ts.Expression) => {
-  const unwrapped = unwrapExpression(expression)
-
-  return pipe(
-    Match.value(unwrapped.kind),
-    Match.when(ts.SyntaxKind.TrueKeyword, Function.constTrue),
-    Match.when(ts.SyntaxKind.FalseKeyword, Function.constFalse),
-    Match.option
-  )
-}
-
 const isNonBooleanLiteral = (expression: ts.Expression) =>
   !pipe(expression, booleanLiteralValue, Option.isSome)
-
-const isFalseKeyword = flow(
-  unwrapExpression,
-  Struct.get<ts.Expression, "kind">("kind"),
-  strictEqual(ts.SyntaxKind.FalseKeyword)
-)
 
 const isFalseLiteralReturn = (statement: ts.Statement) =>
   pipe(

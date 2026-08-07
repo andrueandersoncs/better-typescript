@@ -1,7 +1,8 @@
 import { Array, Schema } from "effect"
-import { commentText } from "../sources/comments.js"
-import { fileMatcher } from "../matcher/matcher.js"
-import { makePositionMatch, type MatchContext } from "../matcher/data.js"
+import { commentText } from "../sources/commentText.js"
+import { fileMatcher } from "../matcher/fileMatcher.js"
+import { makePositionMatch } from "../matcher/makePositionMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 
 // RequireBecauseInCommentsFact is empty payload because guidance and matchers share identity.
 export const RequireBecauseInCommentsFact = Schema.Struct({})

@@ -1,56 +1,19 @@
-import { Array, Function, HashSet, Option, pipe, Schema } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  hasWord,
-  semanticRole,
-  type CallableSemantics
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { Array, Function, HashSet, Option, pipe } from "effect"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import { hasWord } from "../support/hasWord.js"
+import { semanticRole } from "../support/semanticRole2.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
+import { commandOperation } from "./commandOperations.js"
+import { RequireCommandNameConsistencyFact } from "./requireCommandNameConsistencyFact.js"
+import { hasCommandRole } from "./requireCommandRole.js"
 
-const falseCommandKind = Schema.Literal("false-command")
-const hiddenCommandKind = Schema.Literal("hidden-command")
-
-// RequireCommandFalseCommandFact is false-command evidence because name and operation pair.
-export const RequireCommandFalseCommandFact = Schema.Struct({
-  kind: falseCommandKind,
-  nameText: Schema.String,
-  operation: Schema.String
-})
-
-export interface RequireCommandFalseCommandFact extends Schema.Schema.Type<
-  typeof RequireCommandFalseCommandFact
-> {}
-
-// RequireCommandHiddenCommandFact is hidden-command evidence because void commands need names.
-export const RequireCommandHiddenCommandFact = Schema.Struct({
-  kind: hiddenCommandKind,
-  nameText: Schema.String
-})
-
-export interface RequireCommandHiddenCommandFact extends Schema.Schema.Type<
-  typeof RequireCommandHiddenCommandFact
-> {}
-
-const commandFactMembers = Array.make(
-  RequireCommandFalseCommandFact,
-  RequireCommandHiddenCommandFact
-)
-
-// RequireCommandNameConsistencyFact unions command claims because false and hidden differ.
-export const RequireCommandNameConsistencyFact = Schema.Union(commandFactMembers)
-
-export type RequireCommandNameConsistencyFact = Schema.Schema.Type<
-  typeof RequireCommandNameConsistencyFact
->
-
-const commandRole = semanticRole("command")
 const projectionRole = semanticRole("projection")
-
-const commandOperations = HashSet.make("publish", "save", "send", "write")
 
 const accessorOperations = HashSet.make("find", "get", "load", "lookup", "read", "select")
 
@@ -98,20 +61,14 @@ const predicateOperations = HashSet.make(
 const emptyFacts: ReadonlyArray<Match<RequireCommandNameConsistencyFact>> = Array.empty()
 const constantEmptyFacts = Function.constant(emptyFacts)
 
-const hasCommandRole = (semantics: CallableSemantics) => HashSet.has(semantics.roles, commandRole)
-
 const isNeutralCallbackOrHandler = (semantics: CallableSemantics) =>
   hasWord(semantics.name.words)(neutralRoleWords)
 
-const isCommandOperation = (operation: string) => HashSet.has(commandOperations, operation)
 const isPredicateOperation = (operation: string) => HashSet.has(predicateOperations, operation)
 const isAccessorOperation = (operation: string) => HashSet.has(accessorOperations, operation)
 
 const isResultBearingOperation = (operation: string) =>
   HashSet.has(resultBearingOperations, operation)
-
-const commandOperation = (semantics: CallableSemantics) =>
-  pipe(semantics.name.operation, Option.filter(isCommandOperation))
 
 const claimsCommandOperation = Function.compose(commandOperation, Option.isSome)
 
@@ -199,5 +156,4 @@ const matches = (context: MatchContext) => {
   return matchesDefinition
 }
 
-export const requireCommandNameConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requireCommandNameConsistencyMatcher = functionDefinitionMatcher(matches)

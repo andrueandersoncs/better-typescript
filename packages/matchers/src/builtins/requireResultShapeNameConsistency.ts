@@ -1,18 +1,15 @@
-import { Array, flow, Function, HashSet, Match, Option, pipe, Schema, Struct } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  isNonBooleanResult,
-  type CallableSemantics,
-  type ResultCardinality,
-  type ResultShape
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
-
-const shapeExpectationKind = Schema.Literal("shape")
-const cardinalityExpectationKind = Schema.Literal("cardinality")
+import { Array, Function, HashSet, Match, Option, Schema, Struct, flow, pipe } from "effect"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import { isNonBooleanResult } from "../support/isNonBooleanResult.js"
+import type { ResultCardinality } from "../support/resultCardinality.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
+import type { CardinalityResultExpectation } from "./cardinalityResultExpectation.js"
+import { ResultExpectation } from "./resultExpectation.js"
+import { shapeExpectation } from "./shapeExpectation.js"
+import type { ShapeResultExpectation } from "./shapeResultExpectation.js"
 
 // RequireResultShapeNameConsistencyFact compares shapes because naming advice cites both.
 export const RequireResultShapeNameConsistencyFact = Schema.Struct({
@@ -26,33 +23,6 @@ export interface RequireResultShapeNameConsistencyFact extends Schema.Schema.Typ
   typeof RequireResultShapeNameConsistencyFact
 > {}
 
-// ShapeResultExpectation is shape advice because operation names imply a result shape.
-export const ShapeResultExpectation = Schema.Struct({
-  _tag: shapeExpectationKind,
-  expected: Schema.String,
-  label: Schema.String
-})
-
-export interface ShapeResultExpectation extends Schema.Schema.Type<typeof ShapeResultExpectation> {}
-
-// CardinalityResultExpectation is cardinality advice because operation names imply cardinality.
-export const CardinalityResultExpectation = Schema.Struct({
-  _tag: cardinalityExpectationKind,
-  expected: Schema.String,
-  label: Schema.String
-})
-
-export interface CardinalityResultExpectation extends Schema.Schema.Type<
-  typeof CardinalityResultExpectation
-> {}
-
-const resultExpectationMembers = Array.make(ShapeResultExpectation, CardinalityResultExpectation)
-
-// ResultExpectation unions shape and cardinality because operation advice differs by axis.
-export const ResultExpectation = Schema.Union(resultExpectationMembers)
-
-export type ResultExpectation = Schema.Schema.Type<typeof ResultExpectation>
-
 const numberOperations = HashSet.make("average", "count", "length", "size", "sum", "total")
 const keyedOperations = HashSet.make("group", "index")
 const collectionOperations = HashSet.make("filter", "map")
@@ -62,13 +32,6 @@ const isNumberOperation = (candidate: string) => HashSet.has(numberOperations, c
 const isKeyedOperation = (candidate: string) => HashSet.has(keyedOperations, candidate)
 const isCollectionOperation = (candidate: string) => HashSet.has(collectionOperations, candidate)
 const isOptionalOneOperation = (candidate: string) => HashSet.has(optionalOneOperations, candidate)
-
-const shapeExpectation = (expected: ResultShape) => (label: string) =>
-  ResultExpectation.make({
-    _tag: "shape",
-    expected,
-    label
-  })
 
 const cardinalityExpectation = (expected: ResultCardinality) => (label: string) =>
   ResultExpectation.make({
@@ -174,5 +137,4 @@ const matchesDefinition =
 
 const matches = flow(callableSemantics, matchesDefinition)
 
-export const requireResultShapeNameConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requireResultShapeNameConsistencyMatcher = functionDefinitionMatcher(matches)

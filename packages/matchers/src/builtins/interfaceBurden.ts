@@ -1,59 +1,19 @@
-import { Array, Function, Option, pipe, Result } from "effect"
+import { Array, Function, Option, Result, pipe } from "effect"
 import * as ts from "typescript"
-import { InterfaceBurdenData } from "./architectureExploreData.js"
-import { toWorkspacePath } from "./architectureExplore/paths.js"
-import { functionInitializer, hasExportModifier } from "../support/tsNode.js"
+import { toWorkspacePath } from "./architectureExplore/toWorkspacePath.js"
+import { functionInitializer } from "../support/functionInitializer2.js"
+import { hasExportModifier } from "../support/hasExportModifier.js"
 import { toRelativeFileName } from "../support/paths.js"
-import { fileMatcher } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { fileMatcher } from "../matcher/fileMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { InterfaceBurdenData } from "./interfaceBurdenData.js"
+import { emptySurface } from "./emptySurface.js"
+import { callableSurface } from "./callableSurface.js"
+import { combineSurface } from "./combineSurface.js"
 
 const minimumOperations = 4
-
-const emptySurface = InterfaceBurdenData.make({
-  operationCount: 0,
-  requiredParameterCount: 0
-})
-
-const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>) =>
-  Array.countBy(parameters, (parameter) => {
-    const optional = Option.fromNullishOr(parameter.questionToken)
-    const defaulted = Option.fromNullishOr(parameter.initializer)
-    const rest = Option.fromNullishOr(parameter.dotDotDotToken)
-    const optionalMissing = Option.isNone(optional)
-    const defaultMissing = Option.isNone(defaulted)
-    const restMissing = Option.isNone(rest)
-    const omissions = Array.make(optionalMissing, defaultMissing, restMissing)
-
-    return Array.every(omissions, Boolean)
-  })
-
-const callableSurface = (
-  node:
-    | ts.ArrowFunction
-    | ts.FunctionExpression
-    | ts.FunctionDeclaration
-    | ts.MethodDeclaration
-    | ts.GetAccessorDeclaration
-    | ts.SetAccessorDeclaration
-    | ts.ConstructorDeclaration
-) => {
-  const requiredParameterCount = requiredParameters(node.parameters)
-
-  return InterfaceBurdenData.make({
-    operationCount: 1,
-    requiredParameterCount
-  })
-}
-
-const combineSurface = (left: InterfaceBurdenData, right: InterfaceBurdenData) =>
-  InterfaceBurdenData.make({
-    operationCount: left.operationCount + right.operationCount,
-    requiredParameterCount: left.requiredParameterCount + right.requiredParameterCount
-  })
 
 const isPublicClassMember = (member: ts.ClassElement) => {
   const modifiers = pipe(

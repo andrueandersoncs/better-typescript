@@ -1,141 +1,76 @@
+import * as ts from "typescript"
+import { strictEqual } from "../equivalence.js"
+import type { ProgramContext } from "../sources/data.js"
+import { foldAst } from "../sources/foldAst.js"
+import { callableDefinitions } from "./callableDefinitions.js"
+import { CallableNameClaims } from "./callableNameClaims.js"
+import { CallableResultSemantics } from "./callableResultSemantics.js"
+import { CallableSemantics } from "./callableSemanticsClass.js"
+import { CallableSemanticsCache } from "./callableSemanticsCache.js"
+import { calleeWords } from "./calleeWords.js"
+import { callExpressionWords } from "./callExpressionWords.js"
+import { carrierPayload } from "./carrierPayload.js"
+import { carrierWords } from "./carrierWords.js"
+import { noneString } from "./noneString.js"
+import { constantEmptyStrings } from "./constantEmptyStrings.js"
+import { declarationListIsConst } from "./declarationListIsConst.js"
+import { emptyExpressions } from "./emptyExpressions.js"
+import { emptyStrings } from "./emptyStrings.js"
+import { resultExpressions } from "./enclosingFunctionLike.js"
+import type { FunctionDefinition } from "./functionDefinition.js"
+import { hasWord } from "./hasWord.js"
+import { identifierName } from "./identifierName.js"
+import { isFunctionInitializer } from "./isFunctionInitializer.js"
+import { isNamedCarrierType } from "./isNamedCarrierType.js"
+import { isObjectType } from "./isObjectType.js"
+import { keyedWords } from "./keyedWords.js"
+import { identifierWords } from "./matchIdentifierWords.js"
+import { modifierWords } from "./modifierWords.js"
+import { nestedTypes } from "./nestedTypes.js"
+import { noneType } from "./noneType.js"
+import { nullishFlags } from "./nullishFlags.js"
+import { ProjectionEvidence } from "./projectionEvidence.js"
+import { ProjectionOrigin } from "./projectionOrigin.js"
+import { propertyAccessNameWords } from "./propertyAccessNameWords.js"
+import { relationWords } from "./relationWords.js"
+import type { ResultCardinality } from "./resultCardinality.js"
+import type { ResultExecution } from "./resultExecution.js"
+import type { ResultShape } from "./resultShape.js"
+import type { ResultTotality } from "./resultTotality.js"
+import type { SemanticRole } from "./semanticRole.js"
+import { singleResultExpression } from "./singleResultExpression.js"
+import { symbolDeclarations } from "./symbolDeclarations.js"
+import { symbolIdentifierWords } from "./symbolIdentifierWords.js"
+import { terminalDefinition } from "./terminalDefinition.js"
+import { typeLayerWords } from "./typeLayerWords.js"
+import { typeResultWords } from "./typeResultWords.js"
+import { unwrapCallee } from "./unwrapCallee.js"
+import { unwrapCarrier } from "./unwrapCarrier.js"
+import { variableDeclarationInitializer } from "./variableDeclarationInitializer.js"
 import {
   Array,
-  Data,
   Function,
   HashMap,
   HashSet,
-  Match,
   MutableRef,
   Option,
-  pipe,
   Result,
   Struct,
   Tuple,
-  flow
+  flow,
+  pipe,
+  Match as EffectMatch
 } from "effect"
-import * as ts from "typescript"
-import { foldAst } from "../sources/sources.js"
-import type { ProgramContext } from "../sources/data.js"
 
-import {
-  declarationListIsConst,
-  isFunctionInitializer,
-  returnStatementExpression,
-  symbolDeclarations,
-  unwrapCallee,
-  unwrapCarrier,
-  variableDeclarationInitializer,
-  type FunctionDefinition
-} from "./tsNode.js"
-import { isObjectType } from "./tsType.js"
-import { strictEqual } from "../equivalence.js"
-
-// ResultShape is the shared runtime result category because every naming policy compares one shape.
-export type ResultShape =
-  | "boolean"
-  | "callable"
-  | "collection"
-  | "keyed"
-  | "number"
-  | "object"
-  | "string"
-  | "unknown"
-  | "void"
-
-// ResultCardinality is shared because naming policies must classify one result cardinality.
-export type ResultCardinality = "keyed" | "many" | "one" | "optional-one" | "unknown"
-
-// ResultTotality is shared because naming policies must classify one result totality.
-export type ResultTotality = "fallible" | "optional" | "total" | "unknown"
-
-// ResultExecution is shared because naming policies must classify one execution boundary.
-export type ResultExecution = "effect" | "promise" | "pure"
-
-// SemanticRole is shared because naming policies must use one callable behavior vocabulary.
-export type SemanticRole =
-  "aggregation" | "command" | "construction" | "conversion" | "lookup" | "projection"
-
-export const semanticRole = (role: SemanticRole) => role
-
-// CallableNameClaims keeps one parsed name grammar because every policy consumes the same claims.
-class CallableNameClaims extends Data.Class<{
-  readonly text: string
-  readonly words: ReadonlyArray<string>
-  readonly operation: Option.Option<string>
-  readonly object: Option.Option<string>
-  readonly result: Option.Option<string>
-  readonly relation: Option.Option<string>
-  readonly source: Option.Option<string>
-}> {}
-
-// ProjectionEvidence stores one traced result because policies compare its terminal noun.
-class ProjectionEvidence extends Data.Class<{
-  readonly resultWords: ReadonlyArray<string>
-}> {}
-
-// CallableResultSemantics shares one result model because every naming policy consumes it.
-class CallableResultSemantics extends Data.Class<{
-  readonly returnType: ts.Type
-  readonly words: ReadonlyArray<string>
-  readonly shape: ResultShape
-  readonly cardinality: ResultCardinality
-  readonly totality: ResultTotality
-  readonly execution: ResultExecution
-}> {}
-
-// CallableSemantics shares one function analysis because every naming policy consumes it.
-export class CallableSemantics extends Data.Class<{
-  readonly definition: FunctionDefinition
-  readonly node: ts.Identifier
-  readonly name: CallableNameClaims
-  readonly result: CallableResultSemantics
-  readonly sourceWords: ReadonlyArray<string>
-  readonly operationWords: ReadonlyArray<string>
-  readonly projection: Option.Option<ProjectionEvidence>
-  readonly roles: HashSet.HashSet<SemanticRole>
-}> {}
-
-export const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.MethodDeclaration
-)
-
-const emptyExpressions: ReadonlyArray<ts.Expression> = Array.empty()
-const emptyStrings: ReadonlyArray<string> = Array.empty()
 const emptySymbols: ReadonlyArray<ts.Symbol> = Array.empty()
-const emptyTypes: ReadonlyArray<ts.Type> = Array.empty()
-const constantEmptyStrings = Function.constant(emptyStrings)
-const constantEmptyTypes = Function.constant(emptyTypes)
+
 const noneIdentifier = Option.none<ts.Identifier>()
+
 const noneProjectionOrigin = Option.none<ProjectionOrigin>()
-const noneString = Option.none<string>()
-const noneType = Option.none<ts.Type>()
+
 const constantNoneIdentifier = Function.constant(noneIdentifier)
+
 const constantNoneProjectionOrigin = Function.constant(noneProjectionOrigin)
-
-export const callableExpectedResultWords = (semantics: CallableSemantics): ReadonlyArray<string> =>
-  pipe(
-    semantics.projection,
-    Option.map(Struct.get("resultWords")),
-    Option.filter(Array.isReadonlyArrayNonEmpty),
-    Option.getOrElse(() => semantics.result.words)
-  )
-
-const identifierWordPattern = /[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+/gu
-const relationWords = HashSet.make("at", "by", "for", "from", "of", "to")
-
-const modifierWords = HashSet.make(
-  "all",
-  "async",
-  "effect",
-  "maybe",
-  "optional",
-  "try",
-  "uncached",
-  "unsafe"
-)
 
 const operationWords = HashSet.make(
   "add",
@@ -216,28 +151,6 @@ const resultBearingOperations = HashSet.make(
   "transform"
 )
 
-const carrierWords = HashSet.make(
-  "array",
-  "chunk",
-  "effect",
-  "either",
-  "generator",
-  "hashmap",
-  "hashset",
-  "iterable",
-  "iterator",
-  "map",
-  "option",
-  "promise",
-  "readonlyarray",
-  "readonlymap",
-  "readonlyset",
-  "record",
-  "result",
-  "set",
-  "stream"
-)
-
 const collectionWords = HashSet.make(
   "array",
   "chunk",
@@ -251,13 +164,16 @@ const collectionWords = HashSet.make(
   "stream"
 )
 
-const keyedWords = HashSet.make("hashmap", "map", "readonlymap", "record")
 const optionalWords = HashSet.make("maybe", "option")
+
 const fallibleWords = HashSet.make("either", "result")
+
 const effectWords = HashSet.make("effect")
+
 const promiseWords = HashSet.make("promise")
 
 const constructionOperations = HashSet.make("build", "construct", "create", "make", "new")
+
 const lookupOperations = HashSet.make("at", "find", "get", "head", "last", "load", "lookup", "read")
 
 const conversionOperations = HashSet.make(
@@ -311,117 +227,7 @@ const commandOperations = HashSet.make(
 const unsupportedPayloadFlags =
   ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never | ts.TypeFlags.Void
 
-const nullishFlags = ts.TypeFlags.Null | ts.TypeFlags.Undefined
-
 const literalText = Struct.get<ts.StringLiteralLike, "text">("text")
-const symbolName = (symbol: ts.Symbol) => symbol.getName()
-const matchIdentifierWords = (text: string) => text.match(identifierWordPattern)
-const lowercaseWord = (word: string) => word.toLowerCase()
-const lowercaseWords = Array.map(lowercaseWord)
-
-export const identifierWords: (text: string) => ReadonlyArray<string> = Function.flow(
-  matchIdentifierWords,
-  Option.fromNullishOr,
-  Option.map(lowercaseWords),
-  Option.getOrElse(constantEmptyStrings)
-)
-
-const symbolIdentifierWords = Function.compose(symbolName, identifierWords)
-const esPluralSuffixes = Array.make("s", "x", "z", "ch", "sh")
-
-const hasEsPluralSuffix = (word: string) => {
-  const matchesPluralSuffix = (suffix: string) => word.endsWith(suffix)
-
-  return Array.some(esPluralSuffixes, matchesPluralSuffix)
-}
-
-export const wordsMatch =
-  (expected: string) =>
-  (actual: string): boolean => {
-    const exact = strictEqual(expected)(actual)
-    const actualIsPlural = strictEqual(`${expected}s`)(actual)
-    const expectedIsPlural = strictEqual(`${actual}s`)(expected)
-    const expectedSupportsEsPlural = hasEsPluralSuffix(expected)
-    const actualMatchesExpectedEsPlural = strictEqual(`${expected}es`)(actual)
-    const actualEsPluralChecks = Array.make(expectedSupportsEsPlural, actualMatchesExpectedEsPlural)
-    const actualIsEsPlural = Array.every(actualEsPluralChecks, Boolean)
-    const actualSupportsEsPlural = hasEsPluralSuffix(actual)
-    const expectedMatchesActualEsPlural = strictEqual(`${actual}es`)(expected)
-    const expectedEsPluralChecks = Array.make(actualSupportsEsPlural, expectedMatchesActualEsPlural)
-    const expectedIsEsPlural = Array.every(expectedEsPluralChecks, Boolean)
-    const expectedEndsInY = expected.endsWith("y")
-    const actualEndsInIes = actual.endsWith("ies")
-    const expectedStem = expected.slice(0, -1)
-    const actualStem = actual.slice(0, -3)
-    const stemsMatchActualYPlural = strictEqual(actualStem)(expectedStem)
-
-    const actualYPluralChecks = Array.make(
-      expectedEndsInY,
-      actualEndsInIes,
-      stemsMatchActualYPlural
-    )
-
-    const actualIsYPlural = Array.every(actualYPluralChecks, Boolean)
-    const actualEndsInY = actual.endsWith("y")
-    const expectedEndsInIes = expected.endsWith("ies")
-    const actualSingularStem = actual.slice(0, -1)
-    const expectedPluralStem = expected.slice(0, -3)
-    const stemsMatchExpectedYPlural = strictEqual(expectedPluralStem)(actualSingularStem)
-
-    const expectedYPluralChecks = Array.make(
-      actualEndsInY,
-      expectedEndsInIes,
-      stemsMatchExpectedYPlural
-    )
-
-    const expectedIsYPlural = Array.every(expectedYPluralChecks, Boolean)
-
-    const checks = Array.make(
-      exact,
-      actualIsPlural,
-      expectedIsPlural,
-      actualIsEsPlural,
-      expectedIsEsPlural,
-      actualIsYPlural,
-      expectedIsYPlural
-    )
-
-    return Array.some(checks, Boolean)
-  }
-
-export const hasWord = (words: ReadonlyArray<string>) => (candidates: HashSet.HashSet<string>) => {
-  const wordInCandidates = (word: string) => HashSet.has(candidates, word)
-
-  return Array.some(words, wordInCandidates)
-}
-
-const symbolResultWords = (symbol: Option.Option<ts.Symbol>): ReadonlyArray<string> =>
-  pipe(symbol, Option.map(symbolIdentifierWords), Option.getOrElse(constantEmptyStrings))
-
-export const typeResultWords = (type: ts.Type): ReadonlyArray<string> => {
-  const directSymbol = type.getSymbol()
-  const aliasWords = pipe(Option.fromNullishOr(type.aliasSymbol), symbolResultWords)
-  const directWords = pipe(Option.fromNullishOr(directSymbol), symbolResultWords)
-
-  return pipe(aliasWords, Array.appendAll(directWords), Array.dedupe)
-}
-
-const normalizedSymbolName = (symbol: ts.Symbol) =>
-  pipe(symbolIdentifierWords(symbol), Array.join(""))
-
-const symbolHasCarrierName = (symbol: Option.Option<ts.Symbol>) => {
-  const nameIsCarrier = (name: string) => HashSet.has(carrierWords, name)
-
-  return pipe(symbol, Option.map(normalizedSymbolName), Option.exists(nameIsCarrier))
-}
-
-const isNamedCarrierType = (type: ts.Type) => {
-  const aliasCarrier = pipe(Option.fromNullishOr(type.aliasSymbol), symbolHasCarrierName)
-  const directSymbol = type.getSymbol()
-  const directCarrier = pipe(Option.fromNullishOr(directSymbol), symbolHasCarrierName)
-
-  return aliasCarrier || directCarrier
-}
 
 const makeRelationEntry = (word: string, index: number) => {
   const entry = Tuple.make(word, index)
@@ -439,7 +245,9 @@ const firstRelation = (words: ReadonlyArray<string>) =>
   )
 
 const isModifierWord = (word: string) => HashSet.has(modifierWords, word)
+
 const isOperationWord = (word: string) => HashSet.has(operationWords, word)
+
 const isNonModifierWord = (word: string) => !HashSet.has(modifierWords, word)
 
 const firstOperation = (words: ReadonlyArray<string>) =>
@@ -498,8 +306,6 @@ const makeCallableNameClaims = (node: ts.Identifier) => {
   })
 }
 
-const identifierName = Option.liftPredicate(ts.isIdentifier)
-
 // NamedOwnerDeclaration is shared because owner lookup reads one declaration name field.
 type NamedOwnerDeclaration = ts.VariableDeclaration | ts.PropertyAssignment | ts.PropertyDeclaration
 
@@ -508,105 +314,19 @@ const namedDeclarationIdentifier = (declaration: NamedOwnerDeclaration) =>
 
 const ownerName = (definition: FunctionDefinition) =>
   pipe(
-    Match.value(definition.parent),
-    Match.when(ts.isVariableDeclaration, namedDeclarationIdentifier),
-    Match.when(ts.isPropertyAssignment, namedDeclarationIdentifier),
-    Match.when(ts.isPropertyDeclaration, namedDeclarationIdentifier),
-    Match.orElse(constantNoneIdentifier)
+    EffectMatch.value(definition.parent),
+    EffectMatch.when(ts.isVariableDeclaration, namedDeclarationIdentifier),
+    EffectMatch.when(ts.isPropertyAssignment, namedDeclarationIdentifier),
+    EffectMatch.when(ts.isPropertyDeclaration, namedDeclarationIdentifier),
+    EffectMatch.orElse(constantNoneIdentifier)
   )
 
-export const functionName = (definition: FunctionDefinition) => {
+const functionName = (definition: FunctionDefinition) => {
   const directName = pipe(Option.fromNullishOr(definition.name), Option.flatMap(identifierName))
   const enclosingName = ownerName(definition)
 
   return pipe(directName, Option.orElse(Function.constant(enclosingName)))
 }
-
-const enclosingFunctionLike = (node: ts.Node): Option.Option<ts.SignatureDeclaration> => {
-  const parentFunctionLike = (parent: ts.Node): Option.Option<ts.SignatureDeclaration> =>
-    ts.isFunctionLike(parent) ? Option.some(parent) : enclosingFunctionLike(parent)
-
-  return pipe(Option.fromNullishOr(node.parent), Option.flatMap(parentFunctionLike))
-}
-
-const ownedReturnExpressions = (definition: FunctionDefinition) => {
-  const returnOwnedByDefinition = (statement: ts.ReturnStatement) => {
-    const ownerIsDefinition = strictEqual(definition)
-
-    return pipe(enclosingFunctionLike(statement), Option.exists(ownerIsDefinition))
-  }
-
-  const appendReturnedExpression =
-    (expressions: ReadonlyArray<ts.Expression>) => (returned: ts.Expression) =>
-      Array.append(expressions, returned)
-
-  const collectOwnedReturn = (
-    expressions: ReadonlyArray<ts.Expression>,
-    node: ts.Node
-  ): ReadonlyArray<ts.Expression> =>
-    pipe(
-      node,
-      Option.liftPredicate(ts.isReturnStatement),
-      Option.filter(returnOwnedByDefinition),
-      Option.flatMap(returnStatementExpression),
-      Option.match({
-        onNone: Function.constant(expressions),
-        onSome: appendReturnedExpression(expressions)
-      })
-    )
-
-  return Function.flip(foldAst(collectOwnedReturn))(emptyExpressions)
-}
-
-export const resultExpressions = (definition: FunctionDefinition): ReadonlyArray<ts.Expression> => {
-  if (!definition.body) {
-    return emptyExpressions
-  }
-
-  return ts.isBlock(definition.body)
-    ? ownedReturnExpressions(definition)(definition.body)
-    : Array.of(definition.body)
-}
-
-export const singleResultExpression = (definition: FunctionDefinition) => {
-  const hasSingleExpression = flow(
-    Struct.get<ReadonlyArray<ts.Expression>, "length">("length"),
-    strictEqual(1)
-  )
-
-  return pipe(
-    resultExpressions(definition),
-    Option.liftPredicate(hasSingleExpression),
-    Option.flatMap(Array.head)
-  )
-}
-
-const semanticDefinitions =
-  (remainingDepth: number) =>
-  (definition: FunctionDefinition): ReadonlyArray<FunctionDefinition> => {
-    const nestedDefinition = pipe(
-      singleResultExpression(definition),
-      Option.map(unwrapCarrier),
-      Option.filter(isFunctionInitializer)
-    )
-
-    const atLimit = strictEqual(0)(remainingDepth)
-
-    return pipe(
-      nestedDefinition,
-      Option.filter(() => !atLimit),
-      Option.match({
-        onNone: () => Array.of(definition),
-        onSome: (nested) =>
-          pipe(semanticDefinitions(remainingDepth - 1)(nested), Array.prepend(definition))
-      })
-    )
-  }
-
-const callableDefinitions = semanticDefinitions(4)
-
-const terminalDefinition = (definition: FunctionDefinition) =>
-  pipe(callableDefinitions(definition), Array.last, Option.getOrElse(Function.constant(definition)))
 
 const parameterSymbols =
   (checker: ts.TypeChecker) =>
@@ -625,40 +345,8 @@ const parameterSymbols =
     return Array.filterMap(definition.parameters, parameterSymbol)
   }
 
-const objectTypeIsReference = (candidate: ts.ObjectType) =>
-  pipe(candidate.objectFlags & ts.ObjectFlags.Reference, Boolean)
-
 const objectTypeIsTuple = (candidate: ts.ObjectType) =>
   pipe(candidate.objectFlags & ts.ObjectFlags.Tuple, Boolean)
-
-const typeArgumentsOfReference = (checker: ts.TypeChecker) => (candidate: ts.ObjectType) =>
-  checker.getTypeArguments(candidate as ts.TypeReference)
-
-const objectTypeReferenceArguments =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): ReadonlyArray<ts.Type> =>
-    pipe(
-      type,
-      Option.liftPredicate(isObjectType),
-      Option.filter(objectTypeIsReference),
-      Option.map(typeArgumentsOfReference(checker)),
-      Option.getOrElse(constantEmptyTypes)
-    )
-
-const nestedTypes =
-  (checker: ts.TypeChecker) =>
-  (type: ts.Type): ReadonlyArray<ts.Type> => {
-    const unionMembers = type.isUnion() ? type.types : emptyTypes
-    const aliasArguments = type.aliasTypeArguments ?? emptyTypes
-    const referenceArguments = objectTypeReferenceArguments(checker)(type)
-
-    return pipe(
-      unionMembers,
-      Array.appendAll(aliasArguments),
-      Array.appendAll(referenceArguments),
-      Array.dedupeWith((self, that) => strictEqual(that)(self))
-    )
-  }
 
 const isTupleType = (type: ts.Type) =>
   pipe(Option.liftPredicate(isObjectType)(type), Option.exists(objectTypeIsTuple))
@@ -669,36 +357,6 @@ const typeContainsNullish = (type: ts.Type) => {
   const checks = Array.make(ownNullish, nestedNullish)
 
   return Array.some(checks, Boolean)
-}
-
-const carrierPayload = (checker: ts.TypeChecker) => {
-  const children = nestedTypes(checker)
-
-  const payloadFromType = (type: ts.Type) => {
-    const words = typeResultWords(type)
-    const isCarrier = isNamedCarrierType(type)
-    const aliasArguments = type.aliasTypeArguments ?? emptyTypes
-    const referenceArguments = objectTypeReferenceArguments(checker)(type)
-    const explicitArguments = Array.appendAll(aliasArguments, referenceArguments)
-    const nested = children(type)
-    const isNonNullishType = (candidate: ts.Type) => strictEqual(0)(candidate.flags & nullishFlags)
-    const withoutNullish = Array.filter(nested, isNonNullishType)
-
-    const fallbackCandidates = Array.isReadonlyArrayNonEmpty(withoutNullish)
-      ? withoutNullish
-      : nested
-
-    const candidates = Array.isReadonlyArrayNonEmpty(explicitArguments)
-      ? explicitArguments
-      : fallbackCandidates
-
-    const keyed = hasWord(words)(keyedWords)
-    const selected = keyed ? Array.last(candidates) : Array.head(candidates)
-
-    return isCarrier ? selected : Option.some(type)
-  }
-
-  return payloadFromType
 }
 
 const payloadType =
@@ -720,58 +378,6 @@ const payloadType =
     return visit(returnType, 4)
   }
 
-const singleNonNullishMember = (type: ts.Type) => {
-  const members = type.isUnion() ? type.types : emptyTypes
-  const isNonNullishType = (candidate: ts.Type) => strictEqual(0)(candidate.flags & nullishFlags)
-  const nonNullish = Array.filter(members, isNonNullishType)
-
-  const hasSingleCandidate = flow(
-    Struct.get<ReadonlyArray<ts.Type>, "length">("length"),
-    strictEqual(1)
-  )
-
-  return pipe(nonNullish, Option.liftPredicate(hasSingleCandidate), Option.flatMap(Array.head))
-}
-
-const typeLayerWords =
-  (checker: ts.TypeChecker) =>
-  (root: ts.Type): ReadonlyArray<string> => {
-    const payload = carrierPayload(checker)
-
-    const visit =
-      (remainingDepth: number) =>
-      (current: ts.Type): ReadonlyArray<string> => {
-        const namedCarrier = isNamedCarrierType(current)
-        const words = namedCarrier ? typeResultWords(current) : emptyStrings
-
-        if (strictEqual(0)(remainingDepth)) {
-          return words
-        }
-
-        const carrierPayloadOption = namedCarrier
-          ? pipe(
-              payload(current),
-              Option.filter((candidate) => candidate !== current)
-            )
-          : noneType
-
-        const next = pipe(
-          carrierPayloadOption,
-          Option.orElse(() => singleNonNullishMember(current))
-        )
-
-        const nestedWords = pipe(
-          next,
-          Option.map(visit(remainingDepth - 1)),
-          Option.getOrElse(constantEmptyStrings)
-        )
-
-        return pipe(words, Array.appendAll(nestedWords), Array.dedupe)
-      }
-
-    return visit(4)(root)
-  }
-
 const resultShape =
   (checker: ts.TypeChecker) =>
   (returnType: ts.Type) =>
@@ -787,16 +393,19 @@ const resultShape =
     const isObject = (payload.flags & ts.TypeFlags.Object) !== 0
 
     return pipe(
-      Match.value(true),
-      Match.when(Function.constant(isVoid), Function.constant<ResultShape>("void")),
-      Match.when(Function.constant(isBoolean), Function.constant<ResultShape>("boolean")),
-      Match.when(Function.constant(isNumber), Function.constant<ResultShape>("number")),
-      Match.when(Function.constant(isString), Function.constant<ResultShape>("string")),
-      Match.when(Function.constant(isCallable), Function.constant<ResultShape>("callable")),
-      Match.when(Function.constant(isKeyed), Function.constant<ResultShape>("keyed")),
-      Match.when(Function.constant(isCollection), Function.constant<ResultShape>("collection")),
-      Match.when(Function.constant(isObject), Function.constant<ResultShape>("object")),
-      Match.orElse(Function.constant<ResultShape>("unknown"))
+      EffectMatch.value(true),
+      EffectMatch.when(Function.constant(isVoid), Function.constant<ResultShape>("void")),
+      EffectMatch.when(Function.constant(isBoolean), Function.constant<ResultShape>("boolean")),
+      EffectMatch.when(Function.constant(isNumber), Function.constant<ResultShape>("number")),
+      EffectMatch.when(Function.constant(isString), Function.constant<ResultShape>("string")),
+      EffectMatch.when(Function.constant(isCallable), Function.constant<ResultShape>("callable")),
+      EffectMatch.when(Function.constant(isKeyed), Function.constant<ResultShape>("keyed")),
+      EffectMatch.when(
+        Function.constant(isCollection),
+        Function.constant<ResultShape>("collection")
+      ),
+      EffectMatch.when(Function.constant(isObject), Function.constant<ResultShape>("object")),
+      EffectMatch.orElse(Function.constant<ResultShape>("unknown"))
     )
   }
 
@@ -814,11 +423,11 @@ const resultTotality =
     const unknown = (payload.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) !== 0
 
     return pipe(
-      Match.value(true),
-      Match.when(Function.constant(optional), Function.constant<ResultTotality>("optional")),
-      Match.when(Function.constant(fallible), Function.constant<ResultTotality>("fallible")),
-      Match.when(Function.constant(unknown), Function.constant<ResultTotality>("unknown")),
-      Match.orElse(Function.constant<ResultTotality>("total"))
+      EffectMatch.value(true),
+      EffectMatch.when(Function.constant(optional), Function.constant<ResultTotality>("optional")),
+      EffectMatch.when(Function.constant(fallible), Function.constant<ResultTotality>("fallible")),
+      EffectMatch.when(Function.constant(unknown), Function.constant<ResultTotality>("unknown")),
+      EffectMatch.orElse(Function.constant<ResultTotality>("total"))
     )
   }
 
@@ -830,10 +439,10 @@ const resultExecution =
     const promise = hasWord(words)(promiseWords)
 
     return pipe(
-      Match.value(true),
-      Match.when(Function.constant(effect), Function.constant<ResultExecution>("effect")),
-      Match.when(Function.constant(promise), Function.constant<ResultExecution>("promise")),
-      Match.orElse(Function.constant<ResultExecution>("pure"))
+      EffectMatch.value(true),
+      EffectMatch.when(Function.constant(effect), Function.constant<ResultExecution>("effect")),
+      EffectMatch.when(Function.constant(promise), Function.constant<ResultExecution>("promise")),
+      EffectMatch.orElse(Function.constant<ResultExecution>("pure"))
     )
   }
 
@@ -846,12 +455,15 @@ const resultCardinality =
     const unknown = strictEqual("unknown")(shape)
 
     return pipe(
-      Match.value(true),
-      Match.when(Function.constant(keyed), Function.constant<ResultCardinality>("keyed")),
-      Match.when(Function.constant(many), Function.constant<ResultCardinality>("many")),
-      Match.when(Function.constant(optional), Function.constant<ResultCardinality>("optional-one")),
-      Match.when(Function.constant(unknown), Function.constant<ResultCardinality>("unknown")),
-      Match.orElse(Function.constant<ResultCardinality>("one"))
+      EffectMatch.value(true),
+      EffectMatch.when(Function.constant(keyed), Function.constant<ResultCardinality>("keyed")),
+      EffectMatch.when(Function.constant(many), Function.constant<ResultCardinality>("many")),
+      EffectMatch.when(
+        Function.constant(optional),
+        Function.constant<ResultCardinality>("optional-one")
+      ),
+      EffectMatch.when(Function.constant(unknown), Function.constant<ResultCardinality>("unknown")),
+      EffectMatch.orElse(Function.constant<ResultCardinality>("one"))
     )
   }
 
@@ -942,14 +554,6 @@ const constVariableInitializer = (symbol: ts.Symbol) => {
     Option.flatMap(variableDeclarationInitializer)
   )
 }
-
-// ProjectionOrigin tracks recursive provenance because aliases and wrappers share traversal.
-class ProjectionOrigin extends Data.Class<{
-  readonly path: ReadonlyArray<string>
-  readonly head: Option.Option<string>
-  readonly resultWords: ReadonlyArray<string>
-  readonly valueType: ts.Type
-}> {}
 
 const isNonRelationWord = (word: string) => !HashSet.has(relationWords, word)
 
@@ -1178,10 +782,10 @@ const projectionEvidence =
               const nameIsDirectCarrier = (name: string) => HashSet.has(directCarrierNames, name)
 
               const calleeName = pipe(
-                Match.value(callee),
-                Match.when(ts.isIdentifier, identifierText),
-                Match.when(ts.isPropertyAccessExpression, propertyAccessNameText),
-                Match.orElse(Function.constant(noneString))
+                EffectMatch.value(callee),
+                EffectMatch.when(ts.isIdentifier, identifierText),
+                EffectMatch.when(ts.isPropertyAccessExpression, propertyAccessNameText),
+                EffectMatch.orElse(Function.constant(noneString))
               )
 
               const passesThroughDirectArgument = Option.exists(calleeName, nameIsDirectCarrier)
@@ -1241,15 +845,15 @@ const projectionEvidence =
           pipe(Option.fromNullishOr(node.expression), Option.flatMap(analyze))
 
         return pipe(
-          Match.value(current),
-          Match.when(ts.isAwaitExpression, analyzeAwaitExpression),
-          Match.when(ts.isYieldExpression, analyzeYieldExpression),
-          Match.when(ts.isIdentifier, identifierOrigin),
-          Match.when(isThisExpression, thisOrigin),
-          Match.when(ts.isPropertyAccessExpression, accessOrigin),
-          Match.when(ts.isElementAccessExpression, elementOrigin),
-          Match.when(ts.isCallExpression, callOrigin),
-          Match.orElse(constantNoneProjectionOrigin)
+          EffectMatch.value(current),
+          EffectMatch.when(ts.isAwaitExpression, analyzeAwaitExpression),
+          EffectMatch.when(ts.isYieldExpression, analyzeYieldExpression),
+          EffectMatch.when(ts.isIdentifier, identifierOrigin),
+          EffectMatch.when(isThisExpression, thisOrigin),
+          EffectMatch.when(ts.isPropertyAccessExpression, accessOrigin),
+          EffectMatch.when(ts.isElementAccessExpression, elementOrigin),
+          EffectMatch.when(ts.isCallExpression, callOrigin),
+          EffectMatch.orElse(constantNoneProjectionOrigin)
         )
       }
 
@@ -1330,23 +934,6 @@ const sourceWords = (checker: ts.TypeChecker) =>
     Struct.get<FunctionDefinition, "parameters">("parameters"),
     sourceWordsFromParameters(checker)
   )
-
-const identifierWordsFromText = (identifier: ts.Identifier) => identifierWords(identifier.text)
-
-const propertyAccessNameWords = (access: ts.PropertyAccessExpression) =>
-  identifierWords(access.name.text)
-
-const directCalleeWords = (callee: ts.Expression) =>
-  pipe(
-    Match.value(callee),
-    Match.when(ts.isIdentifier, identifierWordsFromText),
-    Match.when(ts.isPropertyAccessExpression, propertyAccessNameWords),
-    Match.orElse(constantEmptyStrings)
-  )
-
-const calleeWords = Function.compose(unwrapCarrier, directCalleeWords)
-
-const callExpressionWords = (call: ts.CallExpression) => calleeWords(call.expression)
 
 const newExpressionWords = (current: ts.NewExpression) => calleeWords(current.expression)
 
@@ -1500,12 +1087,6 @@ const buildCallableSemantics = (checker: ts.TypeChecker) => (definition: Functio
     })
   })
 
-// CallableSemanticsCache retains one Program because workspace projects are analyzed sequentially.
-class CallableSemanticsCache extends Data.Class<{
-  readonly program: ts.Program
-  readonly entries: HashMap.HashMap<string, Option.Option<CallableSemantics>>
-}> {}
-
 const emptySemanticsCache = Option.none<CallableSemanticsCache>()
 
 // One last-program cache is enough because workspace analysis is sequential.
@@ -1554,6 +1135,3 @@ export const callableSemantics =
 
     return semantics
   }
-
-export const isNonBooleanResult = (semantics: CallableSemantics) =>
-  semantics.result.shape !== "boolean"

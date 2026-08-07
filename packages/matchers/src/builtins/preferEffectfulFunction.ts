@@ -1,17 +1,17 @@
-import { Array, Function, Option, pipe, Struct, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 import { isCompositionRoot } from "../support/compositionRoot.js"
-import {
-  functionInitializer,
-  resolvedSymbolAt,
-  singleStatementReturnExpression,
-  unwrapExpression,
-  type FunctionDefinition
-} from "../support/tsNode.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
+import { functionInitializer } from "../support/functionInitializer2.js"
+import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
+import { singleStatementReturnExpression } from "../support/singleStatementReturnExpression.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
 import { strictEqual } from "../equivalence.js"
+import type { EffectfulFunctionDeclaration } from "./effectfulFunctionDeclaration.js"
 
 // PreferEffectfulFunctionFact names the Effectful function because guidance quotes it.
 export const PreferEffectfulFunctionFact = Schema.Struct({
@@ -21,9 +21,6 @@ export const PreferEffectfulFunctionFact = Schema.Struct({
 export interface PreferEffectfulFunctionFact extends Schema.Schema.Type<
   typeof PreferEffectfulFunctionFact
 > {}
-
-// EffectfulFunctionDeclaration is a local syntax union because matchers narrow one node shape.
-type EffectfulFunctionDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration
 
 const expressionFromBody = (body: ts.ConciseBody) =>
   ts.isBlock(body) ? singleStatementReturnExpression(body) : Option.some(body)

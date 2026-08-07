@@ -1,8 +1,9 @@
-import { Array, Option, pipe, Schema } from "effect"
+import { Array, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferPipeFunctionFact is empty payload because guidance and matchers share identity.

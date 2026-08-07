@@ -1,50 +1,14 @@
-import { Array, Function, HashSet, Option, pipe, Result, Tuple, Schema } from "effect"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  type CallableSemantics
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { Array, Function, HashSet, Option, Result, Tuple, pipe } from "effect"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
-
-const optionalClaimKind = Schema.Literal("optional-claim")
-const totalClaimKind = Schema.Literal("total-claim")
-
-// RequireLookupOptionalClaimFact is optional-claim evidence because name and label pair.
-export const RequireLookupOptionalClaimFact = Schema.Struct({
-  kind: optionalClaimKind,
-  nameText: Schema.String,
-  claimLabel: Schema.String
-})
-
-export interface RequireLookupOptionalClaimFact extends Schema.Schema.Type<
-  typeof RequireLookupOptionalClaimFact
-> {}
-
-// RequireLookupTotalClaimFact is total-claim evidence because name and label pair.
-export const RequireLookupTotalClaimFact = Schema.Struct({
-  kind: totalClaimKind,
-  nameText: Schema.String,
-  claimLabel: Schema.String
-})
-
-export interface RequireLookupTotalClaimFact extends Schema.Schema.Type<
-  typeof RequireLookupTotalClaimFact
-> {}
-
-const lookupTotalityFactMembers = Array.make(
-  RequireLookupOptionalClaimFact,
-  RequireLookupTotalClaimFact
-)
-
-// RequireLookupTotalityNameConsistencyFact unions claims because optional and total differ.
-export const RequireLookupTotalityNameConsistencyFact = Schema.Union(lookupTotalityFactMembers)
-
-export type RequireLookupTotalityNameConsistencyFact = Schema.Schema.Type<
-  typeof RequireLookupTotalityNameConsistencyFact
->
+import { formatClaims } from "./formatClaims.js"
+import { RequireLookupTotalityNameConsistencyFact } from "./requireLookupTotalityNameConsistencyFact.js"
 
 const optionalTotalityClaims = HashSet.make("find", "lookup", "maybe", "optional")
 const totalTotalityClaims = HashSet.make("require", "unsafe")
@@ -86,8 +50,6 @@ const claimedTotalSequenceLabels = (words: ReadonlyArray<string>): ReadonlyArray
 
   return pipe(totalTotalitySequences, Array.filterMap(labelWhenPrefixMatches))
 }
-
-const formatClaims = (claims: ReadonlyArray<string>) => Array.join(claims, "/")
 
 const knownTotality = (semantics: CallableSemantics) =>
   !strictEqual("unknown")(semantics.result.totality)
@@ -163,5 +125,4 @@ const matches = (context: MatchContext) => {
   return matchesDefinition
 }
 
-export const requireLookupTotalityNameConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requireLookupTotalityNameConsistencyMatcher = functionDefinitionMatcher(matches)

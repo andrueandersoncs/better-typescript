@@ -1,65 +1,15 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Array, Effect, Function, Order, pipe } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { makeContext } from "@better-typescript/matchers/sources"
-import { toPolicies } from "@better-typescript/core/engine/policy"
+import { Array, Effect, Order, pipe } from "effect"
+import { compositionForwarders } from "@better-typescript/guidance/preset/compositionForwarders"
+import { moduleScopeEffects } from "@better-typescript/guidance/preset/moduleScopeEffects"
+import { testOnlyExports } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { isTestPath } from "@better-typescript/matchers/builtins/architectureExplore/isTestPath"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { compositionForwarders } from "@better-typescript/guidance/policies/compositionForwarders"
-import { moduleScopeEffects } from "@better-typescript/guidance/policies/moduleScopeEffects"
-import { testOnlyExports } from "@better-typescript/guidance/policies/testOnlyExports"
-import { isTestPath } from "@better-typescript/matchers/builtins/architectureExplore/paths"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "workspace-test-helpers")
-
-const includeEverySourceFile = Function.constant(true)
-
-// Detections carry project-relative paths, so joins against the fixture use workspace paths.
-const workspacePathFor =
-  (workspaceRoot: string, projectRoot: string) =>
-  (detection: Detection): string => {
-    const absolutePath = path.resolve(projectRoot, detection.location.path)
-
-    return path.relative(workspaceRoot, absolutePath).replaceAll(path.sep, "/")
-  }
-
-const runWorkspaceChecks = async (
-  policies: ReadonlyArray<Policy>
-): Promise<ReadonlyArray<ReadonlyArray<string>>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const executablePolicies = policies
-
-  return Array.reduce(
-    workspace.projects,
-    Array.map(executablePolicies, () => Array.empty<string>()),
-    (current, project) => {
-      const loaded = makeContext(project.rootPath)(project.program)
-
-      const context = ProgramContext.make({
-        program: loaded.program,
-        checker: loaded.checker,
-        projectRoot: loaded.projectRoot,
-        workspaceRoot: workspace.rootPath
-      })
-
-      const projectDetections = toPolicies(executablePolicies)(includeEverySourceFile)(context)
-      const toWorkspacePath = workspacePathFor(workspace.rootPath, project.rootPath)
-
-      return Array.map(current, (paths, checkIndex) => {
-        const detections = projectDetections[checkIndex] ?? Array.empty<Detection>()
-
-        return Array.appendAll(paths, Array.map(detections, toWorkspacePath))
-      })
-    }
-  )
-}
-
-const isUnderTestsDirectory = (workspacePath: string): boolean => workspacePath.startsWith("tests/")
+import { fixturePath } from "./workspaceTestClassificationFixturePath.js"
+import { isUnderTestsDirectory } from "./workspaceTestClassificationIsUnderTestsDirectory.js"
+import { runWorkspaceChecks } from "./workspaceTestClassificationRunChecks.js"
 
 test("benchmarks are test-like architecture consumers", () => {
   assert.equal(isTestPath("bench/selfHost.ts"), true)

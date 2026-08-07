@@ -1,50 +1,22 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Effect, Option, Schema, pipe, Array } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { passThroughWrappers } from "@better-typescript/guidance/policies/passThroughWrappers"
-import { interfaceBurden } from "@better-typescript/guidance/policies/interfaceBurden"
-import { moduleGraph } from "@better-typescript/guidance/policies/moduleGraph"
-import { testOnlyExports } from "@better-typescript/guidance/policies/testOnlyExports"
-import { seamLeakageEvidence } from "@better-typescript/guidance/policies/seamLeakageEvidence"
-import { externalDependencyConstruction } from "@better-typescript/guidance/policies/externalDependencyConstruction"
-import { singleAdapterSeams } from "@better-typescript/guidance/policies/singleAdapterSeams"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import {
-  ExternalDependencyConstructionData,
-  InterfaceBurdenData,
-  ModuleGraphData,
-  PassThroughWrapperData,
-  SeamLeakageData,
-  SingleAdapterSeamData,
-  TestOnlyExportData
-} from "@better-typescript/matchers/builtins/architectureExploreData"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence")
-
-const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
-  )
-
-  return projectDetections.flat()
-}
-
-const dataAs = <A>(
-  guard: (input: unknown) => input is A,
-  detection: Detection
-): Option.Option<A> => {
-  const data = detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
+import { Option, Schema, pipe } from "effect"
+import { passThroughWrappers } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { interfaceBurden } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { moduleGraph } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { testOnlyExports } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { seamLeakageEvidence } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { externalDependencyConstruction } from "@better-typescript/guidance/preset/architectureExploreOopPolicies"
+import { singleAdapterSeams } from "@better-typescript/guidance/preset/architectureExploreOopPolicies"
+import { ExternalDependencyConstructionData } from "@better-typescript/matchers/builtins/externalDependencyConstruction"
+import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurdenData"
+import { ModuleGraphData } from "@better-typescript/matchers/builtins/moduleGraph"
+import { PassThroughWrapperData } from "@better-typescript/matchers/builtins/passThroughWrappers"
+import { SeamLeakageData } from "@better-typescript/matchers/builtins/seamLeakageEvidence"
+import { SingleAdapterSeamData } from "@better-typescript/matchers/builtins/singleAdapterSeams"
+import { TestOnlyExportData } from "@better-typescript/matchers/builtins/testOnlyExports"
+import { runFixture } from "./architectureEvidenceFixture.js"
+import { dataAs } from "./architectureEvidenceDataAs.js"
 
 test("pass-through evidence requires exact forwarding and records caller leverage", async () => {
   const detections = await runFixture(passThroughWrappers)

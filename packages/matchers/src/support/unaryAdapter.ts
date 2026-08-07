@@ -1,14 +1,12 @@
 import { Array, Function, Option, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import {
-  isFunctionDefinition,
-  singleStatementReturnExpression,
-  unwrapTransparentExpression,
-  type FunctionDefinition
-} from "./tsNode.js"
+import type { FunctionDefinition } from "./functionDefinition.js"
+import { isFunctionDefinition } from "./isFunctionDefinition.js"
+import { singleStatementReturnExpression } from "./singleStatementReturnExpression.js"
+import { unwrapTransparentExpression } from "./transparentWrapper.js"
 import { strictEqual } from "../equivalence.js"
 
-const expressionBody = (definition: FunctionDefinition) =>
+export const expressionBody = (definition: FunctionDefinition) =>
   pipe(
     Option.liftPredicate(ts.isArrowFunction)(definition),
     Option.flatMap(
@@ -20,38 +18,38 @@ const expressionBody = (definition: FunctionDefinition) =>
     )
   )
 
-const blockBody = Function.flow(
+export const blockBody = Function.flow(
   Struct.get<FunctionDefinition, "body">("body"),
   Option.fromNullishOr,
   Option.filter(ts.isBlock),
   Option.flatMap(singleStatementReturnExpression)
 )
 
-const hasOneParameter = Function.flow(
+export const hasOneParameter = Function.flow(
   Struct.get<FunctionDefinition, "parameters">("parameters"),
   Array.length,
   strictEqual(1)
 )
 
-const hasNoRestParameter = Function.flow(
+export const hasNoRestParameter = Function.flow(
   Struct.get<ts.ParameterDeclaration, "dotDotDotToken">("dotDotDotToken"),
   Option.fromNullishOr,
   Option.isNone
 )
 
-const hasNoDefaultValue = Function.flow(
+export const hasNoDefaultValue = Function.flow(
   Struct.get<ts.ParameterDeclaration, "initializer">("initializer"),
   Option.fromNullishOr,
   Option.isNone
 )
 
-const isRequired = Function.flow(
+export const isRequired = Function.flow(
   Struct.get<ts.ParameterDeclaration, "questionToken">("questionToken"),
   Option.fromNullishOr,
   Option.isNone
 )
 
-const isSimpleParameter = (parameter: ts.ParameterDeclaration) => {
+export const isSimpleParameter = (parameter: ts.ParameterDeclaration) => {
   const noRestParameter = hasNoRestParameter(parameter)
   const noDefaultValue = hasNoDefaultValue(parameter)
   const required = isRequired(parameter)
@@ -61,7 +59,7 @@ const isSimpleParameter = (parameter: ts.ParameterDeclaration) => {
   return Array.every(conditions, Boolean)
 }
 
-const unaryParameter = (definition: FunctionDefinition) =>
+export const unaryParameter = (definition: FunctionDefinition) =>
   pipe(
     Option.liftPredicate(hasOneParameter)(definition),
     Option.flatMap(

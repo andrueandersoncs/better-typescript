@@ -1,8 +1,8 @@
 import { Array, Option, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { unwrapTransparentExpression } from "../../support/tsNode.js"
-import { importedEffectApiAt } from "./effectApiMembers.js"
+import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
+import { importedEffectApiAt } from "./importedEffectApiAt.js"
 
 export const expressionIsEffectRuntimeRunner = (
   checker: ts.TypeChecker,

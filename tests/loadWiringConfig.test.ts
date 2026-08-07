@@ -1,112 +1,28 @@
 import * as assert from "node:assert/strict"
-import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import { test } from "bun:test"
-import { fileURLToPath } from "node:url"
 import { Effect, Function, Schema } from "effect"
-import { defineConfig, makeWiring } from "@better-typescript/core/engine/wiring"
-import type { Wiring, WiringConfig } from "@better-typescript/core/engine/wiring/data"
-import { workspaceSignalsForProjects } from "@better-typescript/core/engine/wiring/collect"
-import { makeContext } from "@better-typescript/matchers/sources"
-import { makePolicy, makeSilentPolicy, makeFindings } from "@better-typescript/core/engine/policy"
-import { makeMatcherFromSubscriptions, fileMatcher } from "@better-typescript/matchers/matcher"
-import { makeFileMatch } from "@better-typescript/matchers/matcher/data"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
+import { workspaceSignalsForProjects } from "@better-typescript/core/engine/reportPipeline"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
+import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"
+import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
+import { fileMatcher } from "@better-typescript/matchers/matcher/fileMatcher"
+import { makeFileMatch } from "@better-typescript/matchers/builtins/exportSurface"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { ProjectWiringConfigError } from "@better-typescript/core/project/loadWiringConfig/data"
 import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
-import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig/decode"
-import { InlineRefactorExamples } from "@better-typescript/core/engine/example/data"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const configFileName = "better-typescript.config.ts"
-const virtualConfigPath = path.join(testDirectory, configFileName)
-
-const fallbackWiring: Wiring = makeWiring({
-  policies: [],
-  derive: () => []
-})
-
-const fallbackConfig: WiringConfig = defineConfig([{ files: ["**/*"], wiring: fallbackWiring }])
-
-const emptyMatcher = makeMatcherFromSubscriptions(() => [])
-const emptyGuidance = () => () => []
-
-const makeEmptyPolicy = (name: string, reported = true) =>
-  reported
-    ? makePolicy({
-        name,
-        matcher: emptyMatcher,
-        guidance: emptyGuidance,
-        examples: emptyRefactorExampleSource
-      })
-    : makeSilentPolicy({
-        name,
-        matcher: emptyMatcher,
-        guidance: emptyGuidance,
-        examples: emptyRefactorExampleSource
-      })
-
-const emptyPolicy = makeEmptyPolicy("empty-policy")
-
-const emptyPolicyConfigPreamble = [
-  'import { makePolicy, makeSilentPolicy } from "@better-typescript/core/engine/policy"',
-  'import { makeMatcherFromSubscriptions, fileMatcher } from "@better-typescript/matchers/matcher"',
-  'import { makeFileMatch } from "@better-typescript/matchers/matcher/data"',
-  'import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"',
-  'import { makeFindings } from "@better-typescript/core/engine/policy"',
-  "",
-  "const emptyMatcher = makeMatcherFromSubscriptions(() => [])",
-  "const emptyGuidance = () => () => []",
-  "const makeEmptyPolicy = (name, reported = true) =>",
-  "  reported",
-  "    ? makePolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
-  "    : makeSilentPolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
-  ""
-]
-
-const tsconfig = {
-  compilerOptions: {
-    target: "ES2022",
-    module: "NodeNext",
-    moduleResolution: "NodeNext",
-    lib: ["ES2022"],
-    strict: true,
-    skipLibCheck: true,
-    noEmit: true
-  },
-  include: ["src/**/*.ts"]
-}
-
-const runInTempProject = async (
-  run: (projectDirectory: string) => Promise<void>
-): Promise<void> => {
-  const projectDirectory = await fs.mkdtemp(path.join(testDirectory, ".tmp-load-wiring-config-"))
-
-  try {
-    await fs.mkdir(path.join(projectDirectory, "src"), { recursive: true })
-    await fs.writeFile(
-      path.join(projectDirectory, "tsconfig.json"),
-      `${JSON.stringify(tsconfig, null, 2)}\n`
-    )
-    await fs.writeFile(
-      path.join(projectDirectory, "src", "cases.ts"),
-      "export const configured = 1\n"
-    )
-    await run(projectDirectory)
-  } finally {
-    await fs.rm(projectDirectory, { recursive: true, force: true })
-  }
-}
-
-const writeConfig = (projectDirectory: string, source: string): Promise<void> =>
-  fs.writeFile(path.join(projectDirectory, configFileName), source)
-
-const decodeFailure = (moduleValue: unknown): Promise<ProjectWiringConfigError> =>
-  Effect.runPromise(Effect.flip(decodeWiringConfig(virtualConfigPath, moduleValue)))
-
-const loadConfigFailure = (projectDirectory: string): Promise<ProjectWiringConfigError> =>
-  Effect.runPromise(Effect.flip(loadWiringConfig(projectDirectory, fallbackConfig)))
+import { decodeWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { InlineRefactorExamples } from "@better-typescript/core/engine/example/inlineRefactorExamples"
+import { fallbackConfig } from "./loadWiringConfigFallback.js"
+import { emptyMatcher } from "./loadWiringConfigEmptyMatcher.js"
+import { emptyGuidance } from "./loadWiringConfigEmptyGuidance.js"
+import { makeEmptyPolicy } from "./loadWiringConfigMakeEmptyPolicy.js"
+import { emptyPolicyConfigPreamble } from "./loadWiringConfigEmptyPolicyConfigPreamble.js"
+import { runInTempProject } from "./loadWiringConfigRunInTempProject.js"
+import { writeConfig } from "./loadWiringConfigWriteConfig.js"
+import { decodeFailure } from "./loadWiringConfigDecodeFailure.js"
+import { loadConfigFailure } from "./loadWiringConfigLoadConfigFailure.js"
+import { virtualConfigPath } from "./loadWiringConfigVirtualConfigPath.js"
 
 test("loadWiringConfig returns fallback config when a project has no config", async () => {
   await runInTempProject(async (projectDirectory) => {
@@ -198,7 +114,10 @@ test("decoded glob config drives workspace signals end to end", async () => {
   await runInTempProject(async (projectDirectory) => {
     const configuredPolicy = makePolicy({
       name: "config-extra-check",
-      matcher: fileMatcher((context) => [makeFileMatch(context.sourceFile, null)]),
+      matcher: fileMatcher((context) => {
+        const match = makeFileMatch(context.sourceFile, null)
+        return [match]
+      }),
       guidance: () => (match) =>
         makeFindings(match.target, "configured detection", "loaded from project config", null),
       examples: emptyRefactorExampleSource

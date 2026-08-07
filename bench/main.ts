@@ -3,22 +3,18 @@ import { fileURLToPath } from "node:url"
 import { Effect, pipe } from "effect"
 import { Bench } from "tinybench"
 import type { Statistics, Task } from "tinybench"
-import {
-  compilerOptionsForConfig,
-  defineConfig,
-  makeMergedWiring
-} from "@better-typescript/core/engine/wiring"
-import { reportEvents } from "@better-typescript/core/engine/watch"
-import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
-import { makeContext } from "@better-typescript/matchers/sources"
+import { compilerOptionsForConfig } from "@better-typescript/core/engine/wiring/compilerOptionsForConfig"
+import { makeMergedWiring } from "@better-typescript/core/engine/wiring/makeMergedWiring"
+import { defineConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { reportEvents } from "@better-typescript/core/engine/reportPipeline"
+import { workspacePrograms } from "@better-typescript/core/engine/watch/workspacePrograms"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import { architectureExploreWiring } from "@better-typescript/guidance/preset/architectureExploreWiring"
+import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
-import type {
-  LoadedProject,
-  WorkspaceConfigs
-} from "@better-typescript/core/project/loadProject/data"
+import type { LoadedProject } from "@better-typescript/core/project/loadProject/loadedProject"
+import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/workspaceConfigs"
 
 const benchDir = path.dirname(fileURLToPath(import.meta.url))
 const cliArguments = process.argv.slice(2)

@@ -3,13 +3,15 @@ import * as path from "node:path"
 import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { Array, Effect } from "effect"
-import { preferSchemaTaggedStruct } from "@better-typescript/guidance/policies/preferSchemaTaggedStruct"
-import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import { isProgramPolicy } from "@better-typescript/core/engine/wiring/data"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import type { Detection } from "@better-typescript/core/engine/location/detectionData"
+import {
+  defaultWiring,
+  preferSchemaTaggedStruct
+} from "@better-typescript/guidance/preset/defaultWiring"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
+import { isProgramPolicy } from "@better-typescript/core/engine/wiring/isProgramPolicy"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const processBoundFixturePath = path.join(
   testDirectory,

@@ -1,10 +1,10 @@
 import { Array, Function, Option, Predicate, Result, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
-import { onlyBlankBetween } from "../sources/comments.js"
 import type { SourceComment } from "../sources/commentsData.js"
 import { strictEqual } from "../equivalence.js"
-import { fileMatcher } from "../matcher/matcher.js"
-import { makePositionMatch, type MatchContext } from "../matcher/data.js"
+import { fileMatcher } from "../matcher/fileMatcher.js"
+import { makePositionMatch } from "../matcher/makePositionMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 
 // NoMultiLineCommentsFact is empty payload because guidance and matchers share identity.
 export const NoMultiLineCommentsFact = Schema.Struct({})
@@ -15,6 +15,13 @@ export interface NoMultiLineCommentsFact extends Schema.Schema.Type<
 
 // emptyNoMultiLineCommentsFact is empty payload because guidance and matchers share identity.
 export const emptyNoMultiLineCommentsFact = NoMultiLineCommentsFact.make({})
+
+const onlyBlankBetween = (text: string) => (a: SourceComment) => (b: SourceComment) => {
+  const between = text.slice(a.end, b.pos)
+  const trimmed = between.trim()
+
+  return strictEqual(0)(trimmed.length)
+}
 
 const isSingleLineComment = flow(
   Struct.get<SourceComment, "kind">("kind"),

@@ -1,8 +1,9 @@
 import { Array, Option, pipe, Predicate, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { isFirstPartySymbol } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
 import { strictEqual } from "../equivalence.js"
 
 // NoWeakMapFact is empty payload because guidance and matchers share identity.

@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { preferDirectYield } from "@better-typescript/guidance/policies/preferDirectYield"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { preferDirectYield } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("prefer-direct-yield reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(preferDirectYield))

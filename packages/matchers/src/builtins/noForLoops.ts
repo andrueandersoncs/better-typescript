@@ -1,7 +1,7 @@
-import { Array, Function, Option, pipe, Schema } from "effect"
+import { Array, Function, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 
 // NoForLoopsFact is empty payload because guidance and matchers share identity.
 export const NoForLoopsFact = Schema.Struct({})

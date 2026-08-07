@@ -1,45 +1,25 @@
-import { Array, Function, HashSet, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
-import type { ReturnedExpressionNode } from "../support/tsNode.js"
-import {
-  containsUndefinedType,
-  isUndefinedReturnTypeDeclaration,
-  returnTypeDeclarationKinds,
-  unwrapExpression
-} from "../support/tsNode.js"
-import { strictEqual } from "../equivalence.js"
-import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
+import type { ReturnedExpressionNode } from "../support/returnedExpressionNode.js"
+import { containsUndefinedType } from "../support/containsUndefinedKeyword.js"
+import { isReturnTypeDeclaration } from "../support/isReturnTypeDeclaration.js"
+import type { ReturnTypeDeclaration } from "../support/returnTypeDeclaration.js"
+import { returnTypeDeclarationKinds } from "../support/returnTypeDeclarationKinds.js"
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { nodeSubscriptions } from "../matcher/nodeSubscriptions.js"
+import { isUndefinedExpression } from "./isUndefinedExpression.js"
+import { undefinedUsageMatches } from "./noUndefinedFact.js"
 
 // UndefinedTypeDeclaration is a local syntax union because matchers need one narrowed node shape.
 export type UndefinedTypeDeclaration = ts.PropertySignature | ts.MappedTypeNode
 
-const undefinedUsageKinds = Array.make<
-  ["parameter", "return-type", "return-expression", "type-declaration", "comparison"]
->("parameter", "return-type", "return-expression", "type-declaration", "comparison")
+const hasUndefinedReturnType = (decl: ReturnTypeDeclaration) =>
+  pipe(Option.fromNullishOr(decl.type), containsUndefinedType)
 
-// UndefinedUsageKind classifies undefined sites because usage advice differs.
-export const UndefinedUsageKind = Schema.Literals(undefinedUsageKinds)
+const isUndefinedReturnTypeDeclaration = (node: ts.Node): node is ReturnTypeDeclaration => {
+  const returnTypeDecl = Option.liftPredicate(isReturnTypeDeclaration)(node)
 
-export type UndefinedUsageKind = typeof UndefinedUsageKind.Type
-
-// NoUndefinedFact classifies undefined usage because guidance varies by site.
-export const NoUndefinedFact = Schema.Struct({
-  kind: UndefinedUsageKind
-})
-
-export interface NoUndefinedFact extends Schema.Schema.Type<typeof NoUndefinedFact> {}
-
-const isUndefinedIdentifier = flow(
-  Struct.get<ts.Identifier, "text">("text"),
-  strictEqual("undefined")
-)
-
-const isUndefinedExpression = (expression: ts.Expression) => {
-  const unwrapped = unwrapExpression(expression)
-  const identifier = Option.liftPredicate(ts.isIdentifier)(unwrapped)
-
-  return Option.exists(identifier, isUndefinedIdentifier)
+  return Option.exists(returnTypeDecl, hasUndefinedReturnType)
 }
 
 const equalityComparisonOperators = HashSet.make(
@@ -121,17 +101,6 @@ const isUndefinedTypeDeclaration = (node: ts.Node): node is UndefinedTypeDeclara
   )
 
   return isPropertyWithUndefined || isMappedWithUndefined
-}
-
-const undefinedUsageMatches = (kind: UndefinedUsageKind) => {
-  const matchUndefinedUsage = (node: ts.Node) => {
-    const fact = NoUndefinedFact.make({ kind })
-    const match = makeNodeMatch(node, fact)
-
-    return Array.of(match)
-  }
-
-  return Function.constant(matchUndefinedUsage)
 }
 
 const parameterKinds = Array.of(ts.SyntaxKind.Parameter)

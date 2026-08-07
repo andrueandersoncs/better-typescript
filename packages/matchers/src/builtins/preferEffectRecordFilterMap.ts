@@ -1,9 +1,10 @@
-import { Array, Function, flow, Schema } from "effect"
+import { Array, Function, Schema, flow } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import { unwrapExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
 import { strictEqual } from "../equivalence.js"
+import { objectLiteralPropertyCount } from "./objectLiteralPropertyCount.js"
 
 // PreferEffectRecordFilterMapFact is empty payload because guidance and matchers share identity.
 export const PreferEffectRecordFilterMapFact = Schema.Struct({})
@@ -14,12 +15,6 @@ export interface PreferEffectRecordFilterMapFact extends Schema.Schema.Type<
 
 // emptyPreferEffectRecordFilterMapFact is empty because guidance and matchers share identity.
 export const emptyPreferEffectRecordFilterMapFact = PreferEffectRecordFilterMapFact.make({})
-
-const objectLiteralPropertyCount = (expression: ts.Expression) => {
-  const unwrapped = unwrapExpression(expression)
-
-  return ts.isObjectLiteralExpression(unwrapped) ? unwrapped.properties.length : 0
-}
 
 const hasNoProperties = flow(objectLiteralPropertyCount, strictEqual(0))
 

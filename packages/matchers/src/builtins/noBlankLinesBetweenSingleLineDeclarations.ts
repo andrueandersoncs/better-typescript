@@ -1,9 +1,13 @@
-import { Array, Function, HashSet, Option, pipe, Struct, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { isDeclarationStatement, isStatementContainer } from "../support/tsNode.js"
+import { isDeclarationStatement } from "../support/declarationStatement.js"
+import { isStatementContainer } from "../support/statementContainer.js"
 import { strictEqual } from "../equivalence.js"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isFunctionLike } from "./functionLikeKinds.js"
+import { fallbackFalse } from "./fallbackFalse.js"
 
 // NoBlankLinesBetweenSingleLineDeclarationsFact is empty because matchers share identity.
 export const NoBlankLinesBetweenSingleLineDeclarationsFact = Schema.Struct({})
@@ -26,22 +30,9 @@ const singleLineDeclarationKindList: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.ModuleDeclaration
 )
 
-const functionLikeKinds = HashSet.make(
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.MethodDeclaration,
-  ts.SyntaxKind.Constructor,
-  ts.SyntaxKind.GetAccessor,
-  ts.SyntaxKind.SetAccessor
-)
-
 const singleLineBlankLinePattern = /\n[ \t]*\r?\n/
 
-const fallbackFalse = Function.constant(false)
 const fallbackMissingIndex = Function.constant(-1)
-
-const isFunctionLike = (node: ts.Node) => HashSet.has(functionLikeKinds, node.kind)
 
 const parentContinuesFunctionSearch = (parent: ts.Node) => {
   const parentIsFunction = isFunctionLike(parent)

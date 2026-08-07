@@ -1,9 +1,11 @@
 import { Array } from "effect"
-import { Advice } from "@better-typescript/core/engine/derive/data"
-import { byFile, collidingLines, deriveSignals } from "@better-typescript/core/engine/derive"
-import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { Location } from "@better-typescript/core/engine/location/data"
-import { makePackageExamples } from "../definePolicy.js"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { byFile } from "@better-typescript/core/engine/derive/byFile"
+import { collidingLines } from "@better-typescript/core/engine/derive/collidingLines"
+import { deriveSignals } from "@better-typescript/core/engine/derive/deriveSignals"
+import { type NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { makePackageExamples } from "../makePackageExamples.js"
 
 export const sideEffectLaunderingExamples = makePackageExamples("side-effect-laundering")
 

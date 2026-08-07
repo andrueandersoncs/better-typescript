@@ -1,56 +1,11 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "bun:test"
-import { fileURLToPath } from "node:url"
-import { Array, Effect, HashMap, HashSet, Option } from "effect"
-import { conceptControl } from "@better-typescript/guidance/policies/conceptControl"
-import { buildConceptIndex } from "@better-typescript/matchers/builtins/conceptControl/conceptIndex"
+import { Array, HashMap, HashSet, Option } from "effect"
 import { referenceKey } from "@better-typescript/matchers/support/referenceKey"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "concept-control")
-
-const kindOf = (element: Detection): string | undefined => {
-  const data = element.data
-
-  if (typeof data !== "object" || data === null || !("kind" in data)) {
-    return undefined
-  }
-
-  const kind = data.kind
-
-  return typeof kind === "string" ? kind : undefined
-}
-
-const runFixture = async (): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const projects = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(conceptControl))(project))
-    )
-  )
-
-  return projects.flat()
-}
-
-const loadConceptIndex = async () => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const project = workspace.projects[0]
-
-  assert.ok(project, "concept-control fixture project was not loaded")
-
-  return buildConceptIndex(
-    ProgramContext.make({
-      program: project.program,
-      checker: project.program.getTypeChecker(),
-      projectRoot: project.rootPath,
-      workspaceRoot: project.rootPath
-    })
-  )
-}
+import { kindOf } from "./conceptControlKindOf.js"
+import { runFixture } from "./conceptControlRunFixture.js"
+import { loadConceptIndex } from "./conceptControlLoadConceptIndex.js"
 
 test("concept-control reports structural concept debt before accepting rationale", async () => {
   const signals = await runFixture()

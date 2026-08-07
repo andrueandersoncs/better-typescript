@@ -7,43 +7,39 @@
     "dist"
   ],
   "exports": {
-    "./matcher": {
-      "bun": "./src/matcher/matcher.ts",
-      "default": "./dist/matcher/matcher.js"
+    "./equivalence": {
+      "bun": "./src/equivalence.ts",
+      "default": "./dist/equivalence.js"
     },
-    "./matcher/data": {
-      "bun": "./src/matcher/data.ts",
-      "default": "./dist/matcher/data.js"
+    "./package.json": "./package.json",
+    "./*": {
+      "bun": "./src/*.ts",
+      "default": "./dist/*.js"
     },
-    "./sources": {
-      "bun": "./src/sources/sources.ts",
-      "default": "./dist/sources/sources.js"
+    "./matcher/*": {
+      "bun": "./src/matcher/*.ts",
+      "default": "./dist/matcher/*.js"
+    },
+    "./matcher/*.js": {
+      "bun": "./src/matcher/*.ts",
+      "default": "./dist/matcher/*.js"
+    },
+    "./sources/*": {
+      "bun": "./src/sources/*.ts",
+      "default": "./dist/sources/*.js"
+    },
+    "./sources/*.js": {
+      "bun": "./src/sources/*.ts",
+      "default": "./dist/sources/*.js"
     },
     "./sources/data": {
       "bun": "./src/sources/data.ts",
       "default": "./dist/sources/data.js"
     },
-    "./sources/comments": {
-      "bun": "./src/sources/comments.ts",
-      "default": "./dist/sources/comments.js"
-    },
     "./sources/comments/data": {
       "bun": "./src/sources/commentsData.ts",
       "default": "./dist/sources/commentsData.js"
     },
-    "./equivalence": {
-      "bun": "./src/equivalence.ts",
-      "default": "./dist/equivalence.js"
-    },
-    "./tsSchema": {
-      "bun": "./src/tsSchema.ts",
-      "default": "./dist/tsSchema.js"
-    },
-    "./*": {
-      "bun": "./src/*.ts",
-      "default": "./dist/*.js"
-    },
-    "./package.json": "./package.json",
     "./support/*": {
       "bun": "./src/support/*.ts",
       "default": "./dist/support/*.js"

@@ -1,11 +1,18 @@
-import { Array, Function, Option, Tuple, pipe, Predicate, Struct, Schema } from "effect"
+import { Array, Function, Option, Predicate, Schema, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match, type MatchContext } from "../matcher/data.js"
-import { isFunctionInitializer, unwrapTransparentExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { unaryAdapter } from "../support/unaryAdapter.js"
-import { foldAst } from "../sources/sources.js"
+import { foldAst } from "../sources/foldAst.js"
 import { strictEqual } from "../equivalence.js"
+import { identifierText } from "./identifierText.js"
+import { unwrapTowerCarrier } from "./unwrapTowerCarrier.js"
+import { carrierIdentifier } from "./carrierIdentifier.js"
+import { isSeedIdentifier } from "./isSeedIdentifier.js"
 
 const blockKind = Schema.Literal("block")
 const adapterKind = Schema.Literal("adapter")
@@ -52,8 +59,6 @@ const hasNoOptionalChain = Function.flow(
   Option.fromNullishOr,
   Option.isNone
 )
-
-const identifierText = Struct.get<ts.Identifier, "text">("text")
 
 const propertyComposedAdapter = (node: ts.Node) =>
   pipe(
@@ -102,24 +107,10 @@ const propertyComposedAdapter = (node: ts.Node) =>
     })
   )
 
-const unwrapTowerCarrier = (expression: ts.Expression): ts.Expression =>
-  ts.isNonNullExpression(expression)
-    ? unwrapTowerCarrier(expression.expression)
-    : unwrapTransparentExpression(expression)
-
-const carrierIdentifier = (expression: ts.Expression) =>
-  pipe(expression, unwrapTowerCarrier, Option.some, Option.filter(ts.isIdentifier))
-
 const isPipeText = strictEqual("pipe")
 
 const isPipeCallee = (expression: ts.Expression) =>
   pipe(carrierIdentifier(expression), Option.map(identifierText), Option.exists(isPipeText))
-
-const isSeedIdentifier = (name: string) => (expression: ts.Expression) => {
-  const isSeedText = strictEqual(name)
-
-  return pipe(carrierIdentifier(expression), Option.map(identifierText), Option.exists(isSeedText))
-}
 
 const callFirstArgument = (call: ts.CallExpression) => Option.fromNullishOr(call.arguments[0])
 

@@ -40,8 +40,13 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   Canonically sorted accepted Hard Bonds form connected components and a deterministic spanning
   forest whose unique paths prove membership; barrier-crossing bonds remain suppressed evidence.
 
-- [Define paradigm-specific Hard Bond policy](issues/09-define-paradigm-hard-bonds.md) — The initial
-  catalog is empty; future preset-owned rules require semantic necessity and replayable evidence.
+- [Define paradigm-specific Hard Bond policy](issues/09-define-paradigm-hard-bonds.md) — Paradigm
+  rules require semantic necessity and replayable evidence; its initially empty-catalog decision is
+  superseded by the first proven neutral rules below.
+
+- [Define the initial paradigm Hard Bond catalog](issues/18-define-initial-hard-bond-catalog.md) —
+  Canonical reference SCCs are atomic, and a component with one complete Program-closed-world
+  consumer is exclusively owned; both neutral rules carry typed replay evidence.
 
 - [Design the Semantic Module evidence interface](issues/05-design-semantic-module-evidence-interface.md)
   — A versioned immutable Program snapshot carries the complete canonical audit record; pure queries
@@ -67,5 +72,6 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
 
 - Implementing the production checks, guidance, or automatic refactors.
 - Choosing filenames, destination paths, or move direction for a Semantic Module.
-- Heuristic grouping from names, comments, paths, co-change history, ownership, runtime traces,
-  scores, or thresholds.
+- Heuristic grouping from names, comments, paths, co-change history, repository ownership metadata,
+  runtime traces, scores, or thresholds.
+- Semantic simplification, inlining, or reducing the number of Code Entities.

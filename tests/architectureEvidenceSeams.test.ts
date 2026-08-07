@@ -1,36 +1,10 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Effect, Option, Schema, pipe, Array } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { contextTagSeams } from "@better-typescript/guidance/policies/contextTagSeams"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import { ContextTagSeamData } from "@better-typescript/matchers/builtins/architectureExploreData"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-seams")
-
-const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
-  )
-
-  return projectDetections.flat()
-}
-
-const dataAs = <A>(
-  guard: (input: unknown) => input is A,
-  detection: Detection
-): Option.Option<A> => {
-  const data = detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
+import { Option, Schema } from "effect"
+import { contextTagSeams } from "@better-typescript/guidance/preset/contextTagSeams"
+import { ContextTagSeamData } from "@better-typescript/matchers/builtins/contextTagSeams"
+import { runFixture } from "./architectureEvidenceSeamsFixture.js"
+import { dataAs } from "./architectureEvidenceSeamsDataAs.js"
 
 test("context-tag seams count adapters and consumers for Effect service keys", async () => {
   const detections = await runFixture(contextTagSeams)

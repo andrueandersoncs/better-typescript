@@ -1,19 +1,24 @@
 import * as path from "node:path"
-import { Array, Function, Struct, flow, pipe, Result } from "effect"
+import { Array, Result, Schema, Struct, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { TestOnlyExportData } from "./architectureExploreData.js"
-import { isPackageProject, isTestSourceFile } from "./architectureExplore/paths.js"
-import { ExportReferenceIndex, usageFor } from "./architectureExplore/programSymbols.js"
-import {
-  evidenceMatcher,
-  exportReferenceIndex
-} from "./architectureExplore/architectureEvidence.js"
-import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { isPackageProject } from "./architectureExplore/isPackageProject.js"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import type { ExportReferenceIndex } from "./architectureExplore/exportReferenceIndex.js"
+import { usageFor } from "./architectureExplore/usageFor.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+
+import { stringArray } from "./architectureExplore/stringArraySchema.js"
+import { exportReferenceFileMatcher } from "./exportReferenceFileMatcher.js"
+
+// TestOnlyExportData is test-only call evidence because advice separates seams.
+export const TestOnlyExportData = Schema.Struct({
+  testPaths: stringArray,
+  testCallCount: Schema.Number
+})
+
+export interface TestOnlyExportData extends Schema.Schema.Type<typeof TestOnlyExportData> {}
 
 const sourceBelongsToProject = (context: MatchContext) => {
   const sourcePath = path.resolve(context.projectRoot, context.sourceFile.fileName)
@@ -72,6 +77,4 @@ const testOnlyExportElements =
     )
   }
 
-const testOnlyExportSubscriptions = Function.compose(testOnlyExportElements, fileSubscriptions)
-
-export const testOnlyExports = evidenceMatcher(exportReferenceIndex)(testOnlyExportSubscriptions)
+export const testOnlyExports = exportReferenceFileMatcher(testOnlyExportElements)

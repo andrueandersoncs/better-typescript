@@ -1,14 +1,14 @@
 import { Array, Function, Match, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import {
-  functionInitializer,
-  hasParameters,
-  returnStatementExpression,
-  unwrapExpression
-} from "../support/tsNode.js"
-import { isEffectInterfaceSymbol, symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { functionInitializer } from "../support/functionInitializer2.js"
+import { hasParameters } from "../support/hasParameters.js"
+import { returnStatementExpression } from "../support/returnStatementExpression.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
+import { isEffectInterfaceSymbol } from "../support/isEffectInterfaceSymbol.js"
 import { strictEqual } from "../equivalence.js"
 
 const optionalText = Schema.optional(Schema.String)

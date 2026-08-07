@@ -1,6 +1,6 @@
 import { Function } from "effect"
-import type { Match } from "@better-typescript/matchers/matcher/data"
-import { makeFindings } from "@better-typescript/core/engine/policy"
+import type { Match } from "@better-typescript/matchers/matcher/match"
+import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
 import { makeFunctionalCoreEffect } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffect"
 import {
   FunctionalCoreBoundaryData,
@@ -10,7 +10,7 @@ import {
   defaultFunctionalCoreEffectPolicy,
   type FunctionalCoreEffectPolicy
 } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
-import { makeBuiltinPolicy } from "../definePolicy.js"
+import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 
 const messageByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
   "dependency-direction": "This dependency points outward across the functional-core architecture.",

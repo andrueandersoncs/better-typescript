@@ -1,13 +1,13 @@
 import { Function } from "effect"
-import type { Match } from "@better-typescript/matchers/matcher/data"
-import { makeFindings } from "@better-typescript/core/engine/policy"
+import type { Match } from "@better-typescript/matchers/matcher/match"
+import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
 import { makeFunctionalCoreShapeEvidence } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeEvidence"
 import { FunctionalCoreShapeData } from "@better-typescript/matchers/builtins/functionalCoreEffect/data"
 import {
   defaultFunctionalCoreEffectPolicy,
   type FunctionalCoreEffectPolicy
 } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
-import { makeSilentBuiltinPolicy } from "../definePolicy.js"
+import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
 
 const message = "Functional-core architecture shape evidence for derived advice."
 

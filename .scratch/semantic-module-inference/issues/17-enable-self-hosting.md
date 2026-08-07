@@ -5,12 +5,15 @@
 **What to build:** Enable the complete placement Policy and adviser in every Architecture Explore
 preset and prove the shipped feature through the repository's full validation and performance gates.
 
-**Blocked by:** 16 — Render Semantic Module placement Advice.
+**Blocked by:** 16 — Render Semantic Module placement Advice; 19 — Infer neutral reference-graph
+Hard Bonds; 20 — Remediate self-host placement Advice.
 
 **Status:** ready-for-agent
 
-- [ ] Neutral, object-oriented, and functional presets each own an explicit empty immutable paradigm
-      Hard Bond catalog and instantiate exactly one placement Policy.
+- [ ] Neutral, object-oriented, and functional presets each own an explicit immutable paradigm Hard
+      Bond catalog. Neutral contains exactly the settled reference-cycle and exclusive-ownership
+      rules; object-oriented and functional remain empty. Every preset instantiates one placement
+      Policy.
 - [ ] Combined Architecture Explore presets inherit the union of constituent catalogs without
       duplicate Policy names or duplicate snapshot construction.
 - [ ] Every Architecture Explore preset includes the placement adviser; baseline default Wiring

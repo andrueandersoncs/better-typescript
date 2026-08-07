@@ -1,6 +1,6 @@
-import { Array, Option, pipe } from "effect"
+import { Array, Option, Record, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import type { ImportedMember } from "./importedMembers.js"
+import type { ImportedMember } from "./importedMember.js"
 
 const effectBarrelPlatformCapabilityNames: Readonly<Record<string, true>> = {
   FileSystem: true,

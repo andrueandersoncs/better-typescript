@@ -1,7 +1,8 @@
-import { Array, Function, Option, pipe, Struct, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferImplicitReturnFact is empty payload because guidance and matchers share identity.

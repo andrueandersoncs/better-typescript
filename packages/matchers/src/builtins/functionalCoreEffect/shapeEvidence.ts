@@ -1,99 +1,79 @@
-import { Array, Function, Match, Option, Schema, Tuple, pipe } from "effect"
+import { Array, Function, Option, Record, Tuple, pipe, Match as EffectMatch } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import {
-  makeNodeMatch,
-  type Match as FactMatch,
-  type MatchContext,
-  type Subscription
-} from "@better-typescript/matchers/matcher/data"
-import { fileSubscriptions, nodeSubscriptions } from "@better-typescript/matchers/matcher"
-import { foldAst } from "@better-typescript/matchers/sources"
-import { FunctionalCoreShapeData } from "./data.js"
-import type { ArchitectureRole } from "../../support/architectureRole.js"
-import {
-  type FunctionalCoreEffectIndex,
-  roleForSourceFile,
-  withFunctionalCoreEffectIndex
-} from "./index.js"
-import type { FunctionalCoreEffectPolicy } from "./policy.js"
-import { callIsPipeRuntimeHandoff } from "./effectRuntimeApis.js"
-import { effectServiceConfigObject, expressionIsServiceTag } from "./effectServiceApis.js"
-import {
-  importedEffectApiAt,
-  isManagedRuntimeMethodAccess,
-  specifierIsEffect
-} from "./effectApiMembers.js"
+import type { Match as FactMatch } from "../../matcher/match.js"
+import type { MatchContext } from "../../matcher/matchContext.js"
+import type { Subscription } from "../../matcher/subscription.js"
+import { fileSubscriptions } from "../../matcher/fileSubscriptions.js"
+import { nodeSubscriptions } from "../../matcher/nodeSubscriptions.js"
+import { foldAst } from "../../sources/foldAst.js"
+import { FunctionalCoreShapeData } from "./shapeData.js"
+import type { ArchitectureRole } from "../../support/architectureRoleType.js"
+import type { FunctionalCoreEffectIndex } from "./functionalCoreEffectIndexClass.js"
+import { roleForSourceFile } from "./roleForSourceFile.js"
+import { withFunctionalCoreEffectIndex } from "./functionalCoreEffectIndexBuild.js"
+import { declarationIsContextReference } from "./contextReferenceNames.js"
+import { declarationIsContextService } from "./declarationIsContextService.js"
+import { effectServiceConfigObject } from "./effectServiceConfigObject.js"
+import { declarationsOfSymbol } from "./declarationsOfSymbol.js"
+import { importedMemberAt } from "./importedMemberAt.js"
+import { importedEffectApiAt } from "./importedEffectApiAt.js"
+import { specifierIsEffect } from "./specifierIsEffect.js"
 import { propertyAssignmentNamed } from "./propertyAssignments.js"
-import { enclosingFunctionLike, isRuntimeFunctionLike } from "./functionScope.js"
-import { importedMemberAt } from "./importedMembers.js"
-import {
-  isExpressionBody,
-  singleStatementReturnExpression,
-  unwrapCallee,
-  unwrapTransparentExpression
-} from "../../support/tsNode.js"
+import { isRuntimeFunctionLike } from "./isRuntimeFunctionLike.js"
+import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
+import { unwrapCallee } from "../../support/unwrapCallee.js"
+import { OrchestratorMetrics as OrchestratorMetricsSchema } from "./orchestratorMetrics.js"
+import { FileShapeMetrics as FileShapeMetricsSchema } from "./fileShapeMetrics.js"
+import { ServiceSurfaceMetrics as ServiceSurfaceMetricsSchema } from "./serviceSurfaceMetrics.js"
+import { emptyFileShapeMetrics } from "./emptyFileShapeMetrics.js"
+import { isBranchNode } from "./isBranchNode.js"
+import { isOwnedByFunction } from "./isOwnedByFunction.js"
+import { callIsRecognizedCompositionApi } from "./recognizedCompositionApi.js"
+import { shapeDetection } from "./shapeDetection.js"
+import { functionResultExpression } from "./functionResultExpression.js"
+
+const expressionIsServiceTag = (checker: ts.TypeChecker, expression: ts.Expression) => {
+  const declarationIsContextServiceOf = (declaration: ts.Declaration) =>
+    declarationIsContextService(checker, declaration) ||
+    declarationIsContextReference(checker, declaration)
+
+  const someContextServiceDeclaration = (declarations: ReadonlyArray<ts.Declaration>) =>
+    Array.some(declarations, declarationIsContextServiceOf)
+
+  const resolvedSymbolAtNode = (node: ts.Node) =>
+    pipe(
+      checker.getSymbolAtLocation(node),
+      Option.fromNullishOr,
+      Option.map((symbol) => {
+        const alias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+        return alias ? checker.getAliasedSymbol(symbol) : symbol
+      })
+    )
+
+  return pipe(
+    expression,
+    unwrapTransparentExpression,
+    resolvedSymbolAtNode,
+    Option.map(declarationsOfSymbol),
+    Option.exists(someContextServiceDeclaration)
+  )
+}
 
 const emptyServiceNames: ReadonlyArray<string> = Array.empty()
 
-const orchestratorServiceNamesSchema = Schema.Array(Schema.String)
-
-// OrchestratorMetrics is shared shape accumulator because folds share one record.
-export const OrchestratorMetrics = Schema.Struct({
-  branchCount: Schema.Number,
-  yieldCount: Schema.Number,
-  transformationCount: Schema.Number,
-  serviceNames: orchestratorServiceNamesSchema
-})
-
-export interface OrchestratorMetrics extends Schema.Schema.Type<typeof OrchestratorMetrics> {}
-
-// FileShapeMetrics is shared file-shape accumulator because folds and thresholds share it.
-export const FileShapeMetrics = Schema.Struct({
-  branchCount: Schema.Number,
-  functionCount: Schema.Number
-})
-
-export interface FileShapeMetrics extends Schema.Schema.Type<typeof FileShapeMetrics> {}
-
-// ServiceSurfaceMetrics is shared service-surface tally because filters share one tally.
-export const ServiceSurfaceMetrics = Schema.Struct({
-  functionCount: Schema.Number,
-  nonFunctionCount: Schema.Number,
-  effectfulMemberCount: Schema.Number
-})
-
-export interface ServiceSurfaceMetrics extends Schema.Schema.Type<typeof ServiceSurfaceMetrics> {}
-
-const emptyOrchestratorMetrics = OrchestratorMetrics.make({
+const emptyOrchestratorMetrics = OrchestratorMetricsSchema.make({
   branchCount: 0,
   yieldCount: 0,
   transformationCount: 0,
   serviceNames: emptyServiceNames
 })
 
-const emptyFileShapeMetrics = FileShapeMetrics.make({ branchCount: 0, functionCount: 0 })
-
-const emptyServiceSurfaceMetrics = ServiceSurfaceMetrics.make({
+const emptyServiceSurfaceMetrics = ServiceSurfaceMetricsSchema.make({
   functionCount: 0,
   nonFunctionCount: 0,
   effectfulMemberCount: 0
 })
-
-const isBranchNode = (node: ts.Node) => {
-  const isIf = ts.isIfStatement(node)
-  const isSwitch = ts.isSwitchStatement(node)
-  const isConditional = ts.isConditionalExpression(node)
-  const checks = Array.make(isIf, isSwitch, isConditional)
-
-  return Array.some(checks, Boolean)
-}
-
-const isOwnedByFunction = (node: ts.Node, owner: ts.FunctionLikeDeclaration) => {
-  const declarationIsOwner = strictEqual(owner)
-
-  return pipe(enclosingFunctionLike(node), Option.exists(declarationIsOwner))
-}
 
 const effectControlRuntimeNamespaces: Readonly<Record<string, true>> = {
   Effect: true,
@@ -197,100 +177,6 @@ const isQualifyingTransformationCall = (
   return Array.every(continueExternalFlags, Boolean)
 }
 
-const compositionLayerNames = Array.make(
-  "effect",
-  "effectDiscard",
-  "effectContext",
-  "succeed",
-  "provide",
-  "provideMerge"
-)
-
-const compositionEffectNames = Array.make(
-  "provide",
-  "provideService",
-  "provideServiceEffect",
-  "provideContext",
-  "runCallback",
-  "runFork",
-  "runPromise",
-  "runPromiseExit",
-  "runSync",
-  "runSyncExit",
-  "runCallbackWith",
-  "runForkWith",
-  "runPromiseWith",
-  "runPromiseExitWith",
-  "runSyncWith",
-  "runSyncExitWith"
-)
-
-const compositionRuntimeNames = Array.make(
-  "runCallback",
-  "runFork",
-  "runPromise",
-  "runPromiseExit",
-  "runSync",
-  "runSyncExit",
-  "runCallbackWith",
-  "runForkWith",
-  "runPromiseWith",
-  "runPromiseExitWith",
-  "runSyncWith",
-  "runSyncExitWith"
-)
-
-const managedRuntimeMakeNames = Array.of("make")
-
-const callIsRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.CallExpression) => {
-  const layer = importedEffectApiAt(checker, node.expression, "Layer", compositionLayerNames)
-  const effect = importedEffectApiAt(checker, node.expression, "Effect", compositionEffectNames)
-
-  const managedRuntimeMake = importedEffectApiAt(
-    checker,
-    node.expression,
-    "ManagedRuntime",
-    managedRuntimeMakeNames
-  )
-
-  const propertyAccess = Option.liftPredicate(ts.isPropertyAccessExpression)(node.expression)
-
-  const isManagedRuntimeMethod = (expression: ts.PropertyAccessExpression) =>
-    isManagedRuntimeMethodAccess(checker, expression, compositionRuntimeNames)
-
-  const managedRuntimeMethod = Option.exists(propertyAccess, isManagedRuntimeMethod)
-  const pipeRuntimeHandoff = callIsPipeRuntimeHandoff(checker, node, compositionRuntimeNames)
-
-  const runMain = pipe(
-    importedMemberAt(checker, node.expression),
-    Option.exists((member) => {
-      const lastOption = Array.last(member.path)
-      const name = pipe(lastOption, Option.getOrElse(Function.constant("")))
-      const platformNode = member.moduleSpecifier.startsWith("@effect/platform-node")
-      const platformBun = member.moduleSpecifier.startsWith("@effect/platform-bun")
-      const platformDeno = member.moduleSpecifier.startsWith("@effect/platform-deno")
-      const platformBrowser = member.moduleSpecifier.startsWith("@effect/platform-browser")
-      const platformFlags = Array.make(platformNode, platformBun, platformDeno, platformBrowser)
-      const platformRuntime = Array.some(platformFlags, Boolean)
-      const isRunMain = strictEqual("runMain")(name)
-      const runMainFlags = Array.make(platformRuntime, isRunMain)
-
-      return Array.every(runMainFlags, Boolean)
-    })
-  )
-
-  const checks = Array.make(
-    layer,
-    effect,
-    managedRuntimeMake,
-    managedRuntimeMethod,
-    pipeRuntimeHandoff,
-    runMain
-  )
-
-  return Array.some(checks, Boolean)
-}
-
 const nestedInRecognizedCompositionApi = (checker: ts.TypeChecker, node: ts.Node) => {
   const callIsRecognizedComposition = (call: ts.CallExpression) =>
     callIsRecognizedCompositionApi(checker, call)
@@ -331,7 +217,7 @@ const collectOrchestratorMetrics = (context: MatchContext, owner: ts.FunctionLik
   const reduceOrchestratorMetrics = (metrics: typeof emptyOrchestratorMetrics, node: ts.Node) => {
     const qualifyingCallMetrics = (call: ts.CallExpression) =>
       isQualifyingTransformationCall(context, owner, call)
-        ? OrchestratorMetrics.make({
+        ? OrchestratorMetricsSchema.make({
             ...metrics,
             transformationCount: metrics.transformationCount + 1
           })
@@ -343,7 +229,7 @@ const collectOrchestratorMetrics = (context: MatchContext, owner: ts.FunctionLik
         Option.map((text) => {
           const serviceNames = addServiceName(metrics.serviceNames, text)
 
-          return OrchestratorMetrics.make({
+          return OrchestratorMetricsSchema.make({
             ...metrics,
             yieldCount: metrics.yieldCount + 1,
             serviceNames
@@ -354,16 +240,16 @@ const collectOrchestratorMetrics = (context: MatchContext, owner: ts.FunctionLik
 
     const pipeOf = (ownedNode: ts.Node) =>
       pipe(
-        Match.value(ownedNode),
-        Match.when(isBranchNode, () =>
-          OrchestratorMetrics.make({
+        EffectMatch.value(ownedNode),
+        EffectMatch.when(isBranchNode, () =>
+          OrchestratorMetricsSchema.make({
             ...metrics,
             branchCount: metrics.branchCount + 1
           })
         ),
-        Match.when(ts.isCallExpression, qualifyingCallMetrics),
-        Match.when(ts.isYieldExpression, yieldServiceMetrics),
-        Match.orElse(Function.constant(metrics))
+        EffectMatch.when(ts.isCallExpression, qualifyingCallMetrics),
+        EffectMatch.when(ts.isYieldExpression, yieldServiceMetrics),
+        EffectMatch.orElse(Function.constant(metrics))
       )
 
     return pipe(
@@ -395,9 +281,6 @@ const callIsEffectOrchestrator = (context: MatchContext, node: ts.CallExpression
 
   return importedEffectApiAt(context.checker, callee, "Effect", names)
 }
-
-const shapeDetection = (_context: MatchContext, node: ts.Node, data: FunctionalCoreShapeData) =>
-  makeNodeMatch(node, data)
 
 const orchestratorElements =
   (index: FunctionalCoreEffectIndex) =>
@@ -448,12 +331,6 @@ const orchestratorElements =
       : Array.empty()
   }
 
-const resultExpressionFromBody = (bodyNode: ts.ConciseBody) =>
-  isExpressionBody(bodyNode) ? Option.some(bodyNode) : singleStatementReturnExpression(bodyNode)
-
-const functionResultExpression = (node: ts.FunctionLikeDeclaration) =>
-  pipe(Option.fromNullishOr(node.body), Option.flatMap(resultExpressionFromBody))
-
 const functionReturnsComposition = (checker: ts.TypeChecker, node: ts.FunctionLikeDeclaration) => {
   const callIsRecognized = (call: ts.CallExpression) =>
     callIsRecognizedCompositionApi(checker, call)
@@ -492,20 +369,20 @@ const collectFileShape = (context: MatchContext, role: ArchitectureRole) => {
     return excludeComposition
       ? metrics
       : pipe(
-          Match.value(node),
-          Match.when(isBranchNode, () =>
-            FileShapeMetrics.make({
+          EffectMatch.value(node),
+          EffectMatch.when(isBranchNode, () =>
+            FileShapeMetricsSchema.make({
               ...metrics,
               branchCount: metrics.branchCount + 1
             })
           ),
-          Match.when(isRuntimeFunctionLike, () =>
-            FileShapeMetrics.make({
+          EffectMatch.when(isRuntimeFunctionLike, () =>
+            FileShapeMetricsSchema.make({
               ...metrics,
               functionCount: metrics.functionCount + 1
             })
           ),
-          Match.orElse(Function.constant(metrics))
+          EffectMatch.orElse(Function.constant(metrics))
         )
   }
 
@@ -684,12 +561,12 @@ const serviceSurfaceMetrics = (checker: ts.TypeChecker, type: ts.Type, location:
       return typeLooksEffectful(checker, returnType)
     })
 
-    const nonFunctionMetrics = ServiceSurfaceMetrics.make({
+    const nonFunctionMetrics = ServiceSurfaceMetricsSchema.make({
       ...metrics,
       nonFunctionCount: metrics.nonFunctionCount + 1
     })
 
-    const functionMetrics = ServiceSurfaceMetrics.make({
+    const functionMetrics = ServiceSurfaceMetricsSchema.make({
       functionCount: metrics.functionCount + 1,
       nonFunctionCount: metrics.nonFunctionCount,
       effectfulMemberCount: metrics.effectfulMemberCount + (effectful ? 1 : 0)
@@ -771,6 +648,7 @@ const pureServiceElements =
   }
 
 const callKinds = Array.of(ts.SyntaxKind.CallExpression)
+
 const classKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
 const shapeSubscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subscription> => {

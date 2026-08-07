@@ -4,45 +4,46 @@ import {
   Function,
   HashMap,
   Option,
+  Result,
+  Schema,
   Struct,
   Tuple,
   flow,
-  pipe,
-  Result
+  pipe
 } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { foldAst, isProjectSourceFile } from "@better-typescript/matchers/sources"
+import { foldAst } from "../sources/foldAst.js"
+import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { ContextTagSeamData } from "./architectureExploreData.js"
-import {
-  classDeclarationName,
-  isExtendsClause,
-  resolvedSymbolAt,
-  unwrapCallee
-} from "../support/tsNode.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
-import { isTestSourceFile } from "./architectureExplore/paths.js"
-import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
-import { fileSubscriptions, withProgramMatcherIndex } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { classDeclarationName } from "../support/classDeclarationName.js"
+import { isExtendsClause } from "../support/isExtendsClause.js"
+import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
+import { unwrapCallee } from "../support/unwrapCallee.js"
+import { referenceKey } from "../support/referenceKey.js"
+import type { ReferenceKey } from "../support/referenceKeyType.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { ancestorMatching } from "./contextTagAncestorMatching.js"
+import { effectRootSymbol } from "./effectRootSymbol.js"
+import { emptySeamCounts } from "./emptySeamCounts.js"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import { programIndexedFileMatcher } from "./programIndexedFileMatcher.js"
 
-const emptySeamCounts = (): readonly [number, number, number] => Tuple.make(0, 0, 0)
+// ContextTagSeamData counts adapters and consumers because Effect seams need both judgments.
+export const ContextTagSeamData = Schema.Struct({
+  serviceName: Schema.String,
+  productionAdapterCount: Schema.Number,
+  testAdapterCount: Schema.Number,
+  consumerCount: Schema.Number
+})
+
+export interface ContextTagSeamData extends Schema.Schema.Type<typeof ContextTagSeamData> {}
 
 const contextSeamMembers: ReadonlyArray<string> = Array.make("Tag", "Service", "Reference")
 
 const effectSeamMembers: ReadonlyArray<string> = Array.make("Service")
-
-const effectRootSymbol = (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
-  pipe(
-    Option.liftPredicate(ts.isIdentifier)(access.expression),
-    Option.flatMap(resolvedSymbolAt(checker)),
-    Option.filter(symbolDeclaredInEffectPackage)
-  )
 
 const rootIsContextSeam = (root: ts.Identifier, member: string) => {
   const isContextRoot = strictEqual("Context")(root.text)
@@ -132,22 +133,6 @@ const seamCandidates =
         : Array.filterMap(sourceFile.statements, candidateFromStatement)
 
     return Array.flatMap(sourceFiles, candidatesInSourceFile)
-  }
-
-const ancestorMatching =
-  (predicate: (node: ts.Node) => boolean) =>
-  (node: ts.Node): Option.Option<ts.Node> => {
-    const visit = (current: ts.Node): Option.Option<ts.Node> => {
-      const matched = Option.liftPredicate(predicate)(current)
-      const atSourceFile = ts.isSourceFile(current.parent)
-
-      return pipe(
-        matched,
-        Option.orElse(() => (atSourceFile ? Option.none() : visit(current.parent)))
-      )
-    }
-
-    return visit(node.parent)
   }
 
 const referenceIsInsideDeclaration = (declaration: ts.Node) => (node: ts.Node) => {
@@ -438,6 +423,4 @@ const contextTagSeamElements =
     )
   }
 
-const contextTagSeamSubscriptions = Function.compose(contextTagSeamElements, fileSubscriptions)
-
-export const contextTagSeams = withProgramMatcherIndex(buildIndex)(contextTagSeamSubscriptions)
+export const contextTagSeams = programIndexedFileMatcher(buildIndex)(contextTagSeamElements)

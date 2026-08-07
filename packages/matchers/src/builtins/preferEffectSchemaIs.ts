@@ -1,9 +1,12 @@
-import { Array, Function, HashSet, Option, pipe, Struct, Schema } from "effect"
+import { Array, Function, HashSet, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { isFirstPartySymbol, unwrapExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
 import { strictEqual } from "../equivalence.js"
+import { tagPropertyAccess } from "./tagPropertyAccess.js"
+import { stringLiteralExpression } from "./stringLiteralExpression.js"
 
 // PreferEffectSchemaIsFact records tag comparison text because guidance rewrites equality.
 export const PreferEffectSchemaIsFact = Schema.Struct({
@@ -17,25 +20,10 @@ export interface PreferEffectSchemaIsFact extends Schema.Schema.Type<
   typeof PreferEffectSchemaIsFact
 > {}
 
-const tagPropertyName = "_tag"
-
 const strictTagComparisonOperators = HashSet.make(
   ts.SyntaxKind.EqualsEqualsEqualsToken,
   ts.SyntaxKind.ExclamationEqualsEqualsToken
 )
-
-const hasTagPropertyName = (expression: ts.PropertyAccessExpression) =>
-  strictEqual(tagPropertyName)(expression.name.text)
-
-const tagPropertyAccess = (expression: ts.Expression) =>
-  pipe(
-    unwrapExpression(expression),
-    Option.liftPredicate(ts.isPropertyAccessExpression),
-    Option.filter(hasTagPropertyName)
-  )
-
-const stringLiteralExpression = (expression: ts.Expression) =>
-  pipe(unwrapExpression(expression), Option.liftPredicate(ts.isStringLiteralLike))
 
 const hasTagPropertyOperand = (expression: ts.Expression) =>
   pipe(tagPropertyAccess(expression), Option.isSome)

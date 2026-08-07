@@ -1,7 +1,7 @@
 import { Function } from "effect"
-import type { Match } from "@better-typescript/matchers/matcher/data"
-import { makeFindings } from "@better-typescript/core/engine/policy"
-import type { Guidance } from "@better-typescript/core/engine/policy/data"
+import type { Match } from "@better-typescript/matchers/matcher/match"
+import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
+import { type Guidance } from "@better-typescript/core/engine/policy/guidance"
 
 export const factGuidance = <Fact>(message: string, hint: string): Guidance<Fact> => {
   const makeFindingsFor = (match: Match<Fact>) =>

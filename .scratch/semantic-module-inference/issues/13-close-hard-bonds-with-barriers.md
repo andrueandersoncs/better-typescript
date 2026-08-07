@@ -20,11 +20,11 @@ closure.
       mediate membership.
 - [ ] Accepted bonds produce the least connected-component partition, preserving singleton entities
       and canonical module/member ordering.
-- [ ] Calls, construction, type use, inheritance, implementation, decorators, initializers, ordinary
-      references, and cycles remain non-bonding dependencies.
+- [ ] Absent explicit catalog rules, calls, construction, type use, inheritance, implementation,
+      decorators, initializers, ordinary references, and cycles remain non-bonding dependencies.
 - [ ] Fixtures prove duplicate coalescing, production/test suppression, Program isolation,
-      excluded-source absence, package non-barriers, dependencies, and cycles.
-- [ ] Controlled-change tests prove that crossing a stratum splits membership while adding
-      references does not change it.
+      excluded-source absence, package non-barriers, and ordinary non-bonding dependencies.
+- [ ] Controlled-change tests prove that crossing a stratum splits same-symbol membership while
+      adding an ordinary acyclic reference does not change it.
 - [ ] Focused partition tests and the full suite pass; formatting and self-hosting are clean; the
       benchmark remains below 100ms.

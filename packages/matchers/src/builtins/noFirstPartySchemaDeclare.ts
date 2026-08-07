@@ -1,9 +1,12 @@
-import { Array, Function, HashSet, Option, pipe, Struct, Schema } from "effect"
+import { Array, Function, HashSet, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { isFirstPartySymbol, symbolDeclarations } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
+import { symbolDeclarations } from "../support/symbolDeclarations.js"
 import { strictEqual } from "../equivalence.js"
+import { typeSymbol } from "./typeSymbol.js"
 
 // NoFirstPartySchemaDeclareFact names the ambient model because guidance cites the declared type.
 export const NoFirstPartySchemaDeclareFact = Schema.Struct({
@@ -31,15 +34,6 @@ const isDeclareCall = (node: ts.Node): node is ts.CallExpression =>
 
 const typePredicateAssertedType = (predicate: ts.TypePredicate) =>
   Option.fromNullishOr(predicate.type)
-
-const typeSymbol = (type: ts.Type) => {
-  const symbolFromType = (candidate: ts.Type) => pipe(candidate.getSymbol(), Option.fromNullishOr)
-
-  return pipe(
-    Option.fromNullishOr(type.aliasSymbol),
-    Option.orElse(() => symbolFromType(type))
-  )
-}
 
 const opaquePrimitiveKinds = HashSet.make(
   ts.SyntaxKind.StringKeyword,

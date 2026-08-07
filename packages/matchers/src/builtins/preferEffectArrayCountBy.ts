@@ -1,16 +1,16 @@
-import * as path from "node:path"
-import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import {
-  resolvedSymbolAt,
-  unwrapCallee,
-  unwrapCarrier,
-  unwrapTransparentExpression
-} from "../support/tsNode.js"
-import { symbolDeclaredInEffectPackage } from "../support/tsSignature.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
+import { unwrapCallee } from "../support/unwrapCallee.js"
+import { unwrapCarrier } from "../support/unwrapCarrier.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
 import { strictEqual } from "../equivalence.js"
+import { effectArrayFilterAccess } from "./effectArrayFilterAccess.js"
+import { identifierTextIsPipe } from "./effectQuality/identifierTextIsPipe.js"
 
 // PreferEffectArrayCountByFact is empty payload because guidance and matchers share identity.
 export const PreferEffectArrayCountByFact = Schema.Struct({})
@@ -21,42 +21,6 @@ export interface PreferEffectArrayCountByFact extends Schema.Schema.Type<
 
 // emptyPreferEffectArrayCountByFact is empty payload because guidance and matchers share identity.
 export const emptyPreferEffectArrayCountByFact = PreferEffectArrayCountByFact.make({})
-
-const effectArrayModuleFileNames = Array.make("Array.ts", "Array.d.ts")
-
-const identifierTextIsPipe = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("pipe"))
-
-const symbolIsFromEffectArrayModule = (symbol: ts.Symbol) => {
-  const declarations = symbol.getDeclarations() ?? Array.empty()
-
-  const declaredInArrayModule = Array.some(declarations, (declaration) => {
-    const sourceFile = declaration.getSourceFile()
-    const fileName = path.basename(sourceFile.fileName)
-
-    return Array.contains(effectArrayModuleFileNames, fileName)
-  })
-
-  return symbolDeclaredInEffectPackage(symbol) && declaredInArrayModule
-}
-
-const propertyNameIsFilter = (access: ts.PropertyAccessExpression) =>
-  strictEqual("filter")(access.name.text)
-
-const effectArrayFilterAccess =
-  (checker: ts.TypeChecker) =>
-  (call: ts.CallExpression): Option.Option<ts.PropertyAccessExpression> => {
-    const accessIsEffectArrayFilter = (access: ts.PropertyAccessExpression) =>
-      pipe(resolvedSymbolAt(checker)(access.name), Option.exists(symbolIsFromEffectArrayModule))
-
-    return pipe(
-      call.expression,
-      unwrapCallee,
-      unwrapTransparentExpression,
-      Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.filter(propertyNameIsFilter),
-      Option.filter(accessIsEffectArrayFilter)
-    )
-  }
 
 const calleeNameNode = (call: ts.CallExpression) => {
   const callee = pipe(call.expression, unwrapCallee, unwrapTransparentExpression)

@@ -1,21 +1,24 @@
 import { Array } from "effect"
 import * as ts from "typescript"
-import { type Detection, Location } from "@better-typescript/core/engine/location/data"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { deriveSignals } from "@better-typescript/core/engine/derive"
-import {
-  ExampleSnippet,
-  InlineRefactorExamples,
-  RefactorExample
-} from "@better-typescript/core/engine/example/data"
-import { defineConfig, makeWiring, makeMergedWiring } from "@better-typescript/core/engine/wiring"
-import { makePolicy, makeFindings } from "@better-typescript/core/engine/policy"
-import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/report"
-import { signalOf } from "@better-typescript/core/engine/signal"
+import { type Detection } from "@better-typescript/core/engine/location/detectionData"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { deriveSignals } from "@better-typescript/core/engine/derive/deriveSignals"
+import { ExampleSnippet } from "@better-typescript/core/engine/example/exampleSnippet"
+import { InlineRefactorExamples } from "@better-typescript/core/engine/example/inlineRefactorExamples"
+import { RefactorExample } from "@better-typescript/core/engine/example/refactorExample"
+import { defineConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
+import { makeMergedWiring } from "@better-typescript/core/engine/wiring/makeMergedWiring"
+import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"
+import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
+import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/fileLevelAdvice"
+import { signalOf } from "@better-typescript/core/engine/signal/signal"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import { functionalCoreEffectWiring } from "@better-typescript/guidance/preset/functionalCoreEffectWiring"
-import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { makeNodeMatch } from "@better-typescript/matchers/matcher/data"
+import { functionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
+import { nodeMatcher } from "@better-typescript/matchers/matcher/nodeMatcher"
+import { makeNodeMatch } from "@better-typescript/matchers/matcher/makeNodeMatch"
 
 // This example is documentation. Copy it to a consumer project's
 // better-typescript.config.ts to load it. It stays under examples/ so this

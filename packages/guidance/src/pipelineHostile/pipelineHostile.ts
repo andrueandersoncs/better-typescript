@@ -1,9 +1,10 @@
 import { Array, Function, pipe } from "effect"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { Location } from "@better-typescript/core/engine/location/data"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { Location } from "@better-typescript/core/engine/location/locationData"
 
-import { countDetectionsAtPath } from "@better-typescript/core/engine/location"
-import { makePackageExamples } from "../definePolicy.js"
+import { countDetectionsAtPath } from "@better-typescript/core/engine/location/countDetectionsAtPath"
+import { makePackageExamples } from "../makePackageExamples.js"
 import { PipelineSignals } from "./data.js"
 
 export const pipelineHostileExamples = makePackageExamples("pipeline-hostile")

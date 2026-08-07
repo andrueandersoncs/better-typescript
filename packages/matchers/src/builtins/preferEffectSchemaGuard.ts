@@ -1,9 +1,10 @@
-import { Array, Option, pipe, Schema } from "effect"
+import { Array, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { unwrapExpression } from "../support/tsNode.js"
-import { astChildren } from "../sources/sources.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { astChildren } from "../sources/astChildren.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferEffectSchemaGuardFact records guard site text because guidance quotes property access.

@@ -1,8 +1,10 @@
 import { Array, Function, HashSet, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { isReturnedExpressionNode, unwrapTransparentExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isReturnedExpressionNode } from "../support/isReturnedExpressionNode.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { strictEqual } from "../equivalence.js"
 
 const optionalTag = Schema.optional(Schema.String)

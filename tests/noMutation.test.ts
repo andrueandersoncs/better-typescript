@@ -3,11 +3,11 @@ import * as path from "node:path"
 import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { Effect, Array } from "effect"
-import { noMutation } from "@better-typescript/guidance/policies/noMutation"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { noMutation } from "@better-typescript/guidance/preset/defaultWiring"
+import { type Detection } from "@better-typescript/core/engine/location/detectionData"
+import { loadProject } from "@better-typescript/core/project/loadProject"
+import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "no-mutation")
 

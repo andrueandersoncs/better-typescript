@@ -1,40 +1,12 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Effect, Option, Schema, pipe, Array } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { compositionForwarders } from "@better-typescript/guidance/policies/compositionForwarders"
-import { moduleScopeEffects } from "@better-typescript/guidance/policies/moduleScopeEffects"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import {
-  CompositionForwarderData,
-  ModuleScopeEffectData
-} from "@better-typescript/matchers/builtins/architectureExploreData"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-fp")
-
-const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
-  )
-
-  return projectDetections.flat()
-}
-
-const dataAs = <A>(
-  guard: (input: unknown) => input is A,
-  detection: Detection
-): Option.Option<A> => {
-  const data = detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
+import { Option, Schema } from "effect"
+import { compositionForwarders } from "@better-typescript/guidance/preset/compositionForwarders"
+import { moduleScopeEffects } from "@better-typescript/guidance/preset/moduleScopeEffects"
+import { CompositionForwarderData } from "@better-typescript/matchers/builtins/compositionForwarders"
+import { ModuleScopeEffectData } from "@better-typescript/matchers/builtins/moduleScopeEffectData"
+import { runFixture } from "./architectureEvidenceFpFixture.js"
+import { dataAs } from "./architectureEvidenceFpDataAs.js"
 
 test("composition forwarders detect curried pipe wrappers and record caller leverage", async () => {
   const detections = await runFixture(compositionForwarders)

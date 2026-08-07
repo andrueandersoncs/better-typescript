@@ -1,89 +1,67 @@
-import { Array, Function, Match, Option, Struct, flow, pipe, Result } from "effect"
+import {
+  Array,
+  Function,
+  Option,
+  Result,
+  Schema,
+  Struct,
+  flow,
+  pipe,
+  Match as EffectMatch
+} from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { CompositionForwarderData } from "./architectureExploreData.js"
-import { isTestSourceFile } from "./architectureExplore/paths.js"
-import {
-  ExportReferenceIndex,
-  type ExportedFunctionEntry,
-  usageFor
-} from "./architectureExplore/programSymbols.js"
-import {
-  evidenceMatcher,
-  exportReferenceIndex
-} from "./architectureExplore/architectureEvidence.js"
-import { isExpressionBody, unwrapTransparentExpression } from "../support/tsNode.js"
-import { fileSubscriptions } from "@better-typescript/matchers/matcher"
-import {
-  makeNodeMatch,
-  type Match as MatcherMatch,
-  type MatchContext
-} from "@better-typescript/matchers/matcher/data"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import type { ExportReferenceIndex } from "./architectureExplore/exportReferenceIndex.js"
+import type { ExportedFunctionEntry } from "./architectureExplore/exportedFunctionEntry.js"
+import { usageFor } from "./architectureExplore/usageFor.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
+import { expressionFromConciseBody } from "./expressionFromConciseBody.js"
+import { finalCompositionCall } from "./finalCompositionCall.js"
+import { nestedSingleParamArrow } from "./nestedSingleParamArrow.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match as MatcherMatch } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+
+import { stringArray } from "./architectureExplore/stringArraySchema.js"
+import { exportReferenceFileMatcher } from "./exportReferenceFileMatcher.js"
+
+// CompositionForwarderData is curried pipe-wrapper evidence because exact forwarding misses FP.
+export const CompositionForwarderData = Schema.Struct({
+  exportName: Schema.String,
+  stepCount: Schema.Number,
+  callerCount: Schema.Number,
+  callerPaths: stringArray,
+  hasNonCallReference: Schema.Boolean
+})
+
+export interface CompositionForwarderData extends Schema.Schema.Type<
+  typeof CompositionForwarderData
+> {}
 
 const emptyParameterNames: ReadonlyArray<string> = Array.empty()
-
-const expressionFromConciseBody = (body: ts.ConciseBody) => {
-  const expressionBody = pipe(
-    Option.some(body),
-    Option.filter(isExpressionBody),
-    Option.map(unwrapTransparentExpression)
-  )
-
-  const singleStatementBlock = (block: ts.Block) => strictEqual(1)(block.statements.length)
-
-  const blockBody = pipe(
-    Option.some(body),
-    Option.filter(ts.isBlock),
-    Option.filter(singleStatementBlock),
-    Option.flatMap(Function.flow(Struct.get("statements"), Array.head)),
-    Option.filter(ts.isReturnStatement),
-    Option.flatMap(Function.flow(Struct.get("expression"), Option.fromNullishOr)),
-    Option.map(unwrapTransparentExpression)
-  )
-
-  return pipe(expressionBody, Option.orElse(Function.constant(blockBody)))
-}
-
-const nestedSingleParamArrow = (arrow: ts.ArrowFunction) => strictEqual(1)(arrow.parameters.length)
-
-const finalCompositionCall = (arrow: ts.ArrowFunction): Option.Option<ts.CallExpression> =>
-  pipe(
-    expressionFromConciseBody(arrow.body),
-    Option.flatMap((expression) => {
-      const nestedCall = pipe(
-        Option.some(expression),
-        Option.filter(ts.isArrowFunction),
-        Option.filter(nestedSingleParamArrow),
-        Option.flatMap(finalCompositionCall)
-      )
-
-      const call = Option.liftPredicate(ts.isCallExpression)(expression)
-
-      return pipe(nestedCall, Option.orElse(Function.constant(call)))
-    })
-  )
 
 const isAllowedCompositionExpression = (expression: ts.Expression): boolean =>
   pipe(
     expression,
     unwrapTransparentExpression,
-    Match.value,
-    Match.when(ts.isIdentifier, Function.constTrue),
-    Match.when(ts.isPropertyAccessExpression, (access) => {
+    EffectMatch.value,
+    EffectMatch.when(ts.isIdentifier, Function.constTrue),
+    EffectMatch.when(ts.isPropertyAccessExpression, (access) => {
       const propertyNameIsIdentifier = ts.isIdentifier(access.name)
       const receiverAllowed = isAllowedCompositionExpression(access.expression)
       const checks = Array.make(propertyNameIsIdentifier, receiverAllowed)
 
       return Array.every(checks, Boolean)
     }),
-    Match.when(ts.isCallExpression, (call) => {
+    EffectMatch.when(ts.isCallExpression, (call) => {
       const calleeAllowed = isAllowedCompositionExpression(call.expression)
       const argumentsAllowed = Array.every(call.arguments, isAllowedCompositionExpression)
       const checks = Array.make(calleeAllowed, argumentsAllowed)
 
       return Array.every(checks, Boolean)
     }),
-    Match.orElse(Function.constFalse)
+    EffectMatch.orElse(Function.constFalse)
   )
 
 // Forwarder stepCount counts only CallExpressions because fingerprints also count pipe/flow stages.
@@ -94,8 +72,8 @@ const callExpressionCount = (expression: ts.Expression): number =>
   pipe(
     expression,
     unwrapTransparentExpression,
-    Match.value,
-    Match.when(ts.isCallExpression, (call) => {
+    EffectMatch.value,
+    EffectMatch.when(ts.isCallExpression, (call) => {
       const nestedInCallee = callExpressionCount(call.expression)
 
       const nestedInArguments = Array.reduce(
@@ -106,8 +84,8 @@ const callExpressionCount = (expression: ts.Expression): number =>
 
       return 1 + nestedInCallee + nestedInArguments
     }),
-    Match.when(ts.isPropertyAccessExpression, countPropertyAccessCalls),
-    Match.orElse(Function.constant(0))
+    EffectMatch.when(ts.isPropertyAccessExpression, countPropertyAccessCalls),
+    EffectMatch.orElse(Function.constant(0))
   )
 
 const parameterNameText = (parameter: ts.ParameterDeclaration) =>
@@ -140,17 +118,17 @@ const referencesNonParameterOperation =
       referencesOperation(access.expression)
 
     return pipe(
-      Match.value(unwrapped),
-      Match.when(ts.isIdentifier, isNonParameterIdentifier),
-      Match.when(ts.isPropertyAccessExpression, countPropertyAccessOperations),
-      Match.when(ts.isCallExpression, (call) => {
+      EffectMatch.value(unwrapped),
+      EffectMatch.when(ts.isIdentifier, isNonParameterIdentifier),
+      EffectMatch.when(ts.isPropertyAccessExpression, countPropertyAccessOperations),
+      EffectMatch.when(ts.isCallExpression, (call) => {
         const calleeReferencesOperation = referencesOperation(call.expression)
         const argumentReferencesOperation = Array.some(call.arguments, referencesOperation)
         const checks = Array.make(calleeReferencesOperation, argumentReferencesOperation)
 
         return Array.some(checks, Boolean)
       }),
-      Match.orElse(Function.constFalse)
+      EffectMatch.orElse(Function.constFalse)
     )
   }
 
@@ -206,11 +184,4 @@ const compositionForwarderElements =
     return pipe(index.entries, Array.filter(entryInSourceFile), Array.filterMap(detectionForEntry))
   }
 
-const compositionForwarderSubscriptions = Function.compose(
-  compositionForwarderElements,
-  fileSubscriptions
-)
-
-export const compositionForwarders = evidenceMatcher(exportReferenceIndex)(
-  compositionForwarderSubscriptions
-)
+export const compositionForwarders = exportReferenceFileMatcher(compositionForwarderElements)

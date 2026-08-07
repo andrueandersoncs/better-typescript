@@ -1,25 +1,18 @@
-import { Array, Function, HashSet, Match, Option, pipe, Predicate, Struct, Schema } from "effect"
+import { Array, Function, HashSet, Match, Option, Predicate, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { binaryAssignmentTarget, isProjectFile, unwrapExpression } from "../support/tsNode.js"
-import { isUnseenType, type SeenTypes } from "../support/tsType.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { binaryAssignmentTarget } from "../support/hasAssignmentOperator.js"
+import { canonicalSymbol } from "../support/canonicalSymbol.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { isUnseenType } from "../support/isUnseenType.js"
+import type { SeenTypes } from "../support/seenTypes.js"
 import { strictEqual } from "../equivalence.js"
-
-// MutationNode is a local syntax union because matchers need one narrowed node shape.
-export type MutationNode =
-  ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression | ts.DeleteExpression
-
-const mutationScopes = Array.make<["shared-state", "local", "builtin"]>(
-  "shared-state",
-  "local",
-  "builtin"
-)
-
-// MutationScope classifies mutation sites because local and external advice differ.
-export const MutationScope = Schema.Literals(mutationScopes)
-
-export type MutationScope = typeof MutationScope.Type
+import type { MutationNode } from "./mutationNode.js"
+import { MutationScope } from "./mutationScope.js"
+import { isEcmaScriptLibFile } from "./isEcmaScriptLibFile.js"
+import { isUncontrolledSymbol } from "./isUncontrolledSymbol.js"
 
 // NoMutationFact classifies the write target because shared-state, local, and builtin advice.
 export const NoMutationFact = Schema.Struct({
@@ -43,45 +36,6 @@ const unaryMutationTarget = (
 
 const deleteExpressionTarget = (expression: ts.DeleteExpression): Option.Option<ts.Expression> =>
   Option.some(expression.expression)
-
-// Recognize only ECMAScript lib values as built-ins because hosts and packages stay external.
-const ecmaScriptLibPrefixes: ReadonlyArray<string> = Array.make(
-  "lib.es",
-  "lib.decorators",
-  "lib.d.ts"
-)
-
-const isEcmaScriptLibFile = (sourceFile: ts.SourceFile) => {
-  const normalized = sourceFile.fileName.replaceAll("\\", "/")
-  const separatorIndex = normalized.lastIndexOf("/")
-  const baseName = normalized.slice(separatorIndex + 1)
-
-  return Array.some(ecmaScriptLibPrefixes, (prefix) => baseName.startsWith(prefix))
-}
-
-// Mark a symbol uncontrolled only because every declaration is outside the project and ES library.
-const isUncontrolledSymbol = (symbol: ts.Symbol) => {
-  const declarations = symbol.getDeclarations() ?? Array.empty()
-  const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
-  const hasDeclarations = sourceFiles.length > 0
-  const isDeclaredInProject = Array.some(sourceFiles, isProjectFile)
-  const isEcmaScriptBuiltin = Array.some(sourceFiles, isEcmaScriptLibFile)
-
-  const moduleScopedConditions = Array.make(
-    hasDeclarations,
-    !isDeclaredInProject,
-    !isEcmaScriptBuiltin
-  )
-
-  return Array.every(moduleScopedConditions, Boolean)
-}
-
-// Follow an import alias because its local declaration cannot show whether the import is external.
-const resolveAlias = (checker: ts.TypeChecker) => (symbol: ts.Symbol) => {
-  const isAlias = (symbol.flags & ts.SymbolFlags.Alias) !== 0
-
-  return isAlias ? checker.getAliasedSymbol(symbol) : symbol
-}
 
 // Avoid getNonNullableType because it stack-overflows on Effect params like Struct.evolve's O.
 const nullishTypeFlags = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void
@@ -184,7 +138,7 @@ const mutationMatches = (context: MatchContext) => {
 
     return pipe(
       Option.fromNullishOr(rootSymbol),
-      Option.map(resolveAlias(context.checker)),
+      Option.map(canonicalSymbol(context.checker)),
       Option.map((symbol): MutationScope => {
         const declarations = symbol.getDeclarations() ?? Array.empty()
         const sourceFiles = Array.map(declarations, (declaration) => declaration.getSourceFile())
@@ -228,7 +182,7 @@ const mutationMatches = (context: MatchContext) => {
 
     return pipe(
       Option.fromNullishOr(bindingSymbol),
-      Option.map(resolveAlias(context.checker)),
+      Option.map(canonicalSymbol(context.checker)),
       Option.exists(isUncontrolledSymbol)
     )
   }

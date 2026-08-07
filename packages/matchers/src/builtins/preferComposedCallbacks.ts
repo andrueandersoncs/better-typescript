@@ -1,9 +1,10 @@
-import { Array, Function, Option, pipe, Schema } from "effect"
+import { Array, Function, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { unwrapCarrier } from "../support/tsNode.js"
-import { foldAst } from "../sources/sources.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { unwrapCarrier } from "../support/unwrapCarrier.js"
+import { foldAst } from "../sources/foldAst.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferComposedCallbacksFact is empty payload because guidance and matchers share identity.

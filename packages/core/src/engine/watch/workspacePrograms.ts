@@ -1,18 +1,11 @@
 import { Array, Effect, Function, HashMap, MutableRef, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { makeContext } from "@better-typescript/matchers/sources"
-import type { ProgramContext } from "@better-typescript/matchers/sources/data"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import { WorkspaceUpdate } from "./data.js"
-import type { ProjectConfig, WorkspaceConfigs } from "../../project/loadProject/data.js"
-import { withAnalysisCompilerOptions } from "../../project/loadProject/analysisCompilerOptions.js"
-
-// WorkspaceServices groups retained compiler resources because one finalizer owns their lifetime.
-class WorkspaceServices {
-  constructor(
-    readonly languageServices: ReadonlyArray<ts.LanguageService>,
-    readonly contexts: ReadonlyArray<ProgramContext>
-  ) {}
-}
+import { WorkspaceServices } from "./workspaceServices.js"
+import type { ProjectConfig } from "../../project/loadProject/projectConfig.js"
+import type { WorkspaceConfigs } from "../../project/loadProject/workspaceConfigs.js"
+import { withAnalysisCompilerOptions } from "../../project/loadProject/withAnalysisCompilerOptions.js"
 
 const snapshotFor =
   (

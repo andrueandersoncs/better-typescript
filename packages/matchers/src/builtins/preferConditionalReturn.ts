@@ -1,8 +1,10 @@
-import { Array, Function, Option, pipe, Result, Schema } from "effect"
+import { Array, Function, Option, Result, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { unwrapExpression, unwrapSingleStatementBlock } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
+import { unwrapSingleStatementBlock } from "../support/unwrapSingleStatementBlock.js"
 import { strictEqual } from "../equivalence.js"
 
 // PreferConditionalReturnFact carries the ternary text because guidance rewrites the return.

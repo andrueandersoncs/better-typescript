@@ -1,13 +1,12 @@
 import { Array } from "effect"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { Location } from "@better-typescript/core/engine/location/data"
-import {
-  makeCountSummary,
-  deriveSignals,
-  dominantPolicyEvidence
-} from "@better-typescript/core/engine/derive"
-import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { makePackageExamples } from "../definePolicy.js"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { makeCountSummary } from "@better-typescript/core/engine/derive/byFile"
+import { deriveSignals } from "@better-typescript/core/engine/derive/deriveSignals"
+import { dominantPolicyEvidence } from "@better-typescript/core/engine/derive/dominantPolicyEvidence"
+import { type NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
+import { makePackageExamples } from "../makePackageExamples.js"
 
 export const ruleDominanceExamples = makePackageExamples("rule-dominance")
 

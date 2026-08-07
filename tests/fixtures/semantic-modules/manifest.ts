@@ -1,4 +1,4 @@
-import type { SemanticModuleFixtureManifest } from "../../semanticModuleFixtures.js"
+import type { SemanticModuleFixtureManifest } from "../../semanticModuleFixtureManifest.js"
 
 export const singletonManifest = {
   entities: [

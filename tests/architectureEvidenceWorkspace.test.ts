@@ -1,84 +1,24 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Array, Effect, Function, Option, Order, Result, Schema, pipe } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { makeNamedDetection } from "@better-typescript/core/engine/derive"
-import { toPolicies } from "@better-typescript/core/engine/policy"
+import { Array, Effect, Option, Order, Schema, pipe } from "effect"
+import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
+import { runMatchers } from "@better-typescript/matchers/matcher/runMatchers"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { makeContext } from "@better-typescript/matchers/sources"
-import { runMatchers } from "@better-typescript/matchers/matcher"
+import { importUsage } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { moduleIdentity } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { exportSurface } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { moduleGraph } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { ExportSurfaceData } from "@better-typescript/matchers/builtins/exportSurface"
+import { ImportUsageData } from "@better-typescript/matchers/builtins/importUsage"
+import { ModuleIdentityData } from "@better-typescript/matchers/builtins/moduleIdentity"
+import { architectureExploreWorkspaceImportEdges } from "@better-typescript/guidance/architectureExplore/architectureExploreGraph"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { importUsage } from "@better-typescript/guidance/policies/importUsage"
-import { moduleIdentity } from "@better-typescript/guidance/policies/moduleIdentity"
-import { exportSurface } from "@better-typescript/guidance/policies/exportSurface"
-import { moduleGraph } from "@better-typescript/guidance/policies/moduleGraph"
-import {
-  ExportSurfaceData,
-  ImportUsageData,
-  ModuleIdentityData
-} from "@better-typescript/matchers/builtins/architectureExploreData"
-import { workspaceImportEdges } from "@better-typescript/guidance/architectureExplore/evidence"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-workspace")
-
-const includeEverySourceFile = Function.constant(true)
-
-const dataAs = <A>(
-  guard: (input: unknown) => input is A,
-  detection: Detection
-): Option.Option<A> => {
-  const data = detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
-
-const decodeData = <A>(
-  guard: (input: unknown) => input is A,
-  detections: ReadonlyArray<Detection>
-): ReadonlyArray<A> =>
-  Array.filterMap(detections, (detection) =>
-    pipe(dataAs(guard, detection), Result.fromOption(Function.constVoid))
-  )
-
-const runWorkspacePolicies = async (
-  policies: ReadonlyArray<Policy>
-): Promise<{
-  readonly rootPath: string
-  readonly detectionsByPolicy: ReadonlyArray<ReadonlyArray<Detection>>
-}> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const executablePolicies = policies
-
-  const detectionsByPolicy = Array.reduce(
-    workspace.projects,
-    Array.map(executablePolicies, () => Array.empty<Detection>()),
-    (current, project) => {
-      const loaded = makeContext(project.rootPath)(project.program)
-
-      const context = ProgramContext.make({
-        program: loaded.program,
-        checker: loaded.checker,
-        projectRoot: loaded.projectRoot,
-        workspaceRoot: workspace.rootPath
-      })
-
-      const projectDetections = toPolicies(executablePolicies)(includeEverySourceFile)(context)
-
-      return Array.map(current, (detections, checkIndex) =>
-        Array.appendAll(detections, projectDetections[checkIndex] ?? Array.empty())
-      )
-    }
-  )
-
-  return {
-    rootPath: workspace.rootPath,
-    detectionsByPolicy
-  }
-}
+import { fixturePath } from "./architectureEvidenceWorkspaceFixturePaths.js"
+import { includeEverySourceFile } from "./architectureEvidenceWorkspaceIncludeEverySourceFile.js"
+import { dataAs, decodeData } from "./architectureEvidenceWorkspaceDataAs.js"
+import { runWorkspacePolicies } from "./architectureEvidenceWorkspaceRunPolicies.js"
 
 test("workspace fixture discovers lib, app, and checks projects", async () => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
@@ -242,7 +182,7 @@ test("exportSurface records program-indexed evidence against the containing file
   assert.equal(utilSurface.target._tag, "FileTarget")
 })
 
-test("workspaceImportEdges joins checks test import to lib util via aliases", async () => {
+test("architectureExploreWorkspaceImportEdges joins checks test import to lib util via aliases", async () => {
   const policies = Array.make(importUsage, moduleIdentity, exportSurface, moduleGraph)
   const { detectionsByPolicy } = await runWorkspacePolicies(policies)
   const names = Array.map(policies, (named) => named.name)
@@ -252,7 +192,7 @@ test("workspaceImportEdges joins checks test import to lib util via aliases", as
     )
   )
 
-  const edges = workspaceImportEdges(named)
+  const edges = architectureExploreWorkspaceImportEdges(named)
 
   const joined = Array.findFirst(
     edges,

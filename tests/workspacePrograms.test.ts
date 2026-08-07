@@ -3,71 +3,20 @@ import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "bun:test"
-import { fileURLToPath } from "node:url"
 import { Effect, pipe } from "effect"
 import * as ts from "typescript"
-import { noUnused } from "@better-typescript/guidance/policies/noUnused"
-import { compilerOptionsForPolicies, toPolicies } from "@better-typescript/core/engine/policy"
-import { workspacePrograms } from "@better-typescript/core/engine/workspacePrograms"
+import { noUnused } from "@better-typescript/guidance/preset/defaultWiring"
+import { toPolicies } from "@better-typescript/core/engine/policy/locateTarget"
 import { discoverWorkspace, loadProject } from "@better-typescript/core/project/loadProject"
-import type { WorkspaceConfigs } from "@better-typescript/core/project/loadProject/data"
-import { makeContext, isProjectSourceFile } from "@better-typescript/matchers/sources"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const noUnusedFixturePath = path.join(testDirectory, "fixtures", "no-unused")
-
-const includeEverySourceFile = () => true
-const noUnusedCompilerOptions = compilerOptionsForPolicies([noUnused])
-
-const collectPrograms = (workspace: WorkspaceConfigs, compilerOptions: ts.CompilerOptions = {}) =>
-  Effect.scoped(workspacePrograms.materialize(workspace, compilerOptions))
-
-const detectionIdentity = (detection: {
-  readonly location: { readonly path: string; readonly line: number; readonly column: number }
-  readonly message: string
-}): string =>
-  `${detection.location.path}:${detection.location.line}:${detection.location.column}:${detection.message}`
-
-const sortIdentities = (identities: ReadonlyArray<string>): ReadonlyArray<string> =>
-  [...identities].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
-
-const writeCompatibleProjects = async (root: string): Promise<void> => {
-  const sharedTsconfig = {
-    compilerOptions: {
-      strict: true,
-      target: "ES2022",
-      module: "ESNext",
-      moduleResolution: "bundler",
-      lib: ["ES2022"]
-    },
-    include: ["src/**/*.ts"]
-  }
-
-  for (const projectName of ["alpha", "beta"]) {
-    const projectRoot = path.join(root, projectName)
-    await fs.mkdir(path.join(projectRoot, "src"), { recursive: true })
-    await fs.writeFile(
-      path.join(projectRoot, "tsconfig.json"),
-      `${JSON.stringify(sharedTsconfig, null, 2)}\n`
-    )
-    await fs.writeFile(
-      path.join(projectRoot, "src", "index.ts"),
-      `export const ${projectName}Value = 1\n`
-    )
-  }
-
-  await fs.writeFile(
-    path.join(root, "tsconfig.json"),
-    `${JSON.stringify(
-      {
-        files: [],
-        references: [{ path: "alpha" }, { path: "beta" }]
-      },
-      null,
-      2
-    )}\n`
-  )
-}
+import { isProjectSourceFile } from "@better-typescript/matchers/sources/isProjectSourceFile"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
+import { collectPrograms } from "./workspaceProgramsCollectPrograms.js"
+import { detectionIdentity } from "./workspaceProgramsDetectionIdentity.js"
+import { includeEverySourceFile } from "./workspaceProgramsIncludeEverySourceFile.js"
+import { noUnusedCompilerOptions } from "./workspaceProgramsNoUnusedCompilerOptions.js"
+import { noUnusedFixturePath } from "./workspaceProgramsNoUnusedFixturePath.js"
+import { sortIdentities } from "./workspaceProgramsSortIdentities.js"
+import { writeCompatibleProjects } from "./workspaceProgramsWriteCompatibleProjects.js"
 
 test("workspacePrograms emits exactly one workspace update", async () => {
   const workspace = await Effect.runPromise(discoverWorkspace(noUnusedFixturePath))

@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { requireCallableRoleNameConsistency } from "@better-typescript/guidance/policies/requireCallableRoleNameConsistency"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { requireCallableRoleNameConsistency } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("require-callable-role-name-consistency reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(requireCallableRoleNameConsistency))

@@ -1,16 +1,15 @@
 import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { Advice, EvidenceItem, FileDetections } from "@better-typescript/core/engine/derive/data"
-import {
-  byFile,
-  makeCountSummary,
-  deriveSignals,
-  evidenceFromCounts,
-  parentDirectories
-} from "@better-typescript/core/engine/derive"
-import type { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { Location } from "@better-typescript/core/engine/location/data"
-import { makePackageExamples } from "../definePolicy.js"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { FileDetections } from "@better-typescript/core/engine/derive/fileDetections"
+import { byFile, makeCountSummary } from "@better-typescript/core/engine/derive/byFile"
+import { deriveSignals } from "@better-typescript/core/engine/derive/deriveSignals"
+import { evidenceFromCounts } from "@better-typescript/core/engine/derive/evidenceFromCounts"
+import { parentDirectories } from "@better-typescript/core/engine/derive/parentDirectories"
+import { type NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { makePackageExamples } from "../makePackageExamples.js"
 import { DirectorySignals } from "./data.js"
 
 export const hotSubsystemExamples = makePackageExamples("hot-subsystem")

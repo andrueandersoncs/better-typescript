@@ -1,38 +1,12 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Array, Effect, MutableList, Option, Order, Tuple, pipe } from "effect"
+import { Array, Effect, MutableList, Option, pipe } from "effect"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { makeMatcherFromSubscriptions, runMatchers } from "@better-typescript/matchers/matcher"
-import { makeContext } from "@better-typescript/matchers/sources"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-workspace")
-
-const relativeSourcePaths = (
-  projectRoot: string,
-  sourceFiles: ReadonlyArray<import("typescript").SourceFile>
-) =>
-  pipe(
-    sourceFiles,
-    Array.map((sourceFile) =>
-      path.relative(projectRoot, sourceFile.fileName).replaceAll(path.sep, "/")
-    ),
-    Array.sort(Order.String)
-  )
-
-const recordingMatcher = (
-  name: string,
-  plannedScopes: MutableList.MutableList<readonly [string, ReadonlyArray<string>]>
-) =>
-  makeMatcherFromSubscriptions((context) => {
-    const sourcePaths = relativeSourcePaths(context.projectRoot, context.sourceFiles)
-
-    MutableList.append(plannedScopes, Tuple.make(name, sourcePaths))
-
-    return Array.empty()
-  })
+import { runMatchers } from "@better-typescript/matchers/matcher/runMatchers"
+import { makeContext } from "@better-typescript/matchers/sources/makeContext"
+import { fixturePath } from "./matcherPlanningContextFixturePath.js"
+import { recordingMatcher } from "./matcherPlanningRecordingMatcher.js"
 
 test("plans each matcher with its exact included first-party sources", async () => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))

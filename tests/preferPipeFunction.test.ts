@@ -1,6 +1,5 @@
 import { test } from "bun:test"
-import { preferPipeFunction } from "@better-typescript/guidance/policies/preferPipeFunction"
-import { assertPolicyFixture } from "./ruleTestAssertions.js"
-
+import { preferPipeFunction } from "@better-typescript/guidance/preset/defaultWiring"
+import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("prefer-pipe-function reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(preferPipeFunction))

@@ -1,16 +1,13 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { Array, Effect } from "effect"
-import type { Subscription } from "@better-typescript/matchers/matcher/data"
-import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { makeRefactorExampleResolver } from "@better-typescript/core/engine/example"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import { makeSilentPolicy } from "@better-typescript/core/engine/policy"
-import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher"
-import { makeSilentBuiltinPolicy } from "@better-typescript/guidance/definePolicy"
-
-const emptyPlan = (_context: ProgramContext): ReadonlyArray<Subscription> => Array.empty()
-const emptyGuidance = () => () => Array.empty()
+import { Effect } from "effect"
+import { makeRefactorExampleResolver } from "@better-typescript/core/engine/reportPipeline"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
+import { makeSilentPolicy } from "@better-typescript/core/engine/policy/makeSilentPolicy"
+import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher/makeMatcherFromSubscriptions"
+import { makeSilentBuiltinPolicy } from "@better-typescript/guidance/makeSilentBuiltinPolicy"
+import { emptyPlan } from "./definePolicyEmptyPlan.js"
+import { emptyGuidance } from "./definePolicyEmptyGuidance.js"
 
 test("makeSilentBuiltinPolicy owns policy identity, examples, and report policy", async () => {
   const policy = makeSilentBuiltinPolicy(

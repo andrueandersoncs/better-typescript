@@ -1,8 +1,8 @@
 import { Array, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import { unwrapExpression } from "../support/tsNode.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { unwrapExpression } from "../support/unwrapExpression.js"
 
 // NoInlineBooleanExpressionsFact is empty payload because guidance and matchers share identity.
 export const NoInlineBooleanExpressionsFact = Schema.Struct({})

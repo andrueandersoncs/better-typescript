@@ -1,12 +1,11 @@
-import { Array, Function, Option, Tuple, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, Tuple, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import {
-  isFunctionDefinition,
-  unwrapTransparentExpression,
-  type FunctionDefinition
-} from "../support/tsNode.js"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
+import { isFunctionDefinition } from "../support/isFunctionDefinition.js"
+import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { unaryAdapter } from "../support/unaryAdapter.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -25,13 +24,6 @@ export const PreferEffectPropertyAccessorsFact = Schema.Struct({
 export interface PreferEffectPropertyAccessorsFact extends Schema.Schema.Type<
   typeof PreferEffectPropertyAccessorsFact
 > {}
-
-const functionDefinitionKinds = Array.make(
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.MethodDeclaration
-)
 
 const directPropertyAccessExpression = (expression: ts.Expression) =>
   pipe(unwrapTransparentExpression(expression), Option.liftPredicate(ts.isPropertyAccessExpression))
@@ -149,4 +141,4 @@ const propertyAccessorMatches = (context: MatchContext) => {
 }
 
 export const preferEffectPropertyAccessorsMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(propertyAccessorMatches)
+  functionDefinitionMatcher(propertyAccessorMatches)

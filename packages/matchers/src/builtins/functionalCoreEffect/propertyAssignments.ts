@@ -1,6 +1,6 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { propertyNameText } from "../../support/tsNode.js"
+import { propertyNameText } from "../../support/propertyNameText.js"
 
 export const propertyAssignmentNamed = (
   object: ts.ObjectLiteralExpression,

@@ -1,15 +1,14 @@
-import { Array, flow, HashSet, Match, Option, pipe, Schema } from "effect"
+import { Array, HashSet, Match, Option, Schema, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-import {
-  callableSemantics,
-  functionDefinitionKinds,
-  type CallableSemantics
-} from "../support/callableSemantics.js"
-import { isFunctionDefinition, type FunctionDefinition } from "../support/tsNode.js"
+import { functionDefinitionMatcher } from "./functionDefinitionMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { callableSemantics } from "../support/callableSemantics.js"
+import type { CallableSemantics } from "../support/callableSemanticsClass.js"
+import type { FunctionDefinition } from "../support/functionDefinition.js"
 import { strictEqual } from "../equivalence.js"
-import type { MatchContext } from "../matcher/data.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import type { RoleWord } from "./roleWord.js"
+import { roleWord } from "./roleWordValue.js"
 
 // RequireCallableRoleNameConsistencyFact pairs role and word because naming advice needs both.
 export const RequireCallableRoleNameConsistencyFact = Schema.Struct({
@@ -21,20 +20,6 @@ export const RequireCallableRoleNameConsistencyFact = Schema.Struct({
 export interface RequireCallableRoleNameConsistencyFact extends Schema.Schema.Type<
   typeof RequireCallableRoleNameConsistencyFact
 > {}
-
-// RoleWord is a local syntax union because matchers need one narrowed node shape.
-type RoleWord =
-  | "accessor"
-  | "callback"
-  | "comparator"
-  | "factory"
-  | "function"
-  | "handler"
-  | "mapper"
-  | "predicate"
-  | "reducer"
-
-const roleWord = (role: RoleWord) => role
 
 const accessorRole = roleWord("accessor")
 const callbackRole = roleWord("callback")
@@ -190,5 +175,4 @@ const matches = (context: MatchContext) => {
   return matchFunctionDefinition
 }
 
-export const requireCallableRoleNameConsistencyMatcher =
-  nodeMatcher(functionDefinitionKinds)(isFunctionDefinition)(matches)
+export const requireCallableRoleNameConsistencyMatcher = functionDefinitionMatcher(matches)

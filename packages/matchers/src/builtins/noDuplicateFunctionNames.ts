@@ -1,12 +1,15 @@
-import { Array, Function, HashMap, Option, pipe, Result, Schema } from "effect"
+import { Array, Function, HashMap, Result, Schema } from "effect"
 import * as ts from "typescript"
-import { makeMatcherFromSubscriptions, fileSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { functionDeclarationName, functionInitializer } from "../support/tsNode.js"
-import { isProjectSourceFile } from "../sources/sources.js"
+import { fileSubscriptions } from "../matcher/fileSubscriptions.js"
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
 import type { ProgramContext } from "../sources/data.js"
 import { toRelativeFileName } from "../support/paths.js"
 import { strictEqual } from "../equivalence.js"
+import { topLevelFunctions } from "./topLevelFunctions.js"
+import { declarationsForName } from "./declarationsForName.js"
 
 // NoDuplicateFunctionNamesFact is duplicate-name evidence because guidance cites both sides.
 export const NoDuplicateFunctionNamesFact = Schema.Struct({
@@ -17,43 +20,6 @@ export const NoDuplicateFunctionNamesFact = Schema.Struct({
 export interface NoDuplicateFunctionNamesFact extends Schema.Schema.Type<
   typeof NoDuplicateFunctionNamesFact
 > {}
-
-const functionNameFromVariableDeclaration = (declaration: ts.VariableDeclaration) =>
-  Option.gen(function* () {
-    yield* functionInitializer(declaration)
-
-    return yield* Option.liftPredicate(ts.isIdentifier)(declaration.name)
-  })
-
-const statementFunctions = (statement: ts.Statement): ReadonlyArray<ts.Identifier> => {
-  const variableDeclarationFunctions = ts.isVariableStatement(statement)
-    ? Array.filterMap(
-        statement.declarationList.declarations,
-        Function.flow(functionNameFromVariableDeclaration, Result.fromOption(Function.constVoid))
-      )
-    : Array.empty()
-
-  const functionDeclarationNames = pipe(
-    Option.liftPredicate(ts.isFunctionDeclaration)(statement),
-    Option.flatMap(functionDeclarationName),
-    Option.toArray
-  )
-
-  return Array.appendAll(variableDeclarationFunctions, functionDeclarationNames)
-}
-
-const topLevelFunctions = (sourceFile: ts.SourceFile): ReadonlyArray<ts.Identifier> =>
-  Array.flatMap(sourceFile.statements, statementFunctions)
-
-const emptyIdentifiers = Array.empty()
-
-const emptyIdentifierList: Function.LazyArg<ReadonlyArray<ts.Identifier>> =
-  Function.constant(emptyIdentifiers)
-
-const declarationsForName =
-  (index: HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>) =>
-  (name: string): ReadonlyArray<ts.Identifier> =>
-    pipe(HashMap.get(index, name), Option.getOrElse(emptyIdentifierList))
 
 const addFunctionToIndex = (
   index: HashMap.HashMap<string, ReadonlyArray<ts.Identifier>>,

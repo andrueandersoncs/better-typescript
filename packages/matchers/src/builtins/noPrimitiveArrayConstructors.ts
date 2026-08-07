@@ -1,19 +1,11 @@
-import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, Option, pipe, Struct, flow } from "effect"
 import * as ts from "typescript"
-import { isCallLikeExpression } from "../support/tsNode.js"
+import { isCallLikeExpression } from "../support/isCallLikeExpression.js"
 import { strictEqual } from "../equivalence.js"
-import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch } from "../matcher/data.js"
-
-// NoPrimitiveArrayConstructorsFact is empty payload because guidance and matchers share identity.
-export const NoPrimitiveArrayConstructorsFact = Schema.Struct({})
-
-export interface NoPrimitiveArrayConstructorsFact extends Schema.Schema.Type<
-  typeof NoPrimitiveArrayConstructorsFact
-> {}
-
-// emptyNoPrimitiveArrayConstructorsFact is shared empty fact because matchers share identity.
-export const emptyNoPrimitiveArrayConstructorsFact = NoPrimitiveArrayConstructorsFact.make({})
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { nodeSubscriptions } from "../matcher/nodeSubscriptions.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import { emptyNoPrimitiveArrayConstructorsFact } from "./noPrimitiveArrayConstructorsFact.js"
 
 const isArrayIdentifier = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("Array"))
 

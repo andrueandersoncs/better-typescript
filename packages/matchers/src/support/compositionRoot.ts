@@ -2,7 +2,7 @@ import * as path from "node:path"
 import { HashSet } from "effect"
 import type * as ts from "typescript"
 
-const compositionRootNames = HashSet.make(
+export const compositionRootNames = HashSet.make(
   "main",
   "index",
   "bootstrap",

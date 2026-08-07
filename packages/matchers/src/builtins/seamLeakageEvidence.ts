@@ -1,12 +1,48 @@
 import * as path from "node:path"
-import { Array, Option, pipe } from "effect"
+import { Array, Option, Schema, Struct, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
-import { SeamLeakageData } from "./architectureExploreData.js"
-import { isTestSourceFile } from "./architectureExplore/paths.js"
-import { importElements } from "./architectureExplore/importElements.js"
-import { nodeMatcher } from "@better-typescript/matchers/matcher"
-import { makeNodeMatch, type MatchContext } from "@better-typescript/matchers/matcher/data"
+import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+
+const leakageKinds = Array.make<["internal-path", "source-path"]>("internal-path", "source-path")
+const leakageKindSchema = Schema.Literals(leakageKinds)
+
+// SeamLeakageData is one leakage class because remediation differs by kind.
+export const SeamLeakageData = Schema.Struct({
+  importedPath: Schema.String,
+  depth: Schema.Number,
+  kind: leakageKindSchema,
+  fromTest: Schema.Boolean
+})
+
+export interface SeamLeakageData extends Schema.Schema.Type<typeof SeamLeakageData> {}
+
+export const importElements =
+  <Context, Element>(
+    elementFor: (
+      context: Context
+    ) => (node: ts.ImportDeclaration) => (specifier: string) => Option.Option<Element>
+  ) =>
+  (context: Context) => {
+    const elementForImport = elementFor(context)
+
+    const elementsForImport = (node: ts.ImportDeclaration): ReadonlyArray<Element> => {
+      const elementForSpecifier = elementForImport(node)
+
+      return pipe(
+        Option.fromNullishOr(node.moduleSpecifier),
+        Option.filter(ts.isStringLiteral),
+        Option.map(Struct.get("text")),
+        Option.flatMap(elementForSpecifier),
+        Option.toArray
+      )
+    }
+
+    return elementsForImport
+  }
 
 const leakageKind =
   (context: MatchContext) =>

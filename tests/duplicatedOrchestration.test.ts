@@ -1,66 +1,13 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
-import { Array, Effect, Option, Schema, pipe } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/data"
-import type { Detection } from "@better-typescript/core/engine/location/data"
-import { Detection as DetectionData } from "@better-typescript/core/engine/location/data"
-import { Location } from "@better-typescript/core/engine/location/data"
-import { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import { loadProject, runPolicyOnProject } from "@better-typescript/core/project/loadProject"
-import { compositionFingerprints } from "@better-typescript/guidance/policies/compositionFingerprints"
-import { duplicatedOrchestration } from "@better-typescript/guidance/architectureExplore/duplicatedOrchestration"
-import { CompositionFingerprintData } from "@better-typescript/matchers/builtins/architectureExploreData"
-
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-const fixturePath = path.join(testDirectory, "fixtures", "architecture-evidence-orchestration")
-
-const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
-  const workspace = await Effect.runPromise(loadProject(fixturePath))
-  const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
-  )
-
-  return projectDetections.flat()
-}
-
-const dataAs = <A>(
-  guard: (input: unknown) => input is A,
-  detection: Detection
-): Option.Option<A> => {
-  const data = detection.data
-
-  return guard(data) ? Option.some(data) : Option.none()
-}
-
-const fingerprintData = (
-  fingerprint: string,
-  stepCount: number,
-  exportName: string,
-  projectPath = "project"
-): CompositionFingerprintData =>
-  CompositionFingerprintData.make({ projectPath, fingerprint, stepCount, exportName })
-
-const detectionAt = (filePath: string, line: number, data: CompositionFingerprintData): Detection =>
-  DetectionData.make({
-    location: Location.make({ path: filePath, line, column: 1 }),
-    message: "message",
-    hint: "hint",
-    data
-  })
-
-const namedFingerprint = (
-  filePath: string,
-  line: number,
-  data: CompositionFingerprintData
-): NamedDetection =>
-  NamedDetection.make({
-    name: compositionFingerprints.name,
-    detection: detectionAt(filePath, line, data)
-  })
+import { Option, Schema, pipe } from "effect"
+import { compositionFingerprints } from "@better-typescript/guidance/preset/compositionFingerprints"
+import { duplicatedOrchestration } from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
+import { CompositionFingerprintData } from "@better-typescript/matchers/builtins/compositionFingerprints"
+import { runFixture } from "./duplicatedOrchestrationFixture.js"
+import { dataAs } from "./duplicatedOrchestrationDataAs.js"
+import { fingerprintData } from "./duplicatedOrchestrationFingerprintData.js"
+import { namedFingerprint } from "./duplicatedOrchestrationNamedFingerprint.js"
 
 test("composition fingerprints match across clones and skip sub-threshold exports", async () => {
   const detections = await runFixture(compositionFingerprints)

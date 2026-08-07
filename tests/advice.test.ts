@@ -7,40 +7,18 @@ import { pipelineHostile } from "@better-typescript/guidance/pipelineHostile/pip
 import { ruleDominance } from "@better-typescript/guidance/derive/ruleDominance"
 import { sideEffectLaundering } from "@better-typescript/guidance/derive/sideEffectLaundering"
 import { systemicHotspots } from "@better-typescript/guidance/systemicHotspots/systemicHotspots"
-import { ImperativeStateManagerInput } from "@better-typescript/guidance/imperativeStateManager/data"
-import { PipelineHostileInput } from "@better-typescript/guidance/pipelineHostile/data"
+import { ImperativeStateManagerInput } from "@better-typescript/guidance/imperativeStateManager/imperativeStateManagerInput"
+import { PipelineHostileInput } from "@better-typescript/guidance/pipelineHostile/pipelineHostileInput"
 import { SystemicSignals } from "@better-typescript/guidance/systemicHotspots/data"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import { Location } from "@better-typescript/core/engine/location/data"
-import { NamedDetection } from "@better-typescript/core/engine/derive/data"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { Detection } from "@better-typescript/core/engine/location/data"
-
-function signalAt(path: string, line: number, data?: unknown): Detection {
-  return Detection.make({
-    location: Location.make({ path, line, column: 1 }),
-    message: "message",
-    hint: "hint",
-    ...(arguments.length >= 3 ? { data } : {})
-  })
-}
-
-const range = (count: number): ReadonlyArray<number> =>
-  Array.from({ length: count }, (_, index) => index + 1)
-
-const namedElements = (
-  name: string,
-  elements: ReadonlyArray<Detection>
-): ReadonlyArray<NamedDetection> =>
-  elements.map((detection) => NamedDetection.make({ name, detection }))
-
-const adviceTitles = (advice: ReadonlyArray<Advice>): ReadonlyArray<string> =>
-  advice.map((item) => item.title)
-
-const evidenceMeasures = (advice: Advice): ReadonlyArray<string> =>
-  advice.evidence.map((item) => item.measure)
-
-const emptyDetections: ReadonlyArray<Detection> = []
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { type Advice } from "@better-typescript/core/engine/derive/advice"
+import { signalAt } from "./adviceSignalAt.js"
+import { range } from "./adviceRange.js"
+import { namedElements } from "./adviceNamedElements.js"
+import { adviceTitles } from "./adviceTitles.js"
+import { evidenceMeasures } from "./adviceEvidenceMeasures.js"
+import { emptyDetections } from "./emptyDetections.js"
 
 test("imperativeStateManager fires on shared-state mutation density", () => {
   const mutations = range(10).map((line) =>

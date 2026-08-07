@@ -12,17 +12,20 @@ import {
   Result
 } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
-import { Advice, EvidenceItem } from "@better-typescript/core/engine/derive/data"
-import { deriveSignals, evidenceFromCounts } from "@better-typescript/core/engine/derive"
-import { Location, type Detection } from "@better-typescript/core/engine/location/data"
-import { makePackageExamples } from "../definePolicy.js"
-import {
-  ConceptSignalData,
-  type ConceptSignalKind
-} from "@better-typescript/matchers/builtins/conceptControl/data"
+import { Advice } from "@better-typescript/core/engine/derive/advice"
+import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
+import { deriveSignals } from "@better-typescript/core/engine/derive/deriveSignals"
+import { evidenceFromCounts } from "@better-typescript/core/engine/derive/evidenceFromCounts"
+import { Location } from "@better-typescript/core/engine/location/locationData"
+import { type Detection } from "@better-typescript/core/engine/location/detectionData"
+import { makePackageExamples } from "../makePackageExamples.js"
+import { ConceptSignalData } from "@better-typescript/matchers/builtins/conceptControl/conceptControlEngine"
+import { conceptSignalKindSchema } from "@better-typescript/matchers/builtins/conceptControl/conceptSignalKinds"
+// ConceptSignalKind is the closed concept-control tag set because kind dispatch stays exhaustive.
+
+type ConceptSignalKind = typeof conceptSignalKindSchema.Type
 
 export const closedAbstractionClusterExamples = makePackageExamples("concept-control")
-
 export const conceptProliferationExamples = makePackageExamples("concept-proliferation")
 
 const proliferationKinds = HashSet.make<ConceptSignalKind[]>(
@@ -43,9 +46,6 @@ const immediateDirectory = (filePath: string) => {
   return Array.join(parents, "/") || "."
 }
 
-const signalData = (element: Detection) =>
-  pipe(element.data, Option.fromNullishOr, Option.filter(Schema.is(ConceptSignalData)))
-
 const signalKindCount = (counts: HashMap.HashMap<string, number>, data: ConceptSignalData) => {
   const current = pipe(HashMap.get(counts, data.kind), Option.getOrElse(Function.constant(0)))
 
@@ -54,12 +54,6 @@ const signalKindCount = (counts: HashMap.HashMap<string, number>, data: ConceptS
 
 const relatedConceptsWithConcept = (item: ConceptSignalData) =>
   Array.prepend(item.relatedConcepts, item.concept)
-
-const pairElementWithSignalData = (element: Detection) => {
-  const withData = (data: ConceptSignalData) => Tuple.make(element, data)
-
-  return pipe(signalData(element), Option.map(withData), Result.fromOption(Function.constVoid))
-}
 
 const isClosedAbstractionEntry = (entry: readonly [Detection, ConceptSignalData]) => {
   const data = Tuple.get(entry, 1)
@@ -121,11 +115,20 @@ const proliferationAdvice = (
   directory: string,
   elements: ReadonlyArray<Detection>
 ): Option.Option<Advice> => {
-  const data = Array.filterMap(
-    elements,
-    Function.flow(signalData, Result.fromOption(Function.constVoid))
-  )
+  const pairElementWithSignalData = (element: Detection) => {
+    const withData = (data: ConceptSignalData) => Tuple.make(element, data)
+    return pipe(
+      pipe(element.data, Option.fromNullishOr, Option.filter(Schema.is(ConceptSignalData))),
+      Option.map(withData),
+      Result.fromOption(Function.constVoid)
+    )
+  }
 
+  const paired = Array.filterMap(elements, pairElementWithSignalData) as ReadonlyArray<
+    readonly [Detection, ConceptSignalData]
+  >
+
+  const data = Array.map(paired, Struct.get(1))
   const concepts = pipe(data, Array.flatMap(relatedConceptsWithConcept), HashSet.fromIterable)
   const enoughSignals = data.length >= 2
   const enoughConcepts = HashSet.size(concepts) >= 2
@@ -167,7 +170,18 @@ const proliferationAdvice = (
 }
 
 const conceptAdviceFor = (elements: ReadonlyArray<Detection>): ReadonlyArray<Advice> => {
-  const typed = Array.filterMap(elements, pairElementWithSignalData)
+  const pairElementWithSignalData = (element: Detection) => {
+    const withData = (data: ConceptSignalData) => Tuple.make(element, data)
+    return pipe(
+      pipe(element.data, Option.fromNullishOr, Option.filter(Schema.is(ConceptSignalData))),
+      Option.map(withData),
+      Result.fromOption(Function.constVoid)
+    )
+  }
+
+  const typed = Array.filterMap(elements, pairElementWithSignalData) as ReadonlyArray<
+    readonly [Detection, ConceptSignalData]
+  >
 
   const closed = pipe(
     typed,

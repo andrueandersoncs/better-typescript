@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { FileDetections } from "@better-typescript/core/engine/derive/data"
+import { FileDetections } from "@better-typescript/core/engine/derive/fileDetections"
 
 const fileDetectionsArray = Schema.Array(FileDetections)
 

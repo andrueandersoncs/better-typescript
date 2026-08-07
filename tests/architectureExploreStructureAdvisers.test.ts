@@ -1,90 +1,25 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
+import { ExportSurfaceData } from "@better-typescript/matchers/builtins/exportSurface"
+import { ModuleGraphData } from "@better-typescript/matchers/builtins/moduleGraph"
 import {
-  ExportSurfaceData,
-  ImportUsageData,
-  ImportedNameUsage,
-  InterfaceBurdenData,
-  ModuleGraphData
-} from "@better-typescript/matchers/builtins/architectureExploreData"
-import {
-  exportSurfaceName,
-  importUsageName,
-  interfaceBurdenName,
-  moduleGraphName
-} from "@better-typescript/guidance/architectureExplore/names"
-import { registrationCeremony } from "@better-typescript/guidance/architectureExplore/registrationCeremony"
-import { hubModule } from "@better-typescript/guidance/architectureExplore/hubModule"
-import { invisibleTests } from "@better-typescript/guidance/architectureExplore/invisibleTests"
-import type { Advice } from "@better-typescript/core/engine/derive/data"
-import { makeNamedDetection } from "@better-typescript/core/engine/derive"
-import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example"
-import { Detection, Location } from "@better-typescript/core/engine/location/data"
-
-const detectionAt = (path: string, line: number, data?: unknown): Detection =>
-  Detection.make({
-    location: Location.make({ path, line, column: 1 }),
-    message: "message",
-    hint: "hint",
-    ...(data === undefined ? {} : { data })
-  })
-
-const nameUsage = (name: string, referenceCount: number): ImportedNameUsage =>
-  ImportedNameUsage.make({ name, referenceCount, callCount: referenceCount })
-
-const importUsage = (
-  specifier: string,
-  importerWorkspacePath: string,
-  referenceCount: number,
-  fromTest = false
-): ImportUsageData =>
-  ImportUsageData.make({
-    specifier,
-    importerWorkspacePath,
-    fromTest,
-    names: [nameUsage(specifier.split("/").at(-1) ?? specifier, referenceCount)]
-  })
-
-const measureCount = (advice: Advice, measure: string): number | undefined =>
-  advice.evidence.find((item) => item.measure === measure)?.count
-
-const hubBurden = (hubPath: string, operationCount: number): Detection =>
-  detectionAt(
-    hubPath,
-    1,
-    InterfaceBurdenData.make({
-      operationCount,
-      requiredParameterCount: 0,
-      workspacePath: hubPath
-    })
-  )
-
-const hubGraph = (hubPath: string, importedWorkspacePaths: ReadonlyArray<string>): Detection =>
-  detectionAt(
-    hubPath,
-    2,
-    ModuleGraphData.make({
-      importedPaths: importedWorkspacePaths,
-      workspacePath: hubPath,
-      importedWorkspacePaths
-    })
-  )
-
-const callerGraph = (callerPath: string, hubPath: string): Detection =>
-  detectionAt(
-    callerPath,
-    1,
-    ModuleGraphData.make({
-      importedPaths: [hubPath],
-      workspacePath: callerPath,
-      importedWorkspacePaths: [hubPath]
-    })
-  )
+  registrationCeremony,
+  hubModule,
+  invisibleTests
+} from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
+import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
+import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
+import { detectionAt } from "./architectureExploreStructureDetectionAt.js"
+import { importUsage } from "./architectureExploreStructureImportUsage.js"
+import { measureCount } from "./architectureExploreStructureMeasureCount.js"
+import { hubBurden } from "./architectureExploreStructureHubBurden.js"
+import { hubGraph } from "./architectureExploreStructureHubGraph.js"
+import { callerGraph } from "./architectureExploreStructureCallerGraph.js"
 
 test("registration ceremony fires at 15 imports and 0.8 low-ref ratio", () => {
   const importer = "src/registry.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>
-    makeNamedDetection(importUsageName)(
+    makeNamedDetection("import-usage")(
       detectionAt(importer, index + 1, importUsage(`./mod-${index}.js`, importer, 1))
     )
   )
@@ -103,14 +38,14 @@ test("registration ceremony stays silent at 14 imports or 0.7 ratio", () => {
   const importer = "src/registry.ts"
 
   const fourteen = Array.from({ length: 14 }, (_, index) =>
-    makeNamedDetection(importUsageName)(
+    makeNamedDetection("import-usage")(
       detectionAt(importer, index + 1, importUsage(`./mod-${index}.js`, importer, 1))
     )
   )
 
   // 15 imports, 10 low-ref names / 15 total => ratio ~0.67 (below 0.8; covers the 0.7 case)
   const lowRatio = Array.from({ length: 15 }, (_, index) =>
-    makeNamedDetection(importUsageName)(
+    makeNamedDetection("import-usage")(
       detectionAt(
         importer,
         index + 1,
@@ -129,7 +64,7 @@ test("registration ceremony stays silent at 14 imports or 0.7 ratio", () => {
 test("registration ceremony ignores fromTest importers", () => {
   const importer = "tests/registry.test.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>
-    makeNamedDetection(importUsageName)(
+    makeNamedDetection("import-usage")(
       detectionAt(importer, index + 1, importUsage(`./mod-${index}.js`, importer, 1, true))
     )
   )
@@ -145,9 +80,9 @@ test("hub module fires at 12 operations, fan-in 3, fan-out 6", () => {
   const callers = ["src/caller-a.ts", "src/caller-b.ts", "src/caller-c.ts"]
 
   const elements = [
-    makeNamedDetection(interfaceBurdenName)(hubBurden(hubPath, 12)),
-    makeNamedDetection(moduleGraphName)(hubGraph(hubPath, imported)),
-    ...callers.map((caller) => makeNamedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
+    makeNamedDetection("interface-burden")(hubBurden(hubPath, 12)),
+    makeNamedDetection("module-graph")(hubGraph(hubPath, imported)),
+    ...callers.map((caller) => makeNamedDetection("module-graph")(callerGraph(caller, hubPath)))
   ]
 
   const advice = hubModule(elements)
@@ -167,11 +102,11 @@ test("hub module stays silent when any threshold leg is below limit", () => {
   const callers = ["src/caller-a.ts", "src/caller-b.ts", "src/caller-c.ts"]
 
   const elementsFor = (operationCount: number, fanInCount: number, fanOutCount: number) => [
-    makeNamedDetection(interfaceBurdenName)(hubBurden(hubPath, operationCount)),
-    makeNamedDetection(moduleGraphName)(hubGraph(hubPath, imported.slice(0, fanOutCount))),
+    makeNamedDetection("interface-burden")(hubBurden(hubPath, operationCount)),
+    makeNamedDetection("module-graph")(hubGraph(hubPath, imported.slice(0, fanOutCount))),
     ...callers
       .slice(0, fanInCount)
-      .map((caller) => makeNamedDetection(moduleGraphName)(callerGraph(caller, hubPath)))
+      .map((caller) => makeNamedDetection("module-graph")(callerGraph(caller, hubPath)))
   ]
 
   const lowOps = hubModule(elementsFor(11, 3, 6))
@@ -188,11 +123,11 @@ test("hub module ignores fromTest fan-in edges", () => {
   const imported = Array.from({ length: 6 }, (_, index) => `src/dep-${index}.ts`)
 
   const elements = [
-    makeNamedDetection(interfaceBurdenName)(hubBurden(hubPath, 12)),
-    makeNamedDetection(moduleGraphName)(hubGraph(hubPath, imported)),
-    makeNamedDetection(moduleGraphName)(callerGraph("tests/caller.test.ts", hubPath)),
-    makeNamedDetection(moduleGraphName)(callerGraph("src/caller-a.ts", hubPath)),
-    makeNamedDetection(moduleGraphName)(callerGraph("src/caller-b.ts", hubPath))
+    makeNamedDetection("interface-burden")(hubBurden(hubPath, 12)),
+    makeNamedDetection("module-graph")(hubGraph(hubPath, imported)),
+    makeNamedDetection("module-graph")(callerGraph("tests/caller.test.ts", hubPath)),
+    makeNamedDetection("module-graph")(callerGraph("src/caller-a.ts", hubPath)),
+    makeNamedDetection("module-graph")(callerGraph("src/caller-b.ts", hubPath))
   ]
 
   const advice = hubModule(elements)
@@ -202,7 +137,7 @@ test("hub module ignores fromTest fan-in edges", () => {
 
 test("invisible tests fires when evidence has no test paths", () => {
   const elements = [
-    makeNamedDetection(moduleGraphName)(
+    makeNamedDetection("module-graph")(
       detectionAt(
         "src/a.ts",
         1,
@@ -213,10 +148,10 @@ test("invisible tests fires when evidence has no test paths", () => {
         })
       )
     ),
-    makeNamedDetection(importUsageName)(
+    makeNamedDetection("import-usage")(
       detectionAt("src/a.ts", 2, importUsage("./b.js", "src/a.ts", 1))
     ),
-    makeNamedDetection(exportSurfaceName)(
+    makeNamedDetection("export-surface")(
       detectionAt("src/b.ts", 3, ExportSurfaceData.make({ workspacePath: "src/b.ts", symbols: [] }))
     )
   ]
@@ -233,7 +168,7 @@ test("invisible tests fires when evidence has no test paths", () => {
 
 test("invisible tests stays silent when any path is a test path", () => {
   const elements = [
-    makeNamedDetection(moduleGraphName)(
+    makeNamedDetection("module-graph")(
       detectionAt(
         "src/a.ts",
         1,
@@ -244,7 +179,7 @@ test("invisible tests stays silent when any path is a test path", () => {
         })
       )
     ),
-    makeNamedDetection(importUsageName)(
+    makeNamedDetection("import-usage")(
       detectionAt("tests/a.test.ts", 2, importUsage("./b.js", "tests/a.test.ts", 1, true))
     )
   ]

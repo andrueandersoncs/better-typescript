@@ -1,23 +1,216 @@
-import { Data, Function, MutableRef, Option, Struct, pipe, flow } from "effect"
+import { Array, Function, MutableRef, Option, Result, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import type * as ts from "typescript"
-import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher"
-import type { Matcher, Subscription } from "@better-typescript/matchers/matcher/data"
-import type { ProgramContext } from "@better-typescript/matchers/sources/data"
-import { ModuleEdge, buildModuleEdges } from "./moduleEdges.js"
-import { ExportReferenceIndex, buildExportReferenceIndex } from "./programSymbols.js"
+import * as ts from "typescript"
+import type { ProgramContext } from "../../sources/data.js"
+import { isProjectSourceFile } from "../../sources/isProjectSourceFile.js"
+import { toRelativeFileName } from "../../support/paths.js"
+import { symbolDeclarations } from "../../support/symbolDeclarations.js"
+import { ModuleEdge } from "./moduleEdge.js"
+import { ArchitectureEvidence } from "./architectureEvidenceType.js"
+import { CachedArchitectureEvidence } from "./cachedArchitectureEvidence.js"
+import { ExportReferenceIndex } from "./exportReferenceIndex.js"
+import { isTestSourceFile } from "./isTestPath.js"
+import { ExportedFunctionEntry } from "./exportedFunctionEntry.js"
+import { functionInitializer } from "../../support/functionInitializer2.js"
+import { hasExportModifier } from "../../support/hasExportModifier.js"
+import { resolvedSymbolAt } from "../../support/resolvedSymbolAt.js"
+import { buildUsageMap } from "./programSymbols.js"
 
-// Shared facts stay together because otherwise matchers rebuild the same Program work.
-class ArchitectureEvidence extends Data.Class<{
-  readonly exportReferenceIndex: ExportReferenceIndex
-  readonly moduleEdges: ReadonlyArray<ModuleEdge>
-}> {}
+const moduleSourceFile =
+  (context: ProgramContext, containingFile: ts.SourceFile) => (moduleSpecifier: ts.Expression) => {
+    const declarationsOf = Function.flow(
+      symbolDeclarations,
+      Option.fromNullishOr,
+      Option.getOrElse((): ReadonlyArray<ts.Declaration> => Array.empty())
+    )
 
-// The cache retains one Program because workspace analysis is sequential.
-class CachedArchitectureEvidence extends Data.Class<{
-  readonly program: ts.Program
-  readonly evidence: ArchitectureEvidence
-}> {}
+    const checkerSource = pipe(
+      context.checker.getSymbolAtLocation(moduleSpecifier),
+      Option.fromNullishOr,
+      Option.map(declarationsOf),
+      Option.flatMap(Array.findFirst(ts.isSourceFile))
+    )
+
+    if (Option.isSome(checkerSource)) {
+      return checkerSource
+    }
+
+    const specifier = pipe(
+      Option.liftPredicate(ts.isStringLiteralLike)(moduleSpecifier),
+      Option.map(Struct.get("text"))
+    )
+
+    const compilerOptions = context.program.getCompilerOptions()
+
+    const resolveModule = (text: string) => {
+      const resolution = ts.resolveModuleName(
+        text,
+        containingFile.fileName,
+        compilerOptions,
+        ts.sys
+      )
+
+      return Option.fromNullishOr(resolution.resolvedModule)
+    }
+
+    const sourceFileForResolved = (resolved: ts.ResolvedModule) =>
+      pipe(context.program.getSourceFile(resolved.resolvedFileName), Option.fromNullishOr)
+
+    return pipe(specifier, Option.flatMap(resolveModule), Option.flatMap(sourceFileForResolved))
+  }
+
+const statementModuleSpecifier = (statement: ts.Statement) => {
+  if (ts.isImportDeclaration(statement)) {
+    return Option.some(statement.moduleSpecifier)
+  }
+
+  const moduleSpecifierOf = (declaration: ts.ExportDeclaration) =>
+    pipe(declaration.moduleSpecifier, Option.fromNullishOr)
+
+  return pipe(
+    Option.liftPredicate(ts.isExportDeclaration)(statement),
+    Option.flatMap(moduleSpecifierOf)
+  )
+}
+
+export const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleEdge> => {
+  const relative = toRelativeFileName(context.projectRoot)
+  const classifyTestSource = isTestSourceFile(context.workspaceRoot)
+  const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+
+  const edgesForSourceFile = (sourceFile: ts.SourceFile) => {
+    const importerPath = relative(sourceFile.fileName)
+    const fromTest = classifyTestSource(sourceFile)
+
+    const edgeForStatement = (statement: ts.Statement) => {
+      const makeModuleEdgeForImportedFile = (importedFile: ts.SourceFile) => {
+        const importedPath = relative(importedFile.fileName)
+
+        return new ModuleEdge({
+          importerPath,
+          importedPath,
+          fromTest
+        })
+      }
+
+      return pipe(
+        statementModuleSpecifier(statement),
+        Option.flatMap(moduleSourceFile(context, sourceFile)),
+        Option.filter(isProjectSourceFile),
+        Option.map(makeModuleEdgeForImportedFile),
+        Result.fromOption(Function.constVoid)
+      )
+    }
+
+    return Array.filterMap(sourceFile.statements, edgeForStatement)
+  }
+
+  return Array.flatMap(projectFiles, edgesForSourceFile)
+}
+
+const variableFunctionEntries =
+  (checker: ts.TypeChecker) =>
+  (statement: ts.VariableStatement): ReadonlyArray<ExportedFunctionEntry> => {
+    if (!hasExportModifier(statement)) {
+      return Array.empty()
+    }
+
+    const entryForDeclaration = (declaration: ts.VariableDeclaration) => {
+      const entryForFunction = (
+        functionNode: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
+      ) => {
+        const entryForName = (nameNode: ts.Identifier) => {
+          const makeExportedFunctionEntry = (symbol: ts.Symbol) =>
+            new ExportedFunctionEntry({
+              symbol,
+              nameNode,
+              declarationNode: declaration,
+              functionNode
+            })
+
+          return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedFunctionEntry))
+        }
+
+        return pipe(
+          Option.liftPredicate(ts.isIdentifier)(declaration.name),
+          Option.flatMap(entryForName)
+        )
+      }
+
+      return pipe(
+        functionInitializer(declaration),
+        Option.flatMap(entryForFunction),
+        Result.fromOption(Function.constVoid)
+      )
+    }
+
+    return Array.filterMap(statement.declarationList.declarations, entryForDeclaration)
+  }
+
+const functionDeclarationEntry =
+  (checker: ts.TypeChecker) =>
+  (declaration: ts.FunctionDeclaration): Option.Option<ExportedFunctionEntry> => {
+    if (!hasExportModifier(declaration)) {
+      return Option.none()
+    }
+
+    const entryForName = (nameNode: ts.Identifier) => {
+      const makeExportedFunctionEntry = (symbol: ts.Symbol) =>
+        new ExportedFunctionEntry({
+          symbol,
+          nameNode,
+          declarationNode: declaration,
+          functionNode: declaration
+        })
+
+      return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedFunctionEntry))
+    }
+
+    return pipe(Option.fromNullishOr(declaration.name), Option.flatMap(entryForName))
+  }
+
+const exportedFunctionsIn =
+  (checker: ts.TypeChecker) =>
+  (sourceFile: ts.SourceFile): ReadonlyArray<ExportedFunctionEntry> =>
+    Array.flatMap(sourceFile.statements, (statement) => {
+      if (ts.isVariableStatement(statement)) {
+        return variableFunctionEntries(checker)(statement)
+      }
+
+      return pipe(
+        Option.liftPredicate(ts.isFunctionDeclaration)(statement),
+        Option.flatMap(functionDeclarationEntry(checker)),
+        Option.toArray
+      )
+    })
+
+const isInsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifier) => {
+  const nodeSourceFile = node.getSourceFile()
+  const declarationSourceFile = declaration.getSourceFile()
+  const sameFile = strictEqual(declarationSourceFile)(nodeSourceFile)
+  const afterStart = node.pos >= declaration.pos
+  const beforeEnd = node.end <= declaration.end
+  const checks = Array.make(sameFile, afterStart, beforeEnd)
+
+  return Array.every(checks, Boolean)
+}
+
+const isOutsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifier) => {
+  const insideDeclaration = isInsideDeclaration(declaration)(node)
+
+  return !insideDeclaration
+}
+
+const referenceOutsideDeclaration = (entry: ExportedFunctionEntry) =>
+  isOutsideDeclaration(entry.declarationNode)
+
+export const buildExportReferenceIndex = (context: ProgramContext) => {
+  const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+  const entries = Array.flatMap(projectFiles, exportedFunctionsIn(context.checker))
+  const usages = buildUsageMap(context)(entries, referenceOutsideDeclaration)
+
+  return new ExportReferenceIndex({ entries, usages })
+}
 
 const emptyEvidenceCache = Option.none<CachedArchitectureEvidence>()
 const evidenceCache = MutableRef.make(emptyEvidenceCache)
@@ -29,7 +222,7 @@ const buildArchitectureEvidence = (context: ProgramContext) => {
   return new ArchitectureEvidence({ exportReferenceIndex, moduleEdges })
 }
 
-const architectureEvidence = (context: ProgramContext) => {
+export const architectureEvidence = (context: ProgramContext) => {
   const cached = MutableRef.get(evidenceCache)
 
   const matchesProgram = flow(
@@ -51,15 +244,3 @@ const architectureEvidence = (context: ProgramContext) => {
 
   return evidence
 }
-
-export const exportReferenceIndex = pipe(
-  architectureEvidence,
-  Function.compose(Struct.get("exportReferenceIndex"))
-)
-
-export const moduleEdges = pipe(architectureEvidence, Function.compose(Struct.get("moduleEdges")))
-
-export const evidenceMatcher =
-  <Evidence>(evidenceFor: (context: ProgramContext) => Evidence) =>
-  (subscriptions: (evidence: Evidence) => ReadonlyArray<Subscription>): Matcher =>
-    pipe(evidenceFor, Function.compose(subscriptions), makeMatcherFromSubscriptions)

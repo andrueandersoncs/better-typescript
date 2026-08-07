@@ -1,11 +1,13 @@
-import { Array, flow, Option, pipe, Schema } from "effect"
+import { Array, HashSet, Option, Schema, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { callArguments, calleeText, consumingCall } from "../support/tsSignature.js"
-import { isCallLikeExpression } from "../support/tsNode.js"
-import { hasCallSignature } from "../support/tsType.js"
+import { isCallLikeExpression } from "../support/isCallLikeExpression.js"
+import type { CallLikeExpression } from "../support/callLikeExpression.js"
+import { callArguments } from "../support/callArguments.js"
+import { hasCallSignature } from "../support/hasCallSignature.js"
 import { strictEqual } from "../equivalence.js"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
 
 // NoNestedCallsFact pairs callee labels because guidance names both call sites.
 export const NoNestedCallsFact = Schema.Struct({
@@ -14,6 +16,53 @@ export const NoNestedCallsFact = Schema.Struct({
 })
 
 export interface NoNestedCallsFact extends Schema.Schema.Type<typeof NoNestedCallsFact> {}
+
+const valueForwardingKinds = HashSet.make(
+  ts.SyntaxKind.ParenthesizedExpression,
+  ts.SyntaxKind.AsExpression,
+  ts.SyntaxKind.SatisfiesExpression,
+  ts.SyntaxKind.NonNullExpression,
+  ts.SyntaxKind.ObjectLiteralExpression,
+  ts.SyntaxKind.PropertyAssignment,
+  ts.SyntaxKind.ShorthandPropertyAssignment,
+  ts.SyntaxKind.SpreadAssignment,
+  ts.SyntaxKind.ArrayLiteralExpression,
+  ts.SyntaxKind.SpreadElement,
+  ts.SyntaxKind.ConditionalExpression,
+  ts.SyntaxKind.BinaryExpression,
+  ts.SyntaxKind.PrefixUnaryExpression,
+  ts.SyntaxKind.PostfixUnaryExpression,
+  ts.SyntaxKind.AwaitExpression,
+  ts.SyntaxKind.YieldExpression,
+  ts.SyntaxKind.TypeOfExpression,
+  ts.SyntaxKind.VoidExpression,
+  ts.SyntaxKind.PropertyAccessExpression,
+  ts.SyntaxKind.ElementAccessExpression,
+  ts.SyntaxKind.TemplateSpan,
+  ts.SyntaxKind.TemplateExpression
+)
+
+const consumingCall = (node: ts.Node): Option.Option<CallLikeExpression> => {
+  const isCallLike = isCallLikeExpression(node.parent)
+
+  if (isCallLike) {
+    return Option.liftPredicate((call: CallLikeExpression) => {
+      const args = callArguments(call)
+
+      return Array.some(args, strictEqual(node))
+    })(node.parent)
+  }
+
+  const isForwarding = HashSet.has(valueForwardingKinds, node.parent.kind)
+
+  return isForwarding ? consumingCall(node.parent) : Option.none()
+}
+
+const calleeText = (sourceFile: ts.SourceFile) => (target: CallLikeExpression) => {
+  const text = target.expression.getText(sourceFile)
+
+  return ts.isNewExpression(target) ? `new ${text}` : text
+}
 
 const nestedCallsMatches = (context: MatchContext) => {
   const producesCallable = flow(

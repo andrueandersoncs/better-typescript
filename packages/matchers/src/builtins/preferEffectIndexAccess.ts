@@ -1,8 +1,9 @@
 import { Array, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
-import { isArrayLikeType } from "../support/tsType.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import { isArrayLikeType } from "../support/isArrayLikeType.js"
 
 // PreferEffectIndexAccessFact is empty payload because guidance and matchers share identity.
 export const PreferEffectIndexAccessFact = Schema.Struct({})

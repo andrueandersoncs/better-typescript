@@ -17,9 +17,11 @@ evidence, a deterministic explanation forest, exact portable JSON, and Membershi
       unknown or cross-module keys.
 - [ ] Every bond carries schema-validated tagged replay evidence with resolved witnesses and all
       closed-world premises; prose is rendered, not stored.
-- [ ] The rule interface admits only independently proven pairs from normalized current-Program
-      semantic facts and supports explicit immutable paradigm catalogs; the initial catalogs remain
-      empty.
+- [ ] The rule interface requires each rule's evidence schema, admits only independently proven
+      pairs from normalized current-Program semantic facts, and supports explicit immutable
+      catalogs.
+- [ ] The neutral reference-graph rules land separately after this generic proof seam; the
+      object-oriented and functional catalogs remain empty.
 - [ ] Focused cases assert exact snapshot JSON, including every key, anchor, stratum, collection,
       bond reference, exclusion, and nested canonical order.
 - [ ] Byte-identity tests permute source, entity, rule, and candidate enumeration plus duplicate

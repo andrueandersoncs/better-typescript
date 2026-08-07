@@ -1,34 +1,54 @@
-import { Array, Function, HashMap, HashSet, Option, Struct, pipe, flow, Schema } from "effect"
+import { Array, Function, HashMap, HashSet, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { makeMatcherFromSubscriptions, nodeSubscriptions } from "../matcher/matcher.js"
-import { makeNodeMatch, type Match, type MatchContext, type Subscription } from "../matcher/data.js"
-import { foldAst, isProjectSourceFile } from "../sources/sources.js"
-import {
-  conciseArrowBody,
-  namedDetectionTarget,
-  outermostTransparentWrapper,
-  unwrapTransparentExpression
-} from "../support/tsNode.js"
-import {
-  isFunctionDefinition,
-  isFunctionInitializer,
-  type FunctionDefinition
-} from "../support/tsNode.js"
-import {
-  callArguments,
-  resolvedCallSignature,
-  signatureIsExternal
-} from "../support/tsSignature.js"
-import { hasCallSignature } from "../support/tsType.js"
-import { type ReferenceKey, referenceKey } from "../support/referenceKey.js"
+import { makeMatcherFromSubscriptions } from "../matcher/makeMatcherFromSubscriptions.js"
+import { nodeSubscriptions } from "../matcher/nodeSubscriptions.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { Match } from "../matcher/match.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import type { Subscription } from "../matcher/subscription.js"
+import { foldAst } from "../sources/foldAst.js"
+import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
+import { namedDetectionTarget } from "../support/namedDetectionTarget.js"
+import { outermostTransparentWrapper } from "../support/outermostTransparentWrapper.js"
+import { isFunctionDefinition } from "../support/isFunctionDefinition.js"
+import { callArguments } from "../support/callArguments.js"
+import { resolvedCallSignature } from "../support/resolvedCallSignature.js"
+import { signatureDeclarationIsExternal } from "../support/signatureDeclarationIsExternal.js"
+import { functionDefinitionKinds } from "./functionDefinitionKinds.js"
+import { hasCallSignature } from "../support/hasCallSignature.js"
+import { referenceKey } from "../support/referenceKey.js"
+import type { ReferenceKey } from "../support/referenceKeyType.js"
 import type { ProgramContext } from "../sources/data.js"
-import {
-  SymbolUse,
-  type SymbolUses,
-  emptySymbolUses,
-  fallbackEmptySymbolUse
-} from "./preferCurriedDataLastFunctionsData.js"
+import { SymbolUse } from "./symbolUse.js"
+import type { SymbolUses } from "./symbolUses.js"
 import { strictEqual } from "../equivalence.js"
+import { hasDisallowedParameterList } from "./hasDisallowedParameterList.js"
+import { hasCurriedArrowBody } from "./hasCurriedArrowBody.js"
+import { contextualType } from "./contextualType.js"
+import { isContextuallyTypedFunction } from "./isContextuallyTypedFunction.js"
+import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
+import { symbolForDeclaration } from "./namedFunctionDeclaration.js"
+import { PreferCurriedDataLastFunctionsFact } from "./preferCurriedDataLastFunctionsFact.js"
+
+// Missing declarations count as external because their shape is not author-controlled.
+const signatureIsExternal = (signature: ts.Signature) =>
+  pipe(
+    signature.getDeclaration(),
+    Option.fromNullishOr,
+    Option.map(signatureDeclarationIsExternal),
+    Option.getOrElse(Function.constant(true))
+  )
+
+// emptySymbolUse is the zero-use seed because callers need one shared default record.
+const emptySymbolUse = SymbolUse.make({
+  hasContextualReference: false,
+  hasDirectCall: false,
+  hasOtherReference: false
+})
+
+const emptySymbolUses: SymbolUses = HashMap.empty()
+
+const fallbackEmptySymbolUse: () => SymbolUse = Function.constant(emptySymbolUse)
 
 const updateSymbolUse =
   (symbol: ts.Symbol) =>
@@ -70,126 +90,6 @@ const isContextualOnlyUse = (use: SymbolUse) => {
   )
 
   return Array.every(referenceConditions, Boolean)
-}
-
-const functionDefinitionKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
-  ts.SyntaxKind.FunctionDeclaration,
-  ts.SyntaxKind.FunctionExpression,
-  ts.SyntaxKind.ArrowFunction,
-  ts.SyntaxKind.MethodDeclaration
-)
-
-const isRuntimeParameter = (parameter: ts.ParameterDeclaration) => {
-  const sourceFile = parameter.getSourceFile()
-  const parameterName = parameter.name.getText(sourceFile)
-
-  return parameterName !== "this"
-}
-
-const parameterHasRestToken = (parameter: ts.ParameterDeclaration) =>
-  pipe(Option.fromNullishOr(parameter.dotDotDotToken), Option.isSome)
-
-const hasRestParameter = (declaration: ts.Node) => {
-  const definitionHasRestParameter = (functionDefinition: FunctionDefinition) =>
-    Array.some(functionDefinition.parameters, parameterHasRestToken)
-
-  return pipe(
-    Option.liftPredicate(isFunctionDefinition)(declaration),
-    Option.exists(definitionHasRestParameter)
-  )
-}
-
-const runtimeParameters = (declaration: ts.Node): ReadonlyArray<ts.ParameterDeclaration> => {
-  const runtimeParametersOf = (functionDefinition: FunctionDefinition) =>
-    Array.filter(functionDefinition.parameters, isRuntimeParameter)
-
-  return pipe(
-    Option.liftPredicate(isFunctionDefinition)(declaration),
-    Option.map(runtimeParametersOf),
-    Option.getOrElse(Array.empty)
-  )
-}
-
-const hasDisallowedParameterList = (declaration: ts.Node) => {
-  const declarationHasRestParameter = hasRestParameter(declaration)
-  const hasMultipleRuntimeParameters = runtimeParameters(declaration).length > 1
-  const conditions = Array.make(declarationHasRestParameter, hasMultipleRuntimeParameters)
-
-  return Array.some(conditions, Boolean)
-}
-
-const hasCurriedArrowBody = (declaration: ts.Node) => {
-  const parameters = runtimeParameters(declaration)
-  const hasSingleRuntimeParameter = strictEqual(1)(parameters.length)
-  const hasNoRestParameter = !hasRestParameter(declaration)
-  const parameterChecks = Array.make(hasSingleRuntimeParameter, hasNoRestParameter)
-  const hasCurriedParameterList = Array.every(parameterChecks, Boolean)
-
-  const bodyIsFunctionInitializer = pipe(
-    Option.liftPredicate(ts.isArrowFunction)(declaration),
-    Option.flatMap(conciseArrowBody),
-    Option.map(unwrapTransparentExpression),
-    Option.exists(isFunctionInitializer)
-  )
-
-  const curriedInitializerChecks = Array.make(hasCurriedParameterList, bodyIsFunctionInitializer)
-
-  return Array.every(curriedInitializerChecks, Boolean)
-}
-
-const contextualType = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
-  pipe(checker.getContextualType(expression), Option.fromNullishOr)
-
-const isContextuallyTypedFunction = (checker: ts.TypeChecker) => (declaration: ts.Node) => {
-  const expressionHasCallSignature = (expression: ts.Expression) =>
-    pipe(contextualType(checker)(expression), Option.exists(hasCallSignature(checker)))
-
-  return pipe(
-    Option.liftPredicate(isFunctionInitializer)(declaration),
-    Option.exists(expressionHasCallSignature)
-  )
-}
-
-const symbolAtLocation = (checker: ts.TypeChecker) => (node: ts.Node) =>
-  pipe(
-    checker.getSymbolAtLocation(node),
-    Option.fromNullishOr,
-    Option.map((candidate) => {
-      const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
-
-      return isAlias ? checker.getAliasedSymbol(candidate) : candidate
-    })
-  )
-
-// NamedFunctionDeclaration is naming syntax protocol because function and method share lookup.
-export type NamedFunctionDeclaration = ts.FunctionDeclaration | ts.MethodDeclaration
-
-const namedFunctionDeclarationName = (
-  declaration: NamedFunctionDeclaration
-): Option.Option<ts.Node> => Option.fromNullishOr(declaration.name)
-
-const variableDeclarationIdentifierName = (declaration: ts.VariableDeclaration) =>
-  pipe(Option.some(declaration.name), Option.flatMap(Option.liftPredicate(ts.isIdentifier)))
-
-const symbolForDeclaration = (checker: ts.TypeChecker) => (declaration: ts.Node) => {
-  const methodName = pipe(
-    Option.liftPredicate(ts.isMethodDeclaration)(declaration),
-    Option.flatMap(namedFunctionDeclarationName)
-  )
-
-  const variableName = pipe(
-    Option.liftPredicate(ts.isVariableDeclaration)(declaration.parent),
-    Option.flatMap(variableDeclarationIdentifierName)
-  )
-
-  const declarationName = pipe(
-    Option.liftPredicate(ts.isFunctionDeclaration)(declaration),
-    Option.flatMap(namedFunctionDeclarationName),
-    Option.orElse(Function.constant(methodName)),
-    Option.orElse(Function.constant(variableName))
-  )
-
-  return pipe(declarationName, Option.flatMap(symbolAtLocation(checker)))
 }
 
 const foldCurriedDataLastDescendants = <A>(visit: (node: ts.Node) => (accumulator: A) => A) => {
@@ -249,7 +149,7 @@ const buildSymbolUses = (context: ProgramContext) => {
     }
 
     return pipe(
-      symbolAtLocation(context.checker)(node),
+      resolvedSymbolAt(context.checker)(node),
       Option.filter((symbol) => {
         const symbolKey = referenceKey(symbol)
 
@@ -351,13 +251,6 @@ const buildSymbolUses = (context: ProgramContext) => {
     foldCurriedDataLastDescendants(classifyNode)(sourceFile)(uses)
   )
 }
-
-// PreferCurriedDataLastFunctionsFact is empty payload because guidance and matchers share identity.
-export const PreferCurriedDataLastFunctionsFact = Schema.Struct({})
-
-export interface PreferCurriedDataLastFunctionsFact extends Schema.Schema.Type<
-  typeof PreferCurriedDataLastFunctionsFact
-> {}
 
 const emptyFact = PreferCurriedDataLastFunctionsFact.make({})
 

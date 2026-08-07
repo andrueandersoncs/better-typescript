@@ -1,8 +1,10 @@
-import { Array, Function, Option, pipe, Struct, flow, Schema } from "effect"
+import { Array, Function, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { nodeMatcher } from "../matcher/matcher.js"
-import { makeNodeMatch, type MatchContext } from "../matcher/data.js"
+import { nodeMatcher } from "../matcher/nodeMatcher.js"
+import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
+import type { MatchContext } from "../matcher/matchContext.js"
+import type { FunctionKeywordNode } from "./functionKeywordNode.js"
 
 // NoFunctionKeywordFact is empty payload because guidance and matchers share identity.
 export const NoFunctionKeywordFact = Schema.Struct({})
@@ -11,9 +13,6 @@ export interface NoFunctionKeywordFact extends Schema.Schema.Type<typeof NoFunct
 
 // emptyNoFunctionKeywordFact is the shared empty fact because guidance and matchers share identity.
 export const emptyNoFunctionKeywordFact = NoFunctionKeywordFact.make({})
-
-// FunctionKeywordNode is a local syntax union because matchers need one narrowed node shape.
-export type FunctionKeywordNode = ts.FunctionDeclaration | ts.FunctionExpression
 
 const isFunctionKeywordNode = (node: ts.Node): node is FunctionKeywordNode =>
   ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
