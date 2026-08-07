@@ -47,6 +47,7 @@ import { freeze } from "./freeze.js"
 import { isTestSourceFile } from "./isTestPath.js"
 import { isModuleDeclarationBody } from "./isModuleDeclarationBody.js"
 import { nodeEquivalence } from "./nodeEquivalence.js"
+import { peersFor } from "./peersFor.js"
 import { portableKeyToken } from "./portableKeyToken.js"
 import { semanticComponentOrder } from "./semanticComponentOrder.js"
 import { sameSymbolOwnershipRuleId } from "./sameSymbolOwnershipRuleId.js"
@@ -65,6 +66,7 @@ import { SemanticModulePlacementModuleSlice } from "./semanticModulePlacementMod
 import { SplitSemanticModulePlacementData } from "./semanticModulePlacementSplitData.js"
 import { SemanticModuleRecord } from "./semanticModuleRecord.js"
 import { SemanticModuleReferenceGraph } from "./semanticModuleReferenceGraph.js"
+import { moduleFor, proofBetween } from "./semanticModuleProofQueries.js"
 import { SemanticModuleSnapshotV1 } from "./semanticModuleSnapshotV1.js"
 import { SemanticModuleSuppressedBondRecord } from "./semanticModuleSuppressedBondRecord.js"
 import { semanticReferenceKindSchema } from "./semanticReferenceKindSchema.js"
@@ -2353,7 +2355,11 @@ const createSemanticModuleEngine = () => {
   }
 
   const api = {
+    SemanticModuleSnapshotV1,
     buildSemanticModuleSnapshot,
+    moduleFor,
+    peersFor,
+    proofBetween,
     semanticModulePlacementMatcher
   }
 

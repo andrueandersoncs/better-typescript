@@ -2,14 +2,8 @@ import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { exclusiveConsumerOwnershipHardBondRule } from "@better-typescript/matchers/builtins/architectureExplore/exclusiveConsumerOwnershipHardBondRule"
 import { emptySemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/emptySemanticModuleHardBondRuleCatalog"
-import {
-  moduleFor,
-  proofBetween
-} from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleProofQueries"
-import { peersFor } from "@better-typescript/matchers/builtins/architectureExplore/peersFor"
-import { semanticReferenceCycleHardBondRule } from "@better-typescript/matchers/builtins/architectureExplore/semanticReferenceCycleHardBondRule"
+import { semanticModuleEngine } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine"
 import type { SemanticModuleEntityKey } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEntityKey"
 import type { SemanticModuleHardBondRule } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleHardBondRule"
 import type { SemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleHardBondRuleCatalog"
@@ -40,6 +34,14 @@ import { neutralReferenceCatalog } from "./semanticModulesNeutralReferenceCatalo
 import { normalizationFixturePath } from "./semanticModulesNormalizationFixturePath.js"
 import { parserRecoverySnapshot } from "./semanticModulesParserRecoverySnapshot.js"
 import { triangleFixturePath } from "./semanticModulesTriangleFixturePath.js"
+
+test("exposes one semantic module engine seam", () => {
+  assert.equal(typeof semanticModuleEngine.buildSemanticModuleSnapshot, "function")
+  assert.equal(typeof semanticModuleEngine.semanticModulePlacementMatcher, "function")
+  assert.equal(typeof semanticModuleEngine.moduleFor, "function")
+  assert.equal(typeof semanticModuleEngine.peersFor, "function")
+  assert.equal(typeof semanticModuleEngine.proofBetween, "function")
+})
 
 test("normalizes basic declarations into a portable singleton snapshot", async () => {
   const snapshot = await fixtureSnapshot()
@@ -84,10 +86,19 @@ test("queries singleton membership without compiler state", async () => {
 
   assert.ok(firstKey !== undefined)
   assert.ok(secondKey !== undefined)
-  assert.deepEqual(Option.getOrThrow(moduleFor(firstKey)(snapshot)), expectedModules[0])
-  assert.deepEqual(Option.getOrThrow(peersFor(firstKey)(snapshot)), [])
-  assert.deepEqual(Option.getOrThrow(proofBetween(firstKey, firstKey)(snapshot)), [])
-  assert.equal(Option.isNone(proofBetween(firstKey, secondKey)(snapshot)), true)
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(firstKey)(snapshot)),
+    expectedModules[0]
+  )
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.peersFor(firstKey)(snapshot)), [])
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.proofBetween(firstKey, firstKey)(snapshot)),
+    []
+  )
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(firstKey, secondKey)(snapshot)),
+    true
+  )
 
   const unknownKey: SemanticModuleEntityKey = {
     path: "src/unknown.ts",
@@ -96,10 +107,16 @@ test("queries singleton membership without compiler state", async () => {
     syntaxKind: ts.SyntaxKind.FunctionDeclaration
   }
 
-  assert.equal(Option.isNone(moduleFor(unknownKey)(snapshot)), true)
-  assert.equal(Option.isNone(peersFor(unknownKey)(snapshot)), true)
-  assert.equal(Option.isNone(proofBetween(firstKey, unknownKey)(snapshot)), true)
-  assert.equal(Option.isNone(proofBetween(unknownKey, unknownKey)(snapshot)), true)
+  assert.equal(Option.isNone(semanticModuleEngine.moduleFor(unknownKey)(snapshot)), true)
+  assert.equal(Option.isNone(semanticModuleEngine.peersFor(unknownKey)(snapshot)), true)
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(firstKey, unknownKey)(snapshot)),
+    true
+  )
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(unknownKey, unknownKey)(snapshot)),
+    true
+  )
 })
 
 test("normalizes every declaration family and excludes ambient candidates", async () => {
@@ -229,9 +246,15 @@ test("closes same-symbol hard bonds and coalesces exact duplicates", async () =>
     true
   )
 
-  const boxModule = Option.getOrThrow(moduleFor(keyByLabel(resolved)("box-value"))(snapshot))
-  const tokenModule = Option.getOrThrow(moduleFor(keyByLabel(resolved)("token-type"))(snapshot))
-  const codecModule = Option.getOrThrow(moduleFor(keyByLabel(resolved)("codec-function"))(snapshot))
+  const boxModule = Option.getOrThrow(
+    semanticModuleEngine.moduleFor(keyByLabel(resolved)("box-value"))(snapshot)
+  )
+  const tokenModule = Option.getOrThrow(
+    semanticModuleEngine.moduleFor(keyByLabel(resolved)("token-type"))(snapshot)
+  )
+  const codecModule = Option.getOrThrow(
+    semanticModuleEngine.moduleFor(keyByLabel(resolved)("codec-function"))(snapshot)
+  )
 
   assert.equal(boxModule.members.length, 2)
   assert.equal(tokenModule.members.length, 2)
@@ -275,18 +298,23 @@ test("infers cycle and exclusive-consumer neutral hard bonds", async () => {
   const aliasConsumer = keyByLabel(resolved)("aliasConsumer")
   const aliasedHelper = keyByLabel(resolved)("aliasedHelper")
 
-  assert.deepEqual(Option.getOrThrow(moduleFor(isEven)(snapshot)).members, [isEven, isOdd])
-  assert.deepEqual(Option.getOrThrow(moduleFor(service)(snapshot)).members, [service, client])
-  assert.deepEqual(Option.getOrThrow(moduleFor(trimOrderId)(snapshot)).members, [
-    trimOrderId,
-    normalizeOrder,
-    parseOrder
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.moduleFor(isEven)(snapshot)).members, [
+    isEven,
+    isOdd
   ])
-  assert.deepEqual(Option.getOrThrow(peersFor(unownedHelper)(snapshot)), [])
-  assert.deepEqual(Option.getOrThrow(moduleFor(aliasConsumer)(snapshot)).members, [
-    aliasConsumer,
-    aliasedHelper
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.moduleFor(service)(snapshot)).members, [
+    service,
+    client
   ])
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(trimOrderId)(snapshot)).members,
+    [trimOrderId, normalizeOrder, parseOrder]
+  )
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.peersFor(unownedHelper)(snapshot)), [])
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(aliasConsumer)(snapshot)).members,
+    [aliasConsumer, aliasedHelper]
+  )
   assert.equal(
     Array.countBy(snapshot.acceptedBonds, (bond) => bond.key.ruleId === "semantic-reference-cycle"),
     1
@@ -330,7 +358,7 @@ test("ignores reference consumers outside the matcher scope", async () => {
     Option.getOrThrow
   )
 
-  assert.deepEqual(Option.getOrThrow(peersFor(aliasedHelper)(snapshot)), [])
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.peersFor(aliasedHelper)(snapshot)), [])
 })
 
 test("retains accepted redundant bonds while proving unique forest paths", async () => {
@@ -339,16 +367,21 @@ test("retains accepted redundant bonds while proving unique forest paths", async
   const pointX = keyByLabel(resolved)("point-x")
   const pointY = keyByLabel(resolved)("point-y")
   const pointNamespace = keyByLabel(resolved)("point-namespace")
-  const module = Option.getOrThrow(moduleFor(pointX)(snapshot))
+  const module = Option.getOrThrow(semanticModuleEngine.moduleFor(pointX)(snapshot))
 
   assert.deepEqual(module.members, resolved.modules[0])
   assert.equal(snapshot.acceptedBonds.length, 3)
   assert.equal(module.forestBondKeys.length, 2)
-  assert.deepEqual(Option.getOrThrow(proofBetween(pointX, pointX)(snapshot)), [])
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.proofBetween(pointX, pointX)(snapshot)),
+    []
+  )
 
-  const forward = Option.getOrThrow(proofBetween(pointX, pointY)(snapshot))
-  const reverse = Option.getOrThrow(proofBetween(pointY, pointX)(snapshot))
-  const across = Option.getOrThrow(proofBetween(pointX, pointNamespace)(snapshot))
+  const forward = Option.getOrThrow(semanticModuleEngine.proofBetween(pointX, pointY)(snapshot))
+  const reverse = Option.getOrThrow(semanticModuleEngine.proofBetween(pointY, pointX)(snapshot))
+  const across = Option.getOrThrow(
+    semanticModuleEngine.proofBetween(pointX, pointNamespace)(snapshot)
+  )
 
   assert.equal(forward.length > 0, true)
   assert.equal(reverse.length, forward.length)
@@ -369,12 +402,12 @@ test("retains accepted redundant bonds while proving unique forest paths", async
     true
   )
 
-  const peers = Option.getOrThrow(peersFor(pointX)(snapshot))
+  const peers = Option.getOrThrow(semanticModuleEngine.peersFor(pointX)(snapshot))
 
   assert.deepEqual(peers, [pointY, pointNamespace])
   assert.equal(
     Option.isNone(
-      proofBetween(pointX, {
+      semanticModuleEngine.proofBetween(pointX, {
         path: "src/missing.ts",
         start: 0,
         end: 1,
@@ -410,8 +443,11 @@ test("suppresses production and test barrier candidates without merging", async 
   const sharedProd = keyByLabel(resolved)("shared-prod")
   const sharedTest = keyByLabel(resolved)("shared-test")
 
-  assert.equal(Option.isNone(proofBetween(sharedProd, sharedTest)(snapshot)), true)
-  assert.deepEqual(Option.getOrThrow(peersFor(sharedProd)(snapshot)), [])
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(sharedProd, sharedTest)(snapshot)),
+    true
+  )
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.peersFor(sharedProd)(snapshot)), [])
   assert.equal(Object.isFrozen(snapshot.suppressedBonds), true)
   assert.equal(Array.every(snapshot.suppressedBonds, Object.isFrozen), true)
 
@@ -469,9 +505,15 @@ test("applies explicit paradigm catalog bonds without defaulting the catalog", a
   assert.equal(snapshot.acceptedBonds.length, 1)
   assert.equal(snapshot.acceptedBonds[0]?.key.ruleId, "test-companion-pair")
   assert.equal(snapshot.acceptedBonds[0]?.evidence._tag, "test-companion-pair")
-  assert.deepEqual(Option.getOrThrow(moduleFor(user)(snapshot)).members, [user, makeUser])
-  assert.deepEqual(Option.getOrThrow(peersFor(user)(snapshot)), [makeUser])
-  assert.equal(Option.getOrThrow(proofBetween(user, makeUser)(snapshot)).length, 1)
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.moduleFor(user)(snapshot)).members, [
+    user,
+    makeUser
+  ])
+  assert.deepEqual(Option.getOrThrow(semanticModuleEngine.peersFor(user)(snapshot)), [makeUser])
+  assert.equal(
+    Option.getOrThrow(semanticModuleEngine.proofBetween(user, makeUser)(snapshot)).length,
+    1
+  )
 })
 
 test("rejects paradigm evidence that does not match its rule schema", async () => {
@@ -529,10 +571,22 @@ test("isolates snapshots when Programs reuse portable entity keys", async () => 
   assert.ok(sharedIsolated !== undefined)
   assert.ok(firstPeer !== undefined)
   assert.deepEqual(sharedIsolated.key, sharedFirst.key)
-  assert.equal(Option.getOrThrow(moduleFor(sharedFirst.key)(first)).members.length, 3)
-  assert.equal(Option.getOrThrow(moduleFor(sharedIsolated.key)(isolated)).members.length, 1)
-  assert.equal(Option.isSome(proofBetween(sharedFirst.key, firstPeer.key)(first)), true)
-  assert.equal(Option.isNone(proofBetween(sharedIsolated.key, firstPeer.key)(isolated)), true)
+  assert.equal(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(sharedFirst.key)(first)).members.length,
+    3
+  )
+  assert.equal(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(sharedIsolated.key)(isolated)).members.length,
+    1
+  )
+  assert.equal(
+    Option.isSome(semanticModuleEngine.proofBetween(sharedFirst.key, firstPeer.key)(first)),
+    true
+  )
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(sharedIsolated.key, firstPeer.key)(isolated)),
+    true
+  )
   assert.deepEqual(isolated.acceptedBonds, [])
   assert.equal(JSON.stringify(repeated), JSON.stringify(first))
 })
@@ -565,7 +619,7 @@ test("preserves membership and proof topology across portable label remapping", 
 
     const left = keyByLabel(resolved)("point-x")
     const right = keyByLabel(resolved)("point-namespace")
-    const proof = Option.getOrThrow(proofBetween(left, right)(snapshot))
+    const proof = Option.getOrThrow(semanticModuleEngine.proofBetween(left, right)(snapshot))
     const normalizedProof = Array.map(proof, (step) => {
       const evidence = pipe(
         snapshot.acceptedBonds,
@@ -681,5 +735,8 @@ test("adds only cycle bonds when one edge closes an SCC", async () => {
   assert.deepEqual(before, [])
   assert.deepEqual(after, ["semantic-reference-cycle:first:second"])
   assert.deepEqual(added, after)
-  assert.equal(Option.getOrThrow(proofBetween(first, second)(cyclic)).length, 1)
+  assert.equal(
+    Option.getOrThrow(semanticModuleEngine.proofBetween(first, second)(cyclic)).length,
+    1
+  )
 })
