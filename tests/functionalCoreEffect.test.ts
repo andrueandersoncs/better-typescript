@@ -1,9 +1,11 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { ArchitectureRolePath } from "@better-typescript/guidance/architectureRolePath"
-import { conventionalArchitectureRoleOf } from "@better-typescript/guidance/conventionalArchitectureRoleOf"
-import { roleByPrefixes } from "@better-typescript/guidance/roleByPrefixes"
-import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
+import {
+  defaultFunctionalCoreEffectPolicy,
+  roleByPrefixes
+} from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
+import { ArchitectureRolePath } from "@better-typescript/matchers/support/architectureRolePath"
+import { conventionalArchitectureRoleOf } from "@better-typescript/matchers/support/conventionalArchitectureRoleOf"
 import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring

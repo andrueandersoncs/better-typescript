@@ -5,13 +5,13 @@ import { makeMergedWiring } from "@better-typescript/core/engine/wiring/makeMerg
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
 import { architectureExplorePolicies } from "@better-typescript/guidance/architectureExplore/architectureExplorePolicies"
-import { ArchitectureRolePath } from "@better-typescript/guidance/architectureRolePath"
-import { conventionalArchitectureRoleOf } from "@better-typescript/guidance/conventionalArchitectureRoleOf"
-import { roleByPrefixes } from "@better-typescript/guidance/roleByPrefixes"
 import {
   defaultFunctionalCoreEffectPolicy,
-  FunctionalCoreEffectPolicy
-} from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
+  roleByPrefixes
+} from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
+import { FunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyClass"
+import { ArchitectureRolePath } from "@better-typescript/matchers/support/architectureRolePath"
+import { conventionalArchitectureRoleOf } from "@better-typescript/matchers/support/conventionalArchitectureRoleOf"
 import { makeFunctionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
 
 // This example is documentation for the opt-in architecture fleets. Copy it to

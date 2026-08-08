@@ -27,12 +27,12 @@ import { highSignalDensity } from "../derive/highSignalDensity.js"
 import { ruleDominance } from "../derive/ruleDominance.js"
 import { sideEffectLaundering } from "../derive/sideEffectLaundering.js"
 import { hotSubsystem } from "../hotSubsystem/hotSubsystem.js"
+import { ImperativeStateSignals } from "../imperativeStateManager/data.js"
 import { imperativeStateManager } from "../imperativeStateManager/imperativeStateManager.js"
-import { ImperativeStateManagerInput } from "../imperativeStateManager/imperativeStateManagerInput.js"
 import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
+import { PipelineSignals } from "../pipelineHostile/data.js"
 import { pipelineHostile } from "../pipelineHostile/pipelineHostile.js"
-import { PipelineHostileInput } from "../pipelineHostile/pipelineHostileInput.js"
 import { factGuidance } from "../policyGuidance.js"
 import { SystemicSignals } from "../systemicHotspots/data.js"
 import { systemicHotspots } from "../systemicHotspots/systemicHotspots.js"
@@ -3064,8 +3064,8 @@ export const defaultPolicyCatalog = pipe(
 )
 
 const materializeSpecificAdvice = (
-  imperativeInput: ImperativeStateManagerInput,
-  pipelineInput: PipelineHostileInput,
+  imperativeInput: ImperativeStateSignals,
+  pipelineInput: PipelineSignals,
   namedElements: ReadonlyArray<NamedDetection>,
   conceptSignals: ReadonlyArray<Signal["detections"][number]>
 ): ReadonlyArray<Advice> => {
@@ -3090,7 +3090,7 @@ export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): ReadonlyA
   const preferCurried = elementsOf("prefer-curried-data-last-functions")
   const conceptSignals = elementsOf("concept-control")
 
-  const imperativeInput = new ImperativeStateManagerInput({
+  const imperativeInput = ImperativeStateSignals.make({
     noMutation,
     preferHashMap,
     preferHashSet,
@@ -3098,7 +3098,7 @@ export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): ReadonlyA
     noMutableVariableDeclarations
   })
 
-  const pipelineInput = new PipelineHostileInput({
+  const pipelineInput = PipelineSignals.make({
     noNestedCalls,
     preferCurriedDataLastFunctions: preferCurried
   })

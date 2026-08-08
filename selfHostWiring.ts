@@ -1,7 +1,7 @@
 import { makeMergedWiring } from "@better-typescript/core/engine/wiring/makeMergedWiring"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import { ArchitectureRolePath } from "@better-typescript/guidance/architectureRolePath"
 import { policyWithRolePrefixes } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
+import { ArchitectureRolePath } from "@better-typescript/matchers/support/architectureRolePath"
 import { makeFunctionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
 import { architectureExploreDerive } from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
 import { effectQualityDerive } from "@better-typescript/guidance/effectQuality/advice"

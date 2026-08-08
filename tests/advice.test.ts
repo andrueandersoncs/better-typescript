@@ -2,13 +2,13 @@ import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { highSignalDensity } from "@better-typescript/guidance/derive/highSignalDensity"
 import { hotSubsystem } from "@better-typescript/guidance/hotSubsystem/hotSubsystem"
+import { ImperativeStateSignals } from "@better-typescript/guidance/imperativeStateManager/data"
 import { imperativeStateManager } from "@better-typescript/guidance/imperativeStateManager/imperativeStateManager"
-import { pipelineHostile } from "@better-typescript/guidance/pipelineHostile/pipelineHostile"
 import { ruleDominance } from "@better-typescript/guidance/derive/ruleDominance"
 import { sideEffectLaundering } from "@better-typescript/guidance/derive/sideEffectLaundering"
 import { systemicHotspots } from "@better-typescript/guidance/systemicHotspots/systemicHotspots"
-import { ImperativeStateManagerInput } from "@better-typescript/guidance/imperativeStateManager/imperativeStateManagerInput"
-import { PipelineHostileInput } from "@better-typescript/guidance/pipelineHostile/pipelineHostileInput"
+import { PipelineSignals } from "@better-typescript/guidance/pipelineHostile/data"
+import { pipelineHostile } from "@better-typescript/guidance/pipelineHostile/pipelineHostile"
 import { SystemicSignals } from "@better-typescript/guidance/systemicHotspots/data"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
 import { Location } from "@better-typescript/core/engine/location/locationData"
@@ -29,7 +29,7 @@ test("imperativeStateManager fires on shared-state mutation density", () => {
     signalAt("src/state/manager.ts", 21)
   ]
   const advice = imperativeStateManager(
-    new ImperativeStateManagerInput({
+    ImperativeStateSignals.make({
       noMutation: mutations,
       preferHashMap: hashMapSignals,
       preferHashSet: emptyDetections,
@@ -56,7 +56,7 @@ test("imperativeStateManager ignores local mutations and below-threshold shared 
 
   assert.deepEqual(
     imperativeStateManager(
-      new ImperativeStateManagerInput({
+      ImperativeStateSignals.make({
         noMutation: localMutations,
         preferHashMap: emptyDetections,
         preferHashSet: emptyDetections,
@@ -68,7 +68,7 @@ test("imperativeStateManager ignores local mutations and below-threshold shared 
   )
   assert.deepEqual(
     imperativeStateManager(
-      new ImperativeStateManagerInput({
+      ImperativeStateSignals.make({
         noMutation: fewSharedMutations,
         preferHashMap: emptyDetections,
         preferHashSet: emptyDetections,
@@ -122,7 +122,7 @@ test("pipelineHostile combines nested-call and uncurried-helper signals", () => 
   const nested = range(5).map((line) => signalAt("src/fold.ts", line))
   const uncurried = range(5).map((line) => signalAt("src/fold.ts", line + 10))
   const advice = pipelineHostile(
-    new PipelineHostileInput({
+    PipelineSignals.make({
       noNestedCalls: nested,
       preferCurriedDataLastFunctions: uncurried
     })
