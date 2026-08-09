@@ -15,14 +15,10 @@ commit changes unless the maintainer explicitly asks for that in a later request
 Start from: “I do not like this code pattern in code Better TypeScript was applied to.” End with a
 small, reviewable plan that chooses deliberately among:
 
-- refactoring the observed code without changing the analyzer;
 - adding a check;
 - updating a check;
 - deleting or merging checks;
-- changing derived advice; or
-- keeping the default preset unchanged and using explicit project wiring.
-
-Do not assume that every disliked pattern should become a default rule.
+- changing derived advice;
 
 ## 1. Establish the candidate policy
 
@@ -30,52 +26,33 @@ Turn the observation into a precise proposed invariant. Capture:
 
 - a minimal example of the disliked pattern;
 - the desired replacement or desired code shape;
-- why it is undesirable (correctness, architecture, Effect idiom, performance, maintainability, or
-  consistency);
-- the closest similar examples that must remain allowed; and
-- whether the maintainer wants Better TypeScript to report it, change aggregate guidance about it,
-  or merely refactor the current code.
+- why it is undesirable;
+- the closest similar examples that must remain allowed;
 
-If the input does not contain enough information to state the invariant, inspect the cited code and
-report/output first. Ask only for the remaining material decision; do not invent a policy boundary.
+If the input does not contain enough information to state the invariant, inspect the cited code first. Ask only for the remaining material decision; do not invent a policy boundary.
 
-## 2. Establish evidence and a clean starting point
+## 2. Locate the owning behavior
 
-1. Record the current branch and worktree state. Do not attribute existing changes or signals to the
-   proposal.
-2. Run Better TypeScript on the relevant project with the exact command, project root,
-   `tsconfig.json`, and optional `better-typescript.config.ts`. Preserve the relevant emitted
-   blocks, including rule/advice name, location, message, hint, remediation, and evidence.
-3. Before a future TypeScript implementation begins, establish the required clean self-hosting
-   baseline with `bun run dev`; its initial report must be `No signals`. If it is not
-   clean, flag that as an implementation blocker rather than silently absorbing unrelated findings.
-
-When a project-specific configuration is relevant, distinguish the built-in preset from that
-project's explicit wiring. Better TypeScript intentionally has no per-check options, severities, or
-suppressions.
-
-## 3. Locate the owning behavior
-
-Read the check modules in `src/checks/`, especially each check's emitted message and hint, then
-inspect the closest matcher and its fixture/test. Search by domain concept as well as by rule name
-so an existing rule is not duplicated.
+Read the relevant Policy definitions in `packages/guidance/src/` and their Matchers in
+`packages/matchers/src/`. Inspect each Policy's Detection message and hint, then its Matcher and
+example/test coverage. Search by domain concept and Policy name so existing ownership is not
+duplicated.
 
 Determine whether the behavior comes from:
 
-- a local reported `Check`;
-- a silent evidence check;
-- aggregate `Advice` in `defaultDerive`; or
-- a configuration choice.
+- a reported Policy that emits visible Detections;
+- a silent Policy that supplies derivation evidence;
+- Advice emitted by the owning `derive` function, including `defaultDerive`; or
+- a Wiring configuration choice.
 
-Read 2–3 closest check implementations and the corresponding examples in `@repos/effect/` before
-proposing TypeScript changes. Preserve type, import, first-party/external, ambient, and other
-semantic boundary facts from the real example; textual resemblance alone is not enough.
+Read 2–3 closest Policy, Matcher, and derivation implementations before proposing TypeScript changes.
 
-Also audit overlap and derivation effects. Checks must not depend on one another; cross-check
-interpretation belongs in `defaultDerive`. A change in a reported rule's count, locations,
-visibility, or name can change density, dominance, hot-subsystem, collision, and systemic advice.
+Also audit overlap and derivation effects. Policies must not depend on one another; cross-Policy
+interpretation belongs in the owning `derive` function. Changing a Policy's Detection count,
+locations, reported state, or name can change Signals and therefore density, dominance,
+hot-subsystem, collision, and systemic Advice.
 
-## 4. Choose one remediation shape
+## 3. Choose one remediation shape
 
 Use this decision table and state the reason for the choice:
 
@@ -91,7 +68,7 @@ Use this decision table and state the reason for the choice:
 A default check must have a clear rationale, a predictable boundary, and an actionable hint.
 Otherwise, prefer a refactor or an investigation plan.
 
-## 5. Specify executable acceptance criteria
+## 4. Specify executable acceptance criteria
 
 Turn the actual example into a compiling fixture before implementation:
 
@@ -103,7 +80,7 @@ Specify exact expected locations, messages, and hints. The direct check test mus
 complete detection set, not only the desired detection. If the proposal changes advice, define the
 advice title, remediation/evidence, and the threshold boundary in an advice/default-derive test.
 
-## 6. Write the file-level implementation plan
+## 5. Write the file-level implementation plan
 
 For each action, name the expected files and responsibility:
 
@@ -124,7 +101,7 @@ advice level, path, and title form advice identity. A rename, rewording, deletio
 reported/silent change is a deliberate compatibility decision and needs affected report, CLI, and
 watch tests.
 
-## 7. Define verification and handoff
+## 6. Define verification and handoff
 
 List verification in this order:
 
