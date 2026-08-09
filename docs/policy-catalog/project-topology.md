@@ -33,9 +33,21 @@
 
 ## Self-hosting
 
-`better-typescript.config.ts` applies default plus functional-core wiring to every package source,
-Effect-quality wiring to every package source, and Architecture Explore wiring to package sources,
-configuration, and tests.
+`better-typescript.config.ts` applies one reporting-only Wiring to every package source.
+
+Disabled checks:
+
+- `prefer-curried-data-last-functions`
+- `effect-quality-advice-evidence`
+- `functional-core-effect-shape-evidence`
+- Architecture Explore: `pass-through-wrappers`, `interface-burden`, `module-graph`,
+  `test-only-exports`, `seam-leakage-evidence`, `import-usage`, `module-identity`,
+  `export-surface`, `external-dependency-construction`, `single-adapter-seams`,
+  `composition-forwarders`, `module-scope-effects`, `context-tag-seams`,
+  `composition-fingerprints`, `semantic-module-placement`
+
+The Wiring also emits no derived Advice. These checks and Advice derivations remain available to
+explicit consumer configurations.
 
 ## Catalog boundary
 

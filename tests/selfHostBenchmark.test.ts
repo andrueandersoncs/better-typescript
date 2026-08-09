@@ -10,36 +10,32 @@ import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../bench/selfHost
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.dirname(testDirectory)
 
-test("self-host benchmark runs the built CLI with every enrolled Policy", async () => {
+test("self-host benchmark runs only reporting policies", async () => {
   const target = await selfHostBenchmarkTarget(repoRoot)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
-  assert.equal(target.checkNames.length, 102)
+  assert.equal(target.checkNames.length, 84)
   assert.ok(target.checkNames.includes("no-unused"))
-  assert.ok(target.checkNames.includes("no-value-aliases"))
-  assert.ok(target.checkNames.includes("prefer-effectful-function"))
-  assert.ok(target.checkNames.includes("prefer-inferred-types"))
-  assert.ok(target.checkNames.includes("prefer-result-concept-names"))
-  assert.ok(target.checkNames.includes("require-predicate-name-consistency"))
-  assert.ok(target.checkNames.includes("require-construction-name-consistency"))
-  assert.ok(target.checkNames.includes("require-lookup-totality-name-consistency"))
-  assert.ok(target.checkNames.includes("require-result-cardinality-name-consistency"))
-  assert.ok(target.checkNames.includes("require-result-shape-name-consistency"))
-  assert.ok(target.checkNames.includes("require-conversion-direction-consistency"))
-  assert.ok(target.checkNames.includes("require-command-name-consistency"))
-  assert.ok(target.checkNames.includes("require-callable-role-name-consistency"))
-  assert.ok(target.checkNames.includes("prefer-specific-operation-names"))
+  assert.ok(target.checkNames.includes("effect-quality-rules"))
   assert.ok(target.checkNames.includes("functional-core-effect-boundaries"))
-  assert.ok(target.checkNames.includes("composition-fingerprints"))
-  assert.ok(target.checkNames.includes("semantic-module-placement"))
-  assert.ok(target.checkNames.includes("prefer-composed-callbacks"))
+  assert.equal(target.checkNames.includes("composition-fingerprints"), false)
+  assert.equal(target.checkNames.includes("semantic-module-placement"), false)
+  assert.equal(target.checkNames.includes("effect-quality-advice-evidence"), false)
+  assert.equal(target.checkNames.includes("functional-core-effect-shape-evidence"), false)
 })
 
-test("every self-host wiring covers every package source tree", () => {
-  assert.equal(selfHostConfig.length, 3)
+test("self-host configuration uses one reporting-only wiring", () => {
+  assert.equal(selfHostConfig.length, 1)
   assert.ok(
     selfHostConfig.every((entry) => entry.files.includes("packages/*/src/**")),
     "every self-host wiring must cover packages/*/src/**"
+  )
+  assert.ok(
+    selfHostConfig.flatMap((entry) => entry.wiring.policies).every((policy) => policy.reported)
+  )
+  assert.deepEqual(
+    selfHostConfig.flatMap((entry) => entry.wiring.derive([])),
+    []
   )
 })
 
