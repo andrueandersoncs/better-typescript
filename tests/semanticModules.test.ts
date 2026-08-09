@@ -240,8 +240,7 @@ test("closes same-symbol hard bonds and coalesces exact duplicates", async () =>
     Array.every(
       snapshot.acceptedBonds,
       (bond) =>
-        bond.key.ruleId === "same-symbol-ownership" &&
-        bond.evidence._tag === "same-symbol-ownership"
+        bond.key.ruleId === "same-symbol-ownership" && bond.evidence.ruleId === bond.key.ruleId
     ),
     true
   )

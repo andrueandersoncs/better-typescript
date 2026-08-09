@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "bun:test"
-import { Effect, Function, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { workspaceSignalsForProjects } from "@better-typescript/core/engine/reportPipeline"
 import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"
@@ -142,7 +142,7 @@ test("decoded glob config drives workspace signals end to end", async () => {
       makeContext(project.rootPath)(project.program)
     )
     const wiringSignals = await Effect.runPromise(
-      workspaceSignalsForProjects(config)(workspace.rootPath)(contexts)(Function.identity)
+      workspaceSignalsForProjects(config)(workspace.rootPath)(contexts)
     )
 
     assert.equal(wiringSignals[0]?.matched, true)

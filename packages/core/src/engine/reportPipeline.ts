@@ -75,7 +75,7 @@ export const evidenceText = (item: EvidenceItem) => `  evidence: ${item.measure}
 const adviceLevelRanks = { file: 0, directory: 1, project: 2 } as const
 const zeroAdviceLevelRank = Function.constant(0)
 
-export const adviceLevelRank = (advice: Advice) =>
+const adviceLevelRank = (advice: Advice) =>
   pipe(Record.get(adviceLevelRanks, advice.level), Option.getOrElse(zeroAdviceLevelRank))
 
 const byAdviceLevel = Order.mapInput(Order.Number, adviceLevelRank)
@@ -767,8 +767,7 @@ const makeWiringSignalsForEntry =
 export const workspaceSignalsForProjects =
   (config: WiringConfig) =>
   (workspaceRoot: string) =>
-  <A>(projects: ReadonlyArray<A>) =>
-  (toContext: (project: A) => ProgramContext): Effect.Effect<ReadonlyArray<WiringSignals>> => {
+  (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> => {
     const matchersByWiring = Array.map(config, matchersForEntry)
     const seenByWiring = Array.map(config, emptySeenBuckets)
     const elementsByWiring = Array.map(config, emptyElementBuckets)
@@ -786,10 +785,10 @@ export const workspaceSignalsForProjects =
     const matchedWiringIndexes = pipe(HashMap.empty<number, true>(), HashMap.beginMutation)
     const collectMatch = collectSourceMatch(workspaceFilesByWiring, matchedWiringIndexes)
 
-    const collectProject = Effect.fn("Wiring.collectProject")(function* (project: A) {
+    const collectProject = Effect.fn("Wiring.collectProject")(function* (
+      loadedContext: ProgramContext
+    ) {
       yield* Effect.sync(() => {
-        const loadedContext = toContext(project)
-
         // Contexts re-root here because evidence compares paths across the workspace.
         const context = ProgramContext.make({
           program: loadedContext.program,
@@ -833,7 +832,7 @@ export const workspaceSignalsForProjects =
     })
 
     return pipe(
-      Effect.forEach(projects, collectProject, { discard: true }),
+      Effect.forEach(contexts, collectProject, { discard: true }),
       Effect.map(() => {
         collectWorkspacePolicyDetections(
           workspaceRoot,
@@ -855,10 +854,7 @@ export const workspaceSignalsForProjects =
 
 const reportEventsForResolver = (config: WiringConfig) => (update: WorkspaceUpdate) =>
   Effect.fn("Watch.reportEventsForResolver")(function* (resolve: ResolveRefactorExamples) {
-    const signals = yield* workspaceSignalsForProjects(config)(update.rootPath)(update.contexts)(
-      Function.identity
-    )
-
+    const signals = yield* workspaceSignalsForProjects(config)(update.rootPath)(update.contexts)
     const blocks = yield* batchReportBlocks(config)(resolve)(signals)
 
     return initialReportEvents(update.rootPath)(blocks)

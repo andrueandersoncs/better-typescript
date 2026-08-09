@@ -1,5 +1,4 @@
-import { Array } from "effect"
-import type { Policy } from "@better-typescript/core/engine/policy/policyClass"
+import { Tuple } from "effect"
 import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 import { externalDependencyConstruction as externalDependencyConstructionMatcher } from "@better-typescript/matchers/builtins/externalDependencyConstruction"
@@ -23,7 +22,7 @@ export const singleAdapterSeams = makeSilentBuiltinPolicy(
   )
 )
 
-export const architectureExploreOopPolicies: ReadonlyArray<Policy> = Array.make(
+export const architectureExploreOopPolicies = Tuple.make(
   externalDependencyConstruction,
   singleAdapterSeams
 )

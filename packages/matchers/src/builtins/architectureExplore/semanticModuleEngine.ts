@@ -84,69 +84,72 @@ import type { UnownedSemanticReferenceWitness } from "./unownedSemanticReference
 import { unownedSemanticReferenceWitnessSchema } from "./unownedSemanticReferenceWitnessSchema.js"
 import { variableSymbols } from "./variableSymbols.js"
 
-export const bondKeyLeftEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> =
-  Equivalence.mapInput(entityKeyEquivalence, Struct.get("left"))
+const bondKeyLeftEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> = Equivalence.mapInput(
+  entityKeyEquivalence,
+  Struct.get("left")
+)
 
-export const bondKeyRightEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> =
+const bondKeyRightEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> =
   Equivalence.mapInput(entityKeyEquivalence, Struct.get("right"))
 
-export const bondKeyRuleEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> =
-  Equivalence.mapInput(Equivalence.strictEqual<string>(), Struct.get("ruleId"))
+const bondKeyRuleEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> = Equivalence.mapInput(
+  Equivalence.strictEqual<string>(),
+  Struct.get("ruleId")
+)
 
-export const bondKeyEvidenceEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> =
+const bondKeyEvidenceEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> =
   Equivalence.mapInput(Equivalence.strictEqual<string>(), Struct.get("evidenceKey"))
 
-export const bondKeyEquivalences = Array.make(
+const bondKeyEquivalences = Array.make(
   bondKeyLeftEquivalence,
   bondKeyRightEquivalence,
   bondKeyRuleEquivalence,
   bondKeyEvidenceEquivalence
 )
 
-export const bondKeyEquivalence = Equivalence.combineAll(bondKeyEquivalences)
+const bondKeyEquivalence = Equivalence.combineAll(bondKeyEquivalences)
 
-export const bondKeyLeftOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
+const bondKeyLeftOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
   entityKeyOrder,
   Struct.get("left")
 )
 
-export const bondKeyRightOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
+const bondKeyRightOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
   entityKeyOrder,
   Struct.get("right")
 )
 
-export const bondKeyRuleOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
+const bondKeyRuleOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
   Order.String,
   Struct.get("ruleId")
 )
 
-export const bondKeyEvidenceOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
+const bondKeyEvidenceOrder: Order.Order<SemanticModuleBondKey> = Order.mapInput(
   Order.String,
   Struct.get("evidenceKey")
 )
 
-export const bondKeyOrders = Array.make(
+const bondKeyOrders = Array.make(
   bondKeyLeftOrder,
   bondKeyRightOrder,
   bondKeyRuleOrder,
   bondKeyEvidenceOrder
 )
 
-export const bondKeyOrder = Order.combineAll(bondKeyOrders)
+const bondKeyOrder = Order.combineAll(bondKeyOrders)
 
-export const emptySymbols: ReadonlyArray<ts.Symbol> = Array.empty()
-export const emptyIdentifierOption = Option.none<ts.Identifier>()
-export const noIdentifier = Function.constant(emptyIdentifierOption)
+const emptySymbols: ReadonlyArray<ts.Symbol> = Array.empty()
+const emptyIdentifierOption = Option.none<ts.Identifier>()
+const noIdentifier = Function.constant(emptyIdentifierOption)
 
-export const optionalDeclarationName = (
-  declaration: ts.FunctionDeclaration | ts.ClassDeclaration
-) => Option.fromNullishOr(declaration.name)
+const optionalDeclarationName = (declaration: ts.FunctionDeclaration | ts.ClassDeclaration) =>
+  Option.fromNullishOr(declaration.name)
 
-export const requiredDeclarationName = (
+const requiredDeclarationName = (
   declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration
 ) => Option.some(declaration.name)
 
-export const nestedDeclarationName = pipe(
+const nestedDeclarationName = pipe(
   EffectMatch.type<ts.Statement>(),
   EffectMatch.when(ts.isFunctionDeclaration, optionalDeclarationName),
   EffectMatch.when(ts.isClassDeclaration, optionalDeclarationName),
@@ -156,7 +159,7 @@ export const nestedDeclarationName = pipe(
   EffectMatch.orElse(noIdentifier)
 )
 
-export const symbolsForModule =
+const symbolsForModule =
   (checker: ts.TypeChecker) =>
   (sourceFile: ts.SourceFile) =>
   (declaration: ts.ModuleDeclaration | ts.NamespaceDeclaration): ReadonlyArray<ts.Symbol> => {
@@ -213,7 +216,7 @@ export const symbolsForModule =
     return dedupeSymbols(symbols)
   }
 
-export const symbolsForDeclaration =
+const symbolsForDeclaration =
   (checker: ts.TypeChecker) =>
   (sourceFile: ts.SourceFile) =>
   (declaration: EntityDeclaration): ReadonlyArray<ts.Symbol> =>
@@ -253,14 +256,14 @@ type BondRecord = {
   readonly evidence: SemanticModuleEvidence
 }
 
-export const freezeBondRecord = <A extends BondRecord>(bond: A): A => {
+const freezeBondRecord = <A extends BondRecord>(bond: A): A => {
   freezeBondKey(bond.key)
   freezeEvidence(bond.evidence)
 
   return Object.freeze(bond)
 }
 
-export const orderedEntityKeys = (
+const orderedEntityKeys = (
   left: SemanticModuleEntityKey,
   right: SemanticModuleEntityKey
 ): readonly [SemanticModuleEntityKey, SemanticModuleEntityKey] =>
@@ -276,10 +279,10 @@ export const SemanticModulePlacementData = Schema.Union(placementDataMembers)
 
 export type SemanticModulePlacementData = Schema.Schema.Type<typeof SemanticModulePlacementData>
 
-export const moduleFirstMember = (module: SemanticModuleRecord): SemanticModuleEntityKey =>
+const moduleFirstMember = (module: SemanticModuleRecord): SemanticModuleEntityKey =>
   pipe(module.members, Array.head, Option.getOrThrow)
 
-export const physicalPathsForMembers = (
+const physicalPathsForMembers = (
   members: ReadonlyArray<SemanticModuleEntityKey>
 ): ReadonlyArray<string> => pipe(members, Array.map(Struct.get("path")), uniqueSortedPaths)
 
@@ -295,27 +298,22 @@ const sourceFileHasWorkspacePath =
     return stringEquivalence(sourceWorkspacePath, workspacePath)
   }
 
-export const sourceFileByWorkspacePath =
-  (context: ProgramMatchContext) => (workspacePath: string) =>
-    Array.findFirst(context.sourceFiles, sourceFileHasWorkspacePath(context)(workspacePath))
+const sourceFileByWorkspacePath = (context: ProgramMatchContext) => (workspacePath: string) =>
+  Array.findFirst(context.sourceFiles, sourceFileHasWorkspacePath(context)(workspacePath))
 
 // SemanticReferenceKind aliases the kind schema because witnesses share one closed set.
 type SemanticReferenceKind = Schema.Schema.Type<typeof semanticReferenceKindSchema>
-const sameSymbolEvidenceTag = Schema.Literal("same-symbol-ownership")
-const sameSymbolEvidenceVersion = Schema.Literal(1)
 const sameSymbolEvidenceRule = Schema.Literal(sameSymbolOwnershipRuleId)
 
-// SameSymbolEvidence is closed because bond keys decode one ownership payload.
-export const SameSymbolEvidence = Schema.Struct({
-  _tag: sameSymbolEvidenceTag,
-  version: sameSymbolEvidenceVersion,
+// SameSymbolEvidence is closed because bond keys retain only reusable ownership semantics.
+const SameSymbolEvidence = Schema.Struct({
   ruleId: sameSymbolEvidenceRule,
-  symbolName: Schema.String,
   left: SemanticModuleEntityKey,
   right: SemanticModuleEntityKey
 })
 
-export interface SameSymbolEvidence extends Schema.Schema.Type<typeof SameSymbolEvidence> {}
+// SameSymbolEvidence keeps decoded endpoints typed because validation and freezing share them.
+interface SameSymbolEvidence extends Schema.Schema.Type<typeof SameSymbolEvidence> {}
 
 // semanticModuleEngine owns snapshot/placement because bonds and graph share one pipeline.
 const createSemanticModuleEngine = () => {
@@ -870,18 +868,14 @@ const createSemanticModuleEngine = () => {
 
   const sameSymbolEvidence = (
     left: SemanticModuleEntityKey,
-    right: SemanticModuleEntityKey,
-    symbolName: string
+    right: SemanticModuleEntityKey
   ): SemanticModuleEvidence => {
     const endpoints = orderedEntityKeys(left, right)
     const orderedLeft = Tuple.get(endpoints, 0)
     const orderedRight = Tuple.get(endpoints, 1)
 
     const evidence = decodeSameSymbolEvidence({
-      _tag: "same-symbol-ownership",
-      version: 1,
       ruleId: sameSymbolOwnershipRuleId,
-      symbolName,
       left: orderedLeft,
       right: orderedRight
     })
@@ -901,7 +895,7 @@ const createSemanticModuleEngine = () => {
         const symbolName = entry.symbol.getName()
         const evidenceKey = sameSymbolEvidenceKey(left, right, symbolName)
         const key = makeBondKey(left, right, sameSymbolOwnershipRuleId, evidenceKey)
-        const evidence = sameSymbolEvidence(left, right, symbolName)
+        const evidence = sameSymbolEvidence(left, right)
 
         return SemanticModuleAcceptedBondRecord.make({ key, evidence })
       })

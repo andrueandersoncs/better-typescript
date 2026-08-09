@@ -40,33 +40,37 @@ import { ModuleIdentityData } from "@better-typescript/matchers/builtins/moduleI
 import { PassThroughWrapperData } from "@better-typescript/matchers/builtins/passThroughWrappers"
 import { TestOnlyExportData } from "@better-typescript/matchers/builtins/testOnlyExports"
 import { SemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine.js"
-import { MixedPhysicalModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementMixedData.js"
-import { SplitSemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementSplitData.js"
-import type { SemanticModulePlacementModuleSlice as ModuleSlice } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementModuleSlice.js"
 import type { SemanticModulePlacementEntityRecord as PlacementEntity } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementEntityRecord.js"
+import { MixedPhysicalModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementMixedData.js"
+import type { SemanticModulePlacementModuleSlice as ModuleSlice } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementModuleSlice.js"
+import { SplitSemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementSplitData.js"
 
 import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
 import type { Policy } from "@better-typescript/core/engine/policy/policyClass"
 import type { SemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleHardBondRuleCatalog.js"
-import { makeArchitectureExplorePolicies } from "../preset/architectureExploreCorePolicies.js"
+import { architectureExploreCorePolicies } from "../preset/architectureExploreCorePolicies.js"
+import { makeArchitectureExplorePolicies } from "../preset/semanticModulePlacementPolicies.js"
+import { architectureExploreOopPolicies } from "../preset/architectureExploreOopPolicies.js"
+import { compositionFingerprints as compositionFingerprintsPolicy } from "../preset/compositionFingerprints.js"
+import { compositionForwarders as compositionForwardersPolicy } from "../preset/compositionForwarders.js"
+import { contextTagSeams as contextTagSeamsPolicy } from "../preset/contextTagSeams.js"
+import { moduleScopeEffects as moduleScopeEffectsPolicy } from "../preset/moduleScopeEffects.js"
 
 // Architecture Explore derive owns every adviser because exclusive ownership keeps one module.
 const makeArchitectureExploreExports = () => {
-  // Signal names are bound once because advisers and wirings must never re-spell them.
-  const passThroughWrappersName = "pass-through-wrappers"
-  const interfaceBurdenName = "interface-burden"
-  const moduleGraphName = "module-graph"
-  const testOnlyExportsName = "test-only-exports"
-  const seamLeakageEvidenceName = "seam-leakage-evidence"
-  const externalDependencyConstructionName = "external-dependency-construction"
-  const singleAdapterSeamsName = "single-adapter-seams"
-  const importUsageName = "import-usage"
-  const moduleIdentityName = "module-identity"
-  const exportSurfaceName = "export-surface"
-  const compositionForwardersName = "composition-forwarders"
-  const moduleScopeEffectsName = "module-scope-effects"
-  const contextTagSeamsName = "context-tag-seams"
-  const compositionFingerprintsName = "composition-fingerprints"
+  const [
+    passThroughWrappersPolicy,
+    interfaceBurdenPolicy,
+    moduleGraphPolicy,
+    testOnlyExportsPolicy,
+    seamLeakageEvidencePolicy,
+    importUsagePolicy,
+    moduleIdentityPolicy,
+    exportSurfacePolicy
+  ] = architectureExploreCorePolicies
+
+  const [externalDependencyConstructionPolicy, singleAdapterSeamsPolicy] =
+    architectureExploreOopPolicies
 
   // Evidence helpers stay with advisers because exclusive ownership keeps one Semantic Module.
   const deriveCheckedData = <A>(
@@ -131,7 +135,11 @@ const makeArchitectureExploreExports = () => {
   const isDeletableShallowness = (element: NamedDetection) =>
     isDeletableWrapper(element) || isDeletableComposition(element)
 
-  const shallownessNames = Array.make(passThroughWrappersName, compositionForwardersName)
+  const shallownessNames = Array.make(
+    passThroughWrappersPolicy.name,
+    compositionForwardersPolicy.name
+  )
+
   const isShallownessName = (name: string) => Array.contains(shallownessNames, name)
 
   const deriveDirectorySegments = (filePath: string): ReadonlyArray<string> => {
@@ -217,17 +225,17 @@ const makeArchitectureExploreExports = () => {
   ): ReadonlyArray<WorkspaceImportEdge> => {
     const isModuleIdentityElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(moduleIdentityName)
+      strictEqual(moduleIdentityPolicy.name)
     )
 
     const isModuleGraphElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(moduleGraphName)
+      strictEqual(moduleGraphPolicy.name)
     )
 
     const isImportUsageElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(importUsageName)
+      strictEqual(importUsagePolicy.name)
     )
 
     const identityElements = Array.filter(elements, isModuleIdentityElement)
@@ -353,7 +361,7 @@ const makeArchitectureExploreExports = () => {
 
     const isModuleGraphElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(moduleGraphName)
+      strictEqual(moduleGraphPolicy.name)
     )
 
     const graphElements = Array.filter(elements, isModuleGraphElement)
@@ -514,7 +522,7 @@ const makeArchitectureExploreExports = () => {
   ): ReadonlyArray<Advice> => {
     const isCompositionFingerprintElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(compositionFingerprintsName)
+      strictEqual(compositionFingerprintsPolicy.name)
     )
 
     const fingerprintElements = pipe(
@@ -585,7 +593,11 @@ const makeArchitectureExploreExports = () => {
   // hardToTestHotspot: collocated because exclusive ownership keeps one Semantic Module.
   const hardToTestHotspotExamples = makePackageExamples("hard-to-test-hotspot")
   const minimumConstructions = 2
-  const constructionNames = Array.make(externalDependencyConstructionName, moduleScopeEffectsName)
+
+  const constructionNames = Array.make(
+    externalDependencyConstructionPolicy.name,
+    moduleScopeEffectsPolicy.name
+  )
 
   const hardToTestAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
     const isConstructionName = (name: string) => Array.contains(constructionNames, name)
@@ -619,12 +631,12 @@ const makeArchitectureExploreExports = () => {
 
         const isExternalDependencyConstruction = flow(
           Struct.get<NamedDetection, "name">("name"),
-          strictEqual(externalDependencyConstructionName)
+          strictEqual(externalDependencyConstructionPolicy.name)
         )
 
         const isModuleScopeEffects = flow(
           Struct.get<NamedDetection, "name">("name"),
-          strictEqual(moduleScopeEffectsName)
+          strictEqual(moduleScopeEffectsPolicy.name)
         )
 
         const constructorCount = Array.countBy(atPath, isExternalDependencyConstruction)
@@ -632,12 +644,12 @@ const makeArchitectureExploreExports = () => {
         const location = Location.make({ path: filePath })
 
         const constructionItem = EvidenceItem.make({
-          measure: "external-dependency-construction",
+          measure: externalDependencyConstructionPolicy.name,
           count: constructorCount
         })
 
         const moduleScopeItem = EvidenceItem.make({
-          measure: "module-scope-effects",
+          measure: moduleScopeEffectsPolicy.name,
           count: moduleScopeCount
         })
 
@@ -669,12 +681,12 @@ const makeArchitectureExploreExports = () => {
 
     const isInterfaceBurdenElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(interfaceBurdenName)
+      strictEqual(interfaceBurdenPolicy.name)
     )
 
     const isModuleGraphElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(moduleGraphName)
+      strictEqual(moduleGraphPolicy.name)
     )
 
     const isProductionWorkspaceBurden = (data: InterfaceBurdenData) =>
@@ -803,12 +815,12 @@ const makeArchitectureExploreExports = () => {
   ): ReadonlyArray<Advice> => {
     const isSingleAdapterSeamsElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(singleAdapterSeamsName)
+      strictEqual(singleAdapterSeamsPolicy.name)
     )
 
     const isContextTagSeamsElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(contextTagSeamsName)
+      strictEqual(contextTagSeamsPolicy.name)
     )
 
     const hasPath = (filePath: string) =>
@@ -857,7 +869,11 @@ const makeArchitectureExploreExports = () => {
       )
 
       const location = Location.make({ path: filePath })
-      const seamItem = EvidenceItem.make({ measure: "single-adapter-seams", count: atPath.length })
+
+      const seamItem = EvidenceItem.make({
+        measure: singleAdapterSeamsPolicy.name,
+        count: atPath.length
+      })
 
       const evidence =
         deadCount > 0
@@ -888,17 +904,17 @@ const makeArchitectureExploreExports = () => {
   const invisibleAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
     const isModuleGraphElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(moduleGraphName)
+      strictEqual(moduleGraphPolicy.name)
     )
 
     const isImportUsageElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(importUsageName)
+      strictEqual(importUsagePolicy.name)
     )
 
     const isExportSurfaceElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(exportSurfaceName)
+      strictEqual(exportSurfacePolicy.name)
     )
 
     const moduleGraphPaths = pipe(
@@ -1006,7 +1022,7 @@ const makeArchitectureExploreExports = () => {
   const fileLeakAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
     const isSeamLeakageElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(seamLeakageEvidenceName)
+      strictEqual(seamLeakageEvidencePolicy.name)
     )
 
     const hasPath = (filePath: string) =>
@@ -1078,7 +1094,7 @@ const makeArchitectureExploreExports = () => {
   const directoryPairAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
     const isModuleGraphElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(moduleGraphName)
+      strictEqual(moduleGraphPolicy.name)
     )
 
     const graphElements = Array.filter(elements, isModuleGraphElement)
@@ -1160,7 +1176,7 @@ const makeArchitectureExploreExports = () => {
   const registrationAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
     const isImportUsageElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(importUsageName)
+      strictEqual(importUsagePolicy.name)
     )
 
     const usages = pipe(
@@ -1300,17 +1316,17 @@ const makeArchitectureExploreExports = () => {
   ): ReadonlyArray<Advice> => {
     const isTestOnlyExportElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(testOnlyExportsName)
+      strictEqual(testOnlyExportsPolicy.name)
     )
 
     const isSeamLeakageElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(seamLeakageEvidenceName)
+      strictEqual(seamLeakageEvidencePolicy.name)
     )
 
     const isExportSurfaceElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(exportSurfaceName)
+      strictEqual(exportSurfacePolicy.name)
     )
 
     const testOnlyExports = Array.filter(elements, isTestOnlyExportElement)
@@ -1420,7 +1436,7 @@ const makeArchitectureExploreExports = () => {
       const location = Location.make({ path: filePath })
 
       const exportsItem = EvidenceItem.make({
-        measure: "test-only-exports",
+        measure: testOnlyExportsPolicy.name,
         count: exportsAtPath.length + workspaceSymbolCount
       })
 
@@ -1454,7 +1470,7 @@ const makeArchitectureExploreExports = () => {
   const wideShallowAdvice = (elements: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
     const isInterfaceBurdenElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(interfaceBurdenName)
+      strictEqual(interfaceBurdenPolicy.name)
     )
 
     const elementHasShallownessName = (element: NamedDetection) => isShallownessName(element.name)
@@ -1576,7 +1592,7 @@ const makeArchitectureExploreExports = () => {
     return Array.reduce(blocks, emptyLines, appendMembershipBlock)
   }
 
-  const modulesFromElements = (
+  const moduleSlicesFromItems = (
     items: ReadonlyArray<PlacementElement>
   ): ReadonlyArray<ModuleSlice> => {
     const moduleAnchorEntity = (module: ModuleSlice) =>
@@ -1809,7 +1825,7 @@ const makeArchitectureExploreExports = () => {
         const itemPathEqualsFilePath = flow(pathOf, strictEqual(filePath))
         const atPath = Array.filter(mixed, itemPathEqualsFilePath)
         const physicalModulePath = mixedPhysicalModulePath(atPath)
-        const modules = modulesFromElements(atPath)
+        const modules = moduleSlicesFromItems(atPath)
         const location = Location.make({ path: filePath })
         const remediation = mixedRemediation(modules)
         const evidence = mixedEvidence(physicalModulePath)(modules)
@@ -1829,7 +1845,7 @@ const makeArchitectureExploreExports = () => {
       (filePath: string): Advice => {
         const itemPathEqualsFilePath = flow(pathOf, strictEqual(filePath))
         const atPath = Array.filter(split, itemPathEqualsFilePath)
-        const modules = modulesFromElements(atPath)
+        const modules = moduleSlicesFromItems(atPath)
         const location = Location.make({ path: filePath })
         const remediation = splitRemediation(modules)
         const evidence = splitEvidence(modules)

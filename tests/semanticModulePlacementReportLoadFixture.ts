@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import { Array, Effect, Schema } from "effect"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { semanticModulePlacement } from "@better-typescript/guidance/preset/architectureExploreCorePolicies"
+import { semanticModulePlacement } from "@better-typescript/guidance/preset/semanticModulePlacementPolicies"
 import { semanticModuleEngine } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine"
 import { emptySemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/emptySemanticModuleHardBondRuleCatalog"
 import type { SemanticModuleEntityRecord } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEntityRecordSchema"
