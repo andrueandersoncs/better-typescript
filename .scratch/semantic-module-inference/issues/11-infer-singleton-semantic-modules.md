@@ -8,19 +8,29 @@ queries.
 
 **Blocked by:** 10 — Scope matcher planning to active Program sources.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `SemanticModuleSnapshotV1` exposes exactly the final five top-level collections: entities,
+- [x] `SemanticModuleSnapshotV1` exposes exactly the final five top-level collections: entities,
       modules, accepted bonds, suppressed bonds, and exclusions.
-- [ ] Basic top-level functions, classes, interfaces, type aliases, and enums normalize to one
+- [x] Basic top-level functions, classes, interfaces, type aliases, and enums normalize to one
       entity each and one singleton Semantic Module each.
-- [ ] Entity keys use Program-scoped workspace-relative POSIX path, family-anchor start/end, and
+- [x] Entity keys use Program-scoped workspace-relative POSIX path, family-anchor start/end, and
       SyntaxKind; ordering is canonical and display names are metadata only.
-- [ ] Snapshot JSON contains no compiler objects, absolute paths, mutable collections, caches, or
+- [x] Snapshot JSON contains no compiler objects, absolute paths, mutable collections, caches, or
       implementation representatives.
-- [ ] `moduleFor`, `peersFor`, and `proofBetween` satisfy singleton, self, cross-module, and
+- [x] `moduleFor`, `peersFor`, and `proofBetween` satisfy singleton, self, cross-module, and
       unknown-key behavior without rescanning TypeScript.
-- [ ] Human-authored typed fixture manifests resolve every selector exactly once and label every
+- [x] Human-authored typed fixture manifests resolve every selector exactly once and label every
       observed entity exactly once.
-- [ ] Focused snapshot tests and the full suite pass; formatting and self-hosting are clean; the
+- [x] Focused snapshot tests and the full suite pass; formatting and self-hosting are clean; the
       benchmark remains below 100ms.
+
+## Answer
+
+The implementation was already present at resolution time. `semanticModuleEngine` exposes the
+immutable five-collection `SemanticModuleSnapshotV1`, deterministic basic-declaration singleton
+normalization, and pure `moduleFor`, `peersFor`, and `proofBetween` queries. The typed singleton
+fixture manifest proves exact selector resolution and complete observed-entity labeling.
+
+Verification passed: 20 focused Semantic Module tests, repository typechecking, 673 full-suite
+tests, formatting, and self-hosting with no signals. The benchmark mean was 66.733ms.
