@@ -1,8 +1,10 @@
-import { Array, HashMap, HashSet, Option, pipe } from "effect"
+import { Array, HashMap, HashSet, Option, Tuple, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
+import { entityKeyEquivalence } from "./entityKeyEquivalence.js"
 import { SemanticModuleEntityKey } from "./semanticModuleEntityKey.js"
 import { SemanticModuleHardBondCandidate } from "./semanticModuleHardBondCandidate.js"
 import { SemanticModuleHardBondRule } from "./semanticModuleHardBondRule.js"
+import type { semanticSubjectWitnessSchema as SemanticSubjectWitness } from "./semanticSubjectWitnessSchema.js"
 import { semanticEvidenceKey } from "./semanticEvidenceKey.js"
 import { SemanticModuleReferenceGraph } from "./semanticModuleReferenceGraph.js"
 import type { SemanticReferenceWitness } from "./semanticReferenceWitness.js"
@@ -120,17 +122,70 @@ const unownedConsumersForTarget =
     return Array.filter(unownedConsumers, targetsMember)
   }
 
+const subjectEntry = (witness: SemanticSubjectWitness) => {
+  const token = portableKeyToken(witness.operation)
+
+  return Tuple.make(token, witness.subject)
+}
+
+const subjectTokens = (subjects: ReadonlyArray<SemanticModuleEntityKey>) =>
+  pipe(subjects, Array.map(portableKeyToken), HashSet.fromIterable)
+
+const subjectsOf =
+  (referenceGraph: SemanticModuleReferenceGraph) =>
+  (component: ReadonlyArray<SemanticModuleEntityKey>): ReadonlyArray<SemanticModuleEntityKey> => {
+    const entries = Array.map(referenceGraph.subjects, subjectEntry)
+    const subjectByOperation = HashMap.fromIterable(entries)
+
+    const subjectOfMember = (member: SemanticModuleEntityKey) => {
+      const memberToken = portableKeyToken(member)
+      const subject = HashMap.get(subjectByOperation, memberToken)
+
+      return Option.toArray(subject)
+    }
+
+    const subjects = Array.flatMap(component, subjectOfMember)
+
+    return Array.dedupeWith(subjects, entityKeyEquivalence)
+  }
+
+const sharesSubjectWith =
+  (targets: HashSet.HashSet<string>) => (subject: SemanticModuleEntityKey) => {
+    const subjectToken = portableKeyToken(subject)
+
+    return HashSet.has(targets, subjectToken)
+  }
+
+// Ownership stops at a proven subject because implementation privacy cannot erase a boundary.
+const mergePreservesSubjectBoundaries =
+  (targetSubjects: ReadonlyArray<SemanticModuleEntityKey>) =>
+  (sourceSubjects: ReadonlyArray<SemanticModuleEntityKey>) => {
+    const sourceTokens = subjectTokens(sourceSubjects)
+    const targetTokens = subjectTokens(targetSubjects)
+    const sharesTarget = sharesSubjectWith(targetTokens)
+    const sharesSubject = Array.some(sourceSubjects, sharesTarget)
+    const sourceHasNoSubject = HashSet.isEmpty(sourceTokens)
+    const targetHasNoSubject = HashSet.isEmpty(targetTokens)
+    const eitherHasNoSubject = sourceHasNoSubject || targetHasNoSubject
+
+    return eitherHasNoSubject || sharesSubject
+  }
+
 const makeExclusiveOwnershipCandidate =
+  (sourceComponent: ReadonlyArray<SemanticModuleEntityKey>) =>
   (targetComponent: ReadonlyArray<SemanticModuleEntityKey>) =>
+  (consumerSubjects: ReadonlyArray<SemanticModuleEntityKey>) =>
+  (targetSubjects: ReadonlyArray<SemanticModuleEntityKey>) =>
   (sourceComponents: ReadonlyArray<ReadonlyArray<SemanticModuleEntityKey>>) =>
   (unownedConsumers: SemanticModuleReferenceGraph["unownedConsumers"]) =>
-  (sourceComponent: ReadonlyArray<SemanticModuleEntityKey>) =>
   (witness: SemanticReferenceWitness): SemanticModuleHardBondCandidate => {
     const evidence = exclusiveConsumerOwnershipEvidenceSchema.make({
       _tag: "exclusive-consumer-ownership",
-      version: 1,
+      version: 2,
       sourceComponent,
       targetComponent,
+      consumerSubjects,
+      targetSubjects,
       incomingConsumerComponents: sourceComponents,
       unownedConsumers,
       witness
@@ -170,19 +225,32 @@ export const ownershipCandidateForComponent =
 
     const sourceComponentHead = Array.head(sourceComponents)
     const witnessHead = Array.head(incomingReferences)
+    const subjectsOfComponent = subjectsOf(referenceGraph)
+    const targetSubjects = subjectsOfComponent(targetComponent)
+    const consumerSubjects = Option.map(sourceComponentHead, subjectsOfComponent)
+    const preservesBoundaries = mergePreservesSubjectBoundaries(targetSubjects)
+    const boundaryPreserving = Option.exists(consumerSubjects, preservesBoundaries)
 
-    const sourceAndWitness = Option.all({
-      sourceComponent: sourceComponentHead,
-      witness: witnessHead
-    })
+    if (!boundaryPreserving) {
+      return Option.none()
+    }
 
-    return Option.map(sourceAndWitness, ({ sourceComponent, witness }) => {
-      const withTarget = makeExclusiveOwnershipCandidate(targetComponent)
-      const withSources = withTarget(sourceComponents)
+    const candidateFor = (
+      sourceComponent: ReadonlyArray<SemanticModuleEntityKey>,
+      witness: SemanticReferenceWitness
+    ) => {
+      const consumerSubjectList = subjectsOfComponent(sourceComponent)
+      const withSource = makeExclusiveOwnershipCandidate(sourceComponent)
+      const withTarget = withSource(targetComponent)
+      const withConsumerSubjects = withTarget(consumerSubjectList)
+      const withTargetSubjects = withConsumerSubjects(targetSubjects)
+      const withSources = withTargetSubjects(sourceComponents)
       const withUnowned = withSources(unownedConsumers)
-      const withSource = withUnowned(sourceComponent)
-      return withSource(witness)
-    })
+
+      return withUnowned(witness)
+    }
+
+    return Option.zipWith(sourceComponentHead, witnessHead, candidateFor)
   }
 
 const candidatesFromComponent =

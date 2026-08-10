@@ -1,7 +1,7 @@
 import { Data, HashMap, HashSet } from "effect"
 import type * as ts from "typescript"
 import type { ReferenceKey } from "../../support/referenceKeyType.js"
-import type { DataStructureEntry } from "./dataStructureEntry.js"
+import type { DataStructureEntry } from "./conceptControlEngine.js"
 import type { FieldRead } from "./fieldRead.js"
 import type { FunctionEntry } from "./functionEntry.js"
 import type { ModelRole } from "./modelRole.js"

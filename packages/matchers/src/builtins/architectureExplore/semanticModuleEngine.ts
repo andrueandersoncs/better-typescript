@@ -12,6 +12,7 @@ import {
   Schema,
   Struct,
   Tuple,
+  flow,
   pipe,
   Match as EffectMatch
 } from "effect"
@@ -78,6 +79,10 @@ import { symbolsForOptionalDeclaration } from "./defaultDeclarationSymbol.js"
 import { symbolsForRequiredDeclaration } from "./symbolsForRequiredDeclaration.js"
 import type { SemanticReferenceWitness } from "./semanticReferenceWitness.js"
 import { semanticReferenceWitnessSchema } from "./semanticReferenceWitnessSchema.js"
+import {
+  semanticSubjectWitnessSchema,
+  type semanticSubjectWitnessSchema as SemanticSubjectWitness
+} from "./semanticSubjectWitnessSchema.js"
 import { toWorkspacePath } from "./toWorkspacePath.js"
 import { uniqueSortedPaths } from "./uniqueSortedPaths.js"
 import type { UnownedSemanticReferenceWitness } from "./unownedSemanticReferenceWitness.js"
@@ -1445,6 +1450,19 @@ const createSemanticModuleEngine = () => {
 
   const semanticReferenceOrder = Order.combineAll(referenceWitnessOrders)
 
+  const subjectOperationOrder: Order.Order<SemanticSubjectWitness> = Order.mapInput(
+    entityKeyOrder,
+    Struct.get("operation")
+  )
+
+  const subjectSubjectOrder: Order.Order<SemanticSubjectWitness> = Order.mapInput(
+    entityKeyOrder,
+    Struct.get("subject")
+  )
+
+  const subjectWitnessOrders = Array.make(subjectOperationOrder, subjectSubjectOrder)
+  const subjectWitnessOrder = Order.combineAll(subjectWitnessOrders)
+
   const unownedReferenceTargetOrder: Order.Order<UnownedSemanticReferenceWitness> = Order.mapInput(
     entityKeyOrder,
     Struct.get("target")
@@ -1668,6 +1686,402 @@ const createSemanticModuleEngine = () => {
   const isReferenceIdentifier = (node: ts.Node): node is ts.Identifier =>
     ts.isIdentifier(node) && isNonDeclarationReferenceIdentifier(node)
 
+  // --- semanticSubjectResolution --- because operations belong to the type they parameterize.
+  const dataDeclarationKinds = Array.make(
+    ts.SyntaxKind.ClassDeclaration,
+    ts.SyntaxKind.InterfaceDeclaration,
+    ts.SyntaxKind.TypeAliasDeclaration,
+    ts.SyntaxKind.EnumDeclaration
+  )
+
+  const verdictTypeFlags = ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral
+  const witnessSubjectKey = Struct.get<SemanticSubjectWitness, "subject">("subject")
+  const isDataKind = (kind: ts.SyntaxKind) => Array.contains(dataDeclarationKinds, kind)
+  const recordIsDataKind = (record: SemanticModuleEntityRecord) => isDataKind(record.key.syntaxKind)
+
+  const parameterTypeNode = (parameter: ts.ParameterDeclaration) =>
+    Option.fromNullishOr(parameter.type)
+
+  const typeNameSymbol = (checker: ts.TypeChecker) => (node: ts.TypeReferenceNode) =>
+    pipe(node.typeName, checker.getSymbolAtLocation, Option.fromNullishOr)
+
+  const firstDataOwner = (owners: ReadonlyArray<SemanticModuleEntityRecord>) => {
+    const dataOwner = Array.findFirst(owners, recordIsDataKind)
+    const anyOwner = Array.head(owners)
+
+    return pipe(dataOwner, Option.orElse(Function.constant(anyOwner)))
+  }
+
+  const parameterTypeRecord =
+    (ownersBySymbol: HashMap.HashMap<string, ReadonlyArray<SemanticModuleEntityRecord>>) =>
+    (checker: ts.TypeChecker) =>
+    (parameter: ts.ParameterDeclaration): Option.Option<SemanticModuleEntityRecord> => {
+      const ownersForSymbol = (symbolKey: string) => HashMap.get(ownersBySymbol, symbolKey)
+
+      const typeReferenceSymbol = pipe(
+        parameterTypeNode(parameter),
+        Option.filter(ts.isTypeReferenceNode),
+        Option.flatMap(typeNameSymbol(checker))
+      )
+
+      return pipe(
+        typeReferenceSymbol,
+        Option.map(canonicalSymbol(checker)),
+        Option.map(declarationOwnershipKey),
+        Option.flatMap(ownersForSymbol),
+        Option.flatMap(firstDataOwner)
+      )
+    }
+
+  const emptyParameters = Array.empty<ts.ParameterDeclaration>
+
+  const variableInitializer = (declaration: ts.VariableDeclaration) =>
+    Option.fromNullishOr(declaration.initializer)
+
+  const asVariableDeclaration: (
+    declaration: EntityDeclaration
+  ) => Option.Option<ts.VariableDeclaration> = Option.liftPredicate(ts.isVariableDeclaration)
+
+  const declarationInitializer = flow(asVariableDeclaration, Option.flatMap(variableInitializer))
+  const initializerIsCall = flow(declarationInitializer, Option.exists(ts.isCallExpression))
+  const initializerFunction = flow(declarationInitializer, Option.filter(ts.isFunctionLike))
+
+  // One signature declaration answers both parameters and result because overloads share a symbol.
+  const signatureDeclarationOf = (
+    declaration: EntityDeclaration
+  ): Option.Option<ts.SignatureDeclaration> => {
+    const isCallableDeclaration =
+      ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration)
+
+    return isCallableDeclaration ? Option.some(declaration) : initializerFunction(declaration)
+  }
+
+  const identifierText = Struct.get<ts.Identifier, "text">("text")
+  const asIdentifier = Option.liftPredicate(ts.isIdentifier)
+  const parameterName = Struct.get<ts.ParameterDeclaration, "name">("name")
+  const isThisText = strictEqual("this")
+
+  const isThisParameter = flow(
+    parameterName,
+    asIdentifier,
+    Option.map(identifierText),
+    Option.exists(isThisText)
+  )
+
+  const isValueParameter = (parameter: ts.ParameterDeclaration) => !isThisParameter(parameter)
+
+  // A `this` parameter never counts as an operand because it annotates the receiver.
+  const valueParameters = (declaration: ts.SignatureDeclaration) =>
+    Array.filter(declaration.parameters, isValueParameter)
+
+  const declaredParameters = flow(
+    signatureDeclarationOf,
+    Option.map(valueParameters),
+    Option.getOrElse(emptyParameters)
+  )
+
+  const declarationHasParameters = (declaration: EntityDeclaration) => {
+    const parameters = declaredParameters(declaration)
+
+    return parameters.length > 0
+  }
+
+  const findCallableDeclaration = Array.findFirst<EntityDeclaration>(declarationHasParameters)
+
+  const primarySignatureDeclaration = flow(
+    findCallableDeclaration,
+    Option.flatMap(signatureDeclarationOf)
+  )
+
+  const firstParameterTypeAnchor =
+    (parameters: ReadonlyArray<ts.ParameterDeclaration>) =>
+    (sourcePath: string): SemanticModuleEntityKey => {
+      const first = Array.head(parameters)
+      const typeNode = pipe(first, Option.flatMap(parameterTypeNode), Option.getOrThrow)
+      const start = typeNode.getStart()
+      const end = typeNode.getEnd()
+
+      return SemanticModuleEntityKey.make({
+        path: sourcePath,
+        start,
+        end,
+        syntaxKind: typeNode.kind
+      })
+    }
+
+  const returnTypeFlags = (signature: ts.Signature) => {
+    const returnType = signature.getReturnType()
+
+    return returnType.flags
+  }
+
+  const isVerdictFlags = (flags: ts.TypeFlags) => {
+    const verdictBits = flags & verdictTypeFlags
+
+    return !strictEqual(0)(verdictBits)
+  }
+
+  // A boolean verdict marks an operation over the subject because equality is the researched law.
+  const returnsVerdict = (checker: ts.TypeChecker) => (declaration: ts.SignatureDeclaration) => {
+    const resolved = checker.getSignatureFromDeclaration(declaration)
+    const signature = Option.fromNullishOr(resolved)
+    const flags = Option.map(signature, returnTypeFlags)
+
+    return Option.exists(flags, isVerdictFlags)
+  }
+
+  const parameterMatchesTarget =
+    (ownersBySymbol: HashMap.HashMap<string, ReadonlyArray<SemanticModuleEntityRecord>>) =>
+    (checker: ts.TypeChecker) =>
+    (target: SemanticModuleEntityRecord) =>
+    (parameter: ts.ParameterDeclaration) => {
+      const matchesTarget = (candidate: SemanticModuleEntityRecord) =>
+        entityKeyEquivalence(candidate.key, target.key)
+
+      const candidate = parameterTypeRecord(ownersBySymbol)(checker)(parameter)
+
+      return Option.exists(candidate, matchesTarget)
+    }
+
+  const directSubjectCandidate =
+    (ownersBySymbol: HashMap.HashMap<string, ReadonlyArray<SemanticModuleEntityRecord>>) =>
+    (checker: ts.TypeChecker) =>
+    (entity: OwnedEntity): Option.Option<SemanticSubjectWitness> => {
+      const record = ownedEntityRecord(entity)
+      const declarations = ownedEntityDeclarations(entity)
+      const signatureDeclaration = primarySignatureDeclaration(declarations)
+
+      const parameters = pipe(
+        signatureDeclaration,
+        Option.map(valueParameters),
+        Option.getOrElse(emptyParameters)
+      )
+
+      const tooFewParameters = parameters.length < 2
+
+      if (tooFewParameters) {
+        return Option.none()
+      }
+
+      const isDistinctFromEntity = (target: SemanticModuleEntityRecord) =>
+        !entityKeyEquivalence(target.key, record.key)
+
+      const everyParameterMatches = (target: SemanticModuleEntityRecord) => {
+        const matchesTarget = parameterMatchesTarget(ownersBySymbol)(checker)(target)
+
+        return Array.every(parameters, matchesTarget)
+      }
+
+      const typeRecordOf = parameterTypeRecord(ownersBySymbol)(checker)
+      const targetRecord = pipe(parameters, Array.head, Option.flatMap(typeRecordOf))
+      const targetIsData = Option.exists(targetRecord, recordIsDataKind)
+      const distinctFromEntity = Option.exists(targetRecord, isDistinctFromEntity)
+      const matchesEveryParameter = Option.exists(targetRecord, everyParameterMatches)
+      const verdict = Option.exists(signatureDeclaration, returnsVerdict(checker))
+      const subjectShape = targetIsData && distinctFromEntity
+      const subjectOperation = matchesEveryParameter && verdict
+      const directSubject = subjectShape && subjectOperation
+
+      if (!directSubject) {
+        return Option.none()
+      }
+
+      const anchor = firstParameterTypeAnchor(parameters)(record.key.path)
+
+      const witnessFor = (target: SemanticModuleEntityRecord) =>
+        semanticSubjectWitnessSchema.make({
+          operation: record.key,
+          subject: target.key,
+          derivation: "subject-parameters",
+          anchor
+        })
+
+      return Option.map(targetRecord, witnessFor)
+    }
+
+  const subjectOfTarget =
+    (subjectByEntity: HashMap.HashMap<string, SemanticSubjectWitness>) =>
+    (reference: SemanticReferenceWitness): Option.Option<SemanticSubjectWitness> => {
+      const targetToken = portableKeyToken(reference.target)
+
+      return HashMap.get(subjectByEntity, targetToken)
+    }
+
+  const referenceCarriesSubject = (
+    subjectByEntity: HashMap.HashMap<string, SemanticSubjectWitness>
+  ) => flow(subjectOfTarget(subjectByEntity), Option.isSome)
+
+  const distinctSubjectsOfReferences =
+    (subjectByEntity: HashMap.HashMap<string, SemanticSubjectWitness>) =>
+    (references: ReadonlyArray<SemanticReferenceWitness>) => {
+      const subjectsOfReference = flow(subjectOfTarget(subjectByEntity), Option.toArray)
+
+      return pipe(
+        references,
+        Array.flatMap(subjectsOfReference),
+        Array.map(witnessSubjectKey),
+        Array.dedupeWith(entityKeyEquivalence)
+      )
+    }
+
+  // A derived helper is a value because its initializer is a call result, not an operation.
+  const entityIsValueHelper = (entity: OwnedEntity) => {
+    const declarations = ownedEntityDeclarations(entity)
+    const firstDeclaration = Array.head(declarations)
+
+    return Option.exists(firstDeclaration, initializerIsCall)
+  }
+
+  const derivedSubjectCandidate =
+    (subjectByEntity: HashMap.HashMap<string, SemanticSubjectWitness>) =>
+    (entity: OwnedEntity) =>
+    (
+      ownedReferences: ReadonlyArray<SemanticReferenceWitness>
+    ): Option.Option<SemanticSubjectWitness> => {
+      const valueHelper = entityIsValueHelper(entity)
+
+      if (!valueHelper) {
+        return Option.none()
+      }
+
+      const record = ownedEntityRecord(entity)
+      const distinctSubjects = distinctSubjectsOfReferences(subjectByEntity)(ownedReferences)
+      const singleSubject = strictEqual(1)(distinctSubjects.length)
+
+      if (!singleSubject) {
+        return Option.none()
+      }
+
+      const witnessFor = (subject: SemanticModuleEntityKey, anchor: SemanticModuleEntityKey) =>
+        semanticSubjectWitnessSchema.make({
+          operation: record.key,
+          subject,
+          derivation: "subject-derived",
+          anchor
+        })
+
+      const subjectReferences = Array.filter(
+        ownedReferences,
+        referenceCarriesSubject(subjectByEntity)
+      )
+
+      const subject = Array.head(distinctSubjects)
+
+      // The anchor is the subject-bearing reference because replay must reach the same subject.
+      const referenceAnchor = pipe(
+        subjectReferences,
+        Array.head,
+        Option.map(Struct.get("reference"))
+      )
+
+      return Option.zipWith(subject, referenceAnchor, witnessFor)
+    }
+
+  const referencesConsumedBy =
+    (referencesByConsumer: HashMap.HashMap<string, ReadonlyArray<SemanticReferenceWitness>>) =>
+    (entity: OwnedEntity): ReadonlyArray<SemanticReferenceWitness> => {
+      const record = ownedEntityRecord(entity)
+      const consumerToken = portableKeyToken(record.key)
+
+      return pipe(HashMap.get(referencesByConsumer, consumerToken), Option.getOrElse(Array.empty))
+    }
+
+  const sortReferenceBucket = (references: ReadonlyArray<SemanticReferenceWitness>) =>
+    Array.sort(references, semanticReferenceOrder)
+
+  const indexReferencesByConsumer = (
+    references: ReadonlyArray<SemanticReferenceWitness>
+  ): HashMap.HashMap<string, ReadonlyArray<SemanticReferenceWitness>> => {
+    const emptyIndex = HashMap.empty<string, ReadonlyArray<SemanticReferenceWitness>>()
+
+    const appendReference = (
+      index: HashMap.HashMap<string, ReadonlyArray<SemanticReferenceWitness>>,
+      reference: SemanticReferenceWitness
+    ) => {
+      const consumerToken = portableKeyToken(reference.consumer)
+      const existing = pipe(HashMap.get(index, consumerToken), Option.getOrElse(Array.empty))
+      const appended = Array.append(existing, reference)
+
+      return HashMap.set(index, consumerToken, appended)
+    }
+
+    // Buckets sort once here because the derivation fixpoint re-reads them on every pass.
+    const grouped = Array.reduce(references, emptyIndex, appendReference)
+
+    return HashMap.map(grouped, sortReferenceBucket)
+  }
+
+  const indexWitness = (
+    index: HashMap.HashMap<string, SemanticSubjectWitness>,
+    witness: SemanticSubjectWitness
+  ) => {
+    const operationToken = portableKeyToken(witness.operation)
+
+    return HashMap.set(index, operationToken, witness)
+  }
+
+  const resolveSemanticSubjects =
+    (context: ProgramMatchContext) =>
+    (ownedEntities: ReadonlyArray<OwnedEntity>) =>
+    (ownersBySymbol: HashMap.HashMap<string, ReadonlyArray<SemanticModuleEntityRecord>>) =>
+    (
+      references: ReadonlyArray<SemanticReferenceWitness>
+    ): ReadonlyArray<SemanticSubjectWitness> => {
+      const emptySubjectIndex = HashMap.empty<string, SemanticSubjectWitness>()
+      const orderedEntities = Array.sort(ownedEntities, ownedEntityRecordOrder)
+      const ownedReferencesByConsumer = indexReferencesByConsumer(references)
+      const directCandidate = directSubjectCandidate(ownersBySymbol)(context.checker)
+      const directWitnessesOf = flow(directCandidate, Option.toArray)
+
+      const directWitnesses = pipe(
+        orderedEntities,
+        Array.flatMap(directWitnessesOf),
+        Array.sort(subjectWitnessOrder)
+      )
+
+      const withDirectSubjects = Array.reduce(directWitnesses, emptySubjectIndex, indexWitness)
+
+      // Derived subjects chain through references because each pass can reveal one more helper.
+      const derivedStep = (
+        current: HashMap.HashMap<string, SemanticSubjectWitness>,
+        entity: OwnedEntity
+      ) => {
+        const record = ownedEntityRecord(entity)
+        const token = portableKeyToken(record.key)
+        const alreadyResolved = HashMap.has(current, token)
+
+        if (alreadyResolved) {
+          return current
+        }
+
+        const withWitness = (witness: SemanticSubjectWitness) => indexWitness(current, witness)
+        const ownedReferences = referencesConsumedBy(ownedReferencesByConsumer)(entity)
+        const candidate = derivedSubjectCandidate(current)(entity)(ownedReferences)
+        const next = Option.map(candidate, withWitness)
+
+        return Option.getOrElse(next, Function.constant(current))
+      }
+
+      const derivedPass = (index: HashMap.HashMap<string, SemanticSubjectWitness>) =>
+        Array.reduce(orderedEntities, index, derivedStep)
+
+      const fixpoint = (
+        index: HashMap.HashMap<string, SemanticSubjectWitness>
+      ): HashMap.HashMap<string, SemanticSubjectWitness> => {
+        const next = derivedPass(index)
+        const nextSize = HashMap.size(next)
+        const indexSize = HashMap.size(index)
+        const settled = strictEqual(nextSize)(indexSize)
+
+        return settled ? next : fixpoint(next)
+      }
+
+      const withDerivedSubjects = fixpoint(withDirectSubjects)
+      const subjects = HashMap.toValues(withDerivedSubjects)
+
+      return Array.sort(subjects, subjectWitnessOrder)
+    }
+
   const buildSemanticReferenceGraph =
     (context: ProgramMatchContext) =>
     (ownedEntities: ReadonlyArray<OwnedEntity>): SemanticModuleReferenceGraph => {
@@ -1830,12 +2244,14 @@ const createSemanticModuleEngine = () => {
       )
 
       const components = semanticComponents(nodes)(references)
+      const subjects = resolveSemanticSubjects(context)(ownedEntities)(ownersBySymbol)(references)
 
       return new SemanticModuleReferenceGraph({
         nodes,
         references,
         unownedConsumers,
-        components
+        components,
+        subjects
       })
     }
 

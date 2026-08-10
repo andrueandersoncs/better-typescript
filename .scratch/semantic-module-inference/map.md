@@ -64,6 +64,13 @@ reusable evidence, Physical Module mismatch Advice, and complete proof criteria 
   exact mismatch outputs, metamorphic invariants, clean self-hosting, and the existing sub-100ms
   benchmark form the complete proof.
 
+- [Infer neutral reference-graph Hard Bonds](issues/19-infer-reference-graph-hard-bonds.md) — The
+  neutral catalog carries a third law, `semantic-subject-ownership`: an operation whose parameters
+  are all one first-party data declaration and whose result is a boolean verdict belongs to that
+  subject, and a value helper inherits the subject of the single subject-owned operation its
+  initializer calls. `exclusive-consumer-ownership` is version 2 and withholds a bond when consumer
+  and target carry disjoint subjects. See ADR-0025.
+
 ## Not yet specified
 
 - None.

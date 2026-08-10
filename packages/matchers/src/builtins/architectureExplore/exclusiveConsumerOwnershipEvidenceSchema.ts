@@ -4,16 +4,18 @@ import { semanticReferenceWitnessSchema } from "./semanticReferenceWitnessSchema
 import { unownedSemanticReferenceWitnessSchema } from "./unownedSemanticReferenceWitnessSchema.js"
 
 const exclusiveConsumerOwnershipTagSchema = Schema.Literal("exclusive-consumer-ownership")
-const exclusiveConsumerOwnershipVersionSchema = Schema.Literal(1)
+const exclusiveConsumerOwnershipVersionSchema = Schema.Literal(2)
 const incomingConsumerComponentsSchema = Schema.Array(entityKeyComponentSchema)
 const unownedConsumersSchema = Schema.Array(unownedSemanticReferenceWitnessSchema)
 
-// exclusive-ownership evidence is tagged because the hard-bond rule freezes one payload.
+// Version 2 carries resolved subject keys because ownership must not erase subject boundaries.
 export const exclusiveConsumerOwnershipEvidenceSchema = Schema.Struct({
   _tag: exclusiveConsumerOwnershipTagSchema,
   version: exclusiveConsumerOwnershipVersionSchema,
   sourceComponent: entityKeyComponentSchema,
   targetComponent: entityKeyComponentSchema,
+  consumerSubjects: entityKeyComponentSchema,
+  targetSubjects: entityKeyComponentSchema,
   incomingConsumerComponents: incomingConsumerComponentsSchema,
   unownedConsumers: unownedConsumersSchema,
   witness: semanticReferenceWitnessSchema

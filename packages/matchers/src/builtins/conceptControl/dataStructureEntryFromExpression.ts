@@ -5,7 +5,7 @@ import { referenceKey } from "../../support/referenceKey.js"
 import type { ReferenceKey } from "../../support/referenceKeyType.js"
 import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
 import { unwrapCallee } from "../../support/unwrapCallee.js"
-import type { DataStructureEntry } from "./dataStructureEntry.js"
+import type { DataStructureEntry } from "./conceptControlEngine.js"
 import { modelFromResolvedType } from "./modelFromResolvedType.js"
 import { symbolAt } from "./symbolAt.js"
 

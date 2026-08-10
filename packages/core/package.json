@@ -288,10 +288,6 @@
       "bun": "./src/engine/reportPipeline.ts",
       "default": "./dist/engine/reportPipeline.js"
     },
-    "./engine/signal/detectionEquals": {
-      "bun": "./src/engine/signal/detectionEquals.ts",
-      "default": "./dist/engine/signal/detectionEquals.js"
-    },
     "./engine/signal/signal": {
       "bun": "./src/engine/signal/signal.ts",
       "default": "./dist/engine/signal/signal.js"

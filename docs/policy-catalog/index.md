@@ -8,13 +8,13 @@ tests, examples, and its proposed rule-skill boundary.
 | Fleet | Reported rules | Silent evidence | Derived advice | Total |
 | --- | ---: | ---: | ---: | ---: |
 | Default | 90 | 1 | 9 | 100 |
-| Architecture Explore | 0 | 14 | 11 | 25 |
+| Architecture Explore | 0 | 15 | 13 | 28 |
 | Effect Quality | 26 | 1 | 19 | 46 |
 | Functional Core Effect | 11 | 1 | 5 | 17 |
-| **Total** | **127** | **17** | **44** | **188** |
+| **Total** | **127** | **18** | **46** | **191** |
 
-The 127 reported rules and 44 derived advice outcomes are the 171 independently actionable skill
-candidates. The 17 silent policies remain shared evidence producers.
+The 127 reported rules and 46 derived advice outcomes are the 173 independently actionable skill
+candidates. The 18 silent policies remain shared evidence producers.
 
 ## Directory map
 
@@ -31,8 +31,8 @@ candidates. The 17 silent policies remain shared evidence producers.
 | `default/rules/dispatch-and-collections/` | 9 | Dispatch and collection choices |
 | `default/evidence/` | 1 | Silent pipeline-shape evidence |
 | `default/advice/` | 9 | Default-fleet aggregate advice |
-| `architecture-explore/evidence/` | 14 | Silent architecture facts |
-| `architecture-explore/advice/` | 11 | Relational architecture advice |
+| `architecture-explore/evidence/` | 15 | Silent architecture facts |
+| `architecture-explore/advice/` | 13 | Relational architecture advice |
 | `effect-quality/rules/` | 26 | Effect-quality findings |
 | `effect-quality/evidence/` | 1 | Multiplexed advice evidence |
 | `effect-quality/advice/` | 19 | Effect-quality advice kinds |
@@ -76,6 +76,6 @@ active wirings. Multiplexed policies are split by their matcher kind vocabularie
 every derived advice variant has its own entry. Matcher helpers and runtime infrastructure are
 mapped in `project-topology.md` and referenced by the entries that depend on them.
 
-The audit verifies 188 entries, all eleven required sections, exact default and architecture wiring
+The audit verifies 191 entries, all eleven required sections, exact default and architecture wiring
 parity, exact Effect Quality and Functional Core Effect kind parity, expected derived outcomes, and
 the existence of every referenced repository path.

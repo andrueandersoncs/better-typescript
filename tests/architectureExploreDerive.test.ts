@@ -64,7 +64,7 @@ test("architectureExploreWiring contains only relational silent evidence checks"
 test("Architecture Explore paradigm catalogs own the settled immutable Hard Bond sets", () => {
   assert.deepEqual(
     architectureExploreNeutralHardBondRuleCatalog.map((rule) => rule.id),
-    ["semantic-reference-cycle", "exclusive-consumer-ownership"]
+    ["semantic-reference-cycle", "exclusive-consumer-ownership", "semantic-subject-ownership"]
   )
   assert.deepEqual(architectureExploreOopHardBondRuleCatalog, [])
   assert.deepEqual(architectureExploreFpHardBondRuleCatalog, [])

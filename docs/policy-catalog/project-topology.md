@@ -33,7 +33,9 @@
 
 ## Self-hosting
 
-`better-typescript.config.ts` applies one reporting-only Wiring to every package source.
+`better-typescript.config.ts` applies the reporting-only Wiring to every package source and a
+placement Wiring to configuration, package sources, and tests. The placement Wiring runs the silent
+`semantic-module-placement` Check and derives only its own placement Advice.
 
 Disabled checks:
 
@@ -44,10 +46,10 @@ Disabled checks:
   `test-only-exports`, `seam-leakage-evidence`, `import-usage`, `module-identity`,
   `export-surface`, `external-dependency-construction`, `single-adapter-seams`,
   `composition-forwarders`, `module-scope-effects`, `context-tag-seams`,
-  `composition-fingerprints`, `semantic-module-placement`
+  `composition-fingerprints`
 
-The Wiring also emits no derived Advice. These checks and Advice derivations remain available to
-explicit consumer configurations.
+The reporting Wiring emits no derived Advice. These checks and Advice derivations remain available
+to explicit consumer configurations.
 
 ## Catalog boundary
 

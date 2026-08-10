@@ -141,10 +141,19 @@ complete file-level Advice without choosing a destination or move direction.
 - The neutral catalog contains `semantic-reference-cycle`. Every canonical strongly connected
   component with more than one Code Entity is atomic, including an ownerless root cycle. The rule
   emits canonical pairwise candidates between sorted members.
+- The neutral catalog also contains `semantic-subject-ownership`. An operation with at least two
+  value parameters that are all one first-party data declaration and whose result is a boolean
+  verdict is owned by that subject; `this` parameters are receiver annotations and never count. A
+  value helper whose initializer is a call whose references resolve to exactly one distinct subject
+  inherits that subject. Parameters and result come from one signature declaration so overloads
+  cannot disagree. Subject resolution runs to a fixpoint before ownership closure and never consults
+  names, paths, or co-location.
 - The neutral catalog also contains `exclusive-consumer-ownership`. Condense the graph into its
   canonical SCC DAG. A target component with exactly one distinct incoming consumer component and no
   unowned consumer belongs to that consumer; emit the canonical resolved witness pair joining them.
   Zero-consumer roots and components with fan-in from multiple consumers emit no ownership bond.
+  Implementation privacy never erases a proven subject boundary: when consumer and target components
+  both carry resolved subjects and share none, the ownership bond is withheld.
 - Ownership chains become one Semantic Module through ordinary Hard-Bond closure. Reference graphs
   are built independently for production and test, so one stratum cannot alter another's SCCs,
   consumer cardinality, or membership.
@@ -152,9 +161,11 @@ complete file-level Advice without choosing a destination or move direction.
   passes an explicit immutable catalog, and combined presets use the union of their constituent
   catalogs while instantiating one placement Policy.
 - Every paradigm rule owns a tagged versioned evidence schema. Cycle evidence contains the complete
-  sorted SCC and canonical internal reference witnesses. Ownership evidence contains source and
-  target components, the complete incoming consumer set, absence of unowned consumers, and the
-  selected canonical reference witness. Evidence keys derive only from this portable evidence.
+  sorted SCC and canonical internal reference witnesses. Subject evidence contains the operation,
+  its resolved subject, the derivation kind, and the anchor type reference. Ownership evidence is
+  version 2: source and target components, both resolved subject sets, the complete incoming
+  consumer set, absence of unowned consumers, and the selected canonical reference witness. Evidence
+  keys derive only from this portable evidence.
 - A future paradigm rule is admissible only when separation is necessarily defective under that
   paradigm. It may use normalized entities, current-Program TypeChecker facts, and deterministic
   closed-world premises. It may not consume another rule's results or inferred modules, or use
@@ -293,7 +304,7 @@ complete file-level Advice without choosing a destination or move direction.
   detailed rationale.
 - The domain glossary defines Physical Module, Semantic Module, Split Semantic Module, Mixed
   Physical Module, Semantic Module Snapshot, Code Entity, Semantic Reference Graph, Hard Bond,
-  Exclusive Consumer Ownership, Semantic Reference Cycle, Paradigm Hard Bond Rule, Partition
-  Barrier, and Membership Proof.
+  Exclusive Consumer Ownership, Semantic Subject, Semantic Reference Cycle, Paradigm Hard Bond Rule,
+  Partition Barrier, and Membership Proof.
 - The seam is already settled by the resolved seam-placement decision: one deep matcher module plus
   the existing Signal-to-Advice pipeline. No additional public seam is required.

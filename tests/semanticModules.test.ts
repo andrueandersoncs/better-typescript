@@ -1,8 +1,12 @@
 import * as assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import * as path from "node:path"
 import { test } from "bun:test"
 import { Array, Effect, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { emptySemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/emptySemanticModuleHardBondRuleCatalog"
+import { exclusiveConsumerOwnershipEvidenceSchema } from "@better-typescript/matchers/builtins/architectureExplore/exclusiveConsumerOwnershipEvidenceSchema"
+import { semanticSubjectOwnershipEvidenceSchema } from "@better-typescript/matchers/builtins/architectureExplore/semanticSubjectOwnershipEvidenceSchema"
 import { semanticModuleEngine } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine"
 import type { SemanticModuleEntityKey } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEntityKey"
 import type { SemanticModuleHardBondRule } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleHardBondRule"
@@ -13,6 +17,7 @@ import { bondsManifest } from "./fixtures/semantic-modules-bonds/manifest.js"
 import { dependenciesManifest } from "./fixtures/semantic-modules-dependencies/manifest.js"
 import { normalizationManifest } from "./fixtures/semantic-modules-normalization/manifest.js"
 import { triangleManifest } from "./fixtures/semantic-modules-triangle/manifest.js"
+import { subjectsManifest } from "./fixtures/semantic-modules-subjects/manifest.js"
 import { singletonManifest } from "./fixtures/semantic-modules/manifest.js"
 import { resolveSemanticModuleFixtureManifest } from "./resolveSemanticModuleFixtureManifest.js"
 import { barrierFixturePath } from "./semanticModulesBarrierFixturePath.js"
@@ -26,6 +31,7 @@ import { expectedModules } from "./semanticModulesExpectedModules.js"
 import { labelRemapFixturePath } from "./semanticModulesLabelRemapFixturePath.js"
 import { ownershipDeltaFixturePath } from "./semanticModulesOwnershipDeltaFixturePath.js"
 import { programIsolationFixturePath } from "./semanticModulesProgramIsolationFixturePath.js"
+import { subjectsFixturePath } from "./semanticModulesSubjectsFixturePath.js"
 import { fixtureSnapshot } from "./semanticModulesFixtureSnapshot.js"
 import { fixtureSnapshotAt } from "./semanticModulesFixtureSnapshotAt.js"
 import { fixturePath } from "./semanticModulesFixturePath.js"
@@ -325,9 +331,18 @@ test("infers cycle and exclusive-consumer neutral hard bonds", async () => {
     ),
     4
   )
-  assert.equal(
-    Array.every(snapshot.acceptedBonds, (bond) => bond.evidence.version === 1),
-    true
+  assert.deepEqual(
+    Array.map(
+      snapshot.acceptedBonds,
+      (bond) => `${bond.key.ruleId}:${bond.evidence.version}`
+    ).sort(),
+    [
+      "exclusive-consumer-ownership:2",
+      "exclusive-consumer-ownership:2",
+      "exclusive-consumer-ownership:2",
+      "exclusive-consumer-ownership:2",
+      "semantic-reference-cycle:1"
+    ]
   )
   const cycleBond = Array.findFirst(
     snapshot.acceptedBonds,
@@ -339,6 +354,134 @@ test("infers cycle and exclusive-consumer neutral hard bonds", async () => {
   assert.equal(Object.isFrozen(cycleEvidence.component), true)
   assert.equal(Object.isFrozen(cycleEvidence.component[0]), true)
   const reversed = await fixtureSnapshotAt(dependenciesFixturePath, true, () => true, catalog)
+
+  assert.equal(JSON.stringify(reversed), JSON.stringify(snapshot))
+})
+
+test("partitions a private derivation chain by proven semantic subjects", async () => {
+  const snapshot = await fixtureSnapshotAt(
+    subjectsFixturePath,
+    false,
+    () => true,
+    neutralReferenceCatalog
+  )
+  const resolved = resolveSemanticModuleFixtureManifest(subjectsManifest, snapshot)
+  const detectionEquals = keyByLabel(resolved)("detectionEquals")
+  const detectionsEquivalence = keyByLabel(resolved)("detectionsEquivalence")
+  const signalEquals = keyByLabel(resolved)("signalEquals")
+  const signalArrayEquivalence = keyByLabel(resolved)("signalArrayEquivalence")
+  const wiringSignalsEquals = keyByLabel(resolved)("wiringSignalsEquals")
+  const wiringSignalsArrayEquivalence = keyByLabel(resolved)("wiringSignalsArrayEquivalence")
+
+  assert.deepEqual(
+    Array.map(snapshot.modules, (module) => module.members),
+    resolved.modules
+  )
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(detectionEquals)(snapshot)).members,
+    [
+      keyByLabel(resolved)("detectionBatchEquivalence"),
+      detectionEquals,
+      detectionsEquivalence,
+      keyByLabel(resolved)("Detection")
+    ]
+  )
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(signalEquals)(snapshot)).members,
+    [signalEquals, signalArrayEquivalence, keyByLabel(resolved)("Signal")]
+  )
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(wiringSignalsEquals)(snapshot)).members,
+    [wiringSignalsEquals, wiringSignalsArrayEquivalence, keyByLabel(resolved)("WiringSignals")]
+  )
+
+  const orderedDetections = keyByLabel(resolved)("orderedDetections")
+  const detectionIsBlank = keyByLabel(resolved)("detectionIsBlank")
+
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(orderedDetections)(snapshot)).members,
+    [orderedDetections]
+  )
+  assert.deepEqual(
+    Option.getOrThrow(semanticModuleEngine.moduleFor(detectionIsBlank)(snapshot)).members,
+    [detectionIsBlank]
+  )
+
+  const subjectBonds = Array.filter(
+    snapshot.acceptedBonds,
+    (bond) => bond.key.ruleId === "semantic-subject-ownership"
+  )
+  const crossSubjectOwnership = Array.filter(
+    snapshot.acceptedBonds,
+    (bond) => bond.key.ruleId === "exclusive-consumer-ownership"
+  )
+
+  assert.equal(subjectBonds.length, 7)
+  assert.equal(
+    Array.every(
+      subjectBonds,
+      (bond) => bond.evidence.version === 1 && bond.evidence._tag === "semantic-subject-ownership"
+    ),
+    true
+  )
+  assert.equal(crossSubjectOwnership.length, 4)
+  assert.equal(
+    Array.every(
+      crossSubjectOwnership,
+      (bond) => bond.evidence.version === 2 && bond.evidence._tag === "exclusive-consumer-ownership"
+    ),
+    true
+  )
+
+  const decodeSubjectEvidence = Schema.decodeUnknownSync(semanticSubjectOwnershipEvidenceSchema)
+  const decodeOwnershipEvidence = Schema.decodeUnknownSync(exclusiveConsumerOwnershipEvidenceSchema)
+  const ownershipEvidence = Array.map(crossSubjectOwnership, (bond) =>
+    decodeOwnershipEvidence(bond.evidence)
+  )
+
+  const sharesSubject = (evidence: (typeof ownershipEvidence)[number]) =>
+    Array.some(evidence.consumerSubjects, (subject) =>
+      Array.some(
+        evidence.targetSubjects,
+        (peer) => JSON.stringify(peer) === JSON.stringify(subject)
+      )
+    )
+
+  assert.equal(Array.some(ownershipEvidence, sharesSubject), true)
+
+  const subjectEvidence = Array.map(subjectBonds, (bond) => decodeSubjectEvidence(bond.evidence))
+
+  const anchorText = (evidence: (typeof subjectEvidence)[number]) => {
+    const source = readFileSync(path.join(subjectsFixturePath, evidence.anchor.path), "utf8")
+
+    return source.slice(evidence.anchor.start, evidence.anchor.end)
+  }
+
+  const derivedEvidence = Array.filter(
+    subjectEvidence,
+    (evidence) => evidence.derivation === "subject-derived"
+  )
+
+  assert.deepEqual(Array.map(derivedEvidence, anchorText), [
+    "detectionsEquivalence",
+    "detectionEquals",
+    "signalEquals",
+    "wiringSignalsEquals"
+  ])
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(detectionEquals, signalEquals)(snapshot)),
+    true
+  )
+  assert.equal(
+    Option.isNone(semanticModuleEngine.proofBetween(signalEquals, wiringSignalsEquals)(snapshot)),
+    true
+  )
+  const reversed = await fixtureSnapshotAt(
+    subjectsFixturePath,
+    true,
+    () => true,
+    neutralReferenceCatalog
+  )
 
   assert.equal(JSON.stringify(reversed), JSON.stringify(snapshot))
 })

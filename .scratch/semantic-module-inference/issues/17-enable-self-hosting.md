@@ -8,21 +8,29 @@ preset and prove the shipped feature through the repository's full validation an
 **Blocked by:** 16 — Render Semantic Module placement Advice; 19 — Infer neutral reference-graph
 Hard Bonds; 20 — Remediate self-host placement Advice.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Neutral, object-oriented, and functional presets each own an explicit immutable paradigm Hard
-      Bond catalog. Neutral contains exactly the settled reference-cycle and exclusive-ownership
-      rules; object-oriented and functional remain empty. Every preset instantiates one placement
-      Policy.
-- [ ] Combined Architecture Explore presets inherit the union of constituent catalogs without
+- [x] Neutral, object-oriented, and functional presets each own an explicit immutable paradigm Hard
+      Bond catalog. Neutral contains exactly the settled reference-cycle, subject-ownership, and
+      exclusive-ownership rules; object-oriented and functional remain empty. Every preset
+      instantiates one placement Policy.
+- [x] Combined Architecture Explore presets inherit the union of constituent catalogs without
       duplicate Policy names or duplicate snapshot construction.
-- [ ] Every Architecture Explore preset includes the placement adviser; baseline default Wiring
+- [x] Every Architecture Explore preset includes the placement adviser; baseline default Wiring
       remains unchanged.
-- [ ] Self-host configuration enables the complete path for configuration, every package source, and
+- [x] Self-host configuration enables the complete path for configuration, every package source, and
       tests with no allowlist or baseline suppression.
-- [ ] The benchmark enrollment test names `semantic-module-placement` and all enrollment counts are
+- [x] The benchmark enrollment test names `semantic-module-placement` and all enrollment counts are
       updated intentionally.
-- [ ] Focused Semantic Module tests and the full test suite pass.
-- [ ] Formatting is clean and self-hosting emits no Check, Advice, or architecture remediation.
-- [ ] The existing warmed merged default-plus-Architecture-Explore benchmark records its observed
+- [x] Focused Semantic Module tests and the full test suite pass.
+- [x] Formatting is clean and self-hosting emits no Check, Advice, or architecture remediation.
+- [x] The existing warmed merged default-plus-Architecture-Explore benchmark records its observed
       mean and remains strictly below 100ms.
+
+## Answer
+
+`better-typescript.config.ts` pairs the reporting product Wiring with `selfHostPlacementWiring.ts`,
+which enrolls `semantic-module-placement` once over configuration, every package source, and tests,
+and derives only its own placement Advice. The enrollment count is asserted in
+`tests/selfHostBenchmark.test.ts` (85 checks, placement silent, one policy per wiring).
+`bun run dev` emits nothing, the full suite passes, and the warmed benchmark mean is 69.1ms.

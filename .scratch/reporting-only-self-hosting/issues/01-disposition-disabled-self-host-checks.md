@@ -1,6 +1,6 @@
 # 01 — Decide disposition of disabled self-host checks
 
-**Status:** needs-triage
+**Status:** needs-triage (one check dispositioned)
 
 ## What happened
 
@@ -40,7 +40,6 @@ self-hosting.
 - `module-scope-effects`
 - `context-tag-seams`
 - `composition-fingerprints`
-- `semantic-module-placement`
 
 ## Additional context
 
@@ -53,3 +52,12 @@ Keep a Check only when it can participate in the repository's empty self-host re
 gate.
 
 ## Comments
+
+### 2026-08-09 — `semantic-module-placement` restored
+
+Disposition: repaired and restored. The Check produced false negatives because
+`exclusive-consumer-ownership` merged across proven subject boundaries and no rule expressed subject
+ownership. Both were fixed (see `.scratch/signal-organization-self-hosting/bug-research.md`), the
+seven resulting repository findings were remediated by relocation, and the Check now runs in
+self-hosting through `selfHostPlacementWiring.ts` with an empty report and a 69.1ms benchmark. The
+remaining seventeen Checks in the list above are still undispositioned.

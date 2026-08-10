@@ -37,7 +37,14 @@ atomicity or ownership.
 
 **Exclusive Consumer Ownership**: The neutral law that a Semantic Reference Graph component with
 exactly one consumer component and no unowned consumer belongs with that consumer. Multiple
-consumers mean shared dependency, not ownership.
+consumers mean shared dependency, not ownership, and the law is withheld when consumer and target
+carry disjoint Semantic Subjects.
+
+**Semantic Subject**: The first-party data declaration an operation is about. An operation taking at
+least two value parameters that are all one data declaration and returning a boolean verdict is
+owned by that declaration; a value helper whose initializer references exactly one distinct subject
+inherits it. A helper that takes the type twice without returning a verdict is an ordinary
+dependency. _Avoid_: owner type, receiver
 
 **Semantic Reference Cycle**: A strongly connected Semantic Reference Graph component with more than
 one Code Entity. The neutral cycle law treats it as atomic, including an ownerless root cycle.
