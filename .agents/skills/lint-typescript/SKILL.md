@@ -1,6 +1,10 @@
 ---
 name: lint-typescript
-description: Orchestrate the repository TypeScript policy catalog with bounded parallel workers, validate findings, remediate them, and verify a clean rerun. Use when asked to lint, check, review, or fix TypeScript code, and after changing .ts or .tsx files when the repository's agentic policies should be applied.
+description:
+  Orchestrate the repository TypeScript policy catalog with bounded parallel workers, validate
+  findings, remediate them, and verify a clean rerun. Use when asked to lint, check, review, or fix
+  TypeScript code, and after changing .ts or .tsx files when the repository's agentic policies
+  should be applied.
 ---
 
 # Lint TypeScript
@@ -21,13 +25,13 @@ them explicitly.
 
 ## Discover policies
 
-Read `docs/policy-catalog/index.md`, then inventory Markdown files below catalog `rules`, `evidence`,
-and `advice` directories. Sort paths and use each catalog-relative path without `.md` as its stable
-policy ID.
+Read `docs/policy-catalog/index.md`, then inventory Markdown files below catalog `rules`,
+`evidence`, and `advice` directories. Sort paths and use each catalog-relative path without `.md` as
+its stable policy ID.
 
-Derive the fleet and lifecycle from the path. Select fleets whose `Active wiring` applies to at least
-one scoped file, using `better-typescript.config.ts` when present. Include a fleet when applicability
-is uncertain; completeness is more important than speculative exclusion.
+Derive the fleet and lifecycle from the path. Select fleets whose `Active wiring` applies to at
+least one scoped file, using `better-typescript.config.ts` when present. Include a fleet when
+applicability is uncertain; completeness is more important than speculative exclusion.
 
 Do not discover `lint-rule-*` skills or maintain another policy list. Reject malformed catalog
 entries instead of guessing their missing contract.

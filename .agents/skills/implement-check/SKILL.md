@@ -1,7 +1,13 @@
 ---
-description: Implement a better-typescript check in-repo or as an external config
-argument-hint: <check description or check-name>
+name: implement-check
+description:
+  Implements a Better TypeScript check in this monorepo or an external consumer configuration. Use
+  when the user asks to add or implement a Better TypeScript check.
 ---
+
+# Implement Check
+
+Throughout this skill, `$ARGUMENTS` means the user's request that invoked the skill.
 
 Implement the following Better TypeScript Check request, including focused verification for the
 repository you are changing:

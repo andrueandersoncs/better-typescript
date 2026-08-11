@@ -1,7 +1,13 @@
 ---
-description: Turn a maintainer-observed code pattern into a concrete remediation plan
-argument-hint: <pattern, file path, or Better TypeScript output>
+name: plan-pattern-remediation
+description:
+  Produces a concrete Better TypeScript remediation plan for an observed code pattern. Use when the
+  user asks to plan a check, policy, advice, or pattern remediation without implementing it.
 ---
+
+# Plan Pattern Remediation
+
+Throughout this skill, `$ARGUMENTS` means the user's request that invoked the skill.
 
 Turn the following maintainer observation into a concrete Better TypeScript remediation plan:
 
@@ -29,7 +35,8 @@ Turn the observation into a precise proposed invariant. Capture:
 - why it is undesirable;
 - the closest similar examples that must remain allowed;
 
-If the input does not contain enough information to state the invariant, inspect the cited code first. Ask only for the remaining material decision; do not invent a policy boundary.
+If the input does not contain enough information to state the invariant, inspect the cited code
+first. Ask only for the remaining material decision; do not invent a policy boundary.
 
 ## 2. Locate the owning behavior
 
@@ -45,7 +52,8 @@ Determine whether the behavior comes from:
 - Advice emitted by the owning `derive` function, including `defaultDerive`; or
 - a Wiring configuration choice.
 
-Read 2–3 closest Policy, Matcher, and derivation implementations before proposing TypeScript changes.
+Read 2–3 closest Policy, Matcher, and derivation implementations before proposing TypeScript
+changes.
 
 Also audit overlap and derivation effects. Policies must not depend on one another; cross-Policy
 interpretation belongs in the owning `derive` function. Changing a Policy's Detection count,

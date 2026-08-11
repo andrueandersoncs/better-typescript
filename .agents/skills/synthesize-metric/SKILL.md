@@ -1,12 +1,18 @@
 ---
-description: Synthesize a measurement protocol and optimization playbook for a measurable property
-argument-hint: <measurable property, metric, or @document>
+name: synthesize-metric
+description:
+  Writes a first-principles measurement protocol and optimization playbook to docs. Use when the
+  user asks to define, measure, or optimize a TypeScript project metric.
 ---
+
+# Synthesize Metric
+
+Throughout this skill, `$ARGUMENTS` means the user's request that invoked the skill.
 
 Synthesize a comprehensive, coherent measurement protocol and optimization playbook for the
 following measurable TypeScript project property into a markdown document in @docs/. The document
-must let a maintainer (1) measure the property deterministically and reproducibly and (2) improve
-it through falsifiable interventions whose effect the measurement confirms:
+must let a maintainer (1) measure the property deterministically and reproducibly and (2) improve it
+through falsifiable interventions whose effect the measurement confirms:
 
 $ARGUMENTS
 
@@ -24,8 +30,8 @@ documentation would pollute your context window.
   mechanism by which the property degrades, and for each mechanism the smallest intervention that
   improves it, with a predicted, measurable effect.
 - A **measurement** is valid only when its inputs, environment controls, procedure, units, and
-  aggregation are stated precisely enough that two independent runs over the same inputs produce
-  the same value, or values whose difference is bounded by a stated noise floor.
+  aggregation are stated precisely enough that two independent runs over the same inputs produce the
+  same value, or values whose difference is bounded by a stated noise floor.
 - An **optimization lever** is falsifiable: it states an applicability condition decidable from
   measurement output, a concrete transformation, a predicted effect direction on the metric, and a
   confirmation procedure. It is not an aesthetic preference, a restatement of the goal, or an
@@ -34,12 +40,12 @@ documentation would pollute your context window.
   harnesses, runtime instrumentation, trace capture, build introspection — and that's okay!
 - Don't be scared to consider and suggest extreme or unusual mechanisms; the goal is deterministic
   measurement by any means necessary.
-- Do **not** omit a dimension of the property just because measuring it would be hard (or
-  impossible with existing tooling!): propose the tooling or instrumentation instead.
+- Do **not** omit a dimension of the property just because measuring it would be hard (or impossible
+  with existing tooling!): propose the tooling or instrumentation instead.
 - Before the formal glossary, write an informal top-level definition of the requested property that
   gives a technically literate reader an orienting mental model: what varies when the property
-  improves or degrades, what the property excludes, in what units it is naturally expressed, and
-  how the later measurement and levers collectively operationalize it.
+  improves or degrades, what the property excludes, in what units it is naturally expressed, and how
+  the later measurement and levers collectively operationalize it.
 - This explanation guides the document but MUST NOT replace the deterministic metric definition,
   measurement protocol, or falsifiable levers.
 
@@ -51,9 +57,9 @@ documentation would pollute your context window.
 
 - Before deriving terms, metrics, or levers, inventory every technology explicitly named by the
   request.
-- For each technology, inspect its current idioms and enumerate every facility, type-system
-  feature, configuration surface, lifecycle, boundary, and composition mechanism that can move the
-  property's value in either direction.
+- For each technology, inspect its current idioms and enumerate every facility, type-system feature,
+  configuration surface, lifecycle, boundary, and composition mechanism that can move the property's
+  value in either direction.
 - This inventory is an internal coverage obligation, not a preface or an output-section limit:
   derive a measurement dimension for every observable contributor to the property and a lever for
   every observable degradation mechanism, however many entries that requires.
@@ -83,8 +89,8 @@ documentation would pollute your context window.
 - A semantic classification, including a module role, MUST be inferred exclusively from the
   classified module's source AST, compiler-resolved symbols and types, and resolved dependency
   graph.
-- It MUST NOT use a path, directory, basename, file extension, package layout, declaration or
-  export name, user mapping, or presumed intent.
+- It MUST NOT use a path, directory, basename, file extension, package layout, declaration or export
+  name, user mapping, or presumed intent.
 - A physical-file rule MAY use path or filename criteria, but MUST remain independent of the
   semantic classification.
 - When a later measurement or lever references a module role, its implementation MUST apply this
@@ -96,8 +102,8 @@ documentation would pollute your context window.
 - Use the columns `Term`, `Relation`, `Deciding distinction`, and
   `Why it is not interchangeable here`.
 - Include each materially plausible alternative, identify the observable distinction, and explain
-  why the defined term — not the alternative — is required where a later measurement or lever
-  relies on it.
+  why the defined term — not the alternative — is required where a later measurement or lever relies
+  on it.
 - Do not invent distinctions where no plausible related concept exists.
 - Immediately after that table, give a complete, independently type-checkable comparison example
   set.
@@ -110,8 +116,8 @@ documentation would pollute your context window.
   applicability test reuse; it MUST decide the definition without human judgment.
 - Immediately follow each `**Mechanical predicate:**` with a `**Predicate implementation:**`
   TypeScript snippet that implements its essential inputs, traversal or resolution, classification
-  or valuation, and result. The snippet MUST be complete, coherent, and independently
-  type-checkable against its stated imports; do not use pseudocode.
+  or valuation, and result. The snippet MUST be complete, coherent, and independently type-checkable
+  against its stated imports; do not use pseudocode.
 - Every classification used by a definition, measurement, or lever MUST be inferred
   deterministically from the artifact it classifies: source text or AST, compiler-resolved symbols
   or types, the resolved module graph, filename or directory conventions, existing project
@@ -121,24 +127,24 @@ documentation would pollute your context window.
 - MUST NOT invent or require a manifest, registry, allowlist, or other configuration that assigns
   roles, kinds, categories, weights, or permissions to individual source modules, exports,
   dependencies, globals, or other project artifacts. When a proposed category cannot be inferred
-  deterministically, reformulate the measurement or lever around observable implementation
-  behavior; inability to classify is not grounds to introduce a manual mapping.
-- In all prose after an entry's heading — including later definitions, the measurement sections,
-  and every lever subsection — render each use of that defined term as an inline Markdown link to
-  its definition.
+  deterministically, reformulate the measurement or lever around observable implementation behavior;
+  inability to classify is not grounds to introduce a manual mapping.
+- In all prose after an entry's heading — including later definitions, the measurement sections, and
+  every lever subsection — render each use of that defined term as an inline Markdown link to its
+  definition.
 - Do not link definition headings or code examples.
 - Every TypeScript example MUST be specific, complete, coherent, and independently type-checkable
   against its stated imports. Declare or import every referenced identifier; make names, types, and
   behavior agree; and do not use a symbol to imply behavior the snippet does not perform.
-- Every example MUST use source comments to identify the exact declarations, expressions, values,
-  or relationships that exemplify the definition. Put each comment immediately adjacent to what it
+- Every example MUST use source comments to identify the exact declarations, expressions, values, or
+  relationships that exemplify the definition. Put each comment immediately adjacent to what it
   identifies; do not make the reader infer the mapping from surrounding code. When a definition
   enumerates items, each comment MUST name the exact enumerated item it demonstrates.
 - Every enumerated item in a definition — including every item in an "or" or "and" list, every
-  stated observable input, every membership requirement, and every named category, unit, or
-  facility — MUST be demonstrated by its immediately following example set. Use one explicit,
-  specific TypeScript example per item, or one example with a separate adjacent comment for every
-  item it demonstrates; an example that merely demonstrates an unlabelled subset is insufficient. A
+  stated observable input, every membership requirement, and every named category, unit, or facility
+  — MUST be demonstrated by its immediately following example set. Use one explicit, specific
+  TypeScript example per item, or one example with a separate adjacent comment for every item it
+  demonstrates; an example that merely demonstrates an unlabelled subset is insufficient. A
   representative example for one member never demonstrates another member.
 - When a definition targets a library or framework, use its current idiomatic API by inspecting its
   installed or vendored source examples before drafting. For Effect specifically, declare tagged
@@ -148,13 +154,13 @@ documentation would pollute your context window.
   example in that format immediately after the definition. Use a valid comment-capable variant of
   the format, with an adjacent comment naming every enumerated item demonstrated, including each
   observable input, unit, and membership requirement.
-- Omit an example only when neither TypeScript source nor machine-readable input can demonstrate
-  the concept.
+- Omit an example only when neither TypeScript source nor machine-readable input can demonstrate the
+  concept.
 - When a definition names a contrary, inverse, exclusion, prohibition, or "not this" case —
   including with "rather than," "not," "does not," or "except" — its immediately following example
   MUST show both cases under explicit `**This:**` and `**Not this:**` labels. A list of excluded
-  items is a list of contrary cases: the `**Not this:**` example set MUST demonstrate and
-  separately label every listed item.
+  items is a list of contrary cases: the `**Not this:**` example set MUST demonstrate and separately
+  label every listed item.
 
 3. **Specify the measurement protocol.**
 
@@ -168,8 +174,8 @@ documentation would pollute your context window.
   pinned tool and runtime versions, fixed inputs and seeds, warmup policy, isolation requirements,
   repetition count, and the aggregation statistic applied across repetitions — and state the
   resulting **noise floor**: the smallest difference between two measured values that the protocol
-  treats as a real change rather than variance. A static metric MUST state a noise floor of zero
-  and justify why the procedure is exactly deterministic.
+  treats as a real change rather than variance. A static metric MUST state a noise floor of zero and
+  justify why the procedure is exactly deterministic.
 - State the deterministic procedure as an ordered sequence from inputs to final value, then
   immediately follow it with a `**Measurement implementation:**` TypeScript snippet that implements
   the procedure's essential control flow: inputs, traversal or execution, valuation, aggregation,
@@ -181,8 +187,8 @@ documentation would pollute your context window.
   same definitions and predicates as the aggregate metric.
 - Specify baseline and regression tracking: the machine-readable record format for a measurement
   (value, unit, inputs digest, environment controls, timestamp), the comparison procedure between
-  two records, and the success criterion that decides improvement, regression, or no-change
-  relative to the noise floor. Include a complete example record in a comment-capable format.
+  two records, and the success criterion that decides improvement, regression, or no-change relative
+  to the noise floor. Include a complete example record in a comment-capable format.
 - Audit validity: when the metric is a proxy for the requested property rather than the property
   itself, say so explicitly, enumerate every case where the proxy and the property diverge, and
   either add a companion measurement that covers the divergence or state the residual gap plainly.
@@ -196,8 +202,8 @@ documentation would pollute your context window.
 - Do not use a small, fixed, or aesthetically tidy lever count as a stopping condition. The number
   of levers MUST be determined by the full set of independently observable degradation mechanisms
   across the requested property and every applicable named technology.
-- Audit coverage in both directions before writing: every degradation mechanism MUST be addressed
-  by at least one lever, and every lever MUST be necessary for at least one degradation mechanism.
+- Audit coverage in both directions before writing: every degradation mechanism MUST be addressed by
+  at least one lever, and every lever MUST be necessary for at least one degradation mechanism.
 - Give each lever a stable `### <Lever>` heading and a one-sentence normative statement of the
   transformation using RFC 2119 language: `MUST` when the untransformed form always degrades the
   metric, `SHOULD` when a real trade-off exists, `MAY` for permitted alternatives.
@@ -222,8 +228,7 @@ documentation would pollute your context window.
   its stated imports.
 - Do not include `Failure mode`, `Scope`, or `Exceptions` subsections; `#### Effect on metric` is
   the required location for the degradation mechanism, the normative statement MUST state its
-  subject and applicability, and a lever with no permitted alternatives needs no exceptions
-  section.
+  subject and applicability, and a lever with no permitted alternatives needs no exceptions section.
 - Do not create catch-all exceptions, compatibility shims, or escape hatches.
 - Order the levers by expected impact per unit of change risk, and close the section with a
   deterministic diagnostic procedure that maps a measurement record and its decomposition to the
@@ -248,15 +253,15 @@ documentation would pollute your context window.
   still covers every degradation mechanism.
 - Test collective sufficiency by constructing concrete counterexamples: a degradation of the
   property that the measurement cannot detect, a detected degradation that no lever's applicability
-  condition matches, and a metric improvement that games the property without tripping an
-  invariant. If any counterexample survives, add or strengthen the smallest measurement dimension,
-  lever, or invariant that rejects it.
+  condition matches, and a metric improvement that games the property without tripping an invariant.
+  If any counterexample survives, add or strengthen the smallest measurement dimension, lever, or
+  invariant that rejects it.
 - Repeat until no such counterexample remains.
 
 7. **Audit terminology, reproducibility, and example coverage before writing the document.**
 
-- Audit the candidate document, not merely the planned definitions and sections, as a reader
-  without repository context.
+- Audit the candidate document, not merely the planned definitions and sections, as a reader without
+  repository context.
 - Add a definition for every technical term, unit, category, classification, action, state,
   boundary, quantity, or relationship that remains undefined; add or correct every required inline
   definition link; and remove no definitions merely to keep the glossary short.
@@ -264,10 +269,9 @@ documentation would pollute your context window.
   membership requirements, alternatives, categories, facilities, and exclusions — and verify that
   its immediately following example set has a complete, coherent, independently type-checkable
   example and adjacent label for every item.
-- For each definition, verify that its `**Mechanical predicate:**` identifies its concrete input
-  and returns a Boolean membership or unit-valued result, and that its
-  `**Predicate implementation:**` implements that predicate using the declared observable inputs
-  without human judgment.
+- For each definition, verify that its `**Mechanical predicate:**` identifies its concrete input and
+  returns a Boolean membership or unit-valued result, and that its `**Predicate implementation:**`
+  implements that predicate using the declared observable inputs without human judgment.
 - Separately prove reproducibility: walk the measurement procedure as two independent runs and
   verify that every input, control, and aggregation step is pinned precisely enough that the two
   values differ by at most the stated noise floor; pin anything that is not.
@@ -317,16 +321,16 @@ Return exactly these sections:
 - It MUST define the requested property in ordinary technical language, state what varies when it
   improves or degrades and in what units, and name the primary degradation mechanisms the levers
   will address.
-- It MUST NOT introduce undefined formal terminology, normative requirements, mechanical
-  predicates, or code examples.
+- It MUST NOT introduce undefined formal terminology, normative requirements, mechanical predicates,
+  or code examples.
 - Each definition MUST be a separate `### <Term>` entry, used as the link target for every
   subsequent prose use of that term, with the required `#### Related terms` table when confusable
   neighbors exist, a `**Mechanical predicate:**`, a `**Predicate implementation:**` TypeScript
   snippet, and a complete labeled example set, exactly as specified in the method.
 - `### Metric` MUST state the metric's name, unit, scale, direction of goodness, domain, observable
   inputs, and exclusions.
-- `### Procedure` MUST state the environment controls, noise floor, ordered deterministic
-  procedure, and the `**Measurement implementation:**` TypeScript snippet.
+- `### Procedure` MUST state the environment controls, noise floor, ordered deterministic procedure,
+  and the `**Measurement implementation:**` TypeScript snippet.
 - `### Decomposition` MUST state the attribution granularity and composition law using the same
   predicates as the aggregate metric.
 - `### Baseline and regression tracking` MUST state the record format with a complete example

@@ -1,7 +1,13 @@
 ---
-description: Start the given task in a new git worktree on a new branch
-argument-hint: <task description>
+name: worktree
+description:
+  Creates an isolated git worktree and branch for a task. Use when the user asks to start or
+  implement work in a separate worktree.
 ---
+
+# Worktree
+
+Throughout this skill, `$ARGUMENTS` means the user's request that invoked the skill.
 
 Start the following task in a **new git worktree** on a **new branch**. Do not do the work in the
 current checkout:
