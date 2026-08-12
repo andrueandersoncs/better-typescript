@@ -26,9 +26,7 @@ export const total = (a: number, b: number) => {
 import type { AuthResult } from "@earendil-works/pi-ai"
 
 export const toAuthResult = (apiKey: string): AuthResult => {
-  const result = { auth: { apiKey }, source: "Codex OAuth" }
-
-  return result
+  return { auth: { apiKey }, source: "Codex OAuth" }
 }
 
 // 7. Contextually typed third-party adapter result
@@ -41,15 +39,6 @@ export const contextualAuthResult: (apiKey: string) => AuthResult = (apiKey) => 
 export const optionalAuthResult = (apiKey: string): AuthResult | undefined => {
   return apiKey.length > 0 ? { auth: { apiKey }, source: "Codex OAuth" } : undefined
 }
-
-// 9. A shadowed nested-function binding does not return the outer object
-export const shadowedResult = () => {
-  const result = { internal: true }
-  const returnArgument = (result: number) => result
-
-  return returnArgument(1)
-}
-
 
 // 10. Contextually typed third-party adapter method
 export const contextualAuthAdapter: { readonly make: (apiKey: string) => AuthResult } = {

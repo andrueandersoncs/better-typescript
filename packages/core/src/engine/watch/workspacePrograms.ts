@@ -44,25 +44,26 @@ const createProjectLanguageService = (
   const documentRegistry = documentRegistryFor(options)
   const scriptVersion = "0"
 
-  const host: ts.LanguageServiceHost = {
-    getCompilationSettings: Function.constant(options),
-    getScriptFileNames: Function.constant(config.parsed.fileNames),
-    getScriptVersion: Function.constant(scriptVersion),
-    getScriptSnapshot: snapshotFor(snapshots),
-    getCurrentDirectory: Function.constant(config.rootPath),
-    getDefaultLibFileName: ts.getDefaultLibFilePath,
-    getNewLine: Function.constant(ts.sys.newLine),
-    useCaseSensitiveFileNames: Function.constant(ts.sys.useCaseSensitiveFileNames),
-    fileExists: ts.sys.fileExists,
-    readFile: ts.sys.readFile,
-    readDirectory: ts.sys.readDirectory,
-    directoryExists: ts.sys.directoryExists,
-    getDirectories: ts.sys.getDirectories,
-    realpath: ts.sys.realpath,
-    jsDocParsingMode: ts.JSDocParsingMode.ParseForTypeErrors
-  }
-
-  return ts.createLanguageService(host, documentRegistry)
+  return ts.createLanguageService(
+    {
+      getCompilationSettings: Function.constant(options),
+      getScriptFileNames: Function.constant(config.parsed.fileNames),
+      getScriptVersion: Function.constant(scriptVersion),
+      getScriptSnapshot: snapshotFor(snapshots),
+      getCurrentDirectory: Function.constant(config.rootPath),
+      getDefaultLibFileName: ts.getDefaultLibFilePath,
+      getNewLine: Function.constant(ts.sys.newLine),
+      useCaseSensitiveFileNames: Function.constant(ts.sys.useCaseSensitiveFileNames),
+      fileExists: ts.sys.fileExists,
+      readFile: ts.sys.readFile,
+      readDirectory: ts.sys.readDirectory,
+      directoryExists: ts.sys.directoryExists,
+      getDirectories: ts.sys.getDirectories,
+      realpath: ts.sys.realpath,
+      jsDocParsingMode: ts.JSDocParsingMode.ParseForTypeErrors
+    },
+    documentRegistry
+  )
 }
 
 const contextFromLanguageService = (config: ProjectConfig, languageService: ts.LanguageService) =>

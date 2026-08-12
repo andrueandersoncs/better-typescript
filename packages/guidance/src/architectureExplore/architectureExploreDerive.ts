@@ -57,6 +57,16 @@ import { contextTagSeams as contextTagSeamsPolicy } from "../preset/contextTagSe
 import { moduleScopeEffects as moduleScopeEffectsPolicy } from "../preset/moduleScopeEffects.js"
 
 // Architecture Explore derive owns every adviser because exclusive ownership keeps one module.
+const placementDeclarationKinds = {
+  FunctionDeclaration: "function",
+  ClassDeclaration: "class",
+  InterfaceDeclaration: "interface",
+  TypeAliasDeclaration: "type alias",
+  EnumDeclaration: "enum",
+  VariableDeclaration: "variable",
+  ModuleDeclaration: "namespace"
+} as const
+
 const makeArchitectureExploreExports = () => {
   const [
     passThroughWrappersPolicy,
@@ -1547,18 +1557,8 @@ const makeArchitectureExploreExports = () => {
     const moduleAnchorEntity = (module: ModuleSlice) =>
       pipe(module.entities, Array.head, Option.getOrThrow)
 
-    const humanDeclarationKinds = {
-      FunctionDeclaration: "function",
-      ClassDeclaration: "class",
-      InterfaceDeclaration: "interface",
-      TypeAliasDeclaration: "type alias",
-      EnumDeclaration: "enum",
-      VariableDeclaration: "variable",
-      ModuleDeclaration: "namespace"
-    } as const
-
     const humanDeclarationKind = (kind: PlacementEntity["declarationKind"]): string =>
-      humanDeclarationKinds[kind]
+      placementDeclarationKinds[kind]
 
     const entityRow = (entity: PlacementEntity) =>
       `    - ${entity.displayName} — ${humanDeclarationKind(entity.declarationKind)} — ${entity.key.path}:${entity.line}:${entity.column}`

@@ -368,7 +368,12 @@ const makeShadowProgram = (
   analyses: HashMap.HashMap<string, readonly [ts.SourceFile, ReadonlyArray<InferenceProbe>]>
 ) => {
   const programOptions = context.program.getCompilerOptions()
-  const options = { ...programOptions, noUnusedLocals: false, noUnusedParameters: false }
+
+  const options = Object.assign({}, programOptions, {
+    noUnusedLocals: false,
+    noUnusedParameters: false
+  })
+
   const baseHost = ts.createCompilerHost(options, true)
 
   const augmented = HashMap.map(analyses, ([sourceFile, probes]) =>
@@ -400,7 +405,7 @@ const makeShadowProgram = (
     )
   }
 
-  const host = { ...baseHost, getSourceFile } satisfies ts.CompilerHost
+  const host = Object.assign({}, baseHost, { getSourceFile }) satisfies ts.CompilerHost
   const rootNames = context.program.getRootFileNames()
   const projectReferences = context.program.getProjectReferences()
 

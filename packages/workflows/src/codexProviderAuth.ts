@@ -5,19 +5,13 @@ import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-const toCodexAuthResult = (credentials: CodexAuth): AuthResult => {
-  const auth = { apiKey: credentials.tokens.access_token }
-  const result = { auth, source: "Codex OAuth" }
-
-  return Object.freeze(result)
-}
+const toCodexAuthResult: (credentials: CodexAuth) => AuthResult = (credentials) => ({
+  auth: { apiKey: credentials.tokens.access_token },
+  source: "Codex OAuth"
+})
 
 const codexAuthJson = Schema.fromJsonString(CodexAuth)
-const decode = Schema.decodeUnknownEffect(codexAuthJson)
-
-export const decodeCodexAuth = Effect.fn("CodexAuth.decode")(function* (source: string) {
-  return yield* pipe(decode(source), Effect.map(CodexAuth.make))
-})
+const decodeCodexAuth = Schema.decodeUnknownEffect(codexAuthJson)
 
 const readCodexAuth = Effect.fn("CodexAuth.read")(function* () {
   const home = homedir()

@@ -150,6 +150,21 @@ export const declarationSpacingPolicies: ReadonlyArray<Policy> = Array.make(
   noBlankLinesBetweenSingleLineDeclarations
 )
 
+const preferInferredTypeMessages = {
+  const: "Avoid a const annotation when its initializer infers the same type.",
+  return: "Avoid a return annotation when the function body infers the same type.",
+  contextual: "Avoid annotations on a contextually typed function."
+} as const
+
+const preferInferredTypeHints = {
+  const:
+    "Delete the type annotation. Keep annotations that widen a value or guide generic inference.",
+  return:
+    "Delete the return type annotation. Keep explicit contracts when inference changes the signature.",
+  contextual:
+    "Delete the parameter and return annotations together; the surrounding expression supplies them."
+} as const
+
 const makePreferInferredTypes = () => {
   const makePreferInferredTypesFindings = (
     match: Match<
@@ -158,33 +173,8 @@ const makePreferInferredTypes = () => {
         : never
     >
   ) => {
-    const messages = {
-      const: "Avoid a const annotation when its initializer infers the same type.",
-      return: "Avoid a return annotation when the function body infers the same type.",
-      contextual: "Avoid annotations on a contextually typed function."
-    } as const satisfies Record<
-      (typeof functionalMatcherCatalog.preferInferredTypesMatcher extends Matcher<infer Fact>
-        ? Fact
-        : never)["kind"],
-      string
-    >
-
-    const hints = {
-      const:
-        "Delete the type annotation. Keep annotations that widen a value or guide generic inference.",
-      return:
-        "Delete the return type annotation. Keep explicit contracts when inference changes the signature.",
-      contextual:
-        "Delete the parameter and return annotations together; the surrounding expression supplies them."
-    } as const satisfies Record<
-      (typeof functionalMatcherCatalog.preferInferredTypesMatcher extends Matcher<infer Fact>
-        ? Fact
-        : never)["kind"],
-      string
-    >
-
-    const message = messages[match.fact.kind]
-    const hint = hints[match.fact.kind]
+    const message = preferInferredTypeMessages[match.fact.kind]
+    const hint = preferInferredTypeHints[match.fact.kind]
 
     return makeFindings(match.target, message, hint, match.fact)
   }
@@ -1786,8 +1776,10 @@ export const preferSchemaTaggedStruct = makePreferSchemaTaggedStruct()
 export const schemaModelingPolicies: ReadonlyArray<Policy> = Array.make(preferSchemaTaggedStruct)
 
 const makePreferEffectSchemaConstructor = () => {
-  const taggedMessage = (tag: string) => `Avoid returning a raw "${tag}" object literal.`
-  const untaggedMessage = "Avoid returning a raw object literal."
+  const taggedMessage = (tag: string) =>
+    `Avoid declaring or returning a raw "${tag}" object literal.`
+
+  const untaggedMessage = "Avoid declaring or returning a raw object literal."
 
   const taggedHint = (tag: string) =>
     `Reuse the existing Effect Schema for the "${tag}" protocol variant and construct it ` +
@@ -2082,6 +2074,14 @@ export const processEnvironment = makeProcessEnvironment()
 
 export const environmentPolicies: ReadonlyArray<Policy> = Array.make(processEnvironment)
 
+const noUndefinedMessages = {
+  parameter: "Avoid function parameters that accept undefined.",
+  "return-type": "Avoid function return types that include undefined.",
+  "return-expression": "Avoid returning undefined from functions.",
+  "type-declaration": "Avoid optional or undefined properties in type declarations.",
+  comparison: "Avoid comparing values against undefined."
+} as const
+
 const makeNoUndefined = () => {
   const optionHint =
     "Use Effect's Option module to model optional values, and convert nullable boundaries " +
@@ -2089,19 +2089,6 @@ const makeNoUndefined = () => {
     "third-party signature forces undefined on a callback, keep the callback inline or " +
     "annotate it with the library's own callback type so the undefined stays in the " +
     "library's declaration, not yours."
-
-  const undefinedMessages: Record<
-    (typeof safetyMatcherCatalog.noUndefinedMatcher extends Matcher<infer Fact>
-      ? Fact
-      : never)["kind"],
-    string
-  > = {
-    parameter: "Avoid function parameters that accept undefined.",
-    "return-type": "Avoid function return types that include undefined.",
-    "return-expression": "Avoid returning undefined from functions.",
-    "type-declaration": "Avoid optional or undefined properties in type declarations.",
-    comparison: "Avoid comparing values against undefined."
-  }
 
   const noUndefinedGuidance: Guidance<
     typeof safetyMatcherCatalog.noUndefinedMatcher extends Matcher<infer Fact> ? Fact : never
@@ -2112,7 +2099,7 @@ const makeNoUndefined = () => {
         typeof safetyMatcherCatalog.noUndefinedMatcher extends Matcher<infer Fact> ? Fact : never
       >
     ) =>
-      makeFindings(match.target, undefinedMessages[match.fact.kind], optionHint, match.fact)
+      makeFindings(match.target, noUndefinedMessages[match.fact.kind], optionHint, match.fact)
 
   const noUndefined = makeBuiltinPolicy(
     "no-undefined",

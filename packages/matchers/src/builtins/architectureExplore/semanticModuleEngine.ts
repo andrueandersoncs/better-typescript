@@ -613,8 +613,7 @@ const createSemanticModuleEngine = () => {
     const position = sourceFile.getLineAndCharacterOfPosition(start)
     const line = position.line + 1
     const column = position.character + 1
-    const location = { line, column }
-    return freeze(location)
+    return freeze({ line, column })
   }
 
   const placementEntityWithSourceFile =
@@ -2764,16 +2763,14 @@ const createSemanticModuleEngine = () => {
     return withProgramMatcherIndex(indexBuilder)(subscribe)
   }
 
-  const api = {
+  return freeze({
     SemanticModuleSnapshotV1,
     buildSemanticModuleSnapshot,
     moduleFor,
     peersFor,
     proofBetween,
     semanticModulePlacementMatcher
-  }
-
-  return freeze(api)
+  })
 }
 
 export const semanticModuleEngine = createSemanticModuleEngine()

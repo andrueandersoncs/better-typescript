@@ -1,20 +1,10 @@
 import { expect, test } from "bun:test"
-import { ConfigProvider, Effect } from "effect"
+import { ConfigProvider } from "effect"
 import { hasProvider } from "@flue/runtime/internal"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import {
-  decodeCodexAuth,
-  makeCodexAuthResolver
-} from "../packages/workflows/src/codexProviderAuth.js"
-
-test("Codex OAuth credentials expose the access token", () =>
-  Effect.runPromise(
-    decodeCodexAuth(
-      JSON.stringify({ tokens: { access_token: "access", refresh_token: "refresh" } })
-    )
-  ).then((credentials) => expect(credentials.tokens.access_token).toBe("access")))
+import { makeCodexAuthResolver } from "../packages/workflows/src/codexProviderAuth.js"
 
 test("Codex home is injectable with ConfigProvider", async () => {
   const directory = await mkdtemp(join(tmpdir(), "better-typescript-codex-"))

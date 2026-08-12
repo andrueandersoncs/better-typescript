@@ -18,8 +18,11 @@ import type { ImportedMember } from "./functionalCoreEffect/importedMember.js"
 import { isSeedIdentifier } from "./isSeedIdentifier.js"
 import { isPipeCallee } from "./isPipeCallee.js"
 import { referencesToSymbol } from "./referencesToSymbol.js"
-import type { NamedVariableDeclaration } from "./preferEffectSchemaConstructorBinding.js"
 import { symbolOptionAt } from "./symbolOptionAt.js"
+
+interface NamedVariableDeclaration extends ts.VariableDeclaration {
+  readonly name: ts.Identifier
+}
 
 const blockKind = Schema.Literal("block")
 const adapterKind = Schema.Literal("adapter")

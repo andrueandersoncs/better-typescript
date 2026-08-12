@@ -55,3 +55,17 @@ interface ProjectUser {
 export const makeAsyncUser = async (id: number): Promise<ProjectUser> => {
   return { id } // ~detect 10
 }
+
+// 10. A bare object declaration reports without escaping through a return
+export const retries = () => {
+  const config = { retries: 3 } // ~detect 18
+
+  return config.retries
+}
+
+// 11. Consuming a bare object through Object.freeze does not hide the declaration
+export const frozenResult = () => {
+  const result = { value: 1 } // ~detect 18
+
+  return Object.freeze(result)
+}

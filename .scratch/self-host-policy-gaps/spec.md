@@ -116,8 +116,9 @@ report empty after the workflow adapter follows the preferred forms.
 
 ## Implementation Decisions
 
-- Extend schema-construction analysis from direct object returns to local object bindings that
-  escape unchanged through a return, including the source evidence item 1 shape.
+- Extend schema-construction analysis from direct object returns to non-empty function-local raw
+  object declarations, whether or not the binding is returned, including source evidence item 1.
+  Direct contextually typed foreign-adapter returns remain exempt.
 - Add a trivial-Effect-wrapper policy for named `Effect.fn` generators that only forward their
   parameters into one Effect and yield its result, including source evidence item 2. It must not
   target service operations or workflows that transform, recover, sequence, or otherwise add
