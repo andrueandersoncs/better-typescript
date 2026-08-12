@@ -8,7 +8,7 @@ Leave the Codex OAuth result adapter in its preferred, clean form.
 
 **Status:** ready-for-agent
 
-- [ ] A focused CLI fixture reports the escaped raw-result shape and remains clean for its
+- [x] A focused CLI fixture reports the escaped raw-result shape and remains clean for its
       foreign-adapter boundary.
-- [ ] The default policy fleet and every self-hosted package enable the policy, and the Codex OAuth
+- [x] The default policy fleet and every self-hosted package enable the policy, and the Codex OAuth
       adapter passes self-hosting.

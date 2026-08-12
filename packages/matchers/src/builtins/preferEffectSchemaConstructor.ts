@@ -1,55 +1,17 @@
-import { Array, Function, HashSet, Option, Predicate, pipe, Struct, flow } from "effect"
+import { Array, Function, Match, Option, Predicate, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import type { MatchContext } from "../matcher/matchContext.js"
 import { nodeMatcher } from "../matcher/nodeMatcher.js"
 import { isReturnedExpressionNode } from "../support/isReturnedExpressionNode.js"
+import { foldAst } from "../sources/foldAst.js"
 import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
-import { PreferEffectSchemaConstructorFact } from "./preferEffectSchemaConstructorFact.js"
+import { branchExpressions } from "./preferEffectSchemaConstructorBranchExpressions.js"
+import { makePreferEffectSchemaConstructorMatch } from "./preferEffectSchemaConstructorFact.js"
 import type { NamedVariableDeclaration } from "./preferEffectSchemaConstructorBinding.js"
 import { hasForeignReturnContract } from "./preferEffectSchemaConstructorForeignReturn.js"
 import { isNonEmptyObjectLiteral } from "./preferEffectSchemaConstructorObjectLiteral.js"
-import { schemaConstructorTag } from "./preferEffectSchemaConstructorTag.js"
-
-const shortCircuitOperatorKinds = HashSet.make(
-  ts.SyntaxKind.QuestionQuestionToken,
-  ts.SyntaxKind.BarBarToken,
-  ts.SyntaxKind.AmpersandAmpersandToken
-)
-
-const hasShortCircuitOperator = (expression: ts.BinaryExpression) =>
-  HashSet.has(shortCircuitOperatorKinds, expression.operatorToken.kind)
-
-const isShortCircuitExpression = (expression: ts.Expression): expression is ts.BinaryExpression => {
-  const binaryExpression = Option.liftPredicate(ts.isBinaryExpression)(expression)
-
-  return Option.exists(binaryExpression, hasShortCircuitOperator)
-}
-
-const ternaryBranches = (conditional: ts.ConditionalExpression): ReadonlyArray<ts.Expression> => {
-  const ternaryArms = Array.make(conditional.whenTrue, conditional.whenFalse)
-  return Array.flatMap(ternaryArms, branchExpressions)
-}
-
-const branchExpressions = (expression: ts.Expression): ReadonlyArray<ts.Expression> => {
-  const unwrapped = unwrapTransparentExpression(expression)
-
-  const ternaryBranchOption = pipe(
-    Option.liftPredicate(ts.isConditionalExpression)(unwrapped),
-    Option.map(ternaryBranches)
-  )
-
-  const shortCircuitBranchOption = pipe(
-    Option.liftPredicate(isShortCircuitExpression)(unwrapped),
-    Option.map(Struct.get("right")),
-    Option.map(branchExpressions)
-  )
-
-  const branches = Array.make(ternaryBranchOption, shortCircuitBranchOption)
-  const leafBranches = Array.of(unwrapped)
-  return pipe(Option.firstSomeOf(branches), Option.getOrElse(Function.constant(leafBranches)))
-}
+import { symbolOptionAt } from "./symbolOptionAt.js"
 
 const objectLiteralReturnMatches = (context: MatchContext) => {
   const matches = (node: ts.Node) => {
@@ -66,58 +28,119 @@ const objectLiteralReturnMatches = (context: MatchContext) => {
       Array.filter(ts.isObjectLiteralExpression),
       Array.filter(isNonEmptyObjectLiteral),
       Array.filter(Predicate.not(hasForeignReturnContract(context))),
-      Array.map((literal) => {
-        const tag = schemaConstructorTag(literal)
-        const fact = PreferEffectSchemaConstructorFact.make({ tag })
-
-        return makeNodeMatch(literal, fact)
-      })
+      Array.map(makePreferEffectSchemaConstructorMatch)
     )
   }
 
   return matches
 }
 
-const hasReturnedBindingName = (name: string) => (statement: ts.Statement) =>
-  pipe(
-    Option.liftPredicate(ts.isReturnStatement)(statement),
-    Option.map(Struct.get<ts.ReturnStatement, "expression">("expression")),
-    Option.flatMap(Option.fromNullishOr),
-    Option.filter(ts.isIdentifier),
-    Option.exists(flow(Struct.get<ts.Identifier, "text">("text"), strictEqual(name)))
-  )
-
 const isNamedVariableDeclaration = (
   declaration: ts.VariableDeclaration
 ): declaration is NamedVariableDeclaration => ts.isIdentifier(declaration.name)
 
-const returnedBindingMatch = (declaration: NamedVariableDeclaration) =>
-  Option.gen(function* () {
-    const initializer = yield* Option.fromNullishOr(declaration.initializer)
+const functionAncestorOf = (node: ts.Node) => ts.findAncestor(node, ts.isFunctionLike)
 
-    const literal = yield* pipe(
-      unwrapTransparentExpression(initializer),
-      Option.liftPredicate(ts.isObjectLiteralExpression),
-      Option.filter(isNonEmptyObjectLiteral)
-    )
+const conciseBodyFunctionChecks = (declaration: ts.SignatureDeclaration) => {
+  const isArrow = ts.isArrowFunction(declaration)
+  const isFunctionExpression = ts.isFunctionExpression(declaration)
 
-    const block = yield* Option.liftPredicate(ts.isBlock)(declaration.parent.parent.parent)
+  return Array.make(isArrow, isFunctionExpression)
+}
 
-    yield* pipe(block.statements, Array.findFirst(hasReturnedBindingName(declaration.name.text)))
+const isConciseBodyFunction = (
+  declaration: ts.SignatureDeclaration
+): declaration is ts.ArrowFunction | ts.FunctionExpression =>
+  pipe(conciseBodyFunctionChecks(declaration), Array.some(Boolean))
 
-    const tag = schemaConstructorTag(literal)
-    const fact = PreferEffectSchemaConstructorFact.make({ tag })
+const blockBodyFunctionChecks = (declaration: ts.SignatureDeclaration) => {
+  const isFunction = ts.isFunctionDeclaration(declaration)
+  const isMethod = ts.isMethodDeclaration(declaration)
+  const isGetter = ts.isGetAccessorDeclaration(declaration)
+  const isSetter = ts.isSetAccessorDeclaration(declaration)
+  const isConstructor = ts.isConstructorDeclaration(declaration)
 
-    return makeNodeMatch(literal, fact)
-  })
+  return Array.make(isFunction, isMethod, isGetter, isSetter, isConstructor)
+}
+
+const isBlockBodyFunction = (
+  declaration: ts.SignatureDeclaration
+): declaration is
+  | ts.FunctionDeclaration
+  | ts.MethodDeclaration
+  | ts.GetAccessorDeclaration
+  | ts.SetAccessorDeclaration
+  | ts.ConstructorDeclaration => pipe(blockBodyFunctionChecks(declaration), Array.some(Boolean))
+
+const conciseBody = (declaration: ts.ArrowFunction | ts.FunctionExpression) =>
+  Option.some(declaration.body)
+
+const blockBody = (
+  declaration:
+    | ts.FunctionDeclaration
+    | ts.MethodDeclaration
+    | ts.GetAccessorDeclaration
+    | ts.SetAccessorDeclaration
+    | ts.ConstructorDeclaration
+) => Option.fromNullishOr(declaration.body)
+
+const noImplementationBody = Option.none<ts.ConciseBody>()
+const noImplementationBodyFallback = Function.constant(noImplementationBody)
+
+const implementationBody = (declaration: ts.SignatureDeclaration) =>
+  pipe(
+    Match.value(declaration),
+    Match.when(isConciseBodyFunction, conciseBody),
+    Match.when(isBlockBodyFunction, blockBody),
+    Match.orElse(noImplementationBodyFallback)
+  )
 
 const returnedBindingMatches = (context: MatchContext) => (node: ts.Node) =>
   pipe(
-    Option.liftPredicate(ts.isVariableDeclaration)(node),
-    Option.filter(isNamedVariableDeclaration),
-    Option.filter(Predicate.not(hasForeignReturnContract(context))),
-    Option.flatMap(returnedBindingMatch),
-    Option.toArray
+    Option.gen(function* () {
+      const declaration = yield* pipe(
+        Option.liftPredicate(ts.isVariableDeclaration)(node),
+        Option.filter(isNamedVariableDeclaration),
+        Option.filter(Predicate.not(hasForeignReturnContract(context)))
+      )
+
+      const initializer = yield* Option.fromNullishOr(declaration.initializer)
+
+      const literals = pipe(
+        branchExpressions(initializer),
+        Array.filter(ts.isObjectLiteralExpression),
+        Array.filter(isNonEmptyObjectLiteral)
+      )
+
+      yield* pipe(literals, Option.liftPredicate(Array.isReadonlyArrayNonEmpty))
+
+      const declarationSymbol = yield* symbolOptionAt(context.checker)(declaration.name)
+      const functionAncestor = yield* pipe(functionAncestorOf(declaration), Option.fromNullishOr)
+      const body = yield* pipe(implementationBody(functionAncestor), Option.filter(ts.isBlock))
+      const isFromAnalyzedBody = Function.flow(functionAncestorOf, strictEqual(functionAncestor))
+
+      const isReturnedBinding = (candidate: ts.Node) =>
+        pipe(
+          Option.liftPredicate(ts.isReturnStatement)(candidate),
+          Option.filter(isFromAnalyzedBody),
+          Option.map(Struct.get<ts.ReturnStatement, "expression">("expression")),
+          Option.flatMap(Option.fromNullishOr),
+          Option.map(unwrapTransparentExpression),
+          Option.filter(ts.isIdentifier),
+          Option.flatMap(symbolOptionAt(context.checker)),
+          Option.exists(strictEqual(declarationSymbol))
+        )
+
+      const retainFoundBinding = (found: boolean, candidate: ts.Node) =>
+        found ? true : isReturnedBinding(candidate)
+
+      const hasReturnedBinding = foldAst(retainFoundBinding)(body)(false)
+
+      yield* pipe(body, Option.liftPredicate(Function.constant(hasReturnedBinding)))
+
+      return Array.map(literals, makePreferEffectSchemaConstructorMatch)
+    }),
+    Option.getOrElse(Array.empty)
   )
 
 const returnCandidateKinds = Array.make(

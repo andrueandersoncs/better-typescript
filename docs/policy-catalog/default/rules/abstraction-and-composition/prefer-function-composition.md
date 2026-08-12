@@ -2,52 +2,50 @@
 
 ## Classification
 
-Reported default policy; function composition; file-local semantic detection.
+Reported default policy; function and Effect pipeline composition; symbol-aware local analysis.
 
 ## Active wiring
 
-Listed in conceptAndCompositionPolicies, then defaultWiring; self-hosted on packages/*/src/**.
+Listed in `compositionPolicies`, then `defaultWiring`; self-hosted on all product source files.
 
 ## Implementation sources
 
-- packages/guidance/src/policies/preferFunctionComposition.ts
-- packages/matchers/src/builtins/preferFunctionComposition.ts
-- packages/matchers/src/support/unaryAdapter.ts
-- packages/matchers/src/sources/sources.ts
+- `packages/matchers/src/builtins/preferFunctionComposition.ts`
+- `packages/guidance/src/preset/defaultWiring.ts`
 
 ## Intent
 
-Replace manually threaded locals and property-projecting partial adapters with explicit function composition.
+Replace manually threaded locals with explicit function composition.
 
 ## Detection boundary
 
-Block findings require an arrow body with exactly two statements: one single const binding with a non-function initializer, then a return whose expression contains exactly one reference to that binding and forms a nontrivial unary-call or pipe tower over it. Adapter findings require a non-type-predicate unary adapter of the form parameter.property passed to a one-argument partial call, with an explicit parameter type for the Struct.get suggestion.
+Reports simple unary block pipelines, property-projecting adapters, and contiguous Effect transformation chains ending in `Effect.runPromise`. Effect chains may contain arbitrary applicable Effect API stages in data-first calls, free `pipe(...)`, or Effect method `.pipe(...)`; each symbol must have exactly one downstream use.
 
 ## Exemptions and non-findings
 
-Identity returns, function-valued bindings, multiple declarations/references/statements, control flow, multi-argument calls, object embedding, optional property access, already composed expressions, type predicates, and untyped property adapters are not findings.
+Control flow, branches, captured or reused intermediates, extra terminal uses, and already composed expressions are quiet.
 
 ## Guidance
 
-Use pipe, flow, Function.compose, or flow(Struct.get<Type>(key), partial); do not replace the local with nested calls.
+Use `pipe`, `flow`, or `Function.compose`; Effect chains specifically use one data-last `pipe` through `Effect.runPromise`.
 
 ## Dependencies
 
-AST folds, unaryAdapter, transparent-expression handling, type-predicate signatures, explicit type text, and pipe-tower recognition.
+TypeScript checker, symbol-reference analysis, Effect API provenance, and pipe-call classification.
 
 ## Tests and examples
 
-- tests/preferFunctionComposition.test.ts
-- tests/fixtures/prefer-function-composition/
-- packages/guidance/examples/prefer-function-composition/
+- `tests/preferFunctionComposition.test.ts`
+- `tests/fixtures/prefer-function-composition/`
+- `packages/guidance/examples/prefer-function-composition/`
 
 ## Skill migration
 
 - Proposed skill: lint-rule-prefer-function-composition
 - Scope: local file
-- Required semantic context: binding reference counts, unary call tower, predicate signature, and adapter type text
-- Runner phase/fleet: composition detection / concepts-composition
-- Deterministic candidate generation: reuse preferFunctionCompositionMatcher with block/adapter facts
+- Required semantic context: resolved pipeline symbols, Effect stages, and terminal use
+- Runner phase/fleet: detection / abstraction-and-composition
+- Deterministic candidate generation: reuse `preferFunctionCompositionMatcher` with runner-supplied source files
 
 ## Open questions
 

@@ -8,8 +8,10 @@ import { noUndefinedMatcher } from "./noUndefined.js"
 import { noUnsafeEffectApisMatcher } from "./noUnsafeEffectApis.js"
 import { noUnusedMatcher } from "./noUnused.js"
 import { noVoidFunctionsMatcher } from "./noVoidFunctions.js"
+import { processEnvironmentMatcher } from "./processEnvironment.js"
 
 export const safetyMatcherCatalog = {
+  processEnvironmentMatcher,
   noUnsafeEffectApisMatcher,
   noUndefinedMatcher,
   noUnusedMatcher,

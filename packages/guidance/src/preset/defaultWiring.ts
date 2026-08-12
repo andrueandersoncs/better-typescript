@@ -278,6 +278,12 @@ const makePreferFunctionComposition = () => {
 
   const adapterMessage = "Avoid unary adapters that project a property into a partial function."
 
+  const effectPipelineMessage =
+    "Avoid straight-line Effect transformations threaded through single-use bindings."
+
+  const effectPipelineHint =
+    "Use one data-last pipe from the source Effect through each transformation and Effect.runPromise."
+
   const adapterHint = (typeText: string, propertyName: string, partialText: string) =>
     `Use flow(Struct.get<${typeText}>(${JSON.stringify(propertyName)}), ${partialText}) instead.`
 
@@ -303,10 +309,14 @@ const makePreferFunctionComposition = () => {
       return makeFindings(match.target, adapterMessage, hint, match.fact)
     }
 
+    const makeEffectPipelineFindings = () =>
+      makeFindings(match.target, effectPipelineMessage, effectPipelineHint, match.fact)
+
     return pipe(
       EffectMatch.value(match.fact),
       EffectMatch.when({ kind: "block" }, makeBlockFindings),
       EffectMatch.when({ kind: "adapter" }, makeAdapterFindings),
+      EffectMatch.when({ kind: "effect-pipeline" }, makeEffectPipelineFindings),
       EffectMatch.exhaustive
     )
   }
@@ -2052,6 +2062,26 @@ export const effectIdiomPolicies: ReadonlyArray<Policy> = pipe(
   Array.appendAll(equivalencePolicies)
 )
 
+const makeProcessEnvironment = () => {
+  const message = "Avoid reading process.env directly in production code."
+
+  const hint =
+    "Declare runtime configuration with Effect Config and inject a ConfigProvider at the " +
+    "application boundary. Keep direct environment access only in composition roots and tests."
+
+  const processEnvironment = makeBuiltinPolicy(
+    "process-environment",
+    safetyMatcherCatalog.processEnvironmentMatcher,
+    factGuidance(message, hint)
+  )
+
+  return processEnvironment
+}
+
+export const processEnvironment = makeProcessEnvironment()
+
+export const environmentPolicies: ReadonlyArray<Policy> = Array.make(processEnvironment)
+
 const makeNoUndefined = () => {
   const optionHint =
     "Use Effect's Option module to model optional values, and convert nullable boundaries " +
@@ -2223,7 +2253,8 @@ export const explicitErrorPolicies: ReadonlyArray<Policy> = Array.make(
 // Member order is pinned because concatenated categories define the public report block order.
 export const errorHygienePolicies: ReadonlyArray<Policy> = pipe(
   explicitErrorPolicies,
-  Array.appendAll(absenceAndUsagePolicies)
+  Array.appendAll(absenceAndUsagePolicies),
+  Array.appendAll(environmentPolicies)
 )
 
 const makeNoNestedIfStatements = () => {

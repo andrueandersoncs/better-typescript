@@ -8,6 +8,6 @@ and reused intermediate values.
 
 **Status:** ready-for-agent
 
-- [ ] Focused CLI fixtures report the linear chain and retain a non-linear or reused-value boundary.
-- [ ] The default policy fleet and every self-hosted package enable the policy, and Codex OAuth uses
+- [x] Focused CLI fixtures report the linear chain and retain a non-linear or reused-value boundary.
+- [x] The default policy fleet and every self-hosted package enable the policy, and Codex OAuth uses
       its standalone preferred pipeline form.

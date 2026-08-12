@@ -8,7 +8,7 @@ sequence, or otherwise add behavior.
 
 **Status:** ready-for-agent
 
-- [ ] Focused CLI fixtures report the trivial forwarding wrapper and retain a meaningful workflow
+- [x] Focused CLI fixtures report the trivial forwarding wrapper and retain a meaningful workflow
       boundary.
-- [ ] The default policy fleet and every self-hosted package enable the policy, and the Codex OAuth
+- [x] The default policy fleet and every self-hosted package enable the policy, and the Codex OAuth
       decoder passes self-hosting.

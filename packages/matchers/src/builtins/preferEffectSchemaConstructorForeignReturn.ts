@@ -1,24 +1,119 @@
-import { Function, Option, Struct } from "effect"
+import { Array, Option, Predicate, pipe } from "effect"
 import * as ts from "typescript"
 import type { MatchContext } from "../matcher/matchContext.js"
 import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
+import { propertyNameText } from "../support/propertyNameText.js"
 import { typeSymbol } from "./typeSymbol.js"
 
-const findFunctionAncestor = (node: ts.Node) => ts.findAncestor(node, ts.isFunctionLike)
-
-const functionReturnType = Function.flow(
-  findFunctionAncestor,
-  Option.fromNullishOr,
-  Option.map(Struct.get<ts.SignatureDeclaration, "type">("type")),
-  Option.flatMap(Option.fromNullishOr)
-)
-
-const isForeignSymbol = (symbol: ts.Symbol) => !isFirstPartySymbol(symbol)
-
-export const hasForeignReturnContract = (context: MatchContext) =>
-  Function.flow(
-    functionReturnType,
-    Option.map(context.checker.getTypeAtLocation.bind(context.checker)),
-    Option.flatMap(typeSymbol),
-    Option.exists(isForeignSymbol)
+const signatureReturnType = (context: MatchContext, declaration: ts.SignatureDeclaration) =>
+  pipe(
+    context.checker.getSignatureFromDeclaration(declaration),
+    Option.fromNullishOr,
+    Option.map(context.checker.getReturnTypeOfSignature.bind(context.checker))
   )
+
+const contextualCallableReturnType = (
+  context: MatchContext,
+  declaration: ts.SignatureDeclaration
+) => {
+  const isArrow = ts.isArrowFunction(declaration)
+  const isFunctionExpression = ts.isFunctionExpression(declaration)
+  const isContextualFunction = isArrow || isFunctionExpression
+
+  if (!isContextualFunction) return Option.none<ts.Type>()
+
+  const signaturesOfType = (type: ts.Type) =>
+    context.checker.getSignaturesOfType(type, ts.SignatureKind.Call)
+
+  return pipe(
+    context.checker.getContextualType(declaration as ts.ArrowFunction | ts.FunctionExpression),
+    Option.fromNullishOr,
+    Option.map(signaturesOfType),
+    Option.flatMap(Array.head),
+    Option.map(context.checker.getReturnTypeOfSignature.bind(context.checker))
+  )
+}
+
+const contextualMethodReturnType = (context: MatchContext, declaration: ts.SignatureDeclaration) =>
+  Option.gen(function* () {
+    const method = yield* Option.liftPredicate(ts.isMethodDeclaration)(declaration)
+    const object = yield* pipe(method.parent, Option.liftPredicate(ts.isObjectLiteralExpression))
+    const objectType = yield* pipe(context.checker.getContextualType(object), Option.fromNullishOr)
+    const propertyName = yield* propertyNameText(method.name)
+
+    const property = yield* pipe(
+      context.checker.getPropertyOfType(objectType, propertyName),
+      Option.fromNullishOr
+    )
+
+    const propertyType = context.checker.getTypeOfSymbolAtLocation(property, method)
+
+    const signature = yield* pipe(
+      context.checker.getSignaturesOfType(propertyType, ts.SignatureKind.Call),
+      Array.head
+    )
+
+    return context.checker.getReturnTypeOfSignature(signature)
+  })
+
+const contextualReturnType = (context: MatchContext, declaration: ts.SignatureDeclaration) =>
+  pipe(
+    contextualCallableReturnType(context, declaration),
+    Option.orElse(() => contextualMethodReturnType(context, declaration))
+  )
+
+const returnTypeForDeclaration =
+  (context: MatchContext) => (declaration: ts.SignatureDeclaration) =>
+    pipe(
+      contextualReturnType(context, declaration),
+      Option.orElse(() => signatureReturnType(context, declaration))
+    )
+
+const functionReturnType = (context: MatchContext, node: ts.Node) =>
+  pipe(
+    ts.findAncestor(node, ts.isFunctionLike),
+    Option.fromNullishOr,
+    Option.flatMap(returnTypeForDeclaration(context))
+  )
+
+const sourceFileOf = (declaration: ts.Declaration) => declaration.getSourceFile()
+
+const isDefaultLibrarySymbol = (context: MatchContext) => (symbol: ts.Symbol) => {
+  const declarations = symbol.getDeclarations() ?? Array.empty()
+  const sourceFiles = Array.map(declarations, sourceFileOf)
+
+  return Array.some(sourceFiles, context.program.isSourceFileDefaultLibrary.bind(context.program))
+}
+
+const typeArguments = (context: MatchContext, type: ts.Type) => {
+  const isObject = (type.flags & ts.TypeFlags.Object) !== 0
+  const hasReferenceFlag = ((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) !== 0
+  const referenceChecks = Array.make(isObject, hasReferenceFlag)
+  const isReference = Array.every(referenceChecks, Boolean)
+
+  return isReference
+    ? context.checker.getTypeArguments(type as ts.TypeReference)
+    : Array.empty<ts.Type>()
+}
+
+const hasForeignContractType =
+  (context: MatchContext) =>
+  (type: ts.Type): boolean => {
+    if (type.isUnionOrIntersection()) {
+      return Array.some(type.types, hasForeignContractType(context))
+    }
+
+    const symbol = typeSymbol(type)
+    const argumentsList = typeArguments(context, type)
+    const unwrapDefaultContainer = pipe(symbol, Option.exists(isDefaultLibrarySymbol(context)))
+    const hasTypeArguments = Array.isReadonlyArrayNonEmpty(argumentsList)
+    const containerChecks = Array.make(unwrapDefaultContainer, hasTypeArguments)
+    const shouldUnwrapContainer = Array.every(containerChecks, Boolean)
+    const foreignContainerMember = Array.some(argumentsList, hasForeignContractType(context))
+    const foreignSymbol = pipe(symbol, Option.exists(Predicate.not(isFirstPartySymbol)))
+
+    return shouldUnwrapContainer ? foreignContainerMember : foreignSymbol
+  }
+
+export const hasForeignReturnContract = (context: MatchContext) => (node: ts.Node) =>
+  pipe(functionReturnType(context, node), Option.exists(hasForeignContractType(context)))

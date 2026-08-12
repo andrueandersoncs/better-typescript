@@ -63,7 +63,7 @@ import { propertyAssignmentNamed } from "../functionalCoreEffect/propertyAssignm
 
 import { accessNameIsPipe } from "./accessNameIsPipe.js"
 
-import { ambientCapabilitySubject } from "./ambientCapabilitySubject.js"
+import { ambientCapabilityPropertySubject } from "../functionalCoreEffect/ambientCapabilityPropertySubject.js"
 
 import { anyKeywordType } from "./anyKeywordType.js"
 
@@ -138,6 +138,8 @@ import { inspectEffectFnCall } from "./inspectEffectFnCall.js"
 
 import { isExpressionReferenceNode } from "./isExpressionReferenceNode.js"
 
+import { isAccessExpression } from "./isAccessExpression.js"
+
 import { isFunctionLikeExpression } from "./isFunctionLikeExpression.js"
 
 import { isRootRole } from "./isRootRole.js"
@@ -158,7 +160,8 @@ import { propertySignatureIsUndefinedFreeOptional } from "./parenthesizedTypeInc
 
 import { pipeCallTypedErrorFinding } from "./pipeCallSelfExpression.js"
 
-import { processEnvSubject } from "./processEnvSubject.js"
+import { isOutermostAccess } from "../isOutermostAccess.js"
+import { isProcessEnvironmentAccess } from "../processEnvironmentAccess.js"
 
 import { serviceMethodFindingForName } from "./propertyEvidenceNode.js"
 
@@ -191,6 +194,9 @@ import { typeMentionsConstructor } from "./typeArgsOfTypeReference.js"
 import { typedErrorRecoveryFinding } from "./typedErrorRecoveryFinding.js"
 
 import { unsafeCastFindingFromTypeNode } from "./unsafeCastFindingFromTypeNode.js"
+
+const ambientCapabilitySubject = (context: MatchContext) => (access: ts.PropertyAccessExpression) =>
+  ambientCapabilityPropertySubject(context, access)
 
 const ruleKinds = Array.make<
   [
@@ -1138,46 +1144,13 @@ const isRootOrTest = (role: ArchitectureRole) => {
 
 const isNonRootOrTest = Predicate.not(isRootOrTest)
 
-const processEnvironmentSubject = (context: MatchContext, node: ts.Node) => {
-  const ambientSubject = ambientCapabilitySubject(context)
-
-  const fromProperty = pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(node),
-    Option.flatMap(ambientSubject)
+const processEnvironmentSubject = (context: MatchContext, node: ts.Node) =>
+  pipe(
+    Option.liftPredicate(isAccessExpression)(node),
+    Option.filter(isProcessEnvironmentAccess(context.checker)),
+    Option.filter(isOutermostAccess),
+    Option.as("process.env")
   )
-
-  const nestedPropertyAccess = (access: ts.PropertyAccessExpression) =>
-    pipe(
-      unwrapTransparentExpression(access.expression),
-      Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.flatMap(ambientSubject),
-      Option.map(Function.constant(processEnvSubject))
-    )
-
-  const fromNestedProperty = pipe(
-    Option.liftPredicate(ts.isPropertyAccessExpression)(node),
-    Option.flatMap(nestedPropertyAccess)
-  )
-
-  const elementPropertyAccess = (access: ts.ElementAccessExpression) =>
-    pipe(
-      unwrapTransparentExpression(access.expression),
-      Option.liftPredicate(ts.isPropertyAccessExpression),
-      Option.flatMap(ambientSubject),
-      Option.map(Function.constant(processEnvSubject))
-    )
-
-  const fromElement = pipe(
-    Option.liftPredicate(ts.isElementAccessExpression)(node),
-    Option.flatMap(elementPropertyAccess)
-  )
-
-  return pipe(
-    fromProperty,
-    Option.orElse(Function.constant(fromNestedProperty)),
-    Option.orElse(Function.constant(fromElement))
-  )
-}
 
 const processEnvironmentFindings = (
   context: MatchContext,
@@ -1251,7 +1224,7 @@ const globalConfigMutationFindings = (
       pipe(
         assignmentTarget(node),
         Option.flatMap(ambientCapabilityFromTarget(context)),
-        Option.map(() => globalConfigMutationFinding(processEnvSubject)(node))
+        Option.map(() => globalConfigMutationFinding("process.env")(node))
       )
     ),
     Option.toArray

@@ -1,6 +1,6 @@
 import { openaiCodexProvider } from "@earendil-works/pi-ai/providers/openai-codex"
 import { setProvider } from "@flue/runtime"
-import { resolveCodexAuth } from "./codexProviderAuth.js"
+import { makeCodexAuthResolver } from "./codexProviderAuth.js"
 
 const provider = openaiCodexProvider()
 
@@ -9,7 +9,7 @@ setProvider({
   auth: {
     apiKey: {
       name: "Codex OAuth",
-      resolve: resolveCodexAuth
+      resolve: makeCodexAuthResolver()
     }
   }
 })

@@ -8,7 +8,7 @@ policy.
 
 **Status:** ready-for-agent
 
-- [ ] Focused CLI fixtures report the unclassified production read and retain the legitimate
+- [x] Focused CLI fixtures report the unclassified production read and retain the legitimate
       boundary.
-- [ ] The default policy fleet and every self-hosted package enable the policy, and Codex OAuth
+- [x] The default policy fleet and every self-hosted package enable the policy, and Codex OAuth
       configuration passes self-hosting without global environment mutation.

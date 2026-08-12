@@ -84,9 +84,53 @@ import { Effect } from "effect"
 declare const read: () => Effect.Effect<string>
 declare const transform: (value: string) => string
 
-const resolve = () => { // ~detect
+const resolve = () => { // ~detect 23
   const source = read()
   const result = Effect.map(source, transform)
+
+  return Effect.runPromise(result)
+}
+
+
+declare const validate: (value: string) => Effect.Effect<string>
+declare const observe: (value: string) => Effect.Effect<void>
+
+const resolveLongChain = () => { // ~detect 32
+  const source = read()
+  const normalized = Effect.map(source, transform)
+  const validated = Effect.flatMap(normalized, validate)
+  const observed = Effect.tap(validated, observe)
+
+  return Effect.runPromise(observed)
+}
+
+const resolvePipedStage = () => { // ~detect 33
+  const source = read()
+  const result = pipe(source, Effect.map(transform), Effect.flatMap(validate))
+
+  return Effect.runPromise(result)
+}
+
+
+declare const readFallible: () => Effect.Effect<string, Error>
+declare const recover: (error: Error) => Effect.Effect<string>
+
+const resolveArbitraryStages = () => { // ~detect 38
+  const source = readFallible()
+  const recovered = Effect.catchIf(source, (_error): _error is Error => true, recover)
+  const retried = Effect.retry(recovered, { times: 1 })
+  const completed = Effect.as(retried, "done")
+
+  return Effect.runPromise(completed)
+}
+
+const resolveMethodPipe = () => { // ~detect 33
+  const source = readFallible()
+  const result = source.pipe(
+    Effect.catchIf((_error): _error is Error => true, recover),
+    Effect.retry({ times: 1 }),
+    Effect.as("done")
+  )
 
   return Effect.runPromise(result)
 }

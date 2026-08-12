@@ -1,34 +1,53 @@
 # process-environment
 
 ## Classification
-Reported Effect-quality rule.
+
+Reported Effect-quality compatibility rule.
 
 ## Active wiring
-`effect-quality-rules` via `effectQualityWiring`; self-hosted for `packages/*/src/**`.
+
+`effect-quality-rules` via `effectQualityWiring`; self-hosted for classified `packages/*/src/**` files. The default fleet also exposes the standalone `process-environment` policy for unclassified production files.
 
 ## Implementation sources
-`packages/matchers/src/builtins/effectQuality/reportedRuntimeEnv.ts`; `packages/matchers/src/builtins/functionalCoreEffect/capabilitySubjects.ts`; `packages/guidance/src/policies/effectQualityRules.ts`.
+
+- `packages/matchers/src/builtins/effectQuality/effectQualityRuleData.ts`
+- `packages/matchers/src/builtins/processEnvironmentAccess.ts`
+- `packages/guidance/src/effectQuality/advice.ts`
 
 ## Intent
+
 Route runtime configuration through Effect Config instead of ambient environment access.
 
 ## Detection boundary
-Reports symbol-resolved `process.env`, nested properties, and element accesses in classified roles other than root or test.
+
+Reports symbol-resolved static or computed paths rooted at `process.env` in classified roles other than root or test. One outermost access produces one finding.
 
 ## Exemptions and non-findings
-Root, test, unclassified files, shadowed `process`, and non-environment process properties are quiet.
+
+Root, test, unclassified files, shadowed `process`, and non-environment process properties are quiet in this compatibility rule. The standalone default policy covers unclassified production files.
 
 ## Guidance
-Read the key through Config in a layer and provide deterministic test config.
+
+Read the key through Config in a layer and provide deterministic test configuration.
 
 ## Dependencies
-Architecture-role classifier, TypeScript symbol resolution, ambient-capability helper.
+
+TypeScript checker, ambient process symbol provenance, Effect-quality role classification, and shared environment-access analysis.
 
 ## Tests and examples
-Positive application fixture: `tests/fixtures/effect-quality/src/application/rules.ts`; kind coverage: `tests/effectQuality.test.ts`. No root/shadowing negatives identified here.
+
+- `tests/fixtures/effect-quality/src/application/rules.ts`
+- `tests/effectQuality.test.ts`
+- `tests/processEnvironment.test.ts`
 
 ## Skill migration
-Propose `lint-rule-effect-quality-process-environment`; local scope; symbol and role context; Effect config/retry fleet, semantic phase; deterministic candidates: strong.
+
+- Proposed skill: lint-rule-effect-quality-process-environment
+- Scope: local file
+- Required semantic context: resolved process symbols, access paths, and Effect-quality role
+- Runner phase/fleet: detection / effect-quality-rules
+- Deterministic candidate generation: reuse `effectQualityRuleMatcher` with runner-supplied source files
 
 ## Open questions
-Unclassified files are silently skipped; the skill must preserve configurable role classification.
+
+None identified.

@@ -8,7 +8,7 @@ the redundant Codex OAuth provider-registration wrapper.
 
 **Status:** ready-for-agent
 
-- [ ] Focused CLI fixtures report the immediate synchronous pair and retain a deferred or composed
+- [x] Focused CLI fixtures report the immediate synchronous pair and retain a deferred or composed
       Effect.
-- [ ] The default policy fleet and every self-hosted package enable the policy, and the self-host
+- [x] The default policy fleet and every self-hosted package enable the policy, and the self-host
       report is empty after the Codex OAuth cleanup.

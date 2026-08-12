@@ -115,6 +115,7 @@ const optionalModuleGraphElement = (element: Named | undefined): boolean =>
 import { Effect } from "effect"
 
 declare const read: () => Effect.Effect<string>
+declare const transform: (value: string) => string
 
 const retainEffect = () => {
   const source = read()
@@ -124,3 +125,21 @@ const retainEffect = () => {
   return Effect.zip(first, second)
 }
 void retainEffect
+
+
+const retainCapturedSeed = () => {
+  const source = read()
+  const result = Effect.map(source, (value) => [source, value] as const)
+
+  return Effect.runPromise(result)
+}
+
+const retainReusedIntermediate = () => {
+  const source = read()
+  const normalized = Effect.map(source, transform)
+  const observed = Effect.tap(normalized, () => Effect.void)
+
+  return Effect.runPromise(Effect.zip(normalized, observed))
+}
+void retainCapturedSeed
+void retainReusedIntermediate

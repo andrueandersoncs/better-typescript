@@ -7,26 +7,26 @@ tests, examples, and its proposed rule-skill boundary.
 
 | Fleet | Reported rules | Silent evidence | Derived advice | Total |
 | --- | ---: | ---: | ---: | ---: |
-| Default | 90 | 1 | 9 | 100 |
+| Default | 93 | 1 | 9 | 103 |
 | Architecture Explore | 0 | 15 | 13 | 28 |
 | Effect Quality | 26 | 1 | 19 | 46 |
 | Functional Core Effect | 11 | 1 | 5 | 17 |
-| **Total** | **127** | **18** | **46** | **191** |
+| **Total** | **130** | **18** | **46** | **194** |
 
-The 127 reported rules and 46 derived advice outcomes are the 173 independently actionable skill
+The 130 reported rules and 46 derived advice outcomes are the 176 independently actionable skill
 candidates. The 18 silent policies remain shared evidence producers.
 
 ## Directory map
 
 | Directory | Entries | Contents |
 | --- | ---: | --- |
-| `default/rules/effect-idioms/` | 16 | Effect and Schema idioms |
+| `default/rules/effect-idioms/` | 18 | Effect and Schema idioms |
 | `default/rules/comments-and-declarations/` | 6 | Comment and declaration layout |
 | `default/rules/abstraction-and-composition/` | 11 | Abstraction and composition simplification |
 | `default/rules/concept-control/` | 9 | Concept-model quality variants |
 | `default/rules/control-flow/` | 11 | Control-flow restrictions |
 | `default/rules/semantic-naming/` | 10 | Semantic naming contracts |
-| `default/rules/error-hygiene/` | 7 | Error and unused-value hygiene |
+| `default/rules/error-hygiene/` | 8 | Error and unused-value hygiene |
 | `default/rules/expressions-and-mutation/` | 11 | Expression complexity and mutation |
 | `default/rules/dispatch-and-collections/` | 9 | Dispatch and collection choices |
 | `default/evidence/` | 1 | Silent pipeline-shape evidence |
@@ -76,6 +76,6 @@ active wirings. Multiplexed policies are split by their matcher kind vocabularie
 every derived advice variant has its own entry. Matcher helpers and runtime infrastructure are
 mapped in `project-topology.md` and referenced by the entries that depend on them.
 
-The audit verifies 191 entries, all eleven required sections, exact default and architecture wiring
+The audit verifies 194 entries, all eleven required sections, exact default and architecture wiring
 parity, exact Effect Quality and Functional Core Effect kind parity, expected derived outcomes, and
 the existence of every referenced repository path.

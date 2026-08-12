@@ -133,6 +133,57 @@ const consumedParameterNames = (
   return pipe(argumentNames, Option.map(appendReceiverName))
 }
 
+const exactPositionalForwarder = (
+  node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
+) =>
+  Option.gen(function* () {
+    const invocation = yield* invocationExpressionBody(node)
+
+    const argumentsList = pipe(
+      Option.fromNullishOr(invocation.arguments),
+      Option.map(Array.fromIterable),
+      Option.getOrElse(Array.empty<ts.Expression>)
+    )
+
+    yield* pipe(argumentsList.length, Option.liftPredicate(strictEqual(node.parameters.length)))
+
+    const parameterMatchesArgument = (parameter: ts.ParameterDeclaration, index: number) => {
+      const argument = Array.get(argumentsList, index)
+      const parameterName = pipe(Option.some(parameter.name), Option.filter(ts.isIdentifier))
+      const hasNoInitializer = pipe(parameter.initializer, Option.fromNullishOr, Option.isNone)
+
+      const argumentName = pipe(
+        argument,
+        Option.map(unwrapExpression),
+        Option.flatMap((expression) => {
+          const direct = pipe(Option.some(expression), Option.filter(ts.isIdentifier))
+
+          const spread = pipe(
+            Option.liftPredicate(ts.isSpreadElement)(expression),
+            Option.map(Struct.get("expression")),
+            Option.map(unwrapExpression),
+            Option.filter(ts.isIdentifier)
+          )
+
+          const isRest = pipe(parameter.dotDotDotToken, Option.fromNullishOr, Option.isSome)
+
+          return isRest ? spread : direct
+        })
+      )
+
+      const sameName = pipe(
+        Option.all({ argumentName, parameterName }),
+        Option.exists(({ argumentName, parameterName }) =>
+          strictEqual(parameterName.text)(argumentName.text)
+        )
+      )
+
+      return hasNoInitializer && sameName
+    }
+
+    return Array.every(node.parameters, parameterMatchesArgument)
+  })
+
 export const isExactForwarder = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ) => {
@@ -166,9 +217,16 @@ export const isExactForwarder = (
     )
   }
 
-  return pipe(
+  const structuralForwarder = pipe(
     parameterIdentifiers(node),
     Option.flatMap(consumedByParameters),
     Option.getOrElse(Function.constant(false))
   )
+
+  const positionalForwarder = pipe(
+    exactPositionalForwarder(node),
+    Option.getOrElse(Function.constant(false))
+  )
+
+  return structuralForwarder || positionalForwarder
 }

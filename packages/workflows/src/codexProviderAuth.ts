@@ -1,5 +1,5 @@
 import type { AuthResult } from "@earendil-works/pi-ai"
-import { Config, Effect, Schema, pipe } from "effect"
+import { Config, ConfigProvider, Effect, Schema, pipe } from "effect"
 import { CodexAuth } from "./codexAuth.js"
 import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
@@ -29,5 +29,12 @@ const readCodexAuth = Effect.fn("CodexAuth.read")(function* () {
   return yield* decodeCodexAuth(source)
 })
 
-export const resolveCodexAuth = () =>
-  pipe(readCodexAuth(), Effect.map(toCodexAuthResult), Effect.runPromise)
+export const makeCodexAuthResolver =
+  (configProvider: ConfigProvider.ConfigProvider = ConfigProvider.fromEnv()) =>
+  () =>
+    pipe(
+      readCodexAuth(),
+      Effect.map(toCodexAuthResult),
+      Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
+      Effect.runPromise
+    )

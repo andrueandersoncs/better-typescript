@@ -11,12 +11,19 @@ import { foldAst } from "../sources/foldAst.js"
 import { strictEqual } from "../equivalence.js"
 import { identifierText } from "./identifierText.js"
 import { unwrapTowerCarrier } from "./unwrapTowerCarrier.js"
-import { carrierIdentifier } from "./carrierIdentifier.js"
 import { importedEffectApiAt } from "./functionalCoreEffect/importedEffectApiAt.js"
+import { effectApiMember } from "./functionalCoreEffect/effectApiMember.js"
+import { importedMemberAt } from "./functionalCoreEffect/importedMemberAt.js"
+import type { ImportedMember } from "./functionalCoreEffect/importedMember.js"
 import { isSeedIdentifier } from "./isSeedIdentifier.js"
+import { isPipeCallee } from "./isPipeCallee.js"
+import { referencesToSymbol } from "./referencesToSymbol.js"
+import type { NamedVariableDeclaration } from "./preferEffectSchemaConstructorBinding.js"
+import { symbolOptionAt } from "./symbolOptionAt.js"
 
 const blockKind = Schema.Literal("block")
 const adapterKind = Schema.Literal("adapter")
+const effectPipelineKind = Schema.Literal("effect-pipeline")
 
 // PreferFunctionCompositionBlockFact is block evidence because composition can replace locals.
 export const PreferFunctionCompositionBlockFact = Schema.Struct({
@@ -39,9 +46,19 @@ export interface PreferFunctionCompositionAdapterFact extends Schema.Schema.Type
   typeof PreferFunctionCompositionAdapterFact
 > {}
 
+// Effect pipeline evidence is distinct because its remediation must preserve the runtime handoff.
+export const PreferFunctionCompositionEffectPipelineFact = Schema.Struct({
+  kind: effectPipelineKind
+})
+
+export interface PreferFunctionCompositionEffectPipelineFact extends Schema.Schema.Type<
+  typeof PreferFunctionCompositionEffectPipelineFact
+> {}
+
 const functionCompositionMembers = Array.make(
   PreferFunctionCompositionBlockFact,
-  PreferFunctionCompositionAdapterFact
+  PreferFunctionCompositionAdapterFact,
+  PreferFunctionCompositionEffectPipelineFact
 )
 
 // PreferFunctionCompositionFact unions shapes because block and adapter advice differ.
@@ -108,11 +125,6 @@ const propertyComposedAdapter = (node: ts.Node) =>
     })
   )
 
-const isPipeText = strictEqual("pipe")
-
-const isPipeCallee = (expression: ts.Expression) =>
-  pipe(carrierIdentifier(expression), Option.map(identifierText), Option.exists(isPipeText))
-
 const callFirstArgument = (call: ts.CallExpression) => Option.fromNullishOr(call.arguments[0])
 
 const isUnaryCallTowerOver =
@@ -149,7 +161,6 @@ const isUnaryCallTowerOver =
     return Array.some(conditions, Boolean)
   }
 
-const effectTransformationNames = Array.make("map", "flatMap", "tap", "mapError")
 const runPromiseNames = Array.of("runPromise")
 
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
@@ -272,8 +283,7 @@ const matches = (context: MatchContext) => {
 
     const isNamedDeclaration = (
       declaration: ts.VariableDeclaration
-    ): declaration is ts.VariableDeclaration & { readonly name: ts.Identifier } =>
-      ts.isIdentifier(declaration.name)
+    ): declaration is NamedVariableDeclaration => ts.isIdentifier(declaration.name)
 
     const isSingleConstDeclaration = (variable: ts.VariableStatement) =>
       strictEqual(1)(variable.declarationList.declarations.length)
@@ -290,71 +300,184 @@ const matches = (context: MatchContext) => {
         Option.filter(isNamedDeclaration)
       )
 
-    const isEffectTransformationCall = (call: ts.CallExpression) =>
-      importedEffectApiAt(context.checker, call.expression, "Effect", effectTransformationNames)
+    const symbolAt = symbolOptionAt(context.checker)
+    const declarationSymbol = (declaration: NamedVariableDeclaration) => symbolAt(declaration.name)
+
+    const identifierHasSymbol = (symbol: ts.Symbol) => (expression: ts.Expression) =>
+      pipe(
+        unwrapTransparentExpression(expression),
+        Option.liftPredicate(ts.isIdentifier),
+        Option.flatMap(symbolAt),
+        Option.exists(strictEqual(symbol))
+      )
+
+    const isEffectApiExpression = (expression: ts.Expression) => {
+      const memberIsEffectApi = (member: ImportedMember) =>
+        effectApiMember(member, "Effect", member.path)
+
+      return pipe(importedMemberAt(context.checker, expression), Option.exists(memberIsEffectApi))
+    }
+
+    const isEffectApiCall = (call: ts.CallExpression) => isEffectApiExpression(call.expression)
 
     const isPromiseEffectCall = (call: ts.CallExpression) =>
       importedEffectApiAt(context.checker, call.expression, "Effect", runPromiseNames)
 
-    const hasEffectSymbol = Function.flow(
-      Struct.get<ts.Symbol, "name">("name"),
-      strictEqual("Effect")
-    )
+    const isEffectPipeStage = (expression: ts.Expression) => {
+      const stage = unwrapTransparentExpression(expression)
+      const apiExpression = ts.isCallExpression(stage) ? stage.expression : stage
+
+      return isEffectApiExpression(apiExpression)
+    }
+
+    const directTransformationContinues = (symbol: ts.Symbol, call: ts.CallExpression) => {
+      const input = pipe(Array.head(call.arguments), Option.filter(identifierHasSymbol(symbol)))
+      const fromEffectApi = isEffectApiCall(call)
+      const hasInput = Option.isSome(input)
+      const checks = Array.make(fromEffectApi, hasInput)
+
+      return Array.every(checks, Boolean)
+    }
+
+    const freePipeContinues = (symbol: ts.Symbol, call: ts.CallExpression) => {
+      const input = pipe(Array.head(call.arguments), Option.filter(identifierHasSymbol(symbol)))
+      const stages = pipe(Array.fromIterable(call.arguments), Array.drop(1))
+      const usesPipe = isPipeCallee(call.expression)
+      const hasInput = Option.isSome(input)
+      const hasStages = stages.length > 0
+      const hasOnlyEffectStages = Array.every(stages, isEffectPipeStage)
+      const checks = Array.make(usesPipe, hasInput, hasStages, hasOnlyEffectStages)
+
+      return Array.every(checks, Boolean)
+    }
+
+    const methodPipeContinues = (symbol: ts.Symbol, call: ts.CallExpression) => {
+      const callee = unwrapTransparentExpression(call.expression)
+
+      const propertyIsPipe = Function.flow(
+        Struct.get<ts.PropertyAccessExpression, "name">("name"),
+        Struct.get<ts.MemberName, "text">("text"),
+        strictEqual("pipe")
+      )
+
+      const access = pipe(
+        Option.liftPredicate(ts.isPropertyAccessExpression)(callee),
+        Option.filter(propertyIsPipe)
+      )
+
+      const receiver = pipe(
+        access,
+        Option.map(Struct.get<ts.PropertyAccessExpression, "expression">("expression")),
+        Option.filter(identifierHasSymbol(symbol))
+      )
+
+      const stages = Array.fromIterable(call.arguments)
+      const hasReceiver = Option.isSome(receiver)
+      const hasStages = stages.length > 0
+      const hasOnlyEffectStages = Array.every(stages, isEffectPipeStage)
+      const checks = Array.make(hasReceiver, hasStages, hasOnlyEffectStages)
+
+      return Array.every(checks, Boolean)
+    }
+
+    const transformationContinues = (symbol: ts.Symbol, expression: ts.Expression) => {
+      const continues = (call: ts.CallExpression) => {
+        const direct = directTransformationContinues(symbol, call)
+        const freePipe = freePipeContinues(symbol, call)
+        const methodPipe = methodPipeContinues(symbol, call)
+        const candidates = Array.make(direct, freePipe, methodPipe)
+
+        return Array.some(candidates, Boolean)
+      }
+
+      return pipe(
+        unwrapTransparentExpression(expression),
+        Option.liftPredicate(ts.isCallExpression),
+        Option.exists(continues)
+      )
+    }
+
+    const hasEffectType = (expression: ts.Expression) => {
+      const type = context.checker.getTypeAtLocation(expression)
+      const symbol = type.getSymbol()
+
+      return pipe(
+        Option.fromNullishOr(symbol),
+        Option.exists(Function.flow(Struct.get<ts.Symbol, "name">("name"), strictEqual("Effect")))
+      )
+    }
+
+    const terminalReturns = (symbol: ts.Symbol, statement: ts.Statement) => {
+      const hasOneArgument = (call: ts.CallExpression) => strictEqual(1)(call.arguments.length)
+      const firstArgument = (call: ts.CallExpression) => Array.head(call.arguments)
+
+      return pipe(
+        Option.liftPredicate(ts.isReturnStatement)(statement),
+        Option.flatMap(returnExpression),
+        Option.filter(ts.isCallExpression),
+        Option.filter(isPromiseEffectCall),
+        Option.filter(hasOneArgument),
+        Option.flatMap(firstArgument),
+        Option.exists(identifierHasSymbol(symbol))
+      )
+    }
+
+    const chainContinues = (
+      previous: NamedVariableDeclaration,
+      current: NamedVariableDeclaration
+    ) =>
+      Option.gen(function* () {
+        const previousSymbol = yield* declarationSymbol(previous)
+        const initializer = yield* Option.fromNullishOr(current.initializer)
+
+        return transformationContinues(previousSymbol, initializer)
+      })
 
     const effectPipelineMatch = (body: ts.Block) =>
       Option.gen(function* () {
-        yield* Option.liftPredicate(strictEqual(3))(body.statements.length)
-        const firstStatement = yield* Array.get(body.statements, 0)
-        const secondStatement = yield* Array.get(body.statements, 1)
+        const statements = Array.fromIterable(body.statements)
+        const terminal = yield* Array.last(statements)
+        const declarationStatements = pipe(statements, Array.dropRight(1))
+        const declarationOptions = Array.map(declarationStatements, constDeclaration)
+        const declarations = yield* Option.all(declarationOptions)
+        const hasMultipleDeclarations = declarations.length >= 2
+        yield* Option.liftPredicate(Function.constant(hasMultipleDeclarations))(declarations)
 
-        const returnStatement = yield* pipe(
-          Array.get(body.statements, 2),
-          Option.filter(ts.isReturnStatement)
-        )
-
-        const first = yield* constDeclaration(firstStatement)
-        const second = yield* constDeclaration(secondStatement)
+        const first = yield* Array.head(declarations)
         const firstInitializer = yield* Option.fromNullishOr(first.initializer)
+        const firstHasEffectType = hasEffectType(firstInitializer)
+        yield* Option.liftPredicate(Function.constant(firstHasEffectType))(first)
 
-        const secondInitializer = yield* pipe(
-          Option.fromNullishOr(second.initializer),
-          Option.filter(ts.isCallExpression),
-          Option.filter(isEffectTransformationCall)
-        )
+        const linkContinuesAt = (current: NamedVariableDeclaration, index: number) => {
+          const continueFromPrevious = (previous: NamedVariableDeclaration) =>
+            chainContinues(previous, current)
 
-        const secondInput = yield* pipe(
-          Array.head(secondInitializer.arguments),
-          Option.filter(ts.isIdentifier)
-        )
+          return pipe(
+            Array.get(declarations, index),
+            Option.flatMap(continueFromPrevious),
+            Option.getOrElse(Function.constFalse)
+          )
+        }
 
-        const returned = yield* pipe(
-          Option.fromNullishOr(returnStatement.expression),
-          Option.filter(ts.isCallExpression),
-          Option.filter(isPromiseEffectCall)
-        )
+        const links = pipe(declarations, Array.drop(1))
+        const allLinksContinue = Array.every(links, linkContinuesAt)
+        yield* Option.liftPredicate(Function.constant(allLinksContinue))(body)
 
-        const returnedInput = yield* pipe(
-          Array.head(returned.arguments),
-          Option.filter(ts.isIdentifier)
-        )
+        const symbolOptions = Array.map(declarations, declarationSymbol)
+        const symbols = yield* Option.all(symbolOptions)
 
-        const firstMatches = strictEqual(first.name.text)(secondInput.text)
-        const secondMatches = strictEqual(second.name.text)(returnedInput.text)
-        const firstType = context.checker.getTypeAtLocation(firstInitializer)
-        const firstSymbol = firstType.getSymbol()
+        const referenceCount = (symbol: ts.Symbol) =>
+          referencesToSymbol(context.checker, symbol, body)
 
-        const hasEffectSeed = pipe(
-          Option.fromNullishOr(firstSymbol),
-          Option.filter(hasEffectSymbol),
-          Option.isSome
-        )
+        const isSingleUse = Function.flow(referenceCount, strictEqual(2))
+        const everyBindingIsSingleUse = Array.every(symbols, isSingleUse)
+        yield* Option.liftPredicate(Function.constant(everyBindingIsSingleUse))(body)
 
-        const pipelineParts = Array.make(firstMatches, secondMatches, hasEffectSeed)
-        const completePipeline = Array.every(pipelineParts, Boolean)
-        const isCompletePipeline = Function.constant(completePipeline)
-        yield* Option.liftPredicate(isCompletePipeline)(body)
+        const finalSymbol = yield* Array.last(symbols)
+        const terminalMatches = terminalReturns(finalSymbol, terminal)
+        yield* Option.liftPredicate(Function.constant(terminalMatches))(body)
 
-        const fact = PreferFunctionCompositionFact.make({ kind: "block" })
+        const fact = PreferFunctionCompositionFact.make({ kind: "effect-pipeline" })
 
         return makeNodeMatch(body, fact)
       })

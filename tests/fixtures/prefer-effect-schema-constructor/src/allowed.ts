@@ -30,3 +30,30 @@ export const toAuthResult = (apiKey: string): AuthResult => {
 
   return result
 }
+
+// 7. Contextually typed third-party adapter result
+export const contextualAuthResult: (apiKey: string) => AuthResult = (apiKey) => ({
+  auth: { apiKey },
+  source: "Codex OAuth"
+})
+
+// 8. Nullable third-party adapter result
+export const optionalAuthResult = (apiKey: string): AuthResult | undefined => {
+  return apiKey.length > 0 ? { auth: { apiKey }, source: "Codex OAuth" } : undefined
+}
+
+// 9. A shadowed nested-function binding does not return the outer object
+export const shadowedResult = () => {
+  const result = { internal: true }
+  const returnArgument = (result: number) => result
+
+  return returnArgument(1)
+}
+
+
+// 10. Contextually typed third-party adapter method
+export const contextualAuthAdapter: { readonly make: (apiKey: string) => AuthResult } = {
+  make(apiKey) {
+    return { auth: { apiKey }, source: "Codex OAuth" }
+  }
+}
