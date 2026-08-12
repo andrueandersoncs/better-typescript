@@ -110,3 +110,17 @@ const multiConstBody = (n: number): number => {
 
 const optionalModuleGraphElement = (element: Named | undefined): boolean =>
   strictEqual("module-graph")(element?.name)
+
+
+import { Effect } from "effect"
+
+declare const read: () => Effect.Effect<string>
+
+const retainEffect = () => {
+  const source = read()
+  const first = Effect.map(source, (value) => value.trim())
+  const second = Effect.map(source, (value) => value.toUpperCase())
+
+  return Effect.zip(first, second)
+}
+void retainEffect

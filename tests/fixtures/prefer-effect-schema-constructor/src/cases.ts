@@ -22,3 +22,9 @@ export const toResult = (ok: boolean) => {
 export const withDefault = (input: { label: string } | null) => {
   return input ?? { label: "default" } // ~detect 19
 }
+
+// 6. Object bound locally then returned unchanged
+export const makeConfig = () => {
+  const config = { retries: 3 } // ~detect 18
+  return config
+}

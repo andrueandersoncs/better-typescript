@@ -14,7 +14,7 @@ test("self-host benchmark runs every enrolled policy", async () => {
   const target = await selfHostBenchmarkTarget(repoRoot)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
-  assert.equal(target.checkNames.length, 85)
+  assert.equal(target.checkNames.length, 87)
   assert.ok(target.checkNames.includes("no-unused"))
   assert.ok(target.checkNames.includes("effect-quality-rules"))
   assert.ok(target.checkNames.includes("functional-core-effect-boundaries"))

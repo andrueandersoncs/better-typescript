@@ -614,7 +614,7 @@ const createSemanticModuleEngine = () => {
     const line = position.line + 1
     const column = position.character + 1
     const location = { line, column }
-    return location
+    return freeze(location)
   }
 
   const placementEntityWithSourceFile =
@@ -2773,7 +2773,7 @@ const createSemanticModuleEngine = () => {
     semanticModulePlacementMatcher
   }
 
-  return api
+  return freeze(api)
 }
 
 export const semanticModuleEngine = createSemanticModuleEngine()

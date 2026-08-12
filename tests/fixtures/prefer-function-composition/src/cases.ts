@@ -77,3 +77,16 @@ const entryInSourceFile = (entry: ExportEntry): boolean => { // ~detect
 
   return strictEqual(sourceFile)(entrySourceFile)
 }
+
+
+import { Effect } from "effect"
+
+declare const read: () => Effect.Effect<string>
+declare const transform: (value: string) => string
+
+const resolve = () => { // ~detect
+  const source = read()
+  const result = Effect.map(source, transform)
+
+  return Effect.runPromise(result)
+}

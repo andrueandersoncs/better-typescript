@@ -1588,6 +1588,36 @@ const makePreferEffectFn = () => {
 
 export const preferEffectFn = makePreferEffectFn()
 
+const makeNoTrivialEffectFn = () => {
+  const noTrivialEffectFn = makeBuiltinPolicy(
+    "no-trivial-effect-fn",
+    effectFunctionsAndSchemasMatcherCatalog.noTrivialEffectFnMatcher,
+    factGuidance(
+      "Avoid named Effect.fn wrappers that only forward their parameters.",
+      "Export the forwarded Effect operation directly. Keep Effect.fn only when the named workflow transforms, recovers, sequences, or otherwise adds behavior."
+    )
+  )
+
+  return noTrivialEffectFn
+}
+
+export const noTrivialEffectFn = makeNoTrivialEffectFn()
+
+const makeNoImmediateEffectSync = () => {
+  const noImmediateEffectSync = makeBuiltinPolicy(
+    "no-immediate-effect-sync",
+    effectFunctionsAndSchemasMatcherCatalog.noImmediateEffectSyncMatcher,
+    factGuidance(
+      "Avoid immediately running a locally bound Effect.sync.",
+      "Run the synchronous action directly at this startup boundary, or retain the Effect only when it is deferred or composed into a larger workflow."
+    )
+  )
+
+  return noImmediateEffectSync
+}
+
+export const noImmediateEffectSync = makeNoImmediateEffectSync()
+
 const makePreferEffectFunctionConstant = () => {
   const message = "Avoid a handwritten constant thunk."
 
@@ -1713,6 +1743,8 @@ export const preferEffectfulFunction = makePreferEffectfulPolicy()
 
 // Member order is pinned because effect idiom order is part of the public report contract.
 export const effectFunctionPolicies: ReadonlyArray<Policy> = Array.make(
+  noTrivialEffectFn,
+  noImmediateEffectSync,
   preferEffectFn,
   preferEffectfulFunction,
   preferEffectFunctionConstant,

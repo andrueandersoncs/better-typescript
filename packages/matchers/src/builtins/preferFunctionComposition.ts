@@ -12,6 +12,7 @@ import { strictEqual } from "../equivalence.js"
 import { identifierText } from "./identifierText.js"
 import { unwrapTowerCarrier } from "./unwrapTowerCarrier.js"
 import { carrierIdentifier } from "./carrierIdentifier.js"
+import { importedEffectApiAt } from "./functionalCoreEffect/importedEffectApiAt.js"
 import { isSeedIdentifier } from "./isSeedIdentifier.js"
 
 const blockKind = Schema.Literal("block")
@@ -148,6 +149,9 @@ const isUnaryCallTowerOver =
     return Array.some(conditions, Boolean)
   }
 
+const effectTransformationNames = Array.make("map", "flatMap", "tap", "mapError")
+const runPromiseNames = Array.of("runPromise")
+
 const arrowFunctionKinds = Array.of(ts.SyntaxKind.ArrowFunction)
 
 const matches = (context: MatchContext) => {
@@ -266,7 +270,104 @@ const matches = (context: MatchContext) => {
           Option.toArray
         )
 
-    return Array.appendAll(blockMatches, adapterMatches)
+    const isNamedDeclaration = (
+      declaration: ts.VariableDeclaration
+    ): declaration is ts.VariableDeclaration & { readonly name: ts.Identifier } =>
+      ts.isIdentifier(declaration.name)
+
+    const isSingleConstDeclaration = (variable: ts.VariableStatement) =>
+      strictEqual(1)(variable.declarationList.declarations.length)
+
+    const firstDeclaration = (variable: ts.VariableStatement) =>
+      Array.head(variable.declarationList.declarations)
+
+    const constDeclaration = (statement: ts.Statement) =>
+      pipe(
+        Option.liftPredicate(ts.isVariableStatement)(statement),
+        Option.filter((variable) => (variable.declarationList.flags & ts.NodeFlags.Const) !== 0),
+        Option.filter(isSingleConstDeclaration),
+        Option.flatMap(firstDeclaration),
+        Option.filter(isNamedDeclaration)
+      )
+
+    const isEffectTransformationCall = (call: ts.CallExpression) =>
+      importedEffectApiAt(context.checker, call.expression, "Effect", effectTransformationNames)
+
+    const isPromiseEffectCall = (call: ts.CallExpression) =>
+      importedEffectApiAt(context.checker, call.expression, "Effect", runPromiseNames)
+
+    const hasEffectSymbol = Function.flow(
+      Struct.get<ts.Symbol, "name">("name"),
+      strictEqual("Effect")
+    )
+
+    const effectPipelineMatch = (body: ts.Block) =>
+      Option.gen(function* () {
+        yield* Option.liftPredicate(strictEqual(3))(body.statements.length)
+        const firstStatement = yield* Array.get(body.statements, 0)
+        const secondStatement = yield* Array.get(body.statements, 1)
+
+        const returnStatement = yield* pipe(
+          Array.get(body.statements, 2),
+          Option.filter(ts.isReturnStatement)
+        )
+
+        const first = yield* constDeclaration(firstStatement)
+        const second = yield* constDeclaration(secondStatement)
+        const firstInitializer = yield* Option.fromNullishOr(first.initializer)
+
+        const secondInitializer = yield* pipe(
+          Option.fromNullishOr(second.initializer),
+          Option.filter(ts.isCallExpression),
+          Option.filter(isEffectTransformationCall)
+        )
+
+        const secondInput = yield* pipe(
+          Array.head(secondInitializer.arguments),
+          Option.filter(ts.isIdentifier)
+        )
+
+        const returned = yield* pipe(
+          Option.fromNullishOr(returnStatement.expression),
+          Option.filter(ts.isCallExpression),
+          Option.filter(isPromiseEffectCall)
+        )
+
+        const returnedInput = yield* pipe(
+          Array.head(returned.arguments),
+          Option.filter(ts.isIdentifier)
+        )
+
+        const firstMatches = strictEqual(first.name.text)(secondInput.text)
+        const secondMatches = strictEqual(second.name.text)(returnedInput.text)
+        const firstType = context.checker.getTypeAtLocation(firstInitializer)
+        const firstSymbol = firstType.getSymbol()
+
+        const hasEffectSeed = pipe(
+          Option.fromNullishOr(firstSymbol),
+          Option.filter(hasEffectSymbol),
+          Option.isSome
+        )
+
+        const pipelineParts = Array.make(firstMatches, secondMatches, hasEffectSeed)
+        const completePipeline = Array.every(pipelineParts, Boolean)
+        const isCompletePipeline = Function.constant(completePipeline)
+        yield* Option.liftPredicate(isCompletePipeline)(body)
+
+        const fact = PreferFunctionCompositionFact.make({ kind: "block" })
+
+        return makeNodeMatch(body, fact)
+      })
+
+    const effectPipelineMatches = pipe(
+      Option.liftPredicate(ts.isBlock)(arrowFunction.body),
+      Option.flatMap(effectPipelineMatch),
+      Option.toArray
+    )
+
+    const candidateMatches = Array.appendAll(blockMatches, adapterMatches)
+
+    return Array.appendAll(candidateMatches, effectPipelineMatches)
   }
 
   return matchCompositionCandidate

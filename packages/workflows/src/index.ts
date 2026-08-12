@@ -1,5 +1,5 @@
 "use agent"
-import "./codexProviderAuth.js"
+import "./codexProviderRegistration.js"
 import { useModel } from "@flue/runtime"
 
 export const HelloWorld = () => {

@@ -13,6 +13,26 @@ const returnInvocationExpression = Function.flow(
   Option.filter(isForwardingInvocation)
 )
 
+const yieldedInvocationExpression = Function.flow(
+  Struct.get<ts.YieldExpression, "expression">("expression"),
+  Option.fromNullishOr,
+  Option.map(unwrapExpression),
+  Option.filter(isForwardingInvocation)
+)
+
+const blockStatementInvocation = (statement: ts.ReturnStatement) => {
+  const direct = returnInvocationExpression(statement)
+
+  const yielded = pipe(
+    statement.expression,
+    Option.fromNullishOr,
+    Option.filter(ts.isYieldExpression),
+    Option.flatMap(yieldedInvocationExpression)
+  )
+
+  return pipe(direct, Option.orElse(Function.constant(yielded)))
+}
+
 export const invocationExpressionBody = (
   node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
 ) =>
@@ -29,7 +49,7 @@ export const invocationExpressionBody = (
         Option.liftPredicate(ts.isBlock)(body),
         Option.flatMap(headStatement),
         Option.filter(ts.isReturnStatement),
-        Option.flatMap(returnInvocationExpression)
+        Option.flatMap(blockStatementInvocation)
       )
 
       return pipe(expressionInvocation, Option.orElse(Function.constant(blockInvocation)))
