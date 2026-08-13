@@ -653,32 +653,56 @@ const buildMatchIndex = (context: ProgramMatchContext) => {
   return HashMap.fromIterable(entries)
 }
 
-// The cache retains one Program because workspace analysis is sequential.
+// The cache retains one scoped Program because workspace analysis is sequential.
 const emptyMatchIndexCache =
   Option.none<
-    readonly [ts.Program, HashMap.HashMap<string, ReadonlyArray<Match<PreferInferredTypesFact>>>]
+    readonly [
+      ts.Program,
+      ReadonlyArray<ts.SourceFile>,
+      HashMap.HashMap<string, ReadonlyArray<Match<PreferInferredTypesFact>>>
+    ]
   >()
 
 const matchIndexCache = MutableRef.make(emptyMatchIndexCache)
 
-const matchIndex = (context: ProgramMatchContext) => {
+const sourceFileScopesMatch = (
+  left: ReadonlyArray<ts.SourceFile>,
+  right: ReadonlyArray<ts.SourceFile>
+) => {
+  const sameLength = strictEqual(left.length)(right.length)
+
+  const sameSourceAt = (sourceFile: ts.SourceFile, index: number) =>
+    pipe(Array.get(right, index), Option.exists(strictEqual(sourceFile)))
+
+  return sameLength && Array.every(left, sameSourceAt)
+}
+
+const matchesByFile = (context: ProgramMatchContext) => {
   const cached = MutableRef.get(matchIndexCache)
 
-  const current = pipe(
-    cached,
-    Option.filter((entry) => {
-      const program = Tuple.get(entry, 0)
+  const cacheMatches = (
+    entry: readonly [
+      ts.Program,
+      ReadonlyArray<ts.SourceFile>,
+      HashMap.HashMap<string, ReadonlyArray<Match<PreferInferredTypesFact>>>
+    ]
+  ) => {
+    const program = Tuple.get(entry, 0)
+    const sourceFiles = Tuple.get(entry, 1)
+    const sameProgram = strictEqual(context.program)(program)
+    const sameScope = sourceFileScopesMatch(context.sourceFiles, sourceFiles)
 
-      return strictEqual(context.program)(program)
-    })
-  )
+    return sameProgram && sameScope
+  }
+
+  const current = pipe(cached, Option.filter(cacheMatches))
 
   if (Option.isSome(current)) {
-    return Tuple.get(current.value, 1)
+    return Tuple.get(current.value, 2)
   }
 
   const matches = buildMatchIndex(context)
-  const cacheEntry = Tuple.make(context.program, matches)
+  const cacheEntry = Tuple.make(context.program, context.sourceFiles, matches)
   const updated = Option.some(cacheEntry)
 
   MutableRef.set(matchIndexCache, updated)
@@ -691,6 +715,6 @@ const matchesForSourceFile =
   (matchContext: MatchContext) =>
     pipe(HashMap.get(index, matchContext.sourceFile.fileName), Option.getOrElse(Array.empty))
 
-const preferInferredTypesPlan = flow(matchIndex, matchesForSourceFile, fileSubscriptions)
+const preferInferredTypesPlan = flow(matchesByFile, matchesForSourceFile, fileSubscriptions)
 
 export const preferInferredTypesMatcher = makeMatcherFromSubscriptions(preferInferredTypesPlan)

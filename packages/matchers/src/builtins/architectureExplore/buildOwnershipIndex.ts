@@ -1,6 +1,5 @@
 import { Array, HashMap, Option, Record, Struct, Tuple, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { componentIndexByEntity } from "./componentIndexByEntity.js"
 import { componentPositionForEntity } from "./componentPositionForEntity.js"
 import { entityKeyEquivalence } from "./entityKeyEquivalence.js"
 import { IndexedReference } from "./indexedReference.js"
@@ -10,6 +9,20 @@ import type { SemanticModuleEntityKey } from "./semanticModuleEntityKey.js"
 import type { SemanticModuleReferenceGraph } from "./semanticModuleReferenceGraph.js"
 import type { SemanticReferenceWitness } from "./semanticReferenceWitness.js"
 import type { semanticSubjectWitnessSchema as SemanticSubjectWitness } from "./semanticSubjectWitnessSchema.js"
+
+const componentIndexEntry = (componentIndex: number) => (member: SemanticModuleEntityKey) => {
+  const token = portableKeyToken(member)
+
+  return Tuple.make(token, componentIndex)
+}
+
+const componentIndexEntries = (
+  component: ReadonlyArray<SemanticModuleEntityKey>,
+  componentIndex: number
+) => Array.map(component, componentIndexEntry(componentIndex))
+
+const componentIndexByEntity = (components: SemanticModuleReferenceGraph["components"]) =>
+  pipe(components, Array.flatMap(componentIndexEntries), HashMap.fromIterable)
 
 const indexedReference =
   (indexByEntity: HashMap.HashMap<string, number>) =>
