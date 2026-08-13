@@ -1,11 +1,15 @@
-import { Array, Function, Iterable, Option, Struct, flow, pipe } from "effect"
+import { Array, Function, HashMap, MutableRef, Option, Struct, Tuple, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { astNodesIn } from "../sources/astNodesIn.js"
 import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
+import { referenceKey } from "../support/referenceKey.js"
+import type { ReferenceKey } from "../support/referenceKeyType.js"
 import { variableDeclarationInitializer } from "../support/variableDeclarationInitializer.js"
 import { strictEqual } from "../equivalence.js"
+import { functionDependencyCache } from "./functionDependencyCache.js"
 import { optionResult } from "./optionResult.js"
 import { symbolOptionAt } from "./symbolOptionAt.js"
+import type { SymbolReference } from "./symbolReference.js"
+import { symbolReferencesIn } from "./symbolReferencesIn.js"
 
 const emptyDeclarations = Array.empty<ts.Declaration>()
 
@@ -34,47 +38,77 @@ const functionBodyForSymbol = (symbol: ts.Symbol) =>
     Array.head
   )
 
-const symbolOccursThroughFunctions = (
-  checker: ts.TypeChecker,
-  target: ts.Symbol,
-  root: ts.Node,
-  seen: ReadonlyArray<ts.Symbol>
-): boolean => {
-  const nodeReachesTarget = (node: ts.Node) => {
-    const symbolReachesTarget = (symbol: ts.Symbol) => {
-      const targetMatch = strictEqual(target)(symbol)
-      const isUnseenSymbol = strictEqual(symbol)
-      const unseen = !Array.some(seen, isUnseenSymbol)
-      const body = functionBodyForSymbol(symbol)
-      const unseenBody = pipe(body, Option.filter(Function.constant(unseen)))
-      const nextSeen = Array.append(seen, symbol)
+const emptyDependencyIndex = HashMap.empty<ReferenceKey, ReadonlyArray<SymbolReference>>()
 
-      const dependencyBodyReachesTarget = (dependencyBody: ts.Node) =>
-        symbolOccursThroughFunctions(checker, target, dependencyBody, nextSeen)
+const dependencyIndexFor = (checker: ts.TypeChecker) => {
+  const checkerMatches: (entry: readonly [ts.TypeChecker, unknown]) => boolean = flow(
+    Tuple.get(0),
+    strictEqual(checker)
+  )
 
-      const dependencyMatch = Option.exists(unseenBody, dependencyBodyReachesTarget)
-      const matches = Array.make(targetMatch, dependencyMatch)
+  return pipe(
+    MutableRef.get(functionDependencyCache),
+    Option.filter(checkerMatches),
+    Option.map(Tuple.get(1)),
+    Option.getOrElse(Function.constant(emptyDependencyIndex))
+  )
+}
 
-      return Array.some(matches, Boolean)
-    }
+const functionDependencies = (checker: ts.TypeChecker) => (symbol: ts.Symbol) => {
+  const symbolKey = referenceKey(symbol)
+  const dependencyIndex = dependencyIndexFor(checker)
+  const cached = HashMap.get(dependencyIndex, symbolKey)
 
-    return pipe(
-      Option.liftPredicate(ts.isIdentifier)(node),
-      Option.flatMap(symbolOptionAt(checker)),
-      Option.exists(symbolReachesTarget)
-    )
+  if (Option.isSome(cached)) {
+    return cached.value
   }
 
-  return pipe(astNodesIn(root), Iterable.some(nodeReachesTarget))
+  const dependencies = pipe(
+    functionBodyForSymbol(symbol),
+    Option.map(symbolReferencesIn(checker)),
+    Option.getOrElse(Array.empty<SymbolReference>)
+  )
+
+  const nextIndex = HashMap.set(dependencyIndex, symbolKey, dependencies)
+  const cacheEntry = Tuple.make(checker, nextIndex)
+  const nextCache = Option.some(cacheEntry)
+
+  MutableRef.set(functionDependencyCache, nextCache)
+
+  return dependencies
 }
+
+const symbolReachesTarget =
+  (checker: ts.TypeChecker, targetKey: ReferenceKey, seen: HashMap.HashMap<ReferenceKey, true>) =>
+  (reference: SymbolReference): boolean => {
+    const targetMatch = strictEqual(targetKey)(reference.key)
+    const unseen = !HashMap.has(seen, reference.key)
+
+    if (unseen) {
+      HashMap.set(seen, reference.key, true)
+    }
+
+    const dependencies = unseen
+      ? functionDependencies(checker)(reference.symbol)
+      : Array.empty<SymbolReference>()
+
+    const dependencyReachesTarget = symbolReachesTarget(checker, targetKey, seen)
+
+    return targetMatch || Array.some(dependencies, dependencyReachesTarget)
+  }
 
 export const declarationRecurses =
   (checker: ts.TypeChecker) =>
   (identifier: ts.Identifier, root: ts.Node): boolean => {
     const targetOccursThroughRoot = (target: ts.Symbol) => {
-      const seen = Array.of(target)
+      const targetKey = referenceKey(target)
+      const seen = pipe(HashMap.empty<ReferenceKey, true>(), HashMap.beginMutation)
 
-      return symbolOccursThroughFunctions(checker, target, root, seen)
+      HashMap.set(seen, targetKey, true)
+      const reachesTarget = symbolReachesTarget(checker, targetKey, seen)
+      const rootReferences = symbolReferencesIn(checker)(root)
+
+      return Array.some(rootReferences, reachesTarget)
     }
 
     return pipe(identifier, symbolOptionAt(checker), Option.exists(targetOccursThroughRoot))

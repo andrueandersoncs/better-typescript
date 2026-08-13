@@ -14,7 +14,7 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import { astNodesIn } from "../sources/astNodesIn.js"
-import type { ProgramContext } from "../sources/data.js"
+import type { ProgramMatchContext } from "../matcher/programMatchContext.js"
 import { isInAmbientContext } from "../support/isDeclareKeyword.js"
 import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
 import type { FunctionInitializer } from "../support/functionInitializer.js"
@@ -327,10 +327,7 @@ const augmentSource = (sourceFile: ts.SourceFile, probes: ReadonlyArray<Inferenc
   return pipe(chunks, Array.append(tail), Array.join(""))
 }
 
-const sourceAnalyses = (context: ProgramContext) => {
-  const isInternalSourceFile = (sourceFile: ts.SourceFile) =>
-    !context.program.isSourceFileFromExternalLibrary(sourceFile)
-
+const sourceAnalyses = (context: ProgramMatchContext) => {
   const isImplementationSourceFile = (sourceFile: ts.SourceFile) => !sourceFile.isDeclarationFile
 
   const sourceFileAnalysis = (sourceFile: ts.SourceFile) => {
@@ -354,9 +351,8 @@ const sourceAnalyses = (context: ProgramContext) => {
   }
 
   return pipe(
-    context.program.getSourceFiles(),
+    context.sourceFiles,
     Array.filter(isImplementationSourceFile),
-    Array.filter(isInternalSourceFile),
     Array.filterMap(sourceFileAnalysis),
     Array.map(analysisByFileName),
     HashMap.fromIterable
@@ -364,7 +360,7 @@ const sourceAnalyses = (context: ProgramContext) => {
 }
 
 const makeShadowProgram = (
-  context: ProgramContext,
+  context: ProgramMatchContext,
   analyses: HashMap.HashMap<string, readonly [ts.SourceFile, ReadonlyArray<InferenceProbe>]>
 ) => {
   const programOptions = context.program.getCompilerOptions()
@@ -635,7 +631,7 @@ const matchesInSource = (
   )
 }
 
-const buildMatchIndex = (context: ProgramContext) => {
+const buildMatchIndex = (context: ProgramMatchContext) => {
   const analyses = sourceAnalyses(context)
 
   if (HashMap.isEmpty(analyses)) {
@@ -665,7 +661,7 @@ const emptyMatchIndexCache =
 
 const matchIndexCache = MutableRef.make(emptyMatchIndexCache)
 
-const matchIndex = (context: ProgramContext) => {
+const matchIndex = (context: ProgramMatchContext) => {
   const cached = MutableRef.get(matchIndexCache)
 
   const current = pipe(

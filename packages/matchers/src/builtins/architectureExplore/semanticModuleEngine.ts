@@ -50,7 +50,6 @@ import { isModuleDeclarationBody } from "./isModuleDeclarationBody.js"
 import { nodeEquivalence } from "./nodeEquivalence.js"
 import { peersFor } from "./peersFor.js"
 import { portableKeyToken } from "./portableKeyToken.js"
-import { semanticComponentOrder } from "./semanticComponentOrder.js"
 import { sameSymbolOwnershipRuleId } from "./sameSymbolOwnershipRuleId.js"
 import { SemanticModuleAcceptedBondRecord } from "./semanticModuleAcceptedBondRecord.js"
 import { SemanticModuleBondKey } from "./semanticModuleBondKey.js"
@@ -88,6 +87,11 @@ import { uniqueSortedPaths } from "./uniqueSortedPaths.js"
 import type { UnownedSemanticReferenceWitness } from "./unownedSemanticReferenceWitness.js"
 import { unownedSemanticReferenceWitnessSchema } from "./unownedSemanticReferenceWitnessSchema.js"
 import { variableSymbols } from "./variableSymbols.js"
+
+const componentHead = (component: ReadonlyArray<SemanticModuleEntityKey>) =>
+  pipe(component, Array.head, Option.getOrThrow)
+
+export const semanticComponentOrder = Order.mapInput(entityKeyOrder, componentHead)
 
 const bondKeyLeftEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> = Equivalence.mapInput(
   entityKeyEquivalence,
@@ -966,7 +970,7 @@ const createSemanticModuleEngine = () => {
       multiOwnerEntries,
       Array.flatMap(pairwiseOwnerBonds),
       Array.sort(rawBondOrder),
-      Array.dedupeWith(rawBondKeyEquivalence)
+      Array.dedupeAdjacentWith(rawBondKeyEquivalence)
     )
   }
 
@@ -2625,23 +2629,30 @@ const createSemanticModuleEngine = () => {
         catalog,
         Array.flatMap(paradigmCandidates(context)(entities)(referenceGraph)),
         Array.sort(rawBondOrder),
-        Array.dedupeWith(rawBondKeyEquivalence)
+        Array.dedupeAdjacentWith(rawBondKeyEquivalence)
       )
     }
 
+  const entityIndexEntry = (entity: SemanticModuleEntityRecord) => {
+    const token = portableKeyToken(entity.key)
+
+    return Tuple.make(token, entity)
+  }
+
   const entityByKey =
-    (entities: ReadonlyArray<SemanticModuleEntityRecord>) =>
-    (key: SemanticModuleEntityKey): Option.Option<SemanticModuleEntityRecord> =>
-      Array.findFirst(entities, (entity) => {
-        const sameKey = entityKeyEquivalence(entity.key, key)
-        return sameKey
-      })
+    (entityIndex: HashMap.HashMap<string, SemanticModuleEntityRecord>) =>
+    (key: SemanticModuleEntityKey) => {
+      const token = portableKeyToken(key)
+
+      return HashMap.get(entityIndex, token)
+    }
 
   const isAcceptedBond =
-    (entities: ReadonlyArray<SemanticModuleEntityRecord>) =>
+    (entityIndex: HashMap.HashMap<string, SemanticModuleEntityRecord>) =>
     (candidate: SemanticModuleAcceptedBondRecord): boolean => {
-      const left = entityByKey(entities)(candidate.key.left)
-      const right = entityByKey(entities)(candidate.key.right)
+      const entityFor = entityByKey(entityIndex)
+      const left = entityFor(candidate.key.left)
+      const right = entityFor(candidate.key.right)
 
       return pipe(
         Option.all({ left, right }),
@@ -2650,6 +2661,11 @@ const createSemanticModuleEngine = () => {
         )
       )
     }
+
+  const classifyBond =
+    (entityIndex: HashMap.HashMap<string, SemanticModuleEntityRecord>) =>
+    (candidate: SemanticModuleAcceptedBondRecord) =>
+      isAcceptedBond(entityIndex)(candidate) ? Result.succeed(candidate) : Result.fail(candidate)
 
   const makeAcceptedBond = (
     candidate: SemanticModuleAcceptedBondRecord
@@ -2700,20 +2716,25 @@ const createSemanticModuleEngine = () => {
     const candidates = pipe(
       Array.appendAll(sameSymbol, paradigm),
       Array.sort(rawBondOrder),
-      Array.dedupeWith(rawBondKeyEquivalence)
+      Array.dedupeAdjacentWith(rawBondKeyEquivalence)
+    )
+
+    const entityIndex = pipe(entities, Array.map(entityIndexEntry), HashMap.fromIterable)
+
+    const [suppressedCandidates, acceptedCandidates] = Array.partition(
+      candidates,
+      classifyBond(entityIndex)
     )
 
     const acceptedBondValues = pipe(
-      candidates,
-      Array.filter(isAcceptedBond(entities)),
+      acceptedCandidates,
       Array.map(makeAcceptedBond),
       Array.sort(acceptedBondOrder),
-      Array.dedupeWith(acceptedBondKeyEquivalence)
+      Array.dedupeAdjacentWith(acceptedBondKeyEquivalence)
     )
 
     const suppressedBondValues = pipe(
-      candidates,
-      Array.filter(Predicate.not(isAcceptedBond(entities))),
+      suppressedCandidates,
       Array.map(makeSuppressedBond),
       Array.sort(suppressedBondOrder)
     )
