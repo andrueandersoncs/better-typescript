@@ -8,23 +8,31 @@ closure.
 
 **Blocked by:** 12 — Normalize every Code Entity family.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every canonical non-alias checker symbol with multiple distinct eligible owners emits
+- [x] Every canonical non-alias checker symbol with multiple distinct eligible owners emits
       deterministic pairwise candidate bonds; exact duplicates coalesce.
-- [ ] Alias resolution only finds declaration-owning symbols; overload and binding normalization
+- [x] Alias resolution only finds declaration-owning symbols; overload and binding normalization
       never emits self-bonds.
-- [ ] Eligibility and production/test stratum assignment precede closure, using the existing test
+- [x] Eligibility and production/test stratum assignment precede closure, using the existing test
       classifier including benchmark sources.
-- [ ] Barrier-crossing candidates become typed, ordered suppressed bonds and never merge, prove, or
+- [x] Barrier-crossing candidates become typed, ordered suppressed bonds and never merge, prove, or
       mediate membership.
-- [ ] Accepted bonds produce the least connected-component partition, preserving singleton entities
+- [x] Accepted bonds produce the least connected-component partition, preserving singleton entities
       and canonical module/member ordering.
-- [ ] Absent explicit catalog rules, calls, construction, type use, inheritance, implementation,
+- [x] Absent explicit catalog rules, calls, construction, type use, inheritance, implementation,
       decorators, initializers, ordinary references, and cycles remain non-bonding dependencies.
-- [ ] Fixtures prove duplicate coalescing, production/test suppression, Program isolation,
+- [x] Fixtures prove duplicate coalescing, production/test suppression, Program isolation,
       excluded-source absence, package non-barriers, and ordinary non-bonding dependencies.
-- [ ] Controlled-change tests prove that crossing a stratum splits same-symbol membership while
+- [x] Controlled-change tests prove that crossing a stratum splits same-symbol membership while
       adding an ordinary acyclic reference does not change it.
-- [ ] Focused partition tests and the full suite pass; formatting and self-hosting are clean; the
+- [x] Focused partition tests and the full suite pass; formatting and self-hosting are clean; the
       benchmark remains below 100ms.
+
+## Comments
+
+### 2026-08-13 — Verified complete
+
+The current snapshot, placement matcher, and Advice implementation satisfy every acceptance item.
+Verification passed: 38 focused Semantic Module tests, 691 full-suite tests, an empty `bun run dev`
+report, and a 66.079ms benchmark.

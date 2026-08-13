@@ -6,9 +6,17 @@ policy.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Focused CLI fixtures report the unclassified production read and retain the legitimate
       boundary.
 - [x] The default policy fleet and every self-hosted package enable the policy, and Codex OAuth
       configuration passes self-hosting without global environment mutation.
+
+## Comments
+
+### 2026-08-13 — Verified complete
+
+The implementation, focused policy fixtures, public report assertions, self-host wiring, and Codex
+workflow behavior satisfy both acceptance items. Verification passed: 9 focused tests, 691
+full-suite tests, an empty `bun run dev` report, and a 66.079ms benchmark.

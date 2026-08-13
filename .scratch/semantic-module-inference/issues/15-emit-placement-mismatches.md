@@ -8,21 +8,29 @@ snapshot.
 
 **Blocked by:** 14 — Prove deterministic Semantic Module membership.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The `semanticModulePlacement` matcher builds one immutable snapshot per Program and Wiring
+- [x] The `semanticModulePlacement` matcher builds one immutable snapshot per Program and Wiring
       scope, closes subscriptions over it, and keeps no global or mutable cache.
-- [ ] Its Policy factory accepts an explicit immutable paradigm rule catalog and emits the silent
+- [x] Its Policy factory accepts an explicit immutable paradigm rule catalog and emits the silent
       `semantic-module-placement` Signal.
-- [ ] `split-semantic-module` emits exactly once per multi-file Semantic Module at the canonical
+- [x] `split-semantic-module` emits exactly once per multi-file Semantic Module at the canonical
       first member's declaration anchor.
-- [ ] `mixed-physical-module` emits exactly once per file containing multiple Semantic Modules at
+- [x] `mixed-physical-module` emits exactly once per file containing multiple Semantic Modules at
       file position 1:1.
-- [ ] Every projection contains complete ordered entity records, ordered Physical Module paths, and
+- [x] Every projection contains complete ordered entity records, ordered Physical Module paths, and
       canonical forest bonds with replay evidence for only the relevant modules.
-- [ ] Projection messages and hints exactly match the specification and never imply a destination or
+- [x] Projection messages and hints exactly match the specification and never imply a destination or
       move direction.
-- [ ] Clean, split-only, mixed-only, overlap, shared-anchor, ordering, deduplication, and
+- [x] Clean, split-only, mixed-only, overlap, shared-anchor, ordering, deduplication, and
       placement-only change fixtures assert the full typed Detection contract.
-- [ ] Focused matcher/Policy tests and the full suite pass; formatting and self-hosting are clean;
+- [x] Focused matcher/Policy tests and the full suite pass; formatting and self-hosting are clean;
       the benchmark remains below 100ms.
+
+## Comments
+
+### 2026-08-13 — Verified complete
+
+The current snapshot, placement matcher, and Advice implementation satisfy every acceptance item.
+Verification passed: 38 focused Semantic Module tests, 691 full-suite tests, an empty `bun run dev`
+report, and a 66.079ms benchmark.

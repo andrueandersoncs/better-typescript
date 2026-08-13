@@ -6,9 +6,17 @@ Leave the Codex OAuth result adapter in its preferred, clean form.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A focused CLI fixture reports the local raw-object declaration and remains clean for its
       foreign-adapter boundary.
 - [x] The default policy fleet and every self-hosted package enable the policy, and the Codex OAuth
       adapter passes self-hosting.
+
+## Comments
+
+### 2026-08-13 — Verified complete
+
+The implementation, focused policy fixtures, public report assertions, self-host wiring, and Codex
+workflow behavior satisfy both acceptance items. Verification passed: 9 focused tests, 691
+full-suite tests, an empty `bun run dev` report, and a 66.079ms benchmark.

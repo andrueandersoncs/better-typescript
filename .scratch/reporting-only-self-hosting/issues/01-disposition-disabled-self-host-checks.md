@@ -1,13 +1,13 @@
 # 01 — Decide disposition of disabled self-host checks
 
-**Status:** needs-triage (one check dispositioned)
+**Status:** needs-triage
 
 ## What happened
 
-Self-hosting now runs only reported Checks over package production sources. Silent evidence,
-Architecture Explore, and all Advice derivation are absent, so their findings cannot gate this
-repository. A clean report now proves only the reported-policy subset, not the documented full
-dogfooding and Advice-clean contract.
+Self-hosting runs reported Checks plus the separately wired `semantic-module-placement` policy and
+its Advice. Other silent evidence, Architecture Explore policies, and Advice derivation are absent,
+so their findings cannot gate this repository. A clean report therefore does not prove the
+documented full dogfooding and Advice-clean contract.
 
 ## What I expected
 
@@ -61,3 +61,10 @@ ownership. Both were fixed (see `.scratch/signal-organization-self-hosting/bug-r
 seven resulting repository findings were remediated by relocation, and the Check now runs in
 self-hosting through `selfHostPlacementWiring.ts` with an empty report and a 69.1ms benchmark. The
 remaining seventeen Checks in the list above are still undispositioned.
+
+### 2026-08-13 — Status normalized
+
+The canonical status remains `needs-triage`: `semantic-module-placement` is restored, but the listed
+seventeen Checks still lack delete-or-restore decisions and remain excluded from reporting-only
+self-hosting. `bun test tests/selfHostBenchmark.test.ts` passed 3 tests, and `bun run dev` was
+empty.
