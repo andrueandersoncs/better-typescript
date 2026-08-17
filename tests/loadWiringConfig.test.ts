@@ -1,7 +1,10 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { Effect, Schema } from "effect"
-import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import {
+  ProjectWiringConfigError,
+  loadWiringConfig
+} from "@better-typescript/core/project/loadWiringConfig"
 import { reportEvents } from "@better-typescript/core/engine/reportPipeline"
 import { WorkspaceUpdate } from "@better-typescript/core/engine/watch/data"
 import { makeContext } from "@better-typescript/matchers/sources/makeContext"
@@ -88,6 +91,49 @@ test("loadWiringConfig accepts a default zero-argument config factory", async ()
     )
 
     assert.equal(config[0]?.wiring.policies[0]?.name, "default-factory-check")
+  })
+})
+
+test("loadWiringConfig prefers the named config export over the default export", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    const config = await loadSource(
+      projectDirectory,
+      configSource(
+        "export const config = [{",
+        '  files: ["src/**/*.ts"],',
+        '  wiring: { policies: [makeEmptyPolicy("named-check")], derive: () => [] }',
+        "}]",
+        "export default [{",
+        '  files: ["src/**/*.ts"],',
+        '  wiring: { policies: [makeEmptyPolicy("default-check")], derive: () => [] }',
+        "}]"
+      )
+    )
+
+    assert.equal(config[0]?.wiring.policies[0]?.name, "named-check")
+  })
+})
+
+test("loadWiringConfig ignores inherited config export properties", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    const error = await failSource(
+      projectDirectory,
+      configSource(
+        "const inheritedConfig = [{",
+        '  files: ["src/**/*.ts"],',
+        '  wiring: { policies: [makeEmptyPolicy("inherited-check")], derive: () => [] }',
+        "}]",
+        "export default Object.create({ config: inheritedConfig })"
+      )
+    )
+
+    assert.equal(Schema.is(ProjectWiringConfigError)(error), true)
+    assert.equal(error._tag, "ProjectWiringConfigError")
+    assert.equal(
+      error.reason,
+      "exported config must be an array of { files: string[], wiring: { policies, derive } }"
+    )
+    assert.equal(error.configPath, `${projectDirectory}/better-typescript.config.ts`)
   })
 })
 
@@ -314,6 +360,20 @@ test("loadWiringConfig rejects throwing config factories", async () => {
     )
 
     assert.match(error.message, /default export factory failed: factory boom/)
+  })
+})
+
+test("loadWiringConfig normalizes non-Error factory failures", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    const error = await failSource(
+      projectDirectory,
+      configSource('export default () => { throw "plain failure" }')
+    )
+
+    assert.equal(Schema.is(ProjectWiringConfigError)(error), true)
+    assert.equal(error._tag, "ProjectWiringConfigError")
+    assert.equal(error.reason, "default export factory failed: plain failure")
+    assert.equal(error.configPath, `${projectDirectory}/better-typescript.config.ts`)
   })
 })
 

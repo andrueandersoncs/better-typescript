@@ -313,8 +313,8 @@
       "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
     },
     "./project/loadWiringConfig/projectWiringConfigError": {
-      "bun": "./src/project/loadWiringConfig/projectWiringConfigError.ts",
-      "default": "./dist/project/loadWiringConfig/projectWiringConfigError.js"
+      "bun": "./src/project/loadWiringConfig/loadWiringConfig.ts",
+      "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
     },
     "./engine/wiring/wiringPolicy": {
       "bun": "./src/engine/wiring/wiringPolicy.ts",
