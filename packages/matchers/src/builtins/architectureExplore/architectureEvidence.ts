@@ -73,7 +73,7 @@ const statementModuleSpecifier = (statement: ts.Statement) => {
   )
 }
 
-export const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleEdge> => {
+const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleEdge> => {
   const relative = toRelativeFileName(context.projectRoot)
   const classifyTestSource = isTestSourceFile(context.workspaceRoot)
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
@@ -204,7 +204,7 @@ const isOutsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifi
 const referenceOutsideDeclaration = (entry: ExportedFunctionEntry) =>
   isOutsideDeclaration(entry.declarationNode)
 
-export const buildExportReferenceIndex = (context: ProgramContext) => {
+const buildExportReferenceIndex = (context: ProgramContext) => {
   const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
   const entries = Array.flatMap(projectFiles, exportedFunctionsIn(context.checker))
   const usages = buildUsageMap(context)(entries, referenceOutsideDeclaration)

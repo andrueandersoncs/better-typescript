@@ -91,7 +91,7 @@ import { variableSymbols } from "./variableSymbols.js"
 const componentHead = (component: ReadonlyArray<SemanticModuleEntityKey>) =>
   pipe(component, Array.head, Option.getOrThrow)
 
-export const semanticComponentOrder = Order.mapInput(entityKeyOrder, componentHead)
+const semanticComponentOrder = Order.mapInput(entityKeyOrder, componentHead)
 
 const bondKeyLeftEquivalence: Equivalence.Equivalence<SemanticModuleBondKey> = Equivalence.mapInput(
   entityKeyEquivalence,
@@ -2338,7 +2338,6 @@ const createSemanticModuleEngine = () => {
       const subjects = resolveSemanticSubjects(context)(ownedEntities)(ownersBySymbol)(references)
 
       return new SemanticModuleReferenceGraph({
-        nodes,
         references,
         unownedConsumers,
         components,

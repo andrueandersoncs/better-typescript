@@ -6,9 +6,7 @@ import { semanticSubjectOwnershipEvidenceSchema } from "./semanticSubjectOwnersh
 import type { semanticSubjectWitnessSchema as SemanticSubjectWitness } from "./semanticSubjectWitnessSchema.js"
 
 // Subject bonds ship engine-resolved facts because rules cannot re-run the TypeChecker.
-export const makeSubjectCandidate = (
-  witness: SemanticSubjectWitness
-): SemanticModuleHardBondCandidate => {
+const makeSubjectCandidate = (witness: SemanticSubjectWitness): SemanticModuleHardBondCandidate => {
   const evidence = semanticSubjectOwnershipEvidenceSchema.make({
     _tag: "semantic-subject-ownership",
     version: 1,
@@ -28,7 +26,7 @@ export const makeSubjectCandidate = (
   })
 }
 
-export const semanticSubjectOwnershipCandidates: SemanticModuleHardBondRule["candidates"] = (
+const semanticSubjectOwnershipCandidates: SemanticModuleHardBondRule["candidates"] = (
   _context,
   _entities,
   referenceGraph

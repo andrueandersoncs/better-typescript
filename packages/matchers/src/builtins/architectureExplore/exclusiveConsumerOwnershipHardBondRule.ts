@@ -305,7 +305,7 @@ const ownershipCandidateAt =
     )
   }
 
-export const exclusiveConsumerOwnershipCandidates: SemanticModuleHardBondRule["candidates"] = (
+const exclusiveConsumerOwnershipCandidates: SemanticModuleHardBondRule["candidates"] = (
   _context,
   _entities,
   referenceGraph

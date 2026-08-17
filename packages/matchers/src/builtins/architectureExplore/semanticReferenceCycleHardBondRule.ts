@@ -30,7 +30,7 @@ const makePairCandidate =
       evidence
     })
 
-export const pairwiseComponentCandidates = (
+const pairwiseComponentCandidates = (
   component: ReadonlyArray<SemanticModuleEntityKey>,
   referenceGraph: SemanticModuleReferenceGraph
 ): ReadonlyArray<SemanticModuleHardBondCandidate> => {
@@ -59,7 +59,7 @@ export const pairwiseComponentCandidates = (
   })
 }
 
-export const semanticReferenceCycleCandidates: SemanticModuleHardBondRule["candidates"] = (
+const semanticReferenceCycleCandidates: SemanticModuleHardBondRule["candidates"] = (
   _context,
   _entities,
   referenceGraph
