@@ -5,11 +5,11 @@ import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import type { MatchContext } from "../matcher/matchContext.js"
 import { functionInitializer } from "../support/functionInitializer2.js"
 import { hasParameters } from "../support/hasParameters.js"
-import { returnStatementExpression } from "../support/returnStatementExpression.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
 import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
 import { isEffectInterfaceSymbol } from "../support/isEffectInterfaceSymbol.js"
 import { strictEqual } from "../equivalence.js"
+import { returnedExpression } from "../support/returnedExpression.js"
 
 const optionalText = Schema.optional(Schema.String)
 
@@ -22,26 +22,8 @@ export const PreferEffectFnFact = Schema.Struct({
 
 export interface PreferEffectFnFact extends Schema.Schema.Type<typeof PreferEffectFnFact> {}
 
-const singleBlockStatement = (block: ts.Block): Option.Option<ts.Statement> =>
-  strictEqual(1)(block.statements.length)
-    ? Option.fromNullishOr(block.statements[0])
-    : Option.none()
-
 const isGenPropertyName = (access: ts.PropertyAccessExpression) =>
   strictEqual("gen")(access.name.text)
-
-const returnedExpression = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
-  const blockResult = pipe(
-    Option.liftPredicate(ts.isBlock)(initializer.body),
-    Option.flatMap(singleBlockStatement),
-    Option.filter(ts.isReturnStatement),
-    Option.flatMap(returnStatementExpression)
-  )
-
-  const conciseResult = ts.isBlock(initializer.body) ? Option.none() : Option.some(initializer.body)
-
-  return Option.orElse(blockResult, Function.constant(conciseResult))
-}
 
 const isEffectGenAccess = (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
   isGenPropertyName(access) &&
@@ -53,11 +35,28 @@ const isEffectGenAccess = (checker: ts.TypeChecker) => (access: ts.PropertyAcces
 
 const effectGenCall =
   (checker: ts.TypeChecker) => (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
+    const conciseBody = !ts.isBlock(initializer.body)
+
+    const hasSingleStatement = (body: ts.Block) =>
+      pipe(body.statements, Array.length, strictEqual(1))
+
+    const singleStatementBlock = pipe(
+      Option.liftPredicate(ts.isBlock)(initializer.body),
+      Option.exists(hasSingleStatement)
+    )
+
+    const supportedBodyKinds = Array.make(conciseBody, singleStatementBlock)
+    const hasSingleBlockStatement = Array.some(supportedBodyKinds, Boolean)
+
     const callIsEffectGen = (call: ts.CallExpression) =>
       pipe(
         Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression),
         Option.exists(isEffectGenAccess(checker))
       )
+
+    if (!hasSingleBlockStatement) {
+      return Option.none<ts.CallExpression>()
+    }
 
     return pipe(
       returnedExpression(initializer),

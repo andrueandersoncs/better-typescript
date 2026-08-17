@@ -31,8 +31,6 @@ import { functionDeclarationName } from "../../support/functionDeclarationName.j
 import type { FunctionDefinition } from "../../support/functionDefinition.js"
 import { functionInitializer } from "../../support/functionInitializer2.js"
 import { hasExportModifier } from "../../support/hasExportModifier.js"
-import { isExpressionBody } from "../../support/isExpressionBody.js"
-import { returnStatementExpression } from "../../support/returnStatementExpression.js"
 import { symbolDeclarations } from "../../support/symbolDeclarations.js"
 import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
 import { unwrapCallee } from "../../support/unwrapCallee.js"
@@ -59,6 +57,7 @@ import { nodeInside } from "./nodeInside.js"
 import { setReplacingValue } from "./setReplacingValue.js"
 import { modelFromResolvedType } from "./modelFromResolvedType.js"
 import { conceptSignalKindSchema } from "./conceptSignalKinds.js"
+import { returnedExpression } from "../../support/returnedExpression.js"
 
 // DataStructureEntry is one named model plus syntax because concept matchers share identity.
 export class DataStructureEntry extends Data.Class<{
@@ -76,41 +75,10 @@ export class DataStructureEntry extends Data.Class<{
 // ConceptSignalKind stays local because the schema owns the closed set.
 type ConceptSignalKind = typeof conceptSignalKindSchema.Type
 
-const expressionBodiedArrow = (definition: FunctionDefinition) =>
-  pipe(
-    Option.liftPredicate(ts.isArrowFunction)(definition),
-    Option.map(Struct.get("body")),
-    Option.filter(isExpressionBody)
-  )
-
-const blockReturnStatements = (body: ts.Block) =>
-  Array.filter(body.statements, ts.isReturnStatement)
-
-const hasSingleReturn = (returns: ReadonlyArray<ts.ReturnStatement>) =>
-  pipe(returns, Array.length, strictEqual(1))
-
-const singleReturnExpressionFromList = (returns: ReadonlyArray<ts.ReturnStatement>) =>
-  pipe(Array.head(returns), Option.flatMap(returnStatementExpression))
-
-const singleReturnExpression = (definition: FunctionDefinition) =>
-  pipe(
-    Option.fromNullishOr(definition.body),
-    Option.filter(ts.isBlock),
-    Option.map(blockReturnStatements),
-    Option.filter(hasSingleReturn),
-    Option.flatMap(singleReturnExpressionFromList)
-  )
-
-export const returnedExpression = (definition: FunctionDefinition) => {
-  const blockReturn = singleReturnExpression(definition)
-
-  return pipe(expressionBodiedArrow(definition), Option.orElse(Function.constant(blockReturn)))
-}
-
 const declarationSourceFileName = (declaration: string) =>
   pipe(declaration.split(fieldSeparator), Array.head)
 
-export const referenceKeySourceFileName = (key: ReferenceKey) =>
+const referenceKeySourceFileName = (key: ReferenceKey) =>
   pipe(key.split(recordSeparator), Array.get(1), Option.flatMap(declarationSourceFileName))
 
 const stringArraySchema = Schema.Array(Schema.String)
@@ -1351,7 +1319,7 @@ const shapeGroups = (
   )
 }
 
-export const functionDerivedStem = (name: string) => {
+const functionDerivedStem = (name: string) => {
   const stemWithoutSuffix = (suffix: string) => name.slice(0, -suffix.length)
 
   return pipe(
@@ -1362,7 +1330,7 @@ export const functionDerivedStem = (name: string) => {
   )
 }
 
-export const buildConceptIndex = (context: ProgramContext) => {
+const buildConceptIndex = (context: ProgramContext) => {
   const dataStructures = dataStructureEntries(context)
   const dataBySymbol = Array.reduce(dataStructures, emptyDataBySymbol, addDataStructureEntry)
   const functions = functionEntries(context, dataBySymbol)
@@ -1453,14 +1421,11 @@ export const buildConceptIndex = (context: ProgramContext) => {
               Option.liftPredicate(everyCheckHolds)(isIndependentRead),
               Option.map(() => {
                 Array.forEach(references, (reference) => {
-                  const model = Tuple.get(reference, 0)
                   const field = Tuple.get(reference, 1)
                   const fieldKey = referenceKey(field)
 
                   const fieldRead = new FieldRead({
-                    model,
                     field: fieldKey,
-                    owner,
                     node: identifier
                   })
 
@@ -1582,9 +1547,7 @@ export const buildConceptIndex = (context: ProgramContext) => {
   const parameterBagList = MutableList.toArray(parameterBags)
 
   return new ConceptIndex({
-    projectRoot: context.projectRoot,
     dataStructures,
-    functions,
     dataBySymbol,
     functionBySymbol,
     ownersByData,

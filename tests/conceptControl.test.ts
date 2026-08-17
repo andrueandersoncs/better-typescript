@@ -1,11 +1,7 @@
 import * as assert from "node:assert/strict"
-import * as path from "node:path"
 import { test } from "bun:test"
-import { Array, HashMap, HashSet, Option } from "effect"
-import { referenceKey } from "@better-typescript/matchers/support/referenceKey"
 import { kindOf } from "./conceptControlKindOf.js"
 import { runFixture } from "./conceptControlRunFixture.js"
-import { loadConceptIndex } from "./conceptControlLoadConceptIndex.js"
 
 test("concept-control reports structural concept debt before accepting rationale", async () => {
   const signals = await runFixture()
@@ -53,77 +49,40 @@ test("concept-control reports structural concept debt before accepting rationale
   }
 })
 
-test("concept index recognizes Effect v4 data classes without spelling false positives", async () => {
-  const index = await loadConceptIndex()
+test("concept matcher recognizes Effect data classes through observable findings", async () => {
+  const signals = await runFixture()
+  const summaries = signals
+    .filter((signal) => signal.location.path === "src/v4/data.ts")
+    .map((signal) => `${signal.location.line} ${kindOf(signal)} ${signal.message}`)
 
-  const entryNamed = (name: string) => {
-    const entry = index.dataStructures.find((candidate) => candidate.name === name)
+  assert.deepEqual(summaries, [
+    "11 duplicate-shape PrimaryDataError duplicates the concrete structure of PlainErrorPayload.",
+    "15 duplicate-shape SecondaryDataError duplicates the concrete structure of PlainErrorPayload.",
+    "26 duplicate-shape SecondarySchemaError duplicates the concrete structure of PrimarySchemaError.",
+    "37 duplicate-shape SecondaryOpaque duplicates the concrete structure of PrimaryOpaque.",
+    "55 duplicate-shape SecondaryExtended duplicates the concrete structure of PrimaryExtended.",
+    "19 missing-rationale PrimarySchemaError lacks a complete, structurally supported data-structure rationale.",
+    "35 missing-rationale PrimaryOpaque lacks a complete, structurally supported data-structure rationale.",
+    "39 missing-rationale PrimaryAsClass lacks a complete, structurally supported data-structure rationale.",
+    "43 missing-rationale SecondaryAsClass lacks a complete, structurally supported data-structure rationale.",
+    "47 missing-rationale BaseModel lacks a complete, structurally supported data-structure rationale.",
+    "51 missing-rationale PrimaryExtended lacks a complete, structurally supported data-structure rationale."
+  ])
 
-    assert.ok(entry, `missing concept entry for ${name}`)
-
-    return entry
-  }
-
-  const rolesFor = (name: string) => {
-    const entry = entryNamed(name)
-    const roles = HashMap.get(index.rolesByData, referenceKey(entry.symbol))
-
-    assert.ok(Option.isSome(roles), `missing concept roles for ${name}`)
-
-    return roles.value
-  }
-
-  const recognized = Array.make(
-    "PrimaryDataError",
-    "SecondaryDataError",
-    "PrimarySchemaError",
-    "SecondarySchemaError",
-    "PrimaryOpaque",
-    "SecondaryOpaque",
-    "PrimaryAsClass",
-    "SecondaryAsClass",
-    "BaseModel",
-    "PrimaryExtended",
-    "SecondaryExtended"
+  assert.equal(
+    summaries.some((summary) => summary.includes("FakePrimary")),
+    false
   )
-
-  Array.forEach(recognized, (name) => {
-    entryNamed(name)
-  })
-
-  const indexedNames = index.dataStructures.map((entry) => entry.name)
-
-  assert.equal(indexedNames.includes("FakePrimary"), false)
-  assert.equal(indexedNames.includes("FakeSecondary"), false)
-
-  const dataErrorRoles = rolesFor("PrimaryDataError")
-  const schemaErrorRoles = rolesFor("PrimarySchemaError")
-  const opaqueRoles = rolesFor("PrimaryOpaque")
-
-  assert.equal(HashSet.has(dataErrorRoles, "protocol"), true)
-  assert.equal(HashSet.has(schemaErrorRoles, "protocol"), true)
-  assert.equal(HashSet.has(schemaErrorRoles, "boundary"), true)
-  assert.equal(HashSet.has(opaqueRoles, "protocol"), false)
-
-  Array.forEach(
-    Array.make("PrimaryOpaque", "PrimaryAsClass", "BaseModel", "PrimaryExtended"),
-    (name) => {
-      assert.equal(HashSet.has(rolesFor(name), "boundary"), true)
-    }
+  assert.equal(
+    summaries.some((summary) => summary.includes("FakeSecondary")),
+    false
   )
-
-  const inheritedDataErrorFields = entryNamed("PrimaryDataError").fieldSymbols.map((field) =>
-    field.getName()
+  assert.equal(
+    summaries.some((summary) => summary.includes("unused-field")),
+    false
   )
-
-  assert.equal(inheritedDataErrorFields.includes("cause"), false)
-  assert.equal(inheritedDataErrorFields.includes("message"), false)
-  assert.equal(inheritedDataErrorFields.includes("name"), false)
-  assert.equal(inheritedDataErrorFields.includes("stack"), false)
-
-  const schemaErrorFields = entryNamed("PrimarySchemaError").fieldSymbols.map((field) =>
-    field.getName()
+  assert.equal(
+    summaries.some((summary) => summary.includes("speculative-export")),
+    false
   )
-
-  assert.equal(schemaErrorFields.includes("message"), true)
 })

@@ -10,9 +10,7 @@ import type { PassThroughConversion } from "./passThroughConversion.js"
 
 // ConceptIndex is the shared program snapshot because detections reuse one map.
 export class ConceptIndex extends Data.Class<{
-  readonly projectRoot: string
   readonly dataStructures: ReadonlyArray<DataStructureEntry>
-  readonly functions: ReadonlyArray<FunctionEntry>
   readonly dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>
   readonly functionBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, FunctionEntry>
   readonly ownersByData: HashMap.HashMap<

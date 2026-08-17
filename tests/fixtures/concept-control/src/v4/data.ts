@@ -1,5 +1,13 @@
 import { Data, Schema } from "effect"
 
+// PlainErrorPayload is stable because two boundary projections consume it.
+export interface PlainErrorPayload {
+  readonly code: string
+}
+
+export const plainErrorCode = (payload: PlainErrorPayload) => payload.code
+export const plainErrorLabel = (payload: PlainErrorPayload) => `error:${payload.code}`
+
 export class PrimaryDataError extends Data.Error<{
   readonly code: string
 }> {}
