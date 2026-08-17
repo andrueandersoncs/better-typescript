@@ -4,7 +4,7 @@
 Silent default dispatch/collections evidence policy.
 
 ## Active wiring
-`dispatchAndCollectionPolicies` -> `defaultWiring`; enabled for `**/*`; suppressed as a direct report by `makeSilentBuiltinPolicy`, but consumed by `pipeline-hostile`.
+`dispatchAndCollectionPolicies` -> `defaultWiring`; enabled for `**/*`; authored with `makeBuiltinPolicy({ reported: false, ... })`, then consumed by `pipeline-hostile`.
 
 ## Implementation sources
 `packages/guidance/src/policies/preferCurriedDataLastFunctions.ts`; `packages/matchers/src/builtins/preferCurriedDataLastFunctions.ts`; `packages/matchers/src/builtins/preferCurriedDataLastFunctionsData.ts`; `packages/matchers/src/support/referenceKey.ts`; `packages/matchers/src/support/tsSignature.ts`; `packages/matchers/src/support/tsType.ts`.

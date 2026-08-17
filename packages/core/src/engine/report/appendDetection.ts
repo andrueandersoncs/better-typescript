@@ -18,19 +18,19 @@ export const appendDetection =
     seen: HashMap.HashMap<string, ReadonlyArray<Detection>>,
     elements: MutableList.MutableList<Detection>
   ) =>
-  (element: Detection): boolean => {
+  (element: Detection) => {
     const key = detectionDedupeKey(element)
     const maybeBucket = HashMap.get(seen, key)
     const bucket = pipe(maybeBucket, Option.getOrElse(noDetections))
     const hasSameData = (candidate: Detection) => Equal.equals(candidate.data, element.data)
     const alreadySeen = Array.some(bucket, hasSameData)
-    const expandedBucket = Array.append(bucket, element)
-    const shouldStore = !alreadySeen
 
-    if (shouldStore) {
+    if (!alreadySeen) {
+      const expandedBucket = Array.append(bucket, element)
+
       HashMap.set(seen, key, expandedBucket)
       MutableList.append(elements, element)
     }
 
-    return shouldStore
+    return !alreadySeen
   }

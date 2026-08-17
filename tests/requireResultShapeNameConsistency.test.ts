@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { requireResultShapeNameConsistency } from "@better-typescript/guidance/preset/defaultWiring"
+import { requireResultShapeNameConsistency } from "@better-typescript/guidance/preset/semanticNamingPolicies"
 import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("require-result-shape-name-consistency reports disallowed and permits allowed fixture items", () =>
   assertPolicyFixture(requireResultShapeNameConsistency))

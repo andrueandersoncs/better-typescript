@@ -7,7 +7,7 @@ import {
   defaultFunctionalCoreEffectPolicy,
   type FunctionalCoreEffectPolicy
 } from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
-import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
+import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 
 const message = "Functional-core architecture shape evidence for derived advice."
 
@@ -19,11 +19,13 @@ const makeFunctionalCoreShapeEvidenceFindings = (match: Match<FunctionalCoreShap
 export const makeFunctionalCoreShapeEvidencePolicy = (policy: FunctionalCoreEffectPolicy) => {
   const matcher = makeFunctionalCoreShapeEvidence(policy)
 
-  return makeSilentBuiltinPolicy(
-    "functional-core-effect-shape-evidence",
-    matcher,
-    Function.constant(makeFunctionalCoreShapeEvidenceFindings)
-  )
+  return makeBuiltinPolicy({
+    name: "functional-core-effect-shape-evidence",
+    matcher: matcher,
+    guidance: Function.constant(makeFunctionalCoreShapeEvidenceFindings),
+    reported: false,
+    stage: "program"
+  })
 }
 
 export const functionalCoreShapeEvidence = makeFunctionalCoreShapeEvidencePolicy(

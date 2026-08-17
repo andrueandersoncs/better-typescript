@@ -1,6 +1,8 @@
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
-import { testDirectory } from "./loadWiringConfigTestDirectory.js"
+import { fileURLToPath } from "node:url"
+
+const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 
 const tsconfig = {
   compilerOptions: {

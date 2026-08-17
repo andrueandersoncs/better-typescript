@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "bun:test"
 import { Array, Effect } from "effect"
 import { type Detection } from "@better-typescript/core/engine/location/detectionData"
-import { noReexports } from "@better-typescript/guidance/preset/defaultWiring"
+import { noReexports } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
 

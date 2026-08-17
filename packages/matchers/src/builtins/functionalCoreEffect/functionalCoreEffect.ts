@@ -1082,7 +1082,9 @@ const variableKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
 const typeReferenceKinds = Array.of(ts.SyntaxKind.TypeReference)
 
-const subscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subscription> => {
+const subscriptionsFor = (
+  index: FunctionalCoreEffectIndex
+): ReadonlyArray<Subscription<FunctionalCoreBoundaryData>> => {
   const importElements = architectureImportElements(index)
   const exportElements = architectureExportElements(index)
   const callElements = callExpressionElements(index)

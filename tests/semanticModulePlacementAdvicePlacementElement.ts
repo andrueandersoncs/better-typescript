@@ -2,7 +2,7 @@ import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNa
 import { Detection } from "@better-typescript/core/engine/location/detectionData"
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import type { SemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine.js"
-import { semanticModulePlacementName } from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
+import { semanticModulePlacementName } from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
 
 const detection = (
   path: string,

@@ -16,7 +16,7 @@ import { makeFunctionalCoreEffect } from "@better-typescript/matchers/builtins/f
 import { type FunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyClass"
 import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 import { makeFunctionalCoreShapeEvidence } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeEvidence"
-import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
+
 import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
 import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
 
@@ -234,11 +234,13 @@ const makeFceBoundariesFindings = (match: Match<FunctionalCoreBoundaryData>) =>
 const makeFceBoundariesPolicy = (policy: FunctionalCoreEffectPolicy) => {
   const matcher = makeFunctionalCoreEffect(policy)
 
-  return makeBuiltinPolicy(
-    "functional-core-effect-boundaries",
-    matcher,
-    Function.constant(makeFceBoundariesFindings)
-  )
+  return makeBuiltinPolicy({
+    name: "functional-core-effect-boundaries",
+    matcher: matcher,
+    guidance: Function.constant(makeFceBoundariesFindings),
+    reported: true,
+    stage: "program"
+  })
 }
 
 const message = "Functional-core architecture shape evidence for derived advice."
@@ -251,11 +253,13 @@ const makeFceShapeEvidenceFindings = (match: Match<FunctionalCoreShapeData>) =>
 const makeFceShapeEvidencePolicy = (policy: FunctionalCoreEffectPolicy) => {
   const matcher = makeFunctionalCoreShapeEvidence(policy)
 
-  return makeSilentBuiltinPolicy(
-    "functional-core-effect-shape-evidence",
-    matcher,
-    Function.constant(makeFceShapeEvidenceFindings)
-  )
+  return makeBuiltinPolicy({
+    name: "functional-core-effect-shape-evidence",
+    matcher: matcher,
+    guidance: Function.constant(makeFceShapeEvidenceFindings),
+    reported: false,
+    stage: "program"
+  })
 }
 
 export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy) => {

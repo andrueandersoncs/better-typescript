@@ -1,29 +1,12 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { Effect } from "effect"
-import { makeRefactorExampleResolver } from "@better-typescript/core/engine/reportPipeline"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
 import { makeSilentPolicy } from "@better-typescript/core/engine/policy/makeSilentPolicy"
 import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher/makeMatcherFromSubscriptions"
-import { makeSilentBuiltinPolicy } from "@better-typescript/guidance/makeSilentBuiltinPolicy"
 import { emptyPlan } from "./definePolicyEmptyPlan.js"
 import { emptyGuidance } from "./definePolicyEmptyGuidance.js"
 
-test("makeSilentBuiltinPolicy owns policy identity, examples, and report policy", async () => {
-  const policy = makeSilentBuiltinPolicy(
-    "prefer-curried-data-last-functions",
-    makeMatcherFromSubscriptions(emptyPlan),
-    emptyGuidance
-  )
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-  const examples = await Effect.runPromise(resolve(policy.examples))
-
-  assert.equal(policy.name, "prefer-curried-data-last-functions")
-  assert.equal(policy.reported, false)
-  assert.equal(examples.length > 0, true)
-})
-
-test("makeSilentPolicy owns an existing matcher's identity and report policy", async () => {
+test("makeSilentPolicy owns an existing matcher's identity and report policy", () => {
   const matcher = makeMatcherFromSubscriptions(emptyPlan)
   const named = makeSilentPolicy({
     name: "architecture-evidence",
@@ -31,10 +14,7 @@ test("makeSilentPolicy owns an existing matcher's identity and report policy", a
     guidance: emptyGuidance,
     examples: emptyRefactorExampleSource
   })
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-  const examples = await Effect.runPromise(resolve(named.examples))
-
   assert.equal(named.name, "architecture-evidence")
   assert.equal(named.reported, false)
-  assert.deepEqual(examples, [])
+  assert.equal(named.examples, emptyRefactorExampleSource)
 })

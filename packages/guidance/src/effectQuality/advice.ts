@@ -4,15 +4,13 @@ import { EffectQualityAdviceData } from "@better-typescript/matchers/builtins/ef
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
 import { makePackageExamples } from "../makePackageExamples.js"
-import {
-  EffectQualityRuleData,
-  makeEffectQualityRulesMatcher
-} from "@better-typescript/matchers/builtins/effectQuality/effectQualityRuleData"
+import { EffectQualityRuleData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityRuleData"
+import { makeEffectQualityRulesMatcher } from "@better-typescript/matchers/builtins/effectQuality/effectQualityRulesMatcher"
 import { EffectQualityPolicy } from "@better-typescript/matchers/builtins/effectQuality/effectQualityPolicy"
 import { defaultEffectQualityPolicy } from "@better-typescript/matchers/builtins/effectQuality/defaultEffectQualityPolicy"
 import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 import { makeEffectQualityEvidenceMatcher } from "@better-typescript/matchers/builtins/effectQuality/effectQualityEvidenceModule"
-import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
+
 import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
 import type { Match } from "@better-typescript/matchers/matcher/match"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
@@ -438,11 +436,13 @@ const buildEffectQualityExports = () => {
   const makeEffectQualityPolicies = (policy: EffectQualityPolicy) => {
     const rulesMatcher = makeEffectQualityRulesMatcher(policy)
 
-    const qualityRules = makeBuiltinPolicy(
-      "effect-quality-rules",
-      rulesMatcher,
-      Function.constant(makeEffectQualityRulesFindings)
-    )
+    const qualityRules = makeBuiltinPolicy({
+      name: "effect-quality-rules",
+      matcher: rulesMatcher,
+      guidance: Function.constant(makeEffectQualityRulesFindings),
+      reported: true,
+      stage: "program"
+    })
 
     // Silent evidence carries kind/subject only because derive owns user-facing advice prose.
     const makeEffectQualityAdviceEvidenceFindings = (match: Match<EffectQualityAdviceData>) =>
@@ -450,11 +450,13 @@ const buildEffectQualityExports = () => {
 
     const evidenceMatcher = makeEffectQualityEvidenceMatcher(policy)
 
-    const qualityAdviceEvidence = makeSilentBuiltinPolicy(
-      "effect-quality-advice-evidence",
-      evidenceMatcher,
-      Function.constant(makeEffectQualityAdviceEvidenceFindings)
-    )
+    const qualityAdviceEvidence = makeBuiltinPolicy({
+      name: "effect-quality-advice-evidence",
+      matcher: evidenceMatcher,
+      guidance: Function.constant(makeEffectQualityAdviceEvidenceFindings),
+      reported: false,
+      stage: "program"
+    })
 
     return Array.make(qualityRules, qualityAdviceEvidence)
   }

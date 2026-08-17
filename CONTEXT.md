@@ -35,10 +35,14 @@ syntax, names, paths, and consumers outside the Program do not affect it.
 Entities to share a Semantic Module. A dependency alone is not a Hard Bond; a named law must prove
 atomicity or ownership.
 
+**Static Catalog Aggregation**: A declaration-time collection whose component references entries
+from at least two other components only to enumerate them as values. A single alias is not an
+aggregation, and any non-collection use makes the component a consumer rather than a Static Catalog.
+
 **Exclusive Consumer Ownership**: The neutral law that a Semantic Reference Graph component with
-exactly one consumer component and no unowned consumer belongs with that consumer. Multiple
-consumers mean shared dependency, not ownership, and the law is withheld when consumer and target
-carry disjoint Semantic Subjects.
+exactly one consumer component and no unowned consumer belongs with that consumer. Static Catalog
+Aggregation does not count as consumption; multiple consumers mean shared dependency, not ownership;
+and the law is withheld when consumer and target carry disjoint Semantic Subjects.
 
 **Semantic Subject**: The first-party data declaration an operation is about. An operation taking at
 least two value parameters that are all one data declaration and returning a boolean verdict is

@@ -41,19 +41,19 @@ import { toPolicies } from "./policy/locateTarget.js"
 import { detectionsForLocatedPolicies } from "./policy/locatedPolicyDetections.js"
 import { runWorkspaceMatchers } from "@better-typescript/matchers/matcher/runWorkspaceMatchers"
 import { AdviceReportKey } from "./report/adviceReportKey.js"
-import { appendDetection } from "./report/appendDetection.js"
 import { EmptyReportEvent } from "./report/emptyReportEvent.js"
-import { noDetections } from "./report/emptyDetectionsBucket.js"
-import type { MutableElementBuckets } from "./report/mutableElementBuckets.js"
-import type { MutableSeenBuckets } from "./report/mutableSeenBuckets.js"
-import type { MutableWorkspaceFiles } from "./report/mutableWorkspaceFiles.js"
-import { relativeWorkspacePath } from "./report/relativeWorkspacePath.js"
 import { ReportBlock } from "./report/reportBlock.js"
 import type { ReportEvent } from "./report/reportEvent.js"
 import { RuleReportKey } from "./report/ruleReportKey.js"
 import { SignalEvent } from "./report/signalEvent.js"
-import { SourceMatch } from "./report/sourceMatch.js"
+import { makeElementBuckets } from "./report/emptyElementBuckets.js"
+import { makeSeenBuckets } from "./report/emptySeenBuckets.js"
+import { makeWorkspaceFileBucket } from "./report/emptyWorkspaceFileBuckets.js"
+import { appendDetection } from "./report/appendDetection.js"
+import { noDetections } from "./report/emptyDetectionsBucket.js"
 import { storageForSlot } from "./report/storageForSlot.js"
+import { SourceMatch } from "./report/sourceMatch.js"
+import type { SourceMatch as SourceMatchType } from "./report/sourceMatch.js"
 import { Signal } from "./signal/data.js"
 import { WiringSignals } from "./signal/wiringSignals.js"
 import type { WiringConfig } from "./wiring/wiringConfig.js"
@@ -70,7 +70,7 @@ import { WorkspaceUpdate } from "./watch/data.js"
 
 // --- advice text/order because consumers need one stable render surface ---
 
-export const evidenceText = (item: EvidenceItem) => `  evidence: ${item.measure}: ${item.count}`
+const evidenceText = (item: EvidenceItem) => `  evidence: ${item.measure}: ${item.count}`
 
 const adviceLevelRanks = { file: 0, directory: 1, project: 2 } as const
 const zeroAdviceLevelRank = Function.constant(0)
@@ -80,15 +80,15 @@ const adviceLevelRank = (advice: Advice) =>
 
 const byAdviceLevel = Order.mapInput(Order.Number, adviceLevelRank)
 const byAdvicePath = Order.mapInput(Order.String, advicePath)
-export const adviceOrder = Order.combine(byAdviceLevel, byAdvicePath)
+const adviceOrder = Order.combine(byAdviceLevel, byAdvicePath)
 
-export const adviceHeader = (advice: Advice) => {
+const adviceHeader = (advice: Advice) => {
   const pathLabel = advicePath(advice)
 
   return `${pathLabel} [${advice.level}] — ${advice.title}`
 }
 
-export const adviceText =
+const adviceText =
   (examples: ReadonlyArray<RefactorExample>) =>
   (advice: Advice): string => {
     const header = adviceHeader(advice)
@@ -104,13 +104,13 @@ export const adviceText =
 
 // --- location helpers because detection groups share location identity ---
 
-export const detectionBlockKey = (element: Detection) => {
+const detectionBlockKey = (element: Detection) => {
   const detectionIdentityParts = Array.make(element.message, element.hint)
 
   return pipe(Array.prepend(detectionIdentityParts, "detection"), JSON.stringify)
 }
 
-export const locationText = (element: Detection) =>
+const locationText = (element: Detection) =>
   `  ${element.location.path}:${element.location.line}:${element.location.column}`
 
 // --- example loading because advice and signals share one resolver ---
@@ -252,71 +252,69 @@ const loadRefactorExamplesAt: (
 })
 
 // One resolver caches successful directory loads because a watch run shares one report program.
-export const makeRefactorExampleResolver = Effect.fn("Example.makeRefactorExampleResolver")(
-  function* () {
-    const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
-    const cache = yield* SynchronizedRef.make(emptyCache)
+const makeRefactorExampleResolver = Effect.fn("Example.makeRefactorExampleResolver")(function* () {
+  const emptyCache = HashMap.empty<string, Array.NonEmptyReadonlyArray<RefactorExample>>()
+  const cache = yield* SynchronizedRef.make(emptyCache)
 
-    const collectDirectory = Effect.fn("Example.collectDirectory")(function* (root: string) {
-      return yield* SynchronizedRef.modifyEffect(cache, (current) => {
-        const cached = HashMap.get(current, root)
+  const collectDirectory = Effect.fn("Example.collectDirectory")(function* (root: string) {
+    return yield* SynchronizedRef.modifyEffect(cache, (current) => {
+      const cached = HashMap.get(current, root)
 
-        if (Option.isSome(cached)) {
-          const cachedEntry = Tuple.make(cached.value, current)
-          return Effect.succeed(cachedEntry)
-        }
+      if (Option.isSome(cached)) {
+        const cachedEntry = Tuple.make(cached.value, current)
+        return Effect.succeed(cachedEntry)
+      }
 
-        return pipe(
-          loadRefactorExamplesAt(root),
-          Effect.map((loaded) => {
-            const next = HashMap.set(current, root, loaded)
+      return pipe(
+        loadRefactorExamplesAt(root),
+        Effect.map((loaded) => {
+          const next = HashMap.set(current, root, loaded)
 
-            return Tuple.make(loaded, next)
-          })
-        )
-      })
-    })
-
-    const collectDirectoryExamples = Effect.fn("Example.collectDirectoryExamples")(function* (
-      root: string
-    ) {
-      const current = yield* SynchronizedRef.get(cache)
-
-      return yield* pipe(
-        HashMap.get(current, root),
-        Option.match({
-          onNone: () => collectDirectory(root),
-          onSome: Effect.succeed
+          return Tuple.make(loaded, next)
         })
       )
     })
+  })
 
-    const succeedInlineExamples = Effect.fn("Example.succeedInlineExamples")(
-      flow(Struct.get<InlineRefactorExamples, "examples">("examples"), Effect.succeed)
+  const collectDirectoryExamples = Effect.fn("Example.collectDirectoryExamples")(function* (
+    root: string
+  ) {
+    const current = yield* SynchronizedRef.get(cache)
+
+    return yield* pipe(
+      HashMap.get(current, root),
+      Option.match({
+        onNone: () => collectDirectory(root),
+        onSome: Effect.succeed
+      })
     )
+  })
 
-    const collectDirectorySource = Effect.fn("Example.collectDirectorySource")(function* (
-      directory: DirectoryRefactorExamples
-    ) {
-      return yield* collectDirectoryExamples(directory.root)
-    })
+  const succeedInlineExamples = Effect.fn("Example.succeedInlineExamples")(
+    flow(Struct.get<InlineRefactorExamples, "examples">("examples"), Effect.succeed)
+  )
 
-    const resolve = Effect.fn("Example.resolve")(function* (source: RefactorExampleSource) {
-      return yield* pipe(
-        Match.value(source),
-        Match.tag("inline", succeedInlineExamples),
-        Match.tag("directory", collectDirectorySource),
-        Match.exhaustive
-      )
-    })
+  const collectDirectorySource = Effect.fn("Example.collectDirectorySource")(function* (
+    directory: DirectoryRefactorExamples
+  ) {
+    return yield* collectDirectoryExamples(directory.root)
+  })
 
-    return resolve
-  }
-)
+  const resolve = Effect.fn("Example.resolve")(function* (source: RefactorExampleSource) {
+    return yield* pipe(
+      Match.value(source),
+      Match.tag("inline", succeedInlineExamples),
+      Match.tag("directory", collectDirectorySource),
+      Match.exhaustive
+    )
+  })
+
+  return resolve
+})
 
 const workspacePolicyMatcher = Struct.get<WorkspacePolicy, "matcher">("matcher")
 
-export const toWorkspacePolicies =
+const toWorkspacePolicies =
   (policies: ReadonlyArray<WorkspacePolicy>) =>
   (context: WorkspaceContext): ReadonlyArray<ReadonlyArray<Detection>> => {
     const matchers = Array.map(policies, workspacePolicyMatcher)
@@ -420,7 +418,7 @@ const reportBlocks =
     )
   }
 
-export const batchReportBlocks = (config: WiringConfig) => (resolve: ResolveRefactorExamples) =>
+const batchReportBlocks = (config: WiringConfig) => (resolve: ResolveRefactorExamples) =>
   Effect.fn("Report.batchBlocks")(function* (wiringSignals: ReadonlyArray<WiringSignals>) {
     const matchedEntries = pipe(
       Array.zip(config, wiringSignals),
@@ -439,7 +437,7 @@ export const batchReportBlocks = (config: WiringConfig) => (resolve: ResolveRefa
   })
 
 // Empty stays an explicit event because consumers need a positive nothing-found report.
-export const initialReportEvents =
+const initialReportEvents =
   (rootPath: string) =>
   (blocks: ReadonlyArray<ReportBlock>): ReadonlyArray<ReportEvent> => {
     if (strictEqual(0)(blocks.length)) {
@@ -456,21 +454,16 @@ export const initialReportEvents =
 
 // --- wiring collection because policies accumulate detections per entry ---
 
-const emptySeenBuckets = (entry: WiringEntry) =>
-  Array.makeBy(entry.wiring.policies.length, () =>
-    pipe(HashMap.empty<string, ReadonlyArray<Detection>>(), HashMap.beginMutation)
-  )
-
-const emptyElementBuckets = (entry: WiringEntry) =>
-  Array.makeBy(entry.wiring.policies.length, () => MutableList.make<Detection>())
-
 const detectionIsIncluded =
   (workspaceRoot: string, projectRoot: string, matchers: ReadonlyArray<GlobMatcher>) =>
   (element: Detection) => {
-    const detectionPath = relativeWorkspacePath(workspaceRoot, projectRoot, element.location.path)
-    const isIncluded = matchesFile(matchers)
+    const absoluteDetectionPath = path.resolve(projectRoot, element.location.path)
 
-    return isIncluded(detectionPath)
+    const workspacePath = path
+      .relative(workspaceRoot, absoluteDetectionPath)
+      .replaceAll(path.sep, "/")
+
+    return matchesFile(matchers)(workspacePath)
   }
 
 const appendIncludedDetections = (
@@ -483,20 +476,16 @@ const appendIncludedDetections = (
 ) => {
   const isIncluded = detectionIsIncluded(workspaceRoot, projectRoot, matchers)
   const includedDetections = Array.filter(detections, isIncluded)
-  const append = appendDetection(seen, elements)
 
-  Array.forEach(includedDetections, append)
+  Array.forEach(includedDetections, appendDetection(seen, elements))
 
   return includedDetections.length
 }
 
 const matchersForEntry = (entry: WiringEntry) => Array.map(entry.files, compileGlobMatcher)
 
-const emptyWorkspaceFileBuckets = (_entry: WiringEntry) =>
-  pipe(HashMap.empty<string, WorkspaceSourceFile>(), HashMap.beginMutation)
-
 const collectWorkspaceFileForMatch = (
-  workspaceFilesByWiring: ReadonlyArray<MutableWorkspaceFiles>,
+  workspaceFilesByWiring: ReadonlyArray<ReturnType<typeof makeWorkspaceFileBucket>>,
   matchedWiringIndexes: HashMap.HashMap<number, true>,
   sourceFile: ts.SourceFile,
   candidatePath: string,
@@ -505,7 +494,7 @@ const collectWorkspaceFileForMatch = (
 ) => {
   const maybeWorkspaceFiles = Array.get(workspaceFilesByWiring, wiringIndex)
 
-  const collectNewPath = (workspaceFiles: MutableWorkspaceFiles) => {
+  const collectNewPath = (workspaceFiles: HashMap.HashMap<string, WorkspaceSourceFile>) => {
     const alreadyCollected = HashMap.has(workspaceFiles, candidatePath)
     const isNewCollection = !alreadyCollected
 
@@ -523,8 +512,9 @@ const collectWorkspaceFileForMatch = (
     return isNewCollection
   }
 
-  const collectMatchedWorkspaceFiles = (workspaceFiles: MutableWorkspaceFiles) =>
-    matched && collectNewPath(workspaceFiles)
+  const collectMatchedWorkspaceFiles = (
+    workspaceFiles: HashMap.HashMap<string, WorkspaceSourceFile>
+  ) => matched && collectNewPath(workspaceFiles)
 
   return pipe(
     maybeWorkspaceFiles,
@@ -533,14 +523,20 @@ const collectWorkspaceFileForMatch = (
   )
 }
 
-const sourceMatchRecord = (
+const makeSourceMatch = (
   workspaceRoot: string,
   projectRoot: string,
   matchersByWiring: ReadonlyArray<ReadonlyArray<GlobMatcher>>,
   sourceFile: ts.SourceFile
-) => {
-  const candidatePath = relativeWorkspacePath(workspaceRoot, projectRoot, sourceFile.fileName)
-  const matches = Array.map(matchersByWiring, Function.flip(matchesFile)(candidatePath))
+): SourceMatchType => {
+  const absoluteCandidatePath = path.resolve(projectRoot, sourceFile.fileName)
+
+  const candidatePath = path
+    .relative(workspaceRoot, absoluteCandidatePath)
+    .replaceAll(path.sep, "/")
+
+  const matchCandidatePath = Function.flip(matchesFile)(candidatePath)
+  const matches = Array.map(matchersByWiring, matchCandidatePath)
 
   return SourceMatch.make({ sourceFile, candidatePath, matches })
 }
@@ -550,8 +546,8 @@ const collectProgramPolicyDetections = (
   context: ProgramContext,
   programSlots: ReadonlyArray<ProgramPolicySlot>,
   matchersByWiring: ReadonlyArray<ReadonlyArray<GlobMatcher>>,
-  seenByWiring: ReadonlyArray<MutableSeenBuckets>,
-  elementsByWiring: ReadonlyArray<MutableElementBuckets>,
+  seenByWiring: ReadonlyArray<ReturnType<typeof makeSeenBuckets>>,
+  elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>,
   detectionsByProgramPolicy: ReadonlyArray<ReadonlyArray<Detection>>
 ) => {
   Array.forEach(detectionsByProgramPolicy, (detections, programPolicyIndex) => {
@@ -603,10 +599,10 @@ const programPolicySlotFromEntry =
   }
 
 const collectSourceMatch = (
-  workspaceFilesByWiring: ReadonlyArray<MutableWorkspaceFiles>,
+  workspaceFilesByWiring: ReadonlyArray<ReturnType<typeof makeWorkspaceFileBucket>>,
   matchedWiringIndexes: HashMap.HashMap<number, true>
 ) => {
-  const collectMatch = (sourceMatch: SourceMatch) => {
+  const collectMatch = (sourceMatch: SourceMatchType) => {
     Array.forEach(sourceMatch.matches, (matched, wiringIndex) => {
       collectWorkspaceFileForMatch(
         workspaceFilesByWiring,
@@ -672,9 +668,9 @@ const workspacePolicySlot = (policy: WiringPolicy, policyIndex: number) => {
 const collectWorkspacePolicyDetections = (
   workspaceRoot: string,
   config: WiringConfig,
-  workspaceFilesByWiring: ReadonlyArray<MutableWorkspaceFiles>,
-  seenByWiring: ReadonlyArray<MutableSeenBuckets>,
-  elementsByWiring: ReadonlyArray<MutableElementBuckets>
+  workspaceFilesByWiring: ReadonlyArray<ReturnType<typeof makeWorkspaceFileBucket>>,
+  seenByWiring: ReadonlyArray<ReturnType<typeof makeSeenBuckets>>,
+  elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>
 ) => {
   Array.forEach(config, (entry, wiringIndex) => {
     const workspaceSlots = Array.filterMap(entry.wiring.policies, workspacePolicySlot)
@@ -709,9 +705,12 @@ const collectWorkspacePolicyDetections = (
         return
       }
 
-      const store = appendDetection(maybeStorage.value.seen, maybeStorage.value.elements)
+      const appendWorkspaceDetection = appendDetection(
+        maybeStorage.value.seen,
+        maybeStorage.value.elements
+      )
 
-      Array.forEach(detections, store)
+      Array.forEach(detections, appendWorkspaceDetection)
     })
   })
 
@@ -719,14 +718,14 @@ const collectWorkspacePolicyDetections = (
 }
 
 const makeSignalForPolicy = (
-  elementsByWiring: ReadonlyArray<MutableElementBuckets>,
+  elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>,
   wiringIndex: number,
   policy: WiringPolicy,
   policyIndex: number
 ) => {
   const maybeWiringElements = Array.get(elementsByWiring, wiringIndex)
 
-  const elementsAtPolicy = (wiringElements: MutableElementBuckets) =>
+  const elementsAtPolicy = (wiringElements: ReadonlyArray<MutableList.MutableList<Detection>>) =>
     Array.get(wiringElements, policyIndex)
 
   const maybeElements = pipe(maybeWiringElements, Option.flatMap(elementsAtPolicy))
@@ -747,7 +746,7 @@ const makeSignalForPolicy = (
 
 const makeWiringSignalsForEntry =
   (
-    elementsByWiring: ReadonlyArray<MutableElementBuckets>,
+    elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>,
     matchedWiringIndexSet: HashMap.HashMap<number, true>
   ) =>
   (entry: WiringEntry, wiringIndex: number) => {
@@ -763,15 +762,18 @@ const makeWiringSignalsForEntry =
     })
   }
 
+const fileMatchFromSourceMatch = (match: SourceMatchType) =>
+  Tuple.make(match.sourceFile.fileName, match.matches)
+
 // Sequential project loading is required because every Program can exhaust the heap.
-export const workspaceSignalsForProjects =
+const workspaceSignalsForProjects =
   (config: WiringConfig) =>
   (workspaceRoot: string) =>
   (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> => {
     const matchersByWiring = Array.map(config, matchersForEntry)
-    const seenByWiring = Array.map(config, emptySeenBuckets)
-    const elementsByWiring = Array.map(config, emptyElementBuckets)
-    const workspaceFilesByWiring = Array.map(config, emptyWorkspaceFileBuckets)
+    const seenByWiring = Array.map(config, makeSeenBuckets)
+    const elementsByWiring = Array.map(config, makeElementBuckets)
+    const workspaceFilesByWiring = Array.map(config, makeWorkspaceFileBucket)
 
     const programSlots = Array.flatMap(config, (entry, wiringIndex) =>
       Array.filterMap(entry.wiring.policies, programPolicySlotFromEntry(wiringIndex))
@@ -800,15 +802,12 @@ export const workspaceSignalsForProjects =
         const allSourceFiles = context.program.getSourceFiles()
         const sourceFiles = Array.filter(allSourceFiles, isProjectSourceFile)
 
-        const sourceMatchForFile = (sourceFile: ts.SourceFile) =>
-          sourceMatchRecord(workspaceRoot, context.projectRoot, matchersByWiring, sourceFile)
+        const makeSourceMatchForFile = (sourceFile: ts.SourceFile) =>
+          makeSourceMatch(workspaceRoot, context.projectRoot, matchersByWiring, sourceFile)
 
-        const sourceMatches = Array.map(sourceFiles, sourceMatchForFile)
+        const sourceMatches = Array.map(sourceFiles, makeSourceMatchForFile)
 
         Array.forEach(sourceMatches, collectMatch)
-
-        const fileMatchFromSourceMatch = (sourceMatch: SourceMatch) =>
-          Tuple.make(sourceMatch.sourceFile.fileName, sourceMatch.matches)
 
         const fileMatches = Array.map(sourceMatches, fileMatchFromSourceMatch)
         const matchesByFileName = HashMap.fromIterable(fileMatches)

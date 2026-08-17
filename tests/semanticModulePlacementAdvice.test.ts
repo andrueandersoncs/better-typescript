@@ -1,12 +1,10 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { adviceText } from "@better-typescript/core/engine/reportPipeline"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
 import { Detection } from "@better-typescript/core/engine/location/detectionData"
 import { Location } from "@better-typescript/core/engine/location/locationData"
-import { semanticModulePlacementAdvice } from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
+import { semanticModulePlacementAdvice } from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
 import { adviceByTitle } from "./semanticModulePlacementAdviceByTitle.js"
-import { emptyExamples } from "./semanticModulePlacementAdviceEmptyExamples.js"
 import { measureCount } from "./semanticModulePlacementAdviceMeasureCount.js"
 import { mixedData } from "./semanticModulePlacementAdviceMixedData.js"
 import { orderInput, orderInputModule } from "./semanticModulePlacementAdviceOrderInput.js"
@@ -168,49 +166,6 @@ test("advice preserves canonical module, member, and path ordering", () => {
   assert.match(
     split.remediation,
     /Current Physical Modules\n    - src\/orders\/errors\.ts\n    - src\/orders\/parse\.ts/
-  )
-})
-
-test("normalized renderer matches representative mixed and split contract", () => {
-  const elements = [
-    placementElement("src/orders/parse.ts", 1, 1, mixedData),
-    placementElement("src/orders/parse.ts", 14, 1, splitData)
-  ]
-
-  const advice = semanticModulePlacementAdvice(elements)
-  const rendered = advice.map((item) => adviceText(emptyExamples)(item)).join("\n\n")
-
-  assert.equal(
-    rendered,
-    [
-      "src/orders/parse.ts [file] — mixed Physical Module",
-      "  fix: This Physical Module contains members of 2 Semantic Modules. Separate the modules without splitting any membership listed below. No destination or move direction is inferred.",
-      "",
-      "  Semantic Module anchored at src/orders/parse.ts:8:1",
-      "    - OrderInput — type alias — src/orders/parse.ts:8:1",
-      "",
-      "  Semantic Module anchored at src/orders/parse.ts:14:1",
-      "    - parseOrder — function — src/orders/parse.ts:14:1",
-      "    - formatOrderError — function — src/orders/parse.ts:31:1",
-      "    - OrderParseError — class — src/orders/errors.ts:4:1",
-      "  evidence: code-entities-here: 3",
-      "  evidence: semantic-modules: 2",
-      "",
-      "src/orders/parse.ts [file] — split Semantic Modules",
-      "  fix: 1 Semantic Module anchored in this Physical Module spans multiple Physical Modules. Place each listed Semantic Module in one Physical Module. The anchor is only a deterministic reporting location; it is not a move recommendation.",
-      "",
-      "  Semantic Module anchored at src/orders/parse.ts:14:1",
-      "    - parseOrder — function — src/orders/parse.ts:14:1",
-      "    - formatOrderError — function — src/orders/parse.ts:31:1",
-      "    - OrderParseError — class — src/orders/errors.ts:4:1",
-      "",
-      "  Current Physical Modules",
-      "    - src/orders/errors.ts",
-      "    - src/orders/parse.ts",
-      "  evidence: code-entities: 3",
-      "  evidence: physical-modules: 2",
-      "  evidence: split-semantic-modules: 1"
-    ].join("\n")
   )
 })
 

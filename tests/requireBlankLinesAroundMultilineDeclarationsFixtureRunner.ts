@@ -4,7 +4,7 @@ import { Effect, Array } from "effect"
 import { type Detection } from "@better-typescript/core/engine/location/detectionData"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
-import { requireBlankLinesAroundMultilineDeclarations } from "@better-typescript/guidance/preset/defaultWiring"
+import { requireBlankLinesAroundMultilineDeclarations } from "@better-typescript/guidance/preset/commentAndDeclarationPolicies"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(

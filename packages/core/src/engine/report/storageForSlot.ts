@@ -1,10 +1,10 @@
 import { Array, Option, pipe } from "effect"
-import type { MutableElementBuckets } from "./mutableElementBuckets.js"
-import type { MutableSeenBuckets } from "./mutableSeenBuckets.js"
+import { makeElementBuckets } from "./emptyElementBuckets.js"
+import { makeSeenBuckets } from "./emptySeenBuckets.js"
 
 export const storageForSlot = (
-  seenByWiring: ReadonlyArray<MutableSeenBuckets>,
-  elementsByWiring: ReadonlyArray<MutableElementBuckets>,
+  seenByWiring: ReadonlyArray<ReturnType<typeof makeSeenBuckets>>,
+  elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>,
   wiringIndex: number,
   policyIndex: number
 ) => {
@@ -18,9 +18,9 @@ export const storageForSlot = (
 
   return pipe(
     maybeBuckets,
-    Option.flatMap((buckets) => {
-      const maybeSeen = Array.get(buckets.seenBuckets, policyIndex)
-      const maybeElements = Array.get(buckets.elementBuckets, policyIndex)
+    Option.flatMap(({ seenBuckets, elementBuckets }) => {
+      const maybeSeen = Array.get(seenBuckets, policyIndex)
+      const maybeElements = Array.get(elementBuckets, policyIndex)
 
       return Option.all({ seen: maybeSeen, elements: maybeElements })
     })

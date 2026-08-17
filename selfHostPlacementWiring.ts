@@ -3,7 +3,7 @@ import type { Advice } from "@better-typescript/core/engine/derive/advice"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
-import { semanticModulePlacementAdvice } from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
+import { semanticModulePlacementAdvice } from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
 import { architectureExploreCatalogInputs } from "@better-typescript/guidance/architectureExplore/architectureExploreCatalogInputs"
 import {
   semanticModulePlacement,

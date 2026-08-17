@@ -1413,8 +1413,95 @@ const createSemanticModuleEngine = () => {
   const propertyDeclarationKind = (declaration: ts.PropertyDeclaration): SemanticReferenceKind =>
     pipe(Option.fromNullishOr(declaration.initializer), Option.isSome) ? "initializer" : "value"
 
-  const referenceKindForIdentifier = (identifier: ts.Identifier): SemanticReferenceKind =>
-    pipe(
+  const isStaticAggregationReference = (identifier: ts.Identifier) => {
+    const visit = (current: ts.Node, insideAggregation: boolean): boolean => {
+      const matchesCurrent = (node: ts.Node) => nodeEquivalence(node, current)
+
+      const declarationInitializerIsCurrent = (
+        parent: ts.VariableDeclaration | ts.PropertyDeclaration
+      ) => pipe(Option.fromNullishOr(parent.initializer), Option.exists(matchesCurrent))
+
+      const variableDeclarationAggregation = (parent: ts.VariableDeclaration) => {
+        const isInitializer = declarationInitializerIsCurrent(parent)
+
+        return insideAggregation && isInitializer
+      }
+
+      const propertyDeclarationAggregation = (parent: ts.PropertyDeclaration) => {
+        const flags = ts.getCombinedModifierFlags(parent)
+        const isStatic = (flags & ts.ModifierFlags.Static) !== 0
+        const isInitializer = declarationInitializerIsCurrent(parent)
+        const isStaticInitializer = isStatic && isInitializer
+
+        return insideAggregation && isStaticInitializer
+      }
+
+      const wrapperAggregation = (parent: ts.Node) => visit(parent, insideAggregation)
+
+      const shorthandPropertyAggregation = (parent: ts.ShorthandPropertyAssignment) => {
+        const isCurrentName = nodeEquivalence(parent.name, current)
+
+        return isCurrentName && visit(parent, true)
+      }
+
+      const propertyAssignmentAggregation = (parent: ts.PropertyAssignment) => {
+        const isCurrentInitializer = nodeEquivalence(parent.initializer, current)
+
+        return isCurrentInitializer && visit(parent, true)
+      }
+
+      const spreadAssignmentAggregation = (parent: ts.SpreadAssignment) => {
+        const isCurrentExpression = nodeEquivalence(parent.expression, current)
+
+        return isCurrentExpression && visit(parent, true)
+      }
+
+      const objectLiteralAggregation = (parent: ts.ObjectLiteralExpression) => {
+        const containsCurrent = Array.some(parent.properties, matchesCurrent)
+
+        return containsCurrent && visit(parent, true)
+      }
+
+      const spreadElementAggregation = (parent: ts.SpreadElement) => {
+        const isCurrentExpression = nodeEquivalence(parent.expression, current)
+
+        return isCurrentExpression && visit(parent, true)
+      }
+
+      const arrayLiteralAggregation = (parent: ts.ArrayLiteralExpression) => {
+        const containsCurrent = Array.some(parent.elements, matchesCurrent)
+
+        return containsCurrent && visit(parent, true)
+      }
+
+      return pipe(
+        EffectMatch.value(current.parent),
+        EffectMatch.when(ts.isVariableDeclaration, variableDeclarationAggregation),
+        EffectMatch.when(ts.isPropertyDeclaration, propertyDeclarationAggregation),
+        EffectMatch.when(ts.isParenthesizedExpression, wrapperAggregation),
+        EffectMatch.when(ts.isAsExpression, wrapperAggregation),
+        EffectMatch.when(ts.isTypeAssertionExpression, wrapperAggregation),
+        EffectMatch.when(ts.isSatisfiesExpression, wrapperAggregation),
+        EffectMatch.when(ts.isNonNullExpression, wrapperAggregation),
+        EffectMatch.when(ts.isShorthandPropertyAssignment, shorthandPropertyAggregation),
+        EffectMatch.when(ts.isPropertyAssignment, propertyAssignmentAggregation),
+        EffectMatch.when(ts.isSpreadAssignment, spreadAssignmentAggregation),
+        EffectMatch.when(ts.isObjectLiteralExpression, objectLiteralAggregation),
+        EffectMatch.when(ts.isSpreadElement, spreadElementAggregation),
+        EffectMatch.when(ts.isArrayLiteralExpression, arrayLiteralAggregation),
+        EffectMatch.orElse(Function.constFalse)
+      )
+    }
+
+    return visit(identifier, false)
+  }
+
+  const referenceKindForIdentifier = (identifier: ts.Identifier): SemanticReferenceKind => {
+    if (isStaticAggregationReference(identifier)) {
+      return "aggregation"
+    }
+
+    return pipe(
       EffectMatch.value(identifier.parent),
       EffectMatch.when(ts.isCallExpression, callOrValueKind(identifier)),
       EffectMatch.when(ts.isNewExpression, constructionOrValueKind(identifier)),
@@ -1429,6 +1516,7 @@ const createSemanticModuleEngine = () => {
       EffectMatch.when(ts.isPropertyDeclaration, propertyDeclarationKind),
       EffectMatch.orElse(Function.constant("value" as const))
     )
+  }
 
   const referenceConsumerOrder: Order.Order<SemanticReferenceWitness> = Order.mapInput(
     entityKeyOrder,

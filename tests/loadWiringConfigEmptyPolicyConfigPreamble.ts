@@ -1,4 +1,4 @@
-export const emptyPolicyConfigPreamble = [
+const emptyPolicyConfigPreamble = [
   'import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"',
   'import { makeSilentPolicy } from "@better-typescript/core/engine/policy/makeSilentPolicy"',
   'import { fileMatcher } from "@better-typescript/matchers/matcher/fileMatcher"',
@@ -15,3 +15,6 @@ export const emptyPolicyConfigPreamble = [
   "    : makeSilentPolicy({ name, matcher: emptyMatcher, guidance: emptyGuidance, examples: emptyRefactorExampleSource })",
   ""
 ]
+
+export const configSource = (...lines: ReadonlyArray<string>) =>
+  [...emptyPolicyConfigPreamble, ...lines, ""].join("\n")

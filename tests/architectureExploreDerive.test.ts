@@ -1,6 +1,10 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
+import {
+  architectureExploreDerive,
+  makeArchitectureExploreWiring
+} from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
 import { architectureExplorePolicies } from "@better-typescript/guidance/architectureExplore/architectureExplorePolicies"
 import { architectureExploreOopWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreOopWiring"
 import { architectureExploreFpWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreFpWiring"
@@ -145,6 +149,45 @@ test("composition forwarders feed deletion-test wide-shallow and bounce advice",
   assert.equal(adviceWithTitle(advice, "deletion-test shallowness").length >= 1, true)
   assert.equal(adviceWithTitle(advice, "wide shallow interface").length, 1)
   assert.equal(adviceWithTitle(advice, "bounce cluster").length, 1)
+})
+
+test("Architecture Explore aggregation and Wiring preserve adviser report order", () => {
+  const widePath = "src/compose/client.ts"
+  const cluster = ["one", "two", "three"].map((name) => `src/compose/${name}.ts`)
+  const forwarders = [1, 2, 3].map((line) => detectionAt(widePath, line, compositionData(1)))
+  const clusterForwarders = cluster.map((filePath, index) =>
+    detectionAt(filePath, index + 1, compositionData(1))
+  )
+  const burden = detectionAt(
+    widePath,
+    1,
+    InterfaceBurdenData.make({ operationCount: 4, requiredParameterCount: 6 })
+  )
+  const graph = [
+    detectionAt(cluster[0]!, 1, graphData(cluster[0]!, [cluster[1]!])),
+    detectionAt(cluster[1]!, 1, graphData(cluster[1]!, [cluster[2]!]))
+  ]
+  const signals = [
+    silentSignal("composition-forwarders", [...forwarders, ...clusterForwarders]),
+    silentSignal("interface-burden", [burden]),
+    silentSignal("module-graph", graph)
+  ]
+  const expected = architectureExploreDerive(signals)
+  const wiring = makeArchitectureExploreWiring([], [])
+
+  assert.deepEqual(
+    expected.map((item) => item.title),
+    [
+      "deletion-test shallowness",
+      "deletion-test shallowness",
+      "deletion-test shallowness",
+      "deletion-test shallowness",
+      "wide shallow interface",
+      "bounce cluster",
+      "invisible tests"
+    ]
+  )
+  assert.deepEqual(wiring.derive(signals), expected)
 })
 
 test("wide shallow interface requires a forwarding-dominated burden", () => {

@@ -651,7 +651,9 @@ const callKinds = Array.of(ts.SyntaxKind.CallExpression)
 
 const classKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-const shapeSubscriptionsFor = (index: FunctionalCoreEffectIndex): ReadonlyArray<Subscription> => {
+const shapeSubscriptionsFor = (
+  index: FunctionalCoreEffectIndex
+): ReadonlyArray<Subscription<FunctionalCoreShapeData>> => {
   const orchestratorSubscriptions = nodeSubscriptions(callKinds)(ts.isCallExpression)(
     orchestratorElements(index)
   )

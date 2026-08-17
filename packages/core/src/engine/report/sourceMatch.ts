@@ -3,7 +3,7 @@ import { TsSourceFile } from "@better-typescript/matchers/tsSourceFile"
 
 const booleanArraySchema = Schema.Array(Schema.Boolean)
 
-// SourceMatch pairs a SourceFile with wiring matches because collection is cross-entry.
+// SourceMatch carries one file's wiring decisions because later collection needs both together.
 export const SourceMatch = Schema.Struct({
   sourceFile: TsSourceFile,
   candidatePath: Schema.String,

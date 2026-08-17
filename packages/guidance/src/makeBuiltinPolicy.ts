@@ -1,29 +1,55 @@
-import type { Matcher } from "@better-typescript/matchers/matcher/matcherData"
+import { Equivalence } from "effect"
 import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"
-import { type Guidance } from "@better-typescript/core/engine/policy/guidance"
-import { type Policy } from "@better-typescript/core/engine/policy/policyClass"
-import { type RefactorExampleSource } from "@better-typescript/core/engine/example/refactorExampleSource"
+import { makeWorkspacePolicy } from "@better-typescript/core/engine/policy/makeWorkspacePolicy"
+import type { Policy } from "@better-typescript/core/engine/policy/policyClass"
+import type { PolicySeed } from "@better-typescript/core/engine/policy/policySeed"
+import type { WorkspacePolicy } from "@better-typescript/core/engine/policy/workspacePolicyClass"
+import type { WorkspacePolicySeed } from "@better-typescript/core/engine/policy/workspacePolicyDefinition"
 import { makePackageExamples } from "./makePackageExamples.js"
 
-export const makeBuiltinPolicy = <Fact>(
-  name: string,
-  matcher: Matcher,
-  guidance: Guidance<Fact>
-): Policy => {
-  const examples = makePackageExamples(name)
+const builtinPolicyStageEquivalence = Equivalence.strictEqual<"program" | "workspace">()
 
-  return makePolicy<
-    Fact,
-    {
-      readonly name: string
-      readonly matcher: Matcher
-      readonly guidance: Guidance<Fact>
-      readonly examples: RefactorExampleSource
-    }
-  >({
-    name,
-    matcher,
-    guidance,
+const isWorkspaceBuiltinPolicyDefinition = <Fact>(
+  definition:
+    | (PolicySeed<Fact> & Readonly<Record<"reported", boolean> & Record<"stage", "program">>)
+    | (WorkspacePolicySeed<Fact> &
+        Readonly<Record<"reported", boolean> & Record<"stage", "workspace">>)
+): definition is WorkspacePolicySeed<Fact> &
+  Readonly<Record<"reported", boolean> & Record<"stage", "workspace">> =>
+  builtinPolicyStageEquivalence(definition.stage, "workspace")
+
+export function makeBuiltinPolicy<Fact>(
+  definition: PolicySeed<Fact> & Readonly<Record<"reported", boolean> & Record<"stage", "program">>
+): Policy
+
+export function makeBuiltinPolicy<Fact>(
+  definition: WorkspacePolicySeed<Fact> &
+    Readonly<Record<"reported", boolean> & Record<"stage", "workspace">>
+): WorkspacePolicy
+
+export function makeBuiltinPolicy<Fact>(
+  definition:
+    | (PolicySeed<Fact> & Readonly<Record<"reported", boolean> & Record<"stage", "program">>)
+    | (WorkspacePolicySeed<Fact> &
+        Readonly<Record<"reported", boolean> & Record<"stage", "workspace">>)
+): Policy | WorkspacePolicy {
+  const examples = makePackageExamples(definition.name)
+
+  if (isWorkspaceBuiltinPolicyDefinition(definition)) {
+    return makeWorkspacePolicy<Fact>({
+      name: definition.name,
+      matcher: definition.matcher,
+      guidance: definition.guidance,
+      reported: definition.reported,
+      examples
+    })
+  }
+
+  return makePolicy<Fact>({
+    name: definition.name,
+    matcher: definition.matcher,
+    guidance: definition.guidance,
+    reported: definition.reported,
     examples
   })
 }

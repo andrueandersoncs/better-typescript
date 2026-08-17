@@ -68,11 +68,13 @@ const makeFunctionalCoreEffectBoundariesFindings = (match: Match<FunctionalCoreB
 export const makeFunctionalCoreEffectBoundaries = (policy: FunctionalCoreEffectPolicy) => {
   const matcher = makeFunctionalCoreEffect(policy)
 
-  return makeBuiltinPolicy(
-    "functional-core-effect-boundaries",
-    matcher,
-    Function.constant(makeFunctionalCoreEffectBoundariesFindings)
-  )
+  return makeBuiltinPolicy({
+    name: "functional-core-effect-boundaries",
+    matcher: matcher,
+    guidance: Function.constant(makeFunctionalCoreEffectBoundariesFindings),
+    reported: true,
+    stage: "program"
+  })
 }
 
 export const functionalCoreEffectBoundaries = makeFunctionalCoreEffectBoundaries(

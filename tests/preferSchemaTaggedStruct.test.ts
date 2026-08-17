@@ -4,10 +4,8 @@ import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { Array, Effect } from "effect"
 import type { Detection } from "@better-typescript/core/engine/location/detectionData"
-import {
-  defaultWiring,
-  preferSchemaTaggedStruct
-} from "@better-typescript/guidance/preset/defaultWiring"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import { preferSchemaTaggedStruct } from "@better-typescript/guidance/preset/effectIdiomPolicies"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
 import { isProgramPolicy } from "@better-typescript/core/engine/wiring/isProgramPolicy"

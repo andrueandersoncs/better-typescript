@@ -1,8 +1,10 @@
 import { makePolicy } from "@better-typescript/core/engine/policy/makePolicy"
 import { makeSilentPolicy } from "@better-typescript/core/engine/policy/makeSilentPolicy"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
-import { emptyGuidance } from "./loadWiringConfigEmptyGuidance.js"
-import { emptyMatcher } from "./loadWiringConfigEmptyMatcher.js"
+import { makeMatcherFromSubscriptions } from "@better-typescript/matchers/matcher/makeMatcherFromSubscriptions"
+
+const emptyGuidance = () => () => []
+const emptyMatcher = makeMatcherFromSubscriptions(() => [])
 
 export const makeEmptyPolicy = (name: string, reported = true) =>
   reported

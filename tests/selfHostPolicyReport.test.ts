@@ -2,14 +2,14 @@ import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { Array, Effect } from "effect"
 import type { Policy } from "@better-typescript/core/engine/policy/policyClass"
+import { defaultPolicyCatalog } from "@better-typescript/guidance/preset/defaultWiring"
 import {
-  defaultPolicyCatalog,
   noImmediateEffectSync,
   noTrivialEffectFn,
-  preferEffectSchemaConstructor,
-  preferFunctionComposition,
-  processEnvironment
-} from "@better-typescript/guidance/preset/defaultWiring"
+  preferEffectSchemaConstructor
+} from "@better-typescript/guidance/preset/effectIdiomPolicies"
+import { preferFunctionComposition } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
+import { processEnvironment } from "@better-typescript/guidance/preset/errorHygienePolicies"
 import { standardSelfHostWiring } from "../selfHostWiring.js"
 import { loadFixtureWorkspace } from "./reportLoadFixtureWorkspace.js"
 import { reportFromTestWiring } from "./reportFromTestWiring.js"

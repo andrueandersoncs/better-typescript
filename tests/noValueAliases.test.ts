@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { noValueAliases } from "@better-typescript/guidance/preset/defaultWiring"
+import { noValueAliases } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
 import { assertPolicyFixtureExpectations } from "./assertPolicyFixtureExpectations.js"
 import type { ExpectedDetection } from "./expectedDetection.js"
 const message = "Do not declare aliases for existing values."

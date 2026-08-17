@@ -4,6 +4,8 @@ import { Array, Effect, Function, Option, Predicate, Result, Schema, Struct, pip
 import { createJiti } from "jiti"
 import { makeRe } from "minimatch"
 import type { MinimatchOptions } from "minimatch"
+import { isProgramPolicy } from "../../engine/wiring/isProgramPolicy.js"
+import { isWorkspacePolicy } from "../../engine/wiring/workspacePolicyInstance.js"
 import type { WiringPolicy } from "../../engine/wiring/wiringPolicy.js"
 import { Wiring } from "../../engine/wiring/wiringClass.js"
 import { WiringEntry } from "../../engine/wiring/wiringEntry.js"
@@ -22,10 +24,7 @@ import { formatCause } from "./formatCause.js"
 import { isCallable } from "./isCallable.js"
 import { isFunctionType } from "./isFunctionType.js"
 import { isRecord } from "./isRecord.js"
-import { isWiringPolicyInstance } from "./isWiringPolicyInstance.js"
-import { matcherHasCallableField } from "./matcherCallableField.js"
 import { ownConfigExport } from "./ownConfigExport.js"
-import { hasSharedPolicyShape } from "./policyExampleShape.js"
 import { ProjectWiringConfigError } from "./projectWiringConfigError.js"
 import type { UnknownRecord } from "./unknownRecord.js"
 
@@ -36,6 +35,14 @@ const globOptions: MinimatchOptions = {
 }
 
 const invalidWiringIndexArray = Schema.Array(Schema.Number)
+
+const isWiringPolicyInstance = (value: unknown): value is WiringPolicy => {
+  const programPolicy = isProgramPolicy(value)
+  const workspacePolicy = isWorkspacePolicy(value)
+  const conditions = Array.make(programPolicy, workspacePolicy)
+
+  return Array.some(conditions, Boolean)
+}
 
 // InvalidWiringFilesError carries invalid entry indexes because validation must stay structured.
 export class InvalidWiringFilesError extends Schema.TaggedErrorClass<InvalidWiringFilesError>()(
@@ -51,7 +58,7 @@ export class InvalidWiringFilesError extends Schema.TaggedErrorClass<InvalidWiri
   }
 }
 
-export const compileGlobPattern = (pattern: string) => {
+const compileGlobPattern = (pattern: string) => {
   makeRe(pattern, globOptions)
 
   return pattern
@@ -180,7 +187,7 @@ const callFactory = Effect.fn("WiringConfig.callFactory")(function* (
   })
 })
 
-export const resolvedExport = Effect.fn("WiringConfig.resolvedExport")(function* (
+const resolvedExport = Effect.fn("WiringConfig.resolvedExport")(function* (
   configPath: string,
   moduleValue: unknown
 ) {
@@ -209,42 +216,7 @@ export const resolvedExport = Effect.fn("WiringConfig.resolvedExport")(function*
 const policyShapeReason =
   "a Policy (matcher.plan function) or WorkspacePolicy (matcher.match function)"
 
-const matcherHasPlan = matcherHasCallableField("plan")
-const matcherHasMatch = matcherHasCallableField("match")
-
-const hasProgramPolicyShape = (record: UnknownRecord) => {
-  const shared = hasSharedPolicyShape(record)
-  const hasPlan = matcherHasPlan(record.matcher)
-  const conditions = Array.make(shared, hasPlan)
-
-  return Array.every(conditions, Boolean)
-}
-
-const hasWorkspacePolicyShape = (record: UnknownRecord) => {
-  const shared = hasSharedPolicyShape(record)
-  const hasMatch = matcherHasMatch(record.matcher)
-  const conditions = Array.make(shared, hasMatch)
-
-  return Array.every(conditions, Boolean)
-}
-
-const hasValidPolicyShape = (record: UnknownRecord) => {
-  const programShape = hasProgramPolicyShape(record)
-  const workspaceShape = hasWorkspacePolicyShape(record)
-  const conditions = Array.make(programShape, workspaceShape)
-
-  return Array.some(conditions, Boolean)
-}
-
-const invalidPolicy = (value: unknown) => {
-  const isInstance = isWiringPolicyInstance(value)
-  const hasShape = pipe(Option.liftPredicate(isRecord)(value), Option.exists(hasValidPolicyShape))
-  const isValid = isInstance || hasShape
-
-  return !isValid
-}
-
-const isNonWiringPolicyInstance = (policy: unknown) => !isWiringPolicyInstance(policy)
+const invalidPolicy = (value: unknown) => !isWiringPolicyInstance(value)
 
 const validatePolicies = Effect.fn("WiringConfig.validatePolicies")(function* (
   configPath: string,
@@ -261,18 +233,6 @@ const validatePolicies = Effect.fn("WiringConfig.validatePolicies")(function* (
     return yield* failConfig(
       configPath,
       `${fieldPath}[${invalidIndexOption.value}] must be ${policyShapeReason}`
-    )
-  }
-
-  const nonInstanceIndexOption = Array.findFirstIndex(
-    value as ReadonlyArray<unknown>,
-    isNonWiringPolicyInstance
-  )
-
-  if (Option.isSome(nonInstanceIndexOption)) {
-    return yield* failConfig(
-      configPath,
-      `${fieldPath}[${nonInstanceIndexOption.value}] must be ${policyShapeReason}`
     )
   }
 
@@ -376,8 +336,8 @@ const validateWiringConfig = Effect.fn("WiringConfig.validateWiringConfig")(func
   })
 })
 
-// Decoding stays filesystem-free because tests and the loader must share one validation path.
-export const decodeWiringConfig: (
+// Decoding stays filesystem-free because config loading must have one validation path.
+const decodeWiringConfig: (
   configPath: string,
   moduleValue: unknown
 ) => Effect.Effect<WiringConfig, ProjectWiringConfigError> = Effect.fn("WiringConfig.decode")(

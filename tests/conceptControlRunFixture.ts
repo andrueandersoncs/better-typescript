@@ -1,5 +1,5 @@
 import { Array, Effect } from "effect"
-import { conceptControl } from "@better-typescript/guidance/preset/defaultWiring"
+import { conceptControl } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
 import { type Detection } from "@better-typescript/core/engine/location/detectionData"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"

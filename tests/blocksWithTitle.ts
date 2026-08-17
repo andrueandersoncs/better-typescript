@@ -1,7 +1,9 @@
-import { type SignalEvent } from "@better-typescript/core/engine/report/signalEvent"
+import { type ReportEvent } from "@better-typescript/core/engine/report/reportEvent"
+
+type SignalReportEvent = Extract<ReportEvent, { readonly _tag: "signal" }>
 
 export const blocksWithTitle = (
-  blocks: ReadonlyArray<SignalEvent>,
+  blocks: ReadonlyArray<SignalReportEvent>,
   title: string
-): ReadonlyArray<SignalEvent> =>
+): ReadonlyArray<SignalReportEvent> =>
   blocks.filter((block) => block.key._tag === "advice" && block.key.title === title)

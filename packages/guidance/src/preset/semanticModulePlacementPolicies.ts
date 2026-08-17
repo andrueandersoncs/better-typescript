@@ -6,7 +6,7 @@ import { strictEqual } from "@better-typescript/matchers/equivalence"
 import type { SemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleHardBondRuleCatalog.js"
 import { semanticModuleEngine } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine.js"
 import type { SemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine.js"
-import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
+import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 import { architectureExploreCorePolicies } from "./architectureExploreCorePolicies.js"
 
 const hardBondRuleIdsMatch = (
@@ -51,11 +51,13 @@ const makeSemanticModulePlacementFindings = (match: Match<SemanticModulePlacemen
 export const semanticModulePlacement = (catalog: SemanticModuleHardBondRuleCatalog) => {
   const matcher = semanticModuleEngine.semanticModulePlacementMatcher(catalog)
 
-  return makeSilentBuiltinPolicy(
-    "semantic-module-placement",
-    matcher,
-    Function.constant(makeSemanticModulePlacementFindings)
-  )
+  return makeBuiltinPolicy({
+    name: "semantic-module-placement",
+    matcher: matcher,
+    guidance: Function.constant(makeSemanticModulePlacementFindings),
+    reported: false,
+    stage: "program"
+  })
 }
 
 // Fleet wiring is authored once because catalog/policy concatenation must not drift across fleets.

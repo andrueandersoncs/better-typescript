@@ -1227,7 +1227,9 @@ const evidenceElements =
     return Array.map(findings, toDetection)
   }
 
-const evidenceSubscriptions = (index: EffectQualityIndex): ReadonlyArray<Subscription> => {
+const evidenceSubscriptions = (
+  index: EffectQualityIndex
+): ReadonlyArray<Subscription<EffectQualityAdviceData>> => {
   const elements = evidenceElements(index)
   const subscribe = nodeSubscriptions(everySyntaxKind)(acceptsAnyNode)
 

@@ -248,41 +248,13 @@
       "bun": "./src/engine/policy/workspacePolicyDefinition.ts",
       "default": "./dist/engine/policy/workspacePolicyDefinition.js"
     },
-    "./engine/report/adviceReportKey": {
-      "bun": "./src/engine/report/adviceReportKey.ts",
-      "default": "./dist/engine/report/adviceReportKey.js"
-    },
-    "./engine/report/emptyReportEvent": {
-      "bun": "./src/engine/report/emptyReportEvent.ts",
-      "default": "./dist/engine/report/emptyReportEvent.js"
-    },
     "./engine/report/renderEventText": {
       "bun": "./src/engine/report/renderEventText.ts",
       "default": "./dist/engine/report/renderEventText.js"
     },
-    "./engine/report/reportBlock": {
-      "bun": "./src/engine/report/reportBlock.ts",
-      "default": "./dist/engine/report/reportBlock.js"
-    },
     "./engine/report/reportEvent": {
       "bun": "./src/engine/report/reportEvent.ts",
       "default": "./dist/engine/report/reportEvent.js"
-    },
-    "./engine/report/reportKey": {
-      "bun": "./src/engine/report/reportKey.ts",
-      "default": "./dist/engine/report/reportKey.js"
-    },
-    "./engine/report/reportKeySchema": {
-      "bun": "./src/engine/report/reportKeySchema.ts",
-      "default": "./dist/engine/report/reportKeySchema.js"
-    },
-    "./engine/report/ruleReportKey": {
-      "bun": "./src/engine/report/ruleReportKey.ts",
-      "default": "./dist/engine/report/ruleReportKey.js"
-    },
-    "./engine/report/signalEvent": {
-      "bun": "./src/engine/report/signalEvent.ts",
-      "default": "./dist/engine/report/signalEvent.js"
     },
     "./engine/reportPipeline": {
       "bun": "./src/engine/reportPipeline.ts",
@@ -340,21 +312,9 @@
       "bun": "./src/project/loadWiringConfig/loadWiringConfig.ts",
       "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
     },
-    "./project/loadWiringConfig/configFileName": {
-      "bun": "./src/project/loadWiringConfig/configFileName.ts",
-      "default": "./dist/project/loadWiringConfig/configFileName.js"
-    },
     "./project/loadWiringConfig/projectWiringConfigError": {
       "bun": "./src/project/loadWiringConfig/projectWiringConfigError.ts",
       "default": "./dist/project/loadWiringConfig/projectWiringConfigError.js"
-    },
-    "./project/loadWiringConfig/configExport": {
-      "bun": "./src/project/loadWiringConfig/configExport.ts",
-      "default": "./dist/project/loadWiringConfig/configExport.js"
-    },
-    "./project/loadWiringConfig/configExportName": {
-      "bun": "./src/project/loadWiringConfig/configExportName.ts",
-      "default": "./dist/project/loadWiringConfig/configExportName.js"
     },
     "./engine/wiring/wiringPolicy": {
       "bun": "./src/engine/wiring/wiringPolicy.ts",
@@ -396,10 +356,6 @@
       "bun": "./src/engine/wiring/workspacePolicyInstance.ts",
       "default": "./dist/engine/wiring/workspacePolicyInstance.js"
     },
-    "./engine/wiring/programPolicySlot": {
-      "bun": "./src/engine/wiring/programPolicySlot.ts",
-      "default": "./dist/engine/wiring/programPolicySlot.js"
-    },
     "./engine/wiring/isProgramPolicy": {
       "bun": "./src/engine/wiring/isProgramPolicy.ts",
       "default": "./dist/engine/wiring/isProgramPolicy.js"
@@ -440,38 +396,6 @@
       "bun": "./src/engine/watch/workspaceServices.ts",
       "default": "./dist/engine/watch/workspaceServices.js"
     },
-    "./engine/report/mutableSeenBuckets": {
-      "bun": "./src/engine/report/mutableSeenBuckets.ts",
-      "default": "./dist/engine/report/mutableSeenBuckets.js"
-    },
-    "./engine/report/mutableElementBuckets": {
-      "bun": "./src/engine/report/mutableElementBuckets.ts",
-      "default": "./dist/engine/report/mutableElementBuckets.js"
-    },
-    "./engine/report/mutableWorkspaceFiles": {
-      "bun": "./src/engine/report/mutableWorkspaceFiles.ts",
-      "default": "./dist/engine/report/mutableWorkspaceFiles.js"
-    },
-    "./engine/report/emptyDetectionsBucket": {
-      "bun": "./src/engine/report/emptyDetectionsBucket.ts",
-      "default": "./dist/engine/report/emptyDetectionsBucket.js"
-    },
-    "./engine/report/relativeWorkspacePath": {
-      "bun": "./src/engine/report/relativeWorkspacePath.ts",
-      "default": "./dist/engine/report/relativeWorkspacePath.js"
-    },
-    "./engine/report/appendDetection": {
-      "bun": "./src/engine/report/appendDetection.ts",
-      "default": "./dist/engine/report/appendDetection.js"
-    },
-    "./engine/report/storageForSlot": {
-      "bun": "./src/engine/report/storageForSlot.ts",
-      "default": "./dist/engine/report/storageForSlot.js"
-    },
-    "./engine/report/sourceMatch": {
-      "bun": "./src/engine/report/sourceMatch.ts",
-      "default": "./dist/engine/report/sourceMatch.js"
-    },
     "./engine/policy/locateDirectory": {
       "bun": "./src/engine/policy/locatedPolicyDetections.ts",
       "default": "./dist/engine/policy/locatedPolicyDetections.js"
@@ -507,10 +431,6 @@
     "./engine/policy/locatedPolicyDetections": {
       "bun": "./src/engine/policy/locatedPolicyDetections.ts",
       "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
-    "./engine/policy/toWorkspacePolicies": {
-      "bun": "./src/engine/reportPipeline.ts",
-      "default": "./dist/engine/reportPipeline.js"
     }
   },
   "scripts": {

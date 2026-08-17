@@ -17,6 +17,6 @@ export const buildEffectQualityIndex =
   }
 
 export const makeEffectQualityMatcher =
-  (subscriptions: (index: EffectQualityIndex) => ReadonlyArray<Subscription>) =>
+  <Fact>(subscriptions: (index: EffectQualityIndex) => ReadonlyArray<Subscription<Fact>>) =>
   (policy: EffectQualityPolicy) =>
     withProgramMatcherIndex(buildEffectQualityIndex(policy))(subscriptions)

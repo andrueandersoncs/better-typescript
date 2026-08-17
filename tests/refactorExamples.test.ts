@@ -1,6 +1,5 @@
 import * as assert from "node:assert/strict"
 import * as fs from "node:fs"
-import * as os from "node:os"
 import * as path from "node:path"
 import { test } from "bun:test"
 import { Array, Effect } from "effect"
@@ -9,8 +8,6 @@ import { packageExampleRoot } from "./packageExampleRoot.js"
 import { packageExamplesRoot } from "./packageExamplesRoot.js"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import { type Policy } from "@better-typescript/core/engine/policy/policyClass"
-import { makeRefactorExampleResolver } from "@better-typescript/core/engine/reportPipeline"
-import { DirectoryRefactorExamples } from "@better-typescript/core/engine/example/directoryRefactorExamples"
 import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { isProgramPolicy } from "@better-typescript/core/engine/wiring/isProgramPolicy"
@@ -26,15 +23,12 @@ const runSide = async (policy: Policy, sideRoot: string) => {
   return nested.flat()
 }
 
-test("reported checks load fixture example trees with at least one pair", async () => {
+test("reported checks declare fixture example trees with at least one pair", () => {
   const reported = defaultWiring.policies
     .filter(isProgramPolicy)
     .filter((policy) => policy.reported)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-
   for (const named of reported) {
-    const examples = await Effect.runPromise(resolve(named.examples))
-    assert.ok(examples.length > 0, `${named.name} should declare refactor examples`)
+    assert.equal(named.examples._tag, "directory", `${named.name} should declare examples`)
 
     const exampleRoot = packageExampleRoot(named.name)
     assert.ok(fs.existsSync(exampleRoot), `${named.name} should have ${exampleRoot}`)
@@ -46,15 +40,9 @@ test("reported checks load fixture example trees with at least one pair", async 
 })
 
 test("fixture refactor examples: bad trees detect and good trees stay clean", async () => {
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-  const withExamples: Array<Policy> = []
-
-  for (const named of defaultWiring.policies.filter(isProgramPolicy)) {
-    const examples = await Effect.runPromise(resolve(named.examples))
-    if (examples.length > 0) {
-      withExamples.push(named)
-    }
-  }
+  const withExamples: Array<Policy> = defaultWiring.policies
+    .filter(isProgramPolicy)
+    .filter((policy) => packageExamplePairRoots(policy.name).length > 0)
 
   const failures: Array<string> = []
 
@@ -85,31 +73,4 @@ test("fixture refactor examples: bad trees detect and good trees stay clean", as
     fs.existsSync(packageExamplesRoot),
     `package examples root should exist at ${packageExamplesRoot}`
   )
-})
-
-test("example resolver retries failures and caches successful directory loads", async () => {
-  const exampleRoot = fs.mkdtempSync(path.join(os.tmpdir(), "better-typescript-examples-"))
-
-  try {
-    const source = DirectoryRefactorExamples.make({ root: exampleRoot })
-    const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-
-    await assert.rejects(Effect.runPromise(resolve(source)))
-
-    const badRoot = path.join(exampleRoot, "1", "bad")
-    const goodRoot = path.join(exampleRoot, "1", "good")
-    fs.mkdirSync(badRoot, { recursive: true })
-    fs.mkdirSync(goodRoot, { recursive: true })
-    fs.writeFileSync(path.join(badRoot, "case.ts"), "export const bad = true")
-    fs.writeFileSync(path.join(goodRoot, "case.ts"), "export const good = true")
-
-    const loaded = await Effect.runPromise(resolve(source))
-    fs.rmSync(exampleRoot, { recursive: true, force: true })
-    const cached = await Effect.runPromise(resolve(source))
-
-    assert.equal(loaded.length, 1)
-    assert.strictEqual(cached, loaded)
-  } finally {
-    fs.rmSync(exampleRoot, { recursive: true, force: true })
-  }
 })

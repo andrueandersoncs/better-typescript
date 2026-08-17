@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { preferEquivalenceStrictEqual } from "@better-typescript/guidance/preset/defaultWiring"
+import { preferEquivalenceStrictEqual } from "@better-typescript/guidance/preset/effectIdiomPolicies"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { assertPolicyFixture } from "./assertPolicyFixture.js"
 test("prefer-equivalence-strict-equal reports disallowed and permits allowed fixture items", () =>

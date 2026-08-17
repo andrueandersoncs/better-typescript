@@ -10,8 +10,7 @@ import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring
 } from "@better-typescript/guidance/functionalCoreEffect/advice"
-import { makeRefactorExampleResolver } from "@better-typescript/core/engine/reportPipeline"
-import { Effect, Option } from "effect"
+import { Option } from "effect"
 import { runFixtureSignals } from "./functionalCoreEffectRunFixtureSignals.js"
 import { signalNamed } from "./functionalCoreEffectSignalNamed.js"
 import { boundaryDataOf } from "./functionalCoreEffectBoundaryDataOf.js"
@@ -224,13 +223,10 @@ test("shape evidence and advice require the documented thresholds", async () => 
   ])
 })
 
-test("wiring exposes one reported policy and silent shape evidence", async () => {
+test("wiring exposes one reported policy and silent shape evidence", () => {
   const policies = makeFunctionalCoreEffectWiring(defaultFunctionalCoreEffectPolicy).policies
   const boundaryPolicy = policies[0]
   assert.ok(boundaryPolicy)
-  const resolve = await Effect.runPromise(makeRefactorExampleResolver())
-  const boundaryExamples = await Effect.runPromise(resolve(boundaryPolicy.examples))
-
   assert.deepEqual(
     policies.map((policy) => [policy.name, policy.reported]),
     [
@@ -238,5 +234,5 @@ test("wiring exposes one reported policy and silent shape evidence", async () =>
       ["functional-core-effect-shape-evidence", false]
     ]
   )
-  assert.equal(boundaryExamples.length, 1)
+  assert.equal(boundaryPolicy.examples._tag, "directory")
 })

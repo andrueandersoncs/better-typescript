@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { noUnsafeEffectApis } from "@better-typescript/guidance/preset/defaultWiring"
+import { noUnsafeEffectApis } from "@better-typescript/guidance/preset/effectIdiomPolicies"
 import { assertPolicyFixtureExpectations } from "./assertPolicyFixtureExpectations.js"
 import { allowedFixtureItems } from "./noUnsafeEffectApisAllowedFixtureItems.js"
 import { disallowedFixtureItems } from "./noUnsafeEffectApisDisallowedFixtureItems.js"

@@ -20,6 +20,7 @@ export interface WorkspacePolicyDefinition extends Schema.Schema.Type<
 > {}
 
 // WorkspacePolicySeed is the typed workspace authoring input because guidance is specialized.
-export type WorkspacePolicySeed<Fact> = Omit<WorkspacePolicyDefinition, "guidance"> & {
+export type WorkspacePolicySeed<Fact> = Omit<WorkspacePolicyDefinition, "guidance" | "matcher"> & {
   readonly guidance: WorkspaceGuidance<Fact>
+  readonly matcher: WorkspaceMatcher<Fact>
 }

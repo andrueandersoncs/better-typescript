@@ -26,12 +26,12 @@ export const makeDirectoryTarget = (
 }
 
 export const matchDirectoryFiles =
-  (match: (target: DirectoryTarget) => ReadonlyArray<Match<unknown>>) =>
+  <Fact>(match: (target: DirectoryTarget) => ReadonlyArray<Match<Fact>>) =>
   (directory: string, files: ReadonlyArray<WorkspaceSourceFile>) =>
     pipe(makeDirectoryTarget(directory, files), match)
 
 export const directoryMatchesForContext =
-  (match: (target: DirectoryTarget) => ReadonlyArray<Match<unknown>>) =>
+  <Fact>(match: (target: DirectoryTarget) => ReadonlyArray<Match<Fact>>) =>
   (context: WorkspaceContext) => {
     const filesByDirectory = Array.groupBy(context.sourceFiles, workspaceFileDirectory)
     const matchFiles = matchDirectoryFiles(match)
@@ -42,8 +42,8 @@ export const directoryMatchesForContext =
     )
   }
 
-export const makeDirectoryMatcher = (
-  match: (target: DirectoryTarget) => ReadonlyArray<Match<unknown>>
+export const makeDirectoryMatcher = <Fact>(
+  match: (target: DirectoryTarget) => ReadonlyArray<Match<Fact>>
 ) => {
   const workspaceMatch = directoryMatchesForContext(match)
 

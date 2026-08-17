@@ -18,6 +18,6 @@ export const buildFunctionalCoreEffectIndex =
   }
 
 export const withFunctionalCoreEffectIndex =
-  (subscriptions: (index: FunctionalCoreEffectIndex) => ReadonlyArray<Subscription>) =>
+  <Fact>(subscriptions: (index: FunctionalCoreEffectIndex) => ReadonlyArray<Subscription<Fact>>) =>
   (policy: FunctionalCoreEffectPolicy) =>
     makeMatcherFromSubscriptions(flow(buildFunctionalCoreEffectIndex(policy), subscriptions))

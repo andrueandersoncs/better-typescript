@@ -3,10 +3,10 @@ import { test } from "bun:test"
 import { ExportSurfaceData } from "@better-typescript/matchers/builtins/exportSurface"
 import { ModuleGraphData } from "@better-typescript/matchers/builtins/moduleGraph"
 import {
-  registrationCeremony,
   hubModule,
-  invisibleTests
-} from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
+  registrationCeremony
+} from "@better-typescript/guidance/architectureExplore/architectureExploreDependencyStructureAdvisers"
+import { invisibleTests } from "@better-typescript/guidance/architectureExplore/architectureExploreTestabilityAdvisers"
 import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
 import { detectionAt } from "./architectureExploreStructureDetectionAt.js"

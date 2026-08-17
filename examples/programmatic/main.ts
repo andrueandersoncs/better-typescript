@@ -1,7 +1,7 @@
 import { Array, Effect } from "effect"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
-import { noThrow } from "@better-typescript/guidance/preset/defaultWiring"
+import { noThrow } from "@better-typescript/guidance/preset/errorHygienePolicies"
 
 // This example is documentation because the programmatic surface deserves one runnable reference.
 const projectDirectory = process.argv[2] ?? "."

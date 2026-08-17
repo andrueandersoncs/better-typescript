@@ -1,7 +1,7 @@
 import { Function, Match as EffectMatch, Tuple, pipe } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/match"
 import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
-import { makeSilentBuiltinPolicy } from "../makeSilentBuiltinPolicy.js"
+import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
 import { factGuidance } from "../policyGuidance.js"
 import {
   passThroughWrappers as passThroughWrappersMatcher,
@@ -42,74 +42,90 @@ const makePassThroughWrappersFindings = (match: Match<PassThroughWrapperData>) =
   )
 }
 
-export const passThroughWrappers = makeSilentBuiltinPolicy(
-  "pass-through-wrappers",
-  passThroughWrappersMatcher,
-  Function.constant(makePassThroughWrappersFindings)
-)
+export const passThroughWrappers = makeBuiltinPolicy({
+  name: "pass-through-wrappers",
+  matcher: passThroughWrappersMatcher,
+  guidance: Function.constant(makePassThroughWrappersFindings),
+  reported: false,
+  stage: "program"
+})
 
-export const interfaceBurden = makeSilentBuiltinPolicy(
-  "interface-burden",
-  interfaceBurdenMatcher,
-  factGuidance(
+export const interfaceBurden = makeBuiltinPolicy({
+  name: "interface-burden",
+  matcher: interfaceBurdenMatcher,
+  guidance: factGuidance(
     "Interface burden evidence — this Module exposes many callable operations or required parameters.",
     "Interface size is evidence, not a depth verdict. Architecture Explore combines it with low-leverage forwarding before recommending a smaller, deeper interface."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
-export const moduleGraph = makeSilentBuiltinPolicy(
-  "module-graph",
-  moduleGraphMatcher,
-  factGuidance(
+export const moduleGraph = makeBuiltinPolicy({
+  name: "module-graph",
+  matcher: moduleGraphMatcher,
+  guidance: factGuidance(
     "Module graph evidence — this Module imports other project Modules.",
     "Architecture Explore uses resolved edges to find connected bounce paths; an import count alone is not an architectural defect."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
-export const testOnlyExports = makeSilentBuiltinPolicy(
-  "test-only-exports",
-  testOnlyExportsMatcher,
-  factGuidance(
+export const testOnlyExports = makeBuiltinPolicy({
+  name: "test-only-exports",
+  matcher: testOnlyExportsMatcher,
+  guidance: factGuidance(
     "Test-only export evidence — production exposes this callable only so tests can reach implementation.",
     "Test through the same public interface as production callers, then make this internal helper private."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
-export const seamLeakageEvidence = makeSilentBuiltinPolicy(
-  "seam-leakage-evidence",
-  seamLeakageEvidenceMatcher,
-  factGuidance(
+export const seamLeakageEvidence = makeBuiltinPolicy({
+  name: "seam-leakage-evidence",
+  matcher: seamLeakageEvidenceMatcher,
+  guidance: factGuidance(
     "Seam leakage evidence — this import reaches through an internal or package-source path.",
     "Route callers and tests through the Module's declared public interface so implementation layout can change locally."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
-export const importUsage = makeSilentBuiltinPolicy(
-  "import-usage",
-  importUsageMatcher,
-  factGuidance(
+export const importUsage = makeBuiltinPolicy({
+  name: "import-usage",
+  matcher: importUsageMatcher,
+  guidance: factGuidance(
     "Import usage evidence — this import declaration binds names used in the file.",
     "Counts are purely syntactic within the importing file; local shadowing of an import binding can inflate or hide references."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
-export const moduleIdentity = makeSilentBuiltinPolicy(
-  "module-identity",
-  moduleIdentityMatcher,
-  factGuidance(
+export const moduleIdentity = makeBuiltinPolicy({
+  name: "module-identity",
+  matcher: moduleIdentityMatcher,
+  guidance: factGuidance(
     "Module identity evidence — this source file publishes one or more package export aliases.",
     "Aliases come from package.json exports matched to the file's emitted path; missing outDir yields no identity evidence."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
-export const exportSurface = makeSilentBuiltinPolicy(
-  "export-surface",
-  exportSurfaceMatcher,
-  factGuidance(
+export const exportSurface = makeBuiltinPolicy({
+  name: "export-surface",
+  matcher: exportSurfaceMatcher,
+  guidance: factGuidance(
     "Export surface evidence — this Module publishes symbols referenced outside the home file.",
     "Reference and call counts exclude the declaring file so deletion tests can weigh external consumers only."
-  )
-)
+  ),
+  reported: false,
+  stage: "program"
+})
 
 export const architectureExploreCorePolicies = Tuple.make(
   passThroughWrappers,

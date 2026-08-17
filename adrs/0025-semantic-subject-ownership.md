@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; Exclusive Consumer Ownership refined by ADR-0026
 
 ## Date
 
