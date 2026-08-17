@@ -68,6 +68,7 @@ test("boundary check reports every invariant and preserves allowed neighbors", a
       "src/application/capabilities.ts:1:direct-capability:effect:FileSystem",
       "src/application/capabilities.ts:2:direct-capability:node:fs",
       "src/application/capabilities.ts:7:direct-capability:fetch",
+      "src/application/capabilityReexport.ts:1:direct-capability:node:fs",
       "src/application/runtime.ts:19:runtime-execution:effect:Effect.runPromise",
       "src/application/runtime.ts:20:dependency-provisioning:effect:Effect.provideService",
       "src/application/runtime.ts:23:dependency-provisioning:effect:Effect.provide",
