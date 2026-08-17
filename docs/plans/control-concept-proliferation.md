@@ -268,7 +268,7 @@ These are diagnoses over direct evidence, not independent heuristic lint rules.
 - Resolve symbols through the TypeScript checker; do not compare names as a substitute for identity.
 - Hash normalized concrete shapes before comparing candidates; avoid an unrestricted quadratic pair
   scan.
-- Preserve the repository benchmark's measured mean below 100 ms.
+- Preserve the whole-process self-host benchmark's runtime.
 
 ## Observable acceptance
 
@@ -285,7 +285,7 @@ The implementation is complete when:
 6. Data-last algorithms may live beside `data.ts` in one concept directory.
 7. Depth advice treats that directory as one Module.
 8. The repository self-hosts with no reportable signals.
-9. The measured benchmark remains below 100 ms.
+9. The whole-process self-host benchmark does not regress unexpectedly.
 10. The implementation, examples, and documentation agree on every remediation and exemption.
 
 ## Non-goals

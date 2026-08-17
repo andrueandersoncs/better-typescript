@@ -68,7 +68,7 @@ Alternatives rejected:
   `packages/core/src/engine/signal/detectionEquals.ts`,
   `packages/matchers/src/builtins/conceptControl/dataStructureEntry.ts`, and
   `packages/matchers/src/builtins/functionalCoreEffect/allowedTargetRoles.ts`.
-- `semantic-module-placement` is enrolled in self-hosting again; the report is empty and the warmed
-  benchmark mean is 69.1ms.
+- `semantic-module-placement` is enrolled in self-hosting again; the report is empty. The
+  now-removed fixture benchmark measured a warmed 69.1ms mean.
 - Subject resolution costs one extra fixpoint over the entity list per Program; each pass indexes
   references by consumer, so the cost is linear in references per pass.

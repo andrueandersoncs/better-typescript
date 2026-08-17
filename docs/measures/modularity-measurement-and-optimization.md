@@ -3472,7 +3472,7 @@ boundary.
 
 Consumers with latent type errors surface immediately (`bun run typecheck` — desirable but
 possibly noisy); schema decoding adds a runtime validation cost on the boundary path, detectable
-with `bun run bench`.
+with `bun run bench:self`.
 
 **Before:**
 

@@ -20,14 +20,14 @@ applies to **all packages in this project** including `checks`, `core`, AND `cli
 intended to be a form of dogfooding where every check, advice, etc, we implement is applied to this
 project such that we're following our own advice and dogfooding our own tooling.
 
-Always run the benchmark (`bun run bench`) after every code change (.ts or .tsx files only), and
-require its measured report pass to remain below 100ms.
+Always run the whole-process benchmark (`bun run bench:self`) after every code change (.ts or .tsx
+files only) and report its minimum, median, and maximum runtime.
 
 Always run the prettier formatter (`bun run format`) after every code change (.ts or .tsx files
 only) and include the formatting in your commit.
 
-You **do not** need to run `bun run bench`, `bun run dev`, or `bun run format:check` for non-code
-changes.
+You **do not** need to run `bun run bench:self`, `bun run dev`, or `bun run format:check` for
+non-code changes.
 
 Always use repos/effect/ (vendored effect repository) to find examples of correct Effect code.
 

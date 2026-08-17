@@ -340,7 +340,7 @@ available from its policy subpath.
 `examples/architecture-fleets/` shows the opt-in architecture fleets with explicit role prefixes,
 and `examples/programmatic/main.ts` runs one built-in check through the programmatic API. Config
 resolution does not discover examples subtrees while this repository self-hosts, but the root
-`tsconfig.json` references them (plus `bench/` and the self-host config) so the architecture
+`tsconfig.json` references them (plus `scripts/` and the self-host config) so the architecture
 evidence horizon sees this repository's own production usage of its public surface.
 
 ### Opting into an architecture paradigm
@@ -446,7 +446,7 @@ package exports are the supported entrypoints; source paths are implementation d
   lifetime and mode-specific producer claims.
 - `adrs/0021-advice-clean-self-host.md` records that architecture Advice gates self-hosting: an
   empty report, one-directional engine seams, workspace-relative test classification, and an
-  analysis horizon that includes the repository's own config, bench, and runnable examples.
+  analysis horizon that includes the repository's own config, scripts, and runnable examples.
 - `adrs/0020-files-are-module-boundaries.md` records the removal of the `prefer-data-last-module`
   placement check: files are the language's module boundary, so placement rules stop at file scope
   while data-last signature preference stays with the shape-based checks.

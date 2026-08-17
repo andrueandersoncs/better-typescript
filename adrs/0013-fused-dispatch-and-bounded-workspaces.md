@@ -5,8 +5,9 @@
 Accepted in part. The built-in authoring consequence is superseded by
 [ADR-0018](0018-check-owned-authoring-and-package-examples.md). The CLI one-shot
 one-Program-at-a-time lifetime is superseded by [ADR-0022](0022-shared-one-shot-compiler-state.md).
-Fused execution, full recompute, the bounded config-native API, and loaded-workspace decisions
-remain accepted.
+Its fixture performance gate was superseded by ADR-0022 and has been removed; only the whole-process
+self-host benchmark remains. Fused execution, full recompute, the bounded config-native API, and
+loaded-workspace decisions remain accepted.
 
 ## Date
 
@@ -58,7 +59,8 @@ Shared source-file indexes use latest-entry caches backed by Effect `Ref` values
 dispatch makes one entry sufficient: comment Checks consume the same immutable `ts.SourceFile`
 contiguously, then the next file replaces it.
 
-The benchmark enforces a 100 ms mean report budget for its repeatable single-program fixture.
+At the time of this decision, a repeatable single-program fixture enforced a 100 ms mean report
+budget. ADR-0022 later replaced that fixture with the whole-process self-host benchmark.
 Multi-project targets use one bounded sequential pass instead of eagerly loading or repeatedly
 rebuilding every Program.
 
@@ -107,6 +109,7 @@ consistent-batch and full-recompute correctness decisions remain.
 - Solution-style one-shot analysis has bounded Program lifetime and no longer OOMs on the vendored
   Effect repository.
 - A 20,000-level synthetic AST regression protects stack-safe traversal.
-- The benchmark is now a failing performance gate rather than informational output.
-- Loaded-workspace callers can still retain multiple Programs deliberately; CLI and multi-project
-  benchmark paths use the bounded config interface.
+- The then-current fixture became a failing performance gate; ADR-0022 later replaced it with the
+  whole-process self-host benchmark.
+- Loaded-workspace callers can still retain multiple Programs deliberately; CLI and synthetic
+  callers use the bounded config interface.

@@ -316,5 +316,5 @@ After the implementation behaves correctly on the focused fixture:
 2. Full project test and typecheck because this adds a public preset and package exports.
 3. Formatter check.
 4. `timeout 10 npm run dev` from the isolated worktree.
-5. `npm run bench`; measured report must remain below 100ms.
+5. `bun run bench:self`; inspect the whole-process minimum, median, and maximum.
 6. Leave every change uncommitted on branch `functional-core-effect-rules`.

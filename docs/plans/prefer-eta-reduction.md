@@ -186,7 +186,7 @@ every `cases.ts` location); `allowed.ts` empty of detections.
 6. `npm run format:check`
 7. `npm run build`
 8. `timeout 10 npm run dev` → must begin at **`No signals`**
-9. `npm run bench` if full bar / perf concern
+9. `bun run bench:self` if full bar / perf concern
 
 Leave uncommitted on `main` unless asked to commit.
 

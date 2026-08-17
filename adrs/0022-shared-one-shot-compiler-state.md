@@ -30,10 +30,10 @@ Wiring did not need compiler lifecycle, cache, or mode details.
 
 ### Benchmark the real one-shot process
 
-`npm run bench:self` builds once, verifies that the repository config enrolls all current Checks,
+`bun run bench:self` builds once, verifies that the repository config enrolls all current Checks,
 then measures three fresh built-CLI processes. Timed durations exclude the build. The minimum,
-median, and maximum form the regression evidence; the fixture microbenchmark remains the separate
-sub-100 ms execution gate.
+median, and maximum form the regression evidence. This whole-process measurement is the repository's
+only performance benchmark; a synthetic fixture does not represent end-to-end self-hosting cost.
 
 ### Use mode-specific producers at one Workspace Update seam
 

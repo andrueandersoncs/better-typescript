@@ -3,9 +3,10 @@
 ## Status
 
 Superseded in part by [ADR-0023](0023-one-shot-effects-and-rerun-watch.md), which replaces
-Stream-based derivation and reporting with bounded Effects. Its rejection of registries, schedulers,
-metadata-driven dependency graphs, suppressions, severities, and result-based exit gating remains
-accepted.
+Stream-based derivation and reporting with bounded Effects. Its benchmark decision was superseded by
+ADR-0013 and then ADR-0022; only the whole-process self-host benchmark remains. Its rejection of
+registries, schedulers, metadata-driven dependency graphs, suppressions, severities, and
+result-based exit gating remains accepted.
 
 ## Date
 
@@ -69,8 +70,9 @@ The CLI no longer has:
 
 Exit code 0 means the report was produced. Exit code 2 means the tool could not run.
 
-The benchmark remains informational. It measures the current report path but is not an architectural
-gate.
+At the time, the fixture benchmark remained informational and was not an architectural gate.
+ADR-0013 later made that fixture a gate before ADR-0022 replaced it with the whole-process self-host
+benchmark.
 
 ## Alternatives Considered
 

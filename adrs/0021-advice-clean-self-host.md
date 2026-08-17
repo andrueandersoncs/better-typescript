@@ -48,7 +48,7 @@ test-scoped even though its project root is the tests directory itself.
 
 ### The horizon includes the repository's production artifacts
 
-The root `tsconfig.json` references the self-host config project, `bench/`, and the runnable
+The root `tsconfig.json` references the self-host config project, `scripts/`, and the runnable
 `examples/` projects. Public API that the repository genuinely consumes in production is therefore
 visible to test-past-interface instead of looking test-only. API documented for consumers but unused
 inside packages is exercised by a runnable example rather than deleted: the paradigm fleets and
@@ -72,11 +72,11 @@ carries a registration ceremony.
 
 - The self-hosting report is empty; regressions in any adviser now fail the gate immediately.
 - The duplicated bounded advice-pair join lives once in `checks/support/advice.ts` with two callers.
-- The bench entrypoint is `bench/main.ts`, a composition-root basename, because it runs effects at
-  module scope by design.
+- The self-host benchmark entrypoint is `scripts/benchmarkSelfHost.ts`; the removed fixture
+  microbenchmark no longer stands in for whole-process performance.
 - Cross-package callers still do not count toward forwarder deletability; exported engine
   combinators keep multi-statement bodies so shape checks and shallowness evidence agree.
-- New public API must arrive with an in-repo production consumer (config, bench, or a runnable
+- New public API must arrive with an in-repo production consumer (config, script, or a runnable
   example) or it will fail the gate as test-only surface.
 - The comment scanner performs the parser's context-sensitive rescans: a template-context stack
   drives `reScanTemplateToken` at substitution-closing braces and expression-position slashes drive

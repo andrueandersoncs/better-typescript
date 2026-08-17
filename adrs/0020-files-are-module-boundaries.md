@@ -74,7 +74,7 @@ pipeline-hostile advice, which judge shape rather than location.
 
 - Data and behaviour may share a file, and helpers for one model may live in another subtree; the
   concept-control owner and role analysis decides whether the concept earns its keep.
-- One fewer type-oracle check runs per traversal; the self-hosting report and benchmark budget are
-  unaffected.
+- One fewer type-oracle check runs per traversal; the self-hosting report and whole-process
+  benchmark runtime are unaffected.
 - ADR-0002's rule inventory and ADR-0014's retention note describe `prefer-data-last-module`
   historically; this record supersedes the retention.

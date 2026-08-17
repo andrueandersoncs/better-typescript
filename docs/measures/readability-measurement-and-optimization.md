@@ -2812,9 +2812,9 @@ or ternary), so the net predicted change is between −5 and −6 points per occ
 
 #### Trade-offs
 
-Guards add runtime checks on hot paths (measurable in the benchmark suite); a failed decode needs
+Guards add runtime checks on hot paths (visible in the whole-process self-host benchmark); a failed decode needs
 an error path, which may add a [tagged failure class](#tagged-failure-class) declaration.
-Detectable: benchmark report regression, or `cognitiveCost` rising by more than 1 per removed
+Detectable: whole-process self-host runtime regression, or `cognitiveCost` rising by more than 1 per removed
 hatch.
 
 **Before:**
@@ -3564,7 +3564,7 @@ removing its structural [cognitive cost](#cognitive-cost) increment (an addition
 A reduction can be less direct than a simple accumulation for genuinely stateful algorithms; if
 the rewrite needs a nested callback with structural constructs inside, `cognitiveCost` can rise —
 detectable in the same entry. Reductions on hot paths can also allocate closures; detectable in
-the benchmark report.
+the whole-process self-host benchmark results.
 
 **Before:**
 
@@ -3639,7 +3639,7 @@ predicted −2 points per converted argument (property values in object literals
 
 Every caller of the changed function must be updated in the same change (the checker enforces
 this — `diagnosticCount` must return to 0). The options object allocates at each call; detectable
-in the benchmark report if the callee is hot.
+in the whole-process self-host benchmark if the callee is hot.
 
 **Before:**
 
@@ -3715,7 +3715,7 @@ the excess: predicted −3 points per excess parameter eliminated.
 #### Trade-offs
 
 Same as options objects: every caller updates in the same change (checker-enforced), and the
-object allocates per call — detectable in the benchmark report on hot paths. Grouping
+object allocates per call — detectable in the whole-process self-host benchmark on hot paths. Grouping
 non-cohesive parameters trades positional confusion for a junk-drawer type; the metric cannot
 detect cohesion (residual gap noted in [Metric](#metric)).
 

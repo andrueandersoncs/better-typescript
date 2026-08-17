@@ -8,7 +8,7 @@
     { "path": "packages/workflows" },
     { "path": "tests" },
     { "path": "tsconfig.selfhost.json" },
-    { "path": "bench" },
+    { "path": "scripts" },
     { "path": "examples/extend-preset" },
     { "path": "examples/architecture-fleets" },
     { "path": "examples/programmatic" }

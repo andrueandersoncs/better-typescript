@@ -3732,7 +3732,7 @@ type system's guarantee for that abstraction is void everywhere downstream of th
 #### Trade-offs
 
 Decoding does runtime work at the boundary (cost proportional to value size — measurable by a
-performance benchmark) and can fail, adding a [tagged failure](#tagged-failure) to the boundary's
+whole-process self-host benchmark) and can fail, adding a [tagged failure](#tagged-failure) to the boundary's
 [error channel](#effect-channels); both are the honest price of an actually-established
 invariant.
 

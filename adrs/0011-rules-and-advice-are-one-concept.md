@@ -367,8 +367,8 @@ Update these surfaces as one public cutover:
   renamed derivation/report helpers used by custom configurations.
 - `src/preset.ts`: export `checks`, `defaultChecks`, `defaultDerive`, `defaultWiring`, `report`, and
   `watchReport`; remove separate rules/advice namespaces and the special helper re-export.
-- `src/index.ts`, `bench/rules.bench.ts`, examples, and tests: migrate imports and wiring literals
-  in the same change.
+- `src/index.ts`, the then-current `bench/rules.bench.ts`, examples, and tests: migrate imports and
+  wiring literals in the same change.
 - `examples/extend-preset/better-typescript.config.ts`: demonstrate the new shape with a reported
   custom check and one derivation lookup, then include the example in an existing typecheck project
   or add an equivalent focused compile smoke test so this public import surface cannot drift
@@ -409,12 +409,12 @@ npm run typecheck
 npm run format:check
 npm run build
 timeout 10 npm run dev
-npm run bench
+bun run bench:self
 ```
 
 The bounded self-hosting run must begin with `No signals`, as required by `AGENTS.md`. Compare its
-NDJSON and pretty output with the baseline from step 1. The benchmark remains informational, but it
-must compile and follow the renamed public surface.
+NDJSON and pretty output with the baseline from step 1. The whole-process self-host benchmark must
+compile, follow the renamed public surface, and record its minimum, median, and maximum runtime.
 
 ## Consequences
 

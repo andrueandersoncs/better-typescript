@@ -175,7 +175,7 @@ Keep `prefer-implicit-return` `allowed.ts` `multiStatement` unchanged (boundary 
 6. `npm run format:check`
 7. `npm run build`
 8. `timeout 10 npm run dev` → must begin at **`No signals`**
-9. `npm run bench` if full bar requested / perf concern
+9. `bun run bench:self` if full bar requested / perf concern
 
 Leave uncommitted on `main` unless asked to commit.
 

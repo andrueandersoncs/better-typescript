@@ -5,7 +5,7 @@ import * as path from "node:path"
 import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import selfHostConfig from "../better-typescript.config.js"
-import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../bench/selfHostBenchmark.js"
+import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../scripts/selfHostBenchmark.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.dirname(testDirectory)
