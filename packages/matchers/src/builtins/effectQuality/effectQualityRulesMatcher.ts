@@ -160,8 +160,8 @@ import { propertySignatureIsUndefinedFreeOptional } from "./parenthesizedTypeInc
 
 import { pipeCallTypedErrorFinding } from "./pipeCallSelfExpression.js"
 
-import { isOutermostAccess } from "../isOutermostAccess.js"
-import { isProcessEnvironmentAccess } from "../processEnvironmentAccess.js"
+import { isOutermostAccess } from "./isOutermostAccess.js"
+import { isProcessEnvironmentAccess } from "./processEnvironmentAccess.js"
 
 import { serviceMethodFindingForName } from "./propertyEvidenceNode.js"
 

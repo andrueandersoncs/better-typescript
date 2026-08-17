@@ -1,8 +1,8 @@
 import { Array, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { strictEqual } from "../equivalence.js"
-import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
-import { isAccessExpression } from "./effectQuality/isAccessExpression.js"
+import { strictEqual } from "../../equivalence.js"
+import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
+import { isAccessExpression } from "./isAccessExpression.js"
 
 const isTransparentWrapper = (node: ts.Node) => {
   const parenthesized = ts.isParenthesizedExpression(node)

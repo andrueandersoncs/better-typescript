@@ -9,8 +9,8 @@ import { toRelativeFileName } from "../support/paths.js"
 import { isAccessExpression } from "./effectQuality/isAccessExpression.js"
 import { isRootRole } from "./effectQuality/isRootRole.js"
 import { isTestRole } from "./effectQuality/isTestRole.js"
-import { isOutermostAccess } from "./isOutermostAccess.js"
-import { isProcessEnvironmentAccess } from "./processEnvironmentAccess.js"
+import { isOutermostAccess } from "./effectQuality/isOutermostAccess.js"
+import { isProcessEnvironmentAccess } from "./effectQuality/processEnvironmentAccess.js"
 
 // ProcessEnvironmentFact exists because the named policy needs one stable fact contract.
 export const ProcessEnvironmentFact = Schema.Struct({})

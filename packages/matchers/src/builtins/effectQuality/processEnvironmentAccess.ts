@@ -1,9 +1,9 @@
 import { Array, Option, pipe } from "effect"
 import * as ts from "typescript"
-import { strictEqual } from "../equivalence.js"
-import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
-import { isAccessExpression } from "./effectQuality/isAccessExpression.js"
-import { ambientPathAt } from "./functionalCoreEffect/ambientPath.js"
+import { strictEqual } from "../../equivalence.js"
+import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
+import { isAccessExpression } from "./isAccessExpression.js"
+import { ambientPathAt } from "../functionalCoreEffect/ambientPath.js"
 
 const isProcess = strictEqual("process")
 const isEnvironment = strictEqual("env")

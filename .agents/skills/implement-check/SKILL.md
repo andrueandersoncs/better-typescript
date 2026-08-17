@@ -81,16 +81,14 @@ Choose the narrowest shape that expresses the requirement.
    contain multiple files or a `tsconfig.json`. Bad must detect; good must be clean.
 
 6. **Add characterization coverage.** Create `tests/fixtures/<policy-name>/tsconfig.json` and source
-   files. Mark each expected location with `// ~detect`, `// ~detect 3`, or
-   `// ~detect 3,17`. Unmarked lines must stay clean. Use
-   `assertPolicyFixtureExpectations` only when a marker would alter the matched input or cannot
-   express the contract.
+   files. Mark each expected location with `// ~detect`, `// ~detect 3`, or `// ~detect 3,17`.
+   Unmarked lines must stay clean. Use `assertPolicyFixtureExpectations` only when a marker would
+   alter the matched input or cannot express the contract.
 
-7. **Test through the exported Policy.** For a program Policy, add
-   `tests/<camelCaseName>.test.ts` and normally call `assertPolicyFixture(policy)`. For a workspace
-   Policy, follow the nearest workspace-policy runner and assertion pattern. Add focused matcher or
-   guidance tests when facts, context, grouping, prose selection, or data payloads need a stronger
-   contract.
+7. **Test through the exported Policy.** For a program Policy, add `tests/<camelCaseName>.test.ts`
+   and normally call `assertPolicyFixture(policy)`. For a workspace Policy, follow the nearest
+   workspace-policy runner and assertion pattern. Add focused matcher or guidance tests when facts,
+   context, grouping, prose selection, or data payloads need a stronger contract.
 
 8. **Enroll the Policy directly.** Add it to the intended policy catalog/wiring in stable report
    order. A default policy belongs in `defaultPolicyCatalog`. Inspect the self-host configuration
