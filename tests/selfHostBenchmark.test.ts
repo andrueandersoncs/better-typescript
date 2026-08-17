@@ -5,42 +5,45 @@ import * as path from "node:path"
 import { test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import selfHostConfig from "../better-typescript.config.js"
+import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
+import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
+import { functionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import { selfHostArchitectureFiles, selfHostProductFiles } from "../selfHostFiles.js"
+import { productSelfHostWiring } from "../selfHostWiring.js"
 import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../scripts/selfHostBenchmark.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.dirname(testDirectory)
 
-test("self-host benchmark runs every enrolled policy", async () => {
+test("self-host benchmark runs every complete Wiring policy", async () => {
   const target = await selfHostBenchmarkTarget(repoRoot)
+  const productNames = [defaultWiring, functionalCoreEffectWiring, effectQualityWiring].flatMap(
+    (wiring) => wiring.policies.map((policy) => policy.name)
+  )
+  const architectureNames = architectureExploreWiring.policies.map((policy) => policy.name)
 
   assert.equal(path.relative(repoRoot, target.cliPath), "packages/cli/dist/index.js")
-  assert.equal(target.checkNames.length, 88)
-  assert.ok(target.checkNames.includes("no-unused"))
-  assert.ok(target.checkNames.includes("effect-quality-rules"))
-  assert.ok(target.checkNames.includes("functional-core-effect-boundaries"))
-  assert.ok(target.checkNames.includes("semantic-module-placement"))
-  assert.equal(target.checkNames.includes("composition-fingerprints"), false)
-  assert.equal(target.checkNames.includes("effect-quality-advice-evidence"), false)
-  assert.equal(target.checkNames.includes("functional-core-effect-shape-evidence"), false)
+  assert.deepEqual(target.checkNames, [...productNames, ...architectureNames])
+  assert.equal(new Set(target.checkNames).size, 105)
+  assert.ok(target.checkNames.includes("composition-fingerprints"))
+  assert.ok(target.checkNames.includes("effect-quality-advice-evidence"))
+  assert.ok(target.checkNames.includes("functional-core-effect-shape-evidence"))
 })
 
-test("self-host configuration pairs reporting wiring with silent placement", () => {
+test("self-host configuration scopes complete Wirings without reconstructing them", () => {
   assert.equal(selfHostConfig.length, 2)
-  assert.ok(
-    selfHostConfig.every((entry) => entry.files.includes("packages/*/src/**")),
-    "every self-host wiring must cover packages/*/src/**"
-  )
 
-  const [reporting, placement] = selfHostConfig
+  const [product, architecture] = selfHostConfig
 
-  assert.ok(reporting!.wiring.policies.every((policy) => policy.reported))
-  assert.deepEqual(reporting!.wiring.derive([]), [])
-  assert.deepEqual(
-    placement!.wiring.policies.map((policy) => policy.name),
-    ["semantic-module-placement"]
-  )
-  assert.ok(placement!.wiring.policies.every((policy) => !policy.reported))
-  assert.deepEqual(placement!.wiring.derive([]), [])
+  assert.deepEqual(product?.files, selfHostProductFiles)
+  assert.strictEqual(product?.wiring.policies, productSelfHostWiring.policies)
+  assert.strictEqual(product?.wiring.derive, productSelfHostWiring.derive)
+  assert.deepEqual(architecture?.files, selfHostArchitectureFiles)
+  assert.strictEqual(architecture?.wiring.policies, architectureExploreWiring.policies)
+  assert.strictEqual(architecture?.wiring.derive, architectureExploreWiring.derive)
+  assert.ok(product?.wiring.policies.some((policy) => !policy.reported))
+  assert.ok(architecture?.wiring.policies.every((policy) => !policy.reported))
 })
 
 test("self-host benchmark summarizes public runner durations", async () => {

@@ -1,9 +1,9 @@
 import { defineConfig } from "@better-typescript/core/project/loadWiringConfig"
-import { semanticModulePlacementSelfHostWiring } from "./selfHostPlacementWiring.js"
+import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
 import { selfHostArchitectureFiles, selfHostProductFiles } from "./selfHostFiles.js"
-import { standardSelfHostWiring } from "./selfHostWiring.js"
+import { productSelfHostWiring } from "./selfHostWiring.js"
 
 export default defineConfig([
-  { files: selfHostProductFiles, wiring: standardSelfHostWiring },
-  { files: selfHostArchitectureFiles, wiring: semanticModulePlacementSelfHostWiring }
+  { files: selfHostProductFiles, wiring: productSelfHostWiring },
+  { files: selfHostArchitectureFiles, wiring: architectureExploreWiring }
 ])

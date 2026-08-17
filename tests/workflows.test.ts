@@ -1,10 +1,12 @@
 import { expect, test } from "bun:test"
 import { ConfigProvider } from "effect"
-import { hasProvider } from "@flue/runtime/internal"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { makeCodexAuthResolver } from "../packages/workflows/src/codexProviderAuth.js"
+import {
+  makeCodexAuthResolver,
+  registerCodexProvider
+} from "@better-typescript/workflows/codex-provider"
 
 test("Codex home is injectable with ConfigProvider", async () => {
   const directory = await mkdtemp(join(tmpdir(), "better-typescript-codex-"))
@@ -23,8 +25,6 @@ test("Codex home is injectable with ConfigProvider", async () => {
   await rm(directory, { recursive: true })
 })
 
-test("workflow entrypoint registers the Codex provider", async () => {
-  await import("../packages/workflows/src/index.js")
-
-  expect(hasProvider("openai-codex")).toBe(true)
+test("workflow entrypoint registers the Codex provider", () => {
+  expect(registerCodexProvider()).toBe("openai-codex")
 })

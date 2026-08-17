@@ -1,4 +1,6 @@
 import type { AuthResult } from "@earendil-works/pi-ai"
+import { openaiCodexProvider } from "@earendil-works/pi-ai/providers/openai-codex"
+import { setProvider } from "@flue/runtime"
 import { Config, ConfigProvider, Effect, Schema, pipe } from "effect"
 import { CodexAuth } from "./codexAuth.js"
 import { readFile } from "node:fs/promises"
@@ -32,3 +34,21 @@ export const makeCodexAuthResolver =
       Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
       Effect.runPromise
     )
+
+const codexProviderName = "openai-codex"
+
+export const registerCodexProvider = () => {
+  const provider = openaiCodexProvider()
+
+  setProvider({
+    ...provider,
+    auth: {
+      apiKey: {
+        name: "Codex OAuth",
+        resolve: makeCodexAuthResolver()
+      }
+    }
+  })
+
+  return codexProviderName
+}

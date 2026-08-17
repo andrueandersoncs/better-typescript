@@ -61,6 +61,19 @@ test("registration ceremony stays silent at 14 imports or 0.7 ratio", () => {
   assert.equal(lowRatioAdvice.length, 0)
 })
 
+test("registration ceremony ignores invoked imports", () => {
+  const importer = "src/derive.ts"
+  const elements = Array.from({ length: 15 }, (_, index) =>
+    makeNamedDetection("import-usage")(
+      detectionAt(importer, index + 1, importUsage(`./adviser-${index}.js`, importer, 1, false, 1))
+    )
+  )
+
+  const advice = registrationCeremony(elements)
+
+  assert.equal(advice.length, 0)
+})
+
 test("registration ceremony ignores fromTest importers", () => {
   const importer = "tests/registry.test.ts"
   const elements = Array.from({ length: 15 }, (_, index) =>

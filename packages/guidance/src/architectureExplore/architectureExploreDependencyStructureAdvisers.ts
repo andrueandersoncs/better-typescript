@@ -503,11 +503,15 @@ const makeArchitectureExploreDependencyStructureAdvisers = () => {
         return Result.failVoid
       }
 
-      const lowRefNames = Array.countBy(
-        names,
-        (name: ImportedNameUsage) => name.referenceCount <= 2
-      )
+      const isSingleUseCatalogEntry = (name: ImportedNameUsage) => {
+        const hasFewReferences = name.referenceCount <= 2
+        const isNotInvoked = strictEqual(0)(name.callCount)
+        const conditions = Array.make(hasFewReferences, isNotInvoked)
 
+        return Array.every(conditions, Boolean)
+      }
+
+      const lowRefNames = Array.countBy(names, isSingleUseCatalogEntry)
       const ratio = lowRefNames / names.length
       const importsBelowMinimum = importCount < minimumImportCount
       const ratioBelowMinimum = ratio < minimumLowRefRatio
