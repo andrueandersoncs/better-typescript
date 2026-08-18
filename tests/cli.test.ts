@@ -100,6 +100,35 @@ test("--watch keeps the CLI alive after its initial report and prints watching s
   }
 })
 
+test("--watch follows the discovered workspace root from a nested invocation", async () => {
+  const tempDir = await copyNoThrowFixture("cli-watch-root-")
+  const nestedDir = path.join(tempDir, "src", "nested")
+  const siblingPath = path.join(tempDir, "src", "allowed.ts")
+
+  await fs.mkdir(nestedDir)
+
+  const child = spawnCli(["--project", nestedDir, "--watch"])
+  const close = watchClose(child)
+
+  try {
+    await waitForFirstStdoutLine(child)
+    await Bun.sleep(300)
+
+    const rerun = waitForOutput(child, child.stdout, "sibling workspace rerun", (text) =>
+      text.includes('"_tag":"signal"')
+    )
+
+    await fs.appendFile(siblingPath, "\n")
+    await rerun
+
+    assert.equal(child.exitCode, null)
+    assert.equal(child.signalCode, null)
+  } finally {
+    await terminateChild(child, close.promise)
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test("--pretty one-shot renders the empty report text and exits", async () => {
   const tempDir = await createSignalFreeFixture()
 

@@ -85,12 +85,12 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
     return
   }
 
-  yield* runOneShot(projectDirectory, printEvent)
+  yield* runOneShot(workspace.rootPath, printEvent)
 
-  const rerunReport = runOneShot(projectDirectory, printEvent)
+  const rerunReport = runOneShot(workspace.rootPath, printEvent)
 
   const rerun = pipe(
-    watchWorkspace(projectDirectory),
+    watchWorkspace(workspace.rootPath),
     Effect.andThen(rerunReport),
     Effect.catch(reportError)
   )
