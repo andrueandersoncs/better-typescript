@@ -35,6 +35,8 @@ const mixedMessage = "This Physical Module contains Code Entities from multiple 
 const mixedHint =
   "Separate the listed Semantic Modules without splitting their complete membership; no destination or move direction is inferred."
 
+export const semanticModulePlacementName = "semantic-module-placement"
+
 const makeSemanticModulePlacementFindings = (match: Match<SemanticModulePlacementData>) => {
   const makeSplitFindings = () => makeFindings(match.target, splitMessage, splitHint, match.fact)
   const makeMixedFindings = () => makeFindings(match.target, mixedMessage, mixedHint, match.fact)
@@ -52,7 +54,7 @@ export const semanticModulePlacement = (catalog: SemanticModuleHardBondRuleCatal
   const matcher = semanticModuleEngine.semanticModulePlacementMatcher(catalog)
 
   return makeBuiltinPolicy({
-    name: "semantic-module-placement",
+    name: semanticModulePlacementName,
     matcher: matcher,
     guidance: Function.constant(makeSemanticModulePlacementFindings),
     reported: false,

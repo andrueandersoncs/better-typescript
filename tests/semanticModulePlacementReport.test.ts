@@ -10,10 +10,8 @@ import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import { loadFixture } from "./semanticModulePlacementReportLoadFixture.js"
 import { placementData } from "./semanticModulePlacementReportPlacementData.js"
 import { runFixturePolicy } from "./semanticModulePlacementReportRunFixturePolicy.js"
-import {
-  semanticModulePlacementAdvice,
-  semanticModulePlacementName
-} from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
+import { semanticModulePlacementAdvice } from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
+import { semanticModulePlacementName } from "@better-typescript/guidance/preset/semanticModulePlacementPolicies"
 
 test("composite Program matcher report omits raw placement blocks", async () => {
   const { workspace, policy } = await loadFixture()

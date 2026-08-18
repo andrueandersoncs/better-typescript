@@ -6,6 +6,7 @@ import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNa
 import { toPolicies } from "@better-typescript/core/engine/policy/locateTarget"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { semanticModulePlacementAdvice } from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
+import { semanticModulePlacementName } from "@better-typescript/guidance/preset/semanticModulePlacementPolicies"
 import { makeContext } from "@better-typescript/matchers/sources/makeContext"
 import type { SemanticModuleEntityKey } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEntityKey"
 import { cleanManifest } from "./fixtures/semantic-module-placement-clean/manifest.js"
@@ -295,7 +296,7 @@ test("workspace-relative placement paths resolve inside nested projects", async 
 
   assert.equal(data.physicalModulePath, "packages/lib/src/util.ts")
   const advice = semanticModulePlacementAdvice(
-    Array.map(mixed, makeNamedDetection("semantic-module-placement"))
+    Array.map(mixed, makeNamedDetection(semanticModulePlacementName))
   )
   const codeEntitiesHere = pipe(
     advice,
@@ -324,6 +325,6 @@ test("workspace-relative placement paths resolve inside nested projects", async 
 })
 
 test("policy factory is silent and named semantic-module-placement", () => {
-  assert.equal(placementPolicy.name, "semantic-module-placement")
+  assert.equal(placementPolicy.name, semanticModulePlacementName)
   assert.equal(placementPolicy.reported, false)
 })

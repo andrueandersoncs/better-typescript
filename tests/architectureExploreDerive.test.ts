@@ -13,6 +13,7 @@ import { architectureExploreNeutralHardBondRuleCatalog } from "@better-typescrip
 import { architectureExploreOopHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreOopHardBondRuleCatalog"
 import { architectureExploreFpHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreFpHardBondRuleCatalog"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+import { semanticModulePlacementName } from "@better-typescript/guidance/preset/semanticModulePlacementPolicies"
 import { ContextTagSeamData } from "@better-typescript/matchers/builtins/contextTagSeams"
 import { ExportSurfaceData } from "@better-typescript/matchers/builtins/exportSurface"
 import { ExportedSymbolUsage } from "@better-typescript/matchers/builtins/architectureExplore/exportedSymbolUsage"
@@ -55,7 +56,7 @@ test("architectureExploreWiring contains only relational silent evidence checks"
     "module-scope-effects",
     "context-tag-seams",
     "composition-fingerprints",
-    "semantic-module-placement"
+    semanticModulePlacementName
   ])
   assert.equal(new Set(names).size, names.length)
   assert.equal(
@@ -64,7 +65,7 @@ test("architectureExploreWiring contains only relational silent evidence checks"
   )
   assert.equal(makeWiring(architectureExploreWiring).policies.length, 15)
   assert.equal(
-    architectureExplorePolicies.filter((check) => check.name === "semantic-module-placement")
+    architectureExplorePolicies.filter((check) => check.name === semanticModulePlacementName)
       .length,
     1
   )
@@ -84,7 +85,7 @@ test("Architecture Explore paradigm catalogs own the settled immutable Hard Bond
 
 test("each Architecture Explore Wiring owns exactly one semantic-module-placement Policy", () => {
   const placementCount = (wiring: ReturnType<typeof makeWiring>) =>
-    wiring.policies.filter((check) => check.name === "semantic-module-placement").length
+    wiring.policies.filter((check) => check.name === semanticModulePlacementName).length
 
   assert.equal(placementCount(makeWiring(architectureExploreWiring)), 1)
   assert.equal(placementCount(makeWiring(architectureExploreOopWiring)), 1)
@@ -95,7 +96,7 @@ test("each Architecture Explore Wiring owns exactly one semantic-module-placemen
 
 test("baseline default Wiring does not enroll semantic-module-placement", () => {
   assert.equal(
-    defaultWiring.policies.some((check) => check.name === "semantic-module-placement"),
+    defaultWiring.policies.some((check) => check.name === semanticModulePlacementName),
     false
   )
 })

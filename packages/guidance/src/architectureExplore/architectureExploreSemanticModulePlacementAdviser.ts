@@ -11,6 +11,7 @@ import type { SemanticModulePlacementEntityRecord as PlacementEntity } from "@be
 import { MixedPhysicalModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementMixedData.js"
 import type { SemanticModulePlacementModuleSlice as ModuleSlice } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementModuleSlice.js"
 import { SplitSemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementSplitData.js"
+import { semanticModulePlacementName as stableSemanticModulePlacementName } from "../preset/semanticModulePlacementPolicies.js"
 
 const placementDeclarationKinds = {
   FunctionDeclaration: "function",
@@ -133,8 +134,6 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
     )
   }
 
-  const semanticModulePlacementName = "semantic-module-placement"
-
   const semanticModulePlacementDataOf = (element: NamedDetection) =>
     deriveCheckedData(Schema.is(SemanticModulePlacementData), element)
 
@@ -142,7 +141,9 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
     elements: ReadonlyArray<NamedDetection>
   ): ReadonlyArray<Advice> => {
     // Signal names stay bound once because advisers and wirings must not re-spell them.
-    const semanticModulePlacementAdviceExamples = makePackageExamples("semantic-module-placement")
+    const semanticModulePlacementAdviceExamples = makePackageExamples(
+      stableSemanticModulePlacementName
+    )
     const isMixedData = Schema.is(MixedPhysicalModulePlacementData)
     const pathOf = (item: PlacementElement) => item.namedDetection.detection.location.path
 
@@ -249,7 +250,7 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
 
     const isPlacementElement = flow(
       Struct.get<NamedDetection, "name">("name"),
-      strictEqual(semanticModulePlacementName)
+      strictEqual(stableSemanticModulePlacementName)
     )
 
     const placementData = (element: NamedDetection): Option.Option<SemanticModulePlacementData> => {
@@ -358,12 +359,12 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
 
   // SemanticModulePlacementAdviser keeps name and advice together because reports share them.
   class SemanticModulePlacementAdviser extends Data.Class<{
-    readonly semanticModulePlacementName: typeof semanticModulePlacementName
+    readonly semanticModulePlacementName: typeof stableSemanticModulePlacementName
     readonly semanticModulePlacementAdvice: typeof semanticModulePlacementAdvice
   }> {}
 
   return new SemanticModulePlacementAdviser({
-    semanticModulePlacementName,
+    semanticModulePlacementName: stableSemanticModulePlacementName,
     semanticModulePlacementAdvice
   })
 }
