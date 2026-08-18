@@ -12,7 +12,7 @@ Silent Program-level FP architecture evidence policy.
 
 - Guidance: `packages/guidance/src/policies/compositionForwarders.ts`
 - Matcher: `packages/matchers/src/builtins/compositionForwarders.ts`
-- Reference index: `packages/matchers/src/builtins/architectureExplore/programSymbols.ts`
+- Reference index: `packages/matchers/src/builtins/architectureExplore/architectureEvidence.ts`
 
 ## Intent
 

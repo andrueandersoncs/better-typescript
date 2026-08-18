@@ -12,7 +12,7 @@ Silent workspace export evidence policy in the core Architecture Explore fleet.
 
 - Guidance: `packages/guidance/src/policies/exportSurface.ts`
 - Matcher: `packages/matchers/src/builtins/exportSurface.ts`
-- Symbol index: `packages/matchers/src/builtins/architectureExplore/programSymbols.ts`
+- Symbol index: `packages/matchers/src/builtins/architectureExplore/architectureEvidence.ts`
 
 ## Intent
 

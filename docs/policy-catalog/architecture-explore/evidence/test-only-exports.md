@@ -12,7 +12,7 @@ Silent program-level architecture evidence policy in the core Architecture Explo
 
 - Guidance: `packages/guidance/src/policies/testOnlyExports.ts`
 - Matcher: `packages/matchers/src/builtins/testOnlyExports.ts`
-- Reference index: `packages/matchers/src/builtins/architectureExplore/programSymbols.ts`
+- Reference index: `packages/matchers/src/builtins/architectureExplore/architectureEvidence.ts`
 
 ## Intent
 
