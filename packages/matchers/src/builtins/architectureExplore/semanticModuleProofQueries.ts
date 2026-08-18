@@ -1,4 +1,4 @@
-import { Array, Function, HashMap, Option, pipe } from "effect"
+import { Array, Data, Function, HashMap, Option, Predicate, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import { SemanticModuleEntityKey } from "./semanticModuleEntityKey.js"
 import { SemanticModuleBondKey } from "./semanticModuleBondKey.js"
@@ -6,13 +6,33 @@ import { SemanticModuleRecord } from "./semanticModuleRecord.js"
 import { SemanticModuleMembershipProofStep } from "./semanticModuleMembershipProofStep.js"
 import { SemanticModuleSnapshotV1 } from "./semanticModuleSnapshotV1.js"
 import { entityKeyEquivalence } from "./entityKeyEquivalence.js"
-import { emptyProofValues } from "./emptyProofValues.js"
 import { freezeBondKey } from "./freezeBondKey.js"
 import { entityKeyToken } from "./entityKeyToken.js"
-import { containsEntity } from "./containsEntity.js"
-import { ForestEdge } from "./forestEdge.js"
-import { ProofQueueItem } from "./proofQueueItem.js"
-import { ProofSearchState } from "./proofSearchState.js"
+import { entityKeyMatches } from "./entityKeyMatches.js"
+
+// ForestEdge is a directed bond edge because proof search walks forest adjacency.
+class ForestEdge extends Data.Class<{
+  readonly neighbor: SemanticModuleEntityKey
+  readonly step: SemanticModuleMembershipProofStep
+}> {}
+
+// ProofQueueItem is a BFS queue node because proof search stores path tips by entity.
+class ProofQueueItem extends Data.Class<{
+  readonly token: string
+  readonly path: ReadonlyArray<SemanticModuleMembershipProofStep>
+}> {}
+
+// ProofSearchState is BFS state because proof search needs queue and visited together.
+class ProofSearchState extends Data.Class<{
+  readonly queue: ReadonlyArray<ProofQueueItem>
+  readonly visited: HashMap.HashMap<string, true>
+  readonly result: Option.Option<ReadonlyArray<SemanticModuleMembershipProofStep>>
+}> {}
+
+const emptyProofValues: ReadonlyArray<SemanticModuleMembershipProofStep> = Array.empty()
+
+const containsEntity = (key: SemanticModuleEntityKey) => (module: SemanticModuleRecord) =>
+  Array.some(module.members, entityKeyMatches(key))
 
 export const emptyProof = Object.freeze(emptyProofValues)
 
@@ -192,6 +212,27 @@ export const moduleFor = Function.dual<
     key: SemanticModuleEntityKey
   ) => Option.Option<SemanticModuleRecord>
 >(2, (snapshot, key) => pipe(snapshot.modules, Array.findFirst(containsEntity(key))))
+
+export const peersInModule = (key: SemanticModuleEntityKey) => (module: SemanticModuleRecord) => {
+  const differsFromKey = Predicate.not(entityKeyMatches(key))
+  const peers = Array.filter(module.members, differsFromKey)
+
+  return Object.freeze(peers)
+}
+
+export const peersFor = Function.dual<
+  (
+    key: SemanticModuleEntityKey
+  ) => (
+    snapshot: SemanticModuleSnapshotV1
+  ) => Option.Option<ReadonlyArray<SemanticModuleEntityKey>>,
+  (
+    snapshot: SemanticModuleSnapshotV1,
+    key: SemanticModuleEntityKey
+  ) => Option.Option<ReadonlyArray<SemanticModuleEntityKey>>
+>(2, (snapshot, key) =>
+  pipe(snapshot.modules, Array.findFirst(containsEntity(key)), Option.map(peersInModule(key)))
+)
 
 export const proofBetween = Function.dual<
   (
