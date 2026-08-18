@@ -1,6 +1,7 @@
-import { Array, Effect, Record } from "effect"
+import { Array, Effect, Record, Struct } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/advice"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
+import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
 import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/fileLevelAdvice"
 import type { Policy } from "@better-typescript/core/engine/policy/policyClass"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
@@ -21,7 +22,7 @@ import { systemicHotspots } from "../systemicHotspots/systemicHotspots.js"
 import { commentAndDeclarationPolicies } from "./commentAndDeclarationPolicies.js"
 import { conceptAndCompositionPolicies } from "./conceptAndCompositionPolicies.js"
 import { controlFlowPolicies } from "./controlFlowPolicies.js"
-import { defaultNamedElements } from "./defaultNamedElements.js"
+
 import { dispatchAndCollectionPolicies } from "./dispatchAndCollectionPolicies.js"
 import { effectIdiomPolicies } from "./effectIdiomPolicies.js"
 import { errorHygienePolicies } from "./errorHygienePolicies.js"
@@ -43,9 +44,18 @@ const materializeSpecificAdvice = (
   return Array.flatten(adviceGroups)
 }
 
-export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> => {
-  const elementsOf = signalOf(signals)
-  const namedElements = defaultNamedElements(signals)
+const defaultNamedElements = (signals: ReadonlyArray<Signal>): ReadonlyArray<NamedDetection> => {
+  const reportedSignals = Array.filter(signals, Struct.get("reported"))
+
+  return Array.flatMap(reportedSignals, (signal) =>
+    Array.map(signal.detections, makeNamedDetection(signal.name))
+  )
+}
+
+const defaultSpecificAdvice = (
+  elementsOf: ReturnType<typeof signalOf>,
+  namedElements: ReadonlyArray<NamedDetection>
+): ReadonlyArray<Advice> => {
   const noMutation = elementsOf("no-mutation")
   const preferHashMap = elementsOf("prefer-hash-map")
   const preferHashSet = elementsOf("prefer-hash-set")
@@ -72,10 +82,10 @@ export const defaultSpecificAdvice = (signals: ReadonlyArray<Signal>): ReadonlyA
 }
 
 const materializeDefaultAdvice = (
-  signals: ReadonlyArray<Signal>,
+  elementsOf: ReturnType<typeof signalOf>,
   namedElements: ReadonlyArray<NamedDetection>
 ): ReadonlyArray<Advice> => {
-  const specificItems = defaultSpecificAdvice(signals)
+  const specificItems = defaultSpecificAdvice(elementsOf, namedElements)
   const densityItems = highSignalDensity(namedElements)
   const subsystemItems = hotSubsystem(namedElements)
   const dominanceItems = ruleDominance(namedElements)
@@ -102,8 +112,9 @@ const materializeDefaultAdvice = (
 }
 
 export const defaultDerive = Effect.fn("DefaultWiring.derive")((signals: ReadonlyArray<Signal>) => {
+  const elementsOf = signalOf(signals)
   const namedElements = defaultNamedElements(signals)
-  const advice = materializeDefaultAdvice(signals, namedElements)
+  const advice = materializeDefaultAdvice(elementsOf, namedElements)
 
   return Effect.succeed(advice)
 })
