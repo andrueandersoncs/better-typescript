@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { Array } from "effect"
-import { detectionsForLocatedPolicies } from "@better-typescript/core/engine/policy/detectionsForPolicyMatches"
+import { detectionsForLocatedPolicies } from "@better-typescript/core/engine/policy/locatedPolicyDetections"
 import { WorkspaceContext } from "@better-typescript/matchers/matcher/workspaceContext"
 import { runWorkspaceMatchers } from "@better-typescript/matchers/matcher/runWorkspaceMatchers"
 import { sourceDirectoryPolicy } from "./workspacePolicySourceDirectory.js"

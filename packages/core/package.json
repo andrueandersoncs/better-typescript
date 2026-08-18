@@ -7,25 +7,9 @@
     "dist"
   ],
   "exports": {
-    "./engine/equivalence": {
-      "bun": "./src/engine/equivalence/strictEqual.ts",
-      "default": "./dist/engine/equivalence/strictEqual.js"
-    },
-    "./engine/signal": {
-      "bun": "./src/engine/signal/signal.ts",
-      "default": "./dist/engine/signal/signal.js"
-    },
     "./engine/signal/data": {
       "bun": "./src/engine/signal/data.ts",
       "default": "./dist/engine/signal/data.js"
-    },
-    "./engine/watch": {
-      "bun": "./src/engine/watch/watch.ts",
-      "default": "./dist/engine/watch/watch.js"
-    },
-    "./engine/workspacePrograms": {
-      "bun": "./src/engine/watch/workspacePrograms.ts",
-      "default": "./dist/engine/watch/workspacePrograms.js"
     },
     "./engine/watch/data": {
       "bun": "./src/engine/watch/data.ts",
@@ -159,10 +143,6 @@
     "./engine/policy/compilerOptionsForPolicies": {
       "bun": "./src/engine/policy/compilerOptionsForPolicies.ts",
       "default": "./dist/engine/policy/compilerOptionsForPolicies.js"
-    },
-    "./engine/policy/detectionsForPolicyMatches": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
     },
     "./engine/policy/findingSource": {
       "bun": "./src/engine/policy/findingSource.ts",
@@ -312,10 +292,6 @@
       "bun": "./src/project/loadWiringConfig/loadWiringConfig.ts",
       "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
     },
-    "./project/loadWiringConfig/projectWiringConfigError": {
-      "bun": "./src/project/loadWiringConfig/loadWiringConfig.ts",
-      "default": "./dist/project/loadWiringConfig/loadWiringConfig.js"
-    },
     "./engine/wiring/wiringPolicy": {
       "bun": "./src/engine/wiring/wiringPolicy.ts",
       "default": "./dist/engine/wiring/wiringPolicy.js"
@@ -396,41 +372,9 @@
       "bun": "./src/engine/signal/wiringSignals.ts",
       "default": "./dist/engine/signal/wiringSignals.js"
     },
-    "./engine/watch/workspaceServices": {
-      "bun": "./src/engine/watch/workspaceServices.ts",
-      "default": "./dist/engine/watch/workspaceServices.js"
-    },
-    "./engine/policy/locateDirectory": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
-    "./engine/policy/locateFile": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
-    "./engine/policy/locateNode": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
-    "./engine/policy/locatePosition": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
-    "./engine/policy/locateWorkspace": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
     "./engine/equivalence/strictEqual": {
       "bun": "./src/engine/equivalence/strictEqual.ts",
       "default": "./dist/engine/equivalence/strictEqual.js"
-    },
-    "./engine/policy/locateTargetAt": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
-    },
-    "./engine/policy/detectionFromLocatedSource": {
-      "bun": "./src/engine/policy/locatedPolicyDetections.ts",
-      "default": "./dist/engine/policy/locatedPolicyDetections.js"
     },
     "./engine/policy/locatedPolicyDetections": {
       "bun": "./src/engine/policy/locatedPolicyDetections.ts",

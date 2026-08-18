@@ -11,7 +11,7 @@ import {
   pipe,
   flow
 } from "effect"
-import { strictEqual } from "@better-typescript/core/engine/equivalence"
+import { strictEqual } from "@better-typescript/core/engine/equivalence/strictEqual"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
 import { Location } from "@better-typescript/core/engine/location/locationData"
