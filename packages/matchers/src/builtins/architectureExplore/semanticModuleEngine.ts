@@ -35,7 +35,6 @@ import { referenceKey } from "../../support/referenceKey.js"
 import type { ReferenceKey } from "../../support/referenceKeyType.js"
 import { resolvedSymbolAt } from "../../support/resolvedSymbolAt.js"
 import { bindingIdentifiers } from "./bindingIdentifiers.js"
-import { dedupeSymbols } from "./dedupeSymbols.js"
 import { emptyDeclarations } from "./emptyDeclarations.js"
 import { emptyBondKeyValues } from "./emptyBondKeyValues.js"
 import { entityKeyEquivalence } from "./entityKeyEquivalence.js"
@@ -46,11 +45,9 @@ import { freezeBondKey } from "./freezeBondKey.js"
 import { freezeEvidence } from "./freezeEvidence.js"
 import { freeze } from "./freeze.js"
 import { isTestSourceFile } from "./isTestPath.js"
-import { isModuleDeclarationBody } from "./isModuleDeclarationBody.js"
 import { nodeEquivalence } from "./nodeEquivalence.js"
 import { peersFor } from "./semanticModuleProofQueries.js"
 import { portableKeyToken } from "./portableKeyToken.js"
-import { sameSymbolOwnershipRuleId } from "./sameSymbolOwnershipRuleId.js"
 import { SemanticModuleAcceptedBondRecord } from "./semanticModuleAcceptedBondRecord.js"
 import { SemanticModuleBondKey } from "./semanticModuleBondKey.js"
 import { SemanticModuleEntityKey } from "./semanticModuleEntityKey.js"
@@ -70,12 +67,9 @@ import { moduleFor, proofBetween } from "./semanticModuleProofQueries.js"
 import { SemanticModuleSnapshotV1 } from "./semanticModuleSnapshotV1.js"
 import { SemanticModuleSuppressedBondRecord } from "./semanticModuleSuppressedBondRecord.js"
 import { semanticReferenceKindSchema } from "./semanticReferenceKindSchema.js"
-import { stringEquivalence } from "./stringEquivalence.js"
 import { symbolEquivalence } from "./symbolEquivalence.js"
 import { symbolForIdentifier } from "./symbolOwnsIdentifier.js"
 import { symbolsForBindingName } from "./symbolsForBindingName.js"
-import { symbolsForOptionalDeclaration } from "./defaultDeclarationSymbol.js"
-import { symbolsForRequiredDeclaration } from "./symbolsForRequiredDeclaration.js"
 import type { SemanticReferenceWitness } from "./semanticReferenceWitness.js"
 import { semanticReferenceWitnessSchema } from "./semanticReferenceWitnessSchema.js"
 import {
@@ -83,10 +77,69 @@ import {
   type semanticSubjectWitnessSchema as SemanticSubjectWitness
 } from "./semanticSubjectWitnessSchema.js"
 import { toWorkspacePath } from "./toWorkspacePath.js"
-import { uniqueSortedPaths } from "./uniqueSortedPaths.js"
 import type { UnownedSemanticReferenceWitness } from "./unownedSemanticReferenceWitness.js"
 import { unownedSemanticReferenceWitnessSchema } from "./unownedSemanticReferenceWitnessSchema.js"
-import { variableSymbols } from "./variableSymbols.js"
+
+const stringEquivalence = Equivalence.strictEqual<string>()
+
+// Stable because same-symbol bonds share one catalog entry.
+const sameSymbolOwnershipRuleId = "same-symbol-ownership" as const
+
+const uniqueSortedPaths = (paths: ReadonlyArray<string>): ReadonlyArray<string> =>
+  pipe(paths, Array.dedupe, Array.sort(Order.String), freeze)
+
+const isModuleDeclarationBody = (body: ts.ModuleBody): body is ts.NamespaceDeclaration =>
+  strictEqual(ts.SyntaxKind.ModuleDeclaration)(body.kind)
+
+const dedupeSymbols = (symbols: ReadonlyArray<ts.Symbol>) =>
+  Array.dedupeWith(symbols, symbolEquivalence)
+
+const variableSymbols = (checker: ts.TypeChecker) =>
+  Function.flow(Struct.get<ts.VariableDeclaration, "name">("name"), symbolsForBindingName(checker))
+
+const symbolsForRequiredDeclaration =
+  (checker: ts.TypeChecker) =>
+  (
+    declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration
+  ): ReadonlyArray<ts.Symbol> =>
+    pipe(declaration.name, symbolForIdentifier(checker), Option.toArray)
+
+const defaultDeclarationSymbol =
+  (checker: ts.TypeChecker) =>
+  (sourceFile: ts.SourceFile) =>
+  (declaration: EntityDeclaration): Option.Option<ts.Symbol> => {
+    const isDefaultSymbol = Function.flow(
+      (symbol: ts.Symbol) => symbol.getName(),
+      strictEqual("default")
+    )
+
+    const ownsDeclaration = (symbol: ts.Symbol) => {
+      const declarations = symbol.declarations ?? emptyDeclarations
+      const isDeclaration = (candidate: ts.Node) => nodeEquivalence(declaration, candidate)
+
+      return Array.some(declarations, isDeclaration)
+    }
+
+    return pipe(
+      checker.getSymbolAtLocation(sourceFile),
+      Option.fromNullishOr,
+      Option.map((moduleSymbol) => checker.getExportsOfModule(moduleSymbol)),
+      Option.map(Array.filter(isDefaultSymbol)),
+      Option.flatMap(Array.findFirst(ownsDeclaration))
+    )
+  }
+
+const symbolsForOptionalDeclaration =
+  (checker: ts.TypeChecker) =>
+  (sourceFile: ts.SourceFile) =>
+  (declaration: ts.FunctionDeclaration | ts.ClassDeclaration): ReadonlyArray<ts.Symbol> =>
+    pipe(
+      declaration.name,
+      Option.fromNullishOr,
+      Option.flatMap(symbolForIdentifier(checker)),
+      Option.orElse(() => defaultDeclarationSymbol(checker)(sourceFile)(declaration)),
+      Option.toArray
+    )
 
 const componentHead = (component: ReadonlyArray<SemanticModuleEntityKey>) =>
   pipe(component, Array.head, Option.getOrThrow)
