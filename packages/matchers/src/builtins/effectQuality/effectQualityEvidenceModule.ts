@@ -8,12 +8,16 @@ import type { MatchContext } from "../../matcher/matchContext.js"
 import type { Subscription } from "../../matcher/subscription.js"
 import { EffectQualityAdviceData } from "./effectQualityAdviceData.js"
 import { EffectQualityAdviceFinding } from "./effectQualityAdviceFinding.js"
-import { effectQualityBoundaryFeature } from "./effectQualityBoundaryFeature.js"
-import { effectQualityRuntimeFeature } from "./effectQualityRuntimeFeature.js"
+import { effectQualityFeatures } from "./effectQualityFeatureCatalog.js"
 import { EffectQualityIndex } from "./effectQualityIndex.js"
 import { makeEffectQualityMatcher } from "./buildEffectQualityIndex.js"
 import { emptyAdviceFindings } from "./emptyAdviceFindings.js"
 import { roleForSourceFile } from "./roleForSourceFile.js"
+
+const evidenceProjections = pipe(
+  effectQualityFeatures,
+  Array.flatMap((feature) => feature.evidenceProjections)
+)
 
 const effectQualityAdviceFindings = (
   context: MatchContext,
@@ -22,16 +26,11 @@ const effectQualityAdviceFindings = (
 ): ReadonlyArray<EffectQualityAdviceFinding> => {
   const role = roleForSourceFile(index, context.sourceFile)
 
-  const evidenceFeatures = Array.prepend(
-    effectQualityRuntimeFeature.evidenceFindings,
-    effectQualityBoundaryFeature.evidenceFindings
-  )
-
   return Option.match(role, {
     onNone: Function.constant(emptyAdviceFindings),
     onSome: (sourceRole) =>
       pipe(
-        evidenceFeatures,
+        evidenceProjections,
         Array.map((feature) => feature(context, index, sourceRole, node)),
         Array.flatten
       )

@@ -63,6 +63,7 @@ import { retryEffectNames } from "./retryEffectNames.js"
 import { stringLiteralArgument } from "./stringLiteralArgument.js"
 import { declarationNameText } from "./declarationNameText.js"
 import { toRelativeFileName } from "../../support/paths.js"
+import { EffectQualityFeature, EffectQualityRuleProjection } from "./effectQualityFeature.js"
 
 const makeEffectQualityBoundaryFeature = () => {
   const responseJsonNames = Array.of("json")
@@ -2895,23 +2896,27 @@ const makeEffectQualityBoundaryFeature = () => {
     return Array.flatten(collectors)
   }
 
-  type SchemaRuleFindings = typeof schemaRuleFindings
-  type HttpRuleFindings = typeof httpRuleFindings
-  type BoundaryEvidenceFindings = typeof effectQualityBoundaryFindings
-
-  class EffectQualityBoundaryFeature {
-    constructor(
-      readonly schemaRuleFindings: SchemaRuleFindings,
-      readonly httpRuleFindings: HttpRuleFindings,
-      readonly evidenceFindings: BoundaryEvidenceFindings
-    ) {}
-  }
-
-  return new EffectQualityBoundaryFeature(
-    schemaRuleFindings,
-    httpRuleFindings,
-    effectQualityBoundaryFindings
+  const schemaKinds = Array.make(
+    ts.SyntaxKind.AsExpression,
+    ts.SyntaxKind.TypeAssertionExpression,
+    ts.SyntaxKind.CallExpression,
+    ts.SyntaxKind.ModuleDeclaration,
+    ts.SyntaxKind.ClassDeclaration,
+    ts.SyntaxKind.VariableDeclaration,
+    ts.SyntaxKind.PropertyAssignment,
+    ts.SyntaxKind.FunctionDeclaration
   )
+
+  const httpKinds = Array.of(ts.SyntaxKind.CallExpression)
+
+  const ruleProjections = Array.make(
+    new EffectQualityRuleProjection(schemaKinds, schemaRuleFindings),
+    new EffectQualityRuleProjection(httpKinds, httpRuleFindings)
+  )
+
+  const evidenceProjections = Array.of(effectQualityBoundaryFindings)
+
+  return new EffectQualityFeature(ruleProjections, evidenceProjections)
 }
 
 export const effectQualityBoundaryFeature = makeEffectQualityBoundaryFeature()

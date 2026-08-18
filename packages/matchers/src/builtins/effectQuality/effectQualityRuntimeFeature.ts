@@ -52,6 +52,7 @@ import { stringLiteralArgument } from "./stringLiteralArgument.js"
 import { propertyNameText } from "../../support/propertyNameText.js"
 import { hasExportModifier } from "../../support/hasExportModifier.js"
 import { declarationNameText } from "./declarationNameText.js"
+import { EffectQualityFeature, EffectQualityRuleProjection } from "./effectQualityFeature.js"
 
 const makeEffectQualityRuntimeFeature = () => {
   const catchCauseNames = Array.make("catchCause", "catchAllCause")
@@ -2445,17 +2446,23 @@ const makeEffectQualityRuntimeFeature = () => {
     effectQualityStreamAndRecoveryFindings
   )
 
-  type RuntimeRuleFindings = typeof runtimeRuleFindings
-  type RuntimeEvidenceFindings = typeof evidenceFindings
+  const runtimeKinds = Array.make(
+    ts.SyntaxKind.CallExpression,
+    ts.SyntaxKind.PropertyAccessExpression,
+    ts.SyntaxKind.ElementAccessExpression,
+    ts.SyntaxKind.NewExpression,
+    ts.SyntaxKind.VariableDeclaration,
+    ts.SyntaxKind.BinaryExpression,
+    ts.SyntaxKind.DeleteExpression,
+    ts.SyntaxKind.WhileStatement,
+    ts.SyntaxKind.ForStatement
+  )
 
-  class EffectQualityRuntimeFeature {
-    constructor(
-      readonly ruleFindings: RuntimeRuleFindings,
-      readonly evidenceFindings: RuntimeEvidenceFindings
-    ) {}
-  }
+  const ruleProjections = Array.of(
+    new EffectQualityRuleProjection(runtimeKinds, runtimeRuleFindings)
+  )
 
-  return new EffectQualityRuntimeFeature(runtimeRuleFindings, evidenceFindings)
+  return new EffectQualityFeature(ruleProjections, evidenceFindings)
 }
 
 export const effectQualityRuntimeFeature = makeEffectQualityRuntimeFeature()

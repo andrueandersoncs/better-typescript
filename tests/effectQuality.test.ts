@@ -4,8 +4,22 @@ import type { Detection } from "@better-typescript/core/engine/location/detectio
 import { EffectQualityAdviceData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityAdviceData"
 import { EffectQualityRuleData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityRuleData"
 import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
+import { effectQualityFeatures } from "@better-typescript/matchers/builtins/effectQuality/effectQualityFeatureCatalog"
 import { Effect, Schema } from "effect"
 import { runSignals } from "./effectQualityRunSignals.js"
+
+test("Effect-quality feature catalog owns ordered rule and evidence projections", () => {
+  assert.deepEqual(
+    effectQualityFeatures.map((feature) => [
+      feature.ruleProjections.length,
+      feature.evidenceProjections.length
+    ]),
+    [
+      [2, 1],
+      [1, 3]
+    ]
+  )
+})
 
 test("Effect-quality wiring reports exact local rules and preserves allowed cases", async () => {
   const signals = await runSignals()
