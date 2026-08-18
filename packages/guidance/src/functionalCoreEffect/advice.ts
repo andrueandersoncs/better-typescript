@@ -7,7 +7,6 @@ import { type Detection } from "@better-typescript/core/engine/location/detectio
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 import { type RefactorExampleSource } from "@better-typescript/core/engine/example/refactorExampleSource"
 import { makePackageExamples } from "../makePackageExamples.js"
-import { type FunctionalCoreShapeKind } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeKind"
 import { FunctionalCoreBoundaryData } from "@better-typescript/matchers/builtins/functionalCoreEffect/boundaryData"
 import { FunctionalCoreShapeData } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeData"
 import { type FunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyClass"
@@ -19,6 +18,8 @@ import { makeFunctionalCoreShapeEvidencePolicy } from "../policies/functionalCor
 // Bound once because matcher check names must stay aligned with policy registration.
 const functionalCoreBoundaryCheckName = "functional-core-effect-boundaries"
 const functionalCoreShapeCheckName = "functional-core-effect-shape-evidence"
+
+type FunctionalCoreShapeKind = FunctionalCoreShapeData["kind"]
 
 const shapeAdviceTitles: Readonly<Record<FunctionalCoreShapeKind, string>> = {
   "effect-orchestrator": "overgrown Effect orchestrator",

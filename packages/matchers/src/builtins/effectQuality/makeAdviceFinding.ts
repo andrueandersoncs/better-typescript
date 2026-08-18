@@ -2,10 +2,10 @@ import * as ts from "typescript"
 
 import { EffectQualityAdviceFinding } from "./effectQualityAdviceFinding.js"
 
-import type { EffectQualityAdviceKind } from "./effectQualityAdviceKind.js"
+import type { EffectQualityAdviceData } from "./effectQualityAdviceData.js"
 
 export const makeAdviceFinding =
-  (kind: EffectQualityAdviceKind) =>
+  (kind: EffectQualityAdviceData["kind"]) =>
   (subject: string) =>
   (node: ts.Node): EffectQualityAdviceFinding =>
     new EffectQualityAdviceFinding({

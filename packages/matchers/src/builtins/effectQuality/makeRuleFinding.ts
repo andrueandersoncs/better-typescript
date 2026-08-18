@@ -2,10 +2,10 @@ import * as ts from "typescript"
 
 import { EffectQualityRuleFinding } from "./effectQualityRuleFinding.js"
 
-import type { EffectQualityRuleKind } from "./effectQualityRuleKind.js"
+import type { EffectQualityRuleData } from "./effectQualityRuleData.js"
 
 export const makeRuleFinding =
-  (kind: EffectQualityRuleKind) =>
+  (kind: EffectQualityRuleData["kind"]) =>
   (subject: string) =>
   (node: ts.Node): EffectQualityRuleFinding =>
     new EffectQualityRuleFinding({
