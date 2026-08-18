@@ -34,8 +34,7 @@ import { toRelativeFileName } from "../../support/paths.js"
 import { referenceKey } from "../../support/referenceKey.js"
 import type { ReferenceKey } from "../../support/referenceKeyType.js"
 import { resolvedSymbolAt } from "../../support/resolvedSymbolAt.js"
-import { bindingIdentifiers } from "./bindingIdentifiers.js"
-import { emptyDeclarations } from "./emptyDeclarations.js"
+
 import { emptyBondKeyValues } from "./emptyBondKeyValues.js"
 import { entityKeyEquivalence } from "./entityKeyEquivalence.js"
 import { entityKeyOrder } from "./entityKeyOrder.js"
@@ -43,10 +42,9 @@ import { entityKeyToken } from "./entityKeyToken.js"
 import type { EntityDeclaration } from "./entityDeclaration.js"
 import { freezeBondKey } from "./freezeBondKey.js"
 import { freezeEvidence } from "./freezeEvidence.js"
-import { freeze } from "./freeze.js"
+
 import { isTestSourceFile } from "./isTestPath.js"
-import { nodeEquivalence } from "./nodeEquivalence.js"
-import { peersFor } from "./semanticModuleProofQueries.js"
+
 import { portableKeyToken } from "./portableKeyToken.js"
 import { SemanticModuleAcceptedBondRecord } from "./semanticModuleAcceptedBondRecord.js"
 import { SemanticModuleBondKey } from "./semanticModuleBondKey.js"
@@ -63,13 +61,9 @@ import { SemanticModulePlacementModuleSlice } from "./semanticModulePlacementMod
 import { SplitSemanticModulePlacementData } from "./semanticModulePlacementSplitData.js"
 import { SemanticModuleRecord } from "./semanticModuleRecord.js"
 import { SemanticModuleReferenceGraph } from "./semanticModuleReferenceGraph.js"
-import { moduleFor, proofBetween } from "./semanticModuleProofQueries.js"
-import { SemanticModuleSnapshotV1 } from "./semanticModuleSnapshotV1.js"
 import { SemanticModuleSuppressedBondRecord } from "./semanticModuleSuppressedBondRecord.js"
 import { semanticReferenceKindSchema } from "./semanticReferenceKindSchema.js"
-import { symbolEquivalence } from "./symbolEquivalence.js"
-import { symbolForIdentifier } from "./symbolOwnsIdentifier.js"
-import { symbolsForBindingName } from "./symbolsForBindingName.js"
+
 import type { SemanticReferenceWitness } from "./semanticReferenceWitness.js"
 import { semanticReferenceWitnessSchema } from "./semanticReferenceWitnessSchema.js"
 import {
@@ -79,67 +73,6 @@ import {
 import { toWorkspacePath } from "./toWorkspacePath.js"
 import type { UnownedSemanticReferenceWitness } from "./unownedSemanticReferenceWitness.js"
 import { unownedSemanticReferenceWitnessSchema } from "./unownedSemanticReferenceWitnessSchema.js"
-
-const stringEquivalence = Equivalence.strictEqual<string>()
-
-// Stable because same-symbol bonds share one catalog entry.
-const sameSymbolOwnershipRuleId = "same-symbol-ownership" as const
-
-const uniqueSortedPaths = (paths: ReadonlyArray<string>): ReadonlyArray<string> =>
-  pipe(paths, Array.dedupe, Array.sort(Order.String), freeze)
-
-const isModuleDeclarationBody = (body: ts.ModuleBody): body is ts.NamespaceDeclaration =>
-  strictEqual(ts.SyntaxKind.ModuleDeclaration)(body.kind)
-
-const dedupeSymbols = (symbols: ReadonlyArray<ts.Symbol>) =>
-  Array.dedupeWith(symbols, symbolEquivalence)
-
-const variableSymbols = (checker: ts.TypeChecker) =>
-  Function.flow(Struct.get<ts.VariableDeclaration, "name">("name"), symbolsForBindingName(checker))
-
-const symbolsForRequiredDeclaration =
-  (checker: ts.TypeChecker) =>
-  (
-    declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration
-  ): ReadonlyArray<ts.Symbol> =>
-    pipe(declaration.name, symbolForIdentifier(checker), Option.toArray)
-
-const defaultDeclarationSymbol =
-  (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile) =>
-  (declaration: EntityDeclaration): Option.Option<ts.Symbol> => {
-    const isDefaultSymbol = Function.flow(
-      (symbol: ts.Symbol) => symbol.getName(),
-      strictEqual("default")
-    )
-
-    const ownsDeclaration = (symbol: ts.Symbol) => {
-      const declarations = symbol.declarations ?? emptyDeclarations
-      const isDeclaration = (candidate: ts.Node) => nodeEquivalence(declaration, candidate)
-
-      return Array.some(declarations, isDeclaration)
-    }
-
-    return pipe(
-      checker.getSymbolAtLocation(sourceFile),
-      Option.fromNullishOr,
-      Option.map((moduleSymbol) => checker.getExportsOfModule(moduleSymbol)),
-      Option.map(Array.filter(isDefaultSymbol)),
-      Option.flatMap(Array.findFirst(ownsDeclaration))
-    )
-  }
-
-const symbolsForOptionalDeclaration =
-  (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile) =>
-  (declaration: ts.FunctionDeclaration | ts.ClassDeclaration): ReadonlyArray<ts.Symbol> =>
-    pipe(
-      declaration.name,
-      Option.fromNullishOr,
-      Option.flatMap(symbolForIdentifier(checker)),
-      Option.orElse(() => defaultDeclarationSymbol(checker)(sourceFile)(declaration)),
-      Option.toArray
-    )
 
 const componentHead = (component: ReadonlyArray<SemanticModuleEntityKey>) =>
   pipe(component, Array.head, Option.getOrThrow)
@@ -221,82 +154,6 @@ const nestedDeclarationName = pipe(
   EffectMatch.orElse(noIdentifier)
 )
 
-const symbolsForModule =
-  (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile) =>
-  (declaration: ts.ModuleDeclaration | ts.NamespaceDeclaration): ReadonlyArray<ts.Symbol> => {
-    const symbolAtName = pipe(
-      declaration.name,
-      Option.liftPredicate(ts.isIdentifier),
-      Option.flatMap(symbolForIdentifier(checker)),
-      Option.toArray
-    )
-
-    const symbolsForNestedStatement = (statement: ts.Statement): ReadonlyArray<ts.Symbol> => {
-      if (ts.isVariableStatement(statement)) {
-        const variableSymbol = Function.flow(
-          Struct.get<ts.VariableDeclaration, "name">("name"),
-          symbolsForBindingName(checker)
-        )
-
-        return Array.flatMap(statement.declarationList.declarations, variableSymbol)
-      }
-
-      if (ts.isModuleDeclaration(statement)) {
-        return pipe(statement, symbolsForModule(checker)(sourceFile))
-      }
-
-      return pipe(
-        statement,
-        nestedDeclarationName,
-        Option.flatMap(symbolForIdentifier(checker)),
-        Option.toArray
-      )
-    }
-
-    const symbolsInModuleBlock = Function.flow(
-      Struct.get<ts.ModuleBlock, "statements">("statements"),
-      Array.flatMap(symbolsForNestedStatement)
-    )
-
-    const symbolsForBody = pipe(
-      EffectMatch.type<ts.ModuleBody>(),
-      EffectMatch.when(ts.isModuleBlock, symbolsInModuleBlock),
-      EffectMatch.when(isModuleDeclarationBody, symbolsForModule(checker)(sourceFile)),
-      EffectMatch.orElse(Function.constant(emptySymbols))
-    )
-
-    const symbolsInBody = pipe(
-      declaration.body,
-      Option.fromNullishOr,
-      Option.map(symbolsForBody),
-      Option.getOrElse(Function.constant(emptySymbols))
-    )
-
-    const symbols = Array.appendAll(symbolAtName, symbolsInBody)
-
-    return dedupeSymbols(symbols)
-  }
-
-const symbolsForDeclaration =
-  (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile) =>
-  (declaration: EntityDeclaration): ReadonlyArray<ts.Symbol> =>
-    pipe(
-      EffectMatch.value(declaration),
-      EffectMatch.when(ts.isVariableDeclaration, variableSymbols(checker)),
-      EffectMatch.when(ts.isModuleDeclaration, symbolsForModule(checker)(sourceFile)),
-      EffectMatch.when(
-        ts.isFunctionDeclaration,
-        symbolsForOptionalDeclaration(checker)(sourceFile)
-      ),
-      EffectMatch.when(ts.isClassDeclaration, symbolsForOptionalDeclaration(checker)(sourceFile)),
-      EffectMatch.when(ts.isInterfaceDeclaration, symbolsForRequiredDeclaration(checker)),
-      EffectMatch.when(ts.isTypeAliasDeclaration, symbolsForRequiredDeclaration(checker)),
-      EffectMatch.when(ts.isEnumDeclaration, symbolsForRequiredDeclaration(checker)),
-      EffectMatch.exhaustive
-    )
-
 // EntityCandidate keeps compiler ownership private because Symbols cannot cross the snapshot seam.
 class EntityCandidate extends Data.Class<{
   readonly declarations: ReadonlyArray<EntityDeclaration>
@@ -331,6 +188,50 @@ const orderedEntityKeys = (
 ): readonly [SemanticModuleEntityKey, SemanticModuleEntityKey] =>
   Order.isLessThan(entityKeyOrder)(left, right) ? Tuple.make(left, right) : Tuple.make(right, left)
 
+const semanticModuleEntityRecordsSchema = Schema.Array(SemanticModuleEntityRecord)
+const semanticModuleRecordsSchema = Schema.Array(SemanticModuleRecord)
+const acceptedBondRecordsSchema = Schema.Array(SemanticModuleAcceptedBondRecord)
+const suppressedBondRecordsSchema = Schema.Array(SemanticModuleSuppressedBondRecord)
+const exclusionRecordsSchema = Schema.Array(SemanticModuleExclusionRecord)
+
+// SnapshotV1 is the matcher seam because queries must not rescan TypeScript.
+export const SemanticModuleSnapshotV1 = Schema.Struct({
+  entities: semanticModuleEntityRecordsSchema,
+  modules: semanticModuleRecordsSchema,
+  acceptedBonds: acceptedBondRecordsSchema,
+  suppressedBonds: suppressedBondRecordsSchema,
+  exclusions: exclusionRecordsSchema
+})
+
+export interface SemanticModuleSnapshotV1 extends Schema.Schema.Type<
+  typeof SemanticModuleSnapshotV1
+> {}
+
+const sameSymbolEvidenceRule = Schema.Literal("same-symbol-ownership")
+
+// SameSymbolEvidence is closed because bond keys retain only reusable ownership semantics.
+const SameSymbolEvidence = Schema.Struct({
+  ruleId: sameSymbolEvidenceRule,
+  left: SemanticModuleEntityKey,
+  right: SemanticModuleEntityKey
+})
+
+// SameSymbolEvidence keeps decoded endpoints typed because validation and freezing share them.
+interface SameSymbolEvidence extends Schema.Schema.Type<typeof SameSymbolEvidence> {}
+
+const proofDirections = Array.make<["forward", "reverse"]>("forward", "reverse")
+const proofDirectionSchema = Schema.Literals(proofDirections)
+
+// ProofStep has direction because stored bond endpoints stay canonical.
+export const SemanticModuleMembershipProofStep = Schema.Struct({
+  bondKey: SemanticModuleBondKey,
+  direction: proofDirectionSchema
+})
+
+export interface SemanticModuleMembershipProofStep extends Schema.Schema.Type<
+  typeof SemanticModuleMembershipProofStep
+> {}
+
 const placementDataMembers = Array.make(
   SplitSemanticModulePlacementData,
   MixedPhysicalModulePlacementData
@@ -344,42 +245,487 @@ export type SemanticModulePlacementData = Schema.Schema.Type<typeof SemanticModu
 const moduleFirstMember = (module: SemanticModuleRecord): SemanticModuleEntityKey =>
   pipe(module.members, Array.head, Option.getOrThrow)
 
-const physicalPathsForMembers = (
-  members: ReadonlyArray<SemanticModuleEntityKey>
-): ReadonlyArray<string> => pipe(members, Array.map(Struct.get("path")), uniqueSortedPaths)
-
-const workspacePathOf = (context: ProgramMatchContext) => (sourceFile: ts.SourceFile) =>
-  pipe(
-    toRelativeFileName(context.projectRoot)(sourceFile.fileName),
-    toWorkspacePath(context.projectRoot, context.workspaceRoot)
-  )
-
-const sourceFileHasWorkspacePath =
-  (context: ProgramMatchContext) => (workspacePath: string) => (sourceFile: ts.SourceFile) => {
-    const sourceWorkspacePath = workspacePathOf(context)(sourceFile)
-    return stringEquivalence(sourceWorkspacePath, workspacePath)
-  }
-
-const sourceFileByWorkspacePath = (context: ProgramMatchContext) => (workspacePath: string) =>
-  Array.findFirst(context.sourceFiles, sourceFileHasWorkspacePath(context)(workspacePath))
-
-// SemanticReferenceKind aliases the kind schema because witnesses share one closed set.
-type SemanticReferenceKind = Schema.Schema.Type<typeof semanticReferenceKindSchema>
-const sameSymbolEvidenceRule = Schema.Literal(sameSymbolOwnershipRuleId)
-
-// SameSymbolEvidence is closed because bond keys retain only reusable ownership semantics.
-const SameSymbolEvidence = Schema.Struct({
-  ruleId: sameSymbolEvidenceRule,
-  left: SemanticModuleEntityKey,
-  right: SemanticModuleEntityKey
-})
-
-// SameSymbolEvidence keeps decoded endpoints typed because validation and freezing share them.
-interface SameSymbolEvidence extends Schema.Schema.Type<typeof SameSymbolEvidence> {}
-
 // semanticModuleEngine owns snapshot/placement because bonds and graph share one pipeline.
 const createSemanticModuleEngine = () => {
   // --- collocated helpers (private) --- nested because the semantic module is one physical module.
+
+  const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
+  const nodeEquivalence = Equivalence.strictEqual<ts.Node>()
+
+  const freeze = <A extends object>(value: A): A => {
+    const frozenValue = Object.freeze(value)
+    return frozenValue
+  }
+
+  const symbolEquivalence = Equivalence.strictEqual<ts.Symbol>()
+
+  const bindingIdentifiers = (name: ts.BindingName): ReadonlyArray<ts.Identifier> => {
+    if (ts.isIdentifier(name)) {
+      return Array.of(name)
+    }
+
+    const identifiersForElement = (
+      element: ts.ArrayBindingElement | ts.BindingElement
+    ): ReadonlyArray<ts.Identifier> =>
+      ts.isBindingElement(element) ? bindingIdentifiers(element.name) : Array.empty()
+
+    return Array.flatMap(name.elements, identifiersForElement)
+  }
+
+  const symbolOwnsIdentifier = (identifier: ts.Identifier) => (symbol: ts.Symbol) => {
+    const declarations = symbol.declarations ?? emptyDeclarations
+
+    const isIdentifierParent = (declaration: ts.Node) =>
+      nodeEquivalence(identifier.parent, declaration)
+
+    return Array.some(declarations, isIdentifierParent)
+  }
+
+  const symbolForIdentifier =
+    (checker: ts.TypeChecker) =>
+    (identifier: ts.Identifier): Option.Option<ts.Symbol> => {
+      if (strictEqual("")(identifier.text)) {
+        return Option.none()
+      }
+
+      const hasIdentifierName = Function.flow(
+        (symbol: ts.Symbol) => symbol.getName(),
+        strictEqual(identifier.text)
+      )
+
+      const localSymbol = pipe(
+        checker.getSymbolsInScope(identifier, ts.SymbolFlags.All),
+        Array.filter(hasIdentifierName),
+        Array.findFirst(symbolOwnsIdentifier(identifier))
+      )
+
+      return pipe(
+        localSymbol,
+        Option.orElse(() => resolvedSymbolAt(checker)(identifier))
+      )
+    }
+
+  const symbolsForBindingName =
+    (checker: ts.TypeChecker) =>
+    (name: ts.BindingName): ReadonlyArray<ts.Symbol> => {
+      const identifiers = bindingIdentifiers(name)
+      const symbolsForIdentifier = Function.flow(symbolForIdentifier(checker), Option.toArray)
+
+      return Array.flatMap(identifiers, symbolsForIdentifier)
+    }
+
+  const entityKeyMatches =
+    (expected: SemanticModuleEntityKey) => (actual: SemanticModuleEntityKey) =>
+      entityKeyEquivalence(expected, actual)
+
+  // ForestEdge is a directed bond edge because proof search walks forest adjacency.
+  class ForestEdge extends Data.Class<{
+    readonly neighbor: SemanticModuleEntityKey
+    readonly step: SemanticModuleMembershipProofStep
+  }> {}
+
+  // ProofQueueItem is a BFS queue node because proof search stores path tips by entity.
+  class ProofQueueItem extends Data.Class<{
+    readonly token: string
+    readonly path: ReadonlyArray<SemanticModuleMembershipProofStep>
+  }> {}
+
+  // ProofSearchState is BFS state because proof search needs queue and visited together.
+  class ProofSearchState extends Data.Class<{
+    readonly queue: ReadonlyArray<ProofQueueItem>
+    readonly visited: HashMap.HashMap<string, true>
+    readonly result: Option.Option<ReadonlyArray<SemanticModuleMembershipProofStep>>
+  }> {}
+
+  const emptyProofValues: ReadonlyArray<SemanticModuleMembershipProofStep> = Array.empty()
+
+  const containsEntity = (key: SemanticModuleEntityKey) => (module: SemanticModuleRecord) =>
+    Array.some(module.members, entityKeyMatches(key))
+
+  const emptyProof = Object.freeze(emptyProofValues)
+
+  const freezeProofStep = (step: SemanticModuleMembershipProofStep) => {
+    freezeBondKey(step.bondKey)
+    return Object.freeze(step)
+  }
+
+  const appendForestEdge =
+    (from: SemanticModuleEntityKey, edge: ForestEdge) =>
+    (adjacency: HashMap.HashMap<string, ReadonlyArray<ForestEdge>>) => {
+      const token = entityKeyToken(from)
+      const existing = pipe(HashMap.get(adjacency, token), Option.getOrElse(Array.empty))
+      const nextEdges = Array.append(existing, edge)
+      return HashMap.set(adjacency, token, nextEdges)
+    }
+
+  const makeForwardEdge = (bondKey: SemanticModuleBondKey) => {
+    const step = SemanticModuleMembershipProofStep.make({ bondKey, direction: "forward" })
+    return new ForestEdge({
+      neighbor: bondKey.right,
+      step
+    })
+  }
+
+  const makeReverseEdge = (bondKey: SemanticModuleBondKey) => {
+    const step = SemanticModuleMembershipProofStep.make({ bondKey, direction: "reverse" })
+    return new ForestEdge({
+      neighbor: bondKey.left,
+      step
+    })
+  }
+
+  const addBondEdges =
+    (bondKey: SemanticModuleBondKey) =>
+    (adjacency: HashMap.HashMap<string, ReadonlyArray<ForestEdge>>) => {
+      const forward = makeForwardEdge(bondKey)
+      const reverse = makeReverseEdge(bondKey)
+      const withForward = appendForestEdge(bondKey.left, forward)(adjacency)
+      return appendForestEdge(bondKey.right, reverse)(withForward)
+    }
+
+  const emptyForestAdjacency = HashMap.empty<string, ReadonlyArray<ForestEdge>>()
+
+  const forestAdjacency = (forestBondKeys: ReadonlyArray<SemanticModuleBondKey>) =>
+    Array.reduce(forestBondKeys, emptyForestAdjacency, (adjacency, bondKey) =>
+      addBondEdges(bondKey)(adjacency)
+    )
+
+  const freezeProofSteps = Array.map(freezeProofStep)
+
+  const freezePathSteps = (
+    steps: ReadonlyArray<SemanticModuleMembershipProofStep>
+  ): ReadonlyArray<SemanticModuleMembershipProofStep> => {
+    const frozen = Object.freeze(steps)
+    return frozen
+  }
+
+  const frozenProofPath = Function.flow(freezeProofSteps, freezePathSteps)
+
+  const makeGoalReachedState =
+    (current: ProofQueueItem) =>
+    (remainingQueue: ReadonlyArray<ProofQueueItem>) =>
+    (visited: ProofSearchState["visited"]) => {
+      const goalPath = frozenProofPath(current.path)
+      const result = Option.some<ReadonlyArray<SemanticModuleMembershipProofStep>>(goalPath)
+      return new ProofSearchState({
+        queue: remainingQueue,
+        visited,
+        result
+      })
+    }
+
+  const withNeighborQueued =
+    (currentPath: ReadonlyArray<SemanticModuleMembershipProofStep>) =>
+    (edge: ForestEdge) =>
+    (state: ProofSearchState) => {
+      const neighborToken = entityKeyToken(edge.neighbor)
+      if (HashMap.has(state.visited, neighborToken)) {
+        return state
+      }
+      const nextPath = Array.append(currentPath, edge.step)
+
+      const queueItem = new ProofQueueItem({
+        token: neighborToken,
+        path: nextPath
+      })
+
+      const queue = Array.append(state.queue, queueItem)
+      const visited = HashMap.set(state.visited, neighborToken, true as const)
+
+      return new ProofSearchState({
+        queue,
+        visited,
+        result: state.result
+      })
+    }
+
+  const expandProofEdges =
+    (adjacency: HashMap.HashMap<string, ReadonlyArray<ForestEdge>>) =>
+    (goalToken: string) =>
+    (state: ProofSearchState): ProofSearchState => {
+      const hasResult = Option.isSome(state.result)
+      if (hasResult) {
+        return state
+      }
+      const queueEmpty = strictEqual(0)(state.queue.length)
+      if (queueEmpty) {
+        return state
+      }
+      const queueHead = Array.head(state.queue)
+      const current = Option.getOrThrow(queueHead)
+      const remainingQueue = Array.drop(state.queue, 1)
+      if (strictEqual(current.token)(goalToken)) {
+        return makeGoalReachedState(current)(remainingQueue)(state.visited)
+      }
+      const edges = pipe(HashMap.get(adjacency, current.token), Option.getOrElse(Array.empty))
+      const pendingResult = Option.none<ReadonlyArray<SemanticModuleMembershipProofStep>>()
+
+      const pending = new ProofSearchState({
+        queue: remainingQueue,
+        visited: state.visited,
+        result: pendingResult
+      })
+
+      const withNeighbors = Array.reduce(edges, pending, (currentState, edge) =>
+        withNeighborQueued(current.path)(edge)(currentState)
+      )
+
+      return expandProofEdges(adjacency)(goalToken)(withNeighbors)
+    }
+
+  const makeInitialProofSearch = (startToken: string) => {
+    const startItem = new ProofQueueItem({ token: startToken, path: emptyProofValues })
+    const startQueue = Array.of(startItem)
+    const emptyVisited = HashMap.empty<string, true>()
+    const startVisited = HashMap.set(emptyVisited, startToken, true)
+    const initialResult = Option.none<ReadonlyArray<SemanticModuleMembershipProofStep>>()
+
+    return new ProofSearchState({
+      queue: startQueue,
+      visited: startVisited,
+      result: initialResult
+    })
+  }
+
+  const runProofSearch = (
+    adjacency: HashMap.HashMap<string, ReadonlyArray<ForestEdge>>,
+    startToken: string,
+    goalToken: string
+  ) => {
+    const initial = makeInitialProofSearch(startToken)
+    const expanded = expandProofEdges(adjacency)(goalToken)(initial)
+    return expanded.result
+  }
+
+  const proofPath = (
+    module: SemanticModuleRecord,
+    left: SemanticModuleEntityKey,
+    right: SemanticModuleEntityKey
+  ) => {
+    if (entityKeyEquivalence(left, right)) {
+      return Option.some(emptyProof)
+    }
+    const adjacency = forestAdjacency(module.forestBondKeys)
+    const startToken = entityKeyToken(left)
+    const goalToken = entityKeyToken(right)
+    return runProofSearch(adjacency, startToken, goalToken)
+  }
+
+  const moduleFor = Function.dual<
+    (
+      key: SemanticModuleEntityKey
+    ) => (snapshot: SemanticModuleSnapshotV1) => Option.Option<SemanticModuleRecord>,
+    (
+      snapshot: SemanticModuleSnapshotV1,
+      key: SemanticModuleEntityKey
+    ) => Option.Option<SemanticModuleRecord>
+  >(2, (snapshot, key) => pipe(snapshot.modules, Array.findFirst(containsEntity(key))))
+
+  const peersInModule = (key: SemanticModuleEntityKey) => (module: SemanticModuleRecord) => {
+    const differsFromKey = Predicate.not(entityKeyMatches(key))
+    const peers = Array.filter(module.members, differsFromKey)
+
+    return Object.freeze(peers)
+  }
+
+  const peersFor = Function.dual<
+    (
+      key: SemanticModuleEntityKey
+    ) => (
+      snapshot: SemanticModuleSnapshotV1
+    ) => Option.Option<ReadonlyArray<SemanticModuleEntityKey>>,
+    (
+      snapshot: SemanticModuleSnapshotV1,
+      key: SemanticModuleEntityKey
+    ) => Option.Option<ReadonlyArray<SemanticModuleEntityKey>>
+  >(2, (snapshot, key) =>
+    pipe(snapshot.modules, Array.findFirst(containsEntity(key)), Option.map(peersInModule(key)))
+  )
+
+  const proofBetween = Function.dual<
+    (
+      left: SemanticModuleEntityKey,
+      right: SemanticModuleEntityKey
+    ) => (
+      snapshot: SemanticModuleSnapshotV1
+    ) => Option.Option<ReadonlyArray<SemanticModuleMembershipProofStep>>,
+    (
+      snapshot: SemanticModuleSnapshotV1,
+      left: SemanticModuleEntityKey,
+      right: SemanticModuleEntityKey
+    ) => Option.Option<ReadonlyArray<SemanticModuleMembershipProofStep>>
+  >(3, (snapshot, left, right) =>
+    pipe(
+      snapshot,
+      moduleFor(left),
+      Option.filter(containsEntity(right)),
+      Option.flatMap((moduleRecord) => {
+        const path = proofPath(moduleRecord, left, right)
+        return path
+      })
+    )
+  )
+
+  const stringEquivalence = Equivalence.strictEqual<string>()
+  // Stable because same-symbol bonds share one catalog entry.
+  const sameSymbolOwnershipRuleId = "same-symbol-ownership" as const
+
+  const uniqueSortedPaths = (paths: ReadonlyArray<string>): ReadonlyArray<string> =>
+    pipe(paths, Array.dedupe, Array.sort(Order.String), freeze)
+
+  const isModuleDeclarationBody = (body: ts.ModuleBody): body is ts.NamespaceDeclaration =>
+    strictEqual(ts.SyntaxKind.ModuleDeclaration)(body.kind)
+
+  const dedupeSymbols = (symbols: ReadonlyArray<ts.Symbol>) =>
+    Array.dedupeWith(symbols, symbolEquivalence)
+
+  const variableSymbols = (checker: ts.TypeChecker) =>
+    Function.flow(
+      Struct.get<ts.VariableDeclaration, "name">("name"),
+      symbolsForBindingName(checker)
+    )
+
+  const symbolsForRequiredDeclaration =
+    (checker: ts.TypeChecker) =>
+    (
+      declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration
+    ): ReadonlyArray<ts.Symbol> =>
+      pipe(declaration.name, symbolForIdentifier(checker), Option.toArray)
+
+  const defaultDeclarationSymbol =
+    (checker: ts.TypeChecker) =>
+    (sourceFile: ts.SourceFile) =>
+    (declaration: EntityDeclaration): Option.Option<ts.Symbol> => {
+      const isDefaultSymbol = Function.flow(
+        (symbol: ts.Symbol) => symbol.getName(),
+        strictEqual("default")
+      )
+
+      const ownsDeclaration = (symbol: ts.Symbol) => {
+        const declarations = symbol.declarations ?? emptyDeclarations
+        const isDeclaration = (candidate: ts.Node) => nodeEquivalence(declaration, candidate)
+
+        return Array.some(declarations, isDeclaration)
+      }
+
+      return pipe(
+        checker.getSymbolAtLocation(sourceFile),
+        Option.fromNullishOr,
+        Option.map((moduleSymbol) => checker.getExportsOfModule(moduleSymbol)),
+        Option.map(Array.filter(isDefaultSymbol)),
+        Option.flatMap(Array.findFirst(ownsDeclaration))
+      )
+    }
+
+  const symbolsForOptionalDeclaration =
+    (checker: ts.TypeChecker) =>
+    (sourceFile: ts.SourceFile) =>
+    (declaration: ts.FunctionDeclaration | ts.ClassDeclaration): ReadonlyArray<ts.Symbol> =>
+      pipe(
+        declaration.name,
+        Option.fromNullishOr,
+        Option.flatMap(symbolForIdentifier(checker)),
+        Option.orElse(() => defaultDeclarationSymbol(checker)(sourceFile)(declaration)),
+        Option.toArray
+      )
+
+  const symbolsForModule =
+    (checker: ts.TypeChecker) =>
+    (sourceFile: ts.SourceFile) =>
+    (declaration: ts.ModuleDeclaration | ts.NamespaceDeclaration): ReadonlyArray<ts.Symbol> => {
+      const symbolAtName = pipe(
+        declaration.name,
+        Option.liftPredicate(ts.isIdentifier),
+        Option.flatMap(symbolForIdentifier(checker)),
+        Option.toArray
+      )
+
+      const symbolsForNestedStatement = (statement: ts.Statement): ReadonlyArray<ts.Symbol> => {
+        if (ts.isVariableStatement(statement)) {
+          const variableSymbol = Function.flow(
+            Struct.get<ts.VariableDeclaration, "name">("name"),
+            symbolsForBindingName(checker)
+          )
+
+          return Array.flatMap(statement.declarationList.declarations, variableSymbol)
+        }
+
+        if (ts.isModuleDeclaration(statement)) {
+          return pipe(statement, symbolsForModule(checker)(sourceFile))
+        }
+
+        return pipe(
+          statement,
+          nestedDeclarationName,
+          Option.flatMap(symbolForIdentifier(checker)),
+          Option.toArray
+        )
+      }
+
+      const symbolsInModuleBlock = Function.flow(
+        Struct.get<ts.ModuleBlock, "statements">("statements"),
+        Array.flatMap(symbolsForNestedStatement)
+      )
+
+      const symbolsForBody = pipe(
+        EffectMatch.type<ts.ModuleBody>(),
+        EffectMatch.when(ts.isModuleBlock, symbolsInModuleBlock),
+        EffectMatch.when(isModuleDeclarationBody, symbolsForModule(checker)(sourceFile)),
+        EffectMatch.orElse(Function.constant(emptySymbols))
+      )
+
+      const symbolsInBody = pipe(
+        declaration.body,
+        Option.fromNullishOr,
+        Option.map(symbolsForBody),
+        Option.getOrElse(Function.constant(emptySymbols))
+      )
+
+      const symbols = Array.appendAll(symbolAtName, symbolsInBody)
+
+      return dedupeSymbols(symbols)
+    }
+
+  const symbolsForDeclaration =
+    (checker: ts.TypeChecker) =>
+    (sourceFile: ts.SourceFile) =>
+    (declaration: EntityDeclaration): ReadonlyArray<ts.Symbol> =>
+      pipe(
+        EffectMatch.value(declaration),
+        EffectMatch.when(ts.isVariableDeclaration, variableSymbols(checker)),
+        EffectMatch.when(ts.isModuleDeclaration, symbolsForModule(checker)(sourceFile)),
+        EffectMatch.when(
+          ts.isFunctionDeclaration,
+          symbolsForOptionalDeclaration(checker)(sourceFile)
+        ),
+        EffectMatch.when(ts.isClassDeclaration, symbolsForOptionalDeclaration(checker)(sourceFile)),
+        EffectMatch.when(ts.isInterfaceDeclaration, symbolsForRequiredDeclaration(checker)),
+        EffectMatch.when(ts.isTypeAliasDeclaration, symbolsForRequiredDeclaration(checker)),
+        EffectMatch.when(ts.isEnumDeclaration, symbolsForRequiredDeclaration(checker)),
+        EffectMatch.exhaustive
+      )
+
+  const physicalPathsForMembers = (
+    members: ReadonlyArray<SemanticModuleEntityKey>
+  ): ReadonlyArray<string> => pipe(members, Array.map(Struct.get("path")), uniqueSortedPaths)
+
+  const workspacePathOf = (context: ProgramMatchContext) => (sourceFile: ts.SourceFile) =>
+    pipe(
+      toRelativeFileName(context.projectRoot)(sourceFile.fileName),
+      toWorkspacePath(context.projectRoot, context.workspaceRoot)
+    )
+
+  const sourceFileHasWorkspacePath =
+    (context: ProgramMatchContext) => (workspacePath: string) => (sourceFile: ts.SourceFile) => {
+      const sourceWorkspacePath = workspacePathOf(context)(sourceFile)
+      return stringEquivalence(sourceWorkspacePath, workspacePath)
+    }
+
+  const sourceFileByWorkspacePath = (context: ProgramMatchContext) => (workspacePath: string) =>
+    Array.findFirst(context.sourceFiles, sourceFileHasWorkspacePath(context)(workspacePath))
+
+  // SemanticReferenceKind aliases the kind schema because witnesses share one closed set.
+  type SemanticReferenceKind = Schema.Schema.Type<typeof semanticReferenceKindSchema>
 
   const declarationKeyPart = (declaration: ts.Declaration) => {
     const sourcePath = declaration.getSourceFile().fileName.replaceAll("\\", "/")
@@ -1549,7 +1895,7 @@ const createSemanticModuleEngine = () => {
     return visit(identifier, false)
   }
 
-  const referenceKindForIdentifier = (identifier: ts.Identifier): SemanticReferenceKind => {
+  const referenceKindForIdentifier = (identifier: ts.Identifier) => {
     if (isStaticAggregationReference(identifier)) {
       return "aggregation"
     }

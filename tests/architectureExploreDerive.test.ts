@@ -20,7 +20,7 @@ import { ExportedSymbolUsage } from "@better-typescript/matchers/builtins/archit
 import { ExternalDependencyConstructionData } from "@better-typescript/matchers/builtins/externalDependencyConstruction"
 import { ImportUsageData } from "@better-typescript/matchers/builtins/importUsage"
 import { ImportedNameUsage } from "@better-typescript/matchers/builtins/architectureExplore/importedNameUsage"
-import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurdenData"
+import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurden"
 import { ModuleIdentityData } from "@better-typescript/matchers/builtins/moduleIdentity"
 import { ModuleScopeEffectData } from "@better-typescript/matchers/builtins/moduleScopeEffectData"
 import { SeamLeakageData } from "@better-typescript/matchers/builtins/seamLeakageEvidence"

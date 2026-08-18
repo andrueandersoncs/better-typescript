@@ -1,4 +1,4 @@
-import { Array, Option, Schema, Struct, pipe, flow } from "effect"
+import { Array, Schema, Struct, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import { toRelativeFileName } from "../support/paths.js"

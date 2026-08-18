@@ -1,4 +1,4 @@
-import type { SemanticModuleSnapshotV1 } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleSnapshotV1"
+import type { SemanticModuleSnapshotV1 } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine"
 
 type SemanticModuleDeclarationKind = SemanticModuleSnapshotV1["entities"][number]["declarationKind"]
 

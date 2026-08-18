@@ -1,4 +1,4 @@
-import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurdenData"
+import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurden"
 import { type Detection } from "@better-typescript/core/engine/location/detectionData"
 import { detectionAt } from "./architectureExploreStructureDetectionAt.js"
 

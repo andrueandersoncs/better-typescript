@@ -40,23 +40,6 @@ export interface CompositionForwarderData extends Schema.Schema.Type<
 
 const emptyParameterNames: ReadonlyArray<string> = Array.empty()
 
-const finalCompositionCall = (arrow: ts.ArrowFunction): Option.Option<ts.CallExpression> =>
-  pipe(
-    expressionFromConciseBody(arrow.body),
-    Option.flatMap((expression) => {
-      const nestedCall = pipe(
-        Option.some(expression),
-        Option.filter(ts.isArrowFunction),
-        Option.filter(nestedSingleParamArrow),
-        Option.flatMap(finalCompositionCall)
-      )
-
-      const call = Option.liftPredicate(ts.isCallExpression)(expression)
-
-      return pipe(nestedCall, Option.orElse(Function.constant(call)))
-    })
-  )
-
 const isAllowedCompositionExpression = (expression: ts.Expression): boolean =>
   pipe(
     expression,
@@ -148,19 +131,36 @@ const referencesNonParameterOperation =
     )
   }
 
-const isCompositionForwarder = (arrow: ts.ArrowFunction) => {
-  const parameterNames = compositionParameterNames(arrow)
-
-  return pipe(
-    finalCompositionCall(arrow),
-    Option.filter(isAllowedCompositionExpression),
-    Option.exists(referencesNonParameterOperation(parameterNames))
-  )
-}
-
 const compositionForwarderElements =
   (index: ExportReferenceIndex) =>
   (context: MatchContext): ReadonlyArray<MatcherMatch<CompositionForwarderData>> => {
+    const finalCompositionCall = (arrow: ts.ArrowFunction): Option.Option<ts.CallExpression> =>
+      pipe(
+        expressionFromConciseBody(arrow.body),
+        Option.flatMap((expression) => {
+          const nestedCall = pipe(
+            Option.some(expression),
+            Option.filter(ts.isArrowFunction),
+            Option.filter(nestedSingleParamArrow),
+            Option.flatMap(finalCompositionCall)
+          )
+
+          const call = Option.liftPredicate(ts.isCallExpression)(expression)
+
+          return pipe(nestedCall, Option.orElse(Function.constant(call)))
+        })
+      )
+
+    const isCompositionForwarder = (arrow: ts.ArrowFunction) => {
+      const parameterNames = compositionParameterNames(arrow)
+
+      return pipe(
+        finalCompositionCall(arrow),
+        Option.filter(isAllowedCompositionExpression),
+        Option.exists(referencesNonParameterOperation(parameterNames))
+      )
+    }
+
     if (isTestSourceFile(context.workspaceRoot)(context.sourceFile)) {
       return Array.empty()
     }

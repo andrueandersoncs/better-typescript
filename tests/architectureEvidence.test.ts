@@ -9,7 +9,7 @@ import { seamLeakageEvidence } from "@better-typescript/guidance/preset/architec
 import { externalDependencyConstruction } from "@better-typescript/guidance/preset/architectureExploreOopPolicies"
 import { singleAdapterSeams } from "@better-typescript/guidance/preset/architectureExploreOopPolicies"
 import { ExternalDependencyConstructionData } from "@better-typescript/matchers/builtins/externalDependencyConstruction"
-import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurdenData"
+import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurden"
 import { ModuleGraphData } from "@better-typescript/matchers/builtins/moduleGraph"
 import { PassThroughWrapperData } from "@better-typescript/matchers/builtins/passThroughWrappers"
 import { SeamLeakageData } from "@better-typescript/matchers/builtins/seamLeakageEvidence"

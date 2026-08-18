@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
 import { Array, Option, pipe } from "effect"
 import type { SemanticModuleEntityKey } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEntityKey"
-import type { SemanticModuleSnapshotV1 } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleSnapshotV1"
+import type { SemanticModuleSnapshotV1 } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleEngine"
 import type { SemanticModuleFixtureEntity } from "./semanticModuleFixtureEntity.js"
 import type { SemanticModuleFixtureManifest } from "./semanticModuleFixtureManifest.js"
 import type { SemanticModuleFixtureSelector } from "./semanticModuleFixtureSelector.js"

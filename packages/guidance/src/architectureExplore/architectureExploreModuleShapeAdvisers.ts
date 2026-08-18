@@ -19,7 +19,7 @@ import { NamedDetection } from "@better-typescript/core/engine/derive/namedDetec
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import { makePackageExamples } from "../makePackageExamples.js"
 import { ModuleGraphData } from "@better-typescript/matchers/builtins/moduleGraph"
-import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurdenData"
+import { InterfaceBurdenData } from "@better-typescript/matchers/builtins/interfaceBurden"
 import { CompositionFingerprintData } from "@better-typescript/matchers/builtins/compositionFingerprints"
 import { CompositionForwarderData } from "@better-typescript/matchers/builtins/compositionForwarders"
 import { PassThroughWrapperData } from "@better-typescript/matchers/builtins/passThroughWrappers"
