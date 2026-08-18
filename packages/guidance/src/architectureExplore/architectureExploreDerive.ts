@@ -1,4 +1,4 @@
-import { Array, Effect, Record } from "effect"
+import { Array, Effect, Order, pipe } from "effect"
 
 import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
@@ -6,41 +6,30 @@ import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
 import type { Policy } from "@better-typescript/core/engine/policy/policyClass"
 import type { SemanticModuleHardBondRuleCatalog } from "@better-typescript/matchers/builtins/architectureExplore/semanticModuleHardBondRuleCatalog.js"
 import { makeArchitectureExplorePolicies } from "../preset/semanticModulePlacementPolicies.js"
-import {
-  bounceCluster,
-  deletionTestShallowness,
-  duplicatedOrchestration,
-  wideShallowInterface
-} from "./architectureExploreModuleShapeAdvisers.js"
-import {
-  hubModule,
-  leakedSeam,
-  registrationCeremony,
-  testPastInterface
-} from "./architectureExploreDependencyStructureAdvisers.js"
-import {
-  hardToTestHotspot,
-  hypotheticalSeam,
-  invisibleTests
-} from "./architectureExploreTestabilityAdvisers.js"
-import { semanticModulePlacementAdvice } from "./architectureExploreSemanticModulePlacementAdviser.js"
+import { architectureExploreModuleShapeAdviserCatalog } from "./architectureExploreModuleShapeAdvisers.js"
+import { architectureExploreDependencyStructureAdviserCatalog } from "./architectureExploreDependencyStructureAdvisers.js"
+import { architectureExploreTestabilityAdviserCatalog } from "./architectureExploreTestabilityAdvisers.js"
+import { architectureExploreSemanticModulePlacementAdviserCatalog } from "./architectureExploreSemanticModulePlacementAdviser.js"
 
-const architectureExploreAdviserCatalog = {
-  deletionTestShallowness,
-  wideShallowInterface,
-  bounceCluster,
-  leakedSeam,
-  testPastInterface,
-  hardToTestHotspot,
-  hypotheticalSeam,
-  registrationCeremony,
-  hubModule,
-  invisibleTests,
-  duplicatedOrchestration,
-  semanticModulePlacementAdvice
-} as const
+const architectureExploreAdviserCatalog = Array.flatten(
+  Array.make(
+    architectureExploreModuleShapeAdviserCatalog,
+    architectureExploreDependencyStructureAdviserCatalog,
+    architectureExploreTestabilityAdviserCatalog,
+    architectureExploreSemanticModulePlacementAdviserCatalog
+  )
+)
 
-export const architectureExploreAdvisers = Record.values(architectureExploreAdviserCatalog)
+type OrderedAdviser = (typeof architectureExploreAdviserCatalog)[number]
+
+const adviserOrder = (entry: OrderedAdviser) => entry[0]
+const byAdviserOrder = Order.mapInput(Order.Number, adviserOrder)
+
+export const architectureExploreAdvisers = pipe(
+  architectureExploreAdviserCatalog,
+  Array.sort(byAdviserOrder),
+  Array.map(([, adviser]) => adviser)
+)
 
 const nameArchitectureExploreDetections = (signal: Signal) =>
   Array.map(signal.detections, makeNamedDetection(signal.name))

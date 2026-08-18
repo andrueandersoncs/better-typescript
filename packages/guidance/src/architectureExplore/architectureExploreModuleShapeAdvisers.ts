@@ -548,3 +548,10 @@ export const {
   wideShallowInterfaceExamples,
   wideShallowInterface
 } = makeArchitectureExploreModuleShapeAdvisers()
+
+export const architectureExploreModuleShapeAdviserCatalog = Array.make(
+  Tuple.make(0, deletionTestShallowness),
+  Tuple.make(1, wideShallowInterface),
+  Tuple.make(2, bounceCluster),
+  Tuple.make(10, duplicatedOrchestration)
+)

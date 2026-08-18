@@ -12,6 +12,10 @@ import { architectureExploreFpWiring } from "@better-typescript/guidance/archite
 import { architectureExploreNeutralHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreNeutralHardBondRuleCatalog"
 import { architectureExploreOopHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreOopHardBondRuleCatalog"
 import { architectureExploreFpHardBondRuleCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreFpHardBondRuleCatalog"
+import { architectureExploreModuleShapeAdviserCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreModuleShapeAdvisers"
+import { architectureExploreDependencyStructureAdviserCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreDependencyStructureAdvisers"
+import { architectureExploreTestabilityAdviserCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreTestabilityAdvisers"
+import { architectureExploreSemanticModulePlacementAdviserCatalog } from "@better-typescript/guidance/architectureExplore/architectureExploreSemanticModulePlacementAdviser"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 import { semanticModulePlacementName } from "@better-typescript/guidance/preset/semanticModulePlacementPolicies"
 import { ContextTagSeamData } from "@better-typescript/matchers/builtins/contextTagSeams"
@@ -37,6 +41,17 @@ import { graphData } from "./architectureExploreDeriveGraphData.js"
 const deriveArchitectureAdvice = (
   signals: Parameters<typeof architectureExploreWiring.derive>[0]
 ) => Effect.runSync(architectureExploreWiring.derive(signals))
+
+test("Architecture Explore adviser modules expose their report-order catalogs", () => {
+  const orders = [
+    architectureExploreModuleShapeAdviserCatalog,
+    architectureExploreDependencyStructureAdviserCatalog,
+    architectureExploreTestabilityAdviserCatalog,
+    architectureExploreSemanticModulePlacementAdviserCatalog
+  ].map((catalog) => catalog.map(([order]) => order))
+
+  assert.deepEqual(orders, [[0, 1, 2, 10], [3, 4, 7, 8], [5, 6, 9], [11]])
+})
 
 test("architectureExploreWiring contains only relational silent evidence checks", () => {
   const names = architectureExplorePolicies.map((check) => check.name)

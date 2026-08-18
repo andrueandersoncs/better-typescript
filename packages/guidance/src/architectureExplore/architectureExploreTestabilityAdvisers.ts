@@ -1,5 +1,5 @@
 import { architectureExploreIsTestPath } from "./architectureExploreIsTestPath.js"
-import { Array, Data, Function, Option, Result, Schema, Struct, flow, pipe } from "effect"
+import { Array, Data, Function, Option, Result, Schema, Struct, Tuple, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -339,3 +339,9 @@ export const {
   hypotheticalSeam,
   invisibleTests
 } = makeArchitectureExploreTestabilityAdvisers()
+
+export const architectureExploreTestabilityAdviserCatalog = Array.make(
+  Tuple.make(5, hardToTestHotspot),
+  Tuple.make(6, hypotheticalSeam),
+  Tuple.make(9, invisibleTests)
+)

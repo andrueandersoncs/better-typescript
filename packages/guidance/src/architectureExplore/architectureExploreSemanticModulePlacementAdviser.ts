@@ -1,4 +1,16 @@
-import { Array, Data, Function, Option, Order, Result, Schema, Struct, flow, pipe } from "effect"
+import {
+  Array,
+  Data,
+  Function,
+  Option,
+  Order,
+  Result,
+  Schema,
+  Struct,
+  Tuple,
+  flow,
+  pipe
+} from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -371,3 +383,7 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
 
 export const { semanticModulePlacementName, semanticModulePlacementAdvice } =
   makeArchitectureExploreSemanticModulePlacementAdviser()
+
+export const architectureExploreSemanticModulePlacementAdviserCatalog = Array.of(
+  Tuple.make(11, semanticModulePlacementAdvice)
+)
