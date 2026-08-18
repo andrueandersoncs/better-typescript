@@ -1,6 +1,6 @@
 import { test } from "bun:test"
-import { processEnvironment } from "@better-typescript/guidance/preset/errorHygienePolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
 
-test("process-environment reports production reads and permits roots and tests", () =>
-  assertPolicyFixture(processEnvironment))
+test("process-environment reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("process-environment")))

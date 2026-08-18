@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferSpecificOperationNames } from "@better-typescript/guidance/preset/semanticNamingPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-specific-operation-names reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferSpecificOperationNames))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-specific-operation-names reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-specific-operation-names")))

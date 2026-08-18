@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferEffectArrayAppendAll } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-effect-array-append-all reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferEffectArrayAppendAll))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-effect-array-append-all reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-effect-array-append-all")))

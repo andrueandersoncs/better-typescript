@@ -59,8 +59,8 @@ const pipeAfterBinding = (symbol: string | null): string | null => { // ~detect 
   return pipe(value, (current) => current)
 }
 
-const moduleGraphElement = (element: Named): boolean => // ~detect
-  strictEqual("module-graph")(element.name)
+const packageGraphElement = (element: Named): boolean => // ~detect
+  strictEqual("package-graph")(element.name)
 
 type SourceFile = {}
 

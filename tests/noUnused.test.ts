@@ -1,15 +1,6 @@
-import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { noUnused } from "@better-typescript/guidance/preset/errorHygienePolicies"
-import { compilerOptionsForPolicies } from "@better-typescript/core/engine/policy/compilerOptionsForPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-unused reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noUnused))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
 
-test("no-unused owns the compiler options required by its primary diagnostics", () => {
-  assert.deepEqual(compilerOptionsForPolicies([noUnused]), {
-    noEmit: true,
-    noUnusedLocals: true,
-    noUnusedParameters: true
-  })
-})
+test("no-unused reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-unused")))

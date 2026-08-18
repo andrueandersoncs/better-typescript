@@ -1,9 +1,12 @@
-import * as assert from "node:assert/strict"
+import { Array, Schema } from "effect"
+import { Violation } from "@better-typescript/core/linter"
 
-export const parseNdjson = (stdout: string): ReadonlyArray<Record<string, unknown>> => {
-  const lines = stdout.split(/\r?\n/).filter((line) => line.length > 0)
+const ViolationFromJsonString = Schema.fromJsonString(Violation)
 
-  assert.ok(lines.length > 0, "expected stdout to contain NDJSON events")
+export const parseNdjson = (stdout: string): ReadonlyArray<Violation> => {
+  const lines = Array.filter(stdout.split(/\r?\n/), (line) => line.length > 0)
 
-  return lines.map((line) => JSON.parse(line) as Record<string, unknown>)
+  const decodeViolation = Schema.decodeUnknownSync(ViolationFromJsonString)
+
+  return Array.map(lines, (line) => decodeViolation(line))
 }

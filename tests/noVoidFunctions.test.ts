@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noVoidFunctions } from "@better-typescript/guidance/preset/errorHygienePolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-void-functions reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noVoidFunctions))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-void-functions reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-void-functions")))

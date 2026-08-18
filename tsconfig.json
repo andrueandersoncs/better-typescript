@@ -1,16 +1,14 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/matchers" },
-    { "path": "packages/core" },
-    { "path": "packages/guidance" },
-    { "path": "packages/cli" },
-    { "path": "packages/workflows" },
-    { "path": "tests" },
-    { "path": "tsconfig.selfhost.json" },
-    { "path": "scripts" },
-    { "path": "examples/extend-preset" },
-    { "path": "examples/architecture-fleets" },
-    { "path": "examples/programmatic" }
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/rules"
+    },
+    {
+      "path": "packages/cli"
+    }
   ]
 }

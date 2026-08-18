@@ -10,15 +10,10 @@ Always leave your changes uncomitted on the current branch unless explicitly ins
 them.
 
 Always run the self-hosting Better TypeScript check (`bun run dev`) on the codebase itself after
-making any changes **and fix all violations that are reported**. This includes Advice blocks: follow
-each block's remediation until the report is empty. Architecture advice is not informational output
-— it is a failing gate.
+making any changes and fix every reported Violation until the result is empty.
 
-Always make sure **all checks, advice, rules, and so on** are configured to be **enabled for the
-self-hosted tooling**, this includes **all newly-implemented checks, advice, wiring, etc**, and this
-applies to **all packages in this project** including `checks`, `core`, AND `cli`. Self-hosting is
-intended to be a form of dogfooding where every check, advice, etc, we implement is applied to this
-project such that we're following our own advice and dogfooding our own tooling.
+Always enable every built-in Rule for self-hosting across `core`, `rules`, and `cli`. Self-hosting
+is the dogfooding gate for the complete built-in catalog.
 
 Always run the whole-process benchmark (`bun run bench:self`) after every code change (.ts or .tsx
 files only) and report its minimum, median, and maximum runtime.

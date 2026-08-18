@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noWeakMap } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-weak-map reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noWeakMap))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-weak-map reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-weak-map")))

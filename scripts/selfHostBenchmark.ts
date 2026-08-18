@@ -1,14 +1,12 @@
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import * as path from "node:path"
-import { Effect } from "effect"
-import { defaultConfig } from "@better-typescript/guidance/preset/defaultWiring"
-import { loadWiringConfig } from "@better-typescript/core/project/loadWiringConfig"
+import { builtinRules } from "@better-typescript/rules/builtinRules"
 
 interface SelfHostBenchmarkTarget {
   readonly rootPath: string
   readonly cliPath: string
-  readonly checkNames: ReadonlyArray<string>
+  readonly ruleNames: ReadonlyArray<string>
 }
 
 interface SelfHostDurationSummary {
@@ -30,13 +28,12 @@ interface SelfHostBenchmarkOptions {
 export const selfHostBenchmarkTarget = async (
   rootPath: string
 ): Promise<SelfHostBenchmarkTarget> => {
-  const config = await Effect.runPromise(loadWiringConfig(rootPath, defaultConfig))
-  const checkNames = config.flatMap((entry) => entry.wiring.policies.map((check) => check.name))
+  const ruleNames = builtinRules.map((rule) => rule.name)
 
   return {
     rootPath,
     cliPath: path.join(rootPath, "packages", "cli", "dist", "index.js"),
-    checkNames
+    ruleNames
   }
 }
 

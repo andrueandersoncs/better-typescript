@@ -1,4 +1,4 @@
-import type { ExpectedDetection } from "./expectedDetection.js"
+import type { ExpectedViolation } from "./expectedViolation.js"
 
 const message = "Multi-line declarations must have a blank line above and below."
 
@@ -8,7 +8,7 @@ const hint =
   "not need surrounding blank lines; the first and last statements in a block are " +
   "exempt on the outer sides."
 
-export const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
+export const disallowedFixtureItems: ReadonlyArray<ExpectedViolation> = [
   {
     name: "crowded multi-line const reduce",
     fileName: "src/cases.ts",

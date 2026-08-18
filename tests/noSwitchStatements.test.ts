@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noSwitchStatements } from "@better-typescript/guidance/preset/controlFlowPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-switch-statements reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noSwitchStatements))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-switch-statements reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-switch-statements")))

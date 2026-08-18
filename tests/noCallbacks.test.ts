@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noCallbacks } from "@better-typescript/guidance/preset/controlFlowPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-callbacks reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noCallbacks))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-callbacks reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-callbacks")))

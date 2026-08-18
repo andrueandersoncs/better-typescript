@@ -9,7 +9,7 @@ const target = await selfHostBenchmarkTarget(rootPath)
 
 console.log(`Self-hosting ${target.rootPath}`)
 console.log(`Built CLI: ${target.cliPath}`)
-console.log(`Checks enrolled: ${target.checkNames.length}`)
+console.log(`Rules enabled: ${target.ruleNames.length}`)
 console.log("Reported durations exclude build time.")
 
 const report = await runSelfHostBenchmark(target, {
@@ -26,7 +26,7 @@ console.table(
 console.log(
   JSON.stringify({
     benchmark: "self-host",
-    policies: target.checkNames.length,
+    rules: target.ruleNames.length,
     runsMs: report.durationsMs,
     minimumMs: report.minimumMs,
     medianMs: report.medianMs,

@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferCurriedDataLastFunctions } from "@better-typescript/guidance/preset/dispatchAndCollectionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-curried-data-last-functions reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferCurriedDataLastFunctions))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-curried-data-last-functions reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-curried-data-last-functions")))

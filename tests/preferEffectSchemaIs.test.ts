@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferEffectSchemaIs } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-effect-schema-is reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferEffectSchemaIs))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-effect-schema-is reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-effect-schema-is")))

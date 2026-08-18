@@ -12,15 +12,14 @@
   "scripts": {
     "dev": "bun src/index.ts --pretty",
     "start": "bun src/index.ts",
-    "watch": "bun src/index.ts --pretty --watch",
-    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "build": "rm -rf dist && tsc -b tsconfig.json --force && chmod +x dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@better-typescript/guidance": "0.0.0",
     "@better-typescript/core": "0.0.0",
     "@effect/platform-bun": "^4.0.0-beta.98",
-    "effect": "^4.0.0-beta.98"
+    "effect": "^4.0.0-beta.98",
+    "@better-typescript/rules": "0.0.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0 || ^6.0.0"

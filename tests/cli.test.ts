@@ -8,59 +8,40 @@ import { repoRoot } from "./cliRepoRoot.js"
 import { noValueAliasesFixturePath } from "./cliNoValueAliasesFixturePath.js"
 import { commandTimeoutMs } from "./cliCommandTimeoutMs.js"
 import { runCli } from "./cliRunCli.js"
-import { spawnCli } from "./cliSpawnCli.js"
 import { copyNoThrowFixture } from "./cliNoThrowFixture.js"
 import { createSignalFreeFixture } from "./cliCreateSignalFreeFixture.js"
 import { parseNdjson } from "./cliParseNdjson.js"
 import { assertAnalyzingStatus } from "./cliAssertAnalyzingStatus.js"
-import { assertWatchingStatus } from "./cliAssertWatchingStatus.js"
-import { watchClose } from "./cliWatchClose.js"
-import { waitForOutput } from "./cliWaitForOutput.js"
-import { waitForFirstStdoutLine } from "./cliWaitForFirstStdoutLine.js"
-import { terminateChild } from "./cliTerminateChild.js"
 
-test("default CLI emits NDJSON initial signal events and exits", async () => {
-  const tempDir = await copyNoThrowFixture("cli-signals-")
+test("default CLI emits one NDJSON object per violation and exits successfully", async () => {
+  const tempDir = await copyNoThrowFixture("cli-violations-")
 
   try {
     const result = await runCli(["--project", tempDir])
+    const violations = parseNdjson(result.stdout)
 
     assert.equal(result.status, 0)
     assert.equal(result.signal, null)
     assertAnalyzingStatus(result.stderr, tempDir)
-
-    const events = parseNdjson(result.stdout)
-
-    assert.ok(events.length > 0, "expected the fixture to emit signal events")
-    assert.ok(events.every((event) => event._tag === "signal"))
-    assert.ok(
-      events.some((event) => typeof event.text === "string" && event.text.includes("no-throw")),
-      "expected one initial signal event to describe the no-throw rule"
-    )
+    assert.ok(violations.length > 0)
+    assert.ok(violations.some(({ ruleName }) => ruleName === "no-throw"))
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }
 })
 
-test("default CLI emits the no-value-aliases public identity", async () => {
+test("default CLI emits the selected no-value-aliases identity", async () => {
   const result = await runCli(["--project", noValueAliasesFixturePath])
+  const violations = parseNdjson(result.stdout)
+  const aliases = violations.filter(({ ruleName }) => ruleName === "no-value-aliases")
 
   assert.equal(result.status, 0)
-  assert.equal(result.signal, null)
   assertAnalyzingStatus(result.stderr, noValueAliasesFixturePath)
-
-  const events = parseNdjson(result.stdout)
-  const aliasEvent = events.find(
-    (event) => typeof event.text === "string" && event.text.includes("no-value-aliases")
-  )
-
-  assert.ok(aliasEvent)
-  assert.match(String(aliasEvent.text), /Do not declare aliases for existing values\./)
-  assert.match(String(aliasEvent.text), /Use the referenced value directly\./)
-  assert.doesNotMatch(String(aliasEvent.text), /no-export-aliases/)
+  assert.ok(aliases.length > 0)
+  assert.ok(aliases.every(({ message }) => message.includes("Use the referenced value directly.")))
 })
 
-test("default CLI emits one empty NDJSON event and exits for a signal-free project", async () => {
+test("default CLI prints no violation object for an empty project", async () => {
   const tempDir = await createSignalFreeFixture()
 
   try {
@@ -69,76 +50,24 @@ test("default CLI emits one empty NDJSON event and exits for a signal-free proje
     assert.equal(result.status, 0)
     assert.equal(result.signal, null)
     assertAnalyzingStatus(result.stderr, tempDir)
-    assert.deepEqual(parseNdjson(result.stdout), [{ rootPath: tempDir, _tag: "empty" }])
+    assert.deepEqual(parseNdjson(result.stdout), [])
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }
 })
 
-test("--watch keeps the CLI alive after its initial report and prints watching status", async () => {
-  const tempDir = await copyNoThrowFixture("cli-watch-")
-  const child = spawnCli(["--project", tempDir, "--watch"])
-  const close = watchClose(child)
-
-  try {
-    const [line, stderr] = await Promise.all([
-      waitForFirstStdoutLine(child),
-      waitForOutput(child, child.stderr, "watching status", (text) =>
-        text.includes(`Watching ${tempDir} for changes.`)
-      )
-    ])
-    const event = JSON.parse(line) as Record<string, unknown>
-
-    assert.equal(event._tag, "signal")
-    assertWatchingStatus(stderr, tempDir)
-    assert.equal(child.exitCode, null)
-    assert.equal(child.signalCode, null)
-    assert.equal(close.isClosed(), false)
-  } finally {
-    await terminateChild(child, close.promise)
-    await fs.rm(tempDir, { recursive: true, force: true })
-  }
-})
-
-test("--watch follows the discovered workspace root from a nested invocation", async () => {
-  const tempDir = await copyNoThrowFixture("cli-watch-root-")
-  const nestedDir = path.join(tempDir, "src", "nested")
-  const siblingPath = path.join(tempDir, "src", "allowed.ts")
-
-  await fs.mkdir(nestedDir)
-
-  const child = spawnCli(["--project", nestedDir, "--watch"])
-  const close = watchClose(child)
-
-  try {
-    await waitForFirstStdoutLine(child)
-    await Bun.sleep(300)
-
-    const rerun = waitForOutput(child, child.stdout, "sibling workspace rerun", (text) =>
-      text.includes('"_tag":"signal"')
-    )
-
-    await fs.appendFile(siblingPath, "\n")
-    await rerun
-
-    assert.equal(child.exitCode, null)
-    assert.equal(child.signalCode, null)
-  } finally {
-    await terminateChild(child, close.promise)
-    await fs.rm(tempDir, { recursive: true, force: true })
-  }
-})
-
-test("--pretty one-shot renders the empty report text and exits", async () => {
-  const tempDir = await createSignalFreeFixture()
+test("pretty CLI output is a projection of the same violation fields", async () => {
+  const tempDir = await copyNoThrowFixture("cli-pretty-")
 
   try {
     const result = await runCli(["--project", tempDir, "--pretty"])
 
     assert.equal(result.status, 0)
-    assert.equal(result.signal, null)
     assertAnalyzingStatus(result.stderr, tempDir)
-    assert.equal(result.stdout, `No signals in ${tempDir}.\n\n`)
+    assert.match(
+      result.stdout,
+      /src\/cases\.ts:\d+:\d+ no-throw Avoid throwing errors with throw\./
+    )
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
   }

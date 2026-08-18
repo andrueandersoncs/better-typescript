@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noNonNullAssertion } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-non-null-assertion reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noNonNullAssertion))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-non-null-assertion reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-non-null-assertion")))

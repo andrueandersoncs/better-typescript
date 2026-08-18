@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { requireCommandNameConsistency } from "@better-typescript/guidance/preset/semanticNamingPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("require-command-name-consistency reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(requireCommandNameConsistency))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("require-command-name-consistency reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("require-command-name-consistency")))

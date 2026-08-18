@@ -1,21 +1,14 @@
-import { Array, Effect } from "effect"
+import { Effect } from "effect"
+import { lint } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { runPolicyOnProject } from "@better-typescript/core/project/loadProject/runPolicyOnProject"
-import { noThrow } from "@better-typescript/guidance/preset/errorHygienePolicies"
+import { builtinRules } from "@better-typescript/rules/builtinRules"
 
-// This example is documentation because the programmatic surface deserves one runnable reference.
 const projectDirectory = process.argv[2] ?? "."
+const project = await Effect.runPromise(loadProject({ projectPath: projectDirectory }))
+const violations = lint({ project, rules: builtinRules })
 
-const detections = await Effect.runPromise(
-  Effect.gen(function* () {
-    const workspace = yield* loadProject(projectDirectory)
-
-    const perProject = yield* Effect.forEach(workspace.projects, runPolicyOnProject(noThrow))
-
-    return Array.flatten(perProject)
-  })
-)
-
-for (const found of detections) {
-  console.log(`${found.location.path}:${found.location.line} ${found.message}`)
+for (const violation of violations) {
+  console.log(
+    `${violation.filePath}:${violation.line}:${violation.column} ${violation.ruleName} ${violation.message}`
+  )
 }

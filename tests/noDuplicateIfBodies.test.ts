@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noDuplicateIfBodies } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-duplicate-if-bodies reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noDuplicateIfBodies))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-duplicate-if-bodies reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-duplicate-if-bodies")))

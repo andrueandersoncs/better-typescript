@@ -6,8 +6,8 @@ import { disallowedFixtureItems } from "./requireBecauseInCommentsDisallowedFixt
 import { runRequireBecauseInCommentsFixture } from "./requireBecauseInCommentsFixtureRunner.js"
 
 test("require-because-in-comments reports every comment without because", async () => {
-  const signals = await runRequireBecauseInCommentsFixture()
+  const violations = await runRequireBecauseInCommentsFixture()
 
-  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
-  assertAllowedFixtureItems(signals, allowedFixtureItems)
+  assertDisallowedFixtureItems(violations, disallowedFixtureItems)
+  assertAllowedFixtureItems(violations, allowedFixtureItems)
 })

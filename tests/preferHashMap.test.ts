@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferHashMap } from "@better-typescript/guidance/preset/dispatchAndCollectionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-hash-map reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferHashMap))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-hash-map reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-hash-map")))

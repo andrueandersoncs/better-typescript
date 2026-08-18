@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict"
-import { type Detection } from "@better-typescript/core/engine/location/detectionData"
-import type { DetectionDetails } from "./detectionDetails.js"
-import type { ExpectedDetection } from "./expectedDetection.js"
+import type { Violation } from "@better-typescript/core/linter"
+import type { ViolationDetails } from "./violationDetails.js"
+import type { ExpectedViolation } from "./expectedViolation.js"
 import type { SourceLocation } from "./sourceLocation.js"
 
 interface AssertDisallowedOptions {
@@ -21,30 +21,28 @@ const maybeSorted = <T extends SourceLocation>(
   shouldSort: boolean
 ): ReadonlyArray<T> => (shouldSort ? sortByLocation(items) : items)
 
-const detectionDetails = (element: Detection): DetectionDetails => ({
-  fileName: element.location.path,
-  line: element.location.line,
-  column: element.location.column,
-  message: element.message,
-  hint: element.hint
+const violationDetails = (element: Violation): ViolationDetails => ({
+  fileName: element.filePath,
+  line: element.line,
+  column: element.column,
+  message: element.message
 })
 
-const expectedDetectionDetails = (expectedElement: ExpectedDetection): DetectionDetails => ({
+const expectedViolationDetails = (expectedElement: ExpectedViolation): ViolationDetails => ({
   fileName: expectedElement.fileName,
   line: expectedElement.line,
   column: expectedElement.column,
-  message: expectedElement.message,
-  hint: expectedElement.hint
+  message: `${expectedElement.message} ${expectedElement.hint}`
 })
 
 export const assertDisallowedFixtureItems = (
-  elements: ReadonlyArray<Detection>,
-  disallowedFixtureItems: ReadonlyArray<ExpectedDetection>,
+  elements: ReadonlyArray<Violation>,
+  disallowedFixtureItems: ReadonlyArray<ExpectedViolation>,
   options: AssertDisallowedOptions = {}
 ): void => {
   const shouldSort = options.sort === true
-  const actual = maybeSorted(elements.map(detectionDetails), shouldSort)
-  const expected = maybeSorted(disallowedFixtureItems.map(expectedDetectionDetails), shouldSort)
+  const actual = maybeSorted(elements.map(violationDetails), shouldSort)
+  const expected = maybeSorted(disallowedFixtureItems.map(expectedViolationDetails), shouldSort)
 
   assert.deepEqual(actual, expected, "expected only disallowed fixture items to be reported")
 }

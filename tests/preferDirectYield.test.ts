@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferDirectYield } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-direct-yield reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferDirectYield))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-direct-yield reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-direct-yield")))

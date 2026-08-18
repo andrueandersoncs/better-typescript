@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { requireConstructionNameConsistency } from "@better-typescript/guidance/preset/semanticNamingPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("require-construction-name-consistency reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(requireConstructionNameConsistency))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("require-construction-name-consistency reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("require-construction-name-consistency")))

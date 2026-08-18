@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferFunctionFlip } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-function-flip reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferFunctionFlip))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-function-flip reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-function-flip")))

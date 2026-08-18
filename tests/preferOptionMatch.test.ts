@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferOptionMatch } from "@better-typescript/guidance/preset/dispatchAndCollectionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-option-match reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferOptionMatch))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-option-match reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-option-match")))

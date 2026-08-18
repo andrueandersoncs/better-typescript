@@ -6,8 +6,8 @@ import { disallowedFixtureItems } from "./noBlankLinesBetweenSingleLineDeclarati
 import { runNoBlankLinesBetweenSingleLineDeclarationsFixture } from "./noBlankLinesBetweenSingleLineDeclarationsFixtureRunner.js"
 
 test("no-blank-lines-between-single-line-declarations reports disallowed and permits allowed fixture items", async () => {
-  const signals = await runNoBlankLinesBetweenSingleLineDeclarationsFixture()
+  const violations = await runNoBlankLinesBetweenSingleLineDeclarationsFixture()
 
-  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
-  assertAllowedFixtureItems(signals, allowedFixtureItems)
+  assertDisallowedFixtureItems(violations, disallowedFixtureItems)
+  assertAllowedFixtureItems(violations, allowedFixtureItems)
 })

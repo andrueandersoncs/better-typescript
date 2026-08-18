@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { requireConversionDirectionConsistency } from "@better-typescript/guidance/preset/semanticNamingPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("require-conversion-direction-consistency reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(requireConversionDirectionConsistency))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("require-conversion-direction-consistency reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("require-conversion-direction-consistency")))

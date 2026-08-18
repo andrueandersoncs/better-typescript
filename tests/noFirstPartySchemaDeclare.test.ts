@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noFirstPartySchemaDeclare } from "@better-typescript/guidance/preset/dispatchAndCollectionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-first-party-schema-declare reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noFirstPartySchemaDeclare))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-first-party-schema-declare reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-first-party-schema-declare")))

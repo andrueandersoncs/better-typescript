@@ -1,13 +1,10 @@
-import type { ExpectedDetection } from "./expectedDetection.js"
+import type { ExpectedViolation } from "./expectedViolation.js"
 
-const message = 'Comments must include the word "because".'
+const message = 'Comments must explain why using the word "because".'
 
-const hint =
-  "Delete comments that only restate what the code does. Otherwise, explain why the " +
-  'code or approach is necessary using the word "because". Every comment carries this ' +
-  "obligation; there are no exempt comment forms."
+const hint = "Delete the comment if it does not explain a reason."
 
-export const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
+export const disallowedFixtureItems: ReadonlyArray<ExpectedViolation> = [
   {
     name: "structured JSDoc on exported API",
     fileName: "src/cases.ts",

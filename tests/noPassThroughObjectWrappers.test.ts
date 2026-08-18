@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noPassThroughObjectWrappers } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-pass-through-object-wrappers reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noPassThroughObjectWrappers))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-pass-through-object-wrappers reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-pass-through-object-wrappers")))

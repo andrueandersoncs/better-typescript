@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noTrivialEffectFn } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-trivial-effect-fn reports forwarding wrappers and permits workflows", () =>
-  assertPolicyFixture(noTrivialEffectFn))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-trivial-effect-fn reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-trivial-effect-fn")))

@@ -12,7 +12,7 @@ const isMessageCarrier = (cause: unknown): cause is { readonly message: string }
 
 const hasText = (value: string) => value.length > 0
 
-// Render unknown failures ourselves because config wiring reports errors with an unknown type.
+// Render unknown operational failures because the CLI boundary receives unknown errors.
 const errorText = (error: unknown) => {
   const fallbackText = String(error)
 

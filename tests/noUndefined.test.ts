@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noUndefined } from "@better-typescript/guidance/preset/errorHygienePolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-undefined reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noUndefined))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-undefined reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-undefined")))

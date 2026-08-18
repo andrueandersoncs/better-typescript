@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noNestedIfStatements } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-nested-if-statements reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noNestedIfStatements))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-nested-if-statements reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-nested-if-statements")))

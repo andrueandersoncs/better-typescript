@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { TsProgram } from "@better-typescript/matchers/tsProgram"
+import { TsProgram } from "./tsProgram.js"
 
 // LoadedProject is shared program/paths contract because owners need one term.
 export const LoadedProject = Schema.Struct({

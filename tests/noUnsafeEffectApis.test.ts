@@ -1,8 +1,6 @@
 import { test } from "bun:test"
-import { noUnsafeEffectApis } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { assertPolicyFixtureExpectations } from "./assertPolicyFixtureExpectations.js"
-import { allowedFixtureItems } from "./noUnsafeEffectApisAllowedFixtureItems.js"
-import { disallowedFixtureItems } from "./noUnsafeEffectApisDisallowedFixtureItems.js"
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
 
-test("no-unsafe-effect-apis reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixtureExpectations(noUnsafeEffectApis, disallowedFixtureItems, allowedFixtureItems))
+test("no-unsafe-effect-apis reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-unsafe-effect-apis")))

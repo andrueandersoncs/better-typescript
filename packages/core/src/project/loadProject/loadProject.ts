@@ -1,17 +1,24 @@
 import * as path from "node:path"
-import { Array, Effect, Function, HashSet, Option, Schema } from "effect"
+import { Array, Effect, Equivalence, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { strictEqual } from "../../engine/equivalence/strictEqual.js"
 import { CircularProjectReferenceError } from "./circularProjectReferenceError.js"
 import { InvalidTsconfigError } from "./invalidTsconfigError.js"
 import { LoadedProject } from "./loadedProject.js"
 import { ProjectConfig } from "./projectConfig.js"
 import { WorkspaceConfigs } from "./workspaceConfigs.js"
-import { createAnalysisProgram } from "./createAnalysisProgram.js"
 
 const loadedProjectsSchema = Schema.Array(LoadedProject)
+const sameString = Equivalence.strictEqual<string>()
 
-// LoadedWorkspace is shared root/projects contract because owners need one term.
+const analysisCompilerOptions: ts.CompilerOptions = {
+  noEmit: true,
+  noUnusedLocals: true,
+  noUnusedParameters: true
+}
+
+const defaultCompilerOptions: ts.CompilerOptions = {}
+
+// LoadedWorkspace keeps project programs together because lint rules need workspace-relative context.
 export const LoadedWorkspace = Schema.Struct({
   rootPath: Schema.String,
   projects: loadedProjectsSchema
@@ -19,7 +26,7 @@ export const LoadedWorkspace = Schema.Struct({
 
 export interface LoadedWorkspace extends Schema.Schema.Type<typeof LoadedWorkspace> {}
 
-// MissingTsconfigError names syntax protocol because discoverWorkspace agrees.
+// MissingTsconfigError identifies discovery failure because callers need the searched root path.
 export class MissingTsconfigError extends Schema.TaggedErrorClass<MissingTsconfigError>()(
   "MissingTsconfigError",
   {
@@ -45,113 +52,124 @@ export const discoverWorkspace: (
     return yield* new MissingTsconfigError({ rootPath })
   }
 
-  const rootAncestorPaths = HashSet.empty<string>()
-  const discoveredProjects = yield* discoverConfig(configPath.value, rootAncestorPaths)
+  const ancestorConfigPaths = HashSet.empty<string>()
+  const discoveredProjects = yield* discoverConfig(ancestorConfigPaths)(configPath.value)
 
   const projects = Array.dedupeWith(discoveredProjects, (self, that) =>
-    strictEqual(that.configPath)(self.configPath)
+    sameString(that.configPath, self.configPath)
   )
 
-  const workspaceRootPath = path.dirname(configPath.value)
+  const workspaceRoot = path.dirname(configPath.value)
 
-  return new WorkspaceConfigs({ rootPath: workspaceRootPath, projects })
+  return new WorkspaceConfigs({ rootPath: workspaceRoot, projects })
 })
 
-const loadProjectConfig = (config: ProjectConfig, compilerOptions: ts.CompilerOptions = {}) => {
-  const program = createAnalysisProgram(
-    {
-      rootNames: config.parsed.fileNames,
-      options: config.parsed.options,
-      projectReferences: config.parsed.projectReferences
-    },
-    compilerOptions
-  )
+const loadProjectConfig = (compilerOptions: ts.CompilerOptions) => (config: ProjectConfig) => {
+  const options = Object.assign({}, config.parsed.options, analysisCompilerOptions, compilerOptions)
+  const host = ts.createCompilerHost(options)
+
+  host.jsDocParsingMode = ts.JSDocParsingMode.ParseForTypeErrors
+
+  const program = ts.createProgram({
+    rootNames: config.parsed.fileNames,
+    projectReferences: config.parsed.projectReferences,
+    options,
+    host
+  })
+
+  const rootPath = path.dirname(config.configPath)
 
   return LoadedProject.make({
     configPath: config.configPath,
-    rootPath: config.rootPath,
+    rootPath,
     program
   })
 }
 
-export const loadProject = Effect.fn("LoadProject.load")(function* (
-  projectPath: string,
-  compilerOptions: ts.CompilerOptions = {}
-) {
-  const workspace = yield* discoverWorkspace(projectPath)
-  const loadConfig = (config: ProjectConfig) => loadProjectConfig(config, compilerOptions)
-  const projects = Array.map(workspace.projects, loadConfig)
+// DefaultLoadProjectInput preserves the minimal call because compiler overrides are uncommon.
+interface DefaultLoadProjectInput {
+  readonly projectPath: string
+}
+
+// ConfiguredLoadProjectInput adds overrides because fixture analysis must vary compiler diagnostics.
+interface ConfiguredLoadProjectInput extends DefaultLoadProjectInput {
+  readonly compilerOptions: ts.CompilerOptions
+}
+
+// LoadProjectInput preserves both call shapes because TypeScript optional fields encode undefined.
+type LoadProjectInput = DefaultLoadProjectInput | ConfiguredLoadProjectInput
+
+const compilerOptionsFrom = (input: LoadProjectInput) =>
+  "compilerOptions" in input ? input.compilerOptions : defaultCompilerOptions
+
+export const loadProject = Effect.fn("LoadProject.load")(function* (input: LoadProjectInput) {
+  const workspace = yield* discoverWorkspace(input.projectPath)
+  const compilerOptions = compilerOptionsFrom(input)
+  const projects = Array.map(workspace.projects, loadProjectConfig(compilerOptions))
 
   return LoadedWorkspace.make({ rootPath: workspace.rootPath, projects })
 })
 
 const discoverConfig: (
-  configPath: string,
   ancestorConfigPaths: HashSet.HashSet<string>
+) => (
+  configPath: string
 ) => Effect.Effect<
   ReadonlyArray<ProjectConfig>,
   CircularProjectReferenceError | InvalidTsconfigError
-> = Effect.fn("LoadProject.discoverConfig")(function* (
-  configPath: string,
-  ancestorConfigPaths: HashSet.HashSet<string>
-) {
-  if (HashSet.has(ancestorConfigPaths, configPath)) {
-    return yield* new CircularProjectReferenceError({ configPath })
-  }
+> = (ancestorConfigPaths) =>
+  Effect.fn("LoadProject.discoverConfig")(function* (configPath: string) {
+    if (HashSet.has(ancestorConfigPaths, configPath)) {
+      return yield* new CircularProjectReferenceError({ configPath })
+    }
 
-  const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
-  const configError = Option.fromNullishOr(configFile.error)
+    const configFile = ts.readConfigFile(configPath, ts.sys.readFile)
+    const configError = Option.fromNullishOr(configFile.error)
 
-  if (Option.isSome(configError)) {
-    const diagnostics2 = Array.of(configError.value)
-    const message = formatDiagnostics(diagnostics2)
+    if (Option.isSome(configError)) {
+      const diagnostics = Array.of(configError.value)
+      const message = formatDiagnostics(diagnostics)
 
-    return yield* new InvalidTsconfigError({ message })
-  }
+      return yield* new InvalidTsconfigError({ message })
+    }
 
-  const configDirectory = path.dirname(configPath)
-  const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, configDirectory)
+    const configDirectory = path.dirname(configPath)
+    const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, configDirectory)
 
-  if (parsedConfig.errors.length > 0) {
-    const message = formatDiagnostics(parsedConfig.errors)
+    if (parsedConfig.errors.length > 0) {
+      const message = formatDiagnostics(parsedConfig.errors)
 
-    return yield* new InvalidTsconfigError({ message })
-  }
+      return yield* new InvalidTsconfigError({ message })
+    }
 
-  const references = parsedConfig.projectReferences ?? Array.empty()
-  const hasNoOwnFiles = strictEqual(0)(parsedConfig.fileNames.length)
-  const hasReferences = references.length > 0
-  const isSolutionStyleConfig = hasNoOwnFiles && hasReferences
+    const references = parsedConfig.projectReferences ?? Array.empty()
+    const hasNoOwnFiles = Equivalence.strictEqual<number>()(0, parsedConfig.fileNames.length)
+    const hasReferences = references.length > 0
+    const isReferenceOnlyConfig = hasNoOwnFiles && hasReferences
 
-  if (isSolutionStyleConfig) {
-    const nextAncestorPaths = HashSet.add(ancestorConfigPaths, configPath)
+    if (isReferenceOnlyConfig) {
+      const nextAncestorConfigPaths = HashSet.add(ancestorConfigPaths, configPath)
 
-    return yield* loadReferencedProjects(references, nextAncestorPaths)
-  }
+      const referencedProjects = yield* Effect.forEach(
+        references,
+        discoverReferencedProjects(nextAncestorConfigPaths)
+      )
 
-  const rootPath = path.dirname(configPath)
+      return Array.flatten(referencedProjects)
+    }
 
-  const projectConfig = new ProjectConfig({
-    configPath,
-    rootPath,
-    parsed: parsedConfig
+    const project = new ProjectConfig({ configPath, parsed: parsedConfig })
+
+    return Array.of(project)
   })
 
-  return Array.of(projectConfig)
-})
+const discoverReferencedProjects =
+  (ancestorConfigPaths: HashSet.HashSet<string>) => (reference: ts.ProjectReference) => {
+    const configPath = ts.resolveProjectReferencePath(reference)
+    const discoverProjects = discoverConfig(ancestorConfigPaths)
 
-const loadReferencedProjects = Effect.fn("LoadProject.loadReferencedProjects")(function* (
-  references: ReadonlyArray<ts.ProjectReference>,
-  ancestorConfigPaths: HashSet.HashSet<string>
-) {
-  const projects = yield* Effect.forEach(references, (reference) => {
-    const referencedConfigPath = ts.resolveProjectReferencePath(reference)
-
-    return discoverConfig(referencedConfigPath, ancestorConfigPaths)
-  })
-
-  return Array.flatten(projects)
-})
+    return discoverProjects(configPath)
+  }
 
 const formatDiagnostics = (diagnostics: ReadonlyArray<ts.Diagnostic>) =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {

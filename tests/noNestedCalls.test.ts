@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noNestedCalls } from "@better-typescript/guidance/preset/controlFlowPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-nested-calls reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noNestedCalls))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-nested-calls reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-nested-calls")))

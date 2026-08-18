@@ -6,8 +6,8 @@ import { disallowedFixtureItems } from "./requireBlankLinesAroundMultilineDeclar
 import { runRequireBlankLinesAroundMultilineDeclarationsFixture } from "./requireBlankLinesAroundMultilineDeclarationsFixtureRunner.js"
 
 test("require-blank-lines-around-multiline-declarations reports disallowed and permits allowed fixture items", async () => {
-  const signals = await runRequireBlankLinesAroundMultilineDeclarationsFixture()
+  const violations = await runRequireBlankLinesAroundMultilineDeclarationsFixture()
 
-  assertDisallowedFixtureItems(signals, disallowedFixtureItems)
-  assertAllowedFixtureItems(signals, allowedFixtureItems)
+  assertDisallowedFixtureItems(violations, disallowedFixtureItems)
+  assertAllowedFixtureItems(violations, allowedFixtureItems)
 })

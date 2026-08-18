@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noImmediateEffectSync } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-immediate-effect-sync reports immediately consumed Effects and permits deferred Effects", () =>
-  assertPolicyFixture(noImmediateEffectSync))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-immediate-effect-sync reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-immediate-effect-sync")))

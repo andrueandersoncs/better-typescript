@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noNewError } from "@better-typescript/guidance/preset/errorHygienePolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-new-error reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noNewError))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-new-error reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-new-error")))

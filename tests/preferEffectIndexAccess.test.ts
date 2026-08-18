@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferEffectIndexAccess } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-effect-index-access reports direct array and tuple indexing", () =>
-  assertPolicyFixture(preferEffectIndexAccess))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-effect-index-access reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-effect-index-access")))

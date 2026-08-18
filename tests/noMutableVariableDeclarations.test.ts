@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noMutableVariableDeclarations } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-mutable-variable-declarations reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noMutableVariableDeclarations))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-mutable-variable-declarations reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-mutable-variable-declarations")))

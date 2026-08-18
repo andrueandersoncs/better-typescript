@@ -7,5 +7,5 @@
     "allowImportingTsExtensions": true
   },
   "include": ["**/*.ts"],
-  "exclude": ["fixtures/**", "../packages/guidance/examples/**"]
+  "exclude": ["fixtures/**"]
 }

@@ -108,8 +108,8 @@ const multiConstBody = (n: number): number => {
   return second
 }
 
-const optionalModuleGraphElement = (element: Named | undefined): boolean =>
-  strictEqual("module-graph")(element?.name)
+const optionalPackageGraphElement = (element: Named | undefined): boolean =>
+  strictEqual("package-graph")(element?.name)
 
 
 import { Effect } from "effect"

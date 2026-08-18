@@ -6,13 +6,13 @@ import { makeUnsafe as reexportedMakeUnsafe } from "./reexport.js"
 
 const empty = HashMap.empty<string, number>()
 
-export const refDirect = Ref.makeUnsafe(0)
-export const refNamespace = EffectRef.makeUnsafe(1)
-export const refRenamed = makeRefUnsafe(2)
-export const refReexport = reexportedMakeUnsafe(3)
-export const refAlias = makeRefUnsafe
-export const mapGetUnsafe = HashMap.getUnsafe(empty, "k")
-export const mapElement = HashMap["getUnsafe"](empty, "k")
-export const refGetUnsafe = Ref.getUnsafe(refDirect)
-export const lowercaseUnsafe = unsafeSecureJsonParse("{}")
-export const refOpaqueAlias = createRef(4)
+export const refDirect = Ref.makeUnsafe(0) // ~detect 26
+export const refNamespace = EffectRef.makeUnsafe(1) // ~detect 29
+export const refRenamed = makeRefUnsafe(2) // ~detect 27
+export const refReexport = reexportedMakeUnsafe(3) // ~detect 28
+export const refAlias = makeRefUnsafe // ~detect 25
+export const mapGetUnsafe = HashMap.getUnsafe(empty, "k") // ~detect 29
+export const mapElement = HashMap["getUnsafe"](empty, "k") // ~detect 27
+export const refGetUnsafe = Ref.getUnsafe(refDirect) // ~detect 29
+export const lowercaseUnsafe = unsafeSecureJsonParse("{}") // ~detect 32
+export const refOpaqueAlias = createRef(4) // ~detect 31

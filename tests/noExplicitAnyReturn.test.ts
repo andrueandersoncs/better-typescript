@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noExplicitAnyReturn } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-explicit-any-return reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noExplicitAnyReturn))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-explicit-any-return reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-explicit-any-return")))

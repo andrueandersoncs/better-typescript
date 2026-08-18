@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { preferFunctionComposition } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-function-composition reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferFunctionComposition))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("prefer-function-composition reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-function-composition")))

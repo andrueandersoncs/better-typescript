@@ -1,4 +1,4 @@
-import type { ExpectedDetection } from "./expectedDetection.js"
+import type { ExpectedViolation } from "./expectedViolation.js"
 
 const message = "Single-line declarations must not have blank lines between them."
 
@@ -7,7 +7,7 @@ const hint =
   "stay contiguous. Blank lines remain required around multi-line declarations; " +
   "keep those separators when a neighbor is multi-line."
 
-export const disallowedFixtureItems: ReadonlyArray<ExpectedDetection> = [
+export const disallowedFixtureItems: ReadonlyArray<ExpectedViolation> = [
   {
     name: "spaced single-line neighbors",
     fileName: "src/cases.ts",

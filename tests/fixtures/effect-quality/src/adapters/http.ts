@@ -10,3 +10,5 @@ export const decodeBeforeStatus = async (response: Response) => {
   if (!response.ok) throw new Error("failed")
   return json
 }
+
+export const directFetch = fetch("https://example.test")

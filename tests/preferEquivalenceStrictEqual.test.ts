@@ -1,15 +1,6 @@
-import * as assert from "node:assert/strict"
 import { test } from "bun:test"
-import { preferEquivalenceStrictEqual } from "@better-typescript/guidance/preset/effectIdiomPolicies"
-import { strictEqual } from "@better-typescript/core/engine/equivalence/strictEqual"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("prefer-equivalence-strict-equal reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(preferEquivalenceStrictEqual))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
 
-test("strict equality helper preserves identity and NaN semantics", () => {
-  const reference = {}
-
-  assert.ok(strictEqual(reference)(reference))
-  assert.equal(strictEqual(reference)({}), false)
-  assert.equal(strictEqual(Number.NaN)(Number.NaN), false)
-})
+test("prefer-equivalence-strict-equal reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("prefer-equivalence-strict-equal")))

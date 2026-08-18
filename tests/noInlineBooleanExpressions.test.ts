@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noInlineBooleanExpressions } from "@better-typescript/guidance/preset/expressionAndMutationPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-inline-boolean-expressions reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noInlineBooleanExpressions))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-inline-boolean-expressions reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-inline-boolean-expressions")))

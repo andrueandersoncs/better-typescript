@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noAsyncFunctions } from "@better-typescript/guidance/preset/controlFlowPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-async-functions reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noAsyncFunctions))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-async-functions reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-async-functions")))

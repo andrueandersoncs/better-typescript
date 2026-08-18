@@ -1,0 +1,164 @@
+import * as ts from "typescript"
+import {
+  Array,
+  Function,
+  HashSet,
+  Iterable,
+  Match as EffectMatch,
+  Option,
+  Tuple,
+  pipe
+} from "effect"
+import { strictEqual } from "../equivalence.js"
+import { braceContext } from "./braceContext.js"
+import { SourceComment } from "./commentsData.js"
+import type { ScanContext } from "./scanContext.js"
+import { templateContext } from "./templateContext.js"
+
+const commentSyntaxKinds = HashSet.make(
+  ts.SyntaxKind.SingleLineCommentTrivia,
+  ts.SyntaxKind.MultiLineCommentTrivia
+)
+
+const isCommentToken = (scanner: ts.Scanner) => {
+  const kind = scanner.getToken()
+
+  return HashSet.has(commentSyntaxKinds, kind)
+}
+
+const makeSourceCommentFrom = (scanner: ts.Scanner) => {
+  const kind = scanner.getToken()
+  const pos = scanner.getTokenStart()
+  const end = scanner.getTokenEnd()
+
+  return SourceComment.make({ kind, pos, end })
+}
+
+const emptyScanContexts: ReadonlyArray<ScanContext> = Array.empty()
+
+// A slash after these kinds is division because they end an expression; elsewhere it is a regex.
+const expressionEndKinds = HashSet.make(
+  ts.SyntaxKind.Identifier,
+  ts.SyntaxKind.PrivateIdentifier,
+  ts.SyntaxKind.NumericLiteral,
+  ts.SyntaxKind.BigIntLiteral,
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.TemplateTail,
+  ts.SyntaxKind.RegularExpressionLiteral,
+  ts.SyntaxKind.ThisKeyword,
+  ts.SyntaxKind.TrueKeyword,
+  ts.SyntaxKind.FalseKeyword,
+  ts.SyntaxKind.NullKeyword,
+  ts.SyntaxKind.SuperKeyword,
+  ts.SyntaxKind.CloseParenToken,
+  ts.SyntaxKind.CloseBracketToken,
+  ts.SyntaxKind.PlusPlusToken,
+  ts.SyntaxKind.MinusMinusToken
+)
+
+const triviaKinds = HashSet.make(
+  ts.SyntaxKind.SingleLineCommentTrivia,
+  ts.SyntaxKind.MultiLineCommentTrivia,
+  ts.SyntaxKind.WhitespaceTrivia,
+  ts.SyntaxKind.NewLineTrivia,
+  ts.SyntaxKind.ShebangTrivia
+)
+
+const slashKinds = HashSet.make(ts.SyntaxKind.SlashToken, ts.SyntaxKind.SlashEqualsToken)
+
+const closeBraceKind =
+  (scanner: ts.Scanner) =>
+  (contexts: ReadonlyArray<ScanContext>): readonly [ts.SyntaxKind, ReadonlyArray<ScanContext>] => {
+    const head = Array.head(contexts)
+    const rest = Array.drop(contexts, 1)
+    const closesBrace = Option.contains(head, braceContext)
+    const closesTemplateSubstitution = Option.contains(head, templateContext)
+
+    if (closesBrace) {
+      return Tuple.make(ts.SyntaxKind.CloseBraceToken, rest)
+    }
+
+    if (closesTemplateSubstitution) {
+      const templateKind = scanner.reScanTemplateToken(false)
+      const staysInTemplate = strictEqual(ts.SyntaxKind.TemplateMiddle)(templateKind)
+
+      return Tuple.make(templateKind, staysInTemplate ? contexts : rest)
+    }
+
+    return Tuple.make(ts.SyntaxKind.CloseBraceToken, contexts)
+  }
+
+// The parser normally drives these rescans because raw scans mis-lex template tails and regexes.
+const rescannedKind =
+  (scanner: ts.Scanner) =>
+  (contexts: ReadonlyArray<ScanContext>) =>
+  (previous: ts.SyntaxKind) =>
+  (kind: ts.SyntaxKind): readonly [ts.SyntaxKind, ReadonlyArray<ScanContext>] => {
+    const pushedTemplate: ReadonlyArray<ScanContext> = Array.prepend(contexts, templateContext)
+    const pushedBrace: ReadonlyArray<ScanContext> = Array.prepend(contexts, braceContext)
+
+    return pipe(
+      EffectMatch.value(kind),
+      EffectMatch.when(ts.SyntaxKind.TemplateHead, () => Tuple.make(kind, pushedTemplate)),
+      EffectMatch.when(ts.SyntaxKind.OpenBraceToken, () => Tuple.make(kind, pushedBrace)),
+      EffectMatch.when(ts.SyntaxKind.CloseBraceToken, () => closeBraceKind(scanner)(contexts)),
+      EffectMatch.orElse(() => {
+        const isSlash = HashSet.has(slashKinds, kind)
+        const inRegexPosition = !HashSet.has(expressionEndKinds, previous)
+        const rescansAsRegex = isSlash && inRegexPosition
+
+        if (rescansAsRegex) {
+          const slashKind = scanner.reScanSlashToken()
+
+          return Tuple.make(slashKind, contexts)
+        }
+
+        return Tuple.make(kind, contexts)
+      })
+    )
+  }
+
+const initialScanState: readonly [ReadonlyArray<ScanContext>, ts.SyntaxKind] = Tuple.make(
+  emptyScanContexts,
+  ts.SyntaxKind.Unknown
+)
+
+const collectSourceComments = (sourceFile: ts.SourceFile): ReadonlyArray<SourceComment> => {
+  const sourceText = sourceFile.getFullText()
+
+  const scanner = ts.createScanner(
+    sourceFile.languageVersion,
+    false,
+    sourceFile.languageVariant,
+    sourceText
+  )
+
+  const tokens = Iterable.unfold(initialScanState, (state) => {
+    const [contexts, previous] = state
+    const kind = scanner.scan()
+
+    if (strictEqual(ts.SyntaxKind.EndOfFileToken)(kind)) {
+      return Option.none()
+    }
+
+    const rescan = rescannedKind(scanner)(contexts)(previous)
+    const [effectiveKind, nextContexts] = rescan(kind)
+    const isTrivia = HashSet.has(triviaKinds, effectiveKind)
+    const nextPrevious = isTrivia ? previous : effectiveKind
+    const nextState = Tuple.make(nextContexts, nextPrevious)
+    const entry = Tuple.make(scanner, nextState)
+
+    return Option.some(entry)
+  })
+
+  return pipe(
+    tokens,
+    Iterable.filter(isCommentToken),
+    Iterable.map(makeSourceCommentFrom),
+    Array.fromIterable
+  )
+}
+
+// Memoization reuses lexical trivia because every independently owned rule reads the same source text.
+export const sourceComments = Function.memoize(collectSourceComments)

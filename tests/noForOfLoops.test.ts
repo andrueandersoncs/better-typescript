@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noForOfLoops } from "@better-typescript/guidance/preset/controlFlowPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-for-of-loops reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noForOfLoops))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-for-of-loops reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-for-of-loops")))

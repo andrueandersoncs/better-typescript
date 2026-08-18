@@ -1,5 +1,6 @@
 import { test } from "bun:test"
-import { noRawObjectTypes } from "@better-typescript/guidance/preset/dispatchAndCollectionPolicies"
-import { assertPolicyFixture } from "./assertPolicyFixture.js"
-test("no-raw-object-types reports disallowed and permits allowed fixture items", () =>
-  assertPolicyFixture(noRawObjectTypes))
+import { assertRuleFixture } from "./assertRuleFixture.js"
+import { ruleNamed } from "./ruleNamed.js"
+
+test("no-raw-object-types reports marked violations and permits unmarked cases", () =>
+  assertRuleFixture(ruleNamed("no-raw-object-types")))

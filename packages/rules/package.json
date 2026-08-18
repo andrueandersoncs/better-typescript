@@ -1,0 +1,31 @@
+{
+  "name": "@better-typescript/rules",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./builtinRules": {
+      "bun": "./src/builtinRules.ts",
+      "default": "./dist/builtinRules.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -b tsconfig.json --force",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@better-typescript/core": "0.0.0",
+    "effect": "^4.0.0-beta.98"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0 || ^6.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^6.0.3"
+  }
+}
