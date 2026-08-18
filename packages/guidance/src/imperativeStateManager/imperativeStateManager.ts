@@ -6,7 +6,18 @@ import { strictEqual } from "@better-typescript/core/engine/equivalence/strictEq
 import { Detection } from "@better-typescript/core/engine/location/detectionData"
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import { makePackageExamples } from "../makePackageExamples.js"
-import { ImperativeStateSignals } from "./data.js"
+
+const detectionArray = Schema.Array(Detection)
+
+export const ImperativeStateSignals = Schema.Struct({
+  noMutation: detectionArray,
+  preferHashMap: detectionArray,
+  preferHashSet: detectionArray,
+  noMutableArrayMethods: detectionArray,
+  noMutableVariableDeclarations: detectionArray
+})
+
+export interface ImperativeStateSignals extends Schema.Schema.Type<typeof ImperativeStateSignals> {}
 
 // Shared mutation-target evidence because detectors and advice decode one record.
 export const MutationElementData = Schema.Struct({

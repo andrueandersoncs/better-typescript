@@ -13,12 +13,12 @@ import { highSignalDensity } from "../derive/highSignalDensity.js"
 import { ruleDominance } from "../derive/ruleDominance.js"
 import { sideEffectLaundering } from "../derive/sideEffectLaundering.js"
 import { hotSubsystem } from "../hotSubsystem/hotSubsystem.js"
-import { ImperativeStateSignals } from "../imperativeStateManager/data.js"
-import { imperativeStateManager } from "../imperativeStateManager/imperativeStateManager.js"
-import { PipelineSignals } from "../pipelineHostile/data.js"
-import { pipelineHostile } from "../pipelineHostile/pipelineHostile.js"
-import { SystemicSignals } from "../systemicHotspots/data.js"
-import { systemicHotspots } from "../systemicHotspots/systemicHotspots.js"
+import {
+  ImperativeStateSignals,
+  imperativeStateManager
+} from "../imperativeStateManager/imperativeStateManager.js"
+import { PipelineSignals, pipelineHostile } from "../pipelineHostile/pipelineHostile.js"
+import { SystemicSignals, systemicHotspots } from "../systemicHotspots/systemicHotspots.js"
 import { commentAndDeclarationPolicies } from "./commentAndDeclarationPolicies.js"
 import { conceptAndCompositionPolicies } from "./conceptAndCompositionPolicies.js"
 import { controlFlowPolicies } from "./controlFlowPolicies.js"

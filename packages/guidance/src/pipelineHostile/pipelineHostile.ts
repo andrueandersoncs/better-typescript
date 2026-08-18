@@ -1,11 +1,20 @@
-import { Array, Function, pipe } from "effect"
+import { Array, Function, Schema, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
 import { Location } from "@better-typescript/core/engine/location/locationData"
 
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location/countDetectionsAtPath"
+import { Detection } from "@better-typescript/core/engine/location/detectionData"
 import { makePackageExamples } from "../makePackageExamples.js"
-import { PipelineSignals } from "./data.js"
+
+const detectionArray = Schema.Array(Detection)
+
+export const PipelineSignals = Schema.Struct({
+  noNestedCalls: detectionArray,
+  preferCurriedDataLastFunctions: detectionArray
+})
+
+export interface PipelineSignals extends Schema.Schema.Type<typeof PipelineSignals> {}
 
 export const pipelineHostileExamples = makePackageExamples("pipeline-hostile")
 

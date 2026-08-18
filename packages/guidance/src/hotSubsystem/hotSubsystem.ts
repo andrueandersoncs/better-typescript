@@ -1,4 +1,4 @@
-import { Tuple, Array, HashMap, Option, Struct, pipe } from "effect"
+import { Tuple, Array, HashMap, Option, Schema, Struct, pipe } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence/strictEqual"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -10,7 +10,14 @@ import { parentDirectories } from "@better-typescript/core/engine/derive/parentD
 import { type NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import { makePackageExamples } from "../makePackageExamples.js"
-import { DirectorySignals } from "./data.js"
+
+const DirectorySignals = Schema.Struct({
+  path: Schema.String,
+  files: Schema.Array(FileDetections),
+  projectTotal: Schema.Number
+})
+
+interface DirectorySignals extends Schema.Schema.Type<typeof DirectorySignals> {}
 
 export const hotSubsystemExamples = makePackageExamples("hot-subsystem")
 

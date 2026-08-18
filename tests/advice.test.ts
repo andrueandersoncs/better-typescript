@@ -2,14 +2,20 @@ import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { highSignalDensity } from "@better-typescript/guidance/derive/highSignalDensity"
 import { hotSubsystem } from "@better-typescript/guidance/hotSubsystem/hotSubsystem"
-import { ImperativeStateSignals } from "@better-typescript/guidance/imperativeStateManager/data"
-import { imperativeStateManager } from "@better-typescript/guidance/imperativeStateManager/imperativeStateManager"
+import {
+  ImperativeStateSignals,
+  imperativeStateManager
+} from "@better-typescript/guidance/imperativeStateManager/imperativeStateManager"
 import { ruleDominance } from "@better-typescript/guidance/derive/ruleDominance"
 import { sideEffectLaundering } from "@better-typescript/guidance/derive/sideEffectLaundering"
-import { systemicHotspots } from "@better-typescript/guidance/systemicHotspots/systemicHotspots"
-import { PipelineSignals } from "@better-typescript/guidance/pipelineHostile/data"
-import { pipelineHostile } from "@better-typescript/guidance/pipelineHostile/pipelineHostile"
-import { SystemicSignals } from "@better-typescript/guidance/systemicHotspots/data"
+import {
+  PipelineSignals,
+  pipelineHostile
+} from "@better-typescript/guidance/pipelineHostile/pipelineHostile"
+import {
+  SystemicSignals,
+  systemicHotspots
+} from "@better-typescript/guidance/systemicHotspots/systemicHotspots"
 import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import { type Advice } from "@better-typescript/core/engine/derive/advice"

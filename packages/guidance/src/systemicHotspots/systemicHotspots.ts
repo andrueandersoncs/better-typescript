@@ -1,10 +1,18 @@
-import { Array, Function } from "effect"
+import { Array, Function, Schema } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
 import { Location } from "@better-typescript/core/engine/location/locationData"
 
-import { SystemicSignals } from "./data.js"
 import { makePackageExamples } from "../makePackageExamples.js"
+
+const adviceArray = Schema.Array(Advice)
+
+export const SystemicSignals = Schema.Struct({
+  hotSubsystem: adviceArray,
+  highSignalDensity: adviceArray
+})
+
+export interface SystemicSignals extends Schema.Schema.Type<typeof SystemicSignals> {}
 
 export const systemicHotspotsExamples = makePackageExamples("systemic-hotspots")
 
