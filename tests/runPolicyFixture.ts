@@ -18,9 +18,7 @@ export const runPolicyFixture = async (
   const workspace = await Effect.runPromise(loadProject(fixturePath, compilerOptions))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runPolicyOnProject(named)(project)))
   )
 
   return projectElements.flat()

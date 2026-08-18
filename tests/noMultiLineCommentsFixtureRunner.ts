@@ -14,7 +14,7 @@ export const runNoMultiLineCommentsFixture = async (): Promise<ReadonlyArray<Det
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(noMultiLineComments))(project))
+      Effect.runPromise(runPolicyOnProject(noMultiLineComments)(project))
     )
   )
 

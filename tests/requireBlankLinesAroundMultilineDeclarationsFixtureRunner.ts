@@ -20,9 +20,7 @@ export const runRequireBlankLinesAroundMultilineDeclarationsFixture = async (): 
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runPolicyOnProject(Array.of(requireBlankLinesAroundMultilineDeclarations))(project)
-      )
+      Effect.runPromise(runPolicyOnProject(requireBlankLinesAroundMultilineDeclarations)(project))
     )
   )
 

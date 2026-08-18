@@ -13,7 +13,7 @@ export const runRequireBecauseInCommentsFixture = async (): Promise<ReadonlyArra
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(requireBecauseInComments))(project))
+      Effect.runPromise(runPolicyOnProject(requireBecauseInComments)(project))
     )
   )
 

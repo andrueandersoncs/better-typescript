@@ -24,7 +24,7 @@ const runDefaultFixture = async (): Promise<ReadonlyArray<Detection>> => {
     workspace.projects.flatMap((project) =>
       defaultWiring.policies
         .filter(isProgramPolicy)
-        .map((named) => Effect.runPromise(runPolicyOnProject(Array.of(named))(project)))
+        .map((named) => Effect.runPromise(runPolicyOnProject(named)(project)))
     )
   )
 

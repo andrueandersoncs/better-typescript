@@ -12,11 +12,11 @@ const emptyDetections: ReadonlyArray<Detection> = Array.empty()
 const noDetections = Function.constant(emptyDetections)
 const includeEverySourceFile = Function.constant(true)
 
-// programForPolicies owns compiler requirements because callers should not know Policy internals.
-const programForPolicies =
-  (policies: ReadonlyArray<Policy>) =>
+// programForPolicy owns compiler requirements because callers should not know Policy internals.
+const programForPolicy =
+  (policy: Policy) =>
   (program: ts.Program): ts.Program => {
-    const compilerOptions = compilerOptionsForPolicies(policies)
+    const compilerOptions = compilerOptionsForPolicies(Array.of(policy))
     const currentOptions = program.getCompilerOptions()
 
     const optionMatches = ([name, value]: [string, unknown]) => {
@@ -46,13 +46,13 @@ const programForPolicies =
   }
 
 export const runPolicyOnProject =
-  (policies: ReadonlyArray<Policy>) =>
+  (policy: Policy) =>
   (project: LoadedProject): Effect.Effect<ReadonlyArray<Detection>> =>
     Effect.sync(() => {
-      const program = programForPolicies(policies)(project.program)
+      const program = programForPolicy(policy)(project.program)
       const createContext = makeContext(project.rootPath)
       const context = createContext(program)
-      const policiesInEveryFile = toPolicies(policies)(includeEverySourceFile)
+      const policiesInEveryFile = toPolicies(Array.of(policy))(includeEverySourceFile)
       const detections = policiesInEveryFile(context)
 
       return pipe(detections, Array.head, Option.getOrElse(noDetections))

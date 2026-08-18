@@ -10,10 +10,7 @@ const detections = await Effect.runPromise(
   Effect.gen(function* () {
     const workspace = yield* loadProject(projectDirectory)
 
-    const perProject = yield* Effect.forEach(
-      workspace.projects,
-      runPolicyOnProject(Array.of(noThrow))
-    )
+    const perProject = yield* Effect.forEach(workspace.projects, runPolicyOnProject(noThrow))
 
     return Array.flatten(perProject)
   })

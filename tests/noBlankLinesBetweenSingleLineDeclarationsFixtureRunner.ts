@@ -20,9 +20,7 @@ export const runNoBlankLinesBetweenSingleLineDeclarationsFixture = async (): Pro
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(
-        runPolicyOnProject(Array.of(noBlankLinesBetweenSingleLineDeclarations))(project)
-      )
+      Effect.runPromise(runPolicyOnProject(noBlankLinesBetweenSingleLineDeclarations)(project))
     )
   )
 

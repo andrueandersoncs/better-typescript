@@ -110,7 +110,7 @@ test("foldAst traverses deeply nested trees without call stack recursion", () =>
 
 test("runPolicyOnProject applies probe subscriptions to matching fixture nodes", async () => {
   const project = await loadFixtureProject("no-throw")
-  const elements = await Effect.runPromise(runPolicyOnProject(Array.of(throwProbePolicy))(project))
+  const elements = await Effect.runPromise(runPolicyOnProject(throwProbePolicy)(project))
 
   assert.deepEqual(
     elements.map(detectionRecord),

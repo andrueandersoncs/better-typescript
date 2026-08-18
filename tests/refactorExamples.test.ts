@@ -15,9 +15,7 @@ import { isProgramPolicy } from "@better-typescript/core/engine/wiring/isProgram
 const runSide = async (policy: Policy, sideRoot: string) => {
   const workspace = await Effect.runPromise(loadProject(sideRoot))
   const nested = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(policy))(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runPolicyOnProject(policy)(project)))
   )
 
   return nested.flat()

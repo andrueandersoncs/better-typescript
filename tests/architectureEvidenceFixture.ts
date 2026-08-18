@@ -12,9 +12,7 @@ export const fixturePath = path.join(testDirectory, "fixtures", "architecture-ev
 export const runFixture = async (named: Policy): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runPolicyOnProject(named)(project)))
   )
 
   return projectDetections.flat()

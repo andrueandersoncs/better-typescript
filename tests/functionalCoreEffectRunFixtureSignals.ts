@@ -16,9 +16,7 @@ export const runFixtureSignals = async (): Promise<ReadonlyArray<Signal>> => {
   return Promise.all(
     functionalCoreEffectWiring.policies.filter(isProgramPolicy).map(async (named) => {
       const detections = await Promise.all(
-        workspace.projects.map((project) =>
-          Effect.runPromise(runPolicyOnProject(Array.of(named))(project))
-        )
+        workspace.projects.map((project) => Effect.runPromise(runPolicyOnProject(named)(project)))
       )
 
       return new Signal({

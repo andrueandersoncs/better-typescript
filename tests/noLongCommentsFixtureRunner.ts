@@ -14,7 +14,7 @@ export const runNoLongCommentsFixture = async (): Promise<ReadonlyArray<Detectio
 
   const projectElements = await Promise.all(
     workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(noLongComments))(project))
+      Effect.runPromise(runPolicyOnProject(noLongComments)(project))
     )
   )
 

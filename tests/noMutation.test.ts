@@ -15,9 +15,7 @@ const runNoMutationFixture = async (): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
 
   const projectElements = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(noMutation))(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runPolicyOnProject(noMutation)(project)))
   )
 
   return projectElements.flat()

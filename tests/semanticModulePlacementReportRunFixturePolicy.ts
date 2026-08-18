@@ -8,9 +8,7 @@ import { fixturePath } from "./semanticModulePlacementReportFixturePath.js"
 export const runFixturePolicy = async (policy: Policy): Promise<ReadonlyArray<Detection>> => {
   const workspace = await Effect.runPromise(loadProject(fixturePath))
   const projectDetections = await Promise.all(
-    workspace.projects.map((project) =>
-      Effect.runPromise(runPolicyOnProject(Array.of(policy))(project))
-    )
+    workspace.projects.map((project) => Effect.runPromise(runPolicyOnProject(policy)(project)))
   )
 
   return projectDetections.flat()
