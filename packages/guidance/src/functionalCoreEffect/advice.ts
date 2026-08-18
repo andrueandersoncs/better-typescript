@@ -1,4 +1,16 @@
-import { Array, Function, Option, Record, Result, Schema, Struct, Tuple, pipe, flow } from "effect"
+import {
+  Array,
+  Effect,
+  Function,
+  Option,
+  Record,
+  Result,
+  Schema,
+  Struct,
+  Tuple,
+  pipe,
+  flow
+} from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -167,16 +179,17 @@ const imperativeCoreAdvice = (detections: ReadonlyArray<Detection>): ReadonlyArr
   )
 }
 
-export const functionalCoreEffectDerive = (
+export const functionalCoreEffectDerive = Effect.fn("FunctionalCoreEffect.derive")((
   signals: ReadonlyArray<Signal>
-): ReadonlyArray<Advice> => {
+) => {
   const boundaryDetections = detectionsOf(signals, functionalCoreBoundaryCheckName)
   const shapeDetections = detectionsOf(signals, functionalCoreShapeCheckName)
   const localShapeAdvice = shapeAdvice(shapeDetections)
   const aggregateAdvice = imperativeCoreAdvice(boundaryDetections)
+  const advice = Array.appendAll(localShapeAdvice, aggregateAdvice)
 
-  return Array.appendAll(localShapeAdvice, aggregateAdvice)
-}
+  return Effect.succeed(advice)
+})
 
 const messageByKind: Readonly<Record<FunctionalCoreBoundaryData["kind"], string>> = {
   "dependency-direction": "This dependency points outward across the functional-core architecture.",

@@ -4,7 +4,7 @@ import type { Detection } from "@better-typescript/core/engine/location/detectio
 import { EffectQualityAdviceData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityAdviceData"
 import { EffectQualityRuleData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityRuleData"
 import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { runSignals } from "./effectQualityRunSignals.js"
 
 test("Effect-quality wiring reports exact local rules and preserves allowed cases", async () => {
@@ -125,7 +125,7 @@ test("Effect-quality wiring derives exact advice from the characterized Signal b
     ].sort()
   )
 
-  const advice = effectQualityWiring.derive(signals)
+  const advice = Effect.runSync(effectQualityWiring.derive(signals))
   const actualAdvice = advice
     .map(
       (item) =>

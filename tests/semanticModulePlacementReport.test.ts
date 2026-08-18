@@ -36,7 +36,7 @@ test("composite Program matcher report omits raw placement blocks", async () => 
         signal.detections.map(makeNamedDetection(signal.name))
       )
 
-      return semanticModulePlacementAdvice(elements)
+      return Effect.succeed(semanticModulePlacementAdvice(elements))
     }
   })
   const config = defineConfig([{ files: ["**/*"], wiring }])

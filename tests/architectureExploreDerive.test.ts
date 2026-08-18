@@ -1,5 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
+import { Effect } from "effect"
 import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
 import {
   architectureExploreDerive,
@@ -31,6 +32,10 @@ import { adviceWithTitle } from "./architectureExploreDeriveAdviceWithTitle.js"
 import { wrapperData } from "./architectureExploreDeriveWrapperData.js"
 import { compositionData } from "./architectureExploreDeriveCompositionData.js"
 import { graphData } from "./architectureExploreDeriveGraphData.js"
+
+const deriveArchitectureAdvice = (
+  signals: Parameters<typeof architectureExploreWiring.derive>[0]
+) => Effect.runSync(architectureExploreWiring.derive(signals))
 
 test("architectureExploreWiring contains only relational silent evidence checks", () => {
   const names = architectureExplorePolicies.map((check) => check.name)
@@ -97,7 +102,7 @@ test("baseline default Wiring does not enroll semantic-module-placement", () => 
 
 test("deletion test removes low-leverage exact forwarders", () => {
   const path = "src/thin.ts"
-  const advice = architectureExploreWiring.derive([
+  const advice = deriveArchitectureAdvice([
     silentSignal("pass-through-wrappers", [detectionAt(path, 1, wrapperData(1))])
   ])
   const deletion = adviceWithTitle(advice, "deletion-test shallowness")
@@ -111,7 +116,7 @@ test("deletion test removes low-leverage exact forwarders", () => {
 })
 
 test("deletion test preserves caller leverage and non-call contracts", () => {
-  const advice = architectureExploreWiring.derive([
+  const advice = deriveArchitectureAdvice([
     silentSignal("pass-through-wrappers", [
       detectionAt("src/many.ts", 1, wrapperData(2)),
       detectionAt("src/value.ts", 1, wrapperData(1, true))
@@ -140,7 +145,7 @@ test("composition forwarders feed deletion-test wide-shallow and bounce advice",
     detectionAt(cluster[0]!, 1, graphData(cluster[0]!, [cluster[1]!])),
     detectionAt(cluster[1]!, 1, graphData(cluster[1]!, [cluster[2]!]))
   ]
-  const advice = architectureExploreWiring.derive([
+  const advice = deriveArchitectureAdvice([
     silentSignal("composition-forwarders", [...forwarders, ...clusterForwarders]),
     silentSignal("interface-burden", [wideBurden]),
     silentSignal("module-graph", graph)
@@ -172,7 +177,7 @@ test("Architecture Explore aggregation and Wiring preserve adviser report order"
     silentSignal("interface-burden", [burden]),
     silentSignal("module-graph", graph)
   ]
-  const expected = architectureExploreDerive(signals)
+  const expected = Effect.runSync(architectureExploreDerive(signals))
   const wiring = makeArchitectureExploreWiring([], [])
 
   assert.deepEqual(
@@ -187,7 +192,7 @@ test("Architecture Explore aggregation and Wiring preserve adviser report order"
       "invisible tests"
     ]
   )
-  assert.deepEqual(wiring.derive(signals), expected)
+  assert.deepEqual(Effect.runSync(wiring.derive(signals)), expected)
 })
 
 test("wide shallow interface requires a forwarding-dominated burden", () => {
@@ -211,7 +216,7 @@ test("wide shallow interface requires a forwarding-dominated burden", () => {
       requiredParameterCount: 12
     })
   )
-  const advice = architectureExploreWiring.derive([
+  const advice = deriveArchitectureAdvice([
     silentSignal("pass-through-wrappers", [...wideWrappers, ...deepWrappers]),
     silentSignal("interface-burden", [wideBurden, deepBurden])
   ])
@@ -229,13 +234,11 @@ test("bounce cluster requires connected shallow Modules", () => {
     detectionAt("src/cluster/one.ts", 1, graphData("src/cluster/one.ts", ["src/cluster/two.ts"])),
     detectionAt("src/cluster/two.ts", 1, graphData("src/cluster/two.ts", ["src/cluster/three.ts"]))
   ]
-  const connected = architectureExploreWiring.derive([
+  const connected = deriveArchitectureAdvice([
     silentSignal("pass-through-wrappers", wrappers),
     silentSignal("module-graph", graph)
   ])
-  const disconnected = architectureExploreWiring.derive([
-    silentSignal("pass-through-wrappers", wrappers)
-  ])
+  const disconnected = deriveArchitectureAdvice([silentSignal("pass-through-wrappers", wrappers)])
 
   assert.equal(adviceWithTitle(connected, "bounce cluster").length, 1)
   assert.equal(adviceWithTitle(disconnected, "bounce cluster").length, 0)
@@ -272,7 +275,7 @@ test("seam and test evidence derive public-interface advice", () => {
       })
     )
   )
-  const advice = architectureExploreWiring.derive([
+  const advice = deriveArchitectureAdvice([
     silentSignal("test-only-exports", [testOnly]),
     silentSignal("seam-leakage-evidence", [testLeak, ...productionLeaks])
   ])
@@ -286,16 +289,16 @@ test("module-scope effects feed hard-to-test hotspot advice", () => {
     calleeText: "Effect.runSync",
     kind: "effect-run"
   })
-  const fires = architectureExploreWiring.derive([
+  const fires = deriveArchitectureAdvice([
     silentSignal("module-scope-effects", [
       detectionAt("src/hot.ts", 1, effectData),
       detectionAt("src/hot.ts", 2, effectData)
     ])
   ])
-  const silent = architectureExploreWiring.derive([
+  const silent = deriveArchitectureAdvice([
     silentSignal("module-scope-effects", [detectionAt("src/cool.ts", 1, effectData)])
   ])
-  const mixed = architectureExploreWiring.derive([
+  const mixed = deriveArchitectureAdvice([
     silentSignal("external-dependency-construction", [
       detectionAt(
         "src/mixed.ts",
@@ -332,7 +335,7 @@ test("collaborator concentration and one adapter derive separate seam advice", (
     productionAdapterCount: 1,
     testAdapterCount: 0
   })
-  const advice = architectureExploreWiring.derive([
+  const advice = deriveArchitectureAdvice([
     silentSignal("external-dependency-construction", [
       detectionAt("src/order.ts", 3, collaboratorData),
       detectionAt("src/order.ts", 8, collaboratorData)
@@ -345,7 +348,7 @@ test("collaborator concentration and one adapter derive separate seam advice", (
 })
 
 test("bidirectional directory pairs derive directory-level leaked seam advice", () => {
-  const bidirectional = architectureExploreWiring.derive([
+  const bidirectional = deriveArchitectureAdvice([
     silentSignal("module-graph", [
       detectionAt(
         "packages/a/src/one.ts",
@@ -359,7 +362,7 @@ test("bidirectional directory pairs derive directory-level leaked seam advice", 
       )
     ])
   ])
-  const unidirectional = architectureExploreWiring.derive([
+  const unidirectional = deriveArchitectureAdvice([
     silentSignal("module-graph", [
       detectionAt(
         "packages/a/src/one.ts",
@@ -443,12 +446,12 @@ test("export-surface workspace join derives test-past-interface advice", () => {
     })
   )
 
-  const testOnly = architectureExploreWiring.derive([
+  const testOnly = deriveArchitectureAdvice([
     silentSignal("export-surface", [surface]),
     silentSignal("module-identity", [identity]),
     silentSignal("import-usage", [testImport])
   ])
-  const withProd = architectureExploreWiring.derive([
+  const withProd = deriveArchitectureAdvice([
     silentSignal("export-surface", [surface]),
     silentSignal("module-identity", [identity]),
     silentSignal("import-usage", [testImport, prodImport])
@@ -487,7 +490,7 @@ test("export-surface workspace join ignores same-project test-only usage", () =>
     })
   )
 
-  const advice = architectureExploreWiring.derive([silentSignal("export-surface", [surface])])
+  const advice = deriveArchitectureAdvice([silentSignal("export-surface", [surface])])
 
   assert.equal(adviceWithTitle(advice, "test past interface").length, 0)
 })
@@ -505,10 +508,10 @@ test("context-tag dead seams derive hypothetical seam advice", () => {
     testAdapterCount: 0,
     consumerCount: 3
   })
-  const fires = architectureExploreWiring.derive([
+  const fires = deriveArchitectureAdvice([
     silentSignal("context-tag-seams", [detectionAt("src/dead.ts", 1, dead)])
   ])
-  const silent = architectureExploreWiring.derive([
+  const silent = deriveArchitectureAdvice([
     silentSignal("context-tag-seams", [detectionAt("src/alive.ts", 1, alive)])
   ])
 

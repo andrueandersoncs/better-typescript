@@ -6,6 +6,7 @@ const emptyPolicyConfigPreamble = [
   'import { makeFileMatch } from "@better-typescript/matchers/builtins/exportSurface"',
   'import { emptyRefactorExampleSource } from "@better-typescript/core/engine/example/examplesFromDefinition"',
   'import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"',
+  'import { Effect } from "effect"',
   "",
   "const emptyMatcher = makeMatcherFromSubscriptions(() => [])",
   "const emptyGuidance = () => () => []",

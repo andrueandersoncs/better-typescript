@@ -34,14 +34,14 @@ test("loadWiringConfig accepts arbitrary glob wiring entries", async () => {
         '    files: ["src/**/*.{ts,tsx}", "scripts/*.mts"],',
         "    wiring: {",
         '      policies: [makeEmptyPolicy("source-check")],',
-        "      derive: () => []",
+        "      derive: () => Effect.succeed([])",
         "    }",
         "  },",
         "  {",
         '    files: ["tests/**/*.ts"],',
         "    wiring: {",
         '      policies: [makeEmptyPolicy("test-helper", false)],',
-        "      derive: () => []",
+        "      derive: () => Effect.succeed([])",
         "    }",
         "  }",
         "]"
@@ -69,7 +69,7 @@ test("loadWiringConfig accepts a named zero-argument config factory", async () =
       configSource(
         "export const config = () => [{",
         '  files: ["src/**/*.ts"],',
-        '  wiring: { policies: [makeEmptyPolicy("named-factory-check")], derive: () => [] }',
+        '  wiring: { policies: [makeEmptyPolicy("named-factory-check")], derive: () => Effect.succeed([]) }',
         "}]"
       )
     )
@@ -85,7 +85,7 @@ test("loadWiringConfig accepts a default zero-argument config factory", async ()
       configSource(
         "export default () => [{",
         '  files: ["src/**/*.ts"],',
-        '  wiring: { policies: [makeEmptyPolicy("default-factory-check")], derive: () => [] }',
+        '  wiring: { policies: [makeEmptyPolicy("default-factory-check")], derive: () => Effect.succeed([]) }',
         "}]"
       )
     )
@@ -101,11 +101,11 @@ test("loadWiringConfig prefers the named config export over the default export",
       configSource(
         "export const config = [{",
         '  files: ["src/**/*.ts"],',
-        '  wiring: { policies: [makeEmptyPolicy("named-check")], derive: () => [] }',
+        '  wiring: { policies: [makeEmptyPolicy("named-check")], derive: () => Effect.succeed([]) }',
         "}]",
         "export default [{",
         '  files: ["src/**/*.ts"],',
-        '  wiring: { policies: [makeEmptyPolicy("default-check")], derive: () => [] }',
+        '  wiring: { policies: [makeEmptyPolicy("default-check")], derive: () => Effect.succeed([]) }',
         "}]"
       )
     )
@@ -121,7 +121,7 @@ test("loadWiringConfig ignores inherited config export properties", async () => 
       configSource(
         "const inheritedConfig = [{",
         '  files: ["src/**/*.ts"],',
-        '  wiring: { policies: [makeEmptyPolicy("inherited-check")], derive: () => [] }',
+        '  wiring: { policies: [makeEmptyPolicy("inherited-check")], derive: () => Effect.succeed([]) }',
         "}]",
         "export default Object.create({ config: inheritedConfig })"
       )
@@ -152,7 +152,7 @@ test("loaded glob config drives reportEvents end to end", async () => {
         "})",
         "export default [{",
         '  files: ["src/**/cases.ts"],',
-        "  wiring: { policies: [configuredPolicy], derive: () => [] }",
+        "  wiring: { policies: [configuredPolicy], derive: () => Effect.succeed([]) }",
         "}]"
       )
     )
@@ -171,6 +171,30 @@ test("loaded glob config drives reportEvents end to end", async () => {
   })
 })
 
+test("loaded config propagates derivation failures through reportEvents", async () => {
+  await runInTempProject(async (projectDirectory) => {
+    const config = await loadSource(
+      projectDirectory,
+      configSource(
+        "export default [{",
+        '  files: ["**/*"],',
+        '  wiring: { policies: [], derive: () => Effect.fail(new Error("decoded derivation failed")) }',
+        "}]"
+      )
+    )
+    const workspace = await Effect.runPromise(loadProject(projectDirectory))
+    const update = new WorkspaceUpdate({
+      rootPath: workspace.rootPath,
+      contexts: workspace.projects.map((project) => makeContext(project.rootPath)(project.program))
+    })
+
+    await assert.rejects(
+      Effect.runPromise(reportEvents(config)(update)),
+      /decoded derivation failed/
+    )
+  })
+})
+
 test("loadWiringConfig rejects empty and blank file glob arrays", async () => {
   await runInTempProject(async (projectDirectory) => {
     const blankError = await failSource(
@@ -178,7 +202,7 @@ test("loadWiringConfig rejects empty and blank file glob arrays", async () => {
       configSource(
         "export default [{",
         '  files: ["src/**/*.ts", "  "],',
-        "  wiring: { policies: [], derive: () => [] }",
+        "  wiring: { policies: [], derive: () => Effect.succeed([]) }",
         "}]"
       )
     )
@@ -191,7 +215,7 @@ test("loadWiringConfig rejects empty and blank file glob arrays", async () => {
       configSource(
         "export default [{",
         "  files: [],",
-        "  wiring: { policies: [], derive: () => [] }",
+        "  wiring: { policies: [], derive: () => Effect.succeed([]) }",
         "}]"
       )
     )
@@ -207,7 +231,7 @@ test("loadWiringConfig rejects the legacy bare wiring shape", async () => {
       configSource(
         "export default {",
         '  policies: [makeEmptyPolicy("legacy-check")],',
-        "  derive: () => []",
+        "  derive: () => Effect.succeed([])",
         "}"
       )
     )
@@ -223,7 +247,7 @@ test("loadWiringConfig rejects the legacy named wiring export", async () => {
       configSource(
         "export const wiring = [{",
         '  files: ["src/**/*.ts"],',
-        "  wiring: { policies: [], derive: () => [] }",
+        "  wiring: { policies: [], derive: () => Effect.succeed([]) }",
         "}]"
       )
     )
@@ -247,7 +271,7 @@ test("loadWiringConfig rejects structural Policy lookalikes", async () => {
         "      examples: emptyRefactorExampleSource,",
         "      reported: true",
         "    }],",
-        "    derive: () => []",
+        "    derive: () => Effect.succeed([])",
         "  }",
         "}]"
       )
@@ -269,7 +293,7 @@ test("loadWiringConfig rejects legacy per-policy paths", async () => {
         '  files: ["src/**/*.ts"],',
         "  wiring: {",
         '    policies: [{ name: "legacy-scope", paths: ["src"], matcher: emptyMatcher, guidance: emptyGuidance }],',
-        "    derive: () => []",
+        "    derive: () => Effect.succeed([])",
         "  }",
         "}]"
       )
@@ -289,7 +313,7 @@ test("loadWiringConfig rejects array and thunk-valued policy examples", async ()
           '  files: ["src/**/*.ts"],',
           "  wiring: {",
           `    policies: [{ name: "invalid-examples", matcher: emptyMatcher, guidance: emptyGuidance, examples: ${examples} }],`,
-          "    derive: () => []",
+          "    derive: () => Effect.succeed([])",
           "  }",
           "}]"
         )
@@ -311,7 +335,7 @@ test("loadWiringConfig accepts inline RefactorExampleSource policy examples", as
         '  files: ["src/**/*.ts"],',
         "  wiring: {",
         '    policies: [makePolicy({ name: "inline-examples", matcher: emptyMatcher, guidance: emptyGuidance, examples })],',
-        "    derive: () => []",
+        "    derive: () => Effect.succeed([])",
         "  }",
         "}]"
       )
@@ -331,8 +355,8 @@ test("loadWiringConfig rejects duplicate policy names across wiring entries", as
       projectDirectory,
       configSource(
         "export default [",
-        '  { files: ["src/**/*.ts"], wiring: { policies: [makeEmptyPolicy("duplicate-check")], derive: () => [] } },',
-        '  { files: ["tests/**/*.ts"], wiring: { policies: [makeEmptyPolicy("duplicate-check", false)], derive: () => [] } }',
+        '  { files: ["src/**/*.ts"], wiring: { policies: [makeEmptyPolicy("duplicate-check")], derive: () => Effect.succeed([]) } },',
+        '  { files: ["tests/**/*.ts"], wiring: { policies: [makeEmptyPolicy("duplicate-check", false)], derive: () => Effect.succeed([]) } }',
         "]"
       )
     )

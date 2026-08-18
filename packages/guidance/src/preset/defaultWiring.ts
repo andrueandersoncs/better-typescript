@@ -1,4 +1,4 @@
-import { Array, Record } from "effect"
+import { Array, Effect, Record } from "effect"
 import type { Advice } from "@better-typescript/core/engine/derive/advice"
 import type { NamedDetection } from "@better-typescript/core/engine/derive/namedDetection"
 import { filterFallbackAdviceForUncoveredFiles } from "@better-typescript/core/engine/fileLevelAdvice"
@@ -101,11 +101,12 @@ const materializeDefaultAdvice = (
   return Array.flatten(adviceGroups)
 }
 
-export const defaultDerive = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> => {
+export const defaultDerive = Effect.fn("DefaultWiring.derive")((signals: ReadonlyArray<Signal>) => {
   const namedElements = defaultNamedElements(signals)
+  const advice = materializeDefaultAdvice(signals, namedElements)
 
-  return materializeDefaultAdvice(signals, namedElements)
-}
+  return Effect.succeed(advice)
+})
 
 // Category property order is fixed because it defines report order.
 const defaultPolicyCategories = {

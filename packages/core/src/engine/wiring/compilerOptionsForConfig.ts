@@ -5,11 +5,11 @@ import { isProgramPolicy } from "./isProgramPolicy.js"
 import type { WiringConfig } from "./wiringConfig.js"
 import type { WiringEntry } from "./wiringEntry.js"
 
-const programPoliciesFromEntry = (entry: WiringEntry) =>
+const programPoliciesFromEntry = (entry: WiringEntry<unknown>) =>
   Array.filter(entry.wiring.policies, isProgramPolicy)
 
 // Compiler options follow program Policy order because matchers own analysis semantics.
-export const compilerOptionsForConfig: (config: WiringConfig) => ts.CompilerOptions = flow(
+export const compilerOptionsForConfig: (config: WiringConfig<unknown>) => ts.CompilerOptions = flow(
   Array.flatMap(programPoliciesFromEntry),
   compilerOptionsForPolicies
 )

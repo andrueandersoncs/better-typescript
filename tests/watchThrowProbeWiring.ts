@@ -8,6 +8,7 @@ import { nodeMatcher } from "@better-typescript/matchers/matcher/nodeMatcher"
 import { makeNodeMatch } from "@better-typescript/matchers/matcher/makeNodeMatch"
 import { probeExamples } from "./watchProbeExamples.js"
 import { probeName } from "./watchProbeName.js"
+import { Effect } from "effect"
 
 export const probeMessage = "throw statement"
 export const probeHint = "yield typed errors instead of throwing"
@@ -27,7 +28,7 @@ export const probeWiring = makeWiring({
     const detectionCount = signals[0]?.detections.length ?? 0
 
     if (detectionCount === 0) {
-      return []
+      return Effect.succeed([])
     }
     const advice: Advice = {
       location: Location.make({ path: "src/cases.ts", line: 1, column: 1 }),
@@ -38,6 +39,6 @@ export const probeWiring = makeWiring({
       examples: probeExamples
     }
 
-    return [advice]
+    return Effect.succeed([advice])
   }
 })

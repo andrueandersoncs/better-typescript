@@ -418,23 +418,25 @@ const reportBlocks =
     )
   }
 
-const batchReportBlocks = (config: WiringConfig) => (resolve: ResolveRefactorExamples) =>
-  Effect.fn("Report.batchBlocks")(function* (wiringSignals: ReadonlyArray<WiringSignals>) {
-    const matchedEntries = pipe(
-      Array.zip(config, wiringSignals),
-      Array.filter(([, current]) => current.matched)
-    )
+const batchReportBlocks =
+  <E>(config: WiringConfig<E>) =>
+  (resolve: ResolveRefactorExamples) =>
+    Effect.fn("Report.batchBlocks")(function* (wiringSignals: ReadonlyArray<WiringSignals>) {
+      const matchedEntries = pipe(
+        Array.zip(config, wiringSignals),
+        Array.filter(([, current]) => current.matched)
+      )
 
-    const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
+      const signals = Array.flatMap(matchedEntries, ([, current]) => current.signals)
 
-    const adviceGroups = Array.map(matchedEntries, ([entry, current]) =>
-      entry.wiring.derive(current.signals)
-    )
+      const adviceGroups = yield* Effect.forEach(matchedEntries, ([entry, current]) =>
+        entry.wiring.derive(current.signals)
+      )
 
-    const advice = Array.flatten(adviceGroups)
+      const advice = Array.flatten(adviceGroups)
 
-    return yield* reportBlocks(resolve)(signals)(advice)
-  })
+      return yield* reportBlocks(resolve)(signals)(advice)
+    })
 
 // Empty stays an explicit event because consumers need a positive nothing-found report.
 const initialReportEvents =
@@ -482,7 +484,7 @@ const appendIncludedDetections = (
   return includedDetections.length
 }
 
-const matchersForEntry = (entry: WiringEntry) => Array.map(entry.files, compileGlobMatcher)
+const matchersForEntry = (entry: WiringEntry<unknown>) => Array.map(entry.files, compileGlobMatcher)
 
 const collectWorkspaceFileForMatch = (
   workspaceFilesByWiring: ReadonlyArray<ReturnType<typeof makeWorkspaceFileBucket>>,
@@ -667,7 +669,7 @@ const workspacePolicySlot = (policy: WiringPolicy, policyIndex: number) => {
 
 const collectWorkspacePolicyDetections = (
   workspaceRoot: string,
-  config: WiringConfig,
+  config: WiringConfig<unknown>,
   workspaceFilesByWiring: ReadonlyArray<ReturnType<typeof makeWorkspaceFileBucket>>,
   seenByWiring: ReadonlyArray<ReturnType<typeof makeSeenBuckets>>,
   elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>
@@ -749,7 +751,7 @@ const makeWiringSignalsForEntry =
     elementsByWiring: ReadonlyArray<ReturnType<typeof makeElementBuckets>>,
     matchedWiringIndexSet: HashMap.HashMap<number, true>
   ) =>
-  (entry: WiringEntry, wiringIndex: number) => {
+  (entry: WiringEntry<unknown>, wiringIndex: number) => {
     const makeSignal = (policy: WiringPolicy, policyIndex: number) =>
       makeSignalForPolicy(elementsByWiring, wiringIndex, policy, policyIndex)
 
@@ -767,7 +769,7 @@ const fileMatchFromSourceMatch = (match: SourceMatchType) =>
 
 // Sequential project loading is required because every Program can exhaust the heap.
 const workspaceSignalsForProjects =
-  (config: WiringConfig) =>
+  (config: WiringConfig<unknown>) =>
   (workspaceRoot: string) =>
   (contexts: ReadonlyArray<ProgramContext>): Effect.Effect<ReadonlyArray<WiringSignals>> => {
     const matchersByWiring = Array.map(config, matchersForEntry)
@@ -851,16 +853,18 @@ const workspaceSignalsForProjects =
 
 // --- watch events because each update yields one complete snapshot ---
 
-const reportEventsForResolver = (config: WiringConfig) => (update: WorkspaceUpdate) =>
-  Effect.fn("Watch.reportEventsForResolver")(function* (resolve: ResolveRefactorExamples) {
-    const signals = yield* workspaceSignalsForProjects(config)(update.rootPath)(update.contexts)
-    const blocks = yield* batchReportBlocks(config)(resolve)(signals)
+const reportEventsForResolver =
+  <E>(config: WiringConfig<E>) =>
+  (update: WorkspaceUpdate) =>
+    Effect.fn("Watch.reportEventsForResolver")(function* (resolve: ResolveRefactorExamples) {
+      const signals = yield* workspaceSignalsForProjects(config)(update.rootPath)(update.contexts)
+      const blocks = yield* batchReportBlocks(config)(resolve)(signals)
 
-    return initialReportEvents(update.rootPath)(blocks)
-  })
+      return initialReportEvents(update.rootPath)(blocks)
+    })
 
 // One update is complete because watch rebuilds a whole snapshot.
-export const reportEvents = (config: WiringConfig) =>
+export const reportEvents = <E>(config: WiringConfig<E>) =>
   Effect.fn("Watch.reportEvents")(function* (update: WorkspaceUpdate) {
     return yield* pipe(
       makeRefactorExampleResolver(),

@@ -324,6 +324,10 @@
       "bun": "./src/engine/wiring/wiringClass.ts",
       "default": "./dist/engine/wiring/wiringClass.js"
     },
+    "./engine/wiring/wiringError": {
+      "bun": "./src/engine/wiring/wiringError.ts",
+      "default": "./dist/engine/wiring/wiringError.js"
+    },
     "./engine/wiring/wiringEntry": {
       "bun": "./src/engine/wiring/wiringEntry.ts",
       "default": "./dist/engine/wiring/wiringEntry.js"

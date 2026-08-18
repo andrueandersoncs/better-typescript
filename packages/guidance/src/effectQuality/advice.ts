@@ -1,5 +1,18 @@
 import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
-import { Array, Data, Function, HashMap, Option, Result, Schema, Struct, Tuple, pipe } from "effect"
+import {
+  Array,
+  Data,
+  Effect,
+  Function,
+  HashMap,
+  Option,
+  Result,
+  Schema,
+  Struct,
+  Tuple,
+  flow,
+  pipe
+} from "effect"
 import { EffectQualityAdviceData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityAdviceData"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -215,8 +228,9 @@ const buildEffectQualityExports = () => {
     return pipe(copyOption, Option.map(toAdvice), Result.fromOption(Function.constVoid))
   }
 
-  const effectQualityDerive = (signals: ReadonlyArray<Signal>): ReadonlyArray<Advice> =>
-    pipe(evidenceDetections(signals), Array.filterMap(adviceFromDetection))
+  const effectQualityDerive = Effect.fn("EffectQuality.derive")(
+    flow(evidenceDetections, Array.filterMap(adviceFromDetection), Effect.succeed)
+  )
 
   class EffectQualityRuleCopy extends Data.Class<{
     readonly kind: string

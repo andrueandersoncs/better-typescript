@@ -1,4 +1,4 @@
-import { Array } from "effect"
+import { Array, Effect } from "effect"
 import * as ts from "typescript"
 import { type Detection } from "@better-typescript/core/engine/location/detectionData"
 import { Location } from "@better-typescript/core/engine/location/locationData"
@@ -108,10 +108,10 @@ const localWiring = makeWiring({
     )(elementsOf("acme/no-console-log"))
 
     // filterFallbackAdviceForUncoveredFiles suppresses the generic nudge because covered files already get specifics.
-    return [
+    return Effect.succeed([
       ...specificAdvice,
       ...filterFallbackAdviceForUncoveredFiles(specificAdvice)(fallbackAdvice)
-    ]
+    ])
   }
 })
 

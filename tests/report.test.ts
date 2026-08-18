@@ -200,7 +200,7 @@ test("each glob wiring derives from only its matching files", async () => {
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
-      return [advice("directory", "packages/alpha", `alpha detections ${count}`)]
+      return Effect.succeed([advice("directory", "packages/alpha", `alpha detections ${count}`)])
     }
   )
   const betaWiring = testWiring(
@@ -210,7 +210,7 @@ test("each glob wiring derives from only its matching files", async () => {
     (signals) => {
       const count = signals[0]?.detections.length ?? 0
 
-      return [advice("directory", "packages/beta", `beta detections ${count}`)]
+      return Effect.succeed([advice("directory", "packages/beta", `beta detections ${count}`)])
     }
   )
   const config = defineConfig([
@@ -423,7 +423,7 @@ test("reportEvents renders advice remediation examples before evidence", async (
   }
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await Effect.runPromise(
-    reportFromTestWiring(testWiring([], () => [fixedAdvice]))(workspace)
+    reportFromTestWiring(testWiring([], () => Effect.succeed([fixedAdvice])))(workspace)
   )
 
   assert.deepEqual(blocks, [
@@ -550,7 +550,7 @@ test("reportEvents orders advice before policy blocks and sorts advice by level 
   ])
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await Effect.runPromise(
-    reportFromTestWiring(testWiring([groupedPolicy], () => fixedAdvice))(workspace)
+    reportFromTestWiring(testWiring([groupedPolicy], () => Effect.succeed(fixedAdvice)))(workspace)
   )
 
   assert.deepEqual(firstLines(blocks), [
@@ -587,10 +587,12 @@ test("reportEvents renders multiple advice items in report order", async () => {
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await Effect.runPromise(
     reportFromTestWiring(
-      testWiring([multiAdvicePolicy], () => [
-        advice("file", "src/z.ts", "file z advice"),
-        advice("file", "src/a.ts", "file a advice")
-      ])
+      testWiring([multiAdvicePolicy], () =>
+        Effect.succeed([
+          advice("file", "src/z.ts", "file z advice"),
+          advice("file", "src/a.ts", "file a advice")
+        ])
+      )
     )(workspace)
   )
 
@@ -637,7 +639,8 @@ test("reportEvents lets silent policies influence advice without rendering local
       : []
   const silentInfluencedWiring: Wiring = makeWiring({
     policies: [throwProbePolicy, silentProbeNamedPolicy],
-    derive: (signals) => silentInfluencedAdvice(signalOf(signals)(silentProbeNamedPolicy.name))
+    derive: (signals) =>
+      Effect.succeed(silentInfluencedAdvice(signalOf(signals)(silentProbeNamedPolicy.name)))
   })
   const workspace = await loadFixtureWorkspace("no-throw")
   const blocks = await Effect.runPromise(reportFromTestWiring(silentInfluencedWiring)(workspace))

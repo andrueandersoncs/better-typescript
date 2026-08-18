@@ -121,12 +121,12 @@ test("self-host derivation preserves every complete Wiring", () => {
   const architectureEvidence = silentSignal("pass-through-wrappers", [
     detectionAt("src/thin.ts", 1, wrapperData(1))
   ])
-  const productAdvice = productSelfHostWiring.derive([
-    defaultEvidence,
-    functionalCoreEvidence,
-    effectQualityEvidence
-  ])
-  const architectureAdvice = architectureExploreWiring.derive([architectureEvidence])
+  const productAdvice = Effect.runSync(
+    productSelfHostWiring.derive([defaultEvidence, functionalCoreEvidence, effectQualityEvidence])
+  )
+  const architectureAdvice = Effect.runSync(
+    architectureExploreWiring.derive([architectureEvidence])
+  )
   const titles = new Set([...productAdvice, ...architectureAdvice].map((advice) => advice.title))
 
   assert.ok(titles.has("high signal density"))

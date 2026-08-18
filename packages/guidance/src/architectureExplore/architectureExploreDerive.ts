@@ -1,5 +1,5 @@
-import { Array, Record } from "effect"
-import type { Advice } from "@better-typescript/core/engine/derive/advice"
+import { Array, Effect, Record } from "effect"
+
 import { makeNamedDetection } from "@better-typescript/core/engine/derive/makeNamedDetection"
 import type { Signal } from "@better-typescript/core/engine/signal/data"
 import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
@@ -45,14 +45,15 @@ export const architectureExploreAdvisers = Record.values(architectureExploreAdvi
 const nameArchitectureExploreDetections = (signal: Signal) =>
   Array.map(signal.detections, makeNamedDetection(signal.name))
 
-export const architectureExploreDerive = (
+export const architectureExploreDerive = Effect.fn("ArchitectureExplore.derive")((
   signals: ReadonlyArray<Signal>
-): ReadonlyArray<Advice> => {
+) => {
   const namedElements = Array.flatMap(signals, nameArchitectureExploreDetections)
   const adviceGroups = Array.map(architectureExploreAdvisers, (adviser) => adviser(namedElements))
+  const advice = Array.flatten(adviceGroups)
 
-  return Array.flatten(adviceGroups)
-}
+  return Effect.succeed(advice)
+})
 
 export const makeArchitectureExploreWiring = (
   fleetPolicies: ReadonlyArray<Policy>,

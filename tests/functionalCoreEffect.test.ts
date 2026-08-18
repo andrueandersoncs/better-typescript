@@ -1,5 +1,6 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
+import { Effect } from "effect"
 import {
   defaultFunctionalCoreEffectPolicy,
   roleByPrefixes
@@ -208,7 +209,7 @@ test("shape evidence and advice require the documented thresholds", async () => 
     "src/ports/badPort.ts:14:pure-service:0:1:1:0:0"
   ])
 
-  const advice = functionalCoreEffectWiring.derive(signals)
+  const advice = Effect.runSync(functionalCoreEffectWiring.derive(signals))
   const actualAdvice = advice.map((item) => `${item.location.path}:${item.title}`).sort()
 
   assert.deepEqual(actualAdvice, [
