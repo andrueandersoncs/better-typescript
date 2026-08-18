@@ -1,16 +1,4 @@
-import {
-  Array,
-  Effect,
-  Function,
-  Option,
-  Record,
-  Result,
-  Schema,
-  Struct,
-  Tuple,
-  pipe,
-  flow
-} from "effect"
+import { Array, Effect, Option, Record, Result, Schema, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence/strictEqual"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -22,15 +10,11 @@ import { makePackageExamples } from "../makePackageExamples.js"
 import { type FunctionalCoreShapeKind } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeKind"
 import { FunctionalCoreBoundaryData } from "@better-typescript/matchers/builtins/functionalCoreEffect/boundaryData"
 import { FunctionalCoreShapeData } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeData"
-import type { Match } from "@better-typescript/matchers/matcher/match"
-import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
-import { makeFunctionalCoreEffect } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffect"
 import { type FunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyClass"
-import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
-import { makeFunctionalCoreShapeEvidence } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeEvidence"
-
 import { makeWiring } from "@better-typescript/core/engine/wiring/makeWiring"
 import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
+import { makeFunctionalCoreEffectBoundaries } from "../policies/functionalCoreEffectBoundaries.js"
+import { makeFunctionalCoreShapeEvidencePolicy } from "../policies/functionalCoreShapeEvidence.js"
 
 // Bound once because matcher check names must stay aligned with policy registration.
 const functionalCoreBoundaryCheckName = "functional-core-effect-boundaries"
@@ -191,93 +175,9 @@ export const functionalCoreEffectDerive = Effect.fn("FunctionalCoreEffect.derive
   return Effect.succeed(advice)
 })
 
-const messageByKind: Readonly<Record<FunctionalCoreBoundaryData["kind"], string>> = {
-  "dependency-direction": "This dependency points outward across the functional-core architecture.",
-  "domain-effect-program":
-    "Keep the domain core pure instead of constructing an Effect program here.",
-  "direct-capability": "Access concrete capabilities only through an adapter at a declared seam.",
-  "runtime-execution": "Run Effect programs only at a configured composition root.",
-  "dependency-provisioning": "Choose and provide live implementations only at a composition root.",
-  "port-live-implementation":
-    "A port declares an interface; its live implementation belongs in an adapter.",
-  "infrastructure-contract":
-    "Do not expose infrastructure or mutable runtime handles through a port contract.",
-  "service-locator":
-    "Require individual services through the Effect context channel instead of passing a context or runtime bag.",
-  "unsuspended-adapter-effect":
-    "Suspend the foreign operation before composing it into an Effect program.",
-  "unscoped-resource": "Acquire this external resource in an Effect-managed lifecycle.",
-  "escaping-runtime-state":
-    "Create shared Effect state inside a Layer.effect service instead of letting it escape."
-}
-
-const hintByKind: Readonly<Record<FunctionalCoreBoundaryData["kind"], string>> = {
-  "dependency-direction":
-    "Move the dependency behind a domain-owned port, or move this behaviour to the outer role that owns the implementation.",
-  "domain-effect-program":
-    "Return an immutable domain decision from a plain function; let application code translate the decision into Effect operations.",
-  "direct-capability":
-    "Declare a Context.Service port with domain inputs and outputs, then implement it with a Layer in an adapter.",
-  "runtime-execution":
-    "Return the Effect value with its requirements visible; provide and run it once in main, bootstrap, wiring, or a test boundary.",
-  "dependency-provisioning":
-    "Leave the R channel open through application code and compose Layers where the application starts.",
-  "port-live-implementation":
-    "Use Context.Service for the port and export Layer.effect or Layer.succeed from an adapter Module.",
-  "infrastructure-contract":
-    "Expose domain-owned values, errors, Effect, or Stream; keep SDK clients, Promise, Runtime, Ref, Queue, and PubSub private to the adapter.",
-  "service-locator":
-    "Yield the precise Context.Service requirement where it is used; never pass Context.Context or a Runtime as a dependency bag.",
-  "unsuspended-adapter-effect":
-    "Use Effect.sync, Effect.try, Effect.tryPromise, or Effect.callback around the lazy foreign call; Effect.succeed does not suspend work.",
-  "unscoped-resource":
-    "Pair acquisition and release with Effect.acquireRelease or acquireDisposable, then expose the scoped implementation through a Layer.",
-  "escaping-runtime-state":
-    "Use Ref.make or the appropriate Queue/PubSub constructor while building a Layer.effect service and keep the handle out of the port surface."
-}
-
-const makeFceBoundariesFindings = (match: Match<FunctionalCoreBoundaryData>) =>
-  makeFindings(
-    match.target,
-    messageByKind[match.fact.kind],
-    hintByKind[match.fact.kind],
-    match.fact
-  )
-
-const makeFceBoundariesPolicy = (policy: FunctionalCoreEffectPolicy) => {
-  const matcher = makeFunctionalCoreEffect(policy)
-
-  return makeBuiltinPolicy({
-    name: "functional-core-effect-boundaries",
-    matcher: matcher,
-    guidance: Function.constant(makeFceBoundariesFindings),
-    reported: true,
-    stage: "program"
-  })
-}
-
-const message = "Functional-core architecture shape evidence for derived advice."
-
-const hint = "Use this silent signal only as input to functional-core advice derivation."
-
-const makeFceShapeEvidenceFindings = (match: Match<FunctionalCoreShapeData>) =>
-  makeFindings(match.target, message, hint, match.fact)
-
-const makeFceShapeEvidencePolicy = (policy: FunctionalCoreEffectPolicy) => {
-  const matcher = makeFunctionalCoreShapeEvidence(policy)
-
-  return makeBuiltinPolicy({
-    name: "functional-core-effect-shape-evidence",
-    matcher: matcher,
-    guidance: Function.constant(makeFceShapeEvidenceFindings),
-    reported: false,
-    stage: "program"
-  })
-}
-
 export const makeFunctionalCoreEffectWiring = (policy: FunctionalCoreEffectPolicy) => {
-  const boundaries = makeFceBoundariesPolicy(policy)
-  const shapeEvidence = makeFceShapeEvidencePolicy(policy)
+  const boundaries = makeFunctionalCoreEffectBoundaries(policy)
+  const shapeEvidence = makeFunctionalCoreShapeEvidencePolicy(policy)
   const policies = Array.make(boundaries, shapeEvidence)
 
   return makeWiring({

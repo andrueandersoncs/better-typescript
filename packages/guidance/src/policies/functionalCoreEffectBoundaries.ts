@@ -2,15 +2,12 @@ import { Function } from "effect"
 import type { Match } from "@better-typescript/matchers/matcher/match"
 import { makeFindings } from "@better-typescript/core/engine/policy/makeFindings"
 import { makeFunctionalCoreEffect } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffect"
-import {
-  FunctionalCoreBoundaryData,
-  type FunctionalCoreBoundaryKind
-} from "@better-typescript/matchers/builtins/functionalCoreEffect/data"
-import {
-  defaultFunctionalCoreEffectPolicy,
-  type FunctionalCoreEffectPolicy
-} from "@better-typescript/matchers/builtins/functionalCoreEffect/policy"
+import { FunctionalCoreBoundaryData } from "@better-typescript/matchers/builtins/functionalCoreEffect/boundaryData"
+import { defaultFunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyDefaults"
+import type { FunctionalCoreEffectPolicy } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectPolicyClass"
 import { makeBuiltinPolicy } from "../makeBuiltinPolicy.js"
+
+type FunctionalCoreBoundaryKind = FunctionalCoreBoundaryData["kind"]
 
 const messageByKind: Readonly<Record<FunctionalCoreBoundaryKind, string>> = {
   "dependency-direction": "This dependency points outward across the functional-core architecture.",
