@@ -1,0 +1,5 @@
+interface:
+  display_name: "Implement Codebase Architecture Improvements"
+  short_description: "Implement every architecture improvement in separate commits"
+policy:
+  allow_implicit_invocation: false
