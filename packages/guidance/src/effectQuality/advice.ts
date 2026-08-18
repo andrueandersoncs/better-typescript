@@ -35,6 +35,10 @@ const buildEffectQualityExports = () => {
     readonly remediation: string
   }> {}
 
+  class EffectQualityAdviceCopyCatalog extends Data.Class<
+    Readonly<Record<EffectQualityAdviceData["kind"], EffectQualityAdviceCopy>>
+  > {}
+
   const configRefinedValuesAdviceCopy = new EffectQualityAdviceCopy({
     title: "refine configuration values",
     remediation: "Use Config.schema or Config.mapOrFail for path, URL, port, and identifier values."
@@ -140,7 +144,7 @@ const buildEffectQualityExports = () => {
 
   const adviceCopyByKind: Readonly<
     Record<EffectQualityAdviceData["kind"], EffectQualityAdviceCopy>
-  > = {
+  > = new EffectQualityAdviceCopyCatalog({
     "config-refined-values": configRefinedValuesAdviceCopy,
     "retry-without-jitter": retryWithoutJitterAdviceCopy,
     "raw-fetch-outside-adapter": rawFetchOutsideAdapterAdviceCopy,
@@ -160,7 +164,8 @@ const buildEffectQualityExports = () => {
     "idempotent-retry": idempotentRetryAdviceCopy,
     "observable-worker-failure": observableWorkerFailureAdviceCopy,
     "http-client-preference": httpClientPreferenceAdviceCopy
-  }
+  })
+
   const effectQualityAdviceSignalName = "effect-quality-advice-evidence"
   const isEffectQualityAdviceSignalName = strictEqual(effectQualityAdviceSignalName)
 
@@ -200,7 +205,10 @@ const buildEffectQualityExports = () => {
       })
     }
 
-    return Result.succeed(toAdvice(adviceCopyByKind[detection.data.kind]))
+    const copy = adviceCopyByKind[detection.data.kind]
+    const advice = toAdvice(copy)
+
+    return Result.succeed(advice)
   }
 
   const effectQualityDerive = Effect.fn("EffectQuality.derive")(
@@ -211,6 +219,10 @@ const buildEffectQualityExports = () => {
     readonly message: string
     readonly hint: string
   }> {}
+
+  class EffectQualityRuleCopyCatalog extends Data.Class<
+    Readonly<Record<EffectQualityRuleData["kind"], EffectQualityRuleCopy>>
+  > {}
 
   const unsafeCastsRuleCopy = new EffectQualityRuleCopy({
     message: "Avoid unchecked `as any` assertions in Effect code.",
@@ -342,34 +354,35 @@ const buildEffectQualityExports = () => {
     hint: "Effect-aware tests provide the correct runtime and deterministic services."
   })
 
-  const ruleCopyByKind: Readonly<Record<EffectQualityRuleData["kind"], EffectQualityRuleCopy>> = {
-    "unsafe-casts": unsafeCastsRuleCopy,
-    "schema-class-models": schemaClassModelsRuleCopy,
-    "typescript-namespaces": typescriptNamespacesRuleCopy,
-    "process-environment": processEnvironmentRuleCopy,
-    "test-sleeps": testSleepsRuleCopy,
-    "production-sleep-loops": productionSleepLoopsRuleCopy,
-    "unbounded-stream-collect": unboundedStreamCollectRuleCopy,
-    "unbounded-stream-buffer": unboundedStreamBufferRuleCopy,
-    "handrolled-ttl-cache": handrolledTtlCacheRuleCopy,
-    "inflight-dedupe-map": inflightDedupeMapRuleCopy,
-    "cache-per-request": cachePerRequestRuleCopy,
-    "scoped-client-cache": scopedClientCacheRuleCopy,
-    "raw-fetch-abort-signal": rawFetchAbortSignalRuleCopy,
-    "typed-error-recovery": typedErrorRecoveryRuleCopy,
-    "layer-forever-acquisition": layerForeverAcquisitionRuleCopy,
-    "global-config-mutation": globalConfigMutationRuleCopy,
-    "service-method-effect-fn": serviceMethodEffectFnRuleCopy,
-    "effect-fn-name": effectFnNameRuleCopy,
-    "schema-record-interface": schemaRecordInterfaceRuleCopy,
-    "schema-optional-key": schemaOptionalKeyRuleCopy,
-    "schema-error-class": schemaErrorClassRuleCopy,
-    "config-secret-redaction": configSecretRedactionRuleCopy,
-    "bounded-retry-schedule": boundedRetryScheduleRuleCopy,
-    "http-response-validation": httpResponseValidationRuleCopy,
-    "http-status-decode-order": httpStatusDecodeOrderRuleCopy,
-    "effect-test-style": effectTestStyleRuleCopy
-  }
+  const ruleCopyByKind: Readonly<Record<EffectQualityRuleData["kind"], EffectQualityRuleCopy>> =
+    new EffectQualityRuleCopyCatalog({
+      "unsafe-casts": unsafeCastsRuleCopy,
+      "schema-class-models": schemaClassModelsRuleCopy,
+      "typescript-namespaces": typescriptNamespacesRuleCopy,
+      "process-environment": processEnvironmentRuleCopy,
+      "test-sleeps": testSleepsRuleCopy,
+      "production-sleep-loops": productionSleepLoopsRuleCopy,
+      "unbounded-stream-collect": unboundedStreamCollectRuleCopy,
+      "unbounded-stream-buffer": unboundedStreamBufferRuleCopy,
+      "handrolled-ttl-cache": handrolledTtlCacheRuleCopy,
+      "inflight-dedupe-map": inflightDedupeMapRuleCopy,
+      "cache-per-request": cachePerRequestRuleCopy,
+      "scoped-client-cache": scopedClientCacheRuleCopy,
+      "raw-fetch-abort-signal": rawFetchAbortSignalRuleCopy,
+      "typed-error-recovery": typedErrorRecoveryRuleCopy,
+      "layer-forever-acquisition": layerForeverAcquisitionRuleCopy,
+      "global-config-mutation": globalConfigMutationRuleCopy,
+      "service-method-effect-fn": serviceMethodEffectFnRuleCopy,
+      "effect-fn-name": effectFnNameRuleCopy,
+      "schema-record-interface": schemaRecordInterfaceRuleCopy,
+      "schema-optional-key": schemaOptionalKeyRuleCopy,
+      "schema-error-class": schemaErrorClassRuleCopy,
+      "config-secret-redaction": configSecretRedactionRuleCopy,
+      "bounded-retry-schedule": boundedRetryScheduleRuleCopy,
+      "http-response-validation": httpResponseValidationRuleCopy,
+      "http-status-decode-order": httpStatusDecodeOrderRuleCopy,
+      "effect-test-style": effectTestStyleRuleCopy
+    })
 
   const makeEffectQualityRulesFindings = (match: Match<EffectQualityRuleData>) => {
     const copy = ruleCopyByKind[match.fact.kind]

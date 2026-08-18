@@ -1,36 +1,26 @@
-import { Array, Function, Schema, pipe } from "effect"
+import { Array, pipe } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
 import { Location } from "@better-typescript/core/engine/location/locationData"
-
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location/countDetectionsAtPath"
-import { Detection } from "@better-typescript/core/engine/location/detectionData"
+import type { Detection } from "@better-typescript/core/engine/location/detectionData"
 import { makePackageExamples } from "../makePackageExamples.js"
-
-const detectionArray = Schema.Array(Detection)
-
-export const PipelineSignals = Schema.Struct({
-  noNestedCalls: detectionArray,
-  preferCurriedDataLastFunctions: detectionArray
-})
-
-export interface PipelineSignals extends Schema.Schema.Type<typeof PipelineSignals> {}
 
 export const pipelineHostileExamples = makePackageExamples("pipeline-hostile")
 
-const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advice> => {
+export const pipelineHostile = (
+  noNestedCalls: ReadonlyArray<Detection>,
+  preferCurriedDataLastFunctions: ReadonlyArray<Detection>
+): ReadonlyArray<Advice> => {
   const isPipelineHostile = (path: string) => {
-    const hasNestedCalls = countDetectionsAtPath(path)(signals.noNestedCalls) >= 5
-
-    const hasUncurriedFunctions =
-      countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions) >= 5
-
+    const hasNestedCalls = countDetectionsAtPath(path)(noNestedCalls) >= 5
+    const hasUncurriedFunctions = countDetectionsAtPath(path)(preferCurriedDataLastFunctions) >= 5
     const noNestedCallsEvidence = Array.make(hasNestedCalls, hasUncurriedFunctions)
 
     return Array.every(noNestedCallsEvidence, Boolean)
   }
 
-  const nestedCallPaths = Array.map(signals.noNestedCalls, (element) => element.location.path)
+  const nestedCallPaths = Array.map(noNestedCalls, (element) => element.location.path)
   const uniquePaths = Array.dedupe(nestedCallPaths)
 
   return pipe(
@@ -38,8 +28,8 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
     Array.filter(isPipelineHostile),
     Array.map((path) => {
       const location = Location.make({ path: path })
-      const nestedCount = countDetectionsAtPath(path)(signals.noNestedCalls)
-      const uncurriedCount = countDetectionsAtPath(path)(signals.preferCurriedDataLastFunctions)
+      const nestedCount = countDetectionsAtPath(path)(noNestedCalls)
+      const uncurriedCount = countDetectionsAtPath(path)(preferCurriedDataLastFunctions)
       const nestedItem = EvidenceItem.make({ measure: "no-nested-calls", count: nestedCount })
 
       const uncurriedItem = EvidenceItem.make({
@@ -63,5 +53,3 @@ const pipelineHostileAdviceFor = (signals: PipelineSignals): ReadonlyArray<Advic
     })
   )
 }
-
-export const pipelineHostile = Function.compose(PipelineSignals.make, pipelineHostileAdviceFor)

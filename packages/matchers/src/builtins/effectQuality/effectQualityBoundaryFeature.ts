@@ -63,7 +63,8 @@ import { retryEffectNames } from "./retryEffectNames.js"
 import { stringLiteralArgument } from "./stringLiteralArgument.js"
 import { declarationNameText } from "./declarationNameText.js"
 import { toRelativeFileName } from "../../support/paths.js"
-import { EffectQualityFeature, EffectQualityRuleProjection } from "./effectQualityFeature.js"
+import { EffectQualityFeature } from "./effectQualityFeature.js"
+import { EffectQualityRuleProjection } from "./effectQualityRuleProjection.js"
 
 const makeEffectQualityBoundaryFeature = () => {
   const responseJsonNames = Array.of("json")
@@ -2908,12 +2909,9 @@ const makeEffectQualityBoundaryFeature = () => {
   )
 
   const httpKinds = Array.of(ts.SyntaxKind.CallExpression)
-
-  const ruleProjections = Array.make(
-    new EffectQualityRuleProjection(schemaKinds, schemaRuleFindings),
-    new EffectQualityRuleProjection(httpKinds, httpRuleFindings)
-  )
-
+  const schemaProjection = new EffectQualityRuleProjection(schemaKinds, schemaRuleFindings)
+  const httpProjection = new EffectQualityRuleProjection(httpKinds, httpRuleFindings)
+  const ruleProjections = Array.make(schemaProjection, httpProjection)
   const evidenceProjections = Array.of(effectQualityBoundaryFindings)
 
   return new EffectQualityFeature(ruleProjections, evidenceProjections)

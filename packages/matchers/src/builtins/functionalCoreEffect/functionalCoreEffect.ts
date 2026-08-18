@@ -1,4 +1,16 @@
+import { Array, pipe } from "effect"
+import type { Subscription } from "../../matcher/subscription.js"
+import type { FunctionalCoreBoundaryData } from "./boundaryData.js"
+import { functionalCoreEffectFeatures } from "./functionalCoreEffectFeatureCatalog.js"
 import { withFunctionalCoreEffectIndex } from "./functionalCoreEffectIndexBuild.js"
-import { functionalCoreBoundaryFacts } from "./functionalCoreEffectFeatures.js"
+import type { FunctionalCoreEffectIndex } from "./functionalCoreEffectIndexClass.js"
 
-export const makeFunctionalCoreEffect = withFunctionalCoreEffectIndex(functionalCoreBoundaryFacts)
+const boundaryFacts = (index: FunctionalCoreEffectIndex) => {
+  const boundaryFactsFor = (
+    feature: (typeof functionalCoreEffectFeatures)[number]
+  ): ReadonlyArray<Subscription<FunctionalCoreBoundaryData>> => feature.boundaryFacts(index)
+
+  return pipe(functionalCoreEffectFeatures, Array.flatMap(boundaryFactsFor))
+}
+
+export const makeFunctionalCoreEffect = withFunctionalCoreEffectIndex(boundaryFacts)

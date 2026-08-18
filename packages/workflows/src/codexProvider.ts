@@ -1,51 +1,48 @@
 import type { AuthResult } from "@earendil-works/pi-ai"
 import { openaiCodexProvider } from "@earendil-works/pi-ai/providers/openai-codex"
 import { setProvider } from "@flue/runtime"
-import { Config, ConfigProvider, Effect, Schema, pipe } from "effect"
+import { Array, Config, ConfigProvider, Effect, Schema, pipe } from "effect"
 import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-// CodexTokens exists because Codex's OAuth file includes credentials Flue does not model.
-const CodexTokens = Schema.Struct({
-  access_token: Schema.String,
-  refresh_token: Schema.String
-})
+export const makeCodexAuthResolver = (
+  configProvider: ConfigProvider.ConfigProvider = ConfigProvider.fromEnv()
+) => {
+  const accessTokenKey = Schema.Literal("access_token")
+  const refreshTokenKey = Schema.Literal("refresh_token")
+  const tokensKey = Schema.Literal("tokens")
+  const tokenKeySchemas = Array.make(accessTokenKey, refreshTokenKey)
+  const tokenKeys = Schema.Union(tokenKeySchemas)
+  const CodexTokens = Schema.Record(tokenKeys, Schema.String)
+  const CodexAuth = Schema.Record(tokensKey, CodexTokens)
+  const codexAuthJson = Schema.fromJsonString(CodexAuth)
 
-interface CodexTokens extends Schema.Schema.Type<typeof CodexTokens> {}
+  const readCodexAuth = Effect.fn("CodexAuth.read")(function* () {
+    const home = homedir()
+    const defaultHome = join(home, ".codex")
+    const codexHome = yield* pipe(Config.string("CODEX_HOME"), Config.withDefault(defaultHome))
+    const authPath = join(codexHome, "auth.json")
+    const source = yield* Effect.tryPromise(() => readFile(authPath, "utf8"))
 
-// CodexAuth exists because the external OAuth file has no project-owned contract.
-const CodexAuth = Schema.Struct({ tokens: CodexTokens })
+    return yield* Schema.decodeUnknownEffect(codexAuthJson)(source)
+  })
 
-interface CodexAuth extends Schema.Schema.Type<typeof CodexAuth> {}
+  const toCodexAuthResult = (credentials: Schema.Schema.Type<typeof CodexAuth>): AuthResult => ({
+    auth: { apiKey: credentials.tokens.access_token },
+    source: "Codex OAuth"
+  })
 
-const toCodexAuthResult: (credentials: CodexAuth) => AuthResult = (credentials) => ({
-  auth: { apiKey: credentials.tokens.access_token },
-  source: "Codex OAuth"
-})
-
-const codexAuthJson = Schema.fromJsonString(CodexAuth)
-const decodeCodexAuth = Schema.decodeUnknownEffect(codexAuthJson)
-
-const readCodexAuth = Effect.fn("CodexAuth.read")(function* () {
-  const home = homedir()
-  const defaultHome = join(home, ".codex")
-  const codexHome = yield* pipe(Config.string("CODEX_HOME"), Config.withDefault(defaultHome))
-  const authPath = join(codexHome, "auth.json")
-  const source = yield* Effect.tryPromise(() => readFile(authPath, "utf8"))
-
-  return yield* decodeCodexAuth(source)
-})
-
-export const makeCodexAuthResolver =
-  (configProvider: ConfigProvider.ConfigProvider = ConfigProvider.fromEnv()) =>
-  () =>
+  const resolve = () =>
     pipe(
       readCodexAuth(),
       Effect.map(toCodexAuthResult),
       Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
       Effect.runPromise
     )
+
+  return resolve
+}
 
 const codexProviderName = "openai-codex"
 

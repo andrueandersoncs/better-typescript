@@ -13,12 +13,9 @@ import { highSignalDensity } from "../derive/highSignalDensity.js"
 import { ruleDominance } from "../derive/ruleDominance.js"
 import { sideEffectLaundering } from "../derive/sideEffectLaundering.js"
 import { hotSubsystem } from "../hotSubsystem/hotSubsystem.js"
-import {
-  ImperativeStateSignals,
-  imperativeStateManager
-} from "../imperativeStateManager/imperativeStateManager.js"
-import { PipelineSignals, pipelineHostile } from "../pipelineHostile/pipelineHostile.js"
-import { SystemicSignals, systemicHotspots } from "../systemicHotspots/systemicHotspots.js"
+import { imperativeStateManager } from "../imperativeStateManager/imperativeStateManager.js"
+import { pipelineHostile } from "../pipelineHostile/pipelineHostile.js"
+import { systemicHotspots } from "../systemicHotspots/systemicHotspots.js"
 import { commentAndDeclarationPolicies } from "./commentAndDeclarationPolicies.js"
 import { conceptAndCompositionPolicies } from "./conceptAndCompositionPolicies.js"
 import { controlFlowPolicies } from "./controlFlowPolicies.js"
@@ -30,14 +27,26 @@ import { expressionAndMutationPolicies } from "./expressionAndMutationPolicies.j
 import { semanticNamingPolicies } from "./semanticNamingPolicies.js"
 
 const materializeSpecificAdvice = (
-  imperativeInput: ImperativeStateSignals,
-  pipelineInput: PipelineSignals,
+  noMutation: Signal["detections"],
+  preferHashMap: Signal["detections"],
+  preferHashSet: Signal["detections"],
+  noMutableArrayMethods: Signal["detections"],
+  noMutableVariableDeclarations: Signal["detections"],
+  noNestedCalls: Signal["detections"],
+  preferCurriedDataLastFunctions: Signal["detections"],
   namedElements: ReadonlyArray<NamedDetection>,
   conceptSignals: ReadonlyArray<Signal["detections"][number]>
 ): ReadonlyArray<Advice> => {
-  const imperativeAdvice = imperativeStateManager(imperativeInput)
+  const imperativeAdvice = imperativeStateManager(
+    noMutation,
+    preferHashMap,
+    preferHashSet,
+    noMutableArrayMethods,
+    noMutableVariableDeclarations
+  )
+
   const sideEffectAdvice = sideEffectLaundering(namedElements)
-  const pipelineAdvice = pipelineHostile(pipelineInput)
+  const pipelineAdvice = pipelineHostile(noNestedCalls, preferCurriedDataLastFunctions)
   const conceptAdvice = conceptProliferation(conceptSignals)
   const adviceGroups = Array.make(imperativeAdvice, sideEffectAdvice, pipelineAdvice, conceptAdvice)
 
@@ -47,9 +56,10 @@ const materializeSpecificAdvice = (
 const defaultNamedElements = (signals: ReadonlyArray<Signal>): ReadonlyArray<NamedDetection> => {
   const reportedSignals = Array.filter(signals, Struct.get("reported"))
 
-  return Array.flatMap(reportedSignals, (signal) =>
+  const nameDetections = (signal: Signal) =>
     Array.map(signal.detections, makeNamedDetection(signal.name))
-  )
+
+  return Array.flatMap(reportedSignals, nameDetections)
 }
 
 const defaultSpecificAdvice = (
@@ -65,20 +75,17 @@ const defaultSpecificAdvice = (
   const preferCurried = elementsOf("prefer-curried-data-last-functions")
   const conceptSignals = elementsOf("concept-control")
 
-  const imperativeInput = ImperativeStateSignals.make({
+  return materializeSpecificAdvice(
     noMutation,
     preferHashMap,
     preferHashSet,
     noMutableArrayMethods,
-    noMutableVariableDeclarations
-  })
-
-  const pipelineInput = PipelineSignals.make({
+    noMutableVariableDeclarations,
     noNestedCalls,
-    preferCurriedDataLastFunctions: preferCurried
-  })
-
-  return materializeSpecificAdvice(imperativeInput, pipelineInput, namedElements, conceptSignals)
+    preferCurried,
+    namedElements,
+    conceptSignals
+  )
 }
 
 const materializeDefaultAdvice = (
@@ -93,12 +100,7 @@ const materializeDefaultAdvice = (
   const densityAfterFallbackSuppression =
     filterFallbackAdviceForUncoveredFiles(specificItems)(densityItems)
 
-  const systemicSignals = SystemicSignals.make({
-    hotSubsystem: subsystemItems,
-    highSignalDensity: densityAfterFallbackSuppression
-  })
-
-  const systemicItems = systemicHotspots(systemicSignals)
+  const systemicItems = systemicHotspots(subsystemItems, densityAfterFallbackSuppression)
 
   const adviceGroups = Array.make(
     specificItems,

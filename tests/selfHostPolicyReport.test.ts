@@ -23,8 +23,6 @@ import { reportedSignal } from "./defaultDeriveReportedSignal.js"
 import { silentSignal } from "./defaultDeriveSilentSignal.js"
 import { wrapperData } from "./architectureExploreDeriveWrapperData.js"
 
-const productSelfHostWiring = selfHostConfig[0]!.wiring
-
 const reportFor = async (policy: Policy) => {
   const workspace = await loadFixtureWorkspace(policy.name)
   const blocks = await Effect.runPromise(reportFromTestWiring(testWiring([policy]))(workspace))
@@ -80,6 +78,7 @@ test("self-host gap policies expose stable public reports", async () => {
 })
 
 test("self-host gap policies are enabled by default and during self-hosting", () => {
+  const productSelfHostWiring = selfHostConfig[0]!.wiring
   const expected = Array.make(
     "prefer-effect-schema-constructor",
     "no-trivial-effect-fn",
@@ -97,6 +96,7 @@ test("self-host gap policies are enabled by default and during self-hosting", ()
 })
 
 test("self-host derivation preserves every complete Wiring", () => {
+  const productSelfHostWiring = selfHostConfig[0]!.wiring
   const defaultEvidence = reportedSignal("no-throw", detectionsAt("src/dense.ts", 10))
   const effectQualityEvidence = silentSignal("effect-quality-advice-evidence", [
     detectionAt(

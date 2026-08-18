@@ -1,16 +1,4 @@
-import {
-  Array,
-  Data,
-  Function,
-  Option,
-  Order,
-  Result,
-  Schema,
-  Struct,
-  Tuple,
-  flow,
-  pipe
-} from "effect"
+import { Array, Data, Function, Option, Order, Result, Schema, Struct, flow, pipe } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -23,7 +11,7 @@ import type { SemanticModulePlacementEntityRecord as PlacementEntity } from "@be
 import { MixedPhysicalModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementMixedData.js"
 import type { SemanticModulePlacementModuleSlice as ModuleSlice } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementModuleSlice.js"
 import { SplitSemanticModulePlacementData } from "@better-typescript/matchers/builtins/architectureExplore/semanticModulePlacementSplitData.js"
-import { semanticModulePlacementName as stableSemanticModulePlacementName } from "../preset/semanticModulePlacementPolicies.js"
+import { semanticModulePlacementName as stableSemanticModulePlacementName } from "../preset/semanticModulePlacementName.js"
 
 const placementDeclarationKinds = {
   FunctionDeclaration: "function",
@@ -156,6 +144,7 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
     const semanticModulePlacementAdviceExamples = makePackageExamples(
       stableSemanticModulePlacementName
     )
+
     const isMixedData = Schema.is(MixedPhysicalModulePlacementData)
     const pathOf = (item: PlacementElement) => item.namedDetection.detection.location.path
 
@@ -383,7 +372,3 @@ const makeArchitectureExploreSemanticModulePlacementAdviser = () => {
 
 export const { semanticModulePlacementName, semanticModulePlacementAdvice } =
   makeArchitectureExploreSemanticModulePlacementAdviser()
-
-export const architectureExploreSemanticModulePlacementAdviserCatalog = Array.of(
-  Tuple.make(11, semanticModulePlacementAdvice)
-)

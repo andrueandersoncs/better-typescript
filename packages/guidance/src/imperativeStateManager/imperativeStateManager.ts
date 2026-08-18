@@ -1,4 +1,4 @@
-import { Array, Function, Option, Schema, pipe, Struct, flow } from "effect"
+import { Array, Function, Option, Predicate, Record, pipe, flow } from "effect"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
 import { countDetectionsAtPath } from "@better-typescript/core/engine/location/countDetectionsAtPath"
@@ -7,68 +7,52 @@ import { Detection } from "@better-typescript/core/engine/location/detectionData
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import { makePackageExamples } from "../makePackageExamples.js"
 
-const detectionArray = Schema.Array(Detection)
-
-export const ImperativeStateSignals = Schema.Struct({
-  noMutation: detectionArray,
-  preferHashMap: detectionArray,
-  preferHashSet: detectionArray,
-  noMutableArrayMethods: detectionArray,
-  noMutableVariableDeclarations: detectionArray
-})
-
-export interface ImperativeStateSignals extends Schema.Schema.Type<typeof ImperativeStateSignals> {}
-
-// Shared mutation-target evidence because detectors and advice decode one record.
-export const MutationElementData = Schema.Struct({
-  target: Schema.String
-})
-
-export interface MutationElementData extends Schema.Schema.Type<typeof MutationElementData> {}
-
 export const imperativeStateManagerExamples = makePackageExamples("imperative-state-manager")
 
-const isSharedStateMutation = (element: Detection) => {
-  const data = Option.fromNullishOr(element.data)
+export const imperativeStateManager = (
+  noMutation: ReadonlyArray<Detection>,
+  preferHashMap: ReadonlyArray<Detection>,
+  preferHashSet: ReadonlyArray<Detection>,
+  noMutableArrayMethods: ReadonlyArray<Detection>,
+  noMutableVariableDeclarations: ReadonlyArray<Detection>
+): ReadonlyArray<Advice> => {
+  const isSharedStateMutation = (element: Detection) => {
+    const data = Option.fromNullishOr(element.data)
 
-  const isSharedStateTarget = flow(
-    Struct.get<MutationElementData, "target">("target"),
-    strictEqual("shared-state")
-  )
+    const isSharedStateTarget = flow(
+      Record.get("target"),
+      Option.map(strictEqual("shared-state")),
+      Option.getOrElse(Function.constant(false))
+    )
 
-  const sharedState = pipe(
-    data,
-    Option.filter(Schema.is(MutationElementData)),
-    Option.map(isSharedStateTarget),
-    Option.getOrElse(Function.constant(false))
-  )
+    return pipe(
+      data,
+      Option.filter(Predicate.isObject),
+      Option.map(isSharedStateTarget),
+      Option.getOrElse(Function.constant(false))
+    )
+  }
 
-  return sharedState
-}
+  const sharedMutationCountAt = (path: string) => (elements: ReadonlyArray<Detection>) => {
+    const matchesPath = (element: Detection) => strictEqual(path)(element.location.path)
+    const atPath = Array.filter(elements, matchesPath)
+    const sharedStateMutations = Array.filter(atPath, isSharedStateMutation)
 
-const sharedMutationCountAt = (path: string) => (elements: ReadonlyArray<Detection>) => {
-  const matchesPath = (element: Detection) => strictEqual(path)(element.location.path)
-  const atPath = Array.filter(elements, matchesPath)
-  const sharedStateMutations = Array.filter(atPath, isSharedStateMutation)
+    return sharedStateMutations.length
+  }
 
-  return sharedStateMutations.length
-}
-
-const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArray<Advice> => {
-  const mutationPaths = Array.map(signals.noMutation, (element) => element.location.path)
+  const mutationPaths = Array.map(noMutation, (element) => element.location.path)
   const paths = Array.dedupe(mutationPaths)
-
-  const hasEnoughSharedMutations = (path: string) =>
-    sharedMutationCountAt(path)(signals.noMutation) >= 8
+  const hasEnoughSharedMutations = (path: string) => sharedMutationCountAt(path)(noMutation) >= 8
 
   const adviceForPath = (path: string) => {
     const location = Location.make({ path: path })
-    const sharedCount = sharedMutationCountAt(path)(signals.noMutation)
-    const mutationCount = countDetectionsAtPath(path)(signals.noMutation)
-    const hashMapCount = countDetectionsAtPath(path)(signals.preferHashMap)
-    const hashSetCount = countDetectionsAtPath(path)(signals.preferHashSet)
-    const arrayCount = countDetectionsAtPath(path)(signals.noMutableArrayMethods)
-    const declarationCount = countDetectionsAtPath(path)(signals.noMutableVariableDeclarations)
+    const sharedCount = sharedMutationCountAt(path)(noMutation)
+    const mutationCount = countDetectionsAtPath(path)(noMutation)
+    const hashMapCount = countDetectionsAtPath(path)(preferHashMap)
+    const hashSetCount = countDetectionsAtPath(path)(preferHashSet)
+    const arrayCount = countDetectionsAtPath(path)(noMutableArrayMethods)
+    const declarationCount = countDetectionsAtPath(path)(noMutableVariableDeclarations)
 
     const sharedItem = EvidenceItem.make({
       measure: "no-mutation/shared-state",
@@ -117,8 +101,3 @@ const imperativeStateAdviceFor = (signals: ImperativeStateSignals): ReadonlyArra
 
   return pipe(paths, Array.filter(hasEnoughSharedMutations), Array.map(adviceForPath))
 }
-
-export const imperativeStateManager = Function.compose(
-  ImperativeStateSignals.make,
-  imperativeStateAdviceFor
-)

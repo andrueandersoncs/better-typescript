@@ -4,9 +4,30 @@
   "private": true,
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "compat"
   ],
   "exports": {
+    "./builtins/effectQuality/effectQualityFeature": {
+      "types": "./compat/effectQualityFeature.d.ts",
+      "bun": "./compat/effectQualityFeature.js",
+      "default": "./compat/effectQualityFeature.js"
+    },
+    "./builtins/effectQuality/effectQualityFeature.js": {
+      "types": "./compat/effectQualityFeature.d.ts",
+      "bun": "./compat/effectQualityFeature.js",
+      "default": "./compat/effectQualityFeature.js"
+    },
+    "./builtins/functionalCoreEffect/functionalCoreEffectFeatures": {
+      "types": "./compat/functionalCoreEffectFeatures.d.ts",
+      "bun": "./compat/functionalCoreEffectFeatures.js",
+      "default": "./compat/functionalCoreEffectFeatures.js"
+    },
+    "./builtins/functionalCoreEffect/functionalCoreEffectFeatures.js": {
+      "types": "./compat/functionalCoreEffectFeatures.d.ts",
+      "bun": "./compat/functionalCoreEffectFeatures.js",
+      "default": "./compat/functionalCoreEffectFeatures.js"
+    },
     "./equivalence": {
       "bun": "./src/equivalence.ts",
       "default": "./dist/equivalence.js"

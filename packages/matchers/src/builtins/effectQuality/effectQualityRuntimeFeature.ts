@@ -52,7 +52,8 @@ import { stringLiteralArgument } from "./stringLiteralArgument.js"
 import { propertyNameText } from "../../support/propertyNameText.js"
 import { hasExportModifier } from "../../support/hasExportModifier.js"
 import { declarationNameText } from "./declarationNameText.js"
-import { EffectQualityFeature, EffectQualityRuleProjection } from "./effectQualityFeature.js"
+import { EffectQualityFeature } from "./effectQualityFeature.js"
+import { EffectQualityRuleProjection } from "./effectQualityRuleProjection.js"
 
 const makeEffectQualityRuntimeFeature = () => {
   const catchCauseNames = Array.make("catchCause", "catchAllCause")
@@ -2458,9 +2459,8 @@ const makeEffectQualityRuntimeFeature = () => {
     ts.SyntaxKind.ForStatement
   )
 
-  const ruleProjections = Array.of(
-    new EffectQualityRuleProjection(runtimeKinds, runtimeRuleFindings)
-  )
+  const runtimeProjection = new EffectQualityRuleProjection(runtimeKinds, runtimeRuleFindings)
+  const ruleProjections = Array.of(runtimeProjection)
 
   return new EffectQualityFeature(ruleProjections, evidenceFindings)
 }

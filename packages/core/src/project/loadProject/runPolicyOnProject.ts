@@ -16,7 +16,8 @@ const includeEverySourceFile = Function.constant(true)
 const programForPolicy =
   (policy: Policy) =>
   (program: ts.Program): ts.Program => {
-    const compilerOptions = compilerOptionsForPolicies(Array.of(policy))
+    const policies = Array.of(policy)
+    const compilerOptions = compilerOptionsForPolicies(policies)
     const currentOptions = program.getCompilerOptions()
 
     const optionMatches = ([name, value]: [string, unknown]) => {
@@ -52,7 +53,8 @@ export const runPolicyOnProject =
       const program = programForPolicy(policy)(project.program)
       const createContext = makeContext(project.rootPath)
       const context = createContext(program)
-      const policiesInEveryFile = toPolicies(Array.of(policy))(includeEverySourceFile)
+      const policies = Array.of(policy)
+      const policiesInEveryFile = toPolicies(policies)(includeEverySourceFile)
       const detections = policiesInEveryFile(context)
 
       return pipe(detections, Array.head, Option.getOrElse(noDetections))

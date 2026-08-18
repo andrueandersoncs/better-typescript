@@ -5,9 +5,55 @@
   "type": "module",
   "files": [
     "dist",
-    "examples"
+    "examples",
+    "compat"
   ],
   "exports": {
+    "./imperativeStateManager/imperativeStateManager": {
+      "types": "./compat/imperativeStateManager.d.ts",
+      "bun": "./compat/imperativeStateManager.js",
+      "default": "./compat/imperativeStateManager.js"
+    },
+    "./pipelineHostile/pipelineHostile": {
+      "types": "./compat/pipelineHostile.d.ts",
+      "bun": "./compat/pipelineHostile.js",
+      "default": "./compat/pipelineHostile.js"
+    },
+    "./systemicHotspots/systemicHotspots": {
+      "types": "./compat/systemicHotspots.d.ts",
+      "bun": "./compat/systemicHotspots.js",
+      "default": "./compat/systemicHotspots.js"
+    },
+    "./architectureExplore/architectureExploreDependencyStructureAdvisers": {
+      "types": "./compat/architectureExploreDependencyStructureAdvisers.d.ts",
+      "bun": "./compat/architectureExploreDependencyStructureAdvisers.js",
+      "default": "./compat/architectureExploreDependencyStructureAdvisers.js"
+    },
+    "./architectureExplore/architectureExploreModuleShapeAdvisers": {
+      "types": "./compat/architectureExploreModuleShapeAdvisers.d.ts",
+      "bun": "./compat/architectureExploreModuleShapeAdvisers.js",
+      "default": "./compat/architectureExploreModuleShapeAdvisers.js"
+    },
+    "./architectureExplore/architectureExploreTestabilityAdvisers": {
+      "types": "./compat/architectureExploreTestabilityAdvisers.d.ts",
+      "bun": "./compat/architectureExploreTestabilityAdvisers.js",
+      "default": "./compat/architectureExploreTestabilityAdvisers.js"
+    },
+    "./architectureExplore/architectureExploreSemanticModulePlacementAdviser": {
+      "types": "./compat/architectureExploreSemanticModulePlacementAdviser.d.ts",
+      "bun": "./compat/architectureExploreSemanticModulePlacementAdviser.js",
+      "default": "./compat/architectureExploreSemanticModulePlacementAdviser.js"
+    },
+    "./policies/functionalCoreEffectBoundaries": {
+      "types": "./compat/functionalCoreEffectBoundaries.d.ts",
+      "bun": "./compat/functionalCoreEffectBoundaries.js",
+      "default": "./compat/functionalCoreEffectBoundaries.js"
+    },
+    "./policies/functionalCoreShapeEvidence": {
+      "types": "./compat/functionalCoreShapeEvidence.d.ts",
+      "bun": "./compat/functionalCoreShapeEvidence.js",
+      "default": "./compat/functionalCoreShapeEvidence.js"
+    },
     "./definePolicy": {
       "bun": "./src/definePolicy.ts",
       "default": "./dist/definePolicy.js"

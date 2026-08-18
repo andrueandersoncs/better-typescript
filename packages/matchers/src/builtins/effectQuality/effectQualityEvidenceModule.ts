@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from "effect"
+import { Array, Function, Option, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import { nodeSubscriptions } from "../../matcher/nodeSubscriptions.js"
@@ -16,7 +16,7 @@ import { roleForSourceFile } from "./roleForSourceFile.js"
 
 const evidenceProjections = pipe(
   effectQualityFeatures,
-  Array.flatMap((feature) => feature.evidenceProjections)
+  Array.flatMap(Struct.get("evidenceProjections"))
 )
 
 const effectQualityAdviceFindings = (

@@ -5,16 +5,20 @@ import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/a
 import { functionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
 
-const productFiles = ["packages/*/src/**"] as const
-const architectureFiles = ["better-typescript.config.ts", ...productFiles, "tests/**"] as const
+const selfHostConfig = (() => {
+  const productFiles = ["packages/*/src/**"] as const
+  const architectureFiles = ["better-typescript.config.ts", ...productFiles, "tests/**"] as const
 
-const productWiring = makeMergedWiring([
-  defaultWiring,
-  functionalCoreEffectWiring,
-  effectQualityWiring
-])
+  const productWiring = makeMergedWiring([
+    defaultWiring,
+    functionalCoreEffectWiring,
+    effectQualityWiring
+  ])
 
-export default defineConfig([
-  { files: productFiles, wiring: productWiring },
-  { files: architectureFiles, wiring: architectureExploreWiring }
-])
+  return defineConfig([
+    { files: productFiles, wiring: productWiring },
+    { files: architectureFiles, wiring: architectureExploreWiring }
+  ])
+})()
+
+export default selfHostConfig

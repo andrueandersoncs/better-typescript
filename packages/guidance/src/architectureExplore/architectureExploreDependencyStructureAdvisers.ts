@@ -793,10 +793,3 @@ export const {
   testPastInterfaceExamples,
   testPastInterface
 } = makeArchitectureExploreDependencyStructureAdvisers()
-
-export const architectureExploreDependencyStructureAdviserCatalog = Array.make(
-  Tuple.make(3, leakedSeam),
-  Tuple.make(4, testPastInterface),
-  Tuple.make(7, registrationCeremony),
-  Tuple.make(8, hubModule)
-)

@@ -3,6 +3,7 @@ import { test } from "bun:test"
 import { Effect } from "effect"
 import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
 import {
+  architectureExploreAdvisers,
   architectureExploreDerive,
   makeArchitectureExploreWiring
 } from "@better-typescript/guidance/architectureExplore/architectureExploreDerive"
@@ -51,6 +52,10 @@ test("Architecture Explore adviser modules expose their report-order catalogs", 
   ].map((catalog) => catalog.map(([order]) => order))
 
   assert.deepEqual(orders, [[0, 1, 2, 10], [3, 4, 7, 8], [5, 6, 9], [11]])
+})
+
+test("Architecture Explore keeps the public ordered adviser list", () => {
+  assert.equal(architectureExploreAdvisers.length, 12)
 })
 
 test("architectureExploreWiring contains only relational silent evidence checks", () => {

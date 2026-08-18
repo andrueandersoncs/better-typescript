@@ -1,4 +1,4 @@
-import { Tuple, Array, HashMap, Option, Schema, Struct, pipe } from "effect"
+import { Tuple, Array, Data, HashMap, Option, Struct, pipe } from "effect"
 import { strictEqual } from "@better-typescript/core/engine/equivalence/strictEqual"
 import { Advice } from "@better-typescript/core/engine/derive/advice"
 import { EvidenceItem } from "@better-typescript/core/engine/derive/evidenceItem"
@@ -11,61 +11,59 @@ import { type NamedDetection } from "@better-typescript/core/engine/derive/named
 import { Location } from "@better-typescript/core/engine/location/locationData"
 import { makePackageExamples } from "../makePackageExamples.js"
 
-const DirectorySignals = Schema.Struct({
-  path: Schema.String,
-  files: Schema.Array(FileDetections),
-  projectTotal: Schema.Number
-})
-
-interface DirectorySignals extends Schema.Schema.Type<typeof DirectorySignals> {}
-
 export const hotSubsystemExamples = makePackageExamples("hot-subsystem")
 
-const isHotSubsystem = (directory: DirectorySignals) => {
-  const elements = Array.flatMap(directory.files, Struct.get("elements"))
-  const hasEnoughSignals = elements.length >= 25
-  const hasEnoughFiles = directory.files.length >= 3
-  const hasProjectShare = elements.length * 5 >= directory.projectTotal * 3
-  const signalsEvidence = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
-
-  return Array.every(signalsEvidence, Boolean)
-}
-
-const makeSubsystemAdvice = (directory: DirectorySignals) => {
-  const elements = Array.flatMap(directory.files, Struct.get("elements"))
-  const summary = makeCountSummary(elements)
-  const policyEvidence = evidenceFromCounts(summary.countsByPolicy)
-
-  const sharePercent =
-    directory.projectTotal > 0 ? Math.floor((summary.total * 100) / directory.projectTotal) : 0
-
-  const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
-
-  const filesItem = EvidenceItem.make({
-    measure: "files-with-signals",
-    count: directory.files.length
-  })
-
-  const shareItem = EvidenceItem.make({ measure: "share(signals)", count: sharePercent })
-  const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
-  const evidence = Array.appendAll(leadingEvidence, policyEvidence)
-  const location = Location.make({ path: directory.path })
-
-  return Advice.make({
-    location,
-    level: "directory",
-    title: "hot subsystem",
-    remediation:
-      "Signals concentrate in this directory: treat it as one subsystem to invert, not a " +
-      "pile of files to patch. Give the subsystem a Layer of its own, move shared state " +
-      "into Refs and PubSubs behind that Layer, and enter the runtime once at the " +
-      "subsystem's edge.",
-    evidence,
-    examples: hotSubsystemExamples
-  })
-}
-
 const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArray<Advice> => {
+  class DirectorySignals extends Data.Class<{
+    readonly path: string
+    readonly files: ReadonlyArray<FileDetections>
+    readonly projectTotal: number
+  }> {}
+
+  const isHotSubsystem = (directory: DirectorySignals) => {
+    const elements = Array.flatMap(directory.files, Struct.get("elements"))
+    const hasEnoughSignals = elements.length >= 25
+    const hasEnoughFiles = directory.files.length >= 3
+    const hasProjectShare = elements.length * 5 >= directory.projectTotal * 3
+    const signalsEvidence = Array.make(hasEnoughSignals, hasEnoughFiles, hasProjectShare)
+
+    return Array.every(signalsEvidence, Boolean)
+  }
+
+  const makeSubsystemAdvice = (directory: DirectorySignals) => {
+    const elements = Array.flatMap(directory.files, Struct.get("elements"))
+    const summary = makeCountSummary(elements)
+    const policyEvidence = evidenceFromCounts(summary.countsByPolicy)
+
+    const sharePercent =
+      directory.projectTotal > 0 ? Math.floor((summary.total * 100) / directory.projectTotal) : 0
+
+    const signalsItem = EvidenceItem.make({ measure: "signals", count: summary.total })
+
+    const filesItem = EvidenceItem.make({
+      measure: "files-with-signals",
+      count: directory.files.length
+    })
+
+    const shareItem = EvidenceItem.make({ measure: "share(signals)", count: sharePercent })
+    const leadingEvidence = Array.make(signalsItem, filesItem, shareItem)
+    const evidence = Array.appendAll(leadingEvidence, policyEvidence)
+    const location = Location.make({ path: directory.path })
+
+    return Advice.make({
+      location,
+      level: "directory",
+      title: "hot subsystem",
+      remediation:
+        "Signals concentrate in this directory: treat it as one subsystem to invert, not a " +
+        "pile of files to patch. Give the subsystem a Layer of its own, move shared state " +
+        "into Refs and PubSubs behind that Layer, and enter the runtime once at the " +
+        "subsystem's edge.",
+      evidence,
+      examples: hotSubsystemExamples
+    })
+  }
+
   const files = byFile(signals)
   const projectElements = Array.flatMap(files, Struct.get("elements"))
 
@@ -110,7 +108,7 @@ const hotSubsystemAdvice = (signals: ReadonlyArray<NamedDetection>): ReadonlyArr
       Option.getOrElse((): ReadonlyArray<FileDetections> => Array.empty())
     )
 
-    return DirectorySignals.make({
+    return new DirectorySignals({
       path,
       files: belongingFiles,
       projectTotal: projectElements.length

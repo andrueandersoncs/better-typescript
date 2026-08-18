@@ -11,12 +11,37 @@ import {
   functionalCoreEffectWiring,
   makeFunctionalCoreEffectWiring
 } from "@better-typescript/guidance/functionalCoreEffect/advice"
+import {
+  functionalCoreEffectBoundaries,
+  makeFunctionalCoreEffectBoundaries
+} from "@better-typescript/guidance/policies/functionalCoreEffectBoundaries"
+import {
+  functionalCoreShapeEvidence,
+  makeFunctionalCoreShapeEvidencePolicy
+} from "@better-typescript/guidance/policies/functionalCoreShapeEvidence"
+import { makeFunctionalCoreEffect } from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffect"
+import { makeFunctionalCoreShapeEvidence } from "@better-typescript/matchers/builtins/functionalCoreEffect/shapeEvidence"
+import {
+  functionalCoreBoundaryFacts,
+  functionalCoreShapeFacts
+} from "@better-typescript/matchers/builtins/functionalCoreEffect/functionalCoreEffectFeatures"
 import { Option } from "effect"
 import { runFixtureSignals } from "./functionalCoreEffectRunFixtureSignals.js"
 import { signalNamed } from "./functionalCoreEffectSignalNamed.js"
 import { boundaryDataOf } from "./functionalCoreEffectBoundaryDataOf.js"
 import { boundarySummary } from "./functionalCoreEffectBoundarySummary.js"
 import { shapeSummary } from "./functionalCoreEffectShapeSummary.js"
+
+test("functional-core compatibility exports remain available", () => {
+  assert.equal(functionalCoreEffectBoundaries.name, "functional-core-effect-boundaries")
+  assert.equal(functionalCoreShapeEvidence.name, "functional-core-effect-shape-evidence")
+  assert.equal(typeof makeFunctionalCoreEffectBoundaries, "function")
+  assert.equal(typeof makeFunctionalCoreShapeEvidencePolicy, "function")
+  assert.equal(typeof makeFunctionalCoreEffect, "function")
+  assert.equal(typeof makeFunctionalCoreShapeEvidence, "function")
+  assert.equal(typeof functionalCoreBoundaryFacts, "function")
+  assert.equal(typeof functionalCoreShapeFacts, "function")
+})
 
 test("conventional and explicit role classifiers are deterministic", () => {
   assert.deepEqual(

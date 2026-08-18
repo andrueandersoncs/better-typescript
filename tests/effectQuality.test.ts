@@ -5,8 +5,13 @@ import { EffectQualityAdviceData } from "@better-typescript/matchers/builtins/ef
 import { EffectQualityRuleData } from "@better-typescript/matchers/builtins/effectQuality/effectQualityRuleData"
 import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
 import { effectQualityFeatures } from "@better-typescript/matchers/builtins/effectQuality/effectQualityFeatureCatalog"
+import { EffectQualityRuleProjection } from "@better-typescript/matchers/builtins/effectQuality/effectQualityFeature"
 import { Effect, Schema } from "effect"
 import { runSignals } from "./effectQualityRunSignals.js"
+
+test("Effect-quality feature compatibility exports remain available", () => {
+  assert.equal(typeof EffectQualityRuleProjection, "function")
+})
 
 test("Effect-quality feature catalog owns ordered rule and evidence projections", () => {
   assert.deepEqual(
