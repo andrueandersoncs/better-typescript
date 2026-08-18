@@ -17,6 +17,7 @@ import { foldAst } from "../sources/foldAst.js"
 import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
 import { classDeclarationName } from "../support/classDeclarationName.js"
+import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
 import { isExtendsClause } from "../support/isExtendsClause.js"
 import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
 import { unwrapCallee } from "../support/unwrapCallee.js"
@@ -25,9 +26,6 @@ import type { ReferenceKey } from "../support/referenceKeyType.js"
 import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import type { Match } from "../matcher/match.js"
 import type { MatchContext } from "../matcher/matchContext.js"
-import { ancestorMatching } from "./contextTagAncestorMatching.js"
-import { effectRootSymbol } from "./effectRootSymbol.js"
-import { emptySeamCounts } from "./emptySeamCounts.js"
 import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
 import { programIndexedFileMatcher } from "./programIndexedFileMatcher.js"
 
@@ -40,6 +38,31 @@ export const ContextTagSeamData = Schema.Struct({
 })
 
 export interface ContextTagSeamData extends Schema.Schema.Type<typeof ContextTagSeamData> {}
+
+const ancestorMatching =
+  (predicate: (node: ts.Node) => boolean) =>
+  (node: ts.Node): Option.Option<ts.Node> => {
+    const visit = (current: ts.Node): Option.Option<ts.Node> => {
+      const matched = Option.liftPredicate(predicate)(current)
+      const atSourceFile = ts.isSourceFile(current.parent)
+
+      return pipe(
+        matched,
+        Option.orElse(() => (atSourceFile ? Option.none() : visit(current.parent)))
+      )
+    }
+
+    return visit(node.parent)
+  }
+
+const effectRootSymbol = (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
+  pipe(
+    Option.liftPredicate(ts.isIdentifier)(access.expression),
+    Option.flatMap(resolvedSymbolAt(checker)),
+    Option.filter(symbolDeclaredInEffectPackage)
+  )
+
+const emptySeamCounts = (): readonly [number, number, number] => Tuple.make(0, 0, 0)
 
 const contextSeamMembers: ReadonlyArray<string> = Array.make("Tag", "Service", "Reference")
 

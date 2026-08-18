@@ -1,5 +1,6 @@
 import {
   Array,
+  Data,
   HashMap,
   MutableRef,
   Option,
@@ -14,6 +15,7 @@ import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import { foldAst } from "../sources/foldAst.js"
 import { toRelativeFileName } from "../support/paths.js"
+import { nodeOwnsChild } from "../support/nodeOwnsChild.js"
 import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
 import { toWorkspacePath } from "./architectureExplore/toWorkspacePath.js"
 import { fileMatcher } from "../matcher/fileMatcher.js"
@@ -23,8 +25,22 @@ import type { MatchContext } from "../matcher/matchContext.js"
 
 import { ImportedNameUsage } from "./architectureExplore/importedNameUsage.js"
 import { BindingCounter } from "./bindingCounter.js"
-import { ImportRecord } from "./importRecord.js"
-import { isNamedCallReference } from "./isNamedCallReference.js"
+
+// ImportRecord preserves declaration order because emitted evidence must match source order.
+class ImportRecord extends Data.Class<{
+  readonly declaration: ts.ImportDeclaration
+  readonly specifier: string
+  readonly counters: ReadonlyArray<BindingCounter>
+}> {
+  // Specifier text is evidence identity because ImportUsageData joins on the raw module path.
+  get moduleSpecifier(): string {
+    return this.specifier
+  }
+}
+
+const callExpression = Struct.get<ts.CallExpression, "expression">("expression")
+const callExpressionOwnsChild = nodeOwnsChild(ts.isCallExpression, callExpression)
+const isNamedCallReference = (node: ts.Identifier) => callExpressionOwnsChild(node.parent, node)
 
 const importedNameUsageArray = Schema.Array(ImportedNameUsage)
 

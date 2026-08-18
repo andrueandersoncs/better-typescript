@@ -11,8 +11,6 @@ import {
   flow,
   pipe
 } from "effect"
-import { emptyAdapterCount } from "./emptyAdapterCount.js"
-import { typeSymbol } from "./singleAdapterTypeSymbol.js"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import type { ProgramContext } from "@better-typescript/matchers/sources/data"
@@ -37,6 +35,24 @@ export const SingleAdapterSeamData = Schema.Struct({
 })
 
 export interface SingleAdapterSeamData extends Schema.Schema.Type<typeof SingleAdapterSeamData> {}
+
+const emptyAdapterCount = (): readonly [number, number] => Tuple.make(0, 0)
+
+const typeSymbol = (checker: ts.TypeChecker) => (type: ts.Type) => {
+  const aliasSymbol = Option.fromNullishOr(type.aliasSymbol)
+  const symbol = type.getSymbol()
+  const directSymbol = Option.fromNullishOr(symbol)
+
+  return pipe(
+    aliasSymbol,
+    Option.orElse(Function.constant(directSymbol)),
+    Option.map((candidate) => {
+      const isAlias = (candidate.flags & ts.SymbolFlags.Alias) !== 0
+
+      return isAlias ? checker.getAliasedSymbol(candidate) : candidate
+    })
+  )
+}
 
 const behaviouralSignatureKinds: ReadonlyArray<ts.SyntaxKind> = Array.make(
   ts.SyntaxKind.MethodSignature,

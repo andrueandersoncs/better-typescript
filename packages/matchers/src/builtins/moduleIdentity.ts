@@ -23,9 +23,19 @@ import type { Match as MatcherMatch } from "../matcher/match.js"
 import type { MatchContext } from "../matcher/matchContext.js"
 
 import { stringArray } from "./architectureExplore/stringArraySchema.js"
-import { AliasIndex } from "./aliasIndex.js"
-import { decodeUnknownRecord } from "./unknownRecordSchema.js"
 import { programIndexedFileMatcher } from "./programIndexedFileMatcher.js"
+
+const aliasListSchema = Schema.Array(Schema.String)
+const aliasesByFileSchema = Schema.HashMap(Schema.String, aliasListSchema)
+
+const AliasIndex = Schema.Struct({
+  aliasesByFile: aliasesByFileSchema
+})
+
+interface AliasIndex extends Schema.Schema.Type<typeof AliasIndex> {}
+
+const unknownRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
+const decodeUnknownRecord = Schema.decodeUnknownOption(unknownRecordSchema)
 
 // ModuleIdentityData lists published aliases because specifier joins need file identity.
 export const ModuleIdentityData = Schema.Struct({

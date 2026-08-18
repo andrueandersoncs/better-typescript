@@ -15,7 +15,6 @@ import { isTestSourceFile } from "./architectureExplore/isTestPath.js"
 import type { ExportReferenceIndex } from "./architectureExplore/exportReferenceIndex.js"
 import { conciseArrowBody } from "../support/conciseArrowBody.js"
 import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
-import { calleeName } from "./compositionCalleeName.js"
 import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import type { Match as MatcherMatch } from "../matcher/match.js"
 import type { MatchContext } from "../matcher/matchContext.js"
@@ -34,6 +33,36 @@ export interface CompositionFingerprintData extends Schema.Schema.Type<
 > {}
 
 const minimumSteps = 3
+
+const isAbsentQuestionDotToken = (access: ts.PropertyAccessExpression) =>
+  pipe(access.questionDotToken, Option.fromNullishOr, Option.isNone)
+
+const isNonOptionalPropertyAccess = (
+  expression: ts.Expression
+): expression is ts.PropertyAccessExpression =>
+  pipe(
+    expression,
+    Option.liftPredicate(ts.isPropertyAccessExpression),
+    Option.exists(isAbsentQuestionDotToken)
+  )
+
+const identifierText = (identifier: ts.Identifier) => Option.some(identifier.text)
+
+const joinCalleeWithAccessName = (access: ts.PropertyAccessExpression) => (left: string) =>
+  `${left}.${access.name.text}`
+
+const propertyAccessCalleeName = (access: ts.PropertyAccessExpression) =>
+  pipe(calleeName(access.expression), Option.map(joinCalleeWithAccessName(access)))
+
+const calleeName = (expression: ts.Expression): Option.Option<string> =>
+  pipe(
+    expression,
+    unwrapTransparentExpression,
+    EffectMatch.value,
+    EffectMatch.when(ts.isIdentifier, identifierText),
+    EffectMatch.when(isNonOptionalPropertyAccess, propertyAccessCalleeName),
+    EffectMatch.orElse((): Option.Option<string> => Option.none())
+  )
 
 const emptyFingerprintNames: ReadonlyArray<string> = Array.empty()
 

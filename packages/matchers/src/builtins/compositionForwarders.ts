@@ -17,7 +17,6 @@ import type { ExportedFunctionEntry } from "./architectureExplore/exportedFuncti
 import { usageFor } from "./architectureExplore/usageFor.js"
 import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { expressionFromConciseBody } from "./expressionFromConciseBody.js"
-import { finalCompositionCall } from "./finalCompositionCall.js"
 import { nestedSingleParamArrow } from "./nestedSingleParamArrow.js"
 import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import type { Match as MatcherMatch } from "../matcher/match.js"
@@ -40,6 +39,23 @@ export interface CompositionForwarderData extends Schema.Schema.Type<
 > {}
 
 const emptyParameterNames: ReadonlyArray<string> = Array.empty()
+
+const finalCompositionCall = (arrow: ts.ArrowFunction): Option.Option<ts.CallExpression> =>
+  pipe(
+    expressionFromConciseBody(arrow.body),
+    Option.flatMap((expression) => {
+      const nestedCall = pipe(
+        Option.some(expression),
+        Option.filter(ts.isArrowFunction),
+        Option.filter(nestedSingleParamArrow),
+        Option.flatMap(finalCompositionCall)
+      )
+
+      const call = Option.liftPredicate(ts.isCallExpression)(expression)
+
+      return pipe(nestedCall, Option.orElse(Function.constant(call)))
+    })
+  )
 
 const isAllowedCompositionExpression = (expression: ts.Expression): boolean =>
   pipe(

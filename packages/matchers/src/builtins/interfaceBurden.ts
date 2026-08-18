@@ -9,9 +9,45 @@ import { makeNodeMatch } from "../matcher/makeNodeMatch.js"
 import type { Match } from "../matcher/match.js"
 import type { MatchContext } from "../matcher/matchContext.js"
 import { InterfaceBurdenData } from "./interfaceBurdenData.js"
-import { emptySurface } from "./emptySurface.js"
-import { callableSurface } from "./callableSurface.js"
-import { combineSurface } from "./combineSurface.js"
+
+const emptySurface = InterfaceBurdenData.make({
+  operationCount: 0,
+  requiredParameterCount: 0
+})
+
+const requiredParameters = (parameters: ts.NodeArray<ts.ParameterDeclaration>) =>
+  Array.countBy(parameters, (parameter) => {
+    const optional = Option.fromNullishOr(parameter.questionToken)
+    const defaulted = Option.fromNullishOr(parameter.initializer)
+    const rest = Option.fromNullishOr(parameter.dotDotDotToken)
+    const optionalMissing = Option.isNone(optional)
+    const defaultMissing = Option.isNone(defaulted)
+    const restMissing = Option.isNone(rest)
+    const omissions = Array.make(optionalMissing, defaultMissing, restMissing)
+
+    return Array.every(omissions, Boolean)
+  })
+
+const callableSurface = (
+  node:
+    | ts.ArrowFunction
+    | ts.FunctionExpression
+    | ts.FunctionDeclaration
+    | ts.MethodDeclaration
+    | ts.GetAccessorDeclaration
+    | ts.SetAccessorDeclaration
+    | ts.ConstructorDeclaration
+) =>
+  InterfaceBurdenData.make({
+    operationCount: 1,
+    requiredParameterCount: requiredParameters(node.parameters)
+  })
+
+const combineSurface = (left: InterfaceBurdenData, right: InterfaceBurdenData) =>
+  InterfaceBurdenData.make({
+    operationCount: left.operationCount + right.operationCount,
+    requiredParameterCount: left.requiredParameterCount + right.requiredParameterCount
+  })
 
 const minimumOperations = 4
 
