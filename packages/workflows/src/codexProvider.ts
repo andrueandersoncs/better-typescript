@@ -2,10 +2,22 @@ import type { AuthResult } from "@earendil-works/pi-ai"
 import { openaiCodexProvider } from "@earendil-works/pi-ai/providers/openai-codex"
 import { setProvider } from "@flue/runtime"
 import { Config, ConfigProvider, Effect, Schema, pipe } from "effect"
-import { CodexAuth } from "./codexAuth.js"
 import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
+
+// CodexTokens exists because Codex's OAuth file includes credentials Flue does not model.
+const CodexTokens = Schema.Struct({
+  access_token: Schema.String,
+  refresh_token: Schema.String
+})
+
+interface CodexTokens extends Schema.Schema.Type<typeof CodexTokens> {}
+
+// CodexAuth exists because the external OAuth file has no project-owned contract.
+const CodexAuth = Schema.Struct({ tokens: CodexTokens })
+
+interface CodexAuth extends Schema.Schema.Type<typeof CodexAuth> {}
 
 const toCodexAuthResult: (credentials: CodexAuth) => AuthResult = (credentials) => ({
   auth: { apiKey: credentials.tokens.access_token },

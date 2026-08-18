@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { ConfigProvider } from "effect"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { access, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
@@ -27,4 +27,10 @@ test("Codex home is injectable with ConfigProvider", async () => {
 
 test("workflow entrypoint registers the Codex provider", () => {
   expect(registerCodexProvider()).toBe("openai-codex")
+})
+
+test("Codex OAuth schema is private to its provider", async () => {
+  const codexAuthPath = join(import.meta.dir, "../packages/workflows/src/codexAuth.ts")
+
+  await expect(access(codexAuthPath)).rejects.toThrow()
 })
