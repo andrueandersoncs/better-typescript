@@ -91,6 +91,117 @@ type UsageScanEntry = {
   readonly symbol: ts.Symbol
 }
 
+type UsageReferenceFilter<Entry> = (entry: Entry) => (node: ts.Identifier) => boolean
+
+const usageEntriesBySymbol = <Entry extends UsageScanEntry>(entries: ReadonlyArray<Entry>) => {
+  const entryPair = (entry: Entry) => Tuple.make(referenceKey(entry.symbol), entry)
+
+  return pipe(entries, Array.map(entryPair), HashMap.fromIterable)
+}
+
+const updateUsageForSymbol =
+  <Entry extends UsageScanEntry>(
+    entriesBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, Entry>,
+    referenceFilter: UsageReferenceFilter<Entry>,
+    identifier: ts.Identifier,
+    symbol: ts.Symbol,
+    fromTest: boolean,
+    sourcePath: string
+  ) =>
+  (usages: HashMap.HashMap<ReferenceKey<ts.Symbol>, ExportUsage>) => {
+    const symbolKey = referenceKey(symbol)
+
+    const updateForEntry = (entry: Entry) => {
+      const usage = pipe(HashMap.get(usages, symbolKey), Option.getOrElse(makeEmptyUsage))
+      const isCall = isDirectCallReference(identifier)
+      const updated = makeUpdatedUsage(fromTest, isCall, sourcePath)(usage)
+
+      return HashMap.set(usages, symbolKey, updated)
+    }
+
+    return pipe(
+      HashMap.get(entriesBySymbol, symbolKey),
+      Option.filter(Function.flip(referenceFilter)(identifier)),
+      Option.map(updateForEntry),
+      Option.getOrElse(Function.constant(usages))
+    )
+  }
+
+export const buildDualUsageMaps =
+  (context: ProgramContext) =>
+  <FirstEntry extends UsageScanEntry, SecondEntry extends UsageScanEntry>(
+    firstEntries: ReadonlyArray<FirstEntry>,
+    firstReferenceFilter: UsageReferenceFilter<FirstEntry>,
+    secondEntries: ReadonlyArray<SecondEntry>,
+    secondReferenceFilter: UsageReferenceFilter<SecondEntry>
+  ) => {
+    const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+    const firstBySymbol = usageEntriesBySymbol(firstEntries)
+    const secondBySymbol = usageEntriesBySymbol(secondEntries)
+    const relative = toRelativeFileName(context.projectRoot)
+    const classifyTestSource = isTestSourceFile(context.workspaceRoot)
+    const emptyUsages = HashMap.empty<ReferenceKey<ts.Symbol>, ExportUsage>()
+    const initial: readonly [typeof emptyUsages, typeof emptyUsages] = Tuple.make(
+      emptyUsages,
+      emptyUsages
+    )
+
+    const scanFile =
+      (sourceFile: ts.SourceFile) =>
+      (usageMaps: readonly [typeof emptyUsages, typeof emptyUsages]) => {
+        const sourcePath = relative(sourceFile.fileName)
+        const fromTest = classifyTestSource(sourceFile)
+
+        const foldNode = (
+          current: readonly [typeof emptyUsages, typeof emptyUsages],
+          node: ts.Node
+        ) => {
+          const updateForIdentifier = (identifier: ts.Identifier) => {
+            const updateForSymbol = (symbol: ts.Symbol) => {
+              const first = updateUsageForSymbol(
+                firstBySymbol,
+                firstReferenceFilter,
+                identifier,
+                symbol,
+                fromTest,
+                sourcePath
+              )(Tuple.get(current, 0))
+
+              const second = updateUsageForSymbol(
+                secondBySymbol,
+                secondReferenceFilter,
+                identifier,
+                symbol,
+                fromTest,
+                sourcePath
+              )(Tuple.get(current, 1))
+
+              return Tuple.make(first, second)
+            }
+
+            return pipe(
+              resolvedSymbolAt(context.checker)(identifier),
+              Option.map(updateForSymbol),
+              Option.getOrElse(Function.constant(current))
+            )
+          }
+
+          return pipe(
+            Option.liftPredicate(ts.isIdentifier)(node),
+            Option.filter(Predicate.not(isImportBinding)),
+            Option.map(updateForIdentifier),
+            Option.getOrElse(Function.constant(current))
+          )
+        }
+
+        return foldAst(foldNode)(sourceFile)(usageMaps)
+      }
+
+    return Array.reduce(projectFiles, initial, (current, sourceFile) =>
+      scanFile(sourceFile)(current)
+    )
+  }
+
 export const buildUsageMap =
   (context: ProgramContext) =>
   <Entry extends UsageScanEntry>(

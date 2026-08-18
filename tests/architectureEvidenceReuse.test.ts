@@ -29,10 +29,14 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
 
   const firstExportIndex = architectureEvidence(firstContext).exportReferenceIndex
   const secondExportIndex = architectureEvidence(firstContext).exportReferenceIndex
+  const firstSurfaceIndex = architectureEvidence(firstContext).exportSymbolIndex
+  const secondSurfaceIndex = architectureEvidence(firstContext).exportSymbolIndex
   const firstEdges = architectureEvidence(firstContext).moduleEdges
   const secondEdges = architectureEvidence(firstContext).moduleEdges
 
   assert.equal(firstExportIndex, secondExportIndex)
+  assert.ok(firstSurfaceIndex !== undefined)
+  assert.equal(firstSurfaceIndex, secondSurfaceIndex)
   assert.equal(firstEdges, secondEdges)
 
   const secondWorkspace = await Effect.runPromise(loadProject(evidenceFixturePath))
@@ -41,9 +45,11 @@ test("architecture evidence reuses facets within one Program and rebuilds for a 
   const secondContext = makeContext(secondProject.rootPath)(secondProject.program)
 
   const rebuiltExportIndex = architectureEvidence(secondContext).exportReferenceIndex
+  const rebuiltSurfaceIndex = architectureEvidence(secondContext).exportSymbolIndex
   const rebuiltEdges = architectureEvidence(secondContext).moduleEdges
 
   assert.notEqual(rebuiltExportIndex, firstExportIndex)
+  assert.notEqual(rebuiltSurfaceIndex, firstSurfaceIndex)
   assert.notEqual(rebuiltEdges, firstEdges)
 })
 

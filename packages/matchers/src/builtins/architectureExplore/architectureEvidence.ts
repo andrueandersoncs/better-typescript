@@ -1,4 +1,4 @@
-import { Array, Function, MutableRef, Option, Result, Struct, pipe, flow } from "effect"
+import { Array, Function, MutableRef, Option, Result, Struct, Tuple, pipe, flow } from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
 import * as ts from "typescript"
 import type { ProgramContext } from "../../sources/data.js"
@@ -11,10 +11,13 @@ import { CachedArchitectureEvidence } from "./cachedArchitectureEvidence.js"
 import { ExportReferenceIndex } from "./exportReferenceIndex.js"
 import { isTestSourceFile } from "./isTestPath.js"
 import { ExportedFunctionEntry } from "./exportedFunctionEntry.js"
+import { ExportedSymbolEntry } from "./exportedSymbolEntry.js"
+import type { ExportedSymbolKind } from "./exportedSymbolKind.js"
+import { ExportSymbolIndex } from "./exportSymbolIndex.js"
 import { functionInitializer } from "../../support/functionInitializer2.js"
 import { hasExportModifier } from "../../support/hasExportModifier.js"
 import { resolvedSymbolAt } from "../../support/resolvedSymbolAt.js"
-import { buildUsageMap } from "./programSymbols.js"
+import { buildDualUsageMaps } from "./programSymbols.js"
 
 const moduleSourceFile =
   (context: ProgramContext, containingFile: ts.SourceFile) => (moduleSpecifier: ts.Expression) => {
@@ -108,81 +111,166 @@ const buildModuleEdges = (context: ProgramContext): ReadonlyArray<ModuleEdge> =>
   return Array.flatMap(projectFiles, edgesForSourceFile)
 }
 
-const variableFunctionEntries =
+type ExportEntries = readonly [
+  ReadonlyArray<ExportedFunctionEntry>,
+  ReadonlyArray<ExportedSymbolEntry>
+]
+
+const emptyExportEntries = (): ExportEntries => Tuple.make(Array.empty(), Array.empty())
+
+const variableExportEntries =
   (checker: ts.TypeChecker) =>
-  (statement: ts.VariableStatement): ReadonlyArray<ExportedFunctionEntry> => {
+  (statement: ts.VariableStatement): ExportEntries => {
     if (!hasExportModifier(statement)) {
-      return Array.empty()
+      return emptyExportEntries()
     }
 
-    const entryForDeclaration = (declaration: ts.VariableDeclaration) => {
-      const entryForFunction = (
-        functionNode: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration
-      ) => {
-        const entryForName = (nameNode: ts.Identifier) => {
-          const makeExportedFunctionEntry = (symbol: ts.Symbol) =>
-            new ExportedFunctionEntry({
-              symbol,
-              nameNode,
-              declarationNode: declaration,
-              functionNode
-            })
+    const entriesForDeclaration = (declaration: ts.VariableDeclaration): ExportEntries => {
+      const functionNode = functionInitializer(declaration)
+      const kind: ExportedSymbolKind = Option.isSome(functionNode) ? "function" : "value"
 
-          return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedFunctionEntry))
+      const entriesForName = (nameNode: ts.Identifier) => {
+        const entriesForSymbol = (symbol: ts.Symbol): ExportEntries => {
+          const symbolEntry = new ExportedSymbolEntry({ symbol, nameNode, kind })
+          const functionEntries = pipe(
+            functionNode,
+            Option.map(
+              (node) =>
+                new ExportedFunctionEntry({
+                  symbol,
+                  nameNode,
+                  declarationNode: declaration,
+                  functionNode: node
+                })
+            ),
+            Option.toArray
+          )
+
+          return Tuple.make(functionEntries, Array.of(symbolEntry))
         }
 
         return pipe(
-          Option.liftPredicate(ts.isIdentifier)(declaration.name),
-          Option.flatMap(entryForName)
+          resolvedSymbolAt(checker)(nameNode),
+          Option.map(entriesForSymbol),
+          Option.getOrElse(emptyExportEntries)
         )
       }
 
       return pipe(
-        functionInitializer(declaration),
-        Option.flatMap(entryForFunction),
-        Result.fromOption(Function.constVoid)
+        Option.liftPredicate(ts.isIdentifier)(declaration.name),
+        Option.map(entriesForName),
+        Option.getOrElse(emptyExportEntries)
       )
     }
 
-    return Array.filterMap(statement.declarationList.declarations, entryForDeclaration)
+    const declarationEntries = Array.map(
+      statement.declarationList.declarations,
+      entriesForDeclaration
+    )
+
+    return Tuple.make(
+      Array.flatMap(declarationEntries, Tuple.get(0)),
+      Array.flatMap(declarationEntries, Tuple.get(1))
+    )
   }
 
-const functionDeclarationEntry =
+const functionExportEntries =
   (checker: ts.TypeChecker) =>
-  (declaration: ts.FunctionDeclaration): Option.Option<ExportedFunctionEntry> => {
+  (declaration: ts.FunctionDeclaration): ExportEntries => {
     if (!hasExportModifier(declaration)) {
-      return Option.none()
+      return emptyExportEntries()
     }
 
-    const entryForName = (nameNode: ts.Identifier) => {
-      const makeExportedFunctionEntry = (symbol: ts.Symbol) =>
-        new ExportedFunctionEntry({
+    const entriesForName = (nameNode: ts.Identifier) => {
+      const entriesForSymbol = (symbol: ts.Symbol): ExportEntries => {
+        const functionEntry = new ExportedFunctionEntry({
           symbol,
           nameNode,
           declarationNode: declaration,
           functionNode: declaration
         })
 
-      return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeExportedFunctionEntry))
-    }
-
-    return pipe(Option.fromNullishOr(declaration.name), Option.flatMap(entryForName))
-  }
-
-const exportedFunctionsIn =
-  (checker: ts.TypeChecker) =>
-  (sourceFile: ts.SourceFile): ReadonlyArray<ExportedFunctionEntry> =>
-    Array.flatMap(sourceFile.statements, (statement) => {
-      if (ts.isVariableStatement(statement)) {
-        return variableFunctionEntries(checker)(statement)
+        const symbolEntry = new ExportedSymbolEntry({ symbol, nameNode, kind: "function" })
+        return Tuple.make(Array.of(functionEntry), Array.of(symbolEntry))
       }
 
       return pipe(
-        Option.liftPredicate(ts.isFunctionDeclaration)(statement),
-        Option.flatMap(functionDeclarationEntry(checker)),
-        Option.toArray
+        resolvedSymbolAt(checker)(nameNode),
+        Option.map(entriesForSymbol),
+        Option.getOrElse(emptyExportEntries)
       )
-    })
+    }
+
+    return pipe(
+      Option.fromNullishOr(declaration.name),
+      Option.map(entriesForName),
+      Option.getOrElse(emptyExportEntries)
+    )
+  }
+
+const generalizedExportEntries =
+  (checker: ts.TypeChecker) =>
+  (kind: ExportedSymbolKind) =>
+  (declaration: ts.DeclarationStatement): ExportEntries => {
+    if (!hasExportModifier(declaration)) {
+      return emptyExportEntries()
+    }
+
+    const symbolEntryForName = (nameNode: ts.Identifier) => {
+      const makeEntry = (symbol: ts.Symbol) => new ExportedSymbolEntry({ symbol, nameNode, kind })
+
+      return pipe(resolvedSymbolAt(checker)(nameNode), Option.map(makeEntry), Option.toArray)
+    }
+
+    const symbolEntries = pipe(
+      Option.fromNullishOr(declaration.name),
+      Option.filter(ts.isIdentifier),
+      Option.toArray,
+      Array.flatMap(symbolEntryForName)
+    )
+
+    return Tuple.make(Array.empty(), symbolEntries)
+  }
+
+const exportEntriesForStatement = (checker: ts.TypeChecker) => (statement: ts.Statement) => {
+  if (ts.isVariableStatement(statement)) {
+    return variableExportEntries(checker)(statement)
+  }
+
+  if (ts.isFunctionDeclaration(statement)) {
+    return functionExportEntries(checker)(statement)
+  }
+
+  const generalizedEntries = generalizedExportEntries(checker)
+
+  if (ts.isClassDeclaration(statement)) {
+    return generalizedEntries("class")(statement)
+  }
+
+  const isTypeDeclaration =
+    ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)
+  if (isTypeDeclaration) {
+    return generalizedEntries("type")(statement)
+  }
+
+  if (ts.isEnumDeclaration(statement)) {
+    return generalizedEntries("value")(statement)
+  }
+
+  return emptyExportEntries()
+}
+
+const exportedEntries = (context: ProgramContext): ExportEntries => {
+  const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+  const statementEntries = Array.flatMap(projectFiles, (sourceFile) =>
+    Array.map(sourceFile.statements, exportEntriesForStatement(context.checker))
+  )
+
+  return Tuple.make(
+    Array.flatMap(statementEntries, Tuple.get(0)),
+    Array.flatMap(statementEntries, Tuple.get(1))
+  )
+}
 
 const isInsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifier) => {
   const nodeSourceFile = node.getSourceFile()
@@ -204,22 +292,35 @@ const isOutsideDeclaration = (declaration: ts.Declaration) => (node: ts.Identifi
 const referenceOutsideDeclaration = (entry: ExportedFunctionEntry) =>
   isOutsideDeclaration(entry.declarationNode)
 
-const buildExportReferenceIndex = (context: ProgramContext) => {
-  const projectFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
-  const entries = Array.flatMap(projectFiles, exportedFunctionsIn(context.checker))
-  const usages = buildUsageMap(context)(entries, referenceOutsideDeclaration)
+const referenceOutsideDeclaringFile = (entry: ExportedSymbolEntry) => (node: ts.Identifier) =>
+  !strictEqual(entry.nameNode.getSourceFile())(node.getSourceFile())
 
-  return new ExportReferenceIndex({ entries, usages })
+const buildExportIndexes = (context: ProgramContext) => {
+  const [functionEntries, symbolEntries] = exportedEntries(context)
+  const [functionUsages, symbolUsages] = buildDualUsageMaps(context)(
+    functionEntries,
+    referenceOutsideDeclaration,
+    symbolEntries,
+    referenceOutsideDeclaringFile
+  )
+
+  const exportReferenceIndex = new ExportReferenceIndex({
+    entries: functionEntries,
+    usages: functionUsages
+  })
+
+  const exportSymbolIndex = new ExportSymbolIndex({ entries: symbolEntries, usages: symbolUsages })
+  return Tuple.make(exportReferenceIndex, exportSymbolIndex)
 }
 
 const emptyEvidenceCache = Option.none<CachedArchitectureEvidence>()
 const evidenceCache = MutableRef.make(emptyEvidenceCache)
 
 const buildArchitectureEvidence = (context: ProgramContext) => {
-  const exportReferenceIndex = buildExportReferenceIndex(context)
+  const [exportReferenceIndex, exportSymbolIndex] = buildExportIndexes(context)
   const moduleEdges = buildModuleEdges(context)
 
-  return new ArchitectureEvidence({ exportReferenceIndex, moduleEdges })
+  return new ArchitectureEvidence({ exportReferenceIndex, exportSymbolIndex, moduleEdges })
 }
 
 export const architectureEvidence = (context: ProgramContext) => {
