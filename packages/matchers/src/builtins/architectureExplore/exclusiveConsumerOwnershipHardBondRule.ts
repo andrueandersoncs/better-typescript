@@ -1,10 +1,19 @@
-import { Array, HashMap, HashSet, Option, Order, Record, Struct, Tuple, flow, pipe } from "effect"
+import {
+  Array,
+  Data,
+  HashMap,
+  HashSet,
+  Option,
+  Order,
+  Record,
+  Struct,
+  Tuple,
+  flow,
+  pipe
+} from "effect"
 import { strictEqual } from "@better-typescript/matchers/equivalence"
-import { componentPositionForEntity } from "./componentPositionForEntity.js"
 import { entityKeyEquivalence } from "./entityKeyEquivalence.js"
 import { exclusiveConsumerOwnershipEvidenceSchema } from "./exclusiveConsumerOwnershipEvidenceSchema.js"
-import { IndexedReference } from "./indexedReference.js"
-import { OwnershipIndex } from "./ownershipIndex.js"
 import { portableKeyToken } from "./portableKeyToken.js"
 import { semanticEvidenceKey } from "./semanticEvidenceKey.js"
 import type { SemanticModuleEntityKey } from "./semanticModuleEntityKey.js"
@@ -13,6 +22,26 @@ import { SemanticModuleHardBondRule } from "./semanticModuleHardBondRule.js"
 import type { SemanticModuleReferenceGraph } from "./semanticModuleReferenceGraph.js"
 import type { SemanticReferenceWitness } from "./semanticReferenceWitness.js"
 import type { semanticSubjectWitnessSchema as SemanticSubjectWitness } from "./semanticSubjectWitnessSchema.js"
+
+// IndexedReference joins graph evidence to component positions because grouping needs both facts.
+class IndexedReference extends Data.Class<{
+  readonly consumerIndex: number
+  readonly reference: SemanticReferenceWitness
+  readonly targetIndex: number
+}> {}
+
+// OwnershipIndex stores each graph-wide lookup once because candidates share the same evidence.
+class OwnershipIndex extends Data.Class<{
+  readonly incomingByTarget: Readonly<Record<string, ReadonlyArray<IndexedReference>>>
+  readonly unownedByTarget: Readonly<
+    Record<string, SemanticModuleReferenceGraph["unownedConsumers"]>
+  >
+  readonly subjectsByComponent: ReadonlyArray<ReadonlyArray<SemanticModuleEntityKey>>
+}> {}
+
+const componentPositionForEntity =
+  (indexByEntity: HashMap.HashMap<string, number>) => (key: SemanticModuleEntityKey) =>
+    pipe(key, portableKeyToken, (token) => HashMap.get(indexByEntity, token))
 
 const componentIndexEntry = (componentIndex: number) => (member: SemanticModuleEntityKey) => {
   const token = portableKeyToken(member)
