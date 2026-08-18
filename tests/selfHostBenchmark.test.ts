@@ -9,8 +9,7 @@ import { architectureExploreWiring } from "@better-typescript/guidance/architect
 import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
 import { functionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
 import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
-import { selfHostArchitectureFiles, selfHostProductFiles } from "../selfHostFiles.js"
-import { productSelfHostWiring } from "../selfHostWiring.js"
+
 import { runSelfHostBenchmark, selfHostBenchmarkTarget } from "../scripts/selfHostBenchmark.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -36,10 +35,18 @@ test("self-host configuration scopes complete Wirings without reconstructing the
 
   const [product, architecture] = selfHostConfig
 
-  assert.deepEqual(product?.files, selfHostProductFiles)
-  assert.strictEqual(product?.wiring.policies, productSelfHostWiring.policies)
-  assert.strictEqual(product?.wiring.derive, productSelfHostWiring.derive)
-  assert.deepEqual(architecture?.files, selfHostArchitectureFiles)
+  assert.deepEqual(product?.files, ["packages/*/src/**"])
+  assert.deepEqual(
+    product?.wiring.policies.map((policy) => policy.name),
+    [defaultWiring, functionalCoreEffectWiring, effectQualityWiring].flatMap((wiring) =>
+      wiring.policies.map((policy) => policy.name)
+    )
+  )
+  assert.deepEqual(architecture?.files, [
+    "better-typescript.config.ts",
+    "packages/*/src/**",
+    "tests/**"
+  ])
   assert.strictEqual(architecture?.wiring.policies, architectureExploreWiring.policies)
   assert.strictEqual(architecture?.wiring.derive, architectureExploreWiring.derive)
   assert.ok(product?.wiring.policies.some((policy) => !policy.reported))

@@ -5,5 +5,5 @@
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["better-typescript.config.ts", "selfHostFiles.ts", "selfHostWiring.ts"]
+  "include": ["better-typescript.config.ts"]
 }

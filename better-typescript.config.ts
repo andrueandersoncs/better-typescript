@@ -1,9 +1,20 @@
+import { makeMergedWiring } from "@better-typescript/core/engine/wiring/makeMergedWiring"
 import { defineConfig } from "@better-typescript/core/project/loadWiringConfig"
 import { architectureExploreWiring } from "@better-typescript/guidance/architectureExplore/architectureExploreWiring"
-import { selfHostArchitectureFiles, selfHostProductFiles } from "./selfHostFiles.js"
-import { productSelfHostWiring } from "./selfHostWiring.js"
+import { effectQualityWiring } from "@better-typescript/guidance/effectQuality/advice"
+import { functionalCoreEffectWiring } from "@better-typescript/guidance/functionalCoreEffect/advice"
+import { defaultWiring } from "@better-typescript/guidance/preset/defaultWiring"
+
+const productFiles = ["packages/*/src/**"] as const
+const architectureFiles = ["better-typescript.config.ts", ...productFiles, "tests/**"] as const
+
+const productWiring = makeMergedWiring([
+  defaultWiring,
+  functionalCoreEffectWiring,
+  effectQualityWiring
+])
 
 export default defineConfig([
-  { files: selfHostProductFiles, wiring: productSelfHostWiring },
-  { files: selfHostArchitectureFiles, wiring: architectureExploreWiring }
+  { files: productFiles, wiring: productWiring },
+  { files: architectureFiles, wiring: architectureExploreWiring }
 ])

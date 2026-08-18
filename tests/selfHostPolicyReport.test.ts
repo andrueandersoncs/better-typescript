@@ -13,7 +13,7 @@ import {
 } from "@better-typescript/guidance/preset/effectIdiomPolicies"
 import { preferFunctionComposition } from "@better-typescript/guidance/preset/conceptAndCompositionPolicies"
 import { processEnvironment } from "@better-typescript/guidance/preset/errorHygienePolicies"
-import { productSelfHostWiring } from "../selfHostWiring.js"
+import selfHostConfig from "../better-typescript.config.js"
 import { loadFixtureWorkspace } from "./reportLoadFixtureWorkspace.js"
 import { reportFromTestWiring } from "./reportFromTestWiring.js"
 import { testWiring } from "./reportTestWiring.js"
@@ -22,6 +22,8 @@ import { detectionAt } from "./architectureExploreDeriveDetectionAt.js"
 import { reportedSignal } from "./defaultDeriveReportedSignal.js"
 import { silentSignal } from "./defaultDeriveSilentSignal.js"
 import { wrapperData } from "./architectureExploreDeriveWrapperData.js"
+
+const productSelfHostWiring = selfHostConfig[0]!.wiring
 
 const reportFor = async (policy: Policy) => {
   const workspace = await loadFixtureWorkspace(policy.name)
