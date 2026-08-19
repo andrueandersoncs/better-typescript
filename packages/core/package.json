@@ -19,6 +19,10 @@
       "bun": "./src/linter/linter.ts",
       "default": "./dist/linter/linter.js"
     },
+    "./ruleName": {
+      "bun": "./src/linter/ruleName.ts",
+      "default": "./dist/linter/ruleName.js"
+    },
     "./project/loadProject": {
       "bun": "./src/project/loadProject/loadProject.ts",
       "default": "./dist/project/loadProject/loadProject.js"

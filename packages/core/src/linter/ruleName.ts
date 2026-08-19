@@ -8,3 +8,5 @@ const kebabCaseFilter = Schema.isPattern(kebabCasePattern, {
 
 // RuleName is a public identifier because configuration must address rules without importing them.
 export const RuleName = Schema.String.check(kebabCaseFilter)
+
+export type RuleName = typeof RuleName.Type

@@ -1,11 +1,15 @@
 ---
 name: scaffold-exercises
-description: Create exercise directory structures with sections, problems, solutions, and explainers that pass linting. Use when user wants to scaffold exercises, create exercise stubs, or set up a new course section.
+description:
+  Create exercise directory structures with sections, problems, solutions, and explainers that pass
+  linting. Use when user wants to scaffold exercises, create exercise stubs, or set up a new course
+  section.
 ---
 
 # Scaffold Exercises
 
-Create exercise directory structures that pass `pnpm ai-hero-cli internal lint`, then commit with `git commit`.
+Create exercise directory structures that pass `pnpm ai-hero-cli internal lint`, then commit with
+`git commit`.
 
 ## Directory naming
 
@@ -39,7 +43,8 @@ When stubbing, create a minimal readme with a title and a description:
 Description here
 ```
 
-If the subfolder has code, it also needs a `main.ts` (>1 line). But for stubs, a readme-only exercise is fine.
+If the subfolder has code, it also needs a `main.ts` (>1 line). But for stubs, a readme-only
+exercise is fine.
 
 ## Workflow
 

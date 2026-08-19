@@ -44,7 +44,7 @@ export interface RuleContext extends Schema.Schema.Type<typeof RuleContext> {}
 
 // Violation is the serialized finding contract because the CLI and programmatic API share it.
 export const Violation = Schema.Struct({
-  ruleName: Schema.String,
+  ruleName: RuleName,
   level: EnabledRuleLevel,
   message: Schema.String,
   filePath: Schema.String,
@@ -56,7 +56,7 @@ export interface Violation extends Schema.Schema.Type<typeof Violation> {}
 
 // Rule defines the extension point because built-ins and callers provide checks through one API.
 export interface Rule {
-  readonly name: string
+  readonly name: RuleName
   readonly check: (context: RuleContext) => ReadonlyArray<Violation>
 }
 
@@ -112,7 +112,7 @@ const sameViolation = Equivalence.Struct({
 })
 
 const withRuleMetadata =
-  (ruleName: string) => (level: EnabledRuleLevel) => (violation: Violation) =>
+  (ruleName: RuleName) => (level: EnabledRuleLevel) => (violation: Violation) =>
     Violation.make({ ...violation, ruleName, level })
 
 const violationsForRule =
@@ -187,7 +187,7 @@ const validateConfigRuleNames = (rules: ReadonlyArray<Rule>) => (config: LintCon
 
 const RuleNameArray = Schema.Array(RuleName)
 
-const ruleNamesAreUnique = (names: ReadonlyArray<string>) => {
+const ruleNamesAreUnique = (names: ReadonlyArray<RuleName>) => {
   const distinctNames = HashSet.fromIterable(names)
   const distinctCount = HashSet.size(distinctNames)
   const hasNoDuplicates = sameNumber(distinctCount, names.length)
@@ -208,13 +208,13 @@ const validateRules = (rules: ReadonlyArray<Rule>) => {
 
 const makeRuleSetting =
   (level: RuleLevel) =>
-  (name: string): readonly [string, RuleLevel] => [name, level]
+  (name: RuleName): readonly [RuleName, RuleLevel] => [name, level]
 
-const settingsForEveryRule = (ruleNames: ReadonlyArray<string>) => (level: RuleLevel) =>
+const settingsForEveryRule = (ruleNames: ReadonlyArray<RuleName>) => (level: RuleLevel) =>
   pipe(ruleNames, Array.map(makeRuleSetting(level)), Record.fromEntries)
 
 const settingsForEntry =
-  (ruleNames: ReadonlyArray<string>) =>
+  (ruleNames: ReadonlyArray<RuleName>) =>
   (entry: CompiledConfigEntry) =>
   (settings: Readonly<Record<string, RuleLevel>>) => {
     const wildcard = Record.get(entry.rules, "*")

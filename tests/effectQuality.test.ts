@@ -50,7 +50,6 @@ const rules = [
 ].map(ruleNamed)
 const expected = [
   "src/adapters/allowed.ts:4:http-client-preference",
-  "src/adapters/http.ts:14:raw-fetch-outside-adapter",
   "src/adapters/http.ts:3:raw-fetch-abort-signal",
   "src/adapters/http.ts:3:service-method-effect-fn",
   "src/adapters/http.ts:4:http-client-preference",
@@ -105,21 +104,31 @@ const expected = [
   "src/application/rules.ts:99:inflight-dedupe-map",
   "src/application/rules.ts:9:unsafe-casts",
   "tests/effect.spec.ts:4:global-config-mutation",
-  "tests/effect.spec.ts:4:process-environment",
   "tests/effect.spec.ts:6:effect-test-style",
   "tests/effect.spec.ts:6:test-clock-for-time",
   "tests/effect.spec.ts:6:test-sleeps",
   "tests/effect.spec.ts:8:effect-test-style"
 ]
 
-test("Effect Quality rules preserve selected recognition and role-independent path behavior", async () => {
+test("Effect Quality rules preserve selected recognition and adapter boundary behavior", async () => {
   const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
   const violations = lint({ project, rules })
   const actual = violations
     .map((violation) => `${violation.filePath}:${violation.line}:${violation.ruleName}`)
     .sort()
+  const rawFetchViolations = violations.filter(
+    (violation) => violation.ruleName === "raw-fetch-outside-adapter"
+  )
 
   assert.deepEqual(actual, expected)
+  assert.equal(
+    rawFetchViolations.some((violation) => violation.filePath.includes("adapters/")),
+    false
+  )
+  assert.equal(
+    rawFetchViolations.some((violation) => violation.filePath.includes("application/")),
+    true
+  )
   assert.equal(
     violations.some((violation) => violation.filePath.includes("application/allowed")),
     false

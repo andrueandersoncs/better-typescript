@@ -11,6 +11,7 @@ import {
   pipe
 } from "effect"
 import type { Rule, RuleContext } from "@better-typescript/core/linter"
+import type { RuleName } from "@better-typescript/core/ruleName"
 import { Violation } from "@better-typescript/core/linter"
 import type { Scanner } from "../scanner/scannerData.js"
 import type { Match } from "../scanner/match.js"
@@ -30,7 +31,7 @@ const programContext = (context: RuleContext) =>
   })
 
 export const makeRule =
-  (name: string) =>
+  (name: RuleName) =>
   <Fact>(scanner: Scanner<Fact>) =>
   (message: RuleMessage<Fact>): Rule => {
     const emptyCache = Option.none<readonly [object, ReadonlyArray<Match<Fact>>]>()

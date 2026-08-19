@@ -4,7 +4,10 @@ Better TypeScript is a conventional TypeScript linter.
 
 ## Domain
 
-**Project**: A discovered TypeScript workspace containing one or more Programs.
+**LoadedWorkspace**: A discovered TypeScript workspace containing one or more `LoadedProject`
+values. It is the project value accepted by the linter.
+
+**LoadedProject**: One TypeScript Program and its configuration and root paths.
 
 **Rule**: A named check that examines an applicable project source and returns located Violations.
 

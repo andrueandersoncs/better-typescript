@@ -1,9 +1,12 @@
 # Out-of-Scope Knowledge Base
 
-The `.out-of-scope/` directory in a repo stores persistent records of rejected feature requests. It serves two purposes:
+The `.out-of-scope/` directory in a repo stores persistent records of rejected feature requests. It
+serves two purposes:
 
-1. **Institutional memory**: why a feature was rejected, so the reasoning isn't lost when the issue is closed
-2. **Deduplication**: when a new issue comes in that matches a prior rejection, the skill can surface the previous decision instead of re-litigating it
+1. **Institutional memory**: why a feature was rejected, so the reasoning isn't lost when the issue
+   is closed
+2. **Deduplication**: when a new issue comes in that matches a prior rejection, the skill can
+   surface the previous decision instead of re-litigating it
 
 ## Directory structure
 
@@ -14,43 +17,47 @@ The `.out-of-scope/` directory in a repo stores persistent records of rejected f
 └── graphql-api.md
 ```
 
-One file per **concept**, not per issue. Multiple issues requesting the same thing are grouped under one file.
+One file per **concept**, not per issue. Multiple issues requesting the same thing are grouped under
+one file.
 
 ## File format
 
-The file should be written in a relaxed, readable style, more like a short design document than a database entry. Use paragraphs, code samples, and examples to make the reasoning clear and useful to someone encountering it for the first time.
+The file should be written in a relaxed, readable style, more like a short design document than a
+database entry. Use paragraphs, code samples, and examples to make the reasoning clear and useful to
+someone encountering it for the first time.
 
-```markdown
+````markdown
 # Dark Mode
 
 This project does not support dark mode or user-facing theming.
 
 ## Why this is out of scope
 
-The rendering pipeline assumes a single color palette defined in
-`ThemeConfig`. Supporting multiple themes would require:
+The rendering pipeline assumes a single color palette defined in `ThemeConfig`. Supporting multiple
+themes would require:
 
 - A theme context provider wrapping the entire component tree
 - Per-component theme-aware style resolution
 - A persistence layer for user theme preferences
 
-This is a significant architectural change that doesn't align with the
-project's focus on content authoring. Theming is a concern for downstream
-consumers who embed or redistribute the output.
+This is a significant architectural change that doesn't align with the project's focus on content
+authoring. Theming is a concern for downstream consumers who embed or redistribute the output.
 
 ```ts
 // The current ThemeConfig interface is not designed for runtime switching:
 interface ThemeConfig {
-  colors: ColorPalette; // single palette, resolved at build time
-  fonts: FontStack;
+  colors: ColorPalette // single palette, resolved at build time
+  fonts: FontStack
 }
 ```
+````
 
 ## Prior requests
 
 - #42: "Add dark mode support"
 - #87: "Night theme for accessibility"
 - #134: "Dark theme option"
+
 ```
 
 ### Naming the file
@@ -103,3 +110,4 @@ If the maintainer changes their mind about a previously rejected concept:
 - Delete the `.out-of-scope/` file
 - The skill does not need to reopen old issues; they're historical records
 - The new issue that triggered the reconsideration proceeds through normal triage
+```

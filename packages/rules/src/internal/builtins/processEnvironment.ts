@@ -3,6 +3,7 @@ import * as ts from "typescript"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { nodeScanner } from "../scanner/nodeScanner.js"
+import { isProcessEnvironmentProductionSource } from "../support/isProcessEnvironmentProductionSource.js"
 import { isAccessExpression } from "./effectQuality/isAccessExpression.js"
 import { isOutermostAccess } from "./effectQuality/isOutermostAccess.js"
 import { isProcessEnvironmentAccess } from "./effectQuality/processEnvironmentAccess.js"
@@ -23,7 +24,8 @@ const processEnvironmentMatches =
   (context: MatchContext) => (node: ts.PropertyAccessExpression | ts.ElementAccessExpression) => {
     const processEnvironment = isProcessEnvironmentAccess(context.checker)(node)
     const outermost = isOutermostAccess(node)
-    const reportChecks = Array.make(processEnvironment, outermost)
+    const productionSource = isProcessEnvironmentProductionSource(context)
+    const reportChecks = Array.make(processEnvironment, outermost, productionSource)
     const shouldReport = Array.every(reportChecks, Boolean)
     const match = makeNodeMatch(node, processEnvironmentFact)
 

@@ -12,16 +12,16 @@
 // The only thing you should ever need to edit here is PACKAGES_ROOT.
 
 /** Where packages live. One immediate child dir per package (flat, no nesting). */
-const PACKAGES_ROOT = "src/packages";
+const PACKAGES_ROOT = "src/packages"
 
 // --- derived patterns (no need to edit) -------------------------------------
-const R = PACKAGES_ROOT;
+const R = PACKAGES_ROOT
 /**
  * A package's private internals: anything nested inside a package subfolder.
  * The package's root files are its entry points and are NOT matched here:
  * they stay importable from outside.
  */
-const PACKAGE_INTERNALS = `^${R}/[^/]+/[^/]+/`;
+const PACKAGE_INTERNALS = `^${R}/[^/]+/[^/]+/`
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -32,7 +32,7 @@ module.exports = {
         "App/root code may import a package's entry points (its root files), but nothing inside its subfolders.",
       severity: "error",
       from: { pathNot: `^${R}/` }, // importer is NOT inside any package
-      to: { path: PACKAGE_INTERNALS },
+      to: { path: PACKAGE_INTERNALS }
     },
     {
       name: "entrypoint-boundary-across-packages",
@@ -43,8 +43,8 @@ module.exports = {
       from: { path: `^${R}/([^/]+)/`, pathNot: `^${R}/[^/]+/tests/` },
       to: {
         path: PACKAGE_INTERNALS,
-        pathNot: `^${R}/$1/`, // same package → intra-package freedom
-      },
+        pathNot: `^${R}/$1/` // same package → intra-package freedom
+      }
     },
     {
       name: "tests-through-entrypoints",
@@ -54,8 +54,8 @@ module.exports = {
       from: { path: `^${R}/([^/]+)/tests/` }, // a test file, in package $1
       to: {
         path: PACKAGE_INTERNALS,
-        pathNot: `^${R}/$1/tests/`, // own tests/ fixtures → allowed
-      },
+        pathNot: `^${R}/$1/tests/` // own tests/ fixtures → allowed
+      }
     },
     {
       name: "tests-folder-is-private",
@@ -63,15 +63,16 @@ module.exports = {
         "A package's tests/ folder is reachable only from tests: nothing else may import fixtures.",
       severity: "error",
       from: { pathNot: `^${R}/[^/]+/tests/` }, // importer is not itself a test
-      to: { path: `^${R}/[^/]+/tests/` },
+      to: { path: `^${R}/[^/]+/tests/` }
     },
     {
       name: "no-circular",
-      comment: "No dependency cycles. Scope to `^${R}/` if you want to allow cycles outside packages.",
+      comment:
+        "No dependency cycles. Scope to `^${R}/` if you want to allow cycles outside packages.",
       severity: "error",
       from: {},
-      to: { circular: true },
-    },
+      to: { circular: true }
+    }
 
     // --- Layering (optional, off by default) ----------------------------------
     // Interface-hiding controls HOW you import (through the entry points).
@@ -89,7 +90,7 @@ module.exports = {
     doNotFollow: { path: "node_modules" },
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: {
-      extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
-    },
-  },
-};
+      extensions: [".ts", ".tsx", ".js", ".jsx", ".json"]
+    }
+  }
+}

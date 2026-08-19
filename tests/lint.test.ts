@@ -4,6 +4,7 @@ import { Array, Effect, Option, pipe } from "effect"
 import { defineConfig } from "@better-typescript/core/config"
 import { lint, lintConfigured } from "@better-typescript/core/linter"
 import type { Rule } from "@better-typescript/core/linter"
+import type { RuleName } from "@better-typescript/core/ruleName"
 import { makeViolation } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 
@@ -23,8 +24,11 @@ test("lint returns sorted and deduplicated violations from every rule", async ()
   )
   const firstDeclaration = pipe(sourceFile.statements, Array.head, Option.getOrThrow)
   const secondDeclaration = pipe(sourceFile.statements, Array.get(1), Option.getOrThrow)
-  const makeLocatedViolation = (ruleName: string, message: string, node: typeof firstDeclaration) =>
-    makeViolation({ ruleName, message, workspaceRoot: project.rootPath, sourceFile, node })
+  const makeLocatedViolation = (
+    ruleName: RuleName,
+    message: string,
+    node: typeof firstDeclaration
+  ) => makeViolation({ ruleName, message, workspaceRoot: project.rootPath, sourceFile, node })
   const rules: ReadonlyArray<Rule> = [
     {
       name: "z-rule",
@@ -76,7 +80,7 @@ test("lint returns an empty array when rules find no violations", async () => {
 test("lint config selects files and applies later rule overrides", async () => {
   const fixturePath = new URL("fixtures/linter-core", import.meta.url).pathname
   const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
-  const makeRule = (name: string): Rule => ({
+  const makeRule = (name: RuleName): Rule => ({
     name,
     check: ({ sourceFile, workspaceRoot }) => {
       const declaration = pipe(sourceFile.statements, Array.head, Option.getOrThrow)

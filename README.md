@@ -81,8 +81,9 @@ This Bun workspace has exactly three packages:
 Dependencies point from CLI to core and rules, and from rules to core. Core never depends on the
 built-in catalog.
 
-There is no plugin graph, severity, suppression, silent mode, aggregate report phase, or watch mode.
-Configuration only selects files and applies `"error"`, `"warn"`, or `"off"` to registered rules.
+There is no plugin graph, suppression, silent mode, aggregate report phase, or watch mode.
+Configuration selects files and applies the `"error"`, `"warn"`, or `"off"` severity to registered
+rules.
 
 ## Programmatic use
 

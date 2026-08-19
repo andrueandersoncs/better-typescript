@@ -14,6 +14,7 @@ import { strictEqual } from "../../equivalence.js"
 import type { MatchContext } from "../../scanner/matchContext.js"
 import { foldAst } from "../../sources/foldAst.js"
 import { callExpressionOf } from "../../support/callExpressionOf.js"
+import { isProcessEnvironmentProductionSource } from "../../support/isProcessEnvironmentProductionSource.js"
 import { binaryAssignmentTarget } from "../../support/hasAssignmentOperator.js"
 import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
 import { unwrapCallee } from "../../support/unwrapCallee.js"
@@ -480,6 +481,7 @@ const makeEffectQualityRuntimeChecks = () => {
       Option.liftPredicate(isAccessExpression)(node),
       Option.filter(isProcessEnvironmentAccess(context.checker)),
       Option.filter(isOutermostAccess),
+      Option.filter(() => isProcessEnvironmentProductionSource(context)),
       Option.as("process.env")
     )
 

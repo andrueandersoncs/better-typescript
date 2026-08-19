@@ -1,6 +1,9 @@
 ---
 name: setup-pre-commit
-description: Set up Husky pre-commit hooks with lint-staged (Prettier), type checking, and tests in the current repo. Use when user wants to add pre-commit hooks, set up Husky, configure lint-staged, or add commit-time formatting/typechecking/testing.
+description:
+  Set up Husky pre-commit hooks with lint-staged (Prettier), type checking, and tests in the current
+  repo. Use when user wants to add pre-commit hooks, set up Husky, configure lint-staged, or add
+  commit-time formatting/typechecking/testing.
 ---
 
 # Setup Pre-Commit Hooks
@@ -16,7 +19,8 @@ description: Set up Husky pre-commit hooks with lint-staged (Prettier), type che
 
 ### 1. Detect package manager
 
-Check for `package-lock.json` (npm), `pnpm-lock.yaml` (pnpm), `yarn.lock` (yarn), `bun.lockb` (bun). Use whichever is present. Default to npm if unclear.
+Check for `package-lock.json` (npm), `pnpm-lock.yaml` (pnpm), `yarn.lock` (yarn), `bun.lockb` (bun).
+Use whichever is present. Default to npm if unclear.
 
 ### 2. Install dependencies
 
@@ -44,7 +48,8 @@ npm run typecheck
 npm run test
 ```
 
-**Adapt**: Replace `npm` with detected package manager. If repo has no `typecheck` or `test` script in package.json, omit those lines and tell the user.
+**Adapt**: Replace `npm` with detected package manager. If repo has no `typecheck` or `test` script
+in package.json, omit those lines and tell the user.
 
 ### 5. Create `.lintstagedrc`
 
@@ -80,7 +85,8 @@ Only create if no Prettier config exists. Use these defaults:
 
 ### 8. Commit
 
-Stage all changed/created files and commit with message: `Add pre-commit hooks (husky + lint-staged + prettier)`
+Stage all changed/created files and commit with message:
+`Add pre-commit hooks (husky + lint-staged + prettier)`
 
 This will run through the new pre-commit hooks: a good smoke test that everything works.
 

@@ -54,6 +54,8 @@ import { stringLiteralArgument } from "./stringLiteralArgument.js"
 import { declarationNameText } from "./declarationNameText.js"
 import { EffectQualityRuleCheck } from "./effectQualityRuleCheck.js"
 import type { EffectQualityRuleData } from "./effectQualityRuleData.js"
+import { conventionalArchitectureRoleOf } from "../../support/conventionalArchitectureRoleOf.js"
+import { toRelativeFileName } from "../../support/paths.js"
 
 const makeEffectQualityBoundaryChecks = () => {
   const responseJsonNames = Array.of("json")
@@ -2421,17 +2423,25 @@ const makeEffectQualityBoundaryChecks = () => {
       return Array.of(finding)
     }
 
+  const sourceFileIsAdapter = (context: MatchContext) => {
+    const relativePath = toRelativeFileName(context.projectRoot)(context.sourceFile.fileName)
+    const role = conventionalArchitectureRoleOf(relativePath)
+
+    return pipe(role, Option.exists(strictEqual("adapter")))
+  }
+
   const rawFetchOutsideAdapter =
     (context: MatchContext) =>
     (_index: EffectQualityIndex) =>
     (node: ts.CallExpression): ReadonlyArray<EffectQualityRuleCandidate> => {
       const bareFetch = isBareFetchCall(context.checker)(node)
+      const adapter = sourceFileIsAdapter(context)
 
       const insideTryPromise = hasEffectCallAncestor(context.checker)("Effect")(tryPromiseNames)(
         node
       )
 
-      const ignoreRawFetchReasons = Array.make(!bareFetch, insideTryPromise)
+      const ignoreRawFetchReasons = Array.make(!bareFetch, adapter, insideTryPromise)
       const shouldIgnoreRawFetch = Array.some(ignoreRawFetchReasons, Boolean)
 
       if (shouldIgnoreRawFetch) {
