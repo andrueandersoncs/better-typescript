@@ -5,7 +5,6 @@ import { noTryCatchScanner } from "../builtins/noTryCatch.js"
 import { noUndefinedScanner } from "../builtins/noUndefined.js"
 import { noUnusedScanner } from "../builtins/noUnused.js"
 import { noVoidFunctionsScanner } from "../builtins/noVoidFunctions.js"
-import { processEnvironmentScanner } from "../builtins/processEnvironment.js"
 import { Array, pipe } from "effect"
 import type { RuleMessage } from "../rule/ruleMessage.js"
 import { makeRuleMessage } from "../rule/makeRuleMessage.js"
@@ -14,24 +13,6 @@ import type { Match } from "../scanner/match.js"
 import type { Scanner } from "../scanner/scannerData.js"
 import { makeRule } from "../rule/makeRule.js"
 import { fixedRuleMessage } from "../rule/fixedRuleMessage.js"
-
-const makeProcessEnvironment = () => {
-  const message = "Avoid reading process.env directly in production code."
-
-  const hint =
-    "Declare runtime configuration with Effect Config and inject a ConfigProvider at the " +
-    "application boundary. Keep direct environment access only in composition roots and tests."
-
-  const processEnvironment = makeRule("process-environment")(processEnvironmentScanner)(
-    fixedRuleMessage(message, hint)
-  )
-
-  return processEnvironment
-}
-
-export const processEnvironment = makeProcessEnvironment()
-
-export const environmentRules: ReadonlyArray<Rule> = Array.make(processEnvironment)
 
 const noUndefinedMessages = {
   parameter: "Avoid function parameters that accept undefined.",
@@ -166,6 +147,5 @@ export const explicitErrorRules: ReadonlyArray<Rule> = Array.make(
 
 export const errorHygieneRules: ReadonlyArray<Rule> = pipe(
   explicitErrorRules,
-  Array.appendAll(absenceAndUsageRules),
-  Array.appendAll(environmentRules)
+  Array.appendAll(absenceAndUsageRules)
 )

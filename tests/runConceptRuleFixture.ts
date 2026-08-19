@@ -7,7 +7,7 @@ import { ruleNamed } from "./ruleNamed.js"
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url))
 const fixturePath = path.join(testDirectory, "fixtures", "concept-rules")
-const conceptRules = [
+export const conceptRuleNames = [
   "closed-abstraction",
   "duplicate-shape",
   "function-derived-model",
@@ -17,10 +17,20 @@ const conceptRules = [
   "redundant-alias",
   "speculative-export",
   "unused-field"
-].map(ruleNamed)
+] as const
+
+const conceptRules = conceptRuleNames.map(ruleNamed)
+
+const loadFixtureProject = () => Effect.runPromise(loadProject({ projectPath: fixturePath }))
 
 export const runFixture = async () => {
-  const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
+  const project = await loadFixtureProject()
 
   return lint({ project, rules: conceptRules })
+}
+
+export const runConceptRulesIndependently = async () => {
+  const project = await loadFixtureProject()
+
+  return conceptRules.map((rule) => ({ rule, violations: lint({ project, rules: [rule] }) }))
 }

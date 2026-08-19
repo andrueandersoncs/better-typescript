@@ -3,6 +3,8 @@ import * as ts from "typescript"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
+import { fixedRuleMessage } from "../rule/fixedRuleMessage.js"
+import { makeRule } from "../rule/makeRule.js"
 import { isProcessEnvironmentProductionSource } from "../support/isProcessEnvironmentProductionSource.js"
 import { isAccessExpression } from "./effectQuality/isAccessExpression.js"
 import { isOutermostAccess } from "./effectQuality/isOutermostAccess.js"
@@ -32,5 +34,12 @@ const processEnvironmentMatches =
     return shouldReport ? Array.of(match) : Array.empty()
   }
 
-export const processEnvironmentScanner =
+const processEnvironmentScanner =
   makeNodeScanner(accessKinds)(isAccessExpression)(processEnvironmentMatches)
+
+export const processEnvironment = makeRule("process-environment")(processEnvironmentScanner)(
+  fixedRuleMessage(
+    "Read runtime configuration through Effect Config, not process.env.",
+    "Read the key in a Config-backed layer and provide deterministic config in tests."
+  )
+)

@@ -20,6 +20,7 @@ import { isPipeCallee } from "./isPipeCallee.js"
 import { referencesToSymbol } from "./referencesToSymbol.js"
 import { symbolOptionAt } from "./symbolOptionAt.js"
 
+// NamedVariableDeclaration exists because this scanner requires identifier-named variables.
 interface NamedVariableDeclaration extends ts.VariableDeclaration {
   readonly name: ts.Identifier
 }

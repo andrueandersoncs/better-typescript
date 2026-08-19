@@ -1,4 +1,12 @@
-import type { ConceptRuleData } from "../builtins/concepts/conceptScanners.js"
+import { closedAbstraction } from "../builtins/concepts/closedAbstractionRule.js"
+import { duplicateShape } from "../builtins/concepts/duplicateShapeRule.js"
+import { functionDerivedModel } from "../builtins/concepts/functionDerivedModelRule.js"
+import { missingRationale } from "../builtins/concepts/missingRationaleRule.js"
+import { parameterBag } from "../builtins/concepts/parameterBagRule.js"
+import { passThroughConversion } from "../builtins/concepts/passThroughConversionRule.js"
+import { redundantAlias } from "../builtins/concepts/redundantAliasRule.js"
+import { speculativeExport } from "../builtins/concepts/speculativeExportRule.js"
+import { unusedField } from "../builtins/concepts/unusedFieldRule.js"
 import { noPassThroughObjectWrappersScanner } from "../builtins/noPassThroughObjectWrappers.js"
 import { noReexportsScanner } from "../builtins/noReexports.js"
 import { noValueAliasesScanner } from "../builtins/noValueAliases.js"
@@ -10,7 +18,7 @@ import { preferEtaReductionScanner } from "../builtins/preferEtaReduction.js"
 import { preferFunctionCompositionScanner } from "../builtins/preferFunctionComposition.js"
 import { preferFunctionFlipScanner } from "../builtins/preferFunctionFlip.js"
 import { preferImplicitReturnScanner } from "../builtins/preferImplicitReturn.js"
-import { Array, Function, pipe, Match as EffectMatch, Option } from "effect"
+import { Array, Function, pipe, Match as EffectMatch } from "effect"
 import type { RuleMessage } from "../rule/ruleMessage.js"
 import { makeRuleMessage } from "../rule/makeRuleMessage.js"
 import type { Rule } from "@better-typescript/core/linter"
@@ -149,129 +157,6 @@ export const compositionRules: ReadonlyArray<Rule> = Array.make(
   preferEtaReduction,
   preferFunctionFlip
 )
-
-const makeConceptRuleMessage = (match: Match<ConceptRuleData>) => {
-  const emptyRelated = Function.constant("")
-
-  const relatedConcept = (fact: ConceptRuleData) =>
-    pipe(Array.get(fact.relatedConcepts, 0), Option.getOrElse(emptyRelated))
-
-  const rationaleHint =
-    "Delete or reuse this concept before documenting it. If it remains, add one single-line " +
-    "comment directly above the declaration explaining because why existing concepts are " +
-    "insufficient. The prose does not suppress structural evidence."
-
-  const closedHint =
-    "Collapse the function and its private data vocabulary into their external owner, reuse an " +
-    "existing concept, or deepen the Module until the abstraction has independent leverage. Do " +
-    "not replace the named model with an anonymous object type."
-
-  const duplicateHint =
-    "Reuse the existing data structure or merge the concepts. Keep a distinct representation only " +
-    "for an independently evolving boundary or invariant, and retain the duplicate evidence for review."
-
-  const functionDerivedHint =
-    "Remove or deepen the function-data abstraction, or replace this structural-role name with an " +
-    "existing domain concept. A new name must mean more than input, output, options, context, state, " +
-    "or result for one function."
-
-  const speculativeExportHint =
-    "Remove the export and keep ownership local, or connect the model to an intentional public seam. " +
-    "Exporting a declaration does not establish reuse and must not evade abstraction analysis."
-
-  const unusedFieldHint =
-    "Delete the speculative field or connect it to behavior that consumes its semantics. Mechanical " +
-    "forwarding into another representation is not a read and instead indicates parallel concepts."
-
-  const parameterBagHint =
-    "Remove or deepen the function seam, reuse existing domain values, or make this model a genuine " +
-    "command with independent semantics. Do not explode it into primitive parameters or an anonymous " +
-    "object type."
-
-  const passThroughConversionHint =
-    "Collapse the parallel representations or document and preserve the real boundary that requires " +
-    "both. A field-for-field adapter is evidence against introducing another first-party concept."
-
-  const hintForRedundantAlias = (alias: ConceptRuleData) => {
-    const existing = relatedConcept(alias)
-
-    return (
-      `Use ${existing} directly, merge the concepts, or add a real invariant or independently ` +
-      "evolving boundary. Do not keep a second name only to describe structural use."
-    )
-  }
-
-  const hintFor = (fact: ConceptRuleData) =>
-    pipe(
-      EffectMatch.value(fact),
-      EffectMatch.when({ kind: "closed-abstraction" }, Function.constant(closedHint)),
-      EffectMatch.when({ kind: "redundant-alias" }, hintForRedundantAlias),
-      EffectMatch.when({ kind: "duplicate-shape" }, Function.constant(duplicateHint)),
-      EffectMatch.when({ kind: "function-derived-model" }, Function.constant(functionDerivedHint)),
-      EffectMatch.when({ kind: "speculative-export" }, Function.constant(speculativeExportHint)),
-      EffectMatch.when({ kind: "unused-field" }, Function.constant(unusedFieldHint)),
-      EffectMatch.when({ kind: "missing-rationale" }, Function.constant(rationaleHint)),
-      EffectMatch.when({ kind: "parameter-bag" }, Function.constant(parameterBagHint)),
-      EffectMatch.when(
-        { kind: "pass-through-conversion" },
-        Function.constant(passThroughConversionHint)
-      ),
-      EffectMatch.exhaustive
-    )
-
-  const relatedAt = (fact: ConceptRuleData) => (index: number) =>
-    pipe(Array.get(fact.relatedConcepts, index), Option.getOrElse(emptyRelated))
-
-  const messageForClosed = (closed: ConceptRuleData) =>
-    `${closed.concept} and ${closed.owner} form a closed abstraction with at most one external owner.`
-
-  const messageForRedundantAlias = (alias: ConceptRuleData) =>
-    `${alias.concept} renames ${relatedAt(alias)(0)} without adding independent semantics.`
-
-  const messageForDuplicateShape = (duplicate: ConceptRuleData) =>
-    `${duplicate.concept} duplicates the concrete structure of ${relatedAt(duplicate)(0)}.`
-
-  const messageForFunctionDerived = (derived: ConceptRuleData) =>
-    `${derived.concept} is named after its sole function role instead of independent semantics.`
-
-  const messageForSpeculativeExport = (speculative: ConceptRuleData) =>
-    `${speculative.concept} is exported without an independent first-party consumer or established boundary.`
-
-  const messageForUnusedField = (unused: ConceptRuleData) =>
-    `${unused.concept}.${relatedAt(unused)(0)} is constructed but never independently read.`
-
-  const messageForMissingRationale = (missing: ConceptRuleData) =>
-    `${missing.concept} lacks a complete, structurally supported data-structure rationale.`
-
-  const messageForParameterBag = (bag: ConceptRuleData) =>
-    `${bag.concept} is constructed only to cross the ${bag.owner} call seam.`
-
-  const messageForPassThroughConversion = (conversion: ConceptRuleData) =>
-    `${conversion.owner} copies ${relatedAt(conversion)(0)} into ${relatedAt(conversion)(1)} without transformation.`
-
-  const messageFor = (fact: ConceptRuleData) =>
-    pipe(
-      EffectMatch.value(fact),
-      EffectMatch.when({ kind: "closed-abstraction" }, messageForClosed),
-      EffectMatch.when({ kind: "redundant-alias" }, messageForRedundantAlias),
-      EffectMatch.when({ kind: "duplicate-shape" }, messageForDuplicateShape),
-      EffectMatch.when({ kind: "function-derived-model" }, messageForFunctionDerived),
-      EffectMatch.when({ kind: "speculative-export" }, messageForSpeculativeExport),
-      EffectMatch.when({ kind: "unused-field" }, messageForUnusedField),
-      EffectMatch.when({ kind: "missing-rationale" }, messageForMissingRationale),
-      EffectMatch.when({ kind: "parameter-bag" }, messageForParameterBag),
-      EffectMatch.when({ kind: "pass-through-conversion" }, messageForPassThroughConversion),
-      EffectMatch.exhaustive
-    )
-
-  const message = messageFor(match.fact)
-  const hint = hintFor(match.fact)
-
-  return makeRuleMessage(message, hint)
-}
-
-export const conceptRuleMessage: RuleMessage<ConceptRuleData> =
-  Function.constant(makeConceptRuleMessage)
 
 const makePreferConditionalReturn = () => {
   const makePreferConditionalReturnRuleMessage: RuleMessage<
@@ -435,9 +320,22 @@ export const moduleIdentityRules: ReadonlyArray<Rule> = Array.make(
   noPassThroughObjectWrappers
 )
 
+const conceptRules: ReadonlyArray<Rule> = Array.make(
+  closedAbstraction,
+  duplicateShape,
+  functionDerivedModel,
+  missingRationale,
+  parameterBag,
+  passThroughConversion,
+  redundantAlias,
+  speculativeExport,
+  unusedField
+)
+
 export const conceptAndCompositionRules: ReadonlyArray<Rule> = pipe(
   directReturnRules,
   Array.appendAll(compositionRules),
   Array.appendAll(implicitReturnRules),
-  Array.appendAll(moduleIdentityRules)
+  Array.appendAll(moduleIdentityRules),
+  Array.appendAll(conceptRules)
 )

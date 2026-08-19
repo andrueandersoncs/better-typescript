@@ -2,7 +2,7 @@ import { Function, HashMap, Option, pipe } from "effect"
 import type * as ts from "typescript"
 import { referenceKey } from "../../support/referenceKey.js"
 import type { ReferenceKey } from "../../support/referenceKeyType.js"
-import type { DataStructureEntry } from "./conceptScanners.js"
+import type { DataStructureEntry } from "./conceptIndex.js"
 import { canonicalSymbol } from "../../support/canonicalSymbol.js"
 
 export const modelFromResolvedType =

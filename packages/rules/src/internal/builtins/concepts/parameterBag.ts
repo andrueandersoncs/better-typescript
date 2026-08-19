@@ -1,6 +1,6 @@
 import { Data } from "effect"
 import type * as ts from "typescript"
-import type { DataStructureEntry } from "./conceptScanners.js"
+import type { DataStructureEntry } from "./conceptIndex.js"
 import type { FunctionEntry } from "./functionEntry.js"
 
 // ParameterBag is a model built only to cross one call seam because raw counts are ambiguous.
