@@ -1,6 +1,6 @@
 import { Array, Function, Option, Result, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { Match as ScannerMatch } from "../scanner/match.js"
 import type { MatchContext } from "../scanner/matchContext.js"
@@ -205,4 +205,4 @@ const matches = (context: MatchContext) => {
 }
 
 export const preferDirectBooleanReturnScanner =
-  nodeScanner(booleanReturnTargetKinds)(isBooleanReturnTarget)(matches)
+  makeNodeScanner(booleanReturnTargetKinds)(isBooleanReturnTarget)(matches)

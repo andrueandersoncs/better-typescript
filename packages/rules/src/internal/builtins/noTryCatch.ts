@@ -1,6 +1,6 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoTryCatchFact exists because its fields form one stable data contract used by the linter.
@@ -18,6 +18,6 @@ const matchTryCatchNode = (node: ts.TryStatement) =>
 
 const noTryCatchMatches = Function.constant(matchTryCatchNode)
 
-export const noTryCatchScanner = nodeScanner(tryStatementKinds)(ts.isTryStatement)(
+export const noTryCatchScanner = makeNodeScanner(tryStatementKinds)(ts.isTryStatement)(
   noTryCatchMatches
 )

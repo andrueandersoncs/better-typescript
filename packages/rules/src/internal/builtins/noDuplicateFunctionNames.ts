@@ -1,7 +1,7 @@
-import { Array, Function, HashMap, Result, Schema } from "effect"
+import { Array, HashMap, Result, Schema } from "effect"
 import * as ts from "typescript"
 import { fileSubscriptions } from "../scanner/fileSubscriptions.js"
-import { makeScannerFromSubscriptions } from "../scanner/makeScannerFromSubscriptions.js"
+import { withProgramScannerIndex } from "../scanner/withProgramScannerIndex.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
@@ -103,7 +103,5 @@ const duplicateNameListeners = (index: HashMap.HashMap<string, ReadonlyArray<ts.
   return fileSubscriptions(matchDuplicateName)
 }
 
-const duplicateFunctionNamePlan = Function.compose(buildFunctionNameIndex, duplicateNameListeners)
-
 export const noDuplicateFunctionNamesScanner =
-  makeScannerFromSubscriptions(duplicateFunctionNamePlan)
+  withProgramScannerIndex(buildFunctionNameIndex)(duplicateNameListeners)

@@ -1,6 +1,6 @@
 import { Array, Function, Option, pipe, Predicate, Struct, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { conciseArrowBody } from "../support/conciseArrowBody.js"
@@ -190,6 +190,6 @@ const preferFunctionFlipMatches = (context: MatchContext) => {
   return matchFlipCandidate
 }
 
-export const preferFunctionFlipScanner = nodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
+export const preferFunctionFlipScanner = makeNodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
   preferFunctionFlipMatches
 )

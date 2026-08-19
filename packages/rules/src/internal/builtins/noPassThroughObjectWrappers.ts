@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import type { CallLikeExpression } from "../support/callLikeExpression.js"
@@ -68,6 +68,6 @@ const passThroughObjectWrapperMatches = (_context: MatchContext) =>
     Option.toArray
   )
 
-export const noPassThroughObjectWrappersScanner = nodeScanner(forwardingFunctionKinds)(
+export const noPassThroughObjectWrappersScanner = makeNodeScanner(forwardingFunctionKinds)(
   isForwardingFunction
 )(passThroughObjectWrapperMatches)

@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoForOfLoopsFact records await style because remediation differs for async iterables.
@@ -23,6 +23,6 @@ const noForOfLoopsMatches = Function.constant(matchForOfLoopNode)
 
 const forOfStatementKinds = Array.of(ts.SyntaxKind.ForOfStatement)
 
-export const noForOfLoopsScanner = nodeScanner(forOfStatementKinds)(ts.isForOfStatement)(
+export const noForOfLoopsScanner = makeNodeScanner(forOfStatementKinds)(ts.isForOfStatement)(
   noForOfLoopsMatches
 )

@@ -1,6 +1,6 @@
 import { Array, Option, pipe, Schema } from "effect"
 import * as ts from "typescript"
-import { fileScanner } from "../scanner/fileScanner.js"
+import { makeFileScanner } from "../scanner/makeFileScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isImportedName } from "./isImportedName.js"
@@ -90,4 +90,4 @@ const matches = (context: MatchContext) => {
   return Array.map(declarations, makeReexportMatch)
 }
 
-export const noReexportsScanner = fileScanner(matches)
+export const noReexportsScanner = makeFileScanner(matches)

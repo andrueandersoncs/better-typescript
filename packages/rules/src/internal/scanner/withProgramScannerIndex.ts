@@ -1,11 +1,16 @@
-import { makeScannerFromSubscriptions } from "./makeScannerFromSubscriptions.js"
+import { flow } from "effect"
+import { makeLatestIdentityOwner } from "../support/makeLatestIdentityOwner.js"
 import { Scanner } from "./scannerData.js"
 import type { ProgramMatchContext } from "./programMatchContext.js"
 import type { Subscription } from "./subscription.js"
-import { flow } from "effect"
 
-// Program-indexed matching shares one index because each plan reads the same precomputed view.
+// Program-indexed matching owns one latest index because source scans share one semantic snapshot.
 export const withProgramScannerIndex =
-  <Index>(build: (context: ProgramMatchContext) => Index) =>
-  <Fact>(subscriptions: (index: Index) => ReadonlyArray<Subscription<Fact>>): Scanner<Fact> =>
-    makeScannerFromSubscriptions(flow(build, subscriptions))
+  <Index extends object>(build: (context: ProgramMatchContext) => Index) =>
+  <Fact>(subscriptions: (index: Index) => ReadonlyArray<Subscription<Fact>>): Scanner<Fact> => {
+    const indexOwner = makeLatestIdentityOwner(build)
+    const indexForContext = (context: ProgramMatchContext) => indexOwner(context.program)(context)
+    const plan = flow(indexForContext, subscriptions)
+
+    return new Scanner({ plan })
+  }

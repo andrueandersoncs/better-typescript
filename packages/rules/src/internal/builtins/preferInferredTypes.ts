@@ -3,7 +3,6 @@ import {
   Function,
   HashMap,
   Iterable,
-  MutableRef,
   Option,
   Order,
   Predicate,
@@ -14,13 +13,11 @@ import {
 } from "effect"
 import * as ts from "typescript"
 import { astNodesIn } from "../sources/astNodesIn.js"
-import type { ProgramMatchContext } from "../scanner/programMatchContext.js"
 import { isInAmbientContext } from "../support/isDeclareKeyword.js"
 import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
 import type { FunctionInitializer } from "../support/functionInitializer.js"
 import { strictEqual } from "../equivalence.js"
-import { fileSubscriptions } from "../scanner/fileSubscriptions.js"
-import { makeScannerFromSubscriptions } from "../scanner/makeScannerFromSubscriptions.js"
+import { makeFileScanner } from "../scanner/makeFileScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { Match } from "../scanner/match.js"
 import type { MatchContext } from "../scanner/matchContext.js"
@@ -327,11 +324,11 @@ const augmentSource = (probes: ReadonlyArray<InferenceProbe>) => (sourceFile: ts
   return pipe(chunks, Array.append(tail), Array.join(""))
 }
 
-const sourceAnalyses = (context: ProgramMatchContext) => {
+const sourceAnalyses = (checker: ts.TypeChecker) => (sourceFiles: ReadonlyArray<ts.SourceFile>) => {
   const isImplementationSourceFile = (sourceFile: ts.SourceFile) => !sourceFile.isDeclarationFile
 
   const sourceFileAnalysis = (sourceFile: ts.SourceFile) => {
-    const probes = probesIn(context.checker)(sourceFile)
+    const probes = probesIn(checker)(sourceFile)
     const analysisEntry = Tuple.make(sourceFile, probes)
 
     const analysis = Array.isReadonlyArrayNonEmpty(probes)
@@ -351,7 +348,7 @@ const sourceAnalyses = (context: ProgramMatchContext) => {
   }
 
   return pipe(
-    context.sourceFiles,
+    sourceFiles,
     Array.filter(isImplementationSourceFile),
     Array.filterMap(sourceFileAnalysis),
     Array.map(analysisByFileName),
@@ -360,9 +357,9 @@ const sourceAnalyses = (context: ProgramMatchContext) => {
 }
 
 const makeShadowProgram =
-  (context: ProgramMatchContext) =>
+  (program: ts.Program) =>
   (analyses: HashMap.HashMap<string, readonly [ts.SourceFile, ReadonlyArray<InferenceProbe>]>) => {
-    const programOptions = context.program.getCompilerOptions()
+    const programOptions = program.getCompilerOptions()
 
     const options = Object.assign({}, programOptions, {
       noUnusedLocals: false,
@@ -381,7 +378,7 @@ const makeShadowProgram =
       onError,
       shouldCreateNewSourceFile
     ) => {
-      const existingSourceFile = context.program.getSourceFile(fileName)
+      const existingSourceFile = program.getSourceFile(fileName)
 
       const createSourceFileFromText = (text: string) =>
         ts.createSourceFile(fileName, text, languageVersion, true)
@@ -401,15 +398,15 @@ const makeShadowProgram =
     }
 
     const host = Object.assign({}, baseHost, { getSourceFile }) satisfies ts.CompilerHost
-    const rootNames = context.program.getRootFileNames()
-    const projectReferences = context.program.getProjectReferences()
+    const rootNames = program.getRootFileNames()
+    const projectReferences = program.getProjectReferences()
 
     return ts.createProgram({
       rootNames,
       options,
       projectReferences,
       host,
-      oldProgram: context.program
+      oldProgram: program
     })
   }
 
@@ -617,88 +614,20 @@ const matchesInSource =
     )
   }
 
-const buildMatchIndex = (context: ProgramMatchContext) => {
-  const analyses = sourceAnalyses(context)
+const matchesForSourceFile = (context: MatchContext) => {
+  const sourceFiles = Array.of(context.sourceFile)
+  const analyses = sourceAnalyses(context.checker)(sourceFiles)
+  const analysis = HashMap.get(analyses, context.sourceFile.fileName)
 
-  if (HashMap.isEmpty(analyses)) {
-    return HashMap.empty<string, ReadonlyArray<Match<PreferInferredTypesFact>>>()
-  }
+  return pipe(
+    analysis,
+    Option.map(([sourceFile, probes]) => {
+      const shadowProgram = makeShadowProgram(context.program)(analyses)
 
-  const program = makeShadowProgram(context)(analyses)
-
-  const entries = pipe(
-    analyses,
-    HashMap.values,
-    Iterable.map(([sourceFile, probes]) => {
-      const matches = matchesInSource(program)(sourceFile)(probes)
-
-      return Tuple.make(sourceFile.fileName, matches)
-    })
+      return matchesInSource(shadowProgram)(sourceFile)(probes)
+    }),
+    Option.getOrElse(Array.empty)
   )
-
-  return HashMap.fromIterable(entries)
 }
 
-// The cache retains one scoped Program because workspace analysis is sequential.
-const emptyMatchIndexCache =
-  Option.none<
-    readonly [
-      ts.Program,
-      ReadonlyArray<ts.SourceFile>,
-      HashMap.HashMap<string, ReadonlyArray<Match<PreferInferredTypesFact>>>
-    ]
-  >()
-
-const matchIndexCache = MutableRef.make(emptyMatchIndexCache)
-
-const sourceFileScopesMatch =
-  (right: ReadonlyArray<ts.SourceFile>) => (left: ReadonlyArray<ts.SourceFile>) => {
-    const sameLength = strictEqual(left.length)(right.length)
-
-    const sameSourceAt = (sourceFile: ts.SourceFile, index: number) =>
-      pipe(Array.get(right, index), Option.exists(strictEqual(sourceFile)))
-
-    return sameLength && Array.every(left, sameSourceAt)
-  }
-
-const matchesByFile = (context: ProgramMatchContext) => {
-  const cached = MutableRef.get(matchIndexCache)
-
-  const cacheMatches = (
-    entry: readonly [
-      ts.Program,
-      ReadonlyArray<ts.SourceFile>,
-      HashMap.HashMap<string, ReadonlyArray<Match<PreferInferredTypesFact>>>
-    ]
-  ) => {
-    const program = Tuple.get(entry, 0)
-    const sourceFiles = Tuple.get(entry, 1)
-    const sameProgram = strictEqual(context.program)(program)
-    const sameScope = sourceFileScopesMatch(sourceFiles)(context.sourceFiles)
-
-    return sameProgram && sameScope
-  }
-
-  const current = pipe(cached, Option.filter(cacheMatches))
-
-  if (Option.isSome(current)) {
-    return Tuple.get(current.value, 2)
-  }
-
-  const matches = buildMatchIndex(context)
-  const cacheEntry = Tuple.make(context.program, context.sourceFiles, matches)
-  const updated = Option.some(cacheEntry)
-
-  MutableRef.set(matchIndexCache, updated)
-
-  return matches
-}
-
-const matchesForSourceFile =
-  (index: HashMap.HashMap<string, ReadonlyArray<Match<PreferInferredTypesFact>>>) =>
-  (matchContext: MatchContext) =>
-    pipe(HashMap.get(index, matchContext.sourceFile.fileName), Option.getOrElse(Array.empty))
-
-const preferInferredTypesPlan = flow(matchesByFile, matchesForSourceFile, fileSubscriptions)
-
-export const preferInferredTypesScanner = makeScannerFromSubscriptions(preferInferredTypesPlan)
+export const preferInferredTypesScanner = makeFileScanner(matchesForSourceFile)

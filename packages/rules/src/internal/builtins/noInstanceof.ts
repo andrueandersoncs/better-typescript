@@ -1,6 +1,6 @@
 import { Array, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
@@ -51,4 +51,4 @@ const instanceofMatches = (context: MatchContext) => {
 }
 
 export const noInstanceofScanner =
-  nodeScanner(binaryExpressionKinds)(isInstanceofExpression)(instanceofMatches)
+  makeNodeScanner(binaryExpressionKinds)(isInstanceofExpression)(instanceofMatches)

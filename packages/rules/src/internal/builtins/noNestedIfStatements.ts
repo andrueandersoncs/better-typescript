@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { strictEqual } from "../equivalence.js"
 
@@ -62,6 +62,6 @@ const matchNestedIfStatement = (ifStatement: ts.IfStatement) => {
 
 const noNestedIfStatementsMatches = Function.constant(matchNestedIfStatement)
 
-export const noNestedIfStatementsScanner = nodeScanner(ifStatementKinds)(ts.isIfStatement)(
+export const noNestedIfStatementsScanner = makeNodeScanner(ifStatementKinds)(ts.isIfStatement)(
   noNestedIfStatementsMatches
 )

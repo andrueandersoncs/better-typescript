@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // PreferEquivalenceStrictEqualFact exists because its fields form one stable data contract used by the linter.
@@ -28,6 +28,6 @@ const strictEqualityMatches = Function.constant(matchStrictEqualityExpression)
 
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
-export const preferEquivalenceStrictEqualScanner = nodeScanner(binaryExpressionKinds)(
+export const preferEquivalenceStrictEqualScanner = makeNodeScanner(binaryExpressionKinds)(
   isStrictEqualityExpression
 )(strictEqualityMatches)

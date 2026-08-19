@@ -1,6 +1,6 @@
 import { Array, Schema } from "effect"
 import { commentText } from "../sources/commentText.js"
-import { fileScanner } from "../scanner/fileScanner.js"
+import { makeFileScanner } from "../scanner/makeFileScanner.js"
 import { makePositionMatch } from "../scanner/makePositionMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 
@@ -33,4 +33,4 @@ const becauseInCommentsMatches = (context: MatchContext) => {
   return Array.map(missingBecause, matchMissingBecause)
 }
 
-export const requireBecauseInCommentsScanner = fileScanner(becauseInCommentsMatches)
+export const requireBecauseInCommentsScanner = makeFileScanner(becauseInCommentsMatches)

@@ -1,4 +1,4 @@
-import { Array, Data, Equivalence, Match as EffectMatch, MutableRef, Option, pipe } from "effect"
+import { Array, Data, Equivalence, Match as EffectMatch, pipe } from "effect"
 import { RuleFinding } from "@better-typescript/core/linter"
 import type { Rule, RuleContext } from "@better-typescript/core/linter"
 import type { RuleName } from "@better-typescript/core/ruleName"
@@ -20,34 +20,7 @@ export const makeRule =
   (name: RuleName) =>
   <Fact>(scanner: Scanner<Fact>) =>
   (message: RuleMessage<Fact>): Rule => {
-    const emptyCache = Option.none<readonly [object, ReadonlyArray<Match<Fact>>]>()
-    const cache = MutableRef.make(emptyCache)
-    const sameProgram = Equivalence.strictEqual<object>()
     const sameSourceFile = Equivalence.strictEqual<RuleContext["sourceFile"]>()
-
-    const candidates = (context: RuleContext) => {
-      const cached = pipe(
-        MutableRef.get(cache),
-        Option.filter(([program]) => sameProgram(program, context.program)),
-        Option.map(([, matches]) => matches)
-      )
-
-      if (Option.isSome(cached)) {
-        return cached.value
-      }
-
-      const contextForProgram = programContext(context)
-      const matches = runScanner(scanner)(contextForProgram)
-
-      const populatedCache = Option.some<readonly [object, ReadonlyArray<Match<Fact>>]>([
-        context.program,
-        matches
-      ])
-
-      MutableRef.set(cache, populatedCache)
-
-      return matches
-    }
 
     const check = (context: RuleContext) => {
       const contextForProgram = programContext(context)
@@ -76,7 +49,7 @@ export const makeRule =
         return RuleFinding.make({ message: actionableMessage, target: candidate.target })
       }
 
-      return pipe(candidates(context), Array.filter(isCurrentFile), Array.map(makeFinding))
+      return pipe(runScanner(scanner)(context), Array.filter(isCurrentFile), Array.map(makeFinding))
     }
 
     return new Data.Class<Rule>({ name, check })

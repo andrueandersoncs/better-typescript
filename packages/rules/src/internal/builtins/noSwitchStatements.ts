@@ -1,6 +1,6 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoSwitchStatementsFact exists because its fields form one stable data contract used by the linter.
@@ -18,6 +18,6 @@ const matchSwitchStatementNode = (node: ts.SwitchStatement) =>
 
 const noSwitchStatementsMatches = Function.constant(matchSwitchStatementNode)
 
-export const noSwitchStatementsScanner = nodeScanner(switchStatementKinds)(ts.isSwitchStatement)(
-  noSwitchStatementsMatches
-)
+export const noSwitchStatementsScanner = makeNodeScanner(switchStatementKinds)(
+  ts.isSwitchStatement
+)(noSwitchStatementsMatches)

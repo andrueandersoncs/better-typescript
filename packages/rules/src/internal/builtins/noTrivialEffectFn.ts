@@ -1,7 +1,7 @@
 import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { foldAst } from "../sources/foldAst.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
@@ -224,6 +224,6 @@ const makeTrivialEffectFnMatches =
     )
   }
 
-export const noTrivialEffectFnScanner = nodeScanner(variableDeclarationKinds)(
+export const noTrivialEffectFnScanner = makeNodeScanner(variableDeclarationKinds)(
   ts.isVariableDeclaration
 )(makeTrivialEffectFnMatches)

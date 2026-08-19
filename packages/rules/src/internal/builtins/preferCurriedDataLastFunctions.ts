@@ -1,6 +1,6 @@
 import { Array, Function, HashMap, HashSet, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { makeScannerFromSubscriptions } from "../scanner/makeScannerFromSubscriptions.js"
+import { withProgramScannerIndex } from "../scanner/withProgramScannerIndex.js"
 import { nodeSubscriptions } from "../scanner/nodeSubscriptions.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { Match } from "../scanner/match.js"
@@ -322,11 +322,5 @@ const curriedDataLastListeners = (symbolUses: SymbolUses): ReadonlyArray<Subscri
   return nodeSubscriptions(functionDefinitionKinds)(isFunctionDefinition)(elements)
 }
 
-const preferCurriedDataLastFunctionsPlan = Function.compose(
-  buildSymbolUses,
-  curriedDataLastListeners
-)
-
-export const preferCurriedDataLastFunctionsScanner = makeScannerFromSubscriptions(
-  preferCurriedDataLastFunctionsPlan
-)
+export const preferCurriedDataLastFunctionsScanner =
+  withProgramScannerIndex(buildSymbolUses)(curriedDataLastListeners)

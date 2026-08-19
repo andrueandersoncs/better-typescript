@@ -1,6 +1,6 @@
 import { Array, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isArrayLikeType } from "../support/isArrayLikeType.js"
@@ -35,6 +35,6 @@ const directIndexAccessMatches = (context: MatchContext) => {
 
 const elementAccessExpressionKinds = Array.of(ts.SyntaxKind.ElementAccessExpression)
 
-export const preferEffectIndexAccessScanner = nodeScanner(elementAccessExpressionKinds)(
+export const preferEffectIndexAccessScanner = makeNodeScanner(elementAccessExpressionKinds)(
   ts.isElementAccessExpression
 )(directIndexAccessMatches)

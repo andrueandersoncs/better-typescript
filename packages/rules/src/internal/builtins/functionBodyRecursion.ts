@@ -1,11 +1,11 @@
-import { Array, Function, HashMap, MutableRef, Option, Struct, Tuple, flow, pipe } from "effect"
+import { Array, Function, HashMap, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
 import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
 import { referenceKey } from "../support/referenceKey.js"
 import type { ReferenceKey } from "../support/referenceKeyType.js"
 import { variableDeclarationInitializer } from "../support/variableDeclarationInitializer.js"
+import { makeLatestIdentityOwner } from "../support/makeLatestIdentityOwner.js"
 import { strictEqual } from "../equivalence.js"
-import { functionDependencyCache } from "./functionDependencyCache.js"
 import { optionResult } from "./optionResult.js"
 import { symbolOptionAt } from "./symbolOptionAt.js"
 import type { SymbolReference } from "./symbolReference.js"
@@ -38,45 +38,18 @@ const functionBodyForSymbol = (symbol: ts.Symbol) =>
     Array.head
   )
 
-const emptyDependencyIndex = HashMap.empty<ReferenceKey, ReadonlyArray<SymbolReference>>()
-
-const dependencyIndexFor = (checker: ts.TypeChecker) => {
-  const checkerMatches: (entry: readonly [ts.TypeChecker, unknown]) => boolean = flow(
-    Tuple.get(0),
-    strictEqual(checker)
+const dependenciesForChecker = (checker: ts.TypeChecker) =>
+  Function.memoize(
+    flow(
+      functionBodyForSymbol,
+      Option.map(symbolReferencesIn(checker)),
+      Option.getOrElse(Array.empty<SymbolReference>)
+    )
   )
 
-  return pipe(
-    MutableRef.get(functionDependencyCache),
-    Option.filter(checkerMatches),
-    Option.map(Tuple.get(1)),
-    Option.getOrElse(Function.constant(emptyDependencyIndex))
-  )
-}
+const functionDependencyOwner = makeLatestIdentityOwner(dependenciesForChecker)
 
-const functionDependencies = (checker: ts.TypeChecker) => (symbol: ts.Symbol) => {
-  const symbolKey = referenceKey(symbol)
-  const dependencyIndex = dependencyIndexFor(checker)
-  const cached = HashMap.get(dependencyIndex, symbolKey)
-
-  if (Option.isSome(cached)) {
-    return cached.value
-  }
-
-  const dependencies = pipe(
-    functionBodyForSymbol(symbol),
-    Option.map(symbolReferencesIn(checker)),
-    Option.getOrElse(Array.empty<SymbolReference>)
-  )
-
-  const nextIndex = HashMap.set(dependencyIndex, symbolKey, dependencies)
-  const cacheEntry = Tuple.make(checker, nextIndex)
-  const nextCache = Option.some(cacheEntry)
-
-  MutableRef.set(functionDependencyCache, nextCache)
-
-  return dependencies
-}
+const functionDependencies = (checker: ts.TypeChecker) => functionDependencyOwner(checker)(checker)
 
 const symbolReachesTarget =
   (checker: ts.TypeChecker) =>

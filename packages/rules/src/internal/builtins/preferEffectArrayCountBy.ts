@@ -1,6 +1,6 @@
 import { Array, Function, Option, pipe, Struct, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
@@ -102,6 +102,6 @@ const effectArrayFilterLengthMatches = (context: MatchContext) => {
 
 const propertyAccessKinds = Array.of(ts.SyntaxKind.PropertyAccessExpression)
 
-export const preferEffectArrayCountByScanner = nodeScanner(propertyAccessKinds)(
+export const preferEffectArrayCountByScanner = makeNodeScanner(propertyAccessKinds)(
   ts.isPropertyAccessExpression
 )(effectArrayFilterLengthMatches)

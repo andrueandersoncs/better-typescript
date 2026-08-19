@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
 import { strictEqual } from "../equivalence.js"
@@ -81,6 +81,6 @@ const matchOptionGuardConditional = (conditional: ts.ConditionalExpression) =>
 
 const optionMatchMatches = Function.constant(matchOptionGuardConditional)
 
-export const preferOptionMatchScanner = nodeScanner(conditionalExpressionKinds)(
+export const preferOptionMatchScanner = makeNodeScanner(conditionalExpressionKinds)(
   ts.isConditionalExpression
 )(optionMatchMatches)

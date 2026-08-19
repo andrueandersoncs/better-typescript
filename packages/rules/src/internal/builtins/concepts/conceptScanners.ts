@@ -1,13 +1,11 @@
 import {
   Array,
   Data,
-  Equivalence,
   Function,
   HashMap,
   HashSet,
   Iterable,
   MutableList,
-  MutableRef,
   Option,
   Order,
   Result,
@@ -22,12 +20,13 @@ import { strictEqual } from "../../equivalence.js"
 import * as ts from "typescript"
 import { astNodesIn } from "../../sources/astNodesIn.js"
 import { isProjectSourceFile } from "../../sources/isProjectSourceFile.js"
-import type { ProgramContext } from "../../sources/data.js"
+import { makeLatestIdentityOwner } from "../../support/makeLatestIdentityOwner.js"
 import { makeNodeMatch } from "../../scanner/makeNodeMatch.js"
 import type { Match as FactMatch } from "../../scanner/match.js"
 import type { MatchContext } from "../../scanner/matchContext.js"
+import type { ProgramMatchContext } from "../../scanner/programMatchContext.js"
 import { fileSubscriptions } from "../../scanner/fileSubscriptions.js"
-import { makeScannerFromSubscriptions } from "../../scanner/makeScannerFromSubscriptions.js"
+import { Scanner } from "../../scanner/scannerData.js"
 import { classDeclarationName } from "../../support/classDeclarationName.js"
 import { functionDeclarationName } from "../../support/functionDeclarationName.js"
 import type { FunctionDefinition } from "../../support/functionDefinition.js"
@@ -479,13 +478,17 @@ const entriesFromSourceFile =
     return Array.flatMap(sourceFile.statements, entriesForStatement)
   }
 
-const dataStructureEntries = (context: ProgramContext): ReadonlyArray<DataStructureEntry> => {
-  const programSourceFiles = context.program.getSourceFiles()
-  const sourceFiles = pipe(programSourceFiles, Array.filter(isProjectSourceFile))
-  const declarations = Array.flatMap(sourceFiles, entriesFromSourceFile(context.checker))
+const dataStructureEntries =
+  (checker: ts.TypeChecker) =>
+  (program: ts.Program): ReadonlyArray<DataStructureEntry> => {
+    const programSourceFiles = program.getSourceFiles()
+    const sourceFiles = pipe(programSourceFiles, Array.filter(isProjectSourceFile))
+    const declarations = Array.flatMap(sourceFiles, entriesFromSourceFile(checker))
 
-  return Array.dedupeWith(declarations, (first, second) => strictEqual(second.symbol)(first.symbol))
-}
+    return Array.dedupeWith(declarations, (first, second) =>
+      strictEqual(second.symbol)(first.symbol)
+    )
+  }
 
 const functionEntryForDeclaration =
   (checker: ts.TypeChecker) => (declaration: ts.FunctionDeclaration) => {
@@ -573,11 +576,12 @@ const functionEntryForMethod = (checker: ts.TypeChecker) => (declaration: ts.Met
 }
 
 const functionEntries =
-  (context: ProgramContext) =>
+  (checker: ts.TypeChecker) =>
+  (program: ts.Program) =>
   (
     dataBySymbol: HashMap.HashMap<ReferenceKey<ts.Symbol>, DataStructureEntry>
   ): ReadonlyArray<FunctionEntry> => {
-    const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+    const sourceFiles = pipe(program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
     const entriesFromSourceFile = (sourceFile: ts.SourceFile) => {
       const functionEntryFromNode = (node: ts.Node) => {
@@ -585,11 +589,11 @@ const functionEntries =
           const isVariableStatement = ts.isVariableStatement(declaration.parent.parent)
           const exported = isVariableStatement && hasExportModifier(declaration.parent.parent)
 
-          return functionEntryForVariable(context.checker)(exported)(dataBySymbol)(declaration)
+          return functionEntryForVariable(checker)(exported)(dataBySymbol)(declaration)
         }
 
-        const entryForFunctionDeclaration = functionEntryForDeclaration(context.checker)
-        const entryForMethodDeclaration = functionEntryForMethod(context.checker)
+        const entryForFunctionDeclaration = functionEntryForDeclaration(checker)
+        const entryForMethodDeclaration = functionEntryForMethod(checker)
 
         return pipe(
           EffectMatch.value(node),
@@ -1328,10 +1332,11 @@ const functionDerivedStem = (name: string) => {
   )
 }
 
-const buildConceptIndex = (context: ProgramContext) => {
-  const dataStructures = dataStructureEntries(context)
+const buildConceptIndex = (program: ts.Program) => {
+  const checker = program.getTypeChecker()
+  const dataStructures = dataStructureEntries(checker)(program)
   const dataBySymbol = Array.reduce(dataStructures, emptyDataBySymbol, addDataStructureEntry)
-  const functions = functionEntries(context)(dataBySymbol)
+  const functions = functionEntries(checker)(program)(dataBySymbol)
   const functionBySymbol = Array.reduce(functions, emptyFunctionBySymbol, addFunctionEntry)
 
   const ownersByDataBuilder = pipe(
@@ -1348,7 +1353,7 @@ const buildConceptIndex = (context: ProgramContext) => {
   const fieldReads = MutableList.make<FieldRead>()
   const readFieldNameIndex = pipe(HashMap.empty<string, true>(), HashMap.beginMutation)
   const parameterBags = MutableList.make<ParameterBag>()
-  const sourceFiles = pipe(context.program.getSourceFiles(), Array.filter(isProjectSourceFile))
+  const sourceFiles = pipe(program.getSourceFiles(), Array.filter(isProjectSourceFile))
 
   Array.forEach(sourceFiles, (sourceFile) => {
     const nodes = astNodesIn(sourceFile)
@@ -1358,14 +1363,11 @@ const buildConceptIndex = (context: ProgramContext) => {
         Option.liftPredicate(ts.isIdentifier)(node),
         Option.flatMap((identifier) => {
           const recordIdentifierSymbol = (symbol: ts.Symbol): true => {
-            const owner = ownerSymbol(context.checker)(functionBySymbol)(identifier)
+            const owner = ownerSymbol(checker)(functionBySymbol)(identifier)
             const symbolKey = referenceKey(symbol)
             const data = HashMap.get(dataBySymbol, symbolKey)
             const fn = HashMap.get(functionBySymbol, symbolKey)
-
-            const references = fieldReferences(context.checker)(dataBySymbol)(fields)(identifier)(
-              symbol
-            )
+            const references = fieldReferences(checker)(dataBySymbol)(fields)(identifier)(symbol)
 
             pipe(
               data,
@@ -1431,7 +1433,7 @@ const buildConceptIndex = (context: ProgramContext) => {
             return true
           }
 
-          return pipe(symbolAt(context.checker)(identifier), Option.map(recordIdentifierSymbol))
+          return pipe(symbolAt(checker)(identifier), Option.map(recordIdentifierSymbol))
         })
       )
 
@@ -1473,7 +1475,7 @@ const buildConceptIndex = (context: ProgramContext) => {
           )
 
           const called = pipe(
-            symbolAt(context.checker)(callee),
+            symbolAt(checker)(callee),
             Option.flatMap((symbol) => {
               const symbolKey = referenceKey(symbol)
 
@@ -1485,9 +1487,7 @@ const buildConceptIndex = (context: ProgramContext) => {
             called,
             Option.map((functionEntry) => {
               Array.forEach(call.arguments, (argument) => {
-                const model = dataStructureEntryFromExpression(context.checker)(dataBySymbol)(
-                  argument
-                )
+                const model = dataStructureEntryFromExpression(checker)(dataBySymbol)(argument)
 
                 pipe(
                   model,
@@ -1512,12 +1512,11 @@ const buildConceptIndex = (context: ProgramContext) => {
   const ownersByData = HashMap.endMutation(ownersByDataBuilder)
   const ownersByFunction = HashMap.endMutation(ownersByFunctionBuilder)
 
-  const rolesByData = structuralRoles(context.checker)(ownersByData)(ownersByFunction)(
-    functionBySymbol
-  )(dataStructures)
+  const rolesByData =
+    structuralRoles(checker)(ownersByData)(ownersByFunction)(functionBySymbol)(dataStructures)
 
   const conversions: ReadonlyArray<PassThroughConversion> = Array.filterMap(functions, (entry) => {
-    const conversion = passThroughConversion(context.checker)(dataBySymbol)(entry)
+    const conversion = passThroughConversion(checker)(dataBySymbol)(entry)
 
     return Result.fromOption(conversion, Function.constVoid)
   })
@@ -2174,34 +2173,19 @@ const conceptRuleSubscriptions = (kind: ConceptRuleKind) => (index: ConceptIndex
   return fileSubscriptions(matches)
 }
 
-const noneCachedConceptIndex = Option.none<readonly [object, ConceptIndex]>()
-const conceptIndexCache = MutableRef.make(noneCachedConceptIndex)
-const sameProgram = Equivalence.strictEqual<object>()
+const conceptIndexOwner = makeLatestIdentityOwner(buildConceptIndex)
+const conceptIndexForProgram = (program: ts.Program) => conceptIndexOwner(program)(program)
 
-const conceptIndexFor = (context: ProgramContext) => {
-  const cached = pipe(
-    MutableRef.get(conceptIndexCache),
-    Option.filter(([program]) => sameProgram(program, context.program)),
-    Option.map(([, index]) => index)
-  )
+const conceptIndexFor = flow(
+  Struct.get<ProgramMatchContext, "program">("program"),
+  conceptIndexForProgram
+)
 
-  if (Option.isSome(cached)) {
-    return cached.value
-  }
+const makeConceptScanner = (kind: ConceptRuleKind) => {
+  const plan = Function.compose(conceptIndexFor, conceptRuleSubscriptions(kind))
 
-  const index = buildConceptIndex(context)
-  const cachedIndex = Option.some([context.program, index] as const)
-
-  MutableRef.set(conceptIndexCache, cachedIndex)
-
-  return index
+  return new Scanner({ plan })
 }
-
-const makeConceptScanner = (kind: ConceptRuleKind) =>
-  pipe(
-    Function.compose(conceptIndexFor, conceptRuleSubscriptions(kind)),
-    makeScannerFromSubscriptions
-  )
 
 export const closedAbstractionScanner = makeConceptScanner("closed-abstraction")
 export const duplicateShapeScanner = makeConceptScanner("duplicate-shape")

@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
 import { astChildren } from "../sources/astChildren.js"
@@ -102,6 +102,6 @@ const matchMultipleBooleanOperators = (expression: BooleanOperatorExpression) =>
 
 const noMultipleBooleanOperatorsMatches = Function.constant(matchMultipleBooleanOperators)
 
-export const noMultipleBooleanOperatorsScanner = nodeScanner(kinds)(isBooleanOperatorExpression)(
-  noMultipleBooleanOperatorsMatches
-)
+export const noMultipleBooleanOperatorsScanner = makeNodeScanner(kinds)(
+  isBooleanOperatorExpression
+)(noMultipleBooleanOperatorsMatches)

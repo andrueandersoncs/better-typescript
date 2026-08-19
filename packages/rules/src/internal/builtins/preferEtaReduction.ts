@@ -1,6 +1,6 @@
 import { Array, Function, Option, Predicate, Schema, Struct, Tuple, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { conciseArrowBody } from "../support/conciseArrowBody.js"
@@ -198,6 +198,6 @@ const matches = (context: MatchContext) => {
   return matchEtaReductionCandidate
 }
 
-export const preferEtaReductionScanner = nodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
+export const preferEtaReductionScanner = makeNodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
   matches
 )

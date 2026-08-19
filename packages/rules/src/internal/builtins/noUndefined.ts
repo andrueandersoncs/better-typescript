@@ -5,7 +5,7 @@ import { containsUndefinedType } from "../support/containsUndefinedKeyword.js"
 import { isReturnTypeDeclaration } from "../support/isReturnTypeDeclaration.js"
 import type { ReturnTypeDeclaration } from "../support/returnTypeDeclaration.js"
 import { returnTypeDeclarationKinds } from "../support/returnTypeDeclarationKinds.js"
-import { makeScannerFromSubscriptions } from "../scanner/makeScannerFromSubscriptions.js"
+import { Scanner } from "../scanner/scannerData.js"
 import { nodeSubscriptions } from "../scanner/nodeSubscriptions.js"
 import { isUndefinedExpression } from "./isUndefinedExpression.js"
 import { undefinedUsageMatches } from "./noUndefinedFact.js"
@@ -143,4 +143,4 @@ const flattenedListeners = Array.flatten(undefinedListenerGroups)
 
 const undefinedSubscriptions = Function.constant(flattenedListeners)
 
-export const noUndefinedScanner = makeScannerFromSubscriptions(undefinedSubscriptions)
+export const noUndefinedScanner = new Scanner({ plan: undefinedSubscriptions })

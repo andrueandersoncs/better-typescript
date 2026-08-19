@@ -1,6 +1,6 @@
 import { Array, Function, Option, Result, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
@@ -121,4 +121,4 @@ const matches = (context: MatchContext) => {
   return matchBlock
 }
 
-export const preferConditionalReturnScanner = nodeScanner(blockKinds)(ts.isBlock)(matches)
+export const preferConditionalReturnScanner = makeNodeScanner(blockKinds)(ts.isBlock)(matches)

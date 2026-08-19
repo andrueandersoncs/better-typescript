@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { isBlockOrSourceFile } from "../support/isBlockOrSourceFile.js"
 import { referencesToSymbol } from "./referencesToSymbol.js"
 import { unwrapTransparentExpression } from "../support/transparentWrapper.js"
@@ -101,6 +101,6 @@ const immediateEffectSyncMatches = (context: MatchContext) => (call: ts.CallExpr
   return pipe(candidate, Option.as(match), Option.toArray)
 }
 
-export const noImmediateEffectSyncScanner = nodeScanner(callExpressionKinds)(ts.isCallExpression)(
-  immediateEffectSyncMatches
-)
+export const noImmediateEffectSyncScanner = makeNodeScanner(callExpressionKinds)(
+  ts.isCallExpression
+)(immediateEffectSyncMatches)

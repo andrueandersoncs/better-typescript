@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { isDispatchGuard } from "./isDispatchGuard.js"
 import { siblingDispatchGuard } from "./siblingDispatchGuard.js"
@@ -58,6 +58,6 @@ const matchManualTypeDispatch = (ifStatement: ts.IfStatement) =>
 
 const noManualTypeDispatchMatches = Function.constant(matchManualTypeDispatch)
 
-export const noManualTypeDispatchScanner = nodeScanner(ifStatementKinds)(ts.isIfStatement)(
+export const noManualTypeDispatchScanner = makeNodeScanner(ifStatementKinds)(ts.isIfStatement)(
   noManualTypeDispatchMatches
 )

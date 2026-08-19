@@ -1,6 +1,6 @@
 import { Array, Function, Match, Option, pipe, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { functionInitializer } from "../support/functionInitializer2.js"
@@ -181,6 +181,6 @@ const effectFnMatches = (context: MatchContext) => {
 
 const variableDeclarationKinds = Array.of(ts.SyntaxKind.VariableDeclaration)
 
-export const preferEffectFnScanner = nodeScanner(variableDeclarationKinds)(
+export const preferEffectFnScanner = makeNodeScanner(variableDeclarationKinds)(
   ts.isVariableDeclaration
 )(effectFnMatches)

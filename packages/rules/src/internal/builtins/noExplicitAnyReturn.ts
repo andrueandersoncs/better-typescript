@@ -1,7 +1,7 @@
 import { Array, Function, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { isReturnTypeDeclaration } from "../support/isReturnTypeDeclaration.js"
 import type { ReturnTypeDeclaration } from "../support/returnTypeDeclaration.js"
@@ -44,6 +44,6 @@ const matchExplicitAnyReturnNode = (node: ReturnTypeDeclaration) => {
 
 const noExplicitAnyReturnMatches = Function.constant(matchExplicitAnyReturnNode)
 
-export const noExplicitAnyReturnScanner = nodeScanner(returnTypeDeclarationKinds)(
+export const noExplicitAnyReturnScanner = makeNodeScanner(returnTypeDeclarationKinds)(
   isReturnTypeDeclaration
 )(noExplicitAnyReturnMatches)

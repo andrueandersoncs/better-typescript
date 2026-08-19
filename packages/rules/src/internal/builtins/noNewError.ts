@@ -1,7 +1,7 @@
 import { Array, Option, Struct, flow, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoNewErrorFact exists because its fields form one stable data contract used by the linter.
@@ -31,6 +31,6 @@ const noNewErrorMatches = () => (node: ts.NewExpression) => {
   return Array.of(match)
 }
 
-export const noNewErrorScanner = nodeScanner(newExpressionKinds)(ts.isNewExpression)(
+export const noNewErrorScanner = makeNodeScanner(newExpressionKinds)(ts.isNewExpression)(
   noNewErrorMatches
 )

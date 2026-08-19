@@ -1,5 +1,6 @@
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { isFunctionDefinition } from "../support/isFunctionDefinition.js"
 import { functionDefinitionKinds } from "./functionDefinitionKinds.js"
 
-export const functionDefinitionScanner = nodeScanner(functionDefinitionKinds)(isFunctionDefinition)
+export const functionDefinitionScanner =
+  makeNodeScanner(functionDefinitionKinds)(isFunctionDefinition)

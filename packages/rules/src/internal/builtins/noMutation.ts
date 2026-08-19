@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Match, Option, Predicate, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { binaryAssignmentTarget } from "../support/hasAssignmentOperator.js"
@@ -209,4 +209,4 @@ const mutationMatches = (context: MatchContext) => {
 }
 
 export const noMutationScanner =
-  nodeScanner(mutationNodeKinds)(isMutationCandidate)(mutationMatches)
+  makeNodeScanner(mutationNodeKinds)(isMutationCandidate)(mutationMatches)

@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { strictEqual } from "../equivalence.js"
@@ -44,6 +44,6 @@ const matches = (_context: MatchContext) => (arrowFunction: ts.ArrowFunction) =>
   return Array.of(match)
 }
 
-export const preferImplicitReturnScanner = nodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
+export const preferImplicitReturnScanner = makeNodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
   matches
 )

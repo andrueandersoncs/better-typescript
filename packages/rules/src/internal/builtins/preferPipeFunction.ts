@@ -1,6 +1,6 @@
 import { Array, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { symbolDeclaredInEffectPackage } from "../support/declarationInEffectPackage.js"
@@ -43,6 +43,6 @@ const pipeFunctionMatches = (context: MatchContext) => {
   return matchPipeCallExpression
 }
 
-export const preferPipeFunctionScanner = nodeScanner(callExpressionKinds)(ts.isCallExpression)(
+export const preferPipeFunctionScanner = makeNodeScanner(callExpressionKinds)(ts.isCallExpression)(
   pipeFunctionMatches
 )

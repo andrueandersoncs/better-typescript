@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { Match } from "../scanner/match.js"
 import { isReturnTypeDeclaration } from "../support/isReturnTypeDeclaration.js"
@@ -95,4 +95,4 @@ const matchRawObjectType = (node: RawObjectTarget): ReadonlyArray<Match<NoRawObj
 const noRawObjectTypesMatches = Function.constant(matchRawObjectType)
 
 export const noRawObjectTypesScanner =
-  nodeScanner(rawObjectTargetKinds)(isRawObjectTarget)(noRawObjectTypesMatches)
+  makeNodeScanner(rawObjectTargetKinds)(isRawObjectTarget)(noRawObjectTypesMatches)

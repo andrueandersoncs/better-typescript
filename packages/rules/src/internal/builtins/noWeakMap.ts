@@ -1,6 +1,6 @@
 import { Array, Option, pipe, Predicate, Struct, flow, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
@@ -37,4 +37,4 @@ const weakMapMatches = (context: MatchContext) => {
   return matchWeakMapIdentifier
 }
 
-export const noWeakMapScanner = nodeScanner(identifierKinds)(weakMapIdentifier)(weakMapMatches)
+export const noWeakMapScanner = makeNodeScanner(identifierKinds)(weakMapIdentifier)(weakMapMatches)

@@ -1,6 +1,6 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoForInLoopsFact exists because its fields form one stable data contract used by the linter.
@@ -18,6 +18,6 @@ const matchForInLoopNode = (node: ts.ForInStatement) =>
 
 const noForInLoopsMatches = Function.constant(matchForInLoopNode)
 
-export const noForInLoopsScanner = nodeScanner(forInStatementKinds)(ts.isForInStatement)(
+export const noForInLoopsScanner = makeNodeScanner(forInStatementKinds)(ts.isForInStatement)(
   noForInLoopsMatches
 )

@@ -12,7 +12,7 @@ import {
   Schema
 } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { resolvedSymbolAt } from "../support/resolvedSymbolAt.js"
@@ -161,4 +161,4 @@ const effectApiReferenceKinds = Array.make(
 )
 
 export const noUnsafeEffectApisScanner =
-  nodeScanner(effectApiReferenceKinds)(isEffectApiReference)(unsafeEffectApiMatches)
+  makeNodeScanner(effectApiReferenceKinds)(isEffectApiReference)(unsafeEffectApiMatches)

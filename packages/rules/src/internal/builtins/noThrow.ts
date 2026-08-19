@@ -1,6 +1,6 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoThrowFact exists because its fields form one stable data contract used by the linter.
@@ -18,4 +18,6 @@ const matchThrowNode = (node: ts.ThrowStatement) =>
 
 const noThrowMatches = Function.constant(matchThrowNode)
 
-export const noThrowScanner = nodeScanner(throwStatementKinds)(ts.isThrowStatement)(noThrowMatches)
+export const noThrowScanner = makeNodeScanner(throwStatementKinds)(ts.isThrowStatement)(
+  noThrowMatches
+)

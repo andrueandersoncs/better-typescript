@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
@@ -112,4 +112,4 @@ const schemaIsMatches = (context: MatchContext) => {
 const binaryExpressionKinds = Array.of(ts.SyntaxKind.BinaryExpression)
 
 export const preferEffectSchemaIsScanner =
-  nodeScanner(binaryExpressionKinds)(isSchemaTagComparison)(schemaIsMatches)
+  makeNodeScanner(binaryExpressionKinds)(isSchemaTagComparison)(schemaIsMatches)

@@ -5,7 +5,7 @@ import type { CallLikeExpression } from "../support/callLikeExpression.js"
 import { callArguments } from "../support/callArguments.js"
 import { hasCallSignature } from "../support/hasCallSignature.js"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 
@@ -113,4 +113,4 @@ const nestedCallsMatches = (context: MatchContext) => {
 const callLikeKinds = Array.make(ts.SyntaxKind.CallExpression, ts.SyntaxKind.NewExpression)
 
 export const noNestedCallsScanner =
-  nodeScanner(callLikeKinds)(isCallLikeExpression)(nestedCallsMatches)
+  makeNodeScanner(callLikeKinds)(isCallLikeExpression)(nestedCallsMatches)

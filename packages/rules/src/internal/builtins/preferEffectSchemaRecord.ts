@@ -1,6 +1,6 @@
 import { Array, Function, HashMap, Match, Option, Result, Struct, Tuple, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { makeScannerFromSubscriptions } from "../scanner/makeScannerFromSubscriptions.js"
+import { withProgramScannerIndex } from "../scanner/withProgramScannerIndex.js"
 import { nodeSubscriptions } from "../scanner/nodeSubscriptions.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
@@ -373,6 +373,5 @@ const schemaRecordListeners = (
   )
 }
 
-const schemaRecordPlan = Function.compose(buildConstructionIndex, schemaRecordListeners)
-
-export const preferEffectSchemaRecordScanner = makeScannerFromSubscriptions(schemaRecordPlan)
+export const preferEffectSchemaRecordScanner =
+  withProgramScannerIndex(buildConstructionIndex)(schemaRecordListeners)

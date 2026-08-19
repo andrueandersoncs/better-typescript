@@ -1,7 +1,7 @@
 import { Array, Option, Struct, flow, pipe, Schema } from "effect"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { errorTypeName } from "./errorTypeName.js"
@@ -52,4 +52,4 @@ const errorTypeMatches = (context: MatchContext) => {
 const typeReferenceKinds = Array.of(ts.SyntaxKind.TypeReference)
 
 export const noErrorTypeScanner =
-  nodeScanner(typeReferenceKinds)(isErrorTypeReference)(errorTypeMatches)
+  makeNodeScanner(typeReferenceKinds)(isErrorTypeReference)(errorTypeMatches)

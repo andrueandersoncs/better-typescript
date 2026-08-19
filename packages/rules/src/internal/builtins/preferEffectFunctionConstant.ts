@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { conciseArrowBody } from "../support/conciseArrowBody.js"
@@ -203,4 +203,4 @@ const functionConstantMatches = (context: MatchContext) => {
 }
 
 export const preferEffectFunctionConstantScanner =
-  nodeScanner(constantThunkKinds)(isFunctionInitializer)(functionConstantMatches)
+  makeNodeScanner(constantThunkKinds)(isFunctionInitializer)(functionConstantMatches)

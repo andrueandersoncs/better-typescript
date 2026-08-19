@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import type { FunctionDefinition } from "../support/functionDefinition.js"
@@ -125,6 +125,6 @@ const isEffectfulFunctionDeclaration = (node: ts.Node): node is EffectfulFunctio
   return Array.some(declarationKinds, Boolean)
 }
 
-export const preferEffectfulFunctionScanner = nodeScanner(functionDeclarationKinds)(
+export const preferEffectfulFunctionScanner = makeNodeScanner(functionDeclarationKinds)(
   isEffectfulFunctionDeclaration
 )(effectfulFunctionMatches)

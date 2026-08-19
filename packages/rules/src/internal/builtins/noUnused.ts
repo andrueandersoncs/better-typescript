@@ -1,9 +1,8 @@
 import { Array, Function, HashSet, Option, Result, Schema, pipe } from "effect"
 import type * as ts from "typescript"
-import { fileScanner } from "../scanner/fileScanner.js"
+import { makeFileScanner } from "../scanner/makeFileScanner.js"
 import { makePositionMatch } from "../scanner/makePositionMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
-import { Scanner } from "../scanner/scannerData.js"
 
 // NoUnusedFact exists because its fields form one stable data contract used by the linter.
 export const NoUnusedFact = Schema.Struct({})
@@ -13,21 +12,7 @@ export interface NoUnusedFact extends Schema.Schema.Type<typeof NoUnusedFact> {}
 // emptyNoUnusedFact exists because its fields form one stable data contract used by the linter.
 export const emptyNoUnusedFact = NoUnusedFact.make({})
 
-const withCompilerOptions =
-  (compilerOptions: ts.CompilerOptions) =>
-  (scanner: Scanner): Scanner =>
-    new Scanner({
-      plan: scanner.plan,
-      compilerOptions: { ...scanner.compilerOptions, ...compilerOptions }
-    })
-
 const unusedDiagnosticCodes = HashSet.make(6133, 6192, 6196, 6138, 6198, 6199, 6205)
-
-const compilerOptions: ts.CompilerOptions = {
-  noEmit: true,
-  noUnusedLocals: true,
-  noUnusedParameters: true
-}
 
 const isUnusedDiagnostic = (diagnostic: ts.Diagnostic) =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
@@ -53,6 +38,4 @@ const unusedMatches = (context: MatchContext) => {
   })
 }
 
-const unusedFileScanner = fileScanner(unusedMatches)
-
-export const noUnusedScanner = withCompilerOptions(compilerOptions)(unusedFileScanner)
+export const noUnusedScanner = makeFileScanner(unusedMatches)

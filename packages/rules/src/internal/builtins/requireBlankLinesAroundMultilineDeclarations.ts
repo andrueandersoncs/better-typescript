@@ -3,7 +3,7 @@ import * as ts from "typescript"
 import { isDeclarationStatement } from "../support/declarationStatement.js"
 import { isStatementContainer } from "../support/statementContainer.js"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 
@@ -114,4 +114,4 @@ const matches = (context: MatchContext) => {
 }
 
 export const requireBlankLinesAroundMultilineDeclarationsScanner =
-  nodeScanner(declarationKindList)(isDeclarationStatement)(matches)
+  makeNodeScanner(declarationKindList)(isDeclarationStatement)(matches)

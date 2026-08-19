@@ -1,6 +1,6 @@
 import { Array, Function, Schema, flow } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
 import { strictEqual } from "../equivalence.js"
@@ -47,6 +47,6 @@ const conditionalObjectSpreadMatches = Function.constant(matchConditionalObjectS
 
 const kinds = Array.of(ts.SyntaxKind.SpreadAssignment)
 
-export const preferEffectRecordFilterMapScanner = nodeScanner(kinds)(ts.isSpreadAssignment)(
+export const preferEffectRecordFilterMapScanner = makeNodeScanner(kinds)(ts.isSpreadAssignment)(
   conditionalObjectSpreadMatches
 )

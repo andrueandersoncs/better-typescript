@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { unwrapCarrier } from "../support/unwrapCarrier.js"
@@ -121,6 +121,6 @@ const preferComposedCallbacksMatches = (context: MatchContext) => {
   return composedCallbackMatches
 }
 
-export const preferComposedCallbacksScanner = nodeScanner(arrowFunctionKinds)(ts.isArrowFunction)(
-  preferComposedCallbacksMatches
-)
+export const preferComposedCallbacksScanner = makeNodeScanner(arrowFunctionKinds)(
+  ts.isArrowFunction
+)(preferComposedCallbacksMatches)

@@ -1,6 +1,6 @@
 import { Array, Function, Schema, flow } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
 import { strictEqual } from "../equivalence.js"
@@ -50,6 +50,6 @@ const conditionalArraySpreadMatches = Function.constant(matchConditionalArraySpr
 
 const kinds = Array.of(ts.SyntaxKind.SpreadElement)
 
-export const preferEffectArrayAppendAllScanner = nodeScanner(kinds)(ts.isSpreadElement)(
+export const preferEffectArrayAppendAllScanner = makeNodeScanner(kinds)(ts.isSpreadElement)(
   conditionalArraySpreadMatches
 )

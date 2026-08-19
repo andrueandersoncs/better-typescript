@@ -1,6 +1,6 @@
 import { Array, Function, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoNonNullAssertionFact exists because its fields form one stable data contract used by the linter.
@@ -18,6 +18,6 @@ const matchNonNullAssertionNode = (node: ts.NonNullExpression) =>
 
 const noNonNullAssertionMatches = Function.constant(matchNonNullAssertionNode)
 
-export const noNonNullAssertionScanner = nodeScanner(nonNullExpressionKinds)(
+export const noNonNullAssertionScanner = makeNodeScanner(nonNullExpressionKinds)(
   ts.isNonNullExpression
 )(noNonNullAssertionMatches)

@@ -13,7 +13,8 @@ values. It is the project value accepted by the linter.
 
 **LoadedProject**: One TypeScript Program and its configuration and root paths.
 
-**Rule**: A named check that examines an applicable project source and returns local findings.
+**Rule**: A named check invoked for exactly one applicable project source. Scanner plans may consult
+Program-wide semantic facts, but scan execution and local findings stay source-file scoped.
 
 **Local finding**: Actionable message text plus either a syntax node or an explicit source position.
 It has no rule identity, configured level, serialized path, line, or column.

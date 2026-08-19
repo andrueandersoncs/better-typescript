@@ -1,6 +1,6 @@
 import { Array, Function, Match, Option, Result, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { namedCandidateTarget } from "../support/namedCandidateTarget.js"
@@ -272,6 +272,6 @@ const portableDataTaggedClassMatches = (context: MatchContext) => {
 
 const classDeclarationKinds = Array.of(ts.SyntaxKind.ClassDeclaration)
 
-export const preferSchemaTaggedStructScanner = nodeScanner(classDeclarationKinds)(
+export const preferSchemaTaggedStructScanner = makeNodeScanner(classDeclarationKinds)(
   ts.isClassDeclaration
 )(portableDataTaggedClassMatches)

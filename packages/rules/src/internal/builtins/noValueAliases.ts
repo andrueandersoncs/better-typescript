@@ -1,6 +1,6 @@
 import { Array, Function, Match, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 
 // NoValueAliasesFact is empty because the alias declaration identifies the finding.
@@ -93,6 +93,6 @@ const valueAliasMatches = () => (declaration: ts.VariableDeclaration) => {
   return Array.of(match)
 }
 
-export const noValueAliasesScanner = nodeScanner(variableDeclarationKinds)(
+export const noValueAliasesScanner = makeNodeScanner(variableDeclarationKinds)(
   ts.isVariableDeclaration
 )(valueAliasMatches)

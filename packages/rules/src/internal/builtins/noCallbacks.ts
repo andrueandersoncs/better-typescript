@@ -4,7 +4,7 @@ import { isInAmbientContext } from "../support/isDeclareKeyword.js"
 import { hasCallSignature } from "../support/hasCallSignature.js"
 import { isVoidType } from "../support/isVoidType.js"
 import { strictEqual } from "../equivalence.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import type { CallbackStyleDeclaration } from "./callbackStyleDeclaration.js"
@@ -133,4 +133,4 @@ const callbackStyleKinds = Array.make(
 )
 
 export const noCallbacksScanner =
-  nodeScanner(callbackStyleKinds)(isCallbackStyleCandidate)(callbacksMatches)
+  makeNodeScanner(callbackStyleKinds)(isCallbackStyleCandidate)(callbacksMatches)

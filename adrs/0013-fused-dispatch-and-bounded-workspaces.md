@@ -6,8 +6,9 @@ Accepted in part. The built-in authoring consequence is superseded by
 [ADR-0018](0018-check-owned-authoring-and-package-examples.md). The CLI one-shot
 one-Program-at-a-time lifetime is superseded by [ADR-0022](0022-shared-one-shot-compiler-state.md).
 Its fixture performance gate was superseded by ADR-0022 and has been removed; only the whole-process
-self-host benchmark remains. Fused execution, full recompute, the bounded config-native API, and
-loaded-workspace decisions remain accepted.
+self-host benchmark remains. ADR-0031 supersedes whole-Program scanner execution and strong
+latest-entry retention. Full recompute, the bounded config-native API, and loaded-workspace
+decisions remain accepted.
 
 ## Date
 

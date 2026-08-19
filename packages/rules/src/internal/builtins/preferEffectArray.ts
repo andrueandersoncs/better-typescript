@@ -1,6 +1,6 @@
 import { Array, HashSet, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { isArrayLikeType } from "../support/isArrayLikeType.js"
@@ -94,6 +94,6 @@ const preferEffectArrayMatches = (context: MatchContext) => {
 
 const callExpressionKinds = Array.of(ts.SyntaxKind.CallExpression)
 
-export const preferEffectArrayScanner = nodeScanner(callExpressionKinds)(ts.isCallExpression)(
+export const preferEffectArrayScanner = makeNodeScanner(callExpressionKinds)(ts.isCallExpression)(
   preferEffectArrayMatches
 )

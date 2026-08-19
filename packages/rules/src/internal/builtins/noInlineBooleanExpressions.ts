@@ -1,6 +1,6 @@
 import { Array, Function, HashSet, Option, Schema } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
 
@@ -40,6 +40,6 @@ const matchInlineBooleanExpression = (ifStatement: ts.IfStatement) => {
 
 const noInlineBooleanExpressionsMatches = Function.constant(matchInlineBooleanExpression)
 
-export const noInlineBooleanExpressionsScanner = nodeScanner(ifStatementKinds)(ts.isIfStatement)(
-  noInlineBooleanExpressionsMatches
-)
+export const noInlineBooleanExpressionsScanner = makeNodeScanner(ifStatementKinds)(
+  ts.isIfStatement
+)(noInlineBooleanExpressionsMatches)

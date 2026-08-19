@@ -1,7 +1,7 @@
 import { Array, Option, Predicate, pipe } from "effect"
 import * as ts from "typescript"
 import type { MatchContext } from "../scanner/matchContext.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { isReturnedExpressionNode } from "../support/isReturnedExpressionNode.js"
 import { isFirstPartySymbol } from "../support/isFirstPartySymbol.js"
 import { propertyNameText } from "../support/propertyNameText.js"
@@ -182,4 +182,4 @@ const matchCandidate = (context: MatchContext) => (node: ts.Node) =>
     : objectLiteralReturnMatches(context)(node)
 
 export const preferEffectSchemaConstructorScanner =
-  nodeScanner(candidateKinds)(isCandidate)(matchCandidate)
+  makeNodeScanner(candidateKinds)(isCandidate)(matchCandidate)

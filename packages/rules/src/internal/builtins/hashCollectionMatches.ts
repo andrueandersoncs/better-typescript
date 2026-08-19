@@ -1,6 +1,6 @@
 import { Array, Function, Option, Struct, flow, pipe, Match as EffectMatch } from "effect"
 import * as ts from "typescript"
-import { makeScannerFromSubscriptions } from "../scanner/makeScannerFromSubscriptions.js"
+import { Scanner } from "../scanner/scannerData.js"
 import { nodeSubscriptions } from "../scanner/nodeSubscriptions.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { Match as ScannerMatch } from "../scanner/match.js"
@@ -319,7 +319,7 @@ export const makeHashCollectionScanner =
 
     const listeners = Array.flatten(subscriptionGroups)
 
-    return makeScannerFromSubscriptions(Function.constant(listeners))
+    return new Scanner({ plan: Function.constant(listeners) })
   }
 
 // Prefer scanners keep constant facts local because only their collection names vary.

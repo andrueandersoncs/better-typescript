@@ -1,6 +1,6 @@
 import { Array, Option, Schema, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { unwrapExpression } from "../support/unwrapExpression.js"
@@ -60,6 +60,6 @@ const inOperatorGuardMatches = (context: MatchContext) => {
 
 const ifStatementKinds = Array.of(ts.SyntaxKind.IfStatement)
 
-export const preferEffectSchemaGuardScanner = nodeScanner(ifStatementKinds)(ts.isIfStatement)(
+export const preferEffectSchemaGuardScanner = makeNodeScanner(ifStatementKinds)(ts.isIfStatement)(
   inOperatorGuardMatches
 )

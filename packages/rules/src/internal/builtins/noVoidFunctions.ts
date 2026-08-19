@@ -5,7 +5,7 @@ import { isFunctionDefinition } from "../support/isFunctionDefinition.js"
 import { isFunctionInitializer } from "../support/isFunctionInitializer.js"
 import { namedCandidateTarget } from "../support/namedCandidateTarget.js"
 import { isVoidType } from "../support/isVoidType.js"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 
@@ -101,4 +101,4 @@ const voidFunctionsMatches = (context: MatchContext) => {
 }
 
 export const noVoidFunctionsScanner =
-  nodeScanner(voidableFunctionKinds)(isFunctionDefinition)(voidFunctionsMatches)
+  makeNodeScanner(voidableFunctionKinds)(isFunctionDefinition)(voidFunctionsMatches)

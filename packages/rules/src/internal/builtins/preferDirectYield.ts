@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { nodeScanner } from "../scanner/nodeScanner.js"
+import { makeNodeScanner } from "../scanner/makeNodeScanner.js"
 import { makeNodeMatch } from "../scanner/makeNodeMatch.js"
 import type { MatchContext } from "../scanner/matchContext.js"
 import { foldAst } from "../sources/foldAst.js"
@@ -187,6 +187,6 @@ const matches = (context: MatchContext) => {
   return matchVariableDeclaration
 }
 
-export const preferDirectYieldScanner = nodeScanner(variableDeclarationKinds)(
+export const preferDirectYieldScanner = makeNodeScanner(variableDeclarationKinds)(
   ts.isVariableDeclaration
 )(matches)
