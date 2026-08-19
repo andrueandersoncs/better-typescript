@@ -1,26 +1,12 @@
-import * as path from "node:path"
-import {
-  Array,
-  Data,
-  Equivalence,
-  Match as EffectMatch,
-  MutableRef,
-  Option,
-  Struct,
-  flow,
-  pipe
-} from "effect"
+import { Array, Data, Equivalence, Match as EffectMatch, MutableRef, Option, pipe } from "effect"
+import { RuleFinding } from "@better-typescript/core/linter"
 import type { Rule, RuleContext } from "@better-typescript/core/linter"
 import type { RuleName } from "@better-typescript/core/ruleName"
-import { Violation } from "@better-typescript/core/linter"
 import type { Scanner } from "../scanner/scannerData.js"
 import type { Match } from "../scanner/match.js"
 import { ProgramContext } from "../sources/data.js"
 import { runScanner } from "../scanner/runScanner.js"
 import type { RuleMessage } from "./ruleMessage.js"
-
-const normalizedRelativePath = (root: string) => (fileName: string) =>
-  path.relative(root, fileName).replaceAll("\\", "/")
 
 const programContext = (context: RuleContext) =>
   ProgramContext.make({
@@ -37,7 +23,7 @@ export const makeRule =
     const emptyCache = Option.none<readonly [object, ReadonlyArray<Match<Fact>>]>()
     const cache = MutableRef.make(emptyCache)
     const sameProgram = Equivalence.strictEqual<object>()
-    const sameFilePath = Equivalence.strictEqual<string>()
+    const sameSourceFile = Equivalence.strictEqual<RuleContext["sourceFile"]>()
 
     const candidates = (context: RuleContext) => {
       const cached = pipe(
@@ -64,61 +50,33 @@ export const makeRule =
     }
 
     const check = (context: RuleContext) => {
-      const currentFilePath = normalizedRelativePath(context.workspaceRoot)(
-        context.sourceFile.fileName
-      )
-
       const contextForProgram = programContext(context)
       const describe = message(contextForProgram)
 
-      const makeCandidateViolation = (candidate: Match<Fact>) => {
+      const sourceFileForTarget = (target: Match<Fact>["target"]) =>
+        pipe(
+          EffectMatch.value(target),
+          EffectMatch.tag("NodeTarget", ({ node }) => node.getSourceFile()),
+          EffectMatch.tag("PositionTarget", ({ sourceFile }) => sourceFile),
+          EffectMatch.exhaustive
+        )
+
+      const isCurrentFile = (candidate: Match<Fact>) => {
+        const sourceFile = sourceFileForTarget(candidate.target)
+
+        return sameSourceFile(sourceFile, context.sourceFile)
+      }
+
+      const makeFinding = (candidate: Match<Fact>): RuleFinding => {
         const copy = describe(candidate)
         const hint = copy.hint.trim()
         const hasHint = hint.length > 0
         const actionableMessage = hasHint ? `${copy.message} ${hint}` : copy.message
 
-        return pipe(
-          EffectMatch.value(candidate.target),
-          EffectMatch.tag("NodeTarget", ({ node }) => {
-            const sourceFile = node.getSourceFile()
-            const start = node.getStart(sourceFile)
-            const position = sourceFile.getLineAndCharacterOfPosition(start)
-            const filePath = normalizedRelativePath(context.workspaceRoot)(sourceFile.fileName)
-
-            return Violation.make({
-              ruleName: name,
-              level: "error",
-              message: actionableMessage,
-              filePath,
-              line: position.line + 1,
-              column: position.character + 1
-            })
-          }),
-          EffectMatch.tag("PositionTarget", ({ sourceFile, line, column }) => {
-            const filePath = normalizedRelativePath(context.workspaceRoot)(sourceFile.fileName)
-
-            return Violation.make({
-              ruleName: name,
-              level: "error",
-              message: actionableMessage,
-              filePath,
-              line,
-              column
-            })
-          }),
-          EffectMatch.exhaustive
-        )
+        return RuleFinding.make({ message: actionableMessage, target: candidate.target })
       }
 
-      const violationFilePath = Struct.get<Violation, "filePath">("filePath")
-      const matchesCurrentFilePath = (filePath: string) => sameFilePath(filePath, currentFilePath)
-      const isCurrentFile = flow(violationFilePath, matchesCurrentFilePath)
-
-      return pipe(
-        candidates(context),
-        Array.map(makeCandidateViolation),
-        Array.filter(isCurrentFile)
-      )
+      return pipe(candidates(context), Array.filter(isCurrentFile), Array.map(makeFinding))
     }
 
     return new Data.Class<Rule>({ name, check })

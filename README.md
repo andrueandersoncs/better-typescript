@@ -102,16 +102,21 @@ const { violations } = await Effect.runPromise(
 A custom rule has only a stable name and a source-file check:
 
 ```ts
+import { NodeTarget, RuleFinding } from "@better-typescript/core/linter"
 import type { Rule } from "@better-typescript/core/linter"
 
 const noConsoleLog: Rule = {
   name: "acme-no-console-log",
   check: (context) => {
-    // Return located violations found in context.sourceFile.
-    return []
+    const target = NodeTarget.make({ node: context.sourceFile })
+
+    return [RuleFinding.make({ message: "Avoid console.log.", target })]
   }
 }
 ```
+
+Use `NodeTarget` when syntax owns the location. `PositionTarget` accepts an absolute, zero-based
+integer offset within its `sourceFile`; core converts either target to one-based output coordinates.
 
 See [`docs/rules.md`](docs/rules.md) for the complete built-in catalog and
 [`examples/programmatic/main.ts`](examples/programmatic/main.ts) for a runnable example.

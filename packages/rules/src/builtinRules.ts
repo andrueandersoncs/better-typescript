@@ -1,6 +1,6 @@
 import { Array, Equivalence, Option, Order, Predicate, Struct, flow, pipe } from "effect"
+import { RuleFinding } from "@better-typescript/core/linter"
 import type { Rule, RuleContext } from "@better-typescript/core/linter"
-import { Violation } from "@better-typescript/core/linter"
 import { defaultRules } from "./internal/default/defaultRules.js"
 import {
   closedAbstractionScanner,
@@ -76,15 +76,15 @@ const processEnvironmentMessage =
   "Read runtime configuration through Effect Config, not process.env. " +
   "Read the key in a Config-backed layer and provide deterministic config in tests."
 
-const makeEnvironmentAccessViolation = (violation: Violation) =>
-  Violation.make({ ...violation, message: processEnvironmentMessage })
+const makeEnvironmentAccessFinding = (finding: RuleFinding): RuleFinding =>
+  RuleFinding.make({ ...finding, message: processEnvironmentMessage })
 
 const checkProcessEnvironment = (context: RuleContext) => {
   const defaultOccurrences = defaultProcessEnvironment.check(context)
   const effectQualityOccurrences = effectQualityProcessEnvironment.check(context)
   const occurrences = Array.appendAll(defaultOccurrences, effectQualityOccurrences)
 
-  return Array.map(occurrences, makeEnvironmentAccessViolation)
+  return Array.map(occurrences, makeEnvironmentAccessFinding)
 }
 
 const processEnvironment: Rule = {

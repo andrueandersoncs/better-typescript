@@ -1,7 +1,7 @@
 import { Array, Function, Option, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
+import { NodeTarget, RuleFinding } from "@better-typescript/core/linter"
 import type { Rule, RuleContext } from "@better-typescript/core/linter"
-import { makeViolation } from "@better-typescript/core/linter"
 import { astNodesIn } from "../sources/astNodesIn.js"
 import { strictEqual } from "../equivalence.js"
 import type { FunctionKeywordNode } from "../builtins/functionKeywordNode.js"
@@ -53,23 +53,21 @@ const isUnsanctionedFunction =
     return isNotGenerator && isNotOverloadedDeclaration
   }
 
-const makeFunctionKeywordViolation = (context: RuleContext) => (node: FunctionKeywordNode) => {
-  const children = node.getChildren(context.sourceFile)
+const makeFunctionKeywordFinding =
+  (context: RuleContext) =>
+  (node: FunctionKeywordNode): RuleFinding => {
+    const children = node.getChildren(context.sourceFile)
 
-  const keyword = pipe(
-    children,
-    Array.findFirst(isFunctionKeywordToken),
-    Option.getOrElse(Function.constant(node))
-  )
+    const keyword = pipe(
+      children,
+      Array.findFirst(isFunctionKeywordToken),
+      Option.getOrElse(Function.constant(node))
+    )
 
-  return makeViolation({
-    ruleName: "no-function-keyword",
-    message,
-    workspaceRoot: context.workspaceRoot,
-    sourceFile: context.sourceFile,
-    node: keyword
-  })
-}
+    const target = NodeTarget.make({ node: keyword })
+
+    return RuleFinding.make({ message, target })
+  }
 
 const checkNoFunctionKeyword = (context: RuleContext) => {
   const isOverloaded = hasOverloadSibling(context)
@@ -79,7 +77,7 @@ const checkNoFunctionKeyword = (context: RuleContext) => {
     Array.fromIterable,
     Array.filter(isFunctionKeywordNode),
     Array.filter(isUnsanctionedFunction(isOverloaded)),
-    Array.map(makeFunctionKeywordViolation(context))
+    Array.map(makeFunctionKeywordFinding(context))
   )
 }
 

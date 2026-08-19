@@ -31,8 +31,7 @@ Core exposes `runAnalysis({ projectPath, rules })`. One run:
 5. returns only the root path and complete Violation array.
 
 The CLI uses this interface. `loadProject` remains available for focused callers that need direct
-Program access or compiler-option overrides; those callers own the returned compiler lifetime. Rules
-continue to return `Violation[]` unchanged.
+Program access or compiler-option overrides; those callers own the returned compiler lifetime.
 
 ## Alternatives Considered
 
@@ -58,3 +57,8 @@ Programs.
 - Tests observe project-by-project Rule use, inter-project Program reclamation, and the absence of
   compiler state in results without a compiler-host adapter.
 - Direct `loadProject` callers remain responsible for retaining or releasing its Programs.
+
+## Amended by
+
+ADR-0030 replaces Rule-returned Violations with local findings and makes core their sole final
+materializer. Analysis-run resource ownership and complete-workspace normalization are unchanged.

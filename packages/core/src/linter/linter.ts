@@ -4,6 +4,7 @@ import {
   Equivalence,
   Function,
   HashSet,
+  Match,
   Option,
   Predicate,
   Record,
@@ -18,7 +19,6 @@ import { EnabledRuleLevel, LintConfig, RuleLevel, RuleSettings } from "../config
 import type { LoadedWorkspace } from "../project/loadProject/loadProject.js"
 import { TsProgram } from "../project/loadProject/tsProgram.js"
 import type { LintRequest } from "./lintRequest.js"
-import type { ViolationCandidate } from "./violationCandidate.js"
 import { normalizeViolations } from "./normalizeViolations.js"
 import { RuleName } from "./ruleName.js"
 
@@ -28,8 +28,11 @@ const isTsTypeChecker = (input: unknown): input is ts.TypeChecker =>
 const isTsSourceFile = (input: unknown): input is ts.SourceFile =>
   Predicate.hasProperty(input, "getLineAndCharacterOfPosition")
 
+const isTsNode = (input: unknown): input is ts.Node => Predicate.hasProperty(input, "getSourceFile")
+
 const TsTypeChecker = Schema.declare(isTsTypeChecker)
 const TsSourceFile = Schema.declare(isTsSourceFile)
+const TsNode = Schema.declare(isTsNode)
 
 // RuleContext groups compiler services because every rule needs the same analysis boundary.
 export const RuleContext = Schema.Struct({
@@ -54,7 +57,41 @@ export const Violation = Schema.Struct({
 
 export interface Violation extends Schema.Schema.Type<typeof Violation> {}
 
-type RuleCheck = (context: RuleContext) => ReadonlyArray<Violation>
+// NodeTarget keeps syntax ownership with a Rule because core owns final source location.
+export const NodeTarget = Schema.TaggedStruct("NodeTarget", { node: TsNode })
+
+export interface NodeTarget extends Schema.Schema.Type<typeof NodeTarget> {}
+
+const positionIsWithinSource = (target: PositionTarget) => {
+  const isInteger = Number.isInteger(target.position)
+  const isAtOrAfterStart = target.position >= target.sourceFile.pos
+  const isAtOrBeforeEnd = target.position <= target.sourceFile.end
+  const checks = Array.make(isInteger, isAtOrAfterStart, isAtOrBeforeEnd)
+
+  return Array.every(checks, Boolean) ? true : "Position must be an integer within the source file"
+}
+
+const positionTargetFilter = Schema.makeFilter(positionIsWithinSource)
+
+// PositionTarget validates its offset because core must materialize every finding safely.
+export const PositionTarget = Schema.TaggedStruct("PositionTarget", {
+  sourceFile: TsSourceFile,
+  position: Schema.Number
+}).check(positionTargetFilter)
+
+export interface PositionTarget extends Schema.Schema.Type<typeof PositionTarget> {}
+
+const FindingTarget = Schema.Union([NodeTarget, PositionTarget])
+
+// RuleFinding excludes report metadata because core owns final Violation materialization.
+export const RuleFinding = Schema.Struct({
+  message: Schema.String,
+  target: FindingTarget
+})
+
+export interface RuleFinding extends Schema.Schema.Type<typeof RuleFinding> {}
+
+type RuleCheck = (context: RuleContext) => ReadonlyArray<RuleFinding>
 
 const isRuleCheck = (input: unknown): input is RuleCheck => {
   const callable = Predicate.isFunction(input)
@@ -72,27 +109,40 @@ export const Rule = Schema.Struct({
 
 export interface Rule extends Schema.Schema.Type<typeof Rule> {}
 
-export const makeViolation = ({
-  ruleName,
-  message,
-  workspaceRoot,
-  sourceFile,
-  node
-}: ViolationCandidate): Violation => {
-  const nodeStart = node.getStart(sourceFile)
-  const position = sourceFile.getLineAndCharacterOfPosition(nodeStart)
-  const relativePath = path.relative(workspaceRoot, sourceFile.fileName)
-  const filePath = relativePath.replaceAll("\\", "/")
+const normalizedRelativePath = (workspaceRoot: string) => (fileName: string) =>
+  path.relative(workspaceRoot, fileName).replaceAll("\\", "/")
 
-  return Violation.make({
-    ruleName,
-    level: "error",
-    message,
-    filePath,
-    line: position.line + 1,
-    column: position.character + 1
-  })
-}
+const materializeFinding =
+  (workspaceRoot: string) =>
+  (ruleName: RuleName) =>
+  (level: EnabledRuleLevel) =>
+  ({ message, target }: RuleFinding): Violation => {
+    const materializeTarget =
+      (fileName: string) =>
+      (line: number) =>
+      (column: number): Violation => {
+        const filePath = normalizedRelativePath(workspaceRoot)(fileName)
+
+        return Violation.make({ ruleName, level, message, filePath, line, column })
+      }
+
+    return pipe(
+      Match.value(target),
+      Match.tag("NodeTarget", ({ node }) => {
+        const sourceFile = node.getSourceFile()
+        const start = node.getStart(sourceFile)
+        const position = sourceFile.getLineAndCharacterOfPosition(start)
+
+        return materializeTarget(sourceFile.fileName)(position.line + 1)(position.character + 1)
+      }),
+      Match.tag("PositionTarget", ({ sourceFile, position }) => {
+        const location = sourceFile.getLineAndCharacterOfPosition(position)
+
+        return materializeTarget(sourceFile.fileName)(location.line + 1)(location.character + 1)
+      }),
+      Match.exhaustive
+    )
+  }
 
 const isProjectSourceFile = (sourceFile: ts.SourceFile) => {
   const normalizedPath = sourceFile.fileName.replaceAll("\\", "/")
@@ -103,17 +153,13 @@ const isProjectSourceFile = (sourceFile: ts.SourceFile) => {
   return isProjectFile && isOutsideDependencies
 }
 
-const withRuleMetadata =
-  (ruleName: RuleName) => (level: EnabledRuleLevel) => (violation: Violation) =>
-    Violation.make({ ...violation, ruleName, level })
-
 const violationsForRule =
   (context: RuleContext) =>
   ([rule, level]: readonly [Rule, EnabledRuleLevel]) => {
-    const violations = rule.check(context)
-    const assignRuleMetadata = withRuleMetadata(rule.name)(level)
+    const findings = rule.check(context)
+    const materializeRuleFinding = materializeFinding(context.workspaceRoot)(rule.name)(level)
 
-    return Array.map(violations, assignRuleMetadata)
+    return Array.map(findings, materializeRuleFinding)
   }
 
 const isBunGlob = (input: unknown): input is Bun.Glob => Predicate.hasProperty(input, "match")

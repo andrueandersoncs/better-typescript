@@ -1,5 +1,4 @@
-import type { NodeTarget } from "./nodeTarget.js"
-import type { PositionTarget } from "./positionTarget.js"
+import type { NodeTarget, PositionTarget } from "@better-typescript/core/linter"
 
-// ViolationTarget exists because its fields form one stable data contract used by the linter.
+// ViolationTarget exists because scanner matches share one node-or-position target algebra.
 export type ViolationTarget = NodeTarget | PositionTarget

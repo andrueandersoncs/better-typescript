@@ -27,13 +27,8 @@ const becauseInCommentsMatches = (context: MatchContext) => {
 
   const missingBecause = Array.filter(context.comments, isMissingBecause)
 
-  const matchMissingBecause = (comment: (typeof context.comments)[number]) => {
-    const position = context.sourceFile.getLineAndCharacterOfPosition(comment.pos)
-
-    return makePositionMatch(emptyRequireBecauseInCommentsFact)(position.line + 1)(
-      position.character + 1
-    )(context.sourceFile)
-  }
+  const matchMissingBecause = (comment: (typeof context.comments)[number]) =>
+    makePositionMatch(emptyRequireBecauseInCommentsFact)(comment.pos)(context.sourceFile)
 
   return Array.map(missingBecause, matchMissingBecause)
 }

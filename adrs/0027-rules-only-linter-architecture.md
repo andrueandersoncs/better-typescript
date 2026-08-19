@@ -41,5 +41,6 @@ ADR-0017, ADR-0021, ADR-0025, and ADR-0026 obsolete. Those records remain as his
 
 ## Amended by
 
-ADR-0028 supersedes only this ADR's rejection of user-authored configuration. The rules-only
-architecture and rejection of the former higher-level product models remain accepted.
+ADR-0028 supersedes only this ADR's rejection of user-authored configuration. ADR-0030 replaces
+direct Rule-owned Violation construction with core-owned materialization from local findings. The
+rules-only architecture and rejection of the former higher-level product models remain accepted.

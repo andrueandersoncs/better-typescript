@@ -1,36 +1,28 @@
 import * as assert from "node:assert/strict"
+import * as path from "node:path"
 import { test } from "bun:test"
 import { Effect, Option, pipe } from "effect"
-import type * as ts from "typescript"
+import * as ts from "typescript"
 import { runAnalysis } from "@better-typescript/core/analysis"
-import { Violation, makeViolation } from "@better-typescript/core/linter"
+import { NodeTarget, PositionTarget, RuleFinding } from "@better-typescript/core/linter"
 import type { Rule } from "@better-typescript/core/linter"
 
 const fixtureRoot = new URL("fixtures/analysis-run", import.meta.url).pathname
 const workspaceInput = new URL("fixtures/analysis-run/workspace-input", import.meta.url).pathname
+const sharedFilePath = path.join(fixtureRoot, "shared.ts")
+const sharedSourceFile = ts.createSourceFile(sharedFilePath, "", ts.ScriptTarget.Latest)
+const sharedTarget = PositionTarget.make({ sourceFile: sharedSourceFile, position: 0 })
+const sharedFinding = RuleFinding.make({ message: "Shared aggregate.", target: sharedTarget })
+
 const makeFixtureRule = (visit: (program: ts.Program, projectRoot: string) => void): Rule => ({
   name: "fixture-rule",
-  check: ({ program, projectRoot, sourceFile, workspaceRoot }) => {
+  check: ({ program, projectRoot, sourceFile }) => {
     visit(program, projectRoot)
     const declaration = pipe(sourceFile.statements, Option.fromIterable, Option.getOrThrow)
+    const target = NodeTarget.make({ node: declaration })
+    const finding = RuleFinding.make({ message: "Fixture declaration.", target })
 
-    const locatedViolation = makeViolation({
-      ruleName: "fixture-rule",
-      message: "Fixture declaration.",
-      workspaceRoot,
-      sourceFile,
-      node: declaration
-    })
-    const sharedViolation = Violation.make({
-      ruleName: "fixture-rule",
-      level: "warn",
-      message: "Shared aggregate.",
-      filePath: "shared.ts",
-      line: 1,
-      column: 1
-    })
-
-    return [locatedViolation, sharedViolation]
+    return [finding, sharedFinding]
   }
 })
 

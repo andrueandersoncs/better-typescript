@@ -1,13 +1,12 @@
 import type * as ts from "typescript"
+import { PositionTarget } from "@better-typescript/core/linter"
 import { Match } from "./match.js"
-import { PositionTarget } from "./positionTarget.js"
 
 export const makePositionMatch =
   <Fact>(fact: Fact) =>
-  (line: number) =>
-  (column: number) =>
+  (position: number) =>
   (sourceFile: ts.SourceFile) => {
-    const target = new PositionTarget({ sourceFile, line, column })
+    const target = PositionTarget.make({ sourceFile, position })
 
     return new Match({ target, fact })
   }

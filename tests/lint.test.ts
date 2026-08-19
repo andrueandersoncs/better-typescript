@@ -2,10 +2,16 @@ import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { Array, Effect, Option, pipe } from "effect"
 import { defineConfig } from "@better-typescript/core/config"
-import { lint, lintConfigured } from "@better-typescript/core/linter"
+import {
+  NodeTarget,
+  PositionTarget,
+  RuleFinding,
+  Violation,
+  lint,
+  lintConfigured
+} from "@better-typescript/core/linter"
 import type { Rule } from "@better-typescript/core/linter"
 import type { RuleName } from "@better-typescript/core/ruleName"
-import { makeViolation } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 
 test("lint returns sorted and deduplicated violations from every rule", async () => {
@@ -24,19 +30,20 @@ test("lint returns sorted and deduplicated violations from every rule", async ()
   )
   const firstDeclaration = pipe(sourceFile.statements, Array.head, Option.getOrThrow)
   const secondDeclaration = pipe(sourceFile.statements, Array.get(1), Option.getOrThrow)
-  const makeLocatedViolation = (
-    ruleName: RuleName,
-    message: string,
-    node: typeof firstDeclaration
-  ) => makeViolation({ ruleName, message, workspaceRoot: project.rootPath, sourceFile, node })
+  const makeNodeFinding = (message: string, node: typeof firstDeclaration): RuleFinding => {
+    const target = NodeTarget.make({ node })
+
+    return RuleFinding.make({ message, target })
+  }
   const rules: ReadonlyArray<Rule> = [
     {
       name: "z-rule",
       check: ({ sourceFile: checkedSourceFile }) =>
         checkedSourceFile === sourceFile
           ? [
-              makeLocatedViolation("z-rule", "second declaration", secondDeclaration),
-              makeLocatedViolation("z-rule", "second declaration", secondDeclaration)
+              makeNodeFinding("second declaration", secondDeclaration),
+              makeNodeFinding("alternate second declaration", secondDeclaration),
+              makeNodeFinding("second declaration", secondDeclaration)
             ]
           : []
     },
@@ -44,7 +51,7 @@ test("lint returns sorted and deduplicated violations from every rule", async ()
       name: "a-rule",
       check: ({ sourceFile: checkedSourceFile }) =>
         checkedSourceFile === sourceFile
-          ? [makeLocatedViolation("a-rule", "first declaration", firstDeclaration)]
+          ? [makeNodeFinding("first declaration", firstDeclaration)]
           : []
     }
   ]
@@ -61,12 +68,99 @@ test("lint returns sorted and deduplicated violations from every rule", async ()
     {
       ruleName: "z-rule",
       level: "error",
+      message: "alternate second declaration",
+      filePath: "src/main.ts",
+      line: 2,
+      column: 1
+    },
+    {
+      ruleName: "z-rule",
+      level: "error",
       message: "second declaration",
       filePath: "src/main.ts",
       line: 2,
       column: 1
     }
   ])
+})
+
+test("lint materializes explicit positions with configured Rule metadata", async () => {
+  const fixturePath = new URL("fixtures/linter-core", import.meta.url).pathname
+  const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
+  const rule: Rule = {
+    name: "position-rule",
+    check: ({ sourceFile }) => {
+      const position = sourceFile.getPositionOfLineAndCharacter(1, 7)
+      const target = PositionTarget.make({ sourceFile, position })
+      const finding = RuleFinding.make({ message: "explicit position", target })
+
+      return [
+        {
+          ...finding,
+          ruleName: "forged-rule",
+          level: "error",
+          filePath: "forged.ts",
+          line: 99,
+          column: 99
+        }
+      ]
+    }
+  }
+  const config = defineConfig([{ files: ["src/main.ts"], rules: { "position-rule": "warn" } }])
+
+  assert.deepEqual(lintConfigured(config)({ project, rules: [rule] }), [
+    {
+      ruleName: "position-rule",
+      level: "warn",
+      message: "explicit position",
+      filePath: "src/main.ts",
+      line: 2,
+      column: 8
+    }
+  ])
+})
+
+test("PositionTarget rejects offsets outside its source file", async () => {
+  const fixturePath = new URL("fixtures/linter-core", import.meta.url).pathname
+  const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
+  const sourceFile = pipe(
+    project.projects,
+    Array.head,
+    Option.flatMap(({ program }) =>
+      pipe(
+        program.getSourceFiles(),
+        Array.findFirst(({ fileName }) => fileName.endsWith("/src/main.ts"))
+      )
+    ),
+    Option.getOrThrow
+  )
+
+  assert.throws(
+    () => PositionTarget.make({ sourceFile, position: -1 }),
+    /Position must be an integer within the source file/
+  )
+  assert.throws(
+    () => PositionTarget.make({ sourceFile, position: sourceFile.end + 1 }),
+    /Position must be an integer within the source file/
+  )
+})
+
+test("Rule rejects pre-serialized Violations at its type interface", () => {
+  const violation = Violation.make({
+    ruleName: "serialized-rule",
+    level: "error",
+    message: "already serialized",
+    filePath: "src/main.ts",
+    line: 1,
+    column: 1
+  })
+  const serializedRule: Rule = {
+    name: "serialized-rule",
+    // @ts-expect-error Rule checks return targeted local findings, not Violations.
+    check: () => [violation]
+  }
+
+  assert.equal(serializedRule.name, "serialized-rule")
 })
 
 test("lint returns an empty array when rules find no violations", async () => {
@@ -82,18 +176,12 @@ test("lint config selects files and applies later rule overrides", async () => {
   const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
   const makeRule = (name: RuleName): Rule => ({
     name,
-    check: ({ sourceFile, workspaceRoot }) => {
+    check: ({ sourceFile }) => {
       const declaration = pipe(sourceFile.statements, Array.head, Option.getOrThrow)
+      const target = NodeTarget.make({ node: declaration })
+      const finding = RuleFinding.make({ message: name, target })
 
-      return [
-        makeViolation({
-          ruleName: name,
-          message: name,
-          workspaceRoot,
-          sourceFile,
-          node: declaration
-        })
-      ]
+      return [finding]
     }
   })
   const rules = [makeRule("alpha-rule"), makeRule("beta-rule")]

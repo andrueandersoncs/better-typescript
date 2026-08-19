@@ -1,7 +1,7 @@
 import { Array, HashSet, Option, pipe } from "effect"
 import * as ts from "typescript"
+import { NodeTarget, RuleFinding } from "@better-typescript/core/linter"
 import type { Rule, RuleContext } from "@better-typescript/core/linter"
-import { makeViolation } from "@better-typescript/core/linter"
 import { astNodesIn } from "../sources/astNodesIn.js"
 import { argumentConsumingCall } from "../support/argumentConsumingCall.js"
 import { isProjectSourceFile } from "../sources/isProjectSourceFile.js"
@@ -55,14 +55,11 @@ const isUnsanctionedClosure =
     return unnamed && internalArgument
   }
 
-const makeInlineClosureViolation = (context: RuleContext) => (arrow: ts.ArrowFunction) =>
-  makeViolation({
-    ruleName: "no-inline-closures",
-    message,
-    workspaceRoot: context.workspaceRoot,
-    sourceFile: context.sourceFile,
-    node: arrow.equalsGreaterThanToken
-  })
+const makeInlineClosureFinding = (arrow: ts.ArrowFunction): RuleFinding => {
+  const target = NodeTarget.make({ node: arrow.equalsGreaterThanToken })
+
+  return RuleFinding.make({ message, target })
+}
 
 const checkNoInlineClosures = (context: RuleContext) => {
   const externalArgument = isExternalPackageArgument(context)
@@ -72,7 +69,7 @@ const checkNoInlineClosures = (context: RuleContext) => {
     Array.fromIterable,
     Array.filter(ts.isArrowFunction),
     Array.filter(isUnsanctionedClosure(externalArgument)),
-    Array.map(makeInlineClosureViolation(context))
+    Array.map(makeInlineClosureFinding)
   )
 }
 

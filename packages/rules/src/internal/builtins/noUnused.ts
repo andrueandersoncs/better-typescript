@@ -32,11 +32,7 @@ const compilerOptions: ts.CompilerOptions = {
 const isUnusedDiagnostic = (diagnostic: ts.Diagnostic) =>
   HashSet.has(unusedDiagnosticCodes, diagnostic.code)
 
-const makeUnusedPositionMatch = (file: ts.SourceFile) => (start: number) => {
-  const position = file.getLineAndCharacterOfPosition(start)
-
-  return makePositionMatch(emptyNoUnusedFact)(position.line + 1)(position.character + 1)(file)
-}
+const makeNoUnusedPositionMatch = Function.flip(makePositionMatch(emptyNoUnusedFact))
 
 const unusedMatches = (context: MatchContext) => {
   const diagnostics = context.program.getSemanticDiagnostics(context.sourceFile)
@@ -51,7 +47,7 @@ const unusedMatches = (context: MatchContext) => {
         file: fileOption,
         start: startOption
       }),
-      Option.map(({ file, start }) => makeUnusedPositionMatch(file)(start)),
+      Option.map(({ file, start }) => makeNoUnusedPositionMatch(file)(start)),
       Result.fromOption(Function.constVoid)
     )
   })
