@@ -14,3 +14,9 @@ test("built-in rule catalog contains every selected identity once", () => {
   assert.equal(Array.dedupe(names).length, names.length)
   assert.deepEqual(names, expectedRuleNames)
 })
+
+test("every built-in rule name is kebab-case", () => {
+  const kebabCase = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
+
+  assert.ok(builtinRules.every(({ name }) => kebabCase.test(name)))
+})

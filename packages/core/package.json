@@ -7,6 +7,14 @@
     "dist"
   ],
   "exports": {
+    "./config": {
+      "bun": "./src/config/config.ts",
+      "default": "./dist/config/config.js"
+    },
+    "./config/loadConfig": {
+      "bun": "./src/config/loadConfig.ts",
+      "default": "./dist/config/loadConfig.js"
+    },
     "./linter": {
       "bun": "./src/linter/linter.ts",
       "default": "./dist/linter/linter.js"

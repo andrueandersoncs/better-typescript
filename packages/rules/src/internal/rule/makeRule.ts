@@ -86,6 +86,7 @@ export const makeRule =
 
             return Violation.make({
               ruleName: name,
+              level: "error",
               message: actionableMessage,
               filePath,
               line: position.line + 1,
@@ -97,6 +98,7 @@ export const makeRule =
 
             return Violation.make({
               ruleName: name,
+              level: "error",
               message: actionableMessage,
               filePath,
               line,

@@ -1,7 +1,7 @@
 # Better TypeScript
 
 Better TypeScript is a conventional TypeScript linter for coding agents. It discovers a TypeScript
-project, runs every built-in rule, and prints a flat list of actionable violations.
+project, runs its configured built-in rules, and prints a flat list of actionable violations.
 
 ## Usage
 
@@ -18,6 +18,7 @@ Stdout is NDJSON by default. Each line has one shape:
 ```json
 {
   "ruleName": "no-throw",
+  "level": "error",
   "message": "Avoid throwing errors with throw. Return a typed error through Effect instead.",
   "filePath": "src/main.ts",
   "line": 4,
@@ -28,10 +29,44 @@ Stdout is NDJSON by default. Each line has one shape:
 Use `--pretty` for the same fields in human-readable form:
 
 ```text
-src/main.ts:4:3 no-throw Avoid throwing errors with throw. Return a typed error through Effect instead.
+src/main.ts:4:3 error no-throw Avoid throwing errors with throw. Return a typed error through Effect instead.
 ```
 
 Operational status and project-loading failures go to stderr.
+
+## Configuration
+
+Add `better-typescript.config.ts` to the TypeScript project root when different files need different
+rules:
+
+```ts
+import { defineConfig } from "@better-typescript/core/config"
+
+export default defineConfig([
+  {
+    files: ["src/**/*.ts"],
+    rules: { "*": "error" }
+  },
+  {
+    files: ["src/legacy.ts"],
+    rules: { "no-throw": "off" }
+  },
+  {
+    files: ["src/boundary.ts"],
+    rules: { "require-explicit-return-type": "warn" }
+  }
+])
+```
+
+File globs are matched against forward-slash paths relative to the project root. A configured
+project starts with every rule disabled. Matching entries apply in declaration order, so later
+entries override earlier entries. `"*"` changes every rule at that point, while an explicit rule
+setting in the same entry takes precedence over `"*"`. `"error"` and `"warn"` enable a rule and set
+the reported violation level; `"off"` disables it. Files that match no enabled rule are not linted.
+
+Rule identifiers must be unique kebab-case strings. Unknown configured rule names, invalid names,
+and malformed config exports are operational errors. Without a config file, the CLI enables every
+built-in rule for every project source file.
 
 ## Architecture
 
@@ -46,19 +81,21 @@ This Bun workspace has exactly three packages:
 Dependencies point from CLI to core and rules, and from rules to core. Core never depends on the
 built-in catalog.
 
-There is no project configuration file, plugin graph, severity, suppression, silent mode, aggregate
-report phase, or watch mode. Every built-in rule runs wherever its own local predicate applies.
+There is no plugin graph, severity, suppression, silent mode, aggregate report phase, or watch mode.
+Configuration only selects files and applies `"error"`, `"warn"`, or `"off"` to registered rules.
 
 ## Programmatic use
 
 ```ts
 import { Effect } from "effect"
-import { lint } from "@better-typescript/core/linter"
+import { defineConfig } from "@better-typescript/core/config"
+import { lintConfigured } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
 
 const project = await Effect.runPromise(loadProject({ projectPath: "." }))
-const violations = lint({ project, rules: builtinRules })
+const config = defineConfig([{ files: ["src/**/*.ts"], rules: { "*": "error" } }])
+const violations = lintConfigured(config)({ project, rules: builtinRules })
 ```
 
 A custom rule has only a stable name and a source-file check:
@@ -67,7 +104,7 @@ A custom rule has only a stable name and a source-file check:
 import type { Rule } from "@better-typescript/core/linter"
 
 const noConsoleLog: Rule = {
-  name: "acme/no-console-log",
+  name: "acme-no-console-log",
   check: (context) => {
     // Return located violations found in context.sourceFile.
     return []
@@ -101,5 +138,5 @@ minimum, median, and maximum whole-process runtime.
 
 ## Non-goals
 
-Better TypeScript is not a replacement for `tsc`, ESLint, or Prettier. It does not format code, load
-third-party plugins, or provide per-rule configuration.
+Better TypeScript is not a replacement for `tsc`, ESLint, or Prettier. It does not format code or
+load third-party plugins. Rule configuration controls enablement levels, not rule-specific options.

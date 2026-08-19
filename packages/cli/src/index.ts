@@ -4,7 +4,8 @@ import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as BunServices from "@effect/platform-bun/BunServices"
 import { Console, Effect, Function, Option, flow, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { lint } from "@better-typescript/core/linter"
+import { loadConfig } from "@better-typescript/core/config/loadConfig"
+import { lintConfigured } from "@better-typescript/core/linter"
 import type { Violation } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
@@ -25,7 +26,7 @@ const printJsonViolation: (violation: Violation) => Effect.Effect<void> = flow(
 
 const printPrettyViolation = (violation: Violation): Effect.Effect<void> =>
   Console.log(
-    `${violation.filePath}:${violation.line}:${violation.column} ${violation.ruleName} ${violation.message}`
+    `${violation.filePath}:${violation.line}:${violation.column} ${violation.level} ${violation.ruleName} ${violation.message}`
   )
 
 const runCommand = Effect.fn("Cli.runCommand")(function* (
@@ -34,6 +35,7 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
 ) {
   const projectDirectory = path.resolve(projectPath)
   const loadedProject = yield* loadProject({ projectPath: projectDirectory })
+  const config = yield* loadConfig(loadedProject.rootPath)
   const prettyOption = Option.liftPredicate(Boolean)(prettyOutput)
 
   const printViolation = Option.match(prettyOption, {
@@ -43,7 +45,9 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
 
   yield* Console.error(`Analyzing ${loadedProject.rootPath}.`)
 
-  const violations = yield* Effect.sync(() => lint({ project: loadedProject, rules: builtinRules }))
+  const violations = yield* Effect.sync(() =>
+    lintConfigured(config)({ project: loadedProject, rules: builtinRules })
+  )
 
   yield* Effect.forEach(violations, printViolation, { discard: true })
 })

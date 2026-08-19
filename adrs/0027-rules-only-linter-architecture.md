@@ -38,3 +38,8 @@ is deterministically ordered.
 
 This ADR explicitly supersedes ADR-0024. It also makes the architecture-fleet decisions in ADR-0014,
 ADR-0017, ADR-0021, ADR-0025, and ADR-0026 obsolete. Those records remain as historical context.
+
+## Amended by
+
+ADR-0028 supersedes only this ADR's rejection of user-authored configuration. The rules-only
+architecture and rejection of the former higher-level product models remain accepted.

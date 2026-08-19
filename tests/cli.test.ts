@@ -30,6 +30,31 @@ test("default CLI emits one NDJSON object per violation and exits successfully",
   }
 })
 
+test("CLI loads glob and rule configuration from the project root", async () => {
+  const tempDir = await copyNoThrowFixture("cli-config-")
+
+  await fs.writeFile(
+    path.join(tempDir, "better-typescript.config.ts"),
+    [
+      "export default [",
+      '  { files: ["src/cases.ts"], rules: { "*": "off", "no-throw": "error" } }',
+      "]"
+    ].join("\n")
+  )
+
+  try {
+    const result = await runCli(["--project", tempDir])
+    const violations = parseNdjson(result.stdout)
+
+    assert.ok(violations.length > 0)
+    assert.ok(
+      violations.every(({ level, ruleName }) => level === "error" && ruleName === "no-throw")
+    )
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test("default CLI emits the selected no-value-aliases identity", async () => {
   const result = await runCli(["--project", noValueAliasesFixturePath])
   const violations = parseNdjson(result.stdout)
@@ -66,7 +91,7 @@ test("pretty CLI output is a projection of the same violation fields", async () 
     assertAnalyzingStatus(result.stderr, tempDir)
     assert.match(
       result.stdout,
-      /src\/cases\.ts:\d+:\d+ no-throw Avoid throwing errors with throw\./
+      /src\/cases\.ts:\d+:\d+ error no-throw Avoid throwing errors with throw\./
     )
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true })
