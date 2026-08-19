@@ -1,0 +1,1 @@
+export const betaValue = "beta"

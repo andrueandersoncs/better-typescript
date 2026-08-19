@@ -4,10 +4,8 @@ import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as BunServices from "@effect/platform-bun/BunServices"
 import { Console, Effect, Function, Option, flow, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { loadConfig } from "@better-typescript/core/config/loadConfig"
-import { lintConfigured } from "@better-typescript/core/linter"
 import type { Violation } from "@better-typescript/core/linter"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { runAnalysis } from "@better-typescript/core/analysis"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
 import { reportError } from "./reportError.js"
 
@@ -34,8 +32,10 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
   prettyOutput: boolean
 ) {
   const projectDirectory = path.resolve(projectPath)
-  const loadedProject = yield* loadProject({ projectPath: projectDirectory })
-  const config = yield* loadConfig(loadedProject.rootPath)
+
+  yield* Console.error(`Analyzing ${projectDirectory}.`)
+
+  const analysis = yield* runAnalysis({ projectPath: projectDirectory, rules: builtinRules })
   const prettyOption = Option.liftPredicate(Boolean)(prettyOutput)
 
   const printViolation = Option.match(prettyOption, {
@@ -43,13 +43,7 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
     onSome: Function.constant(printPrettyViolation)
   })
 
-  yield* Console.error(`Analyzing ${loadedProject.rootPath}.`)
-
-  const violations = yield* Effect.sync(() =>
-    lintConfigured(config)({ project: loadedProject, rules: builtinRules })
-  )
-
-  yield* Effect.forEach(violations, printViolation, { discard: true })
+  yield* Effect.forEach(analysis.violations, printViolation, { discard: true })
 })
 
 const rootCommand = Command.make(

@@ -4,17 +4,12 @@ import * as ts from "typescript"
 import { CircularProjectReferenceError } from "./circularProjectReferenceError.js"
 import { InvalidTsconfigError } from "./invalidTsconfigError.js"
 import { LoadedProject } from "./loadedProject.js"
+import { loadProjectConfig } from "./loadProjectConfig.js"
 import { ProjectConfig } from "./projectConfig.js"
 import { WorkspaceConfigs } from "./workspaceConfigs.js"
 
 const loadedProjectsSchema = Schema.Array(LoadedProject)
 const sameString = Equivalence.strictEqual<string>()
-
-const analysisCompilerOptions: ts.CompilerOptions = {
-  noEmit: true,
-  noUnusedLocals: true,
-  noUnusedParameters: true
-}
 
 const defaultCompilerOptions: ts.CompilerOptions = {}
 
@@ -63,28 +58,6 @@ export const discoverWorkspace: (
 
   return new WorkspaceConfigs({ rootPath: workspaceRoot, projects })
 })
-
-const loadProjectConfig = (compilerOptions: ts.CompilerOptions) => (config: ProjectConfig) => {
-  const options = Object.assign({}, config.parsed.options, analysisCompilerOptions, compilerOptions)
-  const host = ts.createCompilerHost(options)
-
-  host.jsDocParsingMode = ts.JSDocParsingMode.ParseForTypeErrors
-
-  const program = ts.createProgram({
-    rootNames: config.parsed.fileNames,
-    projectReferences: config.parsed.projectReferences,
-    options,
-    host
-  })
-
-  const rootPath = path.dirname(config.configPath)
-
-  return LoadedProject.make({
-    configPath: config.configPath,
-    rootPath,
-    program
-  })
-}
 
 // DefaultLoadProjectInput preserves the minimal call because compiler overrides are uncommon.
 interface DefaultLoadProjectInput {

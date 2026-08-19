@@ -7,6 +7,10 @@
     "dist"
   ],
   "exports": {
+    "./analysis": {
+      "bun": "./src/analysis/runAnalysis.ts",
+      "default": "./dist/analysis/runAnalysis.js"
+    },
     "./config": {
       "bun": "./src/config/config.ts",
       "default": "./dist/config/config.js"

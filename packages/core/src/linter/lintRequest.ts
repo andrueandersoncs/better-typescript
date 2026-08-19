@@ -1,8 +1,13 @@
-import type { LoadedWorkspace } from "../project/loadProject/loadProject.js"
-import type { Rule } from "./linter.js"
+import { Schema } from "effect"
+import { LoadedWorkspace } from "../project/loadProject/loadProject.js"
+import { Rule } from "./linter.js"
 
-// LintRequest crosses the public lint boundary because callers choose both workspace and rules.
-export interface LintRequest {
-  readonly project: LoadedWorkspace
-  readonly rules: ReadonlyArray<Rule>
-}
+const Rules = Schema.Array(Rule)
+
+// LintRequest crosses the public lint seam because callers choose a workspace and Rules.
+export const LintRequest = Schema.Struct({
+  project: LoadedWorkspace,
+  rules: Rules
+})
+
+export interface LintRequest extends Schema.Schema.Type<typeof LintRequest> {}

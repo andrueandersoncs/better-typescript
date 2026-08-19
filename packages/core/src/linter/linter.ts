@@ -5,7 +5,6 @@ import {
   Function,
   HashSet,
   Option,
-  Order,
   Predicate,
   Record,
   Schema,
@@ -20,6 +19,7 @@ import type { LoadedWorkspace } from "../project/loadProject/loadProject.js"
 import { TsProgram } from "../project/loadProject/tsProgram.js"
 import type { LintRequest } from "./lintRequest.js"
 import type { ViolationCandidate } from "./violationCandidate.js"
+import { normalizeViolations } from "./normalizeViolations.js"
 import { RuleName } from "./ruleName.js"
 
 const isTsTypeChecker = (input: unknown): input is ts.TypeChecker =>
@@ -54,11 +54,23 @@ export const Violation = Schema.Struct({
 
 export interface Violation extends Schema.Schema.Type<typeof Violation> {}
 
-// Rule defines the extension point because built-ins and callers provide checks through one API.
-export interface Rule {
-  readonly name: RuleName
-  readonly check: (context: RuleContext) => ReadonlyArray<Violation>
+type RuleCheck = (context: RuleContext) => ReadonlyArray<Violation>
+
+const isRuleCheck = (input: unknown): input is RuleCheck => {
+  const callable = Predicate.isFunction(input)
+
+  return callable
 }
+
+const RuleCheck = Schema.declare(isRuleCheck)
+
+// Rule defines the extension point because built-ins and callers provide checks through one interface.
+export const Rule = Schema.Struct({
+  name: RuleName,
+  check: RuleCheck
+})
+
+export interface Rule extends Schema.Schema.Type<typeof Rule> {}
 
 export const makeViolation = ({
   ruleName,
@@ -90,26 +102,6 @@ const isProjectSourceFile = (sourceFile: ts.SourceFile) => {
 
   return isProjectFile && isOutsideDependencies
 }
-
-const violationOrders = Array.make(
-  Order.mapInput<string, Violation>(Order.String, Struct.get("filePath")),
-  Order.mapInput<number, Violation>(Order.Number, Struct.get("line")),
-  Order.mapInput<number, Violation>(Order.Number, Struct.get("column")),
-  Order.mapInput<string, Violation>(Order.String, Struct.get("ruleName")),
-  Order.mapInput<string, Violation>(Order.String, Struct.get("level")),
-  Order.mapInput<string, Violation>(Order.String, Struct.get("message"))
-)
-
-const violationOrder = Order.combineAll<Violation>(violationOrders)
-
-const sameViolation = Equivalence.Struct({
-  ruleName: Equivalence.strictEqual<string>(),
-  level: Equivalence.strictEqual<EnabledRuleLevel>(),
-  message: Equivalence.strictEqual<string>(),
-  filePath: Equivalence.strictEqual<string>(),
-  line: Equivalence.strictEqual<number>(),
-  column: Equivalence.strictEqual<number>()
-})
 
 const withRuleMetadata =
   (ruleName: RuleName) => (level: EnabledRuleLevel) => (violation: Violation) =>
@@ -330,12 +322,7 @@ const lintWithConfig =
       Function.apply(rules)
     )
 
-    return pipe(
-      request.project.projects,
-      Array.flatMap(runProjectRules),
-      Array.sort(violationOrder),
-      Array.dedupeWith(sameViolation)
-    )
+    return pipe(request.project.projects, Array.flatMap(runProjectRules), normalizeViolations)
   }
 
 const noLintConfig = Option.none<LintConfig>()

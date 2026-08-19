@@ -89,15 +89,15 @@ rules.
 
 ```ts
 import { Effect } from "effect"
-import { defineConfig } from "@better-typescript/core/config"
-import { lintConfigured } from "@better-typescript/core/linter"
-import { loadProject } from "@better-typescript/core/project/loadProject"
+import { runAnalysis } from "@better-typescript/core/analysis"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
 
-const project = await Effect.runPromise(loadProject({ projectPath: "." }))
-const config = defineConfig([{ files: ["src/**/*.ts"], rules: { "*": "error" } }])
-const violations = lintConfigured(config)({ project, rules: builtinRules })
+const { violations } = await Effect.runPromise(
+  runAnalysis({ projectPath: ".", rules: builtinRules })
+)
 ```
+
+`loadProject` remains available for focused callers that need direct compiler Program access.
 
 A custom rule has only a stable name and a source-file check:
 
