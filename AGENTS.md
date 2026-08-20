@@ -49,6 +49,9 @@ justification.
 Always write tests (in @tests) to verify the behavior of any code you write. These tests will be
 used in future changes to ensure no regressions are introduced.
 
+Always check the @skills/ (not .agents/skills/) when you make changes to see if they need to be
+updated.
+
 ## Agent skills
 
 ### Issue tracker

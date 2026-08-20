@@ -1,7 +1,18 @@
 # Better TypeScript
 
-Better TypeScript is a conventional TypeScript linter for coding agents. It discovers a TypeScript
-project, runs its configured built-in rules, and prints a flat list of actionable violations.
+Better TypeScript is a TypeScript linter for coding agents. It supports syntax- and type-based
+rules, including semantic checks that syntax-only linters cannot express. It discovers a TypeScript
+project and prints a flat list of actionable violations.
+
+## Agent skills
+
+```sh
+npx skills add andrueandersoncs/better-typescript --skill better-typescript
+npx skills add andrueandersoncs/better-typescript --skill triage-better-typescript
+```
+
+Use `better-typescript` for setup and normal runs. Use `triage-better-typescript` when its result
+looks wrong and you can provide a code sample.
 
 ## Usage
 

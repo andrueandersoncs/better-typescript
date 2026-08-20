@@ -1,6 +1,6 @@
 # Better TypeScript
 
-Better TypeScript is a conventional TypeScript linter.
+Better TypeScript is a TypeScript linter with syntax- and type-based rules.
 
 ## Domain
 
