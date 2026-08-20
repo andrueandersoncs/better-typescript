@@ -42,7 +42,7 @@ import * as Snowflake from "./Snowflake.ts"
  * messages; manages reply handlers; and provides transaction wrapping for storage
  * operations.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class MessageStorage extends Context.Service<MessageStorage, {
@@ -131,9 +131,18 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * - Requests that have no `WithExit` replies or no unacknowledged chunk replies
    * - The latest `AckChunk` envelope
    * - All `Interrupt` envelopes for unprocessed requests
+   *
+   * The `limit` option bounds the number of messages returned in a single
+   * read, and the `addresses` option restricts the read to the provided
+   * entity addresses. Only the returned messages are claimed; other messages
+   * stay eligible for later reads.
    */
   readonly unprocessedMessages: (
-    shardIds: Iterable<ShardId.ShardId>
+    shardIds: Iterable<ShardId.ShardId>,
+    options?: {
+      readonly limit?: number | undefined
+      readonly addresses?: ReadonlyArray<EntityAddress> | undefined
+    } | undefined
   ) => Effect.Effect<Array<Message.Incoming<any>>, PersistenceError>
 
   /**
@@ -155,6 +164,13 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    */
   readonly resetAddress: (
     address: EntityAddress
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Reset the mailbox state for the provided addresses.
+   */
+  readonly resetAddresses: (
+    addresses: ReadonlyArray<EntityAddress>
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -180,7 +196,7 @@ export class MessageStorage extends Context.Service<MessageStorage, {
  * A duplicate result carries the original request ID and the last reply already
  * received for the duplicated request.
  *
- * @category SaveResult
+ * @category models
  * @since 4.0.0
  */
 export type SaveResult<R extends Rpc.Any> = SaveResult.Success | SaveResult.Duplicate<R>
@@ -188,7 +204,7 @@ export type SaveResult<R extends Rpc.Any> = SaveResult.Success | SaveResult.Dupl
 /**
  * Constructors and matchers for decoded save results.
  *
- * @category SaveResult
+ * @category constructors
  * @since 4.0.0
  */
 export const SaveResult = Data.taggedEnum<SaveResult.Constructor>()
@@ -197,7 +213,7 @@ export const SaveResult = Data.taggedEnum<SaveResult.Constructor>()
  * Constructors and matchers for encoded save results returned by storage
  * drivers.
  *
- * @category SaveResult
+ * @category constructors
  * @since 4.0.0
  */
 export const SaveResultEncoded = Data.taggedEnum<SaveResult.Encoded>()
@@ -216,7 +232,7 @@ export declare namespace SaveResult {
    * Duplicate results contain an encoded last received reply instead of a decoded
    * reply.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export type Encoded = SaveResult.Success | SaveResult.DuplicateEncoded
@@ -224,7 +240,7 @@ export declare namespace SaveResult {
   /**
    * Variant indicating that the message was saved as a new storage entry.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export interface Success {
@@ -239,7 +255,7 @@ export declare namespace SaveResult {
    * It carries the original request ID and the latest decoded reply, when one is
    * available.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export interface Duplicate<R extends Rpc.Any> {
@@ -256,7 +272,7 @@ export declare namespace SaveResult {
    * It carries the original request ID and the latest encoded reply, when one is
    * available.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export interface DuplicateEncoded {
@@ -268,7 +284,7 @@ export declare namespace SaveResult {
   /**
    * Generic tagged enum constructor type for `SaveResult`.
    *
-   * @category SaveResult
+   * @category utility types
    * @since 4.0.0
    */
   export interface Constructor extends Data.TaggedEnum.WithGenerics<1> {
@@ -284,7 +300,7 @@ export declare namespace SaveResult {
  * Implementations persist encoded messages, track primary keys and delayed
  * delivery, read unprocessed messages, and provide transaction wrapping.
  *
- * @category Encoded
+ * @category services
  * @since 4.0.0
  */
 export type Encoded = {
@@ -349,10 +365,19 @@ export type Encoded = {
    * - Requests that have no `WithExit` replies or no unacknowledged chunk replies
    * - The latest `AckChunk` envelope
    * - All `Interrupt` envelopes for unprocessed requests
+   *
+   * The `limit` option bounds the number of rows returned by a single read,
+   * and the `addresses` option restricts the read to the provided entity
+   * addresses. Only the returned rows are claimed; other rows stay eligible
+   * for later reads.
    */
   readonly unprocessedMessages: (
     shardIds: Arr.NonEmptyArray<string>,
-    now: number
+    now: number,
+    options?: {
+      readonly limit?: number | undefined
+      readonly addresses?: ReadonlyArray<EntityAddress> | undefined
+    } | undefined
   ) => Effect.Effect<
     Array<{
       readonly envelope: Envelope.Encoded
@@ -376,10 +401,10 @@ export type Encoded = {
   >
 
   /**
-   * Reset the mailbox state for the provided address.
+   * Reset the mailbox state for the provided addresses.
    */
-  readonly resetAddress: (
-    address: EntityAddress
+  readonly resetAddresses: (
+    addresses: ReadonlyArray<EntityAddress>
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -412,7 +437,7 @@ export type Encoded = {
  * The fields distinguish existing shards from newly assigned shards and carry the
  * driver-specific pagination cursor.
  *
- * @category Encoded
+ * @category models
  * @since 4.0.0
  */
 export type EncodedUnprocessedOptions<A> = {
@@ -429,7 +454,7 @@ export type EncodedUnprocessedOptions<A> = {
  * The fields distinguish existing requests from new requests and carry the
  * driver-specific pagination cursor.
  *
- * @category Encoded
+ * @category models
  * @since 4.0.0
  */
 export type EncodedRepliesOptions<A> = {
@@ -606,11 +631,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) =>
-      Effect.flatMap(
-        Reply.serialize(reply),
-        encoded.saveReply
-      ),
+    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -633,12 +654,13 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const primaryKey = Envelope.primaryKeyByAddress(options)
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
-    unprocessedMessages(shardIds) {
+    unprocessedMessages(shardIds, options) {
       const storage = this as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.succeed([])
+      if (options?.addresses !== undefined && options.addresses.length === 0) return Effect.succeed([])
       return Effect.flatMap(
-        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.currentTimeMillisUnsafe())),
+        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.currentTimeMillisUnsafe(), options)),
         (messages) => decodeMessages(storage, messages)
       )
     },
@@ -651,7 +673,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         (messages) => decodeMessages(storage, messages)
       )
     },
-    resetAddress: encoded.resetAddress,
+    resetAddress: (address) => encoded.resetAddresses([address]),
+    resetAddresses: (addresses) => addresses.length === 0 ? Effect.void : encoded.resetAddresses(addresses),
     clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => {
       const shards = Array.from(shardIds, (id) => id.toString())
@@ -780,6 +803,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   unprocessedMessages: () => Effect.succeed([]),
   unprocessedMessagesById: () => Effect.succeed([]),
   resetAddress: () => Effect.void,
+  resetAddresses: () => Effect.void,
   clearAddress: () => Effect.void,
   resetShards: () => Effect.void,
   withTransaction: identity
@@ -793,7 +817,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
  * It stores the encoded envelope, last acknowledged chunk, accumulated replies,
  * and optional delivery time.
  *
- * @category memory
+ * @category models
  * @since 4.0.0
  */
 export type MemoryEntry = {
@@ -806,12 +830,15 @@ export type MemoryEntry = {
 /**
  * Provides a context reference used in tests to simulate a transaction.
  *
- * @category memory
+ * @category services
  * @since 4.0.0
  */
 export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/MessageStorage/MemoryTransaction", {
   defaultValue: constFalse
 })
+
+// the same claim window the SQL driver uses (`last_read < ten minutes ago`)
+const claimExpirationMillis = 10 * 60 * 1000
 
 /**
  * Service that provides an in-memory message storage driver with inspectable backing state.
@@ -822,7 +849,7 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
  * maps used to track requests, primary keys, unprocessed envelopes, reply IDs,
  * and the journal.
  *
- * @category memory
+ * @category services
  * @since 4.0.0
  */
 export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluster/MessageStorage/MemoryDriver", {
@@ -832,8 +859,24 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
     const requestsByPrimaryKey = new Map<string, MemoryEntry>()
     const unprocessed = new Set<Envelope.Encoded>()
     const replyIds = new Set<string>()
+    const lastRead = new Map<Envelope.Encoded, number>()
 
     const journal: Array<Envelope.Encoded> = []
+
+    const addressKey = (address: Envelope.Encoded["address"] | EntityAddress) =>
+      `${address.shardId.group}/${address.shardId.id}/${address.entityType}/${address.entityId}`
+
+    const resetAddresses = (addresses: ReadonlyArray<EntityAddress>) =>
+      addresses.length === 0
+        ? Effect.void
+        : Effect.sync(() => {
+          const keys = new Set(addresses.map(addressKey))
+          for (const envelope of journal) {
+            if (keys.has(addressKey(envelope.address))) {
+              lastRead.delete(envelope)
+            }
+          }
+        })
 
     const cursors = new WeakMap<{}, number>()
 
@@ -930,6 +973,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           if (!entry || replyIds.has(reply.id)) return
           if (reply._tag === "WithExit") {
             unprocessed.delete(entry.envelope)
+            lastRead.delete(entry.envelope)
           }
           entry.replies.push(reply)
           replyIds.add(reply.id)
@@ -942,6 +986,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           entry.replies = []
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
+          lastRead.delete(entry.envelope)
         }),
       requestIdForPrimaryKey: (primaryKey) =>
         Effect.sync(() => {
@@ -951,18 +996,23 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
       repliesForUnfiltered: (requestIds) =>
         Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
-      unprocessedMessages: (shardIds) =>
-        Effect.sync(() => {
+      unprocessedMessages: (shardIds, now, options) =>
+        options?.addresses?.length === 0 ? Effect.succeed([]) : Effect.sync(() => {
           if (unprocessed.size === 0) return []
-          const now = clock.currentTimeMillisUnsafe()
+          const limit = options?.limit ?? Infinity
+          const addressFilter = options?.addresses && new Set(options.addresses.map(addressKey))
           const messages = Arr.empty<{
             envelope: Envelope.Encoded
             lastSentReply: Option.Option<Reply.Encoded>
           }>()
           for (let index = 0; index < journal.length; index++) {
+            if (messages.length >= limit) break
             const envelope = journal[index]
             const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
             if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
+              continue
+            }
+            if (addressFilter && !addressFilter.has(addressKey(envelope.address))) {
               continue
             }
             if (envelope._tag === "Request") {
@@ -970,10 +1020,15 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               if (entry.deliverAt && entry.deliverAt > now) {
                 continue
               }
+              const claimedAt = lastRead.get(envelope)
+              if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
+                continue
+              }
               messages.push({
                 envelope,
                 lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
               })
+              lastRead.set(envelope, now)
             } else {
               messages.push({
                 envelope,
@@ -992,9 +1047,17 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           }
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
-      resetAddress: () => Effect.void,
+      resetAddresses,
       clearAddress: (address) =>
         Effect.sync(() => {
+          for (const [primaryKey, entry] of requestsByPrimaryKey) {
+            const envelope = entry.envelope
+            const sameAddress = address.entityType === envelope.address.entityType &&
+              address.entityId === envelope.address.entityId
+            if (sameAddress) {
+              requestsByPrimaryKey.delete(primaryKey)
+            }
+          }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
             const sameAddress = address.entityType === envelope.address.entityType &&
@@ -1003,11 +1066,21 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               continue
             }
             unprocessed.delete(envelope)
+            lastRead.delete(envelope)
             requests.delete(envelope.requestId)
             journal.splice(i, 1)
           }
         }),
-      resetShards: () => Effect.void,
+      resetShards: (shardIds) =>
+        Effect.sync(() => {
+          const shards = new Set(shardIds)
+          for (const envelope of journal) {
+            const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
+            if (shards.has(shardId.toString())) {
+              lastRead.delete(envelope)
+            }
+          }
+        }),
       withTransaction: Effect.provideService(MemoryTransaction, true)
     }
 

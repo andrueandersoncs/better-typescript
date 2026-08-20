@@ -8,6 +8,7 @@ import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import type * as Response from "effect/unstable/ai/Response"
+import type * as Sse from "effect/unstable/encoding/Sse"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
@@ -27,6 +28,11 @@ export const OpenAiErrorBody = Schema.Struct({
   })
 })
 
+const OpenAiCompatibleErrorBody = Schema.Struct({
+  error: Schema.String,
+  code: Schema.optional(Schema.String)
+})
+
 // =============================================================================
 // Error Mappers
 // =============================================================================
@@ -40,6 +46,17 @@ export const mapSchemaError = dual<
     module: "OpenAiClient",
     method,
     reason: AiError.InvalidOutputError.fromSchemaError(error)
+  }))
+
+/** @internal */
+export const mapSseError = dual<
+  (method: string) => (error: Sse.SseError) => AiError.AiError,
+  (error: Sse.SseError, method: string) => AiError.AiError
+>(2, (error, method) =>
+  AiError.make({
+    module: "OpenAiClient",
+    method,
+    reason: new AiError.InvalidOutputError({ description: error.message })
   }))
 
 /** @internal */
@@ -135,14 +152,25 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
     json = undefined
   }
   const decoded = Schema.decodeUnknownOption(OpenAiErrorBody)(json)
+  const compatibleDecoded = Schema.decodeUnknownOption(OpenAiCompatibleErrorBody)(json)
+  const message = Option.isSome(decoded)
+    ? decoded.value.error.message
+    : Option.isSome(compatibleDecoded)
+    ? compatibleDecoded.value.error
+    : undefined
+  const errorCode = Option.isSome(decoded)
+    ? decoded.value.error.code ?? null
+    : Option.isSome(compatibleDecoded)
+    ? compatibleDecoded.value.code ?? null
+    : null
 
   const reason = mapStatusCodeToReason({
     status,
     headers,
-    message: Option.isSome(decoded) ? decoded.value.error.message : undefined,
+    message,
     http: buildHttpContext({ request, response, body }),
     metadata: {
-      errorCode: Option.isSome(decoded) ? decoded.value.error.code ?? null : null,
+      errorCode,
       errorType: Option.isSome(decoded) ? decoded.value.error.type ?? null : null,
       requestId: requestId ?? null
     }
@@ -309,11 +337,18 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
         metadata: { openai: metadata },
         http
       })
+    case 402:
+      return new AiError.QuotaExhaustedError({
+        metadata: { openai: metadata },
+        http
+      })
     case 429: {
       // Best-effort detection: OpenAI returns insufficient_quota for billing/quota issues
       if (
         metadata.errorCode === "insufficient_quota" ||
-        metadata.errorType === "insufficient_quota"
+        metadata.errorType === "insufficient_quota" ||
+        metadata.errorCode === "billing_insufficient_balance" ||
+        metadata.errorType === "billing_insufficient_balance"
       ) {
         return new AiError.QuotaExhaustedError({
           metadata: { openai: metadata },

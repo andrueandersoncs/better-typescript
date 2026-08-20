@@ -1,16 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
-import { TestConsole } from "effect/testing"
+import { Data, DateTime, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/unstable/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
-const ConsoleLayer = TestConsole.layer
 const FileSystemLayer = FileSystem.layerNoop({})
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
 
 const TestLayer = Layer.mergeAll(
-  ConsoleLayer,
   FileSystemLayer,
   PathLayer,
   TerminalLayer
@@ -52,6 +49,36 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
 
+describe("Prompt.date", () => {
+  it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
+    Effect.gen(function*() {
+      const initial = DateTime.toDateUtc(DateTime.makeZonedUnsafe(
+        { year: 2024, month: 1, day: 11, hour: 12 },
+        { timeZone: DateTime.zoneMakeLocal(), adjustForTimeZone: true }
+      ))
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))
+      const output = (yield* MockTerminal.displayLines).map(String).join("\n")
+
+      assert.include(output, "24 11th PM")
+    }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("Prompt.all", () => {
+  it.effect("supports an empty record", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all({})
+      assert.deepStrictEqual(result, {})
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("supports a non-array iterable", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all(new Set([Prompt.succeed(1)]))
+      assert.deepStrictEqual(result, [1])
+    }).pipe(Effect.provide(TestLayer)))
+})
+
 describe("Prompt.integer", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
@@ -88,6 +115,16 @@ describe("Prompt.integer", () => {
 })
 
 describe("Prompt.float", () => {
+  it.effect("preserves a leading zero in the fractional part", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("0.05")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(Prompt.float({ message: "Rate" }))
+
+      assert.strictEqual(value, 0.05)
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("renders appended input without literal parsed", () =>
     Effect.gen(function*() {
       const prompt = Prompt.float({ message: "Rate" })
@@ -98,7 +135,7 @@ describe("Prompt.float", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, 12.5)
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const rendered = frames.join("\n")
 
@@ -121,6 +158,28 @@ describe("Prompt.float", () => {
 })
 
 describe("Prompt.text", () => {
+  it.effect("uses the default prompt prefix when prefix is explicitly undefined", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      const options = { message: "Name", prefix: undefined } as unknown as Prompt.TextOptions
+      yield* Prompt.run(Prompt.text(options))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "? Name")
+      assert.notInclude(frames[0] ?? "", "undefined")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("renders a custom prompt prefix", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({ message: "Name", prefix: "!" }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "! Name")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
       const prompt = Prompt.text({
@@ -212,12 +271,33 @@ describe("Prompt.text", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const lastFrame = frames.at(-1)
 
       assert.isTrue(lastFrame !== undefined)
       assert.isFalse(lastFrame?.includes("Jane"))
+    }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("Prompt.select", () => {
+  it.effect("preserves a custom prompt prefix across redraws", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.select({
+        message: "Pick item",
+        prefix: "!",
+        choices: [
+          { title: "First", value: "first" },
+          { title: "Second", value: "second" }
+        ]
+      }))
+
+      assert.strictEqual(result, "second")
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.strictEqual(frames.filter((frame) => frame.includes("! Pick item")).length, 2)
     }).pipe(Effect.provide(TestLayer)))
 })
 
@@ -269,7 +349,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "banana")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const filteredFrame = findFrame(frames, "[filter: ban]")
 
@@ -296,7 +376,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "alpha")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const narrowedFrame = findFrame(frames, "[filter: al]")
       const expandedFrame = findFrame(frames, "[filter: a]")
@@ -325,7 +405,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "alpha")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const narrowedFrame = findFrame(frames, "[filter: al]")
       const clearedFrame = findFrame(frames, "[filter: type to filter]")
@@ -356,7 +436,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "cat")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
 
       assert.isTrue(output.some((line) => String(line).includes("\x07")))
@@ -380,7 +460,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "fast")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       assert.isTrue(output.some((line) => String(line).includes("\x07")))
     }).pipe(Effect.provide(TestLayer)))
 
@@ -395,7 +475,7 @@ describe("Prompt.autoComplete", () => {
       const exit = yield* Prompt.run(prompt).pipe(Effect.exit)
       assert.isTrue(exit._tag === "Failure")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
 
       assert.isTrue(findFrame(frames, "No matches") !== undefined)
@@ -404,7 +484,6 @@ describe("Prompt.autoComplete", () => {
 
 describe("Prompt.file", () => {
   const FilePromptLayer = Layer.mergeAll(
-    ConsoleLayer,
     FileSystem.layerNoop({
       exists: () => Effect.succeed(true),
       readDirectory: (directory) =>
@@ -450,7 +529,7 @@ describe("Prompt.file", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "/workspace/banana.txt")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const filteredFrame = findFrame(frames, "[filter: ban]")
 
@@ -474,7 +553,7 @@ describe("Prompt.file", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "/workspace/banana.txt")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const narrowedFrame = findFrame(frames, "[filter: ban]")
       const expandedFrame = findFrame(frames, "[filter: ba]")
@@ -487,6 +566,83 @@ describe("Prompt.file", () => {
 })
 
 describe("Prompt.multiSelect", () => {
+  it.effect("does not allow a disabled multi-select choice to be selected", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [{ title: "Unavailable", value: "unavailable", disabled: true }]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, [])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(output.some((line) => String(line).includes("\x07")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("does not select disabled choices when selecting all", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available" },
+          { title: "Unavailable", value: "unavailable", disabled: true }
+        ]
+      })
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(findFrame(toFrames(output), "Select None") !== undefined)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("does not select disabled choices when inverting the selection", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available" },
+          { title: "Unavailable", value: "unavailable", disabled: true }
+        ]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("ignores disabled preselected choices when validating and submitting", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available", selected: true },
+          { title: "Unavailable", value: "unavailable", disabled: true, selected: true }
+        ],
+        max: 1
+      })
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      const initialFrame = findFrame(toFrames(output), "Unavailable")
+      assert.isTrue(initialFrame?.includes("☐ Unavailable"))
+      const rawInitialFrame = findFrame(toRawFrames(output), "Unavailable")
+      assert.isTrue(rawInitialFrame?.includes(`${escape}[9m${escape}[90mUnavailable`))
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("underlines the active label", () =>
     Effect.gen(function*() {
       const prompt = Prompt.multiSelect({
@@ -506,7 +662,7 @@ describe("Prompt.multiSelect", () => {
       yield* MockTerminal.inputKey("down")
       yield* Effect.yieldNow
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toRawFrames(output)
       const highlightedFrame = [...frames].reverse().find((frame) => frame.includes("Beta"))
 
