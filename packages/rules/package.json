@@ -1,6 +1,6 @@
 {
   "name": "@better-typescript/rules",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "files": [
     "dist",
@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@better-typescript/core": "0.0.1"
+    "@better-typescript/core": "0.0.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0 || ^6.0.0",

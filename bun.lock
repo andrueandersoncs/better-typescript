@@ -12,13 +12,13 @@
     },
     "packages/cli": {
       "name": "@better-typescript/cli",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "bin": {
         "better-typescript": "dist/index.js",
       },
       "dependencies": {
-        "@better-typescript/core": "0.0.1",
-        "@better-typescript/rules": "0.0.1",
+        "@better-typescript/core": "0.0.2",
+        "@better-typescript/rules": "0.0.2",
         "@effect/platform-bun": "4.0.0-beta.98",
       },
       "devDependencies": {
@@ -33,7 +33,7 @@
     },
     "packages/core": {
       "name": "@better-typescript/core",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "effect": "4.0.0-beta.98",
@@ -46,9 +46,9 @@
     },
     "packages/rules": {
       "name": "@better-typescript/rules",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
-        "@better-typescript/core": "0.0.1",
+        "@better-typescript/core": "0.0.2",
       },
       "devDependencies": {
         "@types/bun": "^1.3.14",
