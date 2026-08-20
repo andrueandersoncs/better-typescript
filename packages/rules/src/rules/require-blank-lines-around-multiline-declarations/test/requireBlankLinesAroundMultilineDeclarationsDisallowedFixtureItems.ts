@@ -1,4 +1,4 @@
-import type { ExpectedViolation } from "../../../../../../tests/expectedViolation.js"
+import type { ExpectedViolation } from "../../../../test/expectedViolation.js"
 
 const message = "Multi-line declarations must have a blank line above and below."
 

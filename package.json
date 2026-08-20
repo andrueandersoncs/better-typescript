@@ -15,8 +15,8 @@
     "dev": "bun packages/cli/src/index.ts --pretty",
     "start": "bun run build && bun packages/cli/src/index.ts",
     "build": "bun run --filter @better-typescript/core build && bun run --filter @better-typescript/rules build && bun run --filter @better-typescript/cli build",
-    "typecheck": "bun run build && bun node_modules/typescript/bin/tsc --noEmit -p tests/tsconfig.json && bun node_modules/typescript/bin/tsc --noEmit -p scripts/tsconfig.json && bun node_modules/typescript/bin/tsc --noEmit -p examples/programmatic/tsconfig.json",
-    "test": "bun run build && bun test --timeout 30000 tests/*.test.ts packages/rules/src/rules/*/test/*.test.ts",
+    "typecheck": "bun run build && bun node_modules/typescript/bin/tsc --noEmit -p packages/core/test/tsconfig.json && bun node_modules/typescript/bin/tsc --noEmit -p packages/rules/test/tsconfig.json && bun node_modules/typescript/bin/tsc --noEmit -p packages/cli/test/tsconfig.json && bun node_modules/typescript/bin/tsc --noEmit -p scripts/tsconfig.json && bun node_modules/typescript/bin/tsc --noEmit -p examples/programmatic/tsconfig.json",
+    "test": "bun run build && bun run --filter @better-typescript/core test && bun run --filter @better-typescript/rules test && bun run --filter @better-typescript/cli test",
     "prepare": "bun run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

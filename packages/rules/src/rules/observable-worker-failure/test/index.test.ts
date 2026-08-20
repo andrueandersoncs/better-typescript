@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { observableWorkerFailure } from "../index.js"
 
 test("observable-worker-failure has exact public Violation output", () =>

@@ -6,11 +6,9 @@
 
 > **@title Using Effect.fn**
 >
-> When writing functions that return an Effect, use `Effect.fn` to use the
-> generator syntax.
+> When writing functions that return an Effect, use `Effect.fn` to use the generator syntax.
 >
-> **Avoid creating functions that return an Effect.gen**, use `Effect.fn`
-> instead.
+> **Avoid creating functions that return an Effect.gen**, use `Effect.fn` instead.
 
 ## Documented predicate
 
@@ -43,14 +41,15 @@ Its [scanner](../../packages/rules/src/rules/prefer-effect-fn/preferEffectFn.ts)
 5. an Effect-package property access named `gen`.
 
 Its predicate is therefore a strict subset of the documented predicate. Its
-[fixture](../../tests/fixtures/prefer-effect-fn/src/cases.ts) and
-[focused test](../../tests/preferEffectFn.test.ts) cover only parameterized variable functions.
+[fixture](../../packages/rules/src/rules/prefer-effect-fn/fixtures/rule/src/cases.ts) and
+[focused test](../../packages/rules/src/rules/prefer-effect-fn/test/index.test.ts) cover only
+parameterized variable functions.
 
 ### `service-method-effect-fn`
 
 [`service-method-effect-fn`](../../packages/rules/src/rules/service-method-effect-fn/index.ts)
-reports public exported Effect operations and Context service methods that are not named
-`Effect.fn` operations. It advises:
+reports public exported Effect operations and Context service methods that are not named `Effect.fn`
+operations. It advises:
 
 > Wrap public Effect service operations with a named Effect.fn.
 
@@ -98,30 +97,30 @@ const ready = () =>
 This is still a function that returns `Effect.gen`. The complete catalog reports no violation for
 this local zero-parameter case. Mechanical checks also produced this exact nearby matrix:
 
-| Witness | Exact nearby rule-name set |
-|---|---|
-| local zero-parameter wrapper | none |
-| local parameterized wrapper | `prefer-effect-fn` |
+| Witness                         | Exact nearby rule-name set |
+| ------------------------------- | -------------------------- |
+| local zero-parameter wrapper    | none                       |
+| local parameterized wrapper     | `prefer-effect-fn`         |
 | exported zero-parameter wrapper | `service-method-effect-fn` |
-| exported parameterized wrapper | `prefer-effect-fn` |
+| exported parameterized wrapper  | `prefer-effect-fn`         |
 
 Coverage is therefore partial, not exact.
 
 ## Attempted source-grounded distinctions
 
-| Attempted distinction | Result |
-|---|---|
-| Any Effect-returning function vs one returning `Effect.gen` | Rejected. The explicit noncompliant pattern is returning `Effect.gen`; broadening it invents policy. |
-| Parameterized vs zero-parameter | Rejected. The JSDoc says “functions” without an arity condition. |
-| Variable function vs declaration, method, or property | Rejected. The JSDoc states no declaration-form boundary. |
-| Concise or single-statement vs multi-statement or branched body | Rejected. This is only a scanner limit. |
-| Exported/public/service vs local/private | Rejected for the candidate. The JSDoc states no visibility or service boundary. |
+| Attempted distinction                                                  | Result                                                                                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Any Effect-returning function vs one returning `Effect.gen`            | Rejected. The explicit noncompliant pattern is returning `Effect.gen`; broadening it invents policy.                    |
+| Parameterized vs zero-parameter                                        | Rejected. The JSDoc says “functions” without an arity condition.                                                        |
+| Variable function vs declaration, method, or property                  | Rejected. The JSDoc states no declaration-form boundary.                                                                |
+| Concise or single-statement vs multi-statement or branched body        | Rejected. This is only a scanner limit.                                                                                 |
+| Exported/public/service vs local/private                               | Rejected for the candidate. The JSDoc states no visibility or service boundary.                                         |
 | Direct `.gen` access vs alias, element access, assertion, or temporary | Rejected. These are detector mechanics, not policy distinctions. Symbol identity may only exclude unrelated lookalikes. |
-| Named or domain-qualified `Effect.fn` vs unnamed `Effect.fn` | Rejected. Naming guidance is absent from the leading JSDoc. |
-| Tracing benefit vs generator syntax | Rejected. Tracing appears only below the JSDoc and in the existing hint. |
-| `self`/`this` binding vs ordinary generators | Rejected. The JSDoc states no such boundary. |
-| Trivial forwarder vs larger workflow | Rejected. The JSDoc states no triviality exception. |
-| Current `prefer-effect-fn` matches vs its complement | Rejected. Negating implementation limits does not create a source-grounded predicate. |
+| Named or domain-qualified `Effect.fn` vs unnamed `Effect.fn`           | Rejected. Naming guidance is absent from the leading JSDoc.                                                             |
+| Tracing benefit vs generator syntax                                    | Rejected. Tracing appears only below the JSDoc and in the existing hint.                                                |
+| `self`/`this` binding vs ordinary generators                           | Rejected. The JSDoc states no such boundary.                                                                            |
+| Trivial forwarder vs larger workflow                                   | Rejected. The JSDoc states no triviality exception.                                                                     |
+| Current `prefer-effect-fn` matches vs its complement                   | Rejected. Negating implementation limits does not create a source-grounded predicate.                                   |
 
 ## Earlier-example ledger
 
@@ -131,8 +130,8 @@ Coverage is therefore partial, not exact.
 
 > **@title Using Effect.gen**
 >
-> Use `Effect.gen` to write code in an imperative style similar to async await.
-> You can use `yield*` to access the result of an effect.
+> Use `Effect.gen` to write code in an imperative style similar to async await. You can use `yield*`
+> to access the result of an effect.
 
 - **Situation:** writing Effect code in an imperative style and accessing an Effect result.
 - **Advice:** use `Effect.gen` and `yield*`.

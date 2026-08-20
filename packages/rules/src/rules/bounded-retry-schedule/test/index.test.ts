@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { boundedRetrySchedule } from "../index.js"
 
 test("bounded-retry-schedule has exact public Violation output", () =>

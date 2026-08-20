@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { httpStatusDecodeOrder } from "../index.js"
 
 test("http-status-decode-order has exact public Violation output", () =>

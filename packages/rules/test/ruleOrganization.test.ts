@@ -5,7 +5,7 @@ import { test } from "bun:test"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
 import { expectedRuleNames } from "./expectedBuiltinRuleNames.js"
 
-const sourceRoot = path.join(import.meta.dir, "../packages/rules/src")
+const sourceRoot = path.join(import.meta.dir, "../src")
 const rulesRoot = path.join(sourceRoot, "rules")
 const sourceExtension = /\.ts$/u
 const staticImport = /(?:\bfrom\s+|\bimport\s+)["']([^"']+)["']/gu

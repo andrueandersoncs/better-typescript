@@ -4,7 +4,7 @@ import { test } from "bun:test"
 import { Effect } from "effect"
 import { lint } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { ruleNamed } from "../../../../../../tests/ruleNamed.js"
+import { ruleNamed } from "../../../../test/ruleNamed.js"
 
 const fixturePath = path.join(import.meta.dir, "../fixtures/rule")
 

@@ -1,6 +1,6 @@
 import { test } from "bun:test"
-import { assertAllowedFixtureItems } from "../../../../../../tests/assertAllowedFixtureItems.js"
-import { assertDisallowedFixtureItems } from "../../../../../../tests/assertDisallowedFixtureItems.js"
+import { assertAllowedFixtureItems } from "../../../../test/assertAllowedFixtureItems.js"
+import { assertDisallowedFixtureItems } from "../../../../test/assertDisallowedFixtureItems.js"
 import { allowedFixtureItems } from "./requireBlankLinesAroundMultilineDeclarationsAllowedFixtureItems.js"
 import { disallowedFixtureItems } from "./requireBlankLinesAroundMultilineDeclarationsDisallowedFixtureItems.js"
 import { runRequireBlankLinesAroundMultilineDeclarationsFixture } from "./requireBlankLinesAroundMultilineDeclarationsFixtureRunner.js"

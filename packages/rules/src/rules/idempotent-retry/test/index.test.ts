@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { idempotentRetry } from "../index.js"
 
 test("idempotent-retry has exact public Violation output", () =>

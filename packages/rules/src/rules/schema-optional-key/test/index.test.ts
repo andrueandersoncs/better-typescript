@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { schemaOptionalKey } from "../index.js"
 
 test("schema-optional-key has exact public Violation output", () =>

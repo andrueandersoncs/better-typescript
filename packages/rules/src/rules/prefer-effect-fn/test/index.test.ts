@@ -4,8 +4,8 @@ import { test } from "bun:test"
 import { Effect } from "effect"
 import { lint } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { assertRuleFixture } from "../../../../../../tests/assertRuleFixture.js"
-import { ruleNamed } from "../../../../../../tests/ruleNamed.js"
+import { assertRuleFixture } from "../../../../test/assertRuleFixture.js"
+import { ruleNamed } from "../../../../test/ruleNamed.js"
 
 const preferMessage = (name: string) =>
   `Avoid wrapping the body of ${name} in Effect.gen; use Effect.fn. ` +

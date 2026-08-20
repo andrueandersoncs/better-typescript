@@ -1,6 +1,6 @@
 import { test } from "bun:test"
-import { assertAllowedFixtureItems } from "../../../../../../tests/assertAllowedFixtureItems.js"
-import { assertDisallowedFixtureItems } from "../../../../../../tests/assertDisallowedFixtureItems.js"
+import { assertAllowedFixtureItems } from "../../../../test/assertAllowedFixtureItems.js"
+import { assertDisallowedFixtureItems } from "../../../../test/assertDisallowedFixtureItems.js"
 import { allowedFixtureItems } from "./requireBecauseInCommentsAllowedFixtureItems.js"
 import { disallowedFixtureItems } from "./requireBecauseInCommentsDisallowedFixtureItems.js"
 import { runRequireBecauseInCommentsFixture } from "./requireBecauseInCommentsFixtureRunner.js"

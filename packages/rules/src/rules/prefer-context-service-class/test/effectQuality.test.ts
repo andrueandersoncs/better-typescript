@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { preferContextServiceClass } from "../index.js"
 
 test("prefer-context-service-class has exact public Violation output", () =>

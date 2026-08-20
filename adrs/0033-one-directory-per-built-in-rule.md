@@ -27,7 +27,8 @@ objects, and dependency ownership consistent. Directory placement is a repositor
 contract, not a semantic claim about modules in analyzed user code. Files remain the TypeScript
 module boundary described by ADR-0020.
 
-This decision supersedes ADR-0032's allowance for family files containing several complete Rules.
+This decision supersedes ADR-0032's allowance for family files containing several complete Rules and
+replaces ADR-0018's root characterization-fixture convention for built-in Rules.
 
 ## Consequences
 

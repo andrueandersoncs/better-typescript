@@ -17,7 +17,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -b tsconfig.json --force",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test --timeout 30000 test/*.test.ts src/rules/*/test/*.test.ts"
   },
   "dependencies": {
     "@better-typescript/core": "0.0.2"

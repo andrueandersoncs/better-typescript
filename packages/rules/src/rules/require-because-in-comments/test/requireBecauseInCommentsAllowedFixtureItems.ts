@@ -1,4 +1,4 @@
-import type { FixtureItem } from "../../../../../../tests/fixtureItem.js"
+import type { FixtureItem } from "../../../../test/fixtureItem.js"
 
 export const allowedFixtureItems: ReadonlyArray<FixtureItem> = [
   {

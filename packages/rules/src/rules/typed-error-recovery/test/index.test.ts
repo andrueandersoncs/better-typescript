@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { typedErrorRecovery } from "../index.js"
 
 test("typed-error-recovery has exact public Violation output", () =>

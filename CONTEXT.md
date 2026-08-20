@@ -25,9 +25,11 @@ It has no rule identity, configured level, serialized path, line, or column.
 configuration, normalizes its workspace-relative path, locates its line and column, then exactly
 deduplicates and deterministically orders the complete output.
 
-**Built-in rule catalog**: The deterministic set of 126 selected Rules enabled by the CLI.
+**Built-in rule catalog**: The deterministic set of 127 selected Rules enabled by the CLI.
 
 ## Packages
+
+Each package owns its package-level tests and test fixtures under `test/`.
 
 - `@better-typescript/core` owns complete analysis runs, final Violation materialization, and
   focused project loading and linting interfaces.

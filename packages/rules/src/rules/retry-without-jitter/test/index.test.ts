@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { retryWithoutJitter } from "../index.js"
 
 test("retry-without-jitter has exact public Violation output", () =>

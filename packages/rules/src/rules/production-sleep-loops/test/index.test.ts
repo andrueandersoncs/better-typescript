@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { productionSleepLoops } from "../index.js"
 
 test("production-sleep-loops has exact public Violation output", () =>

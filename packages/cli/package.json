@@ -12,7 +12,8 @@
     "dev": "bun src/index.ts --pretty",
     "start": "bun src/index.ts",
     "build": "rm -rf dist && tsc -b tsconfig.json --force && chmod +x dist/index.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test --timeout 30000 test/*.test.ts"
   },
   "dependencies": {
     "@better-typescript/core": "0.0.2",

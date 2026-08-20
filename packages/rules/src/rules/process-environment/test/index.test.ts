@@ -1,9 +1,9 @@
 import * as assert from "node:assert/strict"
 import { test } from "bun:test"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
-import { assertRuleFixture } from "../../../../../../tests/assertRuleFixture.js"
-import { ruleNamed } from "../../../../../../tests/ruleNamed.js"
-import { runRuleFixture } from "../../../../../../tests/runRuleFixture.js"
+import { assertRuleFixture } from "../../../../test/assertRuleFixture.js"
+import { ruleNamed } from "../../../../test/ruleNamed.js"
+import { runRuleFixture } from "../../../../test/runRuleFixture.js"
 
 const expectedMessage =
   "Read runtime configuration through Effect Config, not process.env. " +

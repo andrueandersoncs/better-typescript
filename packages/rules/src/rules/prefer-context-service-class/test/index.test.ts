@@ -5,8 +5,8 @@ import { Effect } from "effect"
 import { lint } from "@better-typescript/core/linter"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
 import { loadProject } from "@better-typescript/core/project/loadProject"
-import { assertRuleFixture } from "../../../../../../tests/assertRuleFixture.js"
-import { ruleNamed } from "../../../../../../tests/ruleNamed.js"
+import { assertRuleFixture } from "../../../../test/assertRuleFixture.js"
+import { ruleNamed } from "../../../../test/ruleNamed.js"
 
 const expectedMessage =
   "Prefer a class extending Context.Service for service definitions. " +

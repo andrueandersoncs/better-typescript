@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { unboundedStreamBuffer } from "../index.js"
 
 test("unbounded-stream-buffer has exact public Violation output", () =>

@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["bun"],
+    "allowImportingTsExtensions": true
+  },
+  "include": ["**/*.ts", "../src/rules/*/test/**/*.ts"],
+  "exclude": ["../src/rules/*/fixtures/**"]
+}

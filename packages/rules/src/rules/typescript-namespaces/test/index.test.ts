@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { typescriptNamespaces } from "../index.js"
 
 test("typescript-namespaces has exact public Violation output", () =>

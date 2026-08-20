@@ -1,5 +1,5 @@
 import { test } from "bun:test"
-import { assertRuleViolations } from "../../../../../../tests/assertRuleViolations.js"
+import { assertRuleViolations } from "../../../../test/assertRuleViolations.js"
 import { boundarySchemaDecode } from "../index.js"
 
 test("boundary-schema-decode has exact public Violation output", () =>

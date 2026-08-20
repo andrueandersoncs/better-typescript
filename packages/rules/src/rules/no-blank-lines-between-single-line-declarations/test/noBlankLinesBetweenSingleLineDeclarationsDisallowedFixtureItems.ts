@@ -1,4 +1,4 @@
-import type { ExpectedViolation } from "../../../../../../tests/expectedViolation.js"
+import type { ExpectedViolation } from "../../../../test/expectedViolation.js"
 
 const message = "Single-line declarations must not have blank lines between them."
 
