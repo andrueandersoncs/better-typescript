@@ -1,15 +1,11 @@
 ---
 name: git-guardrails-claude-code
-description:
-  Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, branch -D,
-  etc.) before they execute. Use when user wants to prevent destructive git operations, add git
-  safety hooks, or block git push/reset in Claude Code.
+description: Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, branch -D, etc.) before they execute. Use when user wants to prevent destructive git operations, add git safety hooks, or block git push/reset in Claude Code.
 ---
 
 # Setup Git Guardrails
 
-Sets up a PreToolUse hook that intercepts and blocks dangerous git commands before Claude executes
-them.
+Sets up a PreToolUse hook that intercepts and blocks dangerous git commands before Claude executes them.
 
 ## What Gets Blocked
 
@@ -19,15 +15,13 @@ them.
 - `git branch -D`
 - `git checkout .` / `git restore .`
 
-When blocked, Claude sees a message telling it that it does not have authority to access these
-commands.
+When blocked, Claude sees a message telling it that it does not have authority to access these commands.
 
 ## Steps
 
 ### 1. Ask scope
 
-Ask the user: install for **this project only** (`.claude/settings.json`) or **all projects**
-(`~/.claude/settings.json`)?
+Ask the user: install for **this project only** (`.claude/settings.json`) or **all projects** (`~/.claude/settings.json`)?
 
 ### 2. Copy the hook script
 
@@ -84,13 +78,11 @@ Add to the appropriate settings file:
 }
 ```
 
-If the settings file already exists, merge the hook into the existing `hooks.PreToolUse` array.
-Don't overwrite other settings.
+If the settings file already exists, merge the hook into the existing `hooks.PreToolUse` array. Don't overwrite other settings.
 
 ### 4. Ask about customization
 
-Ask if user wants to add or remove any patterns from the blocked list. Edit the copied script
-accordingly.
+Ask if user wants to add or remove any patterns from the blocked list. Edit the copied script accordingly.
 
 ### 5. Verify
 

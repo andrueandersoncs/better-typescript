@@ -1,181 +1,102 @@
-import { parameterTypeNode } from "../../internal/support/parameterTypeNode.js"
-import { variableDeclarationKinds } from "../../internal/scanner/nodeKindSubscriptions.js"
-import { Array, Function, Match, Option, pipe, Struct, flow, Schema } from "effect"
+import { Function, Match, Option, Schema, Struct, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { makeNodeScanner } from "../../internal/scanner/makeNodeScanner.js"
+import { functionReturnsEffectGen } from "../../internal/builtins/effectGenReturningFunction.js"
+import { functionDefinitionKinds } from "../../internal/builtins/functionDefinitionKinds.js"
 import { makeNodeMatch } from "../../internal/scanner/makeNodeMatch.js"
+import { makeNodeScanner } from "../../internal/scanner/makeNodeScanner.js"
 import type { MatchContext } from "../../internal/scanner/matchContext.js"
-import { functionInitializer } from "../../internal/support/functionInitializer2.js"
-import { hasParameters } from "../../internal/support/hasParameters.js"
-import { unwrapExpression } from "../../internal/support/unwrapExpression.js"
-import { symbolDeclaredInEffectPackage } from "../../internal/support/declarationInEffectPackage.js"
-import { isEffectInterfaceSymbol } from "../../internal/support/isEffectInterfaceSymbol.js"
-import { strictEqual } from "../../internal/equivalence.js"
-import { returnedExpression } from "../../internal/support/returnedExpression.js"
+import type { FunctionDefinition } from "../../internal/support/functionDefinition.js"
+import { isFunctionDefinition } from "../../internal/support/isFunctionDefinition.js"
+import { propertyNameText } from "../../internal/support/propertyNameText.js"
 
-const optionalText = Schema.optional(Schema.String)
-
-// PreferEffectFnFact records Effect.fn candidates because self and this bindings need quotes.
+// PreferEffectFnFact exists because the scanner and message share a dynamic function name.
 export const PreferEffectFnFact = Schema.Struct({
-  functionName: Schema.String,
-  selfBindingText: optionalText,
-  thisTypeText: optionalText
+  functionName: Schema.String
 })
 
 export interface PreferEffectFnFact extends Schema.Schema.Type<typeof PreferEffectFnFact> {}
 
-const isGenPropertyName = (access: ts.PropertyAccessExpression) =>
-  strictEqual("gen")(access.name.text)
-
-const isEffectGenAccess = (checker: ts.TypeChecker) => (access: ts.PropertyAccessExpression) =>
-  isGenPropertyName(access) &&
-  pipe(
-    checker.getSymbolAtLocation(access.name),
-    Option.fromNullishOr,
-    Option.exists(symbolDeclaredInEffectPackage)
-  )
-
-const effectGenCall =
-  (checker: ts.TypeChecker) => (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
-    const conciseBody = !ts.isBlock(initializer.body)
-
-    const hasSingleStatement = (body: ts.Block) =>
-      pipe(body.statements, Array.length, strictEqual(1))
-
-    const singleStatementBlock = pipe(
-      Option.liftPredicate(ts.isBlock)(initializer.body),
-      Option.exists(hasSingleStatement)
-    )
-
-    const supportedBodyKinds = Array.make(conciseBody, singleStatementBlock)
-    const hasSingleBlockStatement = Array.some(supportedBodyKinds, Boolean)
-
-    const callIsEffectGen = (call: ts.CallExpression) =>
-      pipe(
-        Option.liftPredicate(ts.isPropertyAccessExpression)(call.expression),
-        Option.exists(isEffectGenAccess(checker))
-      )
-
-    if (!hasSingleBlockStatement) {
-      return Option.none<ts.CallExpression>()
-    }
-
-    return pipe(
-      returnedExpression(initializer),
-      Option.map(unwrapExpression),
-      Option.filter(ts.isCallExpression),
-      Option.filter(callIsEffectGen)
-    )
-  }
-
-const shorthandNameIsSelf = (shorthand: ts.ShorthandPropertyAssignment) =>
-  strictEqual("self")(shorthand.name.text)
-
-const identifierTextIsSelf = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("self"))
-
-const stringLiteralTextIsSelf = flow(
-  Struct.get<ts.StringLiteralLike, "text">("text"),
-  strictEqual("self")
+const declarationNameNode = flow(
+  Struct.get<ts.VariableDeclaration | ts.PropertyAssignment | ts.PropertyDeclaration, "name">(
+    "name"
+  ),
+  Option.some<ts.Node>
 )
 
-const assignmentNameIsSelf = (assignment: ts.PropertyAssignment) =>
+const contextualNameNode = (declaration: FunctionDefinition) =>
   pipe(
-    Match.value(assignment.name),
-    Match.when(ts.isIdentifier, identifierTextIsSelf),
-    Match.when(ts.isStringLiteralLike, stringLiteralTextIsSelf),
-    Match.orElse(Function.constFalse)
+    Match.value(declaration.parent),
+    Match.when(ts.isVariableDeclaration, declarationNameNode),
+    Match.when(ts.isPropertyAssignment, declarationNameNode),
+    Match.when(ts.isPropertyDeclaration, declarationNameNode),
+    Match.orElse(Option.none as () => Option.Option<ts.Node>)
   )
 
-const propertyBindsSelf = (property: ts.ObjectLiteralElementLike) =>
+const functionDeclarationNameNode = (declaration: ts.FunctionDeclaration) =>
   pipe(
-    Match.value(property),
-    Match.when(ts.isShorthandPropertyAssignment, shorthandNameIsSelf),
-    Match.when(ts.isPropertyAssignment, assignmentNameIsSelf),
-    Match.orElse(Function.constFalse)
+    declaration.name,
+    Option.fromNullishOr,
+    Option.map((name): ts.Node => name)
   )
 
-const objectLiteralBindsSelf = (literal: ts.ObjectLiteralExpression) =>
-  Array.some(literal.properties, propertyBindsSelf)
-
-const selfBindingLiteral = (call: ts.CallExpression) =>
+const functionExpressionNameNode = (expression: ts.FunctionExpression) =>
   pipe(
-    Option.fromNullishOr(call.arguments[0]),
-    Option.filter(ts.isObjectLiteralExpression),
-    Option.filter(objectLiteralBindsSelf)
+    expression.name,
+    Option.fromNullishOr,
+    Option.map((name): ts.Node => name)
   )
 
-const identifierTextIsThis = flow(Struct.get<ts.Identifier, "text">("text"), strictEqual("this"))
+const methodName = (method: ts.MethodDeclaration): Option.Option<ts.Node> =>
+  Option.some(method.name)
 
-const parameterIsThis = (parameter: ts.ParameterDeclaration) =>
-  pipe(Option.liftPredicate(ts.isIdentifier)(parameter.name), Option.exists(identifierTextIsThis))
-
-const generatorThisParameter = (generator: ts.FunctionExpression) =>
-  Array.findFirst(generator.parameters, parameterIsThis)
-
-const generatorThisTypeText = (sourceFile: ts.SourceFile) => (call: ts.CallExpression) =>
+const ownNameNode = (declaration: FunctionDefinition) =>
   pipe(
-    Array.findFirst(call.arguments, ts.isFunctionExpression),
-    Option.flatMap(generatorThisParameter),
-    Option.flatMap(parameterTypeNode),
-    Option.map((typeNode) => typeNode.getText(sourceFile)),
-    Option.getOrUndefined
+    Match.value(declaration),
+    Match.when(ts.isFunctionDeclaration, functionDeclarationNameNode),
+    Match.when(ts.isFunctionExpression, functionExpressionNameNode),
+    Match.when(ts.isMethodDeclaration, methodName),
+    Match.orElse(Option.none as () => Option.Option<ts.Node>)
   )
 
-const effectFnMatches = (context: MatchContext) => {
-  const genCall = effectGenCall(context.checker)
+const functionNameNode = (declaration: FunctionDefinition) =>
+  pipe(
+    contextualNameNode(declaration),
+    Option.orElse(() => ownNameNode(declaration))
+  )
 
-  const signatureReturnsEffect = (signature: ts.Signature) => {
-    const returnType = context.checker.getReturnTypeOfSignature(signature)
-    const typeSymbol = returnType.getSymbol()
-    const symbol = Option.fromNullishOr(typeSymbol)
+const nodeText = (sourceFile: ts.SourceFile) => (node: ts.Node) => node.getText(sourceFile)
 
-    return Option.exists(symbol, isEffectInterfaceSymbol)
-  }
+const nameNodeText = (sourceFile: ts.SourceFile) => (node: ts.Node) =>
+  pipe(
+    Match.value(node),
+    Match.when(ts.isPropertyName, propertyNameText),
+    Match.orElse(flow(nodeText(sourceFile), Option.some))
+  )
 
-  const initializerReturnsEffect = (initializer: ts.ArrowFunction | ts.FunctionExpression) => {
-    const declaredSignature = context.checker.getSignatureFromDeclaration(initializer)
-    const signature = Option.fromNullishOr(declaredSignature)
+const functionNameText = (sourceFile: ts.SourceFile) => (declaration: FunctionDefinition) =>
+  pipe(
+    functionNameNode(declaration),
+    Option.flatMap(nameNodeText(sourceFile)),
+    Option.getOrElse(Function.constant("this function"))
+  )
 
-    return Option.exists(signature, signatureReturnsEffect)
-  }
+const preferEffectFnMatches = (context: MatchContext) => (declaration: FunctionDefinition) =>
+  pipe(
+    functionReturnsEffectGen(context.checker)(declaration),
+    Option.map(() => {
+      const functionName = functionNameText(context.sourceFile)(declaration)
 
-  const matches = (declaration: ts.VariableDeclaration) => {
-    const candidateForGenCall = (call: ts.CallExpression) => {
-      const functionName = declaration.name.getText(context.sourceFile)
-
-      const selfBinding = pipe(
-        selfBindingLiteral(call),
-        Option.map((literal) => literal.getText(context.sourceFile))
+      const targetNode = pipe(
+        functionNameNode(declaration),
+        Option.getOrElse(Function.constant<ts.Node>(declaration))
       )
 
-      const selfBindingText = Option.getOrUndefined(selfBinding)
+      const fact = PreferEffectFnFact.make({ functionName })
 
-      const thisTypeText = Option.isSome(selfBinding)
-        ? generatorThisTypeText(context.sourceFile)(call)
-        : undefined
+      return makeNodeMatch(targetNode, fact)
+    }),
+    Option.toArray
+  )
 
-      const fact = PreferEffectFnFact.make({
-        functionName,
-        selfBindingText,
-        thisTypeText
-      })
-
-      return makeNodeMatch(declaration.name, fact)
-    }
-
-    return pipe(
-      functionInitializer(declaration),
-      Option.filter(hasParameters),
-      Option.filter(initializerReturnsEffect),
-      Option.flatMap(genCall),
-      Option.map(candidateForGenCall),
-      Option.toArray
-    )
-  }
-
-  return matches
-}
-
-export const preferEffectFnScanner = makeNodeScanner(variableDeclarationKinds)(
-  ts.isVariableDeclaration
-)(effectFnMatches)
+export const preferEffectFnScanner =
+  makeNodeScanner(functionDefinitionKinds)(isFunctionDefinition)(preferEffectFnMatches)

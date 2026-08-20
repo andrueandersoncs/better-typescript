@@ -1,4 +1,4 @@
-import { parameterTypeNode } from "../../internal/support/parameterTypeNode.js"
+import { parameterTypeNode } from "./parameterTypeNode.js"
 import { Array, Function, Option, Schema, Struct, pipe } from "effect"
 import * as ts from "typescript"
 import { makeNodeScanner } from "../../internal/scanner/makeNodeScanner.js"

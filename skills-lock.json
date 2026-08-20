@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "absurd-code-review": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "absurd-code-review/SKILL.md",
+      "computedHash": "576d67a2489f7c456a0ec38c4b50c1b7c872638009c3e00e986fd9f9d3dad64e"
+    },
     "ask-matt": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -17,7 +23,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/code-review/SKILL.md",
-      "computedHash": "f3b4a7f337455dc365ba8e3923930b067a362c9662779137170ea700cb4328cb"
+      "computedHash": "caa9a086baaf9e0f7cd71f64edfa83da6821c05e826b083221f3d02e3d6a1905"
     },
     "codebase-design": {
       "source": "mattpocock/skills",
@@ -30,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "decompose-skill/SKILL.md",
       "computedHash": "c813f1e0babbdbaf8d0604475d0d0bcf188f31321de2a15fdf316f6e6ea052cc"
+    },
+    "decompose-workflow-skill": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "decompose-workflow-skill/SKILL.md",
+      "computedHash": "9b58681b5aae83434e7c464b8a60e9acc246adbd24536ddb0bc44514c5154827"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
@@ -65,7 +77,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grilling/SKILL.md",
-      "computedHash": "a16b2f661db6caf310d7e02dd0d069e597cb888873e210e66f641eae715c5f23"
+      "computedHash": "4dd886b0196bf43729d954ae326016f2bd9f5f79d892500b407c33a753362f14"
     },
     "handoff": {
       "source": "mattpocock/skills",
@@ -83,7 +95,7 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "implement-happy-path/SKILL.md",
-      "computedHash": "7b334c195b3986bc0d4369add98a25689146a8e2f731d5dc30d58c4ad1d55679"
+      "computedHash": "f9b672bbdade1fe6a465bfaabc2a6d7e2193dc72e7797033733fb8746d60a6d0"
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
@@ -137,7 +149,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
-      "computedHash": "f9c2b933dda18eea572e96f6ebbcd5b30e0d1bfdc074af53cc99728dc5f0bdac"
+      "computedHash": "552b0f48b9fe054aa93c5d432fefbd7bd9645e3f2d20b4e22432453a81800b21"
     },
     "setup-pre-commit": {
       "source": "mattpocock/skills",
@@ -173,7 +185,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/to-spec/SKILL.md",
-      "computedHash": "e0d6ed875f646b788ea710714ca92b138adad59e18a12a2c045244b9364ca259"
+      "computedHash": "3fa1a0695d4ea242fae9e569e4d22aa1788623197abb33bfadafae7315789bbf"
     },
     "to-tickets": {
       "source": "mattpocock/skills",
@@ -191,7 +203,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/wait-what/SKILL.md",
-      "computedHash": "9638acdcd76457ca70a007b5a02c4bf44893fb3064692a9158d907e82f200eec"
+      "computedHash": "71a9a1f1773d4b1ff70a9d496db63855ef83a7fe906c72b70cdebf4815a2c4c1"
     },
     "wayfinder": {
       "source": "mattpocock/skills",
@@ -209,19 +221,19 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "workflow-callstack-simulation/SKILL.md",
-      "computedHash": "7f9ab39e92884068c222b153cb47dc5aa3dff84014d9827b0af0a2b4a24ab9a0"
+      "computedHash": "aeba6e7952c94883fb416321a1deb6d4389d6b594396e46b9b6cfc9edb65aa86"
     },
     "workflow-state-machine-simulation": {
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "workflow-state-machine-simulation/SKILL.md",
-      "computedHash": "cc2d90c8bb6454ceb27fb2cd989c5b5aeb114c6bb4d00795e274c09a7498b1ca"
+      "computedHash": "3967e84711a4157bd9f2e27cfe27f36566ca39f3598a4e3afcc9ac30e6bfd7bd"
     },
     "workflow-to-skill": {
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "workflow-to-skill/SKILL.md",
-      "computedHash": "d4bcfae36b23182e56fd357694aa0d74ad684130ef37f046535949d79840f565"
+      "computedHash": "111aa3cab26f749dfa5d87484dacdd2ba883348646102881a1196d32eedbe26c"
     },
     "writing-beats": {
       "source": "mattpocock/skills",
@@ -234,6 +246,18 @@
       "sourceType": "github",
       "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
       "computedHash": "95da47fc97af998e85b7d7e6d57b3ac76727c1e290cfe9ea09005aacb826959f"
+    },
+    "writing-fragments": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/in-progress/writing-fragments/SKILL.md",
+      "computedHash": "cbd8c4ed24ebc292017831ef76bc8798719b3adcd18f7781a632a37844a1c369"
+    },
+    "writing-shape": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/in-progress/writing-shape/SKILL.md",
+      "computedHash": "0d0ac1150c4d65f8370ad194fc097ee17855247f6e5943d05f075806980e7401"
     }
   }
 }

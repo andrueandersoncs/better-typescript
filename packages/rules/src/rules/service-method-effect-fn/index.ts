@@ -25,6 +25,11 @@ import type { Match as ScannerMatch } from "../../internal/scanner/match.js"
 
 import type { MatchContext } from "../../internal/scanner/matchContext.js"
 
+import {
+  expressionIsFunctionReturningEffectGen,
+  functionReturnsEffectGen
+} from "../../internal/builtins/effectGenReturningFunction.js"
+
 import { classExtendsEffectApi } from "../../internal/support/effectApi/classExtendsEffectApi.js"
 
 import { effectServiceConfigObject } from "./effectServiceConfigObject.js"
@@ -37,19 +42,13 @@ import { propertyAssignmentNamed } from "../../internal/support/effectApi/proper
 
 import { functionDeclarationName } from "../../internal/support/functionDeclarationName.js"
 
-import { functionInitializer } from "../../internal/support/functionInitializer2.js"
-
 import { hasExportModifier } from "../../internal/support/hasExportModifier.js"
-
-import { hasParameters } from "../../internal/support/hasParameters.js"
 
 import { isEffectInterfaceSymbol } from "../../internal/support/isEffectInterfaceSymbol.js"
 
 import { isFunctionInitializer } from "../../internal/support/isFunctionInitializer.js"
 
 import { propertyNameText } from "../../internal/support/propertyNameText.js"
-
-import { returnStatementExpression } from "../../internal/support/returnStatementExpression.js"
 
 import { unwrapTransparentExpression } from "../../internal/support/transparentWrapper.js"
 
@@ -131,43 +130,6 @@ const serviceMethodFindingForName =
     return makeSubjectMatch(subject)(targetNode)
   }
 
-const effectGenNames = Array.of("gen")
-
-const callIsEffectGen = (checker: ts.TypeChecker) => (call: ts.CallExpression) =>
-  importedEffectApiAt(checker)("Effect")(effectGenNames)(call.expression)
-
-const isEffectGenCall = (checker: ts.TypeChecker) => (expression: ts.Expression) =>
-  pipe(
-    expression,
-    unwrapTransparentExpression,
-    Option.liftPredicate(ts.isCallExpression),
-    Option.exists(callIsEffectGen(checker))
-  )
-
-const returnExpressionFromBlock = (block: ts.Block) =>
-  pipe(
-    Array.fromIterable(block.statements),
-    Array.findFirst(ts.isReturnStatement),
-    Option.flatMap(returnStatementExpression)
-  )
-
-const returnedExpressionOfFunction = (declaration: ts.ArrowFunction | ts.FunctionExpression) =>
-  pipe(
-    EffectMatch.value(declaration.body),
-    EffectMatch.when(ts.isBlock, returnExpressionFromBlock),
-    EffectMatch.orElse(Option.some as (expression: ts.Expression) => Option.Option<ts.Expression>)
-  )
-
-const isPreferEffectFnOverlapShape =
-  (checker: ts.TypeChecker) => (declaration: ts.VariableDeclaration) =>
-    pipe(
-      functionInitializer(declaration),
-      Option.filter(hasParameters),
-      Option.filter(functionLikeReturnsEffect(checker)),
-      Option.flatMap(returnedExpressionOfFunction),
-      Option.exists(isEffectGenCall(checker))
-    )
-
 const variableStatementIsExported =
   (node: ts.VariableDeclaration) => (statement: ts.VariableStatement) => {
     const hasExport = hasExportModifier(statement)
@@ -224,11 +186,18 @@ const qualityFromVariableDeclaration =
       Option.map(() => qualityFindingFromVariableDeclaration(declaration))
     )
 
+const variableReturnsEffectGen =
+  (checker: ts.TypeChecker) => (declaration: ts.VariableDeclaration) =>
+    pipe(
+      Option.fromNullishOr(declaration.initializer),
+      Option.exists(expressionIsFunctionReturningEffectGen(checker))
+    )
+
 const qualityFromVariableNode = (context: MatchContext) => (node: ts.Node) =>
   pipe(
     Option.liftPredicate(ts.isVariableDeclaration)(node),
     Option.flatMap(exportedVariableDeclaration),
-    Option.filter(Predicate.not(isPreferEffectFnOverlapShape(context.checker))),
+    Option.filter(Predicate.not(variableReturnsEffectGen(context.checker))),
     Option.filter(variableDeclarationNameIsIdentifier),
     Option.flatMap(qualityFromVariableDeclaration(context.checker))
   )
@@ -266,12 +235,16 @@ const qualityFindingFromFunctionDeclaration = (declaration: ts.FunctionDeclarati
   return makeSubjectMatch(subject)(targetNode)
 }
 
+const functionDoesNotReturnEffectGen = (checker: ts.TypeChecker) =>
+  flow(functionReturnsEffectGen(checker), Option.isNone)
+
 const qualityFromFunctionNode = (context: MatchContext) => (node: ts.Node) =>
   pipe(
     Option.liftPredicate(ts.isFunctionDeclaration)(node),
     Option.filter(functionDeclarationHasName),
     Option.filter(functionDeclarationIsExported),
     Option.filter(functionLikeReturnsEffect(context.checker)),
+    Option.filter(functionDoesNotReturnEffectGen(context.checker)),
     Option.map(qualityFindingFromFunctionDeclaration)
   )
 
@@ -340,9 +313,10 @@ const propertyAssignmentMethodFinding =
     const methodName = propertyNameText(property.name)
     const initializer = unwrapTransparentExpression(property.initializer)
     const returnsEffect = expressionTypeIsEffectReturning(context.checker)(initializer)
+    const returnsEffectGen = expressionIsFunctionReturningEffectGen(context.checker)(initializer)
     const wrapped = initializerIsNamedEffectFn(context.checker)(initializer)
     const notWrapped = !wrapped
-    const shouldReportChecks = Array.make(returnsEffect, notWrapped)
+    const shouldReportChecks = Array.make(returnsEffect, !returnsEffectGen, notWrapped)
     const shouldReport = Array.every(shouldReportChecks, Boolean)
 
     return shouldReport
@@ -354,8 +328,12 @@ const methodDeclarationFinding =
   (context: MatchContext) => (serviceName: string) => (property: ts.MethodDeclaration) => {
     const methodName = pipe(Option.fromNullishOr(property.name), Option.flatMap(propertyNameText))
     const returnsEffect = functionLikeReturnsEffect(context.checker)(property)
+    const effectGenInspection = functionReturnsEffectGen(context.checker)(property)
+    const doesNotReturnEffectGen = Option.isNone(effectGenInspection)
+    const shouldReportChecks = Array.make(returnsEffect, doesNotReturnEffectGen)
+    const shouldReport = Array.every(shouldReportChecks, Boolean)
 
-    return returnsEffect
+    return shouldReport
       ? pipe(methodName, Option.map(serviceMethodFindingForName(serviceName)(property)))
       : Option.none()
   }
@@ -365,9 +343,10 @@ const shorthandPropertyMethodFinding =
   (serviceName: string) =>
   (property: ts.ShorthandPropertyAssignment) => {
     const returnsEffect = expressionTypeIsEffectReturning(context.checker)(property.name)
+    const returnsEffectGen = expressionIsFunctionReturningEffectGen(context.checker)(property.name)
     const wrapped = initializerIsNamedEffectFn(context.checker)(property.name)
     const notWrapped = !wrapped
-    const shouldReportChecks = Array.make(returnsEffect, notWrapped)
+    const shouldReportChecks = Array.make(returnsEffect, !returnsEffectGen, notWrapped)
     const shouldReport = Array.every(shouldReportChecks, Boolean)
 
     if (!shouldReport) {
