@@ -20,8 +20,8 @@ Prettier; it does not replace them or format code.
 - For setup, install and configure the CLI.
 - For a check, run the CLI and report its NDJSON output without editing source.
 - For a fix, run the CLI, remediate every violation, and rerun it.
-- For output that appears incorrect, use a Better TypeScript triage workflow instead of changing
-  code just to silence the result.
+- For post-remediation code the user rejects, use a Better TypeScript triage workflow instead of
+  defending a clean run or reapplying the rejected transformation.
 
 ## Install
 

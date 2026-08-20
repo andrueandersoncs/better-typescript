@@ -11,8 +11,8 @@ npx skills add andrueandersoncs/better-typescript --skill better-typescript
 npx skills add andrueandersoncs/better-typescript --skill triage-better-typescript
 ```
 
-Use `better-typescript` for setup and normal runs. Use `triage-better-typescript` when its result
-looks wrong and you can provide a code sample.
+Use `better-typescript` for setup and normal runs. Use `triage-better-typescript` when code produced
+by remediation is unsatisfactory and you can provide the result.
 
 ## Usage
 
