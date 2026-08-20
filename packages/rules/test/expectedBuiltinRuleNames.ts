@@ -88,6 +88,7 @@ export const expectedRuleNames: ReadonlyArray<string> = [
   "prefer-hash-set",
   "prefer-implicit-return",
   "prefer-inferred-types",
+  "prefer-layer-unwrap",
   "prefer-option-match",
   "prefer-pipe-function",
   "prefer-result-concept-names",

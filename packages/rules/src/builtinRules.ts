@@ -89,6 +89,7 @@ import { preferHashMap } from "./rules/prefer-hash-map/index.js"
 import { preferHashSet } from "./rules/prefer-hash-set/index.js"
 import { preferImplicitReturn } from "./rules/prefer-implicit-return/index.js"
 import { preferInferredTypes } from "./rules/prefer-inferred-types/index.js"
+import { preferLayerUnwrap } from "./rules/prefer-layer-unwrap/index.js"
 import { preferOptionMatch } from "./rules/prefer-option-match/index.js"
 import { preferPipeFunction } from "./rules/prefer-pipe-function/index.js"
 import { preferResultConceptNames } from "./rules/prefer-result-concept-names/index.js"
@@ -219,6 +220,7 @@ const allRules: ReadonlyArray<Rule> = Array.make(
   preferHashSet,
   preferImplicitReturn,
   preferInferredTypes,
+  preferLayerUnwrap,
   preferOptionMatch,
   preferPipeFunction,
   preferResultConceptNames,
