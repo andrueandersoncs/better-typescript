@@ -1,3 +1,4 @@
+import { emptyHeritageClauses } from "../../support/effectApi/emptyHeritageClauses.js"
 import { Array, Function, HashSet, Option, Result, Struct, pipe } from "effect"
 import { strictEqual } from "../../equivalence.js"
 import * as ts from "typescript"
@@ -84,8 +85,6 @@ export const effectDataClassForSymbol = (
 
   return Option.some(data)
 }
-
-export const emptyHeritageClauses = Array.empty<ts.HeritageClause>()
 
 export const heritageClauseTypesHead = (clause: ts.HeritageClause) => Array.head(clause.types)
 

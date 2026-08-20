@@ -1,3 +1,9 @@
+import {
+  aggregationOperations,
+  conversionOperations,
+  lookupOperations,
+  resultBearingOperations
+} from "./operationVocabulary.js"
 import * as ts from "typescript"
 import { strictEqual } from "../equivalence.js"
 import type { ProgramContext } from "../sources/data.js"
@@ -129,25 +135,6 @@ const operationWords = HashSet.make(
   "write"
 )
 
-const resultBearingOperations = HashSet.make(
-  "build",
-  "choose",
-  "construct",
-  "create",
-  "decode",
-  "filter",
-  "find",
-  "get",
-  "load",
-  "lookup",
-  "make",
-  "parse",
-  "read",
-  "resolve",
-  "select",
-  "transform"
-)
-
 const collectionWords = HashSet.make(
   "array",
   "chunk",
@@ -170,38 +157,6 @@ const effectWords = HashSet.make("effect")
 const promiseWords = HashSet.make("promise")
 
 const constructionOperations = HashSet.make("build", "construct", "create", "make", "new")
-
-const lookupOperations = HashSet.make("at", "find", "get", "head", "last", "load", "lookup", "read")
-
-const conversionOperations = HashSet.make(
-  "as",
-  "decode",
-  "deserialize",
-  "encode",
-  "format",
-  "parse",
-  "serialize",
-  "stringify",
-  "to",
-  "transform"
-)
-
-const aggregationOperations = HashSet.make(
-  "aggregate",
-  "average",
-  "count",
-  "every",
-  "group",
-  "index",
-  "length",
-  "max",
-  "min",
-  "reduce",
-  "size",
-  "some",
-  "sum",
-  "total"
-)
 
 const commandOperations = HashSet.make(
   "collect",

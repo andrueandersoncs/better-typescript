@@ -1,6 +1,6 @@
 import { Match, Option, Struct, Tuple, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { unwrapTransparentExpression } from "../../support/transparentWrapper.js"
+import { unwrapTransparentExpression } from "../transparentWrapper.js"
 import { emptyMemberPath } from "./emptyMemberPath.js"
 import { makePathWithMember } from "./makePathWithMember.js"
 

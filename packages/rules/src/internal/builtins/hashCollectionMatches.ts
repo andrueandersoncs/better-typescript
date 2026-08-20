@@ -1,3 +1,5 @@
+import { emptyDeclarations } from "../support/emptyDeclarations.js"
+import { propertyAccessKinds } from "../scanner/nodeKindSubscriptions.js"
 import { Array, Function, Option, Struct, flow, pipe, Match as EffectMatch } from "effect"
 import * as ts from "typescript"
 import { Scanner } from "../scanner/scannerData.js"
@@ -84,7 +86,6 @@ const typeReferenceEscapesExternally =
       })
     )
 
-const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
 const emptyNodes: ReadonlyArray<ts.Node> = Array.empty()
 
 const typeNameIdentifier = Function.flow(
@@ -94,7 +95,6 @@ const typeNameIdentifier = Function.flow(
 
 const ruleNodeKinds = Array.make(ts.SyntaxKind.NewExpression, ts.SyntaxKind.TypeReference)
 const importDeclarationKinds = Array.of(ts.SyntaxKind.ImportDeclaration)
-const propertyAccessKinds = Array.of(ts.SyntaxKind.PropertyAccessExpression)
 
 // constructorMatches reports built-in collection construction because Map/Set share one seam.
 export const constructorMatches =

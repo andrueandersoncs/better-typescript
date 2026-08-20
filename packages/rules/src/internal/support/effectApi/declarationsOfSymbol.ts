@@ -1,8 +1,6 @@
-import { Array } from "effect"
+import { emptyDeclarations } from "../emptyDeclarations.js"
 import type * as ts from "typescript"
-import { symbolDeclarations } from "../../support/symbolDeclarations.js"
-
-export const emptyDeclarations: ReadonlyArray<ts.Declaration> = Array.empty()
+import { symbolDeclarations } from "../symbolDeclarations.js"
 
 export const declarationsOfSymbol = (symbol: ts.Symbol): ReadonlyArray<ts.Declaration> =>
   symbolDeclarations(symbol) ?? emptyDeclarations

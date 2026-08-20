@@ -1,7 +1,7 @@
 import { Array, Function, Match, Option, Struct, Tuple, flow, pipe } from "effect"
 import { strictEqual } from "../../equivalence.js"
 import * as ts from "typescript"
-import { isProjectFile } from "../../support/isProjectFile.js"
+import { isProjectFile } from "../isProjectFile.js"
 import { ImportedMember } from "./importedMember.js"
 import { declarationsOfSymbol } from "./declarationsOfSymbol.js"
 import { emptyMemberPath } from "./emptyMemberPath.js"

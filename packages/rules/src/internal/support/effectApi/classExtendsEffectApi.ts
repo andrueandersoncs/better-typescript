@@ -1,6 +1,6 @@
 import { Array, Struct, flow } from "effect"
 import * as ts from "typescript"
-import { unwrapCallee } from "../../support/unwrapCallee.js"
+import { unwrapCallee } from "../unwrapCallee.js"
 import { emptyHeritageClauses } from "./emptyHeritageClauses.js"
 import { importedEffectApiAt } from "./importedEffectApiAt.js"
 

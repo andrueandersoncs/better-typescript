@@ -1,6 +1,6 @@
 import { Array, Option, Tuple, flow, pipe } from "effect"
 import * as ts from "typescript"
-import { isProjectFile } from "../../support/isProjectFile.js"
+import { isProjectFile } from "../isProjectFile.js"
 import { declarationsOfSymbol } from "./declarationsOfSymbol.js"
 import { expressionPath } from "./expressionPath.js"
 
