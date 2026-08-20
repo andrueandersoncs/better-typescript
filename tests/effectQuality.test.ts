@@ -27,6 +27,7 @@ const rules = [
   "inflight-dedupe-map",
   "layer-forever-acquisition",
   "observable-worker-failure",
+  "prefer-context-service-class",
   "process-environment",
   "production-sleep-loops",
   "raw-fetch-abort-signal",

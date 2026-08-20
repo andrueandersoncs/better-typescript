@@ -63,6 +63,7 @@ import { parameterBag } from "./rules/parameter-bag/index.js"
 import { passThroughConversion } from "./rules/pass-through-conversion/index.js"
 import { preferComposedCallbacks } from "./rules/prefer-composed-callbacks/index.js"
 import { preferConditionalReturn } from "./rules/prefer-conditional-return/index.js"
+import { preferContextServiceClass } from "./rules/prefer-context-service-class/index.js"
 import { preferCurriedDataLastFunctions } from "./rules/prefer-curried-data-last-functions/index.js"
 import { preferDirectBooleanReturn } from "./rules/prefer-direct-boolean-return/index.js"
 import { preferDirectYield } from "./rules/prefer-direct-yield/index.js"
@@ -191,6 +192,7 @@ const allRules: ReadonlyArray<Rule> = Array.make(
   passThroughConversion,
   preferComposedCallbacks,
   preferConditionalReturn,
+  preferContextServiceClass,
   preferCurriedDataLastFunctions,
   preferDirectBooleanReturn,
   preferDirectYield,

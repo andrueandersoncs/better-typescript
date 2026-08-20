@@ -62,6 +62,7 @@ export const expectedRuleNames: ReadonlyArray<string> = [
   "pass-through-conversion",
   "prefer-composed-callbacks",
   "prefer-conditional-return",
+  "prefer-context-service-class",
   "prefer-curried-data-last-functions",
   "prefer-direct-boolean-return",
   "prefer-direct-yield",

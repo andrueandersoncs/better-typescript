@@ -123,3 +123,7 @@ export const rawBoundaryRecovery = Effect.catchAll(Effect.fail("failed"), () => 
 export const foreverLayer = Layer.effectDiscard(Stream.never.pipe(Stream.runDrain))
 
 export const foreverRetry = Effect.retry(Effect.void, Schedule.forever)
+
+export const FunctionStyleService = Context.Service<{
+  readonly get: () => Effect.Effect<string>
+}>("FunctionStyleService")

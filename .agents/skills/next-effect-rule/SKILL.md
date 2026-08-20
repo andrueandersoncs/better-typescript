@@ -73,17 +73,27 @@ when protected changes and exact integration points are known.
 Enumerate the Input A snapshot in its defined order. From each complete leading JSDoc derive one
 triad: **situation** `S`, **noncompliant observable pattern** `N`, and **advice** `A`. Code below the
 block may identify API symbols and shape but cannot add policy absent from the JSDoc. The enforceable
-predicate is `P = S ∧ N`; every conjunct must trace to quoted JSDoc or mechanically represent it. A
-file is ineligible when it lacks any triad part or contains independent triads without one common
+predicate is `P = S ∧ N`; every conjunct must trace to quoted JSDoc or mechanically represent it.
+
+Normative wording can establish `N` without words such as “avoid” or “do not.” When the JSDoc says
+to use, prefer, or default to `X` in `S`, an observable alternative in `S` that omits or replaces `X`
+can be `N`. Preserve the source's strength: a preference produces preference advice, not a claim
+that the alternative is invalid. A capability-only description does not establish `N`, and a desired
+outcome is insufficient when no noncompliant code shape is observable.
+
+A file is ineligible when it lacks any triad part or contains independent triads without one common
 predicate. Never choose one arbitrary capability from a multi-topic block.
 
 Compare every eligible `P/A` with the frozen catalog's implementations, messages, tests, and
-fixtures. For a large survey, delegate contiguous path ranges with the same contract, then merge
-their ledgers in canonical order; no later candidate wins before every earlier example is resolved.
-Coverage means catalog behavior collectively detects every documented `P` case for this concern and
-gives equivalent `A`; partial coverage is uncovered. Select the first eligible uncovered example and
-keep a source-evidenced ledger for all earlier examples. This step is complete when the first
-candidate or an exhaustive no-candidate result is established.
+fixtures. For a large survey, delegate contiguous path ranges with the same contract, then normalize
+their triad interpretations before merging their ledgers in canonical order. Reject a range ledger
+that treats normative wording as ineligible only because explicit negative wording is absent. Resolve
+the earliest disagreement before selecting a candidate; no later candidate wins before every earlier
+example is resolved. Coverage means catalog behavior collectively detects every documented `P` case
+for this concern and gives equivalent `A`; partial coverage is uncovered. Select the first eligible
+uncovered example and keep a source-evidenced ledger for all earlier examples. This step is complete
+when the first candidate or an exhaustive no-candidate result is established under one consistent
+triad interpretation.
 
 ### 3. Prove the candidate has one unique situation
 
@@ -176,7 +186,7 @@ workflow is complete only when these checks and the selected output branch agree
 │ │ │ │
 │ │ │ └─ **Delegate Contiguous Range Survey**(each contiguous path range, same contract)
 │ │ │   │
-│ │ │   ├─ **Derive JSDoc Triad**(situation S, noncompliant observable pattern N, advice A)
+│ │ │   ├─ **Derive JSDoc Triad**(normative wording, situation S, observable N, advice A)
 │ │ │   │
 │ │ │   ├─ **Classify Eligibility**(complete source-grounded triad with one common predicate P = S ∧ N)
 │ │ │   │
