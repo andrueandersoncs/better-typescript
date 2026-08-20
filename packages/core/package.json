@@ -1,10 +1,10 @@
 {
   "name": "@better-typescript/core",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.0.1",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "exports": {
     "./analysis": {
@@ -37,14 +37,17 @@
     "build": "rm -rf dist && tsc -b tsconfig.json --force",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
-  "dependencies": {
-    "effect": "^4.0.0-beta.98"
-  },
+  "dependencies": {},
   "peerDependencies": {
-    "typescript": "^5.0.0 || ^6.0.0"
+    "typescript": "^5.0.0 || ^6.0.0",
+    "effect": "4.0.0-beta.98"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "effect": "4.0.0-beta.98"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -12,50 +12,51 @@
     },
     "packages/cli": {
       "name": "@better-typescript/cli",
-      "version": "0.0.0",
+      "version": "0.0.1",
       "bin": {
-        "better-typescript": "./dist/index.js",
+        "better-typescript": "dist/index.js",
       },
       "dependencies": {
-        "@better-typescript/core": "0.0.0",
-        "@better-typescript/rules": "0.0.0",
-        "@effect/platform-bun": "^4.0.0-beta.98",
-        "effect": "^4.0.0-beta.98",
+        "@better-typescript/core": "0.0.1",
+        "@better-typescript/rules": "0.0.1",
+        "@effect/platform-bun": "4.0.0-beta.98",
       },
       "devDependencies": {
         "@types/bun": "^1.3.14",
+        "effect": "4.0.0-beta.98",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
+        "effect": "4.0.0-beta.98",
         "typescript": "^5.0.0 || ^6.0.0",
       },
     },
     "packages/core": {
       "name": "@better-typescript/core",
-      "version": "0.0.0",
-      "dependencies": {
-        "effect": "^4.0.0-beta.98",
-      },
+      "version": "0.0.1",
       "devDependencies": {
         "@types/bun": "^1.3.14",
+        "effect": "4.0.0-beta.98",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
+        "effect": "4.0.0-beta.98",
         "typescript": "^5.0.0 || ^6.0.0",
       },
     },
     "packages/rules": {
       "name": "@better-typescript/rules",
-      "version": "0.0.0",
+      "version": "0.0.1",
       "dependencies": {
-        "@better-typescript/core": "0.0.0",
-        "effect": "^4.0.0-beta.98",
+        "@better-typescript/core": "0.0.1",
       },
       "devDependencies": {
         "@types/bun": "^1.3.14",
+        "effect": "4.0.0-beta.98",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
+        "effect": "4.0.0-beta.98",
         "typescript": "^5.0.0 || ^6.0.0",
       },
     },
@@ -67,7 +68,7 @@
 
     "@better-typescript/rules": ["@better-typescript/rules@workspace:packages/rules"],
 
-    "@effect/platform-bun": ["@effect/platform-bun@4.0.0-beta.102", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-beta.102" }, "peerDependencies": { "effect": "^4.0.0-beta.102" } }, "sha512-hTIb0jjTfXhNgnDq2OX5wrigc0OSvTT0VWWb1PLpMM395RJPu8rCIbTlGhy0NS7kZOd8FfgNi9e0sDhgyu+5Ag=="],
+    "@effect/platform-bun": ["@effect/platform-bun@4.0.0-beta.98", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-beta.98" }, "peerDependencies": { "effect": "^4.0.0-beta.98" } }, "sha512-QorRKhvwHDPwvE8lH5lE0r0dI2z+zj12VUN4h7hfoIunKUiXSoSOMZqF3w13W30RpV6ivsvJywUycaa/18yMPA=="],
 
     "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.0-beta.102", "", { "dependencies": { "@types/ws": "^8.18.1", "ws": "^8.21.0" }, "peerDependencies": { "effect": "^4.0.0-beta.102" } }, "sha512-gVd793I72MrkX4dXo7eYtRKfNj0RW4eMRfVEKEJI16h2+mBDCzQ+gqMrog2hSTHQnaIbvbYShNQ4TVGuRCYZeQ=="],
 

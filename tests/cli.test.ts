@@ -13,6 +13,13 @@ import { createSignalFreeFixture } from "./cliCreateSignalFreeFixture.js"
 import { parseNdjson } from "./cliParseNdjson.js"
 import { assertAnalyzingStatus } from "./cliAssertAnalyzingStatus.js"
 
+test("CLI reports the published package version", async () => {
+  const result = await runCli(["--version"])
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout.trim(), "better-typescript v0.0.1")
+})
+
 test("default CLI emits one NDJSON object per violation and exits successfully", async () => {
   const tempDir = await copyNoThrowFixture("cli-violations-")
 
