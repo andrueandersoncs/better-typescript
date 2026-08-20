@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "stream-pagination",
+    "level": "error",
+    "message": "Prefer Stream.paginate. Use Stream.paginate for an effectful token-based page source.",
+    "filePath": "src/application/rules.ts",
+    "line": 64,
+    "column": 3
+  }
+]

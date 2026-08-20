@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "speculative-export",
+    "level": "error",
+    "message": "FutureSettlementProjection is exported without an independent first-party consumer or established boundary. Remove the export and keep ownership local, or connect the model to an intentional public seam. Exporting a declaration does not establish reuse and must not evade abstraction analysis.",
+    "filePath": "src/speculative/data.ts",
+    "line": 1,
+    "column": 18
+  }
+]

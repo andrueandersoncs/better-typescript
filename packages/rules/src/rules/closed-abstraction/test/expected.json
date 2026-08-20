@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "closed-abstraction",
+    "level": "error",
+    "message": "CalculateTotalInput and calculateTotal form a closed abstraction with at most one external owner. Collapse the function and its private data vocabulary into their external owner, reuse an existing concept, or deepen the Module until the abstraction has independent leverage. Do not replace the named model with an anonymous object type.",
+    "filePath": "src/closed/data.ts",
+    "line": 1,
+    "column": 18
+  }
+]

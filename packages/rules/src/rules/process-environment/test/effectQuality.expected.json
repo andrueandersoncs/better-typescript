@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "process-environment",
+    "level": "error",
+    "message": "Read runtime configuration through Effect Config, not process.env. Read the key in a Config-backed layer and provide deterministic config in tests.",
+    "filePath": "src/application/rules.ts",
+    "line": 50,
+    "column": 32
+  }
+]

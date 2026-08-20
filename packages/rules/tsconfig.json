@@ -10,5 +10,6 @@
       "path": "../core"
     }
   ],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/rules/*/fixtures/**", "src/rules/*/test/**"]
 }

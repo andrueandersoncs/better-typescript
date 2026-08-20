@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "cache-per-request",
+    "level": "error",
+    "message": "Construct Cache once in its owning layer or scope, not per request. Create the cache during layer acquisition and close over the shared handle.",
+    "filePath": "src/application/rules.ts",
+    "line": 102,
+    "column": 3
+  }
+]

@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict"
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import * as path from "node:path"
 import { test } from "bun:test"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
@@ -9,13 +9,16 @@ const sourceRoot = path.join(import.meta.dir, "../packages/rules/src")
 const rulesRoot = path.join(sourceRoot, "rules")
 const sourceExtension = /\.ts$/u
 const staticImport = /(?:\bfrom\s+|\bimport\s+)["']([^"']+)["']/gu
+const nonSourceDirectoryNames = new Set(["fixtures", "test"])
 
 const sourceFilesIn = (directory: string): ReadonlyArray<string> =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(directory, entry.name)
 
     return entry.isDirectory()
-      ? sourceFilesIn(entryPath)
+      ? nonSourceDirectoryNames.has(entry.name)
+        ? []
+        : sourceFilesIn(entryPath)
       : sourceExtension.test(entry.name)
         ? [entryPath]
         : []
@@ -59,7 +62,18 @@ test("every built-in Rule has one canonical directory entry", async () => {
   assert.deepEqual(directoryNames, expectedRuleNames)
 
   for (const name of directoryNames) {
-    const module = await import(path.join(rulesRoot, name, "index.ts"))
+    const home = path.join(rulesRoot, name)
+    const testEntry = path.join(home, "test", "index.test.ts")
+    const fixtures = path.join(home, "fixtures")
+
+    assert.ok(existsSync(testEntry), `${name} must own test/index.test.ts`)
+    assert.ok(existsSync(fixtures), `${name} must own fixtures/`)
+    assert.ok(
+      sourceFilesIn(fixtures).length > 0,
+      `${name} must own at least one TypeScript fixture`
+    )
+
+    const module = await import(path.join(home, "index.ts"))
     const rules = Object.values(module).filter(
       (value): value is (typeof builtinRules)[number] =>
         typeof value === "object" &&

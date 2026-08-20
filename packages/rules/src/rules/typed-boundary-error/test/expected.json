@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "typed-boundary-error",
+    "level": "error",
+    "message": "Map boundary failures to typed domain errors. Translate infrastructure failures at the adapter seam into an operation-labelled domain error.",
+    "filePath": "src/application/rules.ts",
+    "line": 119,
+    "column": 36
+  }
+]

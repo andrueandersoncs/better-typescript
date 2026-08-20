@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "config-refined-values",
+    "level": "error",
+    "message": "Refine configuration values. Use Config.schema or Config.mapOrFail for path, URL, port, and identifier values.",
+    "filePath": "src/application/rules.ts",
+    "line": 31,
+    "column": 21
+  }
+]

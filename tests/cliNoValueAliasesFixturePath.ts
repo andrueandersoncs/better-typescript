@@ -1,4 +1,3 @@
-import * as path from "node:path"
-import { testDirectory } from "./cliTestDirectory.js"
+import { ruleFixturesPath } from "./ruleTestFixturesRoot.js"
 
-export const noValueAliasesFixturePath = path.join(testDirectory, "fixtures", "no-value-aliases")
+export const noValueAliasesFixturePath = ruleFixturesPath("no-value-aliases")

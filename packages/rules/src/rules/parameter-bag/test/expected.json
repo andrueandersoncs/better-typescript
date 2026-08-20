@@ -1,0 +1,18 @@
+[
+  {
+    "ruleName": "parameter-bag",
+    "level": "error",
+    "message": "TaskCommand is constructed only to cross the runTask call seam. Remove or deepen the function seam, reuse existing domain values, or make this model a genuine command with independent semantics. Do not explode it into primitive parameters or an anonymous object type.",
+    "filePath": "src/parameter/runTask.ts",
+    "line": 7,
+    "column": 11
+  },
+  {
+    "ruleName": "parameter-bag",
+    "level": "error",
+    "message": "TaskCommand is constructed only to cross the runTask call seam. Remove or deepen the function seam, reuse existing domain values, or make this model a genuine command with independent semantics. Do not explode it into primitive parameters or an anonymous object type.",
+    "filePath": "src/parameter/runTask.ts",
+    "line": 10,
+    "column": 11
+  }
+]

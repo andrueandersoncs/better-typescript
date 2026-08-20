@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "idempotent-retry",
+    "level": "error",
+    "message": "Retry only idempotent operations. Establish idempotency in the domain contract before applying retry.",
+    "filePath": "src/application/rules.ts",
+    "line": 58,
+    "column": 31
+  }
+]

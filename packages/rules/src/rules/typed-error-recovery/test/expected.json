@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "typed-error-recovery",
+    "level": "error",
+    "message": "Use typed error recovery instead of broad cause recovery. Use catchIf, catchTag, catchFilter, or retry for expected typed failures.",
+    "filePath": "src/application/rules.ts",
+    "line": 116,
+    "column": 3
+  }
+]

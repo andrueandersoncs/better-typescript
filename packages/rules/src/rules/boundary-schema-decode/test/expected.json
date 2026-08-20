@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "boundary-schema-decode",
+    "level": "error",
+    "message": "Decode unknown boundary data. Use Schema.decodeUnknownEffect or a boundary-specific decoder before consuming the value.",
+    "filePath": "src/application/rules.ts",
+    "line": 52,
+    "column": 30
+  }
+]

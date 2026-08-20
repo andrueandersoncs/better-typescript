@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "global-config-mutation",
+    "level": "error",
+    "message": "Avoid mutating process.env in tests; provide deterministic Config instead. Use ConfigProvider.fromUnknown or a test configuration service.",
+    "filePath": "tests/effect.spec.ts",
+    "line": 4,
+    "column": 1
+  }
+]

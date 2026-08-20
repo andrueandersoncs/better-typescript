@@ -1,0 +1,18 @@
+[
+  {
+    "ruleName": "effect-fn-name",
+    "level": "error",
+    "message": "Use a non-empty domain-qualified Effect.fn name. Use a stable name such as UserRepo.get for tracing and spans.",
+    "filePath": "src/application/rules.ts",
+    "line": 42,
+    "column": 24
+  },
+  {
+    "ruleName": "effect-fn-name",
+    "level": "error",
+    "message": "Use a non-empty domain-qualified Effect.fn name. Use a stable name such as UserRepo.get for tracing and spans.",
+    "filePath": "src/application/rules.ts",
+    "line": 46,
+    "column": 40
+  }
+]

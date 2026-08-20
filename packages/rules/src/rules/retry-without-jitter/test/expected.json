@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "retry-without-jitter",
+    "level": "error",
+    "message": "Jitter exponential retry. Add Schedule.jittered to the bounded backoff schedule.",
+    "filePath": "src/application/rules.ts",
+    "line": 113,
+    "column": 33
+  }
+]

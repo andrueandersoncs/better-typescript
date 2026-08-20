@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "http-status-decode-order",
+    "level": "error",
+    "message": "Classify HTTP status before decoding a successful response body. Apply filterStatusOk or an equivalent response classifier first.",
+    "filePath": "src/adapters/http.ts",
+    "line": 9,
+    "column": 22
+  }
+]

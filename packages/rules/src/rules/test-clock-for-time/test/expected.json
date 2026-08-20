@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "test-clock-for-time",
+    "level": "error",
+    "message": "Use TestClock for time-sensitive tests. Fork time-dependent work, then advance TestClock instead of real time.",
+    "filePath": "tests/effect.spec.ts",
+    "line": 6,
+    "column": 20
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "cache-preference",
+    "level": "error",
+    "message": "Prefer Effect Cache when its lifecycle semantics fit. Use Cache.make or Cache.makeWith instead of a hand-rolled cache.",
+    "filePath": "src/application/rules.ts",
+    "line": 93,
+    "column": 21
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "ruleName": "bounded-retry-schedule",
+    "level": "error",
+    "message": "Use a bounded retry schedule unless a local waiver documents forever retry. Use recurs or upTo to make retries operationally bounded.",
+    "filePath": "src/application/rules.ts",
+    "line": 113,
+    "column": 33
+  },
+  {
+    "ruleName": "bounded-retry-schedule",
+    "level": "error",
+    "message": "Use a bounded retry schedule unless a local waiver documents forever retry. Use recurs or upTo to make retries operationally bounded.",
+    "filePath": "src/application/rules.ts",
+    "line": 125,
+    "column": 29
+  }
+]

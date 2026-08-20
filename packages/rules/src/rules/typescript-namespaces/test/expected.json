@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "typescript-namespaces",
+    "level": "error",
+    "message": "Avoid TypeScript namespaces for Effect module organization. Export an ES module namespace projection or named values instead.",
+    "filePath": "src/application/rules.ts",
+    "line": 5,
+    "column": 18
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "pass-through-conversion",
+    "level": "error",
+    "message": "toDomainIdentity copies WireIdentity into DomainIdentity without transformation. Collapse the parallel representations or document and preserve the real boundary that requires both. A field-for-field adapter is evidence against introducing another first-party concept.",
+    "filePath": "src/conversion/toDomain.ts",
+    "line": 5,
+    "column": 22
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "raw-fetch-abort-signal",
+    "level": "error",
+    "message": "Pass Effect.tryPromise's AbortSignal to raw fetch. Accept the tryPromise signal and pass it as fetch's init.signal.",
+    "filePath": "src/adapters/http.ts",
+    "line": 3,
+    "column": 34
+  }
+]

@@ -5,7 +5,7 @@ import type * as ts from "typescript"
 import type { Rule } from "@better-typescript/core/linter"
 import type { Violation } from "@better-typescript/core/linter"
 import { violationLocationKey } from "./violationLocationKey.js"
-import { fixturesRoot } from "./ruleTestFixturesRoot.js"
+import { ruleFixturesPath } from "./ruleTestFixturesRoot.js"
 import { runRuleFixture } from "./runRuleFixture.js"
 
 const detectMarkerPattern = /\/\/ ~detect(?: ([0-9]+(?:,[0-9]+)*))?\s*$/
@@ -73,7 +73,7 @@ export const assertRuleFixture = async (
   rule: Rule,
   compilerOptionOverrides: ts.CompilerOptions = {}
 ): Promise<void> => {
-  const fixturePath = path.join(fixturesRoot, rule.name)
+  const fixturePath = ruleFixturesPath(rule.name)
   const markers = markersInFixture(fixturePath)
   const elements = await runRuleFixture(rule, compilerOptionOverrides)
 

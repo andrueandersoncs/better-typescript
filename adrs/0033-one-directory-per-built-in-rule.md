@@ -14,7 +14,8 @@ files.
 ## Decision
 
 Every built-in Rule has one canonical home at `packages/rules/src/rules/<rule-name>/`. Its
-`index.ts` exports the Rule, and the directory contains every helper used only by that Rule.
+`index.ts` exports the Rule, `test/index.test.ts` verifies it, `fixtures/` contains its test inputs,
+and the directory contains every helper used only by that Rule.
 
 Code used by multiple Rules stays outside Rule homes under `packages/rules/src/internal/`. Shared
 modules expose reusable evidence or scanner infrastructure. They do not own Rule identities,
@@ -30,7 +31,8 @@ This decision supersedes ADR-0032's allowance for family files containing severa
 
 ## Consequences
 
-- One Rule and all of its exclusive implementation can be found in one directory.
+- One Rule, its tests, its fixtures, and all of its exclusive implementation can be found in one
+  directory.
 - Shared code has evidence of reuse by multiple Rules.
 - Moving or deleting a Rule has one clear ownership boundary.
 - Adding a Rule requires a directory entry and an explicit catalog import.

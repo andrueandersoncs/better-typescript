@@ -6,6 +6,6 @@
     "types": ["bun"],
     "allowImportingTsExtensions": true
   },
-  "include": ["**/*.ts"],
-  "exclude": ["fixtures/**"]
+  "include": ["**/*.ts", "../packages/rules/src/rules/*/test/**/*.ts"],
+  "exclude": ["fixtures/**", "../packages/rules/src/rules/*/fixtures/**"]
 }

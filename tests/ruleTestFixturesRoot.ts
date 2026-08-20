@@ -1,5 +1,4 @@
 import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 
-const testDirectory = path.dirname(fileURLToPath(import.meta.url))
-export const fixturesRoot = path.join(testDirectory, "fixtures")
+export const ruleFixturesPath = (ruleName: string): string =>
+  path.join(import.meta.dir, "../packages/rules/src/rules", ruleName, "fixtures", "rule")

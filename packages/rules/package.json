@@ -4,7 +4,9 @@
   "type": "module",
   "files": [
     "dist",
-    "src"
+    "src",
+    "!src/rules/*/fixtures",
+    "!src/rules/*/test"
   ],
   "exports": {
     "./builtinRules": {

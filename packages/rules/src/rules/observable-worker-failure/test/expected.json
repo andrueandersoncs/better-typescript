@@ -1,0 +1,10 @@
+[
+  {
+    "ruleName": "observable-worker-failure",
+    "level": "error",
+    "message": "Make worker failures observable. Log expected item failures or make the skip policy explicit at the owning worker boundary.",
+    "filePath": "src/application/rules.ts",
+    "line": 59,
+    "column": 29
+  }
+]

@@ -1,0 +1,234 @@
+[
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "CalculateTotalInput lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/closed/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "WireIdentity lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/conversion/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "DomainIdentity lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/conversion/data.ts",
+    "line": 5,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "RenderReceiptInput lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/derived/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryAddress lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 1,
+    "column": 11
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryAddress lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 5,
+    "column": 11
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryStatement lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 9,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryStatement lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 13,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryBounds lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 17,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryBounds lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 19,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryPair lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 21,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryPair lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/duplicate/data.ts",
+    "line": 23,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "TaskCommand lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/parameter/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "ApiPayload lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/rationale/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "Customer lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/redundant/data.ts",
+    "line": 1,
+    "column": 11
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "CustomerData lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/redundant/data.ts",
+    "line": 5,
+    "column": 6
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "FutureSettlementProjection lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/speculative/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SharedDraft lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/unused/data.ts",
+    "line": 1,
+    "column": 18
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryDataError lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 11,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryDataError lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 15,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimarySchemaError lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 19,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondarySchemaError lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 26,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryOpaque lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 35,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryOpaque lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 37,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryAsClass lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 39,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryAsClass lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 43,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "BaseModel lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 47,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "PrimaryExtended lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 51,
+    "column": 14
+  },
+  {
+    "ruleName": "missing-rationale",
+    "level": "error",
+    "message": "SecondaryExtended lacks a complete, structurally supported data-structure rationale. Delete or reuse this concept before documenting it. If it remains, add one single-line comment directly above the declaration explaining because why existing concepts are insufficient. The prose does not suppress structural evidence.",
+    "filePath": "src/v4/data.ts",
+    "line": 55,
+    "column": 14
+  }
+]
