@@ -6,6 +6,7 @@ import { cachePerRequest } from "./rules/cache-per-request/index.js"
 import { cachePreference } from "./rules/cache-preference/index.js"
 import { closedAbstraction } from "./rules/closed-abstraction/index.js"
 import { configRefinedValues } from "./rules/config-refined-values/index.js"
+import { dependentLayerMerge } from "./rules/dependent-layer-merge/index.js"
 import { duplicateShape } from "./rules/duplicate-shape/index.js"
 import { effectFnName } from "./rules/effect-fn-name/index.js"
 import { effectTestStyle } from "./rules/effect-test-style/index.js"
@@ -135,6 +136,7 @@ const allRules: ReadonlyArray<Rule> = Array.make(
   cachePreference,
   closedAbstraction,
   configRefinedValues,
+  dependentLayerMerge,
   duplicateShape,
   effectFnName,
   effectTestStyle,

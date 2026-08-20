@@ -5,6 +5,7 @@ export const expectedRuleNames: ReadonlyArray<string> = [
   "cache-preference",
   "closed-abstraction",
   "config-refined-values",
+  "dependent-layer-merge",
   "duplicate-shape",
   "effect-fn-name",
   "effect-test-style",
