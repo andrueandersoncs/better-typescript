@@ -1,5 +1,5 @@
 import { Array, Effect, Option, Ref, Schema, pipe } from "effect"
-import type { LintConfig } from "../config/config.js"
+import { LintConfig } from "../config/config.js"
 import { loadConfig } from "../config/loadConfig.js"
 import { LintRequest } from "../linter/lintRequest.js"
 import { Rule, Violation, lintConfiguredForGlob } from "../linter/linter.js"
@@ -23,12 +23,14 @@ export interface AnalysisResult extends Schema.Schema.Type<typeof AnalysisResult
 
 const Rules = Schema.Array(Rule)
 const OptionalFileGlob = Schema.optional(Schema.String)
+const OptionalLintConfig = Schema.optional(LintConfig)
 
 // AnalysisRequest stays small because discovery and root configuration belong to the run.
 export const AnalysisRequest = Schema.Struct({
   projectPath: Schema.String,
   rules: Rules,
-  fileGlob: OptionalFileGlob
+  fileGlob: OptionalFileGlob,
+  config: OptionalLintConfig
 })
 
 export interface AnalysisRequest extends Schema.Schema.Type<typeof AnalysisRequest> {}
@@ -64,7 +66,13 @@ const lintProject = Effect.fn("Analysis.lintProject")(function* (
 
 export const runAnalysis = Effect.fn("Analysis.run")(function* (request: AnalysisRequest) {
   const workspace = yield* discoverWorkspace(request.projectPath)
-  const config = yield* loadConfig(workspace.rootPath)
+  const configOverride = Option.fromNullishOr(request.config)
+
+  const config = yield* Option.match(configOverride, {
+    onNone: () => loadConfig(workspace.rootPath),
+    onSome: Effect.succeed
+  })
+
   const fileGlob = Option.fromNullishOr(request.fileGlob)
 
   const runProject = Effect.fn("Analysis.runProject")(function* (projectConfig: ProjectConfig) {

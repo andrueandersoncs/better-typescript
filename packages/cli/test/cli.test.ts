@@ -62,6 +62,50 @@ test("CLI loads glob and rule configuration from the project root", async () => 
   }
 })
 
+test("CLI --rule ignores the project rule configuration", async () => {
+  const tempDir = await copyNoThrowFixture("cli-rule-")
+
+  await fs.writeFile(
+    path.join(tempDir, "better-typescript.config.ts"),
+    'export default [{ files: ["**/*"], rules: { "*": "off" } }]'
+  )
+
+  try {
+    const result = await runCli(["--project", tempDir, "--rule", "no-throw"])
+    const violations = parseNdjson(result.stdout)
+
+    assert.equal(result.status, 0)
+    assert.ok(violations.length > 0)
+    assert.ok(
+      violations.every(({ level, ruleName }) => level === "error" && ruleName === "no-throw")
+    )
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
+test("CLI accepts more than one --rule", async () => {
+  const tempDir = await copyNoThrowFixture("cli-rules-")
+
+  try {
+    const result = await runCli([
+      "--project",
+      tempDir,
+      "--rule",
+      "no-throw",
+      "--rule",
+      "no-try-catch"
+    ])
+    const violations = parseNdjson(result.stdout)
+    const ruleNames = new Set(violations.map(({ ruleName }) => ruleName))
+
+    assert.equal(result.status, 0)
+    assert.deepEqual(ruleNames, new Set(["no-throw", "no-try-catch"]))
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test("CLI checks only files matching --glob", async () => {
   const tempDir = await copyNoThrowFixture("cli-glob-")
 

@@ -74,6 +74,22 @@ test("runAnalysis owns a complete ordered configured solution-workspace run", as
   ])
 })
 
+test("runAnalysis uses a supplied config instead of loading the project config", async () => {
+  const rule = makeFixtureRule(() => {})
+  const config = [
+    { files: ["packages/alpha/**/*.ts"], rules: { "fixture-rule": "error" as const } }
+  ]
+
+  const result = await Effect.runPromise(
+    runAnalysis({ projectPath: workspaceInput, rules: [rule], config })
+  )
+
+  assert.deepEqual(
+    result.violations.map(({ filePath, level }) => ({ filePath, level })),
+    [{ filePath: "packages/alpha/src/alpha.ts", level: "error" }]
+  )
+})
+
 test("runAnalysis checks only files matching the requested glob", async () => {
   const checkedFiles = new Array<string>()
   const rule = makeFixtureRule((_program, projectRoot) => checkedFiles.push(projectRoot))

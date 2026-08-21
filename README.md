@@ -29,7 +29,15 @@ better-typescript --project . --glob 'src/**/*.ts'
 ```
 
 The glob further narrows the root files selected by TypeScript and `better-typescript.config.ts`.
-The command exits successfully after a completed analysis even when violations are present.
+Use repeatable `--rule` flags to check only named built-in rules:
+
+```sh
+better-typescript --project . --rule no-throw --rule no-try-catch
+```
+
+When `--rule` is present, the CLI ignores `better-typescript.config.ts` and reports selected rules
+as errors. `--glob` still narrows the checked files. The command exits successfully after a
+completed analysis even when violations are present.
 
 Stdout is NDJSON by default. Each line has one shape:
 

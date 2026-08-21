@@ -82,8 +82,16 @@ bunx better-typescript --project .
 ```
 
 Omit `--project` to use the current directory. Use `--glob 'src/**/*.ts'` to narrow analysis to
-matching project-relative root files. Keep the default NDJSON output for agent use. Each stdout line
-is one violation:
+matching project-relative root files. Use repeatable `--rule` flags to check only named built-in
+rules:
+
+```sh
+bunx better-typescript --rule no-throw --rule no-try-catch
+```
+
+When present, `--rule` ignores `better-typescript.config.ts` and reports selected rules as errors.
+`--glob` still applies. Keep the default NDJSON output for agent use. Each stdout line is one
+violation:
 
 ```json
 {

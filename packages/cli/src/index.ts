@@ -2,9 +2,10 @@
 import * as path from "node:path"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as BunServices from "@effect/platform-bun/BunServices"
-import { Console, Effect, Function, Option, flow, pipe } from "effect"
+import { Array, Console, Effect, Function, HashSet, Option, Struct, flow, pipe } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import type { Violation } from "@better-typescript/core/linter"
+import { defaultConfig } from "@better-typescript/core/config"
+import type { Rule, Violation } from "@better-typescript/core/linter"
 import { runAnalysis } from "@better-typescript/core/analysis"
 import { builtinRules } from "@better-typescript/rules/builtinRules"
 import { reportError } from "./reportError.js"
@@ -17,6 +18,18 @@ const fileGlob = pipe(
   Flag.withMetavar("GLOB"),
   Flag.withDescription("Analyze only files matching this project-relative glob."),
   Flag.optional
+)
+
+const ruleName = Struct.get<Rule, "name">("name")
+const builtinRuleNames = Array.map(builtinRules, ruleName)
+
+const rules = pipe(
+  Flag.choice("rule", builtinRuleNames),
+  Flag.withMetavar("RULE"),
+  Flag.withDescription(
+    "Check only this built-in rule. Repeat to select more rules. Ignores project config."
+  ),
+  Flag.atMost(Number.MAX_SAFE_INTEGER)
 )
 
 const pretty = pipe(
@@ -34,20 +47,45 @@ const printPrettyViolation = (violation: Violation): Effect.Effect<void> =>
     `${violation.filePath}:${violation.line}:${violation.column} ${violation.level} ${violation.ruleName} ${violation.message}`
   )
 
+const selectedRules = (ruleNames: ReadonlyArray<string>) => {
+  const names = HashSet.fromIterable(ruleNames)
+  const isSelected = (rule: Rule) => HashSet.has(names, rule.name)
+
+  return Array.filter(builtinRules, isSelected)
+}
+
+const runConfiguredAnalysis = (glob: Option.Option<string>) => (projectPath: string) =>
+  Option.match(glob, {
+    onNone: () => runAnalysis({ projectPath, rules: builtinRules }),
+    onSome: (fileGlob) => runAnalysis({ projectPath, rules: builtinRules, fileGlob })
+  })
+
+const runSelectedAnalysis =
+  (glob: Option.Option<string>) => (ruleNames: ReadonlyArray<string>) => (projectPath: string) => {
+    const selected = selectedRules(ruleNames)
+
+    return Option.match(glob, {
+      onNone: () => runAnalysis({ projectPath, rules: selected, config: defaultConfig }),
+      onSome: (fileGlob) =>
+        runAnalysis({ projectPath, rules: selected, fileGlob, config: defaultConfig })
+    })
+  }
+
 const runCommand = Effect.fn("Cli.runCommand")(function* (
   projectPath: string,
   prettyOutput: boolean,
-  glob: Option.Option<string>
+  glob: Option.Option<string>,
+  ruleNames: ReadonlyArray<string>
 ) {
   const projectDirectory = path.resolve(projectPath)
 
   yield* Console.error(`Analyzing ${projectDirectory}.`)
 
-  const analysis = yield* Option.match(glob, {
-    onNone: () => runAnalysis({ projectPath: projectDirectory, rules: builtinRules }),
-    onSome: (fileGlob) =>
-      runAnalysis({ projectPath: projectDirectory, rules: builtinRules, fileGlob })
-  })
+  const hasSelectedRules = ruleNames.length > 0
+
+  const analysis = yield* hasSelectedRules
+    ? runSelectedAnalysis(glob)(ruleNames)(projectDirectory)
+    : runConfiguredAnalysis(glob)(projectDirectory)
 
   const prettyOption = Option.liftPredicate(Boolean)(prettyOutput)
 
@@ -61,9 +99,9 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
 
 const rootCommand = Command.make(
   "better-typescript",
-  { project, glob: fileGlob, pretty },
-  ({ project: projectPath, glob, pretty: prettyOutput }) =>
-    pipe(runCommand(projectPath, prettyOutput, glob), Effect.catch(reportError))
+  { project, glob: fileGlob, rule: rules, pretty },
+  ({ project: projectPath, glob, rule: ruleNames, pretty: prettyOutput }) =>
+    pipe(runCommand(projectPath, prettyOutput, glob, ruleNames), Effect.catch(reportError))
 )
 
 pipe(
