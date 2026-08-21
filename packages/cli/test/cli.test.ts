@@ -17,7 +17,7 @@ test("CLI reports the published package version", async () => {
   const result = await runCli(["--version"])
 
   assert.equal(result.status, 0)
-  assert.equal(result.stdout.trim(), "better-typescript v0.0.2")
+  assert.equal(result.stdout.trim(), "better-typescript v0.0.3")
 })
 
 test("default CLI emits one NDJSON object per violation and exits successfully", async () => {

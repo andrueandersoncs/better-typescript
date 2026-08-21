@@ -1,6 +1,6 @@
 {
   "name": "@better-typescript/rules",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "files": [
     "dist",
@@ -21,7 +21,7 @@
     "test": "bun test --timeout 30000 test/*.test.ts src/rules/*/test/*.test.ts"
   },
   "dependencies": {
-    "@better-typescript/core": "0.0.2"
+    "@better-typescript/core": "0.0.3"
   },
   "peerDependencies": {
     "typescript": "^5.0.0 || ^6.0.0",
