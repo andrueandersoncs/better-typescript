@@ -8,7 +8,42 @@ compatibility: Requires a runtime that provides the skill-creator skill and conc
 
 Create a **workflow skill** for the user's repeatable task; this skill governs documenting that task, not carrying it out.
 
-Use this global `workflow-model`: Run each step in this skill and the resulting workflow skill once in a new, fresh subagent. Give every step, workflow input, and output a unique kebab-case identifier. Use unordered `-` items for every list. Format each task input as `- Wait for <step-id> to produce <output-id>.`, `- Use workflow input <input-id>.`, `- Use runtime value <value-id>.`, or `- Use global value <value-id>.` Only `Wait` creates a dependency edge; every `Use` value is available initially. A step is ready when all its inputs are bound; launch all ready steps concurrently and launch newly ready steps immediately. Document order does not control execution. Bind each input or output ID to `$<id>` in the task text and pass the entire rendered task—step ID, title, task text, resolved `Inputs`, `Constraints`, and expected `Outputs`—to the subagent. A blocking question, unavailable `skill-creator`, or unresolved failure stops all downstream work.
+Use this global `workflow-model`:
+
+- **Delegation:** Run each step in this skill and the resulting workflow skill once in a new,
+  fresh subagent.
+- **Ownership:** The invoking agent is the single accountable workflow owner. Fresh subagents
+  execute steps, while the owner launches ready work, maintains state, resolves handoffs, and
+  returns the final result.
+- **Identifiers:** Give every step, workflow input, and output a unique kebab-case identifier.
+  Bind each input or output ID to `$<id>` in the task text.
+- **Lists:** Use unordered `-` items for every list.
+- **Inputs:** Format each task input as one of:
+  - `- Wait for <step-id> to produce <output-id>.`
+  - `- Use workflow input <input-id>.`
+  - `- Use runtime value <value-id>.`
+  - `- Use global value <value-id>.`
+- **Dependencies:** Only `Wait` creates a dependency edge; every `Use` value is available
+  initially. Document order does not control execution.
+- **Readiness:** A step is ready only when all its inputs are bound and its required context,
+  tools, permissions, and environment are available.
+- **Dispatch:** Launch all ready steps concurrently and launch newly ready steps immediately.
+  Pass the entire rendered task—step ID, title, task text, resolved `Inputs`, `Constraints`, and
+  expected `Outputs`—to the subagent.
+- **Blocked work:** If a readiness condition is unavailable, mark the step blocked, record the
+  unmet condition and the event or time that will resume it, and do not launch its dependents.
+- **Persistent state:** After each meaningful step, persist returned outputs, inspectable
+  evidence, decisions, active job handles, and the next action at a declared durable artifact or
+  checkpoint location.
+- **Asynchronous work:** Start slow or asynchronous work once, save its handle, output location,
+  and completion event, then resume only when that event occurs.
+- **Review:** End every generated task graph with a fresh independent review step that inspects
+  the candidate in its actual destination and checks both its completion conditions and intended
+  outcome from evidence. Follow it with a final report step that waits for the review verdict.
+- **Completion:** A failed review returns one concrete corrective action and leaves the workflow
+  incomplete. Only a passed review permits the owner to report completion.
+- **Failures:** A blocking question, unavailable `skill-creator`, or unresolved failure stops all
+  downstream work.
 
 ## Inputs
 
@@ -193,7 +228,7 @@ Use this output contract: $target-output-requirements. Use these task requiremen
 
 **Constraints:**
 
-- Require the final task to report the result and completion state.
+- Require the final task to wait for the independent review verdict and report the result location, completion state, and evidence; it may claim completion only when review passes.
 
 **Outputs:**
 
@@ -252,7 +287,7 @@ Inspect this `skill-creator` result: $skill-creator-result. On success, return t
 
 ### verify-shell: Verify the frontmatter and section structure
 
-Verify this skill: $resulting-skill. Its target path is: $target-skill-path. Check it against these shell requirements: $skill-shell-requirements. Apply this workflow model: $workflow-model. Verify the frontmatter, routing description, compatibility, maximal-parallelism policy, policy placement, and top-level section order, then return the frontmatter and structure results.
+Verify this skill: $resulting-skill. Its target path is: $target-skill-path. Check it against these shell requirements: $skill-shell-requirements. Apply this workflow model: $workflow-model. Verify the frontmatter, routing description, compatibility, global `workflow-model` policy, policy placement, and top-level section order, then return the frontmatter and structure results.
 
 **Inputs:**
 
@@ -319,7 +354,7 @@ Trace every task in this skill: $resulting-skill. Compare it with this workflow 
 - Keep inputs and outputs declarative.
 - Keep task work and state changes inside `## Tasks`.
 - Do not rely on inherited context, prior reasoning, or undeclared state.
-- Pass only when each dependency carries required data and every ready task can start immediately.
+- Pass only when each dependency carries required data, every ready task can start immediately, and the lifecycle and final review conform to the global `workflow-model`.
 
 **Outputs:**
 
