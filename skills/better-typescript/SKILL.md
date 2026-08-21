@@ -81,8 +81,9 @@ Run from the project root:
 bunx better-typescript --project .
 ```
 
-Omit `--project` to use the current directory. Keep the default NDJSON output for agent use. Each
-stdout line is one violation:
+Omit `--project` to use the current directory. Use `--glob 'src/**/*.ts'` to narrow analysis to
+matching project-relative root files. Keep the default NDJSON output for agent use. Each stdout line
+is one violation:
 
 ```json
 {

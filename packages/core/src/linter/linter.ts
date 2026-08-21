@@ -358,16 +358,30 @@ const violationsForSource =
 
 const violationsForProject =
   (workspaceRoot: string) =>
+  (fileMatcher: Option.Option<Bun.Glob>) =>
   (compiledConfig: Option.Option<ReadonlyArray<CompiledConfigEntry>>) =>
   (rules: ReadonlyArray<Rule>) =>
   ({ program, rootPath }: LoadedWorkspace["projects"][number]) => {
     const sourceFileForRootName = (fileName: string) => program.getSourceFile(fileName)
 
+    const matchesRequestedFiles = (sourceFile: ts.SourceFile) =>
+      pipe(
+        fileMatcher,
+        Option.match({
+          onNone: Function.constTrue,
+          onSome: (matcher) =>
+            pipe(sourceFile.fileName, normalizedRelativePath(workspaceRoot), (filePath) =>
+              matcher.match(filePath)
+            )
+        })
+      )
+
     const sourceFiles = pipe(
       program.getRootFileNames(),
       Array.map(sourceFileForRootName),
       Array.filter(Predicate.isNotNullish),
-      Array.filter(isProjectSourceFile)
+      Array.filter(isProjectSourceFile),
+      Array.filter(matchesRequestedFiles)
     )
 
     const runSource = pipe(
@@ -382,16 +396,19 @@ const violationsForProject =
     return Array.flatMap(sourceFiles, runSource)
   }
 
-const lintWithConfig =
+const lintWithGlob =
+  (fileGlob: Option.Option<string>) =>
   (inputConfig: Option.Option<LintConfig>) =>
   (request: LintRequest): ReadonlyArray<Violation> => {
     const rules = validateRules(request.rules)
     const validatedConfig = Option.map(inputConfig, validateConfigRuleNames(rules))
     const compiledConfig = Option.map(validatedConfig, Array.map(buildConfigEntry))
+    const fileMatcher = Option.map(fileGlob, makeGlob)
 
     const runProjectRules = pipe(
       request.project.rootPath,
       violationsForProject,
+      Function.apply(fileMatcher),
       Function.apply(compiledConfig),
       Function.apply(rules)
     )
@@ -400,7 +417,12 @@ const lintWithConfig =
   }
 
 const noLintConfig = Option.none<LintConfig>()
+const noFileGlob = Option.none<string>()
+const lintAllFiles = lintWithGlob(noFileGlob)
 
-export const lint = lintWithConfig(noLintConfig)
+export const lint = lintAllFiles(noLintConfig)
 
-export const lintConfigured = flow(Option.some<LintConfig>, lintWithConfig)
+export const lintConfigured = flow(Option.some<LintConfig>, lintAllFiles)
+
+export const lintConfiguredForGlob = (fileGlob: Option.Option<string>) =>
+  flow(Option.some<LintConfig>, lintWithGlob(fileGlob))

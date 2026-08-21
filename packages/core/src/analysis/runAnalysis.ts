@@ -2,8 +2,7 @@ import { Array, Effect, Option, Ref, Schema, pipe } from "effect"
 import type { LintConfig } from "../config/config.js"
 import { loadConfig } from "../config/loadConfig.js"
 import { LintRequest } from "../linter/lintRequest.js"
-import { Violation, lintConfigured } from "../linter/linter.js"
-import type { Rule } from "../linter/linter.js"
+import { Rule, Violation, lintConfiguredForGlob } from "../linter/linter.js"
 import { normalizeViolations } from "../linter/normalizeViolations.js"
 import { LoadedWorkspace, discoverWorkspace } from "../project/loadProject/loadProject.js"
 import { loadProjectConfig } from "../project/loadProject/loadProjectConfig.js"
@@ -22,11 +21,17 @@ export const AnalysisResult = Schema.Struct({
 
 export interface AnalysisResult extends Schema.Schema.Type<typeof AnalysisResult> {}
 
+const Rules = Schema.Array(Rule)
+const OptionalFileGlob = Schema.optional(Schema.String)
+
 // AnalysisRequest stays small because discovery and root configuration belong to the run.
-export interface AnalysisRequest {
-  readonly projectPath: string
-  readonly rules: ReadonlyArray<Rule>
-}
+export const AnalysisRequest = Schema.Struct({
+  projectPath: Schema.String,
+  rules: Rules,
+  fileGlob: OptionalFileGlob
+})
+
+export interface AnalysisRequest extends Schema.Schema.Type<typeof AnalysisRequest> {}
 
 const acquireProject = Effect.fn("Analysis.acquireProject")(function* (config: ProjectConfig) {
   return yield* pipe(
@@ -46,6 +51,7 @@ const lintProject = Effect.fn("Analysis.lintProject")(function* (
   rootPath: string,
   config: LintConfig,
   rules: ReadonlyArray<Rule>,
+  fileGlob: Option.Option<string>,
   project: Ref.Ref<Option.Option<LoadedProject>>
 ) {
   const projectOption = yield* Ref.get(project)
@@ -53,12 +59,13 @@ const lintProject = Effect.fn("Analysis.lintProject")(function* (
   const workspace = LoadedWorkspace.make({ rootPath, projects: [loadedProject] })
   const request = LintRequest.make({ project: workspace, rules })
 
-  return yield* Effect.sync(() => lintConfigured(config)(request))
+  return yield* Effect.sync(() => lintConfiguredForGlob(fileGlob)(config)(request))
 })
 
 export const runAnalysis = Effect.fn("Analysis.run")(function* (request: AnalysisRequest) {
   const workspace = yield* discoverWorkspace(request.projectPath)
   const config = yield* loadConfig(workspace.rootPath)
+  const fileGlob = Option.fromNullishOr(request.fileGlob)
 
   const runProject = Effect.fn("Analysis.runProject")(function* (projectConfig: ProjectConfig) {
     const projectAcquisition = Effect.fn("Analysis.projectAcquisition")(function* () {
@@ -68,7 +75,7 @@ export const runAnalysis = Effect.fn("Analysis.run")(function* (request: Analysi
     const useProject = Effect.fn("Analysis.useProject")(function* (
       project: Ref.Ref<Option.Option<LoadedProject>>
     ) {
-      return yield* lintProject(workspace.rootPath, config, request.rules, project)
+      return yield* lintProject(workspace.rootPath, config, request.rules, fileGlob, project)
     })
 
     return yield* Effect.acquireUseRelease(projectAcquisition, useProject, releaseProject)

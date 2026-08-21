@@ -12,6 +12,13 @@ import { reportError } from "./reportError.js"
 const workingDirectory = process.cwd()
 const project = pipe(Flag.directory("project"), Flag.withDefault(workingDirectory))
 
+const fileGlob = pipe(
+  Flag.string("glob"),
+  Flag.withMetavar("GLOB"),
+  Flag.withDescription("Analyze only files matching this project-relative glob."),
+  Flag.optional
+)
+
 const pretty = pipe(
   Flag.boolean("pretty"),
   Flag.withDescription("Render human-readable violations instead of NDJSON.")
@@ -29,13 +36,19 @@ const printPrettyViolation = (violation: Violation): Effect.Effect<void> =>
 
 const runCommand = Effect.fn("Cli.runCommand")(function* (
   projectPath: string,
-  prettyOutput: boolean
+  prettyOutput: boolean,
+  glob: Option.Option<string>
 ) {
   const projectDirectory = path.resolve(projectPath)
 
   yield* Console.error(`Analyzing ${projectDirectory}.`)
 
-  const analysis = yield* runAnalysis({ projectPath: projectDirectory, rules: builtinRules })
+  const analysis = yield* Option.match(glob, {
+    onNone: () => runAnalysis({ projectPath: projectDirectory, rules: builtinRules }),
+    onSome: (fileGlob) =>
+      runAnalysis({ projectPath: projectDirectory, rules: builtinRules, fileGlob })
+  })
+
   const prettyOption = Option.liftPredicate(Boolean)(prettyOutput)
 
   const printViolation = Option.match(prettyOption, {
@@ -48,9 +61,9 @@ const runCommand = Effect.fn("Cli.runCommand")(function* (
 
 const rootCommand = Command.make(
   "better-typescript",
-  { project, pretty },
-  ({ project: projectPath, pretty: prettyOutput }) =>
-    pipe(runCommand(projectPath, prettyOutput), Effect.catch(reportError))
+  { project, glob: fileGlob, pretty },
+  ({ project: projectPath, glob, pretty: prettyOutput }) =>
+    pipe(runCommand(projectPath, prettyOutput, glob), Effect.catch(reportError))
 )
 
 pipe(

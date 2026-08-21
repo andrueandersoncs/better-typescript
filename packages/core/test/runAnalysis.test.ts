@@ -74,6 +74,25 @@ test("runAnalysis owns a complete ordered configured solution-workspace run", as
   ])
 })
 
+test("runAnalysis checks only files matching the requested glob", async () => {
+  const checkedFiles = new Array<string>()
+  const rule = makeFixtureRule((_program, projectRoot) => checkedFiles.push(projectRoot))
+
+  const result = await Effect.runPromise(
+    runAnalysis({
+      projectPath: workspaceInput,
+      rules: [rule],
+      fileGlob: "packages/alpha/**/*.ts"
+    })
+  )
+
+  assert.deepEqual(
+    result.violations.map(({ filePath }) => filePath),
+    ["packages/alpha/src/alpha.ts"]
+  )
+  assert.equal(checkedFiles.length, 1)
+})
+
 test("runAnalysis repeats without returning compiler state", async () => {
   const firstRunProjects = new Array<string>()
   const secondRunProjects = new Array<string>()

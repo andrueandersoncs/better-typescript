@@ -62,6 +62,23 @@ test("CLI loads glob and rule configuration from the project root", async () => 
   }
 })
 
+test("CLI checks only files matching --glob", async () => {
+  const tempDir = await copyNoThrowFixture("cli-glob-")
+
+  try {
+    const result = await runCli(["--project", tempDir, "--glob", "src/allowed.ts"])
+
+    const violations = parseNdjson(result.stdout)
+
+    assert.equal(result.status, 0)
+    assertAnalyzingStatus(result.stderr, tempDir)
+    assert.ok(violations.length > 0)
+    assert.ok(violations.every(({ filePath }) => filePath === "src/allowed.ts"))
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test("default CLI emits the selected no-value-aliases identity", async () => {
   const result = await runCli(["--project", noValueAliasesFixturePath])
   const violations = parseNdjson(result.stdout)

@@ -21,8 +21,15 @@ bun run build
 better-typescript --project .
 ```
 
-The current directory is used when `--project` is omitted. The command exits successfully after a
-completed analysis even when violations are present.
+The current directory is used when `--project` is omitted. Use `--glob` to analyze only matching
+project-relative files:
+
+```sh
+better-typescript --project . --glob 'src/**/*.ts'
+```
+
+The glob further narrows the root files selected by TypeScript and `better-typescript.config.ts`.
+The command exits successfully after a completed analysis even when violations are present.
 
 Stdout is NDJSON by default. Each line has one shape:
 
